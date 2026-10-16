@@ -74,7 +74,7 @@ jobs:
         run: >
           run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug
           -clang-tidy-binary clang-tidy-${LLVM_VERSION}
-          "$PWD/(core|tests|tools|bench)/"
+          "$PWD/(core|data_io|tests|tools|bench)/"
 
   format:
     runs-on: ubuntu-24.04

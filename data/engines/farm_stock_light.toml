@@ -1,0 +1,24 @@
+# Light farm-stock class: ~75 kW (100 hp) four-cylinder turbo diesel.
+# Speeds are in rpm and converted to rad/s on load.
+
+[engine]
+inertia_kg_m2 = 1.2      # crankshaft and flywheel
+idle_rpm = 800           # governed speed at zero throttle
+rated_rpm = 2200         # full fuel at full throttle from here down
+high_idle_rpm = 2400     # governed no-load speed at full throttle
+stall_rpm = 450
+
+[engine.friction]
+constant_nm = 15.0
+viscous_nm_per_1000_rpm = 8.4
+
+[engine.turbo]
+na_torque_fraction = 0.65   # torque without boost, as a fraction of full-load
+time_constant_s = 0.8
+boost_onset_rpm = 1000
+full_boost_rpm = 1600
+
+# Full-load torque at full boost. Peak 430 N·m at 1400 rpm; ~78 kW at rated.
+[engine.torque_curve]
+rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400]
+torque_nm = [300,  360,  410,  430,  425,  410,  385,  340,  290]

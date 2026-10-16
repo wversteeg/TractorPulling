@@ -13,6 +13,7 @@ if(PROJECT_IS_TOP_LEVEL)
 endif()
 
 option(TP_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
+option(TP_BUILD_DATA_IO "Build the data loading library (needs toml++)" ON)
 option(TP_BUILD_TESTS "Build the unit tests" ${PROJECT_IS_TOP_LEVEL})
 option(TP_BUILD_BENCHMARKS "Build the micro-benchmarks" ${PROJECT_IS_TOP_LEVEL})
 option(TP_BUILD_TOOLS "Build the command line tools" ${PROJECT_IS_TOP_LEVEL})
@@ -23,6 +24,10 @@ include(CompilerOptions)
 include(Dependencies)
 
 add_subdirectory(core)
+
+if(TP_BUILD_DATA_IO)
+    add_subdirectory(data_io)
+endif()
 
 if(TP_BUILD_TOOLS)
     add_subdirectory(tools)

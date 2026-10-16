@@ -17,6 +17,7 @@ Current focus: **game mechanics only**. Graphics come later. Do not add renderin
 
 ```
 core/        Pure C++20 static library. The whole simulation lives here.
+data_io/     tp::data: loads and validates data/ files into core parameter structs.
 data/        Tractor, engine, tire, sled and class definitions (TOML).
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
@@ -51,6 +52,7 @@ app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
 
 - Tractor, engine, tires, sled and class rules are TOML files in `data/`. Progression and upgrades only change parameters; the core does not know about "levels".
 - Validate data on load with clear error messages. Reject nonsense (negative mass, non-monotonic curves).
+- Physical validation rules live in `core/` (e.g. `engine::validate`) so every front end shares them; `data_io/` parses TOML (toml++), converts units and turns validation errors into messages naming the file and field.
 
 ## Milestone 1: straight-line pull
 

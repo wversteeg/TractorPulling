@@ -30,7 +30,7 @@ if(TP_BUILD_BENCHMARKS)
     FetchContent_MakeAvailable(benchmark)
 endif()
 
-if(TP_BUILD_TESTS OR TP_BUILD_TOOLS)
+if(TP_BUILD_DATA_IO)
     FetchContent_Declare(tomlplusplus
         GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
         GIT_TAG 30172438cee64926dc41fdd9c11fb3ba5b2ba9de # v3.4.0
