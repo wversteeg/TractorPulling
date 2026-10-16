@@ -1,4 +1,5 @@
 add_library(tp_core STATIC
+    src/engine/engine.cpp
     src/math/curve.cpp
     src/time/fixed_step_clock.cpp)
 add_library(tp::core ALIAS tp_core)

@@ -1,6 +1,7 @@
 include(GoogleTest)
 
 add_executable(tp_core_tests
+    engine/engine_test.cpp
     math/curve_test.cpp
     time/fixed_step_clock_test.cpp
     toml_smoke_test.cpp)
