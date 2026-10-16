@@ -1,5 +1,5 @@
 add_library(tp_core STATIC
-    src/fixed_step_clock.cpp)
+    src/time/fixed_step_clock.cpp)
 add_library(tp::core ALIAS tp_core)
 
 target_include_directories(tp_core PUBLIC

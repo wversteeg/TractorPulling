@@ -1,7 +1,7 @@
 include(GoogleTest)
 
 add_executable(tp_core_tests
-    fixed_step_clock_test.cpp
+    time/fixed_step_clock_test.cpp
     toml_smoke_test.cpp)
 target_link_libraries(tp_core_tests PRIVATE
     tp::core

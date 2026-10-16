@@ -1,4 +1,4 @@
-#include "tp/core/fixed_step_clock.hpp"
+#include "tp/core/time/fixed_step_clock.hpp"
 
 #include <benchmark/benchmark.h>
 

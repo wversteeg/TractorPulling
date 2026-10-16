@@ -99,7 +99,7 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 - **C++20.** Raise the standard only when asked. Avoid library features missing from the Android NDK's libc++.
 - Warnings are errors, locally and in CI (`TP_WARNINGS_AS_ERRORS`, on by default): `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` and similar for clang and gcc.
 - `core/` builds with `-fno-exceptions -fno-rtti -ffp-contract=off`. Tests, tools and benchmarks may use exceptions.
-- Namespace `tp`; core headers live under `core/include/tp/core/`.
+- Namespace `tp`. Code is grouped by topic: headers in `core/include/tp/core/<topic>/`, sources in `core/src/<topic>/`, tests in `tests/<topic>/`, benchmarks in `bench/<topic>/`.
 - `clang-format` and `clang-tidy` must pass. Run them before committing.
 - Prefer value semantics, `constexpr`, `std::span`, and strong types for physical quantities where it adds safety without cost.
 - Small, focused functions and classes. No premature abstraction, no inheritance hierarchies in hot paths.
