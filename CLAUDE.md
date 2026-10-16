@@ -113,6 +113,12 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 - Performance-sensitive changes include or update a benchmark.
 - Comments explain *why* and the physical model, not *what* the code does.
 
+## Documentation and diagrams
+
+- `docs/architecture.md` shows the class and sequence diagrams. Sources are PlantUML in `docs/diagrams/*.puml`; rendered SVGs live next to them in `docs/diagrams/svg/` and are committed for easy review.
+- **Update the diagrams in the same PR as every change** that adds, removes or changes a type, a public function, a dependency between libraries, or the order of calls in a documented flow. Add a new sequence diagram for each new flow (e.g. clutch coupling, a full pull).
+- Render with `scripts/render_diagrams.sh` (needs Java and Graphviz; downloads a pinned PlantUML). `scripts/render_diagrams.sh --check` verifies every SVG matches its source; CI runs it.
+
 ## Workflow
 
 - Plan first for non-trivial work, and wait for approval before large changes.

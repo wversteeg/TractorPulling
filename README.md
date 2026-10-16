@@ -21,7 +21,7 @@ ctest --preset debug --output-on-failure
 
 Other presets: `release` (also builds `build/release/bench/core_bench`) and `asan-ubsan`.
 
-See [CLAUDE.md](CLAUDE.md) for architecture, conventions and the roadmap, and [docs/conventions.md](docs/conventions.md) for units and sign conventions.
+See [CLAUDE.md](CLAUDE.md) for architecture, conventions and the roadmap, [docs/architecture.md](docs/architecture.md) for class and sequence diagrams, and [docs/conventions.md](docs/conventions.md) for units and sign conventions.
 
 ## License
 

@@ -90,3 +90,11 @@ jobs:
 
       - name: Check formatting
         run: git ls-files '*.cpp' '*.hpp' | xargs clang-format-${LLVM_VERSION} --dry-run -Werror
+
+  diagrams:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check rendered diagrams match their sources
+        run: scripts/render_diagrams.sh --check

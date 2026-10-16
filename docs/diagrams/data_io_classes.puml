@@ -1,0 +1,47 @@
+@startuml data_io_classes
+title Data loading (tp::data): may throw internally, allocates, never used in the step
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::data" {
+  class LoadError <<struct>> {
+    +message : string
+  }
+  class "Result<T>" as Result {
+    -value_ : variant<T, LoadError>
+    +ok() : bool
+    +value() : const T&
+    +error() : const LoadError&
+  }
+  class "engine_loader" as EngineLoader <<free functions>> {
+    +load_engine(path) : Result<engine::Params>
+    +parse_engine(toml_text, source_name) : Result<engine::Params>
+  }
+  class Reader <<internal>> {
+    +number(dotted_path) : double
+    +numbers(dotted_path) : vector<double>
+    +error() : optional<LoadError>
+  }
+  Result o-- LoadError
+  EngineLoader ..> Result : returns
+  EngineLoader ..> Reader : reads fields
+}
+
+package "tp::core (see core_classes)" {
+  class "engine::Params" as Params <<struct>>
+  class "engine::validate()" as Validate <<function>>
+  class "math::Curve" as Curve
+  class "units::rpm_to_rad_s()" as Units <<function>>
+}
+
+package "third party" {
+  class "toml++" as Toml <<library>>
+}
+
+EngineLoader ..> Toml : parse
+EngineLoader ..> Units : rpm to SI
+EngineLoader ..> Curve : create
+EngineLoader ..> Params : builds
+EngineLoader ..> Validate : checks
+@enduml

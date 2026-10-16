@@ -1,0 +1,30 @@
+@startuml engine_step_sequence
+title engine::step: one 1 kHz simulation step
+autonumber
+participant "Caller\n(dyno tool; later the driveline)" as Caller
+participant "engine::step" as Step
+participant "governor_fuel" as Gov
+participant "exhaust_energy" as Exh
+participant "Params::full_load_torque_nm\n(math::Curve)" as Curve
+
+Caller -> Step : step(state, params, {throttle, load_torque_nm}, dt_s)
+Step -> Step : throttle = clamp(throttle, 0, 1)
+alt state.running
+  Step -> Gov : (params, throttle, omega)
+  Gov --> Step : fuel = clamp((target - omega) / droop, 0, 1)
+else stalled
+  Step -> Step : fuel = 0
+end
+Step -> Exh : (params, omega)
+Exh --> Step : 0..1, rising from boost onset to full boost
+Step -> Step : boost += (fuel * exhaust - boost) * dt / (tau + dt)\n(implicit lag, no exp())
+Step -> Curve : evaluate(omega)
+Curve --> Step : full-load torque [N·m]
+Step -> Step : combustion = fuel * full_load * (na + (1 - na) * boost)
+Step -> Step : omega' = (omega + dt/I * (combustion - friction - load))\n         / (1 + dt/I * viscous)\n(semi-implicit Euler)
+Step -> Step : omega = max(omega', 0)
+opt running and omega < stall speed
+  Step -> Step : running = false
+end
+Step --> Caller : Output {fuel, combustion_torque_nm, friction_torque_nm}
+@enduml
