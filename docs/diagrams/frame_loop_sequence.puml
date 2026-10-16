@@ -1,0 +1,21 @@
+@startuml frame_loop_sequence
+title Frame loop: variable frame rate driving the fixed 1 kHz simulation
+autonumber
+participant "Front end" as Frontend
+participant "FixedStepClock" as Clock
+participant "simulation step\n(today: engine::step)" as Sim
+
+note over Frontend : The front end (later the Godot GDExtension)\nowns the clock and the device input.\nThe core never reads time or devices.
+
+loop every rendered frame
+  Frontend -> Clock : advance(elapsed_ns)
+  Clock --> Frontend : Advance {steps, dropped_ns}\n(steps <= max_steps_per_advance)
+  loop steps times
+    Frontend -> Sim : step(state, params, input, step_s = 0.001)
+    Sim --> Frontend : output
+  end
+  Frontend -> Clock : alpha()
+  Clock --> Frontend : 0 <= alpha < 1
+  Frontend -> Frontend : render interpolate(previous_state, state, alpha)
+end
+@enduml

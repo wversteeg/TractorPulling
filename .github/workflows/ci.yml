@@ -52,8 +52,10 @@ jobs:
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
 
-      - name: Run tool
-        run: ./build/${{ matrix.preset }}/tools/tp_pull
+      - name: Run engine dyno
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull engine-dyno
+          data/engines/farm_stock_light.toml -o dyno.csv
 
   clang-tidy:
     runs-on: ubuntu-24.04
@@ -74,7 +76,7 @@ jobs:
         run: >
           run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug
           -clang-tidy-binary clang-tidy-${LLVM_VERSION}
-          "$PWD/(core|tests|tools|bench)/"
+          "$PWD/(core|data_io|tests|tools|bench)/"
 
   format:
     runs-on: ubuntu-24.04
@@ -88,3 +90,34 @@ jobs:
 
       - name: Check formatting
         run: git ls-files '*.cpp' '*.hpp' | xargs clang-format-${LLVM_VERSION} --dry-run -Werror
+
+  diagrams:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check rendered diagrams match their sources
+        run: scripts/render_diagrams.sh --check
+
+  # Shows changed diagrams as images in the PR conversation. Skipped for PRs
+  # from forks, whose token cannot write comments.
+  diagram-preview:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Post or update the diagram preview comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/post_diagram_preview.sh

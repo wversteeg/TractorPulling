@@ -1,0 +1,100 @@
+@startuml core_classes
+title Simulation core (tp::core): types and dependencies
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+  package "tp::math" {
+    class CurvePoint <<struct>> {
+      +x : double
+      +y : double
+    }
+    enum CurveError {
+      kTooFewPoints
+      kTooManyPoints
+      kNotFinite
+      kNotStrictlyIncreasing
+    }
+    class Curve {
+      +{static} kMaxPoints = 16
+      -points_ : array<CurvePoint, 16>
+      -size_ : size_t
+      +{static} validate(span<const CurvePoint>) : optional<CurveError>
+      +{static} create(span<const CurvePoint>) : optional<Curve>
+      +evaluate(x : double) : double
+      +min_x() / max_x() / max_y() : double
+    }
+    Curve *-- "2..16" CurvePoint
+    Curve ..> CurveError
+  }
+
+  package "tp::engine" {
+    class Params <<struct>> {
+      +full_load_torque_nm : Curve
+      +inertia_kg_m2
+      +idle / rated / high_idle_omega_rad_s
+      +stall_omega_rad_s
+      +friction_torque_nm
+      +viscous_friction_nm_s_rad
+      +na_torque_fraction
+      +turbo_time_constant_s
+      +boost_onset / full_boost_omega_rad_s
+    }
+    class State <<struct>> {
+      +omega_rad_s : double
+      +boost : double
+      +running : bool
+    }
+    class Input <<struct>> {
+      +throttle : double
+      +load_torque_nm : double
+    }
+    class Output <<struct>> {
+      +fuel : double
+      +combustion_torque_nm : double
+      +friction_torque_nm : double
+    }
+    enum ParamError
+    class "engine functions" as EngineFns <<free functions>> {
+      +validate(const Params&) : optional<ParamError>
+      +initial_state(const Params&) : State
+      +step(State&, const Params&, const Input&, dt_s) : Output
+      +hash_append(Fnv1a&, const State&)
+    }
+    Params *-- Curve
+    EngineFns ..> Params
+    EngineFns ..> State
+    EngineFns ..> Input
+    EngineFns ..> Output
+    EngineFns ..> ParamError
+  }
+
+  package "tp::hash" {
+    class Fnv1a {
+      -hash_ : uint64
+      +add(uint64 | double | bool)
+      +value() : uint64
+    }
+  }
+  EngineFns ..> Fnv1a
+
+  package "tp (time)" {
+    class FixedStepClock {
+      -step_ns_ : int64
+      -max_steps_per_advance_ : uint32
+      -accumulated_ns_ : int64
+      +{static} create(Config) : optional<FixedStepClock>
+      +advance(elapsed_ns : int64) : Advance
+      +alpha() : double
+      +reset()
+    }
+  }
+
+  package "tp::units" {
+    class "conversions" as Units <<free functions>> {
+      +rpm_to_rad_s(rpm) : double
+      +rad_s_to_rpm(omega_rad_s) : double
+    }
+  }
+
+@enduml

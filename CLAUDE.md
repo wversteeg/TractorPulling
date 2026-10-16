@@ -17,6 +17,7 @@ Current focus: **game mechanics only**. Graphics come later. Do not add renderin
 
 ```
 core/        Pure C++20 static library. The whole simulation lives here.
+data_io/     tp::data: loads and validates data/ files into core parameter structs.
 data/        Tractor, engine, tire, sled and class definitions (TOML).
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
@@ -43,7 +44,7 @@ app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
 ### Units and conventions
 
 - SI units everywhere (m, kg, s, N, N·m, rad, rad/s). Convert only at the edges (data files may document rpm, but are converted on load).
-- Document the unit in every name or comment of a physical quantity (`torque_nm`, `omega_rad_s`).
+- Document the unit in every name or comment of a physical quantity (`torque_nm`, `omega_rad_s`, constants `kLoadRate_nm_per_s`).
 - Sign conventions are documented once, in `docs/conventions.md`: x forward, z up, pitch positive nose-up.
 - No magic numbers. Physical constants and tuning values live in named constants or in `data/`.
 
@@ -51,6 +52,7 @@ app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
 
 - Tractor, engine, tires, sled and class rules are TOML files in `data/`. Progression and upgrades only change parameters; the core does not know about "levels".
 - Validate data on load with clear error messages. Reject nonsense (negative mass, non-monotonic curves).
+- Physical validation rules live in `core/` (e.g. `engine::validate`) so every front end shares them; `data_io/` parses TOML (toml++), converts units and turns validation errors into messages naming the file and field.
 
 ## Milestone 1: straight-line pull
 
@@ -90,6 +92,9 @@ ctest --preset asan-ubsan --output-on-failure
 
 cmake --preset release && cmake --build --preset release
 ./build/release/bench/core_bench
+
+# Engine alone on a virtual dynamometer, CSV to plot
+./build/release/tools/tp_pull engine-dyno data/engines/farm_stock_light.toml -o dyno.csv
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; update this section when presets change.
@@ -99,13 +104,21 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 - **C++20.** Raise the standard only when asked. Avoid library features missing from the Android NDK's libc++.
 - Warnings are errors, locally and in CI (`TP_WARNINGS_AS_ERRORS`, on by default): `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` and similar for clang and gcc.
 - `core/` builds with `-fno-exceptions -fno-rtti -ffp-contract=off`. Tests, tools and benchmarks may use exceptions.
-- Namespace `tp`; core headers live under `core/include/tp/core/`.
+- Namespace `tp`. Code is grouped by topic: headers in `core/include/tp/core/<topic>/`, sources in `core/src/<topic>/`, tests in `tests/<topic>/`, benchmarks in `bench/<topic>/`.
 - `clang-format` and `clang-tidy` must pass. Run them before committing.
+- Naming (enforced by clang-tidy): `CamelCase` types, `snake_case` functions and variables, `member_` for private members, `kCamelCase` constants and enumerators, with an optional `_unit` suffix on physical constants.
 - Prefer value semantics, `constexpr`, `std::span`, and strong types for physical quantities where it adds safety without cost.
 - Small, focused functions and classes. No premature abstraction, no inheritance hierarchies in hot paths.
 - Every behavior has a test. Physics tests assert physical properties (energy, monotonicity, limits), not just snapshots.
 - Performance-sensitive changes include or update a benchmark.
 - Comments explain *why* and the physical model, not *what* the code does.
+
+## Documentation and diagrams
+
+- `docs/architecture.md` shows the class and sequence diagrams. Sources are PlantUML in `docs/diagrams/*.puml`; rendered SVGs live next to them in `docs/diagrams/svg/` and are committed for easy review.
+- **Update the diagrams in the same PR as every change** that adds, removes or changes a type, a public function, a dependency between libraries, or the order of calls in a documented flow. Add a new sequence diagram for each new flow (e.g. clutch coupling, a full pull).
+- Render with `scripts/render_diagrams.sh` (needs Java and Graphviz; downloads a pinned PlantUML). `scripts/render_diagrams.sh --check` verifies every SVG matches its source; CI runs it.
+- On pull requests, CI posts the changed diagrams as one PR comment (`scripts/post_diagram_preview.sh`) and updates it on each push, so they can be reviewed as images.
 
 ## Workflow
 

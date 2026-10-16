@@ -1,0 +1,38 @@
+@startuml load_engine_sequence
+title Loading an engine definition from data/
+autonumber
+participant "tp_pull\n(or a front end)" as App
+participant "data::load_engine" as Load
+participant "toml++" as Toml
+participant "Reader" as Reader
+participant "math::Curve" as Curve
+participant "engine::validate" as Validate
+
+App -> Load : load_engine("data/engines/x.toml")
+Load -> Load : read file
+alt cannot open
+  Load --> App : LoadError "path: cannot open file"
+end
+Load -> Toml : parse(text, source_name)
+alt syntax error
+  Toml --> Load : throws parse_error
+  Load --> App : LoadError "file:line:col: description"
+end
+Toml --> Load : toml::table
+Load -> Reader : number("engine.idle_rpm"), numbers("engine.torque_curve.rpm"), ...
+Reader --> Load : values (first missing or mistyped field remembered)
+alt missing or wrong type
+  Load --> App : LoadError "file: field: missing or not a number"
+end
+Load -> Load : convert rpm to rad/s (units::rpm_to_rad_s)
+Load -> Curve : create(points)
+alt invalid curve
+  Load --> App : LoadError "file: engine.torque_curve: reason"
+end
+Curve --> Load : Curve
+Load -> Validate : validate(params)
+alt ParamError
+  Load --> App : LoadError "file: field: rule"
+end
+Load --> App : Result<engine::Params>
+@enduml
