@@ -1,0 +1,24 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+Standard: c++20
+IndentWidth: 4
+ColumnLimit: 100
+AccessModifierOffset: -4
+DerivePointerAlignment: false
+PointerAlignment: Left
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Own project headers first, then third-party, then the standard library.
+  - Regex: '^"tp/'
+    Priority: 1
+  - Regex: '^<(gtest|gmock|benchmark|toml\+\+)/'
+    Priority: 2
+  - Regex: '^<[a-z_]+>$'
+    Priority: 3
+  - Regex: '.*'
+    Priority: 4
+...
