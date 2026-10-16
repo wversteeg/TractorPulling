@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/math/curve.hpp"
 
 #include <cstdint>
@@ -88,6 +89,13 @@ struct Output {
     /// Friction and pumping losses at the start of the step [N·m].
     double friction_torque_nm = 0.0;
 };
+
+/// Feeds every field of `state` into `hash`, for replay and determinism tests.
+constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
+    hash.add(state.omega_rad_s);
+    hash.add(state.boost);
+    hash.add(state.running);
+}
 
 /// Running at idle speed, no boost.
 [[nodiscard]] State initial_state(const Params& params) noexcept;
