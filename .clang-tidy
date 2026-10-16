@@ -1,4 +1,7 @@
 ---
+# Disabled: pro-bounds-constant-array-index would force bounds-checked
+# access (gsl::at) into the hot simulation step; tests and sanitizers cover
+# indexing instead.
 Checks: >
   -*,
   bugprone-*,
@@ -13,6 +16,7 @@ Checks: >
   readability-*,
   -bugprone-easily-swappable-parameters,
   -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
   -misc-include-cleaner,
   -misc-non-private-member-variables-in-classes,
   -modernize-use-trailing-return-type,
@@ -27,6 +31,7 @@ CheckOptions:
   - { key: readability-identifier-naming.StructCase,             value: CamelCase }
   - { key: readability-identifier-naming.EnumCase,               value: CamelCase }
   - { key: readability-identifier-naming.EnumConstantCase,       value: CamelCase }
+  - { key: readability-identifier-naming.EnumConstantPrefix,     value: k }
   - { key: readability-identifier-naming.FunctionCase,           value: lower_case }
   - { key: readability-identifier-naming.MethodCase,             value: lower_case }
   - { key: readability-identifier-naming.VariableCase,           value: lower_case }
