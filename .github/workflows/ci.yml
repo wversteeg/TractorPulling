@@ -98,3 +98,26 @@ jobs:
 
       - name: Check rendered diagrams match their sources
         run: scripts/render_diagrams.sh --check
+
+  # Shows changed diagrams as images in the PR conversation. Skipped for PRs
+  # from forks, whose token cannot write comments.
+  diagram-preview:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Post or update the diagram preview comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/post_diagram_preview.sh
