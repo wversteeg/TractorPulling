@@ -44,7 +44,7 @@ app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
 ### Units and conventions
 
 - SI units everywhere (m, kg, s, N, N·m, rad, rad/s). Convert only at the edges (data files may document rpm, but are converted on load).
-- Document the unit in every name or comment of a physical quantity (`torque_nm`, `omega_rad_s`).
+- Document the unit in every name or comment of a physical quantity (`torque_nm`, `omega_rad_s`, constants `kLoadRate_nm_per_s`).
 - Sign conventions are documented once, in `docs/conventions.md`: x forward, z up, pitch positive nose-up.
 - No magic numbers. Physical constants and tuning values live in named constants or in `data/`.
 
@@ -92,6 +92,9 @@ ctest --preset asan-ubsan --output-on-failure
 
 cmake --preset release && cmake --build --preset release
 ./build/release/bench/core_bench
+
+# Engine alone on a virtual dynamometer, CSV to plot
+./build/release/tools/tp_pull engine-dyno data/engines/farm_stock_light.toml -o dyno.csv
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; update this section when presets change.
@@ -103,6 +106,7 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 - `core/` builds with `-fno-exceptions -fno-rtti -ffp-contract=off`. Tests, tools and benchmarks may use exceptions.
 - Namespace `tp`. Code is grouped by topic: headers in `core/include/tp/core/<topic>/`, sources in `core/src/<topic>/`, tests in `tests/<topic>/`, benchmarks in `bench/<topic>/`.
 - `clang-format` and `clang-tidy` must pass. Run them before committing.
+- Naming (enforced by clang-tidy): `CamelCase` types, `snake_case` functions and variables, `member_` for private members, `kCamelCase` constants and enumerators, with an optional `_unit` suffix on physical constants.
 - Prefer value semantics, `constexpr`, `std::span`, and strong types for physical quantities where it adds safety without cost.
 - Small, focused functions and classes. No premature abstraction, no inheritance hierarchies in hot paths.
 - Every behavior has a test. Physics tests assert physical properties (energy, monotonicity, limits), not just snapshots.

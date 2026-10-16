@@ -52,8 +52,10 @@ jobs:
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
 
-      - name: Run tool
-        run: ./build/${{ matrix.preset }}/tools/tp_pull
+      - name: Run engine dyno
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull engine-dyno
+          data/engines/farm_stock_light.toml -o dyno.csv
 
   clang-tidy:
     runs-on: ubuntu-24.04
