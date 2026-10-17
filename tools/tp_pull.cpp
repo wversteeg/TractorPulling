@@ -38,6 +38,7 @@
 namespace {
 
 using tp::units::rad_s_to_rpm;
+using tp::units::rad_to_deg;
 
 constexpr double kDt_s = 0.001;
 constexpr int kStepsPerRow = 10;
@@ -131,13 +132,15 @@ tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
 
 int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostream& csv) {
     csv << "time_s,pedal,gear,engine_rpm,axle_rpm,speed_kmh,distance_m,slip_ratio,"
-           "tire_force_kn,rear_load_kn,front_load_kn,clutch_torque_nm,clutch_slip_power_kw,"
-           "locked,boost\n";
+           "tire_force_kn,rear_load_kn,front_load_kn,wheelie_bar_load_kn,pitch_deg,"
+           "clutch_torque_nm,clutch_slip_power_kw,locked,boost\n";
 
     tp::vehicle::State state = tp::vehicle::initial_state(model);
     double max_slip = 0.0;
     double dissipated_j = 0.0;
     bool front_lifted = false;
+    bool on_wheelie_bar = false;
+    double max_pitch_rad = 0.0;
     double t_s = 0.0;
     for (int i = 0; t_s < kPullMaxDuration_s; ++i) {
         t_s = i * kDt_s;
@@ -152,6 +155,8 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
             max_slip = std::max(max_slip, out.slip_ratio);
         }
         front_lifted = front_lifted || out.axle_loads.front_lifted;
+        on_wheelie_bar = on_wheelie_bar || out.axle_loads.wheelie_bar_n > 0.0;
+        max_pitch_rad = std::max(max_pitch_rad, state.chassis.pitch_rad);
         dissipated_j += out.clutch_slip_power_w * kDt_s;
 
         if (i % kStepsPerRow == 0) {
@@ -162,8 +167,10 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
                 << state.chassis.position_m << ',' << out.slip_ratio << ','
                 << out.tire_force_n / kNewtonsPerKilonewton << ','
                 << out.axle_loads.rear_n / kNewtonsPerKilonewton << ','
-                << out.axle_loads.front_n / kNewtonsPerKilonewton << ',' << out.clutch_torque_nm
-                << ',' << out.clutch_slip_power_w / kWattsPerKilowatt << ','
+                << out.axle_loads.front_n / kNewtonsPerKilonewton << ','
+                << out.axle_loads.wheelie_bar_n / kNewtonsPerKilonewton << ','
+                << rad_to_deg(state.chassis.pitch_rad) << ',' << out.clutch_torque_nm << ','
+                << out.clutch_slip_power_w / kWattsPerKilowatt << ','
                 << (state.clutch.locked ? 1 : 0) << ',' << state.engine.boost << '\n';
         }
         if (!state.engine.running || state.chassis.position_m >= kTrackLength_m) {
@@ -181,8 +188,9 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
         std::cerr << state.chassis.position_m << " m after " << t_s << " s at "
                   << state.chassis.velocity_m_s * kMetersPerSecondToKmh << " km/h";
     }
-    std::cerr << "; peak wheel slip " << max_slip * kPercent << " %"
-              << (front_lifted ? ", front axle unloaded" : "") << "; heat into the clutch "
+    std::cerr << "; peak wheel slip " << max_slip * kPercent << " %; peak pitch "
+              << rad_to_deg(max_pitch_rad) << "°" << (front_lifted ? ", front lifted" : "")
+              << (on_wheelie_bar ? ", on the wheelie bar" : "") << "; heat into the clutch "
               << dissipated_j / kJoulesPerKilojoule << " kJ\n";
     return EXIT_SUCCESS;
 }

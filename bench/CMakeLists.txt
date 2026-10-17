@@ -1,8 +1,11 @@
-add_executable(core_bench time/fixed_step_clock_bench.cpp)
+add_executable(core_bench
+    math/trig_bench.cpp
+    time/fixed_step_clock_bench.cpp)
 target_link_libraries(core_bench PRIVATE tp::core benchmark::benchmark_main)
 
 if(TP_BUILD_DATA_IO)
     target_sources(core_bench PRIVATE
+        chassis/chassis_bench.cpp
         clutch/clutch_bench.cpp
         driveline/driveline_bench.cpp
         engine/engine_bench.cpp

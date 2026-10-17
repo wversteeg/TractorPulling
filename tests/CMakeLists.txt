@@ -13,6 +13,7 @@ add_executable(tp_core_tests
     math/trig_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
+    units/conversions_test.cpp
     vehicle/chain_solver_test.cpp
     vehicle/vehicle_test.cpp)
 target_link_libraries(tp_core_tests PRIVATE tp::core GTest::gtest_main)
