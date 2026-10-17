@@ -35,7 +35,11 @@ package "tp::driveline" {
     +ratio : double
     +efficiency : double
     +free_input_rad_s, input_per_nm : double
-    +free_output_rad_s : double
+    +free_output_rad_s, output_per_nm : double
+  }
+  class Response <<struct>> {
+    +free_input_rad_s, input_per_clutch(_negative), input_per_axle
+    +free_axle_rad_s, axle_per_clutch(_negative), axle_per_axle
   }
   enum ParamError
   class "driveline functions" as DrivelineFns <<free functions>> {
@@ -44,12 +48,14 @@ package "tp::driveline" {
     +shift(State&, const Params&, gear, clutch_disengaged) : bool
     +predict(const State&, const Params&, axle_load_torque_nm, dt_s) : Prediction
     +input_shaft(const Prediction&) : ShaftPrediction
-    +advance(State&, const Prediction&, clutch_torque_nm)
+    +response(const Prediction&) : Response
+    +advance(State&, const Prediction&, clutch_torque_nm, axle_torque_nm = 0)
     +hash_append(Fnv1a&, const State&)
   }
   DrivelineFns ..> Params
   DrivelineFns ..> State
   DrivelineFns ..> Prediction
+  DrivelineFns ..> Response
   DrivelineFns ..> ParamError
 }
 DrivelineFns ..> ShaftPrediction : for the clutch

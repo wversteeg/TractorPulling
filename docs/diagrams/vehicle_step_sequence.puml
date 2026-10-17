@@ -1,0 +1,34 @@
+@startuml vehicle_step_sequence
+title vehicle::step: one 1 kHz step of the whole tractor
+autonumber
+participant "Caller\n(tool, test; later the run logic)" as Caller
+participant "vehicle::step" as Step
+participant "driveline" as Driveline
+participant "chassis" as Chassis
+participant "engine" as Engine
+participant "tire" as Tire
+participant "solve_chain" as Solve
+participant "clutch::resolve" as Clutch
+
+Caller -> Step : step(state, model, {throttle, clutch_pedal, gear}, drawbar_force_n, dt_s)
+opt requested gear differs
+  Step -> Driveline : shift(gear, clutch capacity == 0)
+end
+Step -> Chassis : axle_loads(last acceleration, drawbar)
+Chassis --> Step : rear / front load
+Step -> Engine : predict(throttle)
+Step -> Driveline : predict(rear rolling resistance torque)
+Step -> Chassis : predict(drawbar + front rolling resistance)
+Step -> Tire : traction(wheel speed, ground speed, load per tire)
+Tire --> Step : force, slope (linearized)
+Step -> Solve : engine line, driveline Response, TireLine, body line
+Solve -> Solve : lock torque with the tire force eliminated\n(branch by the torque's sign: gearbox efficiency)
+Solve -> Clutch : resolve(capacity, lock torque)
+Clutch --> Solve : torque: locked, or kinetic capacity if slipping
+Solve -> Solve : tire force for that clutch torque
+Solve --> Step : clutch torque, tire force
+Step -> Engine : advance(load = clutch torque)
+Step -> Driveline : advance(clutch torque, axle torque = -r * tire force)
+Step -> Chassis : advance(drive force = tire force)
+Step --> Caller : Output
+@enduml

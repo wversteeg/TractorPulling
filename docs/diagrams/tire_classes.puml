@@ -1,0 +1,45 @@
+@startuml tire_classes
+title Tire (tp::tire): longitudinal force from slip
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::math (see core_classes)" {
+  class Curve {
+    +evaluate(x) : double
+    +slope(x) : double
+  }
+}
+
+package "tp::tire" {
+  class Params <<struct>> {
+    +radius_m : double
+    +traction_coefficient : Curve, mu vs slip 0..1
+    +nominal_load_n : double
+    +load_sensitivity : double
+    +rolling_resistance_coefficient : double
+    +wheel_inertia_kg_m2 : double
+    +min_reference_speed_m_s : double
+  }
+  class Traction <<struct>> {
+    +force_n : double
+    +force_per_slip_speed : double
+    +slip_ratio : double
+  }
+  enum ParamError
+  class "tire functions" as TireFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +slip_ratio(const Params&, wheel_m_s, ground_m_s) : double
+    +traction(const Params&, wheel_m_s, ground_m_s, load_n) : Traction
+    +rolling_resistance_n(const Params&, load_n) : double
+  }
+  Params *-- Curve
+  TireFns ..> Params
+  TireFns ..> Traction
+  TireFns ..> ParamError
+}
+note bottom of Traction
+  force over a step = force_n + force_per_slip_speed * change in slip speed
+  (linearly implicit; slope >= 0, so explicit beyond the peak)
+end note
+@enduml

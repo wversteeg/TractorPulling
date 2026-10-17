@@ -8,6 +8,7 @@
 
 #include <toml++/toml.hpp>
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -26,6 +27,8 @@ public:
     Reader(const toml::table& root, std::string_view source) : root_(&root), source_(source) {}
 
     double number(std::string_view path);
+    std::int64_t integer(std::string_view path);
+    std::string text(std::string_view path);
     std::vector<double> numbers(std::string_view path);
 
     // A curve stored as two parallel arrays, `<table>.<x_key>` and

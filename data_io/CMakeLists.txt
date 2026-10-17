@@ -4,7 +4,9 @@ add_library(tp_data STATIC
     src/clutch/clutch_loader.cpp
     src/common/toml_reader.cpp
     src/driveline/driveline_loader.cpp
-    src/engine/engine_loader.cpp)
+    src/engine/engine_loader.cpp
+    src/tire/tire_loader.cpp
+    src/vehicle/tractor_loader.cpp)
 add_library(tp::data ALIAS tp_data)
 
 target_include_directories(tp_data PUBLIC

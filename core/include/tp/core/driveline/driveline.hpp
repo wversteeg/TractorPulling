@@ -88,6 +88,7 @@ struct Prediction {
     double input_per_nm = 0.0;
     // Axle speed at the end of the step in neutral (independent of the input).
     double free_output_rad_s = 0.0;
+    double output_per_nm = 0.0;
 };
 
 [[nodiscard]] Prediction predict(const State& state, const Params& params,
@@ -97,8 +98,32 @@ struct Prediction {
 /// the clutch solve. Includes the mesh efficiency in each direction.
 [[nodiscard]] coupling::ShaftPrediction input_shaft(const Prediction& prediction) noexcept;
 
-/// Integrates under `clutch_torque_nm` (from the clutch into the input shaft).
-void advance(State& state, const Prediction& prediction, double clutch_torque_nm) noexcept;
+/// End-of-step speeds of both shafts as linear functions of the clutch
+/// torque Tc (into the input shaft, through the meshes in gear) and of a
+/// torque τ applied at the axle (by the tires; positive drives forward):
+///
+///   input' = free_input + input_per_clutch(±) · Tc + input_per_axle · τ
+///   axle'  = free_axle  + axle_per_clutch(±)  · Tc + axle_per_axle  · τ
+///
+/// "negative" coefficients apply for Tc < 0 (power flowing back). In neutral
+/// the cross terms are zero.
+struct Response {
+    double free_input_rad_s = 0.0;
+    double input_per_clutch = 0.0;
+    double input_per_negative_clutch = 0.0;
+    double input_per_axle = 0.0;
+    double free_axle_rad_s = 0.0;
+    double axle_per_clutch = 0.0;
+    double axle_per_negative_clutch = 0.0;
+    double axle_per_axle = 0.0;
+};
+
+[[nodiscard]] Response response(const Prediction& prediction) noexcept;
+
+/// Integrates under `clutch_torque_nm` (from the clutch into the input shaft)
+/// and `axle_torque_nm` (applied at the axle, e.g. by the tires).
+void advance(State& state, const Prediction& prediction, double clutch_torque_nm,
+             double axle_torque_nm = 0.0) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.gear)));

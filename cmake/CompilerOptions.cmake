@@ -26,9 +26,15 @@ set(TP_WARNING_FLAGS
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     list(APPEND TP_WARNING_FLAGS
         -Wduplicated-cond
-        -Wduplicated-branches
         -Wlogical-op
         -Wuseless-cast)
+    # GCC's -Wduplicated-branches compares both arms of every conditional and
+    # blows up on sanitizer-instrumented code: a long stream expression in
+    # tools/tp_pull.cpp took over 10 minutes to compile. Non-sanitizer builds
+    # (and so CI's gcc jobs) still check it.
+    if(NOT TP_ENABLE_SANITIZERS)
+        list(APPEND TP_WARNING_FLAGS -Wduplicated-branches)
+    endif()
 endif()
 
 if(TP_WARNINGS_AS_ERRORS)
