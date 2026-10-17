@@ -116,6 +116,12 @@ struct Prediction {
 /// Running at idle speed, no boost.
 [[nodiscard]] State initial_state(const Params& params) noexcept;
 
+/// Highest steady shaft power at full throttle and full boost, net of
+/// friction [W]: what a dynamometer on the crankshaft would read. Sampled
+/// finely between idle and high idle, governor droop included. For data and
+/// class checks, not for the simulation step.
+[[nodiscard]] double max_net_power_w(const Params& params) noexcept;
+
 /// Computes fuel, boost and torques for a step of `dt_s` seconds. Pure.
 [[nodiscard]] Prediction predict(const State& state, const Params& params, double throttle,
                                  double dt_s) noexcept;

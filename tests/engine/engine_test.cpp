@@ -280,5 +280,44 @@ TEST(Engine, StepEqualsPredictThenAdvance) {
     EXPECT_EQ(out.combustion_torque_nm, p.output.combustion_torque_nm);
 }
 
+// Net shaft power at full throttle and full boost, by brute force.
+double net_power_w(const Params& params, double omega_rad_s) {
+    const double fuel = std::clamp((params.high_idle_omega_rad_s - omega_rad_s) /
+                                       (params.high_idle_omega_rad_s - params.rated_omega_rad_s),
+                                   0.0, 1.0);
+    const double torque_nm = fuel * params.full_load_torque_nm.evaluate(omega_rad_s) -
+                             params.friction_torque_nm -
+                             params.viscous_friction_nm_s_rad * omega_rad_s;
+    return torque_nm * omega_rad_s;
+}
+
+TEST(Engine, MaxNetPowerIsThePeakOfTheFullLoadCurve) {
+    const Params params = reference_params();
+    double brute_force_w = 0.0;
+    for (int rpm = 800; rpm <= 2400; ++rpm) {
+        brute_force_w = std::max(brute_force_w, net_power_w(params, rpm_to_rad_s(rpm)));
+    }
+    EXPECT_GE(max_net_power_w(params), brute_force_w);
+    EXPECT_NEAR(max_net_power_w(params), brute_force_w, 1e-4 * brute_force_w);
+    // Above rated speed the governor takes fuel away: no power at high idle.
+    EXPECT_LT(net_power_w(params, params.high_idle_omega_rad_s), 0.0);
+}
+
+// Power scales with torque when there is no friction.
+TEST(Engine, MaxNetPowerScalesWithTorque) {
+    Params params = reference_params();
+    params.friction_torque_nm = 0.0;
+    params.viscous_friction_nm_s_rad = 0.0;
+    const double base_w = max_net_power_w(params);
+    std::vector<math::CurvePoint> doubled;
+    for (const math::CurvePoint& point : params.full_load_torque_nm.points()) {
+        doubled.push_back({.x = point.x, .y = 2.0 * point.y});
+    }
+    const auto curve = math::Curve::create(doubled);
+    ASSERT_TRUE(curve.has_value());
+    params.full_load_torque_nm = curve.value_or(params.full_load_torque_nm);
+    EXPECT_DOUBLE_EQ(max_net_power_w(params), 2.0 * base_w);
+}
+
 }  // namespace
 }  // namespace tp::engine
