@@ -119,7 +119,7 @@ Output step(State& state, const Model& model, const Input& input, double drawbar
     out.clutch_slip_rad_s = state.engine.omega_rad_s - state.driveline.input_omega_rad_s;
     out.clutch_slip_power_w =
         state.clutch.locked ? 0.0 : out.clutch_torque_nm * out.clutch_slip_rad_s;
-    out.tire_force_n = solution.tire_force_n;
+    out.tire_force_n = tire_force_n;
     return out;
 }
 
