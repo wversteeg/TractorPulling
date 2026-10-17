@@ -100,6 +100,10 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml \
     [--gear 4] [--resistance-kn 8] [--dump] -o pull.csv
 
+# The tractor pulling the sled on its chain, until a stall, wheelspin or 100 m
+./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml \
+    --sled data/sleds/light_class.toml [--gear 6] [--dump] -o sled_pull.csv
+
 # May this tractor compete in this class? Exits non-zero if not
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
     data/classes/ntto_standard_3500.toml
