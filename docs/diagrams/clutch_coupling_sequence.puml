@@ -1,17 +1,20 @@
 @startuml clutch_coupling_sequence
-title Engine, clutch and driveline in one 1 kHz step
+title Engine, clutch and driveline in one 1 kHz step (powertrain)
 autonumber
 participant "Caller\n(tool or test; later the vehicle step)" as Caller
 participant "engine" as Engine
-participant "driveline\n(stand-in flywheel until step 3)" as Driveline
+participant "driveline" as Driveline
 participant "clutch::step" as Clutch
 
 Caller -> Engine : predict(state, params, throttle, dt_s)
 Engine --> Caller : Prediction
 Caller -> Engine : shaft_prediction(prediction)
 Engine --> Caller : omega_e' = free_e + k_e * applied
-Caller -> Driveline : predict(dt_s)
-Driveline --> Caller : omega_d' = free_d + k_d * applied
+Caller -> Driveline : predict(state, params, axle_load_torque_nm, dt_s)
+note right of Driveline : in gear: the whole train seen from\nthe input shaft, inertia I_in + I_out / G^2
+Driveline --> Caller : Prediction
+Caller -> Driveline : input_shaft(prediction)
+Driveline --> Caller : omega_d' = free_d + k_d * applied\n(k_d * efficiency driving, k_d / efficiency on overrun)
 
 Caller -> Clutch : step(state, params, {pedal}, engine_side, driveline_side)
 Clutch -> Clutch : capacity = engagement(pedal) * static_capacity
@@ -29,6 +32,7 @@ end
 Clutch --> Caller : Output {torque_nm, slip_rad_s, slip_power_w, capacity_nm}
 
 Caller -> Engine : advance(state, params, prediction, load = torque_nm)
-Caller -> Driveline : advance(dt_s, +torque_nm)
+Caller -> Driveline : advance(state, prediction, clutch torque_nm)
+note right of Driveline : applies efficiency in the direction\npower flows; axle = input / G
 note over Engine : stalls here if the clutch\ndrags it below stall speed
 @enduml
