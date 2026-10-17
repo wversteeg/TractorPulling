@@ -1,5 +1,5 @@
 @startuml chassis_classes
-title Chassis (tp::chassis): longitudinal body and weight transfer
+title Chassis (tp::chassis): the body moving along the track and pitching
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -10,17 +10,36 @@ package "tp::chassis" {
     +wheelbase_m : double
     +cg_ahead_of_rear_axle_m : double
     +cg_height_m : double
+    +pitch_inertia_kg_m2 : double
+    +rear_axle_height_m : double
     +hitch_height_m : double
+    +hitch_behind_rear_axle_m : double
     +front_rolling_resistance_coefficient : double
+    +front_tires : Contact
+    +wheelie_bar : WheelieBar
+  }
+  class Contact <<struct>> {
+    +stiffness_n_per_m : double
+    +damping_n_s_per_m : double
+  }
+  class WheelieBar <<struct>> {
+    +behind_rear_axle_m : double
+    +tip_height_m : double
+    +contact : Contact
+    +rolling_resistance_coefficient : double
   }
   class State <<struct>> {
     +position_m : double
     +velocity_m_s : double
     +acceleration_m_s2 : double
+    +pitch_rad : double
+    +pitch_rate_rad_s : double
+    +pitch_acceleration_rad_s2 : double
   }
   class AxleLoads <<struct>> {
     +rear_n : double
     +front_n : double
+    +wheelie_bar_n : double
     +front_lifted : bool
   }
   class Prediction <<struct>> {
@@ -29,20 +48,28 @@ package "tp::chassis" {
   }
   enum ParamError
   class "chassis functions" as ChassisFns <<free functions>> {
+    +{static} kMaxWheelieBarContactPitch_rad = 30°
     +validate(const Params&) : optional<ParamError>
-    +axle_loads(const Params&, acceleration, drawbar_force_n) : AxleLoads
+    +axle_loads(const Params&, const State&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
     +advance(State&, const Prediction&, drive_force_n, dt_s)
+    +advance_pitch(State&, const Params&, axle_torque_nm, drawbar_force_n, dt_s)
     +hash_append(Fnv1a&, const State&)
   }
+  Params *-- Contact : front_tires
+  Params *-- WheelieBar
+  WheelieBar *-- Contact
   ChassisFns ..> Params
   ChassisFns ..> State
   ChassisFns ..> AxleLoads
   ChassisFns ..> Prediction
   ChassisFns ..> ParamError
 }
-note bottom of AxleLoads
-  quasi-static: rear = m g (L - b) / L + (m a h_cg + F_drawbar h_hitch) / L
-  pitch dynamics replace this in Milestone 1, step 5
+note bottom of ChassisFns
+  pitch θ about the rear axle, nose-up positive:
+  I θ'' = τ_axle + F_drawbar z_hitch - m g x_cg + m a z_cg
+          + front tires + wheelie bar - ground drag · r
+  contacts: one-sided spring-dampers, implicit midpoint;
+  geometry through math::sin_cos
 end note
 @enduml

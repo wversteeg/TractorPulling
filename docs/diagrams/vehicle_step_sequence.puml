@@ -14,11 +14,11 @@ Caller -> Step : step(state, model, {throttle, clutch_pedal, gear}, drawbar_forc
 opt requested gear differs
   Step -> Driveline : shift(gear, clutch capacity == 0)
 end
-Step -> Chassis : axle_loads(last acceleration, drawbar)
-Chassis --> Step : rear / front load
+Step -> Chassis : axle_loads(state)
+Chassis --> Step : rear / front / wheelie bar load
 Step -> Engine : predict(throttle)
 Step -> Driveline : predict(rear rolling resistance torque)
-Step -> Chassis : predict(drawbar + front rolling resistance)
+Step -> Chassis : predict(drawbar + front tire and bar rolling drag)
 Step -> Tire : traction(wheel speed, ground speed, load per tire)
 Tire --> Step : force, slope (linearized)
 Step -> Solve : engine line, driveline Response, TireLine, body line
@@ -30,5 +30,7 @@ Solve --> Step : clutch torque, tire force
 Step -> Engine : advance(load = clutch torque)
 Step -> Driveline : advance(clutch torque, axle torque = -r * tire force)
 Step -> Chassis : advance(drive force = tire force)
+Step -> Step : axle torque from the axle's balance
+Step -> Chassis : advance_pitch(axle torque, drawbar)\n(see the pitch step)
 Step --> Caller : Output
 @enduml
