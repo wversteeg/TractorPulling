@@ -29,6 +29,13 @@ has a response for each torque direction.
 
 ![Driveline classes](diagrams/svg/driveline_classes.svg)
 
+### Tire (`tp::tire`)
+
+Longitudinal force from slip, with load sensitivity. The force is
+linearized over a step so the stiff contact can be solved implicitly.
+
+![Tire classes](diagrams/svg/tire_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's

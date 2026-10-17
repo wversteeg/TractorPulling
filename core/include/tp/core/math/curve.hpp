@@ -55,6 +55,22 @@ public:
         return points_[size_ - 1].y;
     }
 
+    /// dy/dx of the segment containing x: the right-hand slope at a table
+    /// point, 0 outside the table where the curve is clamped flat.
+    [[nodiscard]] double slope(double x) const noexcept {
+        if (x < points_[0].x) {
+            return 0.0;
+        }
+        for (std::size_t i = 1; i < size_; ++i) {
+            const CurvePoint& hi = points_[i];
+            if (x < hi.x) {
+                const CurvePoint& lo = points_[i - 1];
+                return (hi.y - lo.y) / (hi.x - lo.x);
+            }
+        }
+        return 0.0;
+    }
+
     [[nodiscard]] std::span<const CurvePoint> points() const noexcept {
         return {points_.data(), size_};
     }

@@ -30,6 +30,7 @@ skinparam classAttributeIconSize 0
       +{static} validate(span<const CurvePoint>) : optional<CurveError>
       +{static} create(span<const CurvePoint>) : optional<Curve>
       +evaluate(x : double) : double
+      +slope(x : double) : double
       +min_x() / max_x() / max_y() : double
     }
     Curve *-- "2..16" CurvePoint

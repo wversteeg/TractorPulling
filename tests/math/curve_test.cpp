@@ -41,6 +41,17 @@ TEST(Curve, ClampsOutsideItsRange) {
     EXPECT_DOUBLE_EQ(curve.evaluate(100.0), 20.0);
 }
 
+TEST(Curve, SlopeIsThatOfTheSegmentAndFlatOutside) {
+    const Curve curve = make_curve();
+    EXPECT_DOUBLE_EQ(curve.slope(0.5), 0.0);
+    EXPECT_DOUBLE_EQ(curve.slope(1.0), 20.0) << "right-hand slope at the first point";
+    EXPECT_DOUBLE_EQ(curve.slope(1.5), 20.0);
+    EXPECT_DOUBLE_EQ(curve.slope(2.0), -5.0);
+    EXPECT_DOUBLE_EQ(curve.slope(3.9), -5.0);
+    EXPECT_DOUBLE_EQ(curve.slope(4.0), 0.0);
+    EXPECT_DOUBLE_EQ(curve.slope(10.0), 0.0);
+}
+
 TEST(Curve, ReportsRangeAndMaximum) {
     const Curve curve = make_curve();
     EXPECT_DOUBLE_EQ(curve.min_x(), 1.0);
