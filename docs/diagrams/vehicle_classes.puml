@@ -20,6 +20,7 @@ package "tp::vehicle" {
     +rear_tire : tire::Params
     +rear_tire_count : int
     +chassis : chassis::Params
+    +pto_efficiency : double
   }
   class Model {
     -params_ : Params

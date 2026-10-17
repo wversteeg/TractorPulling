@@ -88,7 +88,24 @@ double exhaust_energy(const Params& params, double omega_rad_s) noexcept {
                       0.0, 1.0);
 }
 
+// Samples for max_net_power_w(): under 0.5 rpm apart over a typical range.
+constexpr int kPowerSamples = 4096;
+
 }  // namespace
+
+double max_net_power_w(const Params& params) noexcept {
+    const double span_rad_s = params.high_idle_omega_rad_s - params.idle_omega_rad_s;
+    double best_w = 0.0;
+    for (int i = 0; i <= kPowerSamples; ++i) {
+        const double omega_rad_s = params.idle_omega_rad_s + span_rad_s * i / kPowerSamples;
+        const double torque_nm = governor_fuel(params, 1.0, omega_rad_s) *
+                                     params.full_load_torque_nm.evaluate(omega_rad_s) -
+                                 params.friction_torque_nm -
+                                 params.viscous_friction_nm_s_rad * omega_rad_s;
+        best_w = std::max(best_w, torque_nm * omega_rad_s);
+    }
+    return best_w;
+}
 
 Prediction predict(const State& state, const Params& params, double throttle,
                    double dt_s) noexcept {

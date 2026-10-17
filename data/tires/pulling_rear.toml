@@ -1,5 +1,7 @@
-# Large rear tractor tire on a prepared pulling track.
-# Traction peaks at 25 % slip; full wheelspin keeps two thirds of the peak.
+# Large rear tractor tire on a prepared pulling track, which grips better
+# than a field: traction peaks at μ 0.95 at 20 % slip and full wheelspin
+# keeps about 80 % of it. With this grip the light class pulls on engine
+# torque in its pulling gears (6 and 7) and only spins out in low gears.
 
 [tire]
 radius_m = 0.8
@@ -10,5 +12,5 @@ wheel_inertia_kg_m2 = 30.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-slip = [0.0, 0.05, 0.15, 0.25, 0.5,  1.0]
-mu   = [0.0, 0.35, 0.65, 0.75, 0.62, 0.5]
+slip = [0.0, 0.05, 0.12, 0.2,  0.4,  1.0]
+mu   = [0.0, 0.5,  0.88, 0.95, 0.88, 0.78]

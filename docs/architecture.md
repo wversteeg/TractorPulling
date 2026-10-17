@@ -51,6 +51,13 @@ solve that couples engine, clutch, driveline, tires and body each step.
 
 ![Vehicle classes](diagrams/svg/vehicle_classes.svg)
 
+### Class rules (`tp::rules`)
+
+A pulling class's technical limits and the check whether a tractor may
+compete. Competition rules, not physics: they are data, checked at setup.
+
+![Class rules](diagrams/svg/rules_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's

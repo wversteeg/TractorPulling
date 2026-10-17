@@ -86,6 +86,7 @@ skinparam classAttributeIconSize 0
     class "engine functions" as EngineFns <<free functions>> {
       +validate(const Params&) : optional<ParamError>
       +initial_state(const Params&) : State
+      +max_net_power_w(const Params&) : double
       +predict(const State&, const Params&, throttle, dt_s) : Prediction
       +shaft_prediction(const Prediction&) : ShaftPrediction
       +advance(State&, const Params&, const Prediction&, load_torque_nm)
@@ -131,6 +132,7 @@ skinparam classAttributeIconSize 0
       +rpm_to_rad_s(rpm) : double
       +rad_s_to_rpm(omega_rad_s) : double
       +rad_to_deg(angle_rad) : double
+      +metric_hp_to_w(hp) / w_to_metric_hp(power_w) : double
     }
   }
 

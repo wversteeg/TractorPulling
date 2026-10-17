@@ -21,6 +21,7 @@ inline Params reference_params() {
         .rear_tire = tire::testing::reference_params(),
         .rear_tire_count = 2,
         .chassis = chassis::testing::reference_params(),
+        .pto_efficiency = 0.9,
     };
 }
 

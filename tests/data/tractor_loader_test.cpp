@@ -25,6 +25,7 @@ clutch = "clutches/farm_stock_light.toml"
 driveline = "drivelines/farm_stock_light.toml"
 rear_tire = "tires/pulling_rear.toml"
 rear_tire_count = 2
+pto_efficiency = 0.9
 
 [tractor.chassis]
 mass_kg = 3500.0
@@ -90,6 +91,7 @@ TEST(TractorLoader, ShippedTractorMatchesTestReference) {
     ASSERT_TRUE(result.ok()) << result.error().message;
     EXPECT_EQ(vehicle::validate(result.value()), std::nullopt);
     EXPECT_EQ(result.value().rear_tire_count, 2);
+    EXPECT_EQ(result.value().pto_efficiency, vehicle::testing::reference_params().pto_efficiency);
     EXPECT_EQ(pull_signature(result.value()), pull_signature(vehicle::testing::reference_params()));
 }
 
@@ -153,6 +155,9 @@ TEST(TractorLoader, RejectsNonsenseChassisValues) {
               std::string::npos);
     EXPECT_NE(error_of(with("tip_height_m = 0.15", ""))
                   .find("tractor.chassis.wheelie_bar.tip_height_m: missing or not a number"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("pto_efficiency = 0.9", "pto_efficiency = 1.5"))
+                  .find("tractor.pto_efficiency: must be in (0, 1]"),
               std::string::npos);
     EXPECT_NE(error_of(with("rear_tire_count = 2", "rear_tire_count = 0"))
                   .find("tractor.rear_tire_count: must be 1 to 8"),

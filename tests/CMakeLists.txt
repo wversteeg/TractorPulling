@@ -11,6 +11,7 @@ add_executable(tp_core_tests
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/trig_test.cpp
+    rules/class_rules_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
     units/conversions_test.cpp
@@ -22,6 +23,7 @@ gtest_discover_tests(tp_core_tests DISCOVERY_MODE PRE_TEST)
 
 if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
+        data/class_rules_loader_test.cpp
         data/clutch_loader_test.cpp
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp

@@ -17,5 +17,11 @@ TEST(Conversions, RadiansToDegrees) {
     EXPECT_DOUBLE_EQ(rad_to_deg(-std::numbers::pi / 2.0), -90.0);
 }
 
+// 1 metric hp lifts 75 kg by 1 m in 1 s.
+TEST(Conversions, MetricHorsepowerToWatts) {
+    EXPECT_DOUBLE_EQ(metric_hp_to_w(1.0), 75.0 * 9.80665);
+    EXPECT_DOUBLE_EQ(w_to_metric_hp(metric_hp_to_w(85.0)), 85.0);
+}
+
 }  // namespace
 }  // namespace tp::units

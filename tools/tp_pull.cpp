@@ -3,6 +3,7 @@
 //   tp_pull engine-dyno <engine.toml> [-o <out.csv>]
 //   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
 //                [-o <out.csv>]
+//   tp_pull check <tractor.toml> <class.toml>
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
 // then a slowly rising load until the engine stalls.
@@ -14,12 +15,17 @@
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility. A scripted full pull follows in Milestone 1, step 7.
+//
+// check compares a tractor with a pulling class's rules and exits non-zero
+// if it may not compete.
 
 #include "tp/core/driveline/driveline.hpp"
 #include "tp/core/engine/engine.hpp"
+#include "tp/core/rules/class_rules.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
+#include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
 #include <algorithm>
@@ -195,6 +201,30 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     return EXIT_SUCCESS;
 }
 
+// --- check ------------------------------------------------------------------
+
+void report_rule(std::string_view rule, double value, double limit, std::string_view unit,
+                 bool broken) {
+    std::cout << (broken ? "FAIL  " : "ok    ") << rule << ": " << value << ' ' << unit
+              << " (limit " << limit << ' ' << unit << ")\n";
+}
+
+int check(const tp::vehicle::Params& tractor, const tp::rules::ClassRules& rules) {
+    const tp::rules::Compliance result = tp::rules::check(rules, tractor);
+    const tp::chassis::Params& chassis = tractor.chassis;
+    report_rule("mass", chassis.mass_kg, rules.max_mass_kg, "kg", result.too_heavy);
+    report_rule("PTO power", tp::units::w_to_metric_hp(tp::rules::pto_power_w(tractor)),
+                tp::units::w_to_metric_hp(rules.max_pto_power_w), "hp", result.too_much_pto_power);
+    report_rule("unloaded engine speed", rad_s_to_rpm(tractor.engine.high_idle_omega_rad_s),
+                rad_s_to_rpm(rules.max_engine_speed_rad_s), "rpm", result.engine_speed_too_high);
+    report_rule("hitch height", chassis.hitch_height_m, rules.max_hitch_height_m, "m",
+                result.hitch_too_high);
+    report_rule("hitch below rear axle centre", chassis.hitch_height_m, chassis.rear_axle_height_m,
+                "m", result.hitch_above_rear_axle);
+    std::cout << (result.ok() ? "may compete\n" : "may not compete\n");
+    return result.ok() ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 // --- command line -----------------------------------------------------------
 
 struct Options {
@@ -246,7 +276,8 @@ std::optional<Options> parse_options(std::span<char* const> args) {
 int usage() {
     std::cerr << "usage: tp_pull engine-dyno <engine.toml> [-o <out.csv>]\n"
                  "       tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]\n"
-                 "                    [-o <out.csv>]\n";
+                 "                    [-o <out.csv>]\n"
+                 "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
 }
 
@@ -305,6 +336,14 @@ int main(int argc, char** argv) {
         }
         return with_output(*options,
                            [&](std::ostream& csv) { return pull(*model, options->pull, csv); });
+    }
+    if (command == "check" && positional.size() == 2) {
+        const auto tractor = load_or_report(tp::data::load_tractor(positional[0]));
+        const auto rules = load_or_report(tp::data::load_class_rules(positional[1]));
+        if (!tractor || !rules) {
+            return EXIT_FAILURE;
+        }
+        return check(*tractor, *rules);
     }
     return usage();
 }

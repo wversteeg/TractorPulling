@@ -20,6 +20,7 @@ package "tp::data" {
     +load_clutch(path) / parse_clutch(text, source) : Result<clutch::Params>
     +load_driveline(path) / parse_driveline(text, source) : Result<driveline::Params>
     +load_tire(path) / parse_tire(text, source) : Result<tire::Params>
+    +load_class_rules(path) / parse_class_rules(text, source) : Result<rules::ClassRules>
     --
     each: read fields, convert to SI, build Params,
     <component>::validate(), name the field on error
@@ -28,8 +29,9 @@ package "tp::data" {
     +load_tractor(path) : Result<vehicle::Params>
     +parse_tractor(text, source, base_directory) : Result<vehicle::Params>
     --
-    reads the chassis and the component paths,
-    loads each component relative to the tractor file
+    reads the chassis, PTO efficiency and the component paths,
+    loads each component relative to the tractor file,
+    then vehicle::validate()
   }
   Result o-- LoadError
   Loaders ..> Result : returns

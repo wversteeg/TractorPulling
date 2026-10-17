@@ -4,6 +4,7 @@ add_library(tp_core STATIC
     src/driveline/driveline.cpp
     src/engine/engine.cpp
     src/math/curve.cpp
+    src/rules/class_rules.cpp
     src/tire/tire.cpp
     src/time/fixed_step_clock.cpp
     src/vehicle/chain_solver.cpp

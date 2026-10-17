@@ -2,6 +2,8 @@
 
 #include "tp/core/vehicle/chain_solver.hpp"
 
+#include <cmath>
+
 namespace tp::vehicle {
 
 std::optional<ParamError> validate(const Params& params) noexcept {
@@ -25,6 +27,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.chassis.rear_axle_height_m != params.rear_tire.radius_m) {
         return ParamError::kRearAxleHeight;
+    }
+    if (!std::isfinite(params.pto_efficiency) || params.pto_efficiency <= 0.0 ||
+        params.pto_efficiency > 1.0) {
+        return ParamError::kPtoEfficiencyOutOfRange;
     }
     return std::nullopt;
 }

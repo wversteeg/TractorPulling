@@ -59,7 +59,7 @@ TEST(EngineLoader, LoadsShippedReferenceEngine) {
     const auto result = load_engine(std::string{TP_DATA_DIR} + "/engines/farm_stock_light.toml");
     ASSERT_TRUE(result.ok()) << result.error().message;
     EXPECT_EQ(engine::validate(result.value()), std::nullopt);
-    EXPECT_DOUBLE_EQ(result.value().full_load_torque_nm.max_y(), 430.0);
+    EXPECT_DOUBLE_EQ(result.value().full_load_torque_nm.max_y(), 400.0);
 }
 
 TEST(EngineLoader, ConvertsToSiUnits) {

@@ -24,7 +24,7 @@ constexpr double kDt_s = 0.001;
 // engine's flywheel cannot bring up to speed on its own (so dumping the clutch
 // stalls), with a resistance the engine can carry once it is moving.
 constexpr double kDrivelineInertia_kg_m2 = 10.0;
-constexpr double kDrivelineResistance_nm = 100.0;
+constexpr double kDrivelineResistance_nm = 70.0;
 
 struct Rig {
     engine::Params engine_params = engine::testing::reference_params();
@@ -128,7 +128,7 @@ TEST(ClutchWithEngine, LaunchIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(ClutchWithEngine, LaunchMatchesRegressionHash) {
-    EXPECT_EQ(launch_hash(), 0x8a8aa26cde88b146ULL);
+    EXPECT_EQ(launch_hash(), 0x6a8ff8d82d8dc398ULL);
 }
 
 }  // namespace

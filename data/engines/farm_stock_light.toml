@@ -1,4 +1,6 @@
-# Light farm-stock class: ~75 kW (100 hp) four-cylinder turbo diesel.
+# Light farm-stock class (NTTO standard 3.5 t): four-cylinder turbo diesel,
+# about 68 kW (93 hp) net at the crankshaft, which is about 84 hp at the PTO,
+# within the class's 85 hp limit.
 # Speeds are in rpm and converted to rad/s on load.
 
 [engine]
@@ -18,7 +20,8 @@ time_constant_s = 0.8
 boost_onset_rpm = 1000
 full_boost_rpm = 1600
 
-# Full-load torque at full boost. Peak 430 N·m at 1400 rpm; ~78 kW at rated.
+# Full-load torque at full boost. Peak 400 N·m at 1400 rpm; net power peaks
+# at about 68 kW near 2000 rpm.
 [engine.torque_curve]
 rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400]
-torque_nm = [300,  360,  410,  430,  425,  410,  385,  340,  290]
+torque_nm = [279,  335,  381,  400,  395,  381,  358,  316,  270]

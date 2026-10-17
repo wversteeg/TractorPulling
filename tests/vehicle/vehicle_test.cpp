@@ -1,15 +1,13 @@
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include "tp/core/hash/fnv1a.hpp"
-#include "tp/core/math/curve.hpp"
 #include "tp/core/units/constants.hpp"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
-#include <cstdlib>
-#include <vector>
 
 #include "reference_vehicle.hpp"
 
@@ -24,9 +22,6 @@ constexpr double kDt_s = 0.001;
 // A driver: idle in neutral, select a gear, rev up with the clutch pressed,
 // then slip the clutch in over 3 s or dump it, and pull at full throttle.
 struct Pull {
-    Pull() = default;
-    explicit Pull(const Model& tractor) : model(tractor), state(initial_state(tractor)) {}
-
     Model model = reference_model();
     State state = initial_state(model);
     Output last;
@@ -75,6 +70,12 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
     EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
               ParamError::kRearAxleHeight);
+    EXPECT_EQ(with([](Params& p) { p.pto_efficiency = 0.0; }),
+              ParamError::kPtoEfficiencyOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pto_efficiency = 1.1; }),
+              ParamError::kPtoEfficiencyOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pto_efficiency = std::nan(""); }),
+              ParamError::kPtoEfficiencyOutOfRange);
     EXPECT_FALSE(Model::create([] {
                      Params p = reference_params();
                      p.chassis.mass_kg = 0.0;
@@ -143,11 +144,11 @@ TEST(Vehicle, DumpingTheClutchSpinsTheWheels) {
     EXPECT_LT(slipped.max_slip, dumped.max_slip);
 }
 
-// A load the tires cannot hold: in a low gear the engine spins the wheels
-// and the tractor stays where it is.
+// A load the tires cannot hold (beyond μ 0.95 of the loaded rear axle): in a
+// low gear the engine spins the wheels and the tractor stays where it is.
 TEST(Vehicle, TooHeavyALoadSpinsTheWheelsInALowGear) {
     Pull pull;
-    pull.run(1, 15000.0, false, 15.0);
+    pull.run(1, 26000.0, false, 15.0);
     EXPECT_TRUE(pull.state.engine.running);
     EXPECT_LT(pull.state.chassis.position_m, 0.1);
     EXPECT_DOUBLE_EQ(pull.last.slip_ratio, 1.0);
@@ -182,43 +183,75 @@ TEST(Vehicle, SteadyPullUnloadsTheFrontByItsMoments) {
     EXPECT_NEAR(loads.rear_n + loads.front_n, weight_n, 1.0);
 }
 
-// The reference tractor on a track that grips 60 % better.
-Model grippy_model() {
-    Params params = reference_params();
-    std::vector<math::CurvePoint> grip;
-    for (const math::CurvePoint& point : params.rear_tire.traction_coefficient.points()) {
-        grip.push_back({.x = point.x, .y = 1.6 * point.y});
-    }
-    const auto curve = math::Curve::create(grip);
-    if (!curve) {
-        std::abort();
-    }
-    params.rear_tire.traction_coefficient = *curve;
-    const auto model = Model::create(params);
-    if (!model) {
-        std::abort();
-    }
-    return *model;
+// Dumping the clutch in a low gear throws the front up: the wheels spin up
+// against the tires' grip and the axle torque's reaction briefly outweighs
+// the tractor. Slipping the clutch in keeps the front on the ground. (Holding
+// a wheelie takes more: a traction torque above the weight's moment about
+// the rear axle, μ r > b, so μ > 1.2 here.)
+TEST(Vehicle, DumpingTheClutchInALowGearLiftsTheFront) {
+    Pull dumped;
+    dumped.run(2, 8000.0, true, 15.0);
+    ASSERT_TRUE(dumped.state.engine.running);
+    EXPECT_EQ(dumped.min_front_n, 0.0);
+
+    Pull slipped;
+    slipped.run(2, 8000.0, false, 15.0);
+    EXPECT_GT(slipped.min_front_n, 1000.0);
+    EXPECT_GT(dumped.max_pitch_rad, slipped.max_pitch_rad);
 }
 
-// On the reference tires the wheels spin before the front can lift: that
-// takes a traction torque above the weight's moment about the rear axle,
-// μ r > b. On a grippy track (60 % more grip) dumping the clutch throws the
-// front up, while slipping it in keeps the front on the ground.
-TEST(Vehicle, DumpingTheClutchOnAGrippyTrackLiftsTheFront) {
-    const Model model = grippy_model();
-    Pull dumped{model};
-    dumped.run(3, 8000.0, true, 15.0);
-    EXPECT_EQ(dumped.min_front_n, 0.0);
-    EXPECT_GT(dumped.max_pitch_rad, 0.01);
+// How a pull against a slowly growing load ends: like a sled whose weight
+// box moves forward, the drawbar pull rises steadily after the launch.
+struct GrowingLoad {
+    bool stalled = false;
+    bool spun_out = false;
+    double max_slip = 0.0;
+    double load_n = 0.0;
+};
 
-    Pull slipped{model};
-    slipped.run(3, 8000.0, false, 15.0);
-    EXPECT_GT(slipped.min_front_n, 0.0);
+GrowingLoad pull_growing_load(int gear) {
+    constexpr double kStartLoad_n = 3000.0;
+    constexpr double kLoadRate_n_per_s = 500.0;
+    constexpr double kRiseFrom_s = 6.0;
+    constexpr double kSpunOutSlip = 0.9;
+    const Model model = reference_model();
+    State state = initial_state(model);
+    GrowingLoad result;
+    for (int i = 0; i < 120000; ++i) {
+        const double t_s = i * kDt_s;
+        const Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
+                          .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
+                          .gear = t_s < 0.5 ? driveline::kNeutral : gear};
+        result.load_n = kStartLoad_n + std::max(0.0, t_s - kRiseFrom_s) * kLoadRate_n_per_s;
+        const Output out = step(state, model, input, result.load_n, kDt_s);
+        if (t_s > kRiseFrom_s + 2.0) {
+            result.max_slip = std::max(result.max_slip, out.slip_ratio);
+        }
+        if (!state.engine.running) {
+            result.stalled = true;
+            break;
+        }
+        if (out.slip_ratio > kSpunOutSlip && t_s > kRiseFrom_s) {
+            result.spun_out = true;
+            break;
+        }
+    }
+    return result;
+}
 
-    Pull reference;
-    reference.run(3, 8000.0, true, 15.0);
-    EXPECT_GT(reference.min_front_n, 0.0);
+// The light class pulls on engine torque: in its pulling gears the engine
+// lugs down and stalls while the tires still grip (slip below the 20 % peak).
+// In a low gear the engine multiplies enough torque to break the tires loose
+// first, and the pull ends in wheelspin. Choosing the gear matters.
+TEST(Vehicle, LightClassPullsOnTorqueInItsPullingGears) {
+    for (const int gear : {6, 7}) {
+        const GrowingLoad pull = pull_growing_load(gear);
+        EXPECT_TRUE(pull.stalled) << "gear " << gear;
+        EXPECT_LT(pull.max_slip, 0.2) << "gear " << gear;
+    }
+    const GrowingLoad low = pull_growing_load(4);
+    EXPECT_TRUE(low.spun_out);
+    EXPECT_FALSE(low.stalled);
 }
 
 TEST(Vehicle, PullingLoadsTheRearAxle) {
@@ -251,7 +284,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x85e14ca8fc4b4949ULL);
+    EXPECT_EQ(pull_hash(), 0xa521455e13baae45ULL);
 }
 
 }  // namespace
