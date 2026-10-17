@@ -1,4 +1,5 @@
 add_library(tp_core STATIC
+    src/chassis/chassis.cpp
     src/clutch/clutch.cpp
     src/driveline/driveline.cpp
     src/engine/engine.cpp

@@ -36,6 +36,13 @@ linearized over a step so the stiff contact can be solved implicitly.
 
 ![Tire classes](diagrams/svg/tire_classes.svg)
 
+### Chassis (`tp::chassis`)
+
+The body moving along the track and the quasi-static split of its weight
+between the axles. Pitch arrives in Milestone 1, step 5.
+
+![Chassis classes](diagrams/svg/chassis_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
