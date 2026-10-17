@@ -58,7 +58,7 @@ package "tp::vehicle" {
   class "vehicle functions" as VehicleFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +initial_state(const Model&) : State
-    +step(State&, const Model&, const Input&, drawbar_force_n, dt_s) : Output
+    +step(State&, const Model&, const Input&, const chassis::Drawbar&, dt_s) : Output
     +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
     +hash_append(Fnv1a&, const State&)
   }

@@ -51,6 +51,21 @@ solve that couples engine, clutch, driveline, tires and body each step.
 
 ![Vehicle classes](diagrams/svg/vehicle_classes.svg)
 
+### Sled (`tp::sled`)
+
+The transfer sled: rear wheels and a pan share the frame and the weight box
+by their levers. The box moves forward with the sled's travel and the
+push-down lifts the wheels, so the pan drags harder along the track.
+
+![Sled classes](diagrams/svg/sled_classes.svg)
+
+### Pull (`tp::pull`)
+
+A pull: the tractor and the sled joined by the chain, which pulls along its
+own line between the hitch and the hook.
+
+![Pull classes](diagrams/svg/pull_classes.svg)
+
 ### Class rules (`tp::rules`)
 
 A pulling class's technical limits and the check whether a tractor may
@@ -66,6 +81,13 @@ validation rules. Never used inside the simulation step.
 ![Data loading classes](diagrams/svg/data_io_classes.svg)
 
 ## Sequence diagrams
+
+### One pull step (1 kHz)
+
+The chain's force from where the hitch and hook are, then the tractor and the
+sled advance under it, equal and opposite.
+
+![Pull step](diagrams/svg/pull_step_sequence.svg)
 
 ### One vehicle step (1 kHz)
 

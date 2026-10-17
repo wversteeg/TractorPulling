@@ -1,0 +1,69 @@
+@startuml pull_classes
+title Pull (tp::pull): the tractor, the chain and the sled
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "vehicle::Params / Model / State\n+ Input, Output" as Vehicle
+  class "sled::Params / State\n+ Chain, Loads, HookForce" as Sled
+  class "chassis::Drawbar / Hitch" as Chassis
+}
+
+package "tp::pull" {
+  class Params <<struct>> {
+    +tractor : vehicle::Params
+    +sled : sled::Params
+  }
+  class Model {
+    -tractor_ : vehicle::Model
+    -sled_ : sled::Params
+    +{static} create(const Params&) : optional<Model>
+    +tractor() : const vehicle::Model&
+    +sled() : const sled::Params&
+  }
+  class State <<struct>> {
+    +tractor : vehicle::State
+    +sled : sled::State
+  }
+  class ChainEnd <<struct>> {
+    +x_m, z_m : double
+    +velocity_x_m_s, velocity_z_m_s : double
+  }
+  class ChainForce <<struct>> {
+    +tension_n : double
+    +direction_x, direction_z : double
+  }
+  class Output <<struct>> {
+    +tractor : vehicle::Output
+    +sled : sled::Loads
+    +chain : ChainForce
+  }
+  enum ParamError {
+    kTractor
+    kSled
+  }
+  class "pull functions" as PullFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +chain_force(const sled::Chain&, hitch, hook : ChainEnd) : ChainForce
+    +initial_state(const Model&) : State
+    +step(State&, const Model&, const vehicle::Input&, dt_s) : Output
+    +hash_append(Fnv1a&, const State&)
+  }
+  Model *-- Params
+  PullFns ..> Model
+  PullFns ..> State
+  PullFns ..> ChainEnd
+  PullFns ..> ChainForce
+  PullFns ..> Output
+  PullFns ..> ParamError
+}
+Params *-- Vehicle
+Params *-- Sled
+PullFns ..> Chassis : hitch(), Drawbar
+note bottom of PullFns
+  the chain pulls only when stretched, along its own line:
+  backwards and down/up on the tractor's hitch,
+  forwards and up/down on the sled's hook
+end note
+@enduml

@@ -1,0 +1,23 @@
+@startuml pull_step_sequence
+title pull::step: one 1 kHz step of tractor, chain and sled
+autonumber
+participant "Caller\n(tool, test; later the run logic)" as Caller
+participant "pull::step" as Step
+participant "chassis::hitch" as Hitch
+participant "chain_force" as Chain
+participant "vehicle::step" as Vehicle
+participant "sled" as Sled
+
+Caller -> Step : step(state, model, {throttle, clutch_pedal, gear}, dt_s)
+Step -> Hitch : hitch(tractor chassis state)
+Hitch --> Step : hitch position and velocity (with pitch)
+Step -> Chain : chain_force(chain, hitch, hook)
+Chain --> Step : tension along the hook-to-hitch line\n(zero when slack, never pushing)
+Step -> Step : equal and opposite:\nDrawbar{pull, lift} on the hitch, HookForce{forward, up} on the hook
+Step -> Vehicle : step(tractor, input, drawbar)\n(see the vehicle step)
+Vehicle --> Step : tractor output
+Step -> Sled : loads(state, hook force)
+Sled --> Step : pan / wheel loads, box position,\npush-down, resistance
+Step -> Sled : predict(resistance), advance(forward pull)
+Step --> Caller : Output{tractor, sled loads, chain}
+@enduml

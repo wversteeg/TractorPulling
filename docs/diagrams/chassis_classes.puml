@@ -42,6 +42,14 @@ package "tp::chassis" {
     +wheelie_bar_n : double
     +front_lifted : bool
   }
+  class Drawbar <<struct>> {
+    +pull_n : double
+    +lift_n : double
+  }
+  class Hitch <<struct>> {
+    +x_m, z_m : double
+    +velocity_x_m_s, velocity_z_m_s : double
+  }
   class Prediction <<struct>> {
     +free_velocity_m_s : double
     +velocity_per_n : double
@@ -50,10 +58,11 @@ package "tp::chassis" {
   class "chassis functions" as ChassisFns <<free functions>> {
     +{static} kMaxWheelieBarContactPitch_rad = 30°
     +validate(const Params&) : optional<ParamError>
-    +axle_loads(const Params&, const State&) : AxleLoads
+    +hitch(const Params&, const State&) : Hitch
+    +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
     +advance(State&, const Prediction&, drive_force_n, dt_s)
-    +advance_pitch(State&, const Params&, axle_torque_nm, drawbar_force_n, dt_s)
+    +advance_pitch(State&, const Params&, axle_torque_nm, const Drawbar&, dt_s)
     +hash_append(Fnv1a&, const State&)
   }
   Params *-- Contact : front_tires
@@ -63,11 +72,13 @@ package "tp::chassis" {
   ChassisFns ..> State
   ChassisFns ..> AxleLoads
   ChassisFns ..> Prediction
+  ChassisFns ..> Drawbar
+  ChassisFns ..> Hitch
   ChassisFns ..> ParamError
 }
 note bottom of ChassisFns
   pitch θ about the rear axle, nose-up positive:
-  I θ'' = τ_axle + F_drawbar z_hitch - m g x_cg + m a z_cg
+  I θ'' = τ_axle + F_pull z_hitch + F_lift x_hitch - m g x_cg + m a z_cg
           + front tires + wheelie bar - ground drag · r
   contacts: one-sided spring-dampers, implicit midpoint;
   geometry through math::sin_cos

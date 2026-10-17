@@ -1,7 +1,7 @@
 @startuml vehicle_step_sequence
 title vehicle::step: one 1 kHz step of the whole tractor
 autonumber
-participant "Caller\n(tool, test; later the run logic)" as Caller
+participant "Caller\n(pull::step, tool, test)" as Caller
 participant "vehicle::step" as Step
 participant "driveline" as Driveline
 participant "chassis" as Chassis
@@ -10,15 +10,15 @@ participant "tire" as Tire
 participant "solve_chain" as Solve
 participant "clutch::resolve" as Clutch
 
-Caller -> Step : step(state, model, {throttle, clutch_pedal, gear}, drawbar_force_n, dt_s)
+Caller -> Step : step(state, model, {throttle, clutch_pedal, gear}, Drawbar{pull, lift}, dt_s)
 opt requested gear differs
   Step -> Driveline : shift(gear, clutch capacity == 0)
 end
-Step -> Chassis : axle_loads(state)
+Step -> Chassis : axle_loads(state, drawbar)
 Chassis --> Step : rear / front / wheelie bar load
 Step -> Engine : predict(throttle)
 Step -> Driveline : predict(rear rolling resistance torque)
-Step -> Chassis : predict(drawbar + front tire and bar rolling drag)
+Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag)
 Step -> Tire : traction(wheel speed, ground speed, load per tire)
 Tire --> Step : force, slope (linearized)
 Step -> Solve : engine line, driveline Response, TireLine, body line
@@ -31,6 +31,6 @@ Step -> Engine : advance(load = clutch torque)
 Step -> Driveline : advance(clutch torque, axle torque = -r * tire force)
 Step -> Chassis : advance(drive force = tire force)
 Step -> Step : axle torque from the axle's balance
-Step -> Chassis : advance_pitch(axle torque, drawbar)\n(see the pitch step)
+Step -> Chassis : advance_pitch(axle torque, drawbar pull and lift)\n(see the pitch step)
 Step --> Caller : Output
 @enduml
