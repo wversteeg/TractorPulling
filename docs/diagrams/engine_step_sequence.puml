@@ -1,30 +1,39 @@
 @startuml engine_step_sequence
-title engine::step: one 1 kHz simulation step
+title engine::step = predict + advance (one 1 kHz step)
 autonumber
-participant "Caller\n(dyno tool; later the driveline)" as Caller
-participant "engine::step" as Step
+participant "Caller\n(dyno tool, or a coupling\nsuch as the clutch)" as Caller
+participant "engine::predict" as Predict
 participant "governor_fuel" as Gov
 participant "exhaust_energy" as Exh
 participant "Params::full_load_torque_nm\n(math::Curve)" as Curve
+participant "engine::advance" as Advance
 
-Caller -> Step : step(state, params, {throttle, load_torque_nm}, dt_s)
-Step -> Step : throttle = clamp(throttle, 0, 1)
+Caller -> Predict : predict(state, params, throttle, dt_s)
+note right of Predict : pure: reads state, changes nothing
+Predict -> Predict : throttle = clamp(throttle, 0, 1)
 alt state.running
-  Step -> Gov : (params, throttle, omega)
-  Gov --> Step : fuel = clamp((target - omega) / droop, 0, 1)
+  Predict -> Gov : (params, throttle, omega)
+  Gov --> Predict : fuel = clamp((target - omega) / droop, 0, 1)
 else stalled
-  Step -> Step : fuel = 0
+  Predict -> Predict : fuel = 0
 end
-Step -> Exh : (params, omega)
-Exh --> Step : 0..1, rising from boost onset to full boost
-Step -> Step : boost += (fuel * exhaust - boost) * dt / (tau + dt)\n(implicit lag, no exp())
-Step -> Curve : evaluate(omega)
-Curve --> Step : full-load torque [N·m]
-Step -> Step : combustion = fuel * full_load * (na + (1 - na) * boost)
-Step -> Step : omega' = (omega + dt/I * (combustion - friction - load))\n         / (1 + dt/I * viscous)\n(semi-implicit Euler)
-Step -> Step : omega = max(omega', 0)
+Predict -> Exh : (params, omega)
+Exh --> Predict : 0..1, rising from boost onset to full boost
+Predict -> Predict : boost_next = boost + (fuel * exhaust - boost) * dt / (tau + dt)\n(implicit lag, no exp())
+Predict -> Curve : evaluate(omega)
+Curve --> Predict : full-load torque [N·m]
+Predict -> Predict : combustion = fuel * full_load * (na + (1 - na) * boost_next)\ndrive = combustion - friction_constant
+Predict --> Caller : Prediction
+
+opt coupled to another shaft
+  Caller -> Caller : shaft_prediction(prediction)\nomega_next = free + k * applied_torque\n(solve the coupling for the load torque)
+end
+
+Caller -> Advance : advance(state, params, prediction, load_torque_nm)
+Advance -> Advance : boost = boost_next
+Advance -> Advance : omega' = (omega + dt/I * (drive - load)) / (1 + dt/I * viscous)\n(semi-implicit Euler)
+Advance -> Advance : omega = max(omega', 0)
 opt running and omega < stall speed
-  Step -> Step : running = false
+  Advance -> Advance : running = false
 end
-Step --> Caller : Output {fuel, combustion_torque_nm, friction_torque_nm}
 @enduml

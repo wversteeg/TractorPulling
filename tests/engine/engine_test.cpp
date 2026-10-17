@@ -230,5 +230,43 @@ TEST(Engine, CutsFuelWhenOverrun) {
     EXPECT_DOUBLE_EQ(out.combustion_torque_nm, 0.0);
 }
 
+TEST(Engine, PredictDoesNotChangeState) {
+    const Params params = reference_params();
+    const State before{.omega_rad_s = rpm_to_rad_s(1500.0), .boost = 0.3, .running = true};
+    const State state = before;
+    static_cast<void>(predict(state, params, 1.0, kDt_s));
+    EXPECT_EQ(state.omega_rad_s, before.omega_rad_s);
+    EXPECT_EQ(state.boost, before.boost);
+}
+
+// The linear speed prediction a coupling solves against must match what
+// advance() then does for any load torque.
+TEST(Engine, ShaftPredictionMatchesAdvance) {
+    const Params params = reference_params();
+    const State start{.omega_rad_s = rpm_to_rad_s(1500.0), .boost = 0.3, .running = true};
+    const Prediction p = predict(start, params, 0.7, kDt_s);
+    const coupling::ShaftPrediction shaft = shaft_prediction(p);
+    for (const double load_nm : {-300.0, 0.0, 150.0, 600.0}) {
+        State state = start;
+        advance(state, params, p, load_nm);
+        const double predicted_rad_s =
+            shaft.free_omega_next_rad_s + shaft.omega_per_torque * -load_nm;
+        EXPECT_NEAR(state.omega_rad_s, predicted_rad_s, 1e-12) << "load " << load_nm;
+    }
+    EXPECT_GT(shaft.omega_per_torque, 0.0);
+}
+
+TEST(Engine, StepEqualsPredictThenAdvance) {
+    const Params params = reference_params();
+    State stepped{.omega_rad_s = rpm_to_rad_s(1500.0), .boost = 0.3, .running = true};
+    State split = stepped;
+    const Output out = step(stepped, params, {.throttle = 0.7, .load_torque_nm = 120.0}, kDt_s);
+    const Prediction p = predict(split, params, 0.7, kDt_s);
+    advance(split, params, p, 120.0);
+    EXPECT_EQ(stepped.omega_rad_s, split.omega_rad_s);
+    EXPECT_EQ(stepped.boost, split.boost);
+    EXPECT_EQ(out.combustion_torque_nm, p.output.combustion_torque_nm);
+}
+
 }  // namespace
 }  // namespace tp::engine

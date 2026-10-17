@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tp/core/coupling/shaft_prediction.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/math/curve.hpp"
 
@@ -97,10 +98,38 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.running);
 }
 
+/// First half of a step: everything that does not depend on the load torque.
+/// Splitting the step lets a coupling such as the clutch compute the load
+/// from the engine's predicted speed before the engine integrates.
+struct Prediction {
+    Output output;
+    /// Turbo boost at the end of the step.
+    double boost_next = 0.0;
+    // Terms of the semi-implicit speed update, kept so advance() reproduces
+    // the step bit for bit.
+    double omega_rad_s = 0.0;
+    double drive_torque_nm = 0.0;
+    double dt_over_inertia = 0.0;
+    double viscous_divisor = 1.0;
+};
+
 /// Running at idle speed, no boost.
 [[nodiscard]] State initial_state(const Params& params) noexcept;
 
-/// Advances `state` by `dt_s` seconds.
+/// Computes fuel, boost and torques for a step of `dt_s` seconds. Pure.
+[[nodiscard]] Prediction predict(const State& state, const Params& params, double throttle,
+                                 double dt_s) noexcept;
+
+/// The engine's end-of-step speed as a function of torque applied to the
+/// crankshaft (the negative of the load torque).
+[[nodiscard]] coupling::ShaftPrediction shaft_prediction(const Prediction& prediction) noexcept;
+
+/// Second half of a step: integrates speed under `load_torque_nm` and checks
+/// for a stall.
+void advance(State& state, const Params& params, const Prediction& prediction,
+             double load_torque_nm) noexcept;
+
+/// predict() then advance(): a whole step with a known load torque.
 Output step(State& state, const Params& params, const Input& input, double dt_s) noexcept;
 
 }  // namespace tp::engine
