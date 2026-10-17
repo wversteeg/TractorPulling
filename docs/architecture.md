@@ -43,6 +43,13 @@ between the axles. Pitch arrives in Milestone 1, step 5.
 
 ![Chassis classes](diagrams/svg/chassis_classes.svg)
 
+### Vehicle (`tp::vehicle`)
+
+The whole tractor: components, the validated `Model`, and the exact chain
+solve that couples engine, clutch, driveline, tires and body each step.
+
+![Vehicle classes](diagrams/svg/vehicle_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
@@ -51,6 +58,13 @@ validation rules. Never used inside the simulation step.
 ![Data loading classes](diagrams/svg/data_io_classes.svg)
 
 ## Sequence diagrams
+
+### One vehicle step (1 kHz)
+
+The main flow: predict every body, solve the chain of couplings exactly,
+advance every body.
+
+![Vehicle step](diagrams/svg/vehicle_step_sequence.svg)
 
 ### One engine step (1 kHz)
 

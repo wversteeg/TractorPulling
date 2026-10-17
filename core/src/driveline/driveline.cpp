@@ -111,8 +111,8 @@ Prediction predict(const State& state, const Params& params, double axle_load_to
                                      params.viscous_drag_nm_s_rad, dt_s);
         p.free_input_rad_s = input.free_rad_s;
         p.input_per_nm = input.per_nm;
-        p.free_output_rad_s =
-            state.output_omega_rad_s - dt_s / params.output_inertia_kg_m2 * axle_load_torque_nm;
+        p.output_per_nm = dt_s / params.output_inertia_kg_m2;
+        p.free_output_rad_s = state.output_omega_rad_s - p.output_per_nm * axle_load_torque_nm;
         return p;
     }
 
@@ -140,18 +140,44 @@ coupling::ShaftPrediction input_shaft(const Prediction& p) noexcept {
             .omega_per_negative_torque = p.input_per_nm / p.efficiency};
 }
 
-void advance(State& state, const Prediction& p, double clutch_torque_nm) noexcept {
+Response response(const Prediction& p) noexcept {
+    const coupling::ShaftPrediction input = input_shaft(p);
+    Response r;
+    r.free_input_rad_s = input.free_omega_next_rad_s;
+    r.input_per_clutch = input.omega_per_torque;
+    r.input_per_negative_clutch = input.omega_per_negative_torque;
+    if (p.ratio == 0.0) {
+        r.free_axle_rad_s = p.free_output_rad_s;
+        r.axle_per_axle = p.output_per_nm;
+        return r;
+    }
+    // Rigid train: the axle turns at input / G, and torque at the axle acts
+    // on the input shaft as τ / G (no mesh losses on that path, as for the
+    // axle load in predict()).
+    r.input_per_axle = p.input_per_nm / p.ratio;
+    r.free_axle_rad_s = r.free_input_rad_s / p.ratio;
+    r.axle_per_clutch = r.input_per_clutch / p.ratio;
+    r.axle_per_negative_clutch = r.input_per_negative_clutch / p.ratio;
+    r.axle_per_axle = r.input_per_axle / p.ratio;
+    return r;
+}
+
+void advance(State& state, const Prediction& p, double clutch_torque_nm,
+             double axle_torque_nm) noexcept {
     if (p.ratio == 0.0) {
         state.input_omega_rad_s =
             std::max(p.free_input_rad_s + p.input_per_nm * clutch_torque_nm, 0.0);
-        state.output_omega_rad_s = std::max(p.free_output_rad_s, 0.0);
+        state.output_omega_rad_s =
+            std::max(p.free_output_rad_s + p.output_per_nm * axle_torque_nm, 0.0);
         return;
     }
     const double effective_nm =
         clutch_torque_nm >= 0.0 ? clutch_torque_nm * p.efficiency : clutch_torque_nm / p.efficiency;
     // Resistance holds the train at rest but never drives it backwards; there
     // is no reverse gear.
-    state.input_omega_rad_s = std::max(p.free_input_rad_s + p.input_per_nm * effective_nm, 0.0);
+    state.input_omega_rad_s = std::max(p.free_input_rad_s + p.input_per_nm * effective_nm +
+                                           p.input_per_nm / p.ratio * axle_torque_nm,
+                                       0.0);
     state.output_omega_rad_s = state.input_omega_rad_s / p.ratio;
 }
 

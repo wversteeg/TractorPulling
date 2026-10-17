@@ -50,6 +50,25 @@ double capacity_nm(const Params& params, double pedal) noexcept {
     return params.engagement.evaluate(pedal) * params.static_torque_capacity_nm;
 }
 
+double resolve(State& state, const Params& params, double capacity_nm,
+               double lock_torque_nm) noexcept {
+    if (capacity_nm <= 0.0) {
+        state.locked = false;
+        return 0.0;
+    }
+    const double kinetic_capacity_nm = params.kinetic_ratio * capacity_nm;
+    const double holding_capacity_nm = state.locked ? capacity_nm : kinetic_capacity_nm;
+    if (std::abs(lock_torque_nm) <= holding_capacity_nm) {
+        state.locked = true;
+        return lock_torque_nm;
+    }
+    // Slipping: sliding friction opposes the slip that remains at the end of
+    // the step, which has the sign of lock_torque_nm. The torque is smaller
+    // in magnitude than lock_torque_nm, so slip cannot overshoot through zero.
+    state.locked = false;
+    return std::copysign(kinetic_capacity_nm, lock_torque_nm);
+}
+
 Output step(State& state, const Params& params, const Input& input,
             const coupling::ShaftPrediction& engine_side,
             const coupling::ShaftPrediction& driveline_side) noexcept {
@@ -73,20 +92,10 @@ Output step(State& state, const Params& params, const Input& input,
         engine_drives ? engine_side.omega_per_negative_torque + driveline_side.omega_per_torque
                       : engine_side.omega_per_torque + driveline_side.omega_per_negative_torque;
     const double lock_torque_nm = free_slip_rad_s / compliance;
-    const double kinetic_capacity_nm = params.kinetic_ratio * out.capacity_nm;
-    const double holding_capacity_nm = state.locked ? out.capacity_nm : kinetic_capacity_nm;
-
-    if (std::abs(lock_torque_nm) <= holding_capacity_nm) {
-        state.locked = true;
-        out.torque_nm = lock_torque_nm;
+    out.torque_nm = resolve(state, params, out.capacity_nm, lock_torque_nm);
+    if (state.locked) {
         return out;
     }
-
-    // Slipping: sliding friction opposes the slip that remains at the end of
-    // the step, which has the sign of lock_torque_nm. The torque is smaller
-    // in magnitude than lock_torque_nm, so slip cannot overshoot through zero.
-    state.locked = false;
-    out.torque_nm = std::copysign(kinetic_capacity_nm, lock_torque_nm);
     out.slip_rad_s = free_slip_rad_s - compliance * out.torque_nm;
     out.slip_power_w = out.torque_nm * out.slip_rad_s;
     return out;
