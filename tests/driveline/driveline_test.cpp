@@ -153,6 +153,38 @@ TEST(Driveline, InputShaftPredictionMatchesAdvance) {
     EXPECT_LT(shaft.omega_per_torque, shaft.omega_per_negative_torque);
 }
 
+// The two-shaft response a chain solver uses (clutch torque at the input,
+// tire torque at the axle) matches advance() in gear and in neutral.
+TEST(Driveline, ResponseMatchesAdvanceForClutchAndAxleTorque) {
+    const Params params = reference_params();
+    for (const int gear : {kNeutral, 3}) {
+        State start{.gear = kNeutral, .input_omega_rad_s = 150.0, .output_omega_rad_s = 2.0};
+        ASSERT_TRUE(shift(start, params, gear, true));
+        const Prediction p = predict(start, params, 300.0, kDt_s);
+        const Response r = response(p);
+        for (const double clutch_nm : {-120.0, 0.0, 250.0}) {
+            // Within the range where neither shaft is driven backwards (no reverse).
+            for (const double axle_nm : {-400.0, 0.0, 1500.0}) {
+                State state = start;
+                advance(state, p, clutch_nm, axle_nm);
+                const bool negative = clutch_nm < 0.0;
+                const double input_rad_s =
+                    r.free_input_rad_s +
+                    (negative ? r.input_per_negative_clutch : r.input_per_clutch) * clutch_nm +
+                    r.input_per_axle * axle_nm;
+                const double axle_rad_s =
+                    r.free_axle_rad_s +
+                    (negative ? r.axle_per_negative_clutch : r.axle_per_clutch) * clutch_nm +
+                    r.axle_per_axle * axle_nm;
+                EXPECT_NEAR(state.input_omega_rad_s, input_rad_s, 1e-9)
+                    << "gear " << gear << ", clutch " << clutch_nm << ", axle " << axle_nm;
+                EXPECT_NEAR(state.output_omega_rad_s, axle_rad_s, 1e-9)
+                    << "gear " << gear << ", clutch " << clutch_nm << ", axle " << axle_nm;
+            }
+        }
+    }
+}
+
 TEST(Driveline, NeutralDecouplesInputFromAxle) {
     const Params params = lossless_params();
     State state{.gear = kNeutral, .input_omega_rad_s = 0.0, .output_omega_rad_s = 3.0};

@@ -1,5 +1,5 @@
 @startuml clutch_coupling_sequence
-title Engine, clutch and driveline in one 1 kHz step (powertrain)
+title Engine, clutch and driveline coupled through clutch::step\n(the clutch on its own; vehicle::step solves it in the chain with the tires)
 autonumber
 participant "Caller\n(tool or test; later the vehicle step)" as Caller
 participant "engine" as Engine

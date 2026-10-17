@@ -96,10 +96,9 @@ cmake --preset release && cmake --build --preset release
 # Engine alone on a virtual dynamometer, CSV to plot
 ./build/release/tools/tp_pull engine-dyno data/engines/farm_stock_light.toml -o dyno.csv
 
-# Powertrain launching a stand-in vehicle in a gear: clutch slipped in, or dumped
-./build/release/tools/tp_pull launch data/engines/farm_stock_light.toml \
-    data/clutches/farm_stock_light.toml data/drivelines/farm_stock_light.toml \
-    [--gear 4] [--resistance-kn 15] [--dump] -o launch.csv
+# The whole tractor pulling a constant drawbar force: clutch slipped in, or dumped
+./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml \
+    [--gear 4] [--resistance-kn 8] [--dump] -o pull.csv
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; update this section when presets change.

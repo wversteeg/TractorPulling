@@ -70,6 +70,15 @@ struct Output {
 /// the clutch is fully disengaged, e.g. so gears may be changed.
 [[nodiscard]] double capacity_nm(const Params& params, double pedal) noexcept;
 
+/// The friction decision on its own, for solvers that compute the locking
+/// torque themselves (e.g. with the clutch inside a chain of couplings).
+/// Given the torque that would lock the clutch this step, returns the torque
+/// it actually transmits and updates `state.locked`: the locking torque if
+/// within the holding capacity (static when locked, kinetic when slipping),
+/// otherwise the kinetic capacity with the locking torque's sign.
+[[nodiscard]] double resolve(State& state, const Params& params, double capacity_nm,
+                             double lock_torque_nm) noexcept;
+
 /// Solves the clutch torque for this step from both shafts' predictions.
 Output step(State& state, const Params& params, const Input& input,
             const coupling::ShaftPrediction& engine_side,

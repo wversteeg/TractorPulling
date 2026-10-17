@@ -1,0 +1,17 @@
+# Reference light 2WD farm-stock tractor: the components it is built from
+# (paths relative to this file) and its chassis.
+
+[tractor]
+engine = "../engines/farm_stock_light.toml"
+clutch = "../clutches/farm_stock_light.toml"
+driveline = "../drivelines/farm_stock_light.toml"
+rear_tire = "../tires/pulling_rear.toml"
+rear_tire_count = 2
+
+[tractor.chassis]
+mass_kg = 3500.0                  # whole tractor, wheels included
+wheelbase_m = 2.4
+cg_ahead_of_rear_axle_m = 0.96    # 60 % of the weight on the rear axle at rest
+cg_height_m = 1.0
+hitch_height_m = 0.5
+front_rolling_resistance_coefficient = 0.06

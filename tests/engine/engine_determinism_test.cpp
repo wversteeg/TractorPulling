@@ -62,7 +62,7 @@ TEST(EngineDeterminism, DifferentInputsGiveDifferentHash) {
 // x86-64 and ARM. If an intended model change alters it, update the value in
 // the same commit and say so in the commit message.
 TEST(EngineDeterminism, MatchesRegressionHash) {
-    EXPECT_EQ(run_script(testing::reference_params()), 0x8b451ecbbda5321dULL);
+    EXPECT_EQ(run_script(testing::reference_params()), 0xfab95ecbe055f924ULL);
 }
 
 }  // namespace

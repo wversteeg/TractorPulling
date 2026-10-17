@@ -128,7 +128,7 @@ TEST(ClutchWithEngine, LaunchIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(ClutchWithEngine, LaunchMatchesRegressionHash) {
-    EXPECT_EQ(launch_hash(), 0xc11836e467c3d081ULL);
+    EXPECT_EQ(launch_hash(), 0x8a8aa26cde88b146ULL);
 }
 
 }  // namespace

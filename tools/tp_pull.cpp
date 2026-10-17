@@ -1,28 +1,26 @@
 // Headless simulation runner. Commands:
 //
 //   tp_pull engine-dyno <engine.toml> [-o <out.csv>]
-//   tp_pull launch <engine.toml> <clutch.toml> <driveline.toml>
-//                  [--gear N] [--resistance-kn F] [--dump] [-o <out.csv>]
+//   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
+//                [-o <out.csv>]
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
 // then a slowly rising load until the engine stalls.
 //
-// launch selects a gear with the clutch pressed, revs the engine, then slips
-// the clutch in over 3 s or, with --dump, drops it, and pulls at full
-// throttle. The vehicle is a stand-in until the tires arrive (Milestone 1,
-// step 4): its mass reflected to the axle through a fixed tire radius, plus
-// a constant resistance force.
+// pull drives the whole tractor: idle in neutral, select the gear with the
+// clutch pressed, rev up, slip the clutch in over 3 s or, with --dump, drop
+// it, and pull at full throttle until 100 m, a stall or 30 s. The sled is a
+// constant drawbar force until Milestone 1, step 6.
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility. A scripted full pull follows in Milestone 1, step 7.
 
-#include "tp/core/clutch/clutch.hpp"
 #include "tp/core/driveline/driveline.hpp"
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/units/conversions.hpp"
-#include "tp/data/clutch/clutch_loader.hpp"
-#include "tp/data/driveline/driveline_loader.hpp"
+#include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
+#include "tp/data/vehicle/tractor_loader.hpp"
 
 #include <algorithm>
 #include <charconv>
@@ -46,6 +44,7 @@ constexpr int kStepsPerRow = 10;
 constexpr double kWattsPerKilowatt = 1000.0;
 constexpr double kJoulesPerKilojoule = 1000.0;
 constexpr double kNewtonsPerKilonewton = 1000.0;
+constexpr double kPercent = 100.0;
 
 // --- engine-dyno ------------------------------------------------------------
 
@@ -101,99 +100,90 @@ int engine_dyno(const tp::engine::Params& params, std::ostream& csv) {
     return EXIT_SUCCESS;
 }
 
-// --- launch -----------------------------------------------------------------
+// --- pull -------------------------------------------------------------------
 
-// Stand-in vehicle until the tires arrive: no tire slip, so the vehicle's
-// mass acts at the axle as m r².
-constexpr double kVehicleMass_kg = 3500.0;
-constexpr double kTireRadius_m = 0.8;
 constexpr double kMetersPerSecondToKmh = 3.6;
+constexpr double kTrackLength_m = 100.0;
 
-constexpr double kLaunchSelectGear_s = 0.5;
-constexpr double kLaunchRevUpEnd_s = 3.0;
-constexpr double kLaunchSlipIn_s = 3.0;
-constexpr double kLaunchDuration_s = 20.0;
+constexpr double kPullSelectGear_s = 0.5;
+constexpr double kPullRevUpEnd_s = 3.0;
+constexpr double kPullSlipIn_s = 3.0;
+constexpr double kPullMaxDuration_s = 30.0;
 
-struct LaunchOptions {
+struct PullOptions {
     int gear = 4;
-    double resistance_n = 15000.0;
+    double resistance_n = 8000.0;
     bool dump = false;
 };
 
-double launch_pedal(double t_s, bool dump) {
-    if (t_s < kLaunchRevUpEnd_s) {
-        return 1.0;
+tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
+    tp::vehicle::Input input{.throttle = 1.0, .clutch_pedal = 1.0, .gear = options.gear};
+    if (t_s < kPullSelectGear_s) {
+        return {.throttle = 0.0, .clutch_pedal = 1.0, .gear = tp::driveline::kNeutral};
     }
-    if (dump) {
-        return 0.0;
+    if (t_s >= kPullRevUpEnd_s) {
+        input.clutch_pedal =
+            options.dump ? 0.0
+                         : std::clamp(1.0 - (t_s - kPullRevUpEnd_s) / kPullSlipIn_s, 0.0, 1.0);
     }
-    return std::clamp(1.0 - (t_s - kLaunchRevUpEnd_s) / kLaunchSlipIn_s, 0.0, 1.0);
+    return input;
 }
 
-int launch(const tp::engine::Params& engine_params, const tp::clutch::Params& clutch_params,
-           tp::driveline::Params driveline_params, const LaunchOptions& options,
-           std::ostream& csv) {
-    csv << "time_s,pedal,gear,engine_rpm,axle_rpm,speed_kmh,distance_m,clutch_torque_nm,"
-           "slip_power_kw,locked,boost\n";
+int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostream& csv) {
+    csv << "time_s,pedal,gear,engine_rpm,axle_rpm,speed_kmh,distance_m,slip_ratio,"
+           "tire_force_kn,rear_load_kn,front_load_kn,clutch_torque_nm,clutch_slip_power_kw,"
+           "locked,boost\n";
 
-    driveline_params.output_inertia_kg_m2 += kVehicleMass_kg * kTireRadius_m * kTireRadius_m;
-    const double axle_load_nm = options.resistance_n * kTireRadius_m;
-
-    tp::engine::State engine = tp::engine::initial_state(engine_params);
-    tp::clutch::State clutch;
-    tp::driveline::State driveline;
-    double distance_m = 0.0;
+    tp::vehicle::State state = tp::vehicle::initial_state(model);
+    double max_slip = 0.0;
     double dissipated_j = 0.0;
+    bool front_lifted = false;
     double t_s = 0.0;
-    for (int i = 0; t_s < kLaunchDuration_s; ++i) {
+    for (int i = 0; t_s < kPullMaxDuration_s; ++i) {
         t_s = i * kDt_s;
-        const double pedal = launch_pedal(t_s, options.dump);
-        const double throttle = t_s < kLaunchSelectGear_s ? 0.0 : 1.0;
-        if (t_s >= kLaunchSelectGear_s && driveline.gear != options.gear) {
-            const bool disengaged = tp::clutch::capacity_nm(clutch_params, pedal) == 0.0;
-            if (!tp::driveline::shift(driveline, driveline_params, options.gear, disengaged)) {
-                std::cerr << "cannot select gear " << options.gear << '\n';
-                return EXIT_FAILURE;
-            }
+        const tp::vehicle::Input input = pull_input(t_s, options);
+        const tp::vehicle::Output out =
+            tp::vehicle::step(state, model, input, options.resistance_n, kDt_s);
+        if (out.shift_refused) {
+            std::cerr << "cannot select gear " << options.gear << '\n';
+            return EXIT_FAILURE;
         }
+        if (t_s >= kPullRevUpEnd_s) {
+            max_slip = std::max(max_slip, out.slip_ratio);
+        }
+        front_lifted = front_lifted || out.axle_loads.front_lifted;
+        dissipated_j += out.clutch_slip_power_w * kDt_s;
 
-        const tp::engine::Prediction e =
-            tp::engine::predict(engine, engine_params, throttle, kDt_s);
-        const tp::driveline::Prediction d =
-            tp::driveline::predict(driveline, driveline_params, axle_load_nm, kDt_s);
-        const tp::clutch::Output out =
-            tp::clutch::step(clutch, clutch_params, {.pedal = pedal},
-                             tp::engine::shaft_prediction(e), tp::driveline::input_shaft(d));
-        tp::engine::advance(engine, engine_params, e, out.torque_nm);
-        tp::driveline::advance(driveline, d, out.torque_nm);
-
-        const double speed_m_s = driveline.output_omega_rad_s * kTireRadius_m;
-        distance_m += speed_m_s * kDt_s;
-        dissipated_j += out.slip_power_w * kDt_s;
         if (i % kStepsPerRow == 0) {
-            csv << t_s << ',' << pedal << ',' << driveline.gear << ','
-                << rad_s_to_rpm(engine.omega_rad_s) << ','
-                << rad_s_to_rpm(driveline.output_omega_rad_s) << ','
-                << speed_m_s * kMetersPerSecondToKmh << ',' << distance_m << ',' << out.torque_nm
-                << ',' << out.slip_power_w / kWattsPerKilowatt << ',' << (clutch.locked ? 1 : 0)
-                << ',' << engine.boost << '\n';
+            csv << t_s << ',' << input.clutch_pedal << ',' << state.driveline.gear << ','
+                << rad_s_to_rpm(state.engine.omega_rad_s) << ','
+                << rad_s_to_rpm(state.driveline.output_omega_rad_s) << ','
+                << state.chassis.velocity_m_s * kMetersPerSecondToKmh << ','
+                << state.chassis.position_m << ',' << out.slip_ratio << ','
+                << out.tire_force_n / kNewtonsPerKilonewton << ','
+                << out.axle_loads.rear_n / kNewtonsPerKilonewton << ','
+                << out.axle_loads.front_n / kNewtonsPerKilonewton << ',' << out.clutch_torque_nm
+                << ',' << out.clutch_slip_power_w / kWattsPerKilowatt << ','
+                << (state.clutch.locked ? 1 : 0) << ',' << state.engine.boost << '\n';
         }
-        if (!engine.running) {
+        if (!state.engine.running || state.chassis.position_m >= kTrackLength_m) {
             break;
         }
     }
 
     std::cerr << "gear " << options.gear << ", " << options.resistance_n / kNewtonsPerKilonewton
               << " kN, " << (options.dump ? "dumped" : "slipped in") << ": ";
-    if (engine.running) {
-        std::cerr << "pulling at "
-                  << driveline.output_omega_rad_s * kTireRadius_m * kMetersPerSecondToKmh
-                  << " km/h, " << rad_s_to_rpm(engine.omega_rad_s) << " rpm, " << distance_m
-                  << " m after " << t_s << " s\n";
+    if (state.chassis.position_m >= kTrackLength_m) {
+        std::cerr << "full pull, " << kTrackLength_m << " m in " << t_s << " s";
+    } else if (!state.engine.running) {
+        std::cerr << "engine stalled after " << state.chassis.position_m << " m";
     } else {
-        std::cerr << "engine stalled at " << t_s << " s after " << distance_m << " m\n";
+        std::cerr << state.chassis.position_m << " m after " << t_s << " s at "
+                  << state.chassis.velocity_m_s * kMetersPerSecondToKmh << " km/h";
     }
-    std::cerr << "heat into the clutch " << dissipated_j / kJoulesPerKilojoule << " kJ\n";
+    std::cerr << "; peak wheel slip " << max_slip * kPercent << " %"
+              << (front_lifted ? ", front axle unloaded" : "") << "; heat into the clutch "
+              << dissipated_j / kJoulesPerKilojoule << " kJ\n";
     return EXIT_SUCCESS;
 }
 
@@ -202,7 +192,7 @@ int launch(const tp::engine::Params& engine_params, const tp::clutch::Params& cl
 struct Options {
     std::vector<std::string_view> positional;
     std::optional<std::string_view> output_path;
-    LaunchOptions launch;
+    PullOptions pull;
 };
 
 template <typename T>
@@ -223,19 +213,19 @@ std::optional<Options> parse_options(std::span<char* const> args) {
         if (arg == "-o" && has_value) {
             options.output_path = args[++i];
         } else if (arg == "--dump") {
-            options.launch.dump = true;
+            options.pull.dump = true;
         } else if (arg == "--gear" && has_value) {
             const auto gear = parse_number<int>(args[++i]);
             if (!gear) {
                 return std::nullopt;
             }
-            options.launch.gear = *gear;
+            options.pull.gear = *gear;
         } else if (arg == "--resistance-kn" && has_value) {
             const auto kilonewtons = parse_number<double>(args[++i]);
             if (!kilonewtons || *kilonewtons < 0.0) {
                 return std::nullopt;
             }
-            options.launch.resistance_n = *kilonewtons * kNewtonsPerKilonewton;
+            options.pull.resistance_n = *kilonewtons * kNewtonsPerKilonewton;
         } else if (arg.starts_with('-')) {
             return std::nullopt;
         } else {
@@ -247,8 +237,8 @@ std::optional<Options> parse_options(std::span<char* const> args) {
 
 int usage() {
     std::cerr << "usage: tp_pull engine-dyno <engine.toml> [-o <out.csv>]\n"
-                 "       tp_pull launch <engine.toml> <clutch.toml> <driveline.toml>\n"
-                 "                      [--gear N] [--resistance-kn F] [--dump] [-o <out.csv>]\n";
+                 "       tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]\n"
+                 "                    [-o <out.csv>]\n";
     return EXIT_FAILURE;
 }
 
@@ -295,16 +285,18 @@ int main(int argc, char** argv) {
         }
         return with_output(*options, [&](std::ostream& csv) { return engine_dyno(*engine, csv); });
     }
-    if (command == "launch" && positional.size() == 3) {
-        const auto engine = load_or_report(tp::data::load_engine(positional[0]));
-        const auto clutch = load_or_report(tp::data::load_clutch(positional[1]));
-        const auto driveline = load_or_report(tp::data::load_driveline(positional[2]));
-        if (!engine || !clutch || !driveline) {
+    if (command == "pull" && positional.size() == 1) {
+        const auto params = load_or_report(tp::data::load_tractor(positional[0]));
+        if (!params) {
             return EXIT_FAILURE;
         }
-        return with_output(*options, [&](std::ostream& csv) {
-            return launch(*engine, *clutch, *driveline, options->launch, csv);
-        });
+        const auto model = tp::vehicle::Model::create(*params);
+        if (!model) {
+            std::cerr << positional[0] << ": inconsistent tractor\n";
+            return EXIT_FAILURE;
+        }
+        return with_output(*options,
+                           [&](std::ostream& csv) { return pull(*model, options->pull, csv); });
     }
     return usage();
 }

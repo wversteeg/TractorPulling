@@ -1,0 +1,77 @@
+@startuml vehicle_classes
+title Vehicle (tp::vehicle): the whole tractor and the chain solve
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "engine::Params / State" as Engine
+  class "clutch::Params / State" as Clutch
+  class "driveline::Params / State\n+ Response" as Driveline
+  class "tire::Params\n+ Traction" as Tire
+  class "chassis::Params / State\n+ AxleLoads" as Chassis
+}
+
+package "tp::vehicle" {
+  class Params <<struct>> {
+    +engine : engine::Params
+    +clutch : clutch::Params
+    +driveline : driveline::Params
+    +rear_tire : tire::Params
+    +rear_tire_count : int
+    +chassis : chassis::Params
+  }
+  class Model {
+    -params_ : Params
+    -driveline_ : driveline::Params, rear wheels on the axle
+    +{static} create(const Params&) : optional<Model>
+    +params() : const Params&
+    +driveline() : const driveline::Params&
+  }
+  class State <<struct>> {
+    +engine : engine::State
+    +clutch : clutch::State
+    +driveline : driveline::State
+    +chassis : chassis::State
+  }
+  class Input <<struct>> {
+    +throttle : double
+    +clutch_pedal : double
+    +gear : int
+  }
+  class Output <<struct>> {
+    +engine : engine::Output
+    +clutch_torque_nm, clutch_slip_rad_s, clutch_slip_power_w
+    +tire_force_n, slip_ratio
+    +axle_loads : AxleLoads
+    +shift_refused : bool
+  }
+  class TireLine <<struct>> {
+    +force_n, force_per_slip_speed
+    +slip_speed_m_s, radius_m
+  }
+  class ChainSolution <<struct>> {
+    +clutch_torque_nm : double
+    +tire_force_n : double
+  }
+  class "vehicle functions" as VehicleFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +initial_state(const Model&) : State
+    +step(State&, const Model&, const Input&, drawbar_force_n, dt_s) : Output
+    +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
+    +hash_append(Fnv1a&, const State&)
+  }
+  Model *-- Params
+  VehicleFns ..> Model
+  VehicleFns ..> State
+  VehicleFns ..> Input
+  VehicleFns ..> Output
+  VehicleFns ..> TireLine
+  VehicleFns ..> ChainSolution
+}
+Params *-- Engine
+Params *-- Clutch
+Params *-- Driveline
+Params *-- Tire
+Params *-- Chassis
+@enduml
