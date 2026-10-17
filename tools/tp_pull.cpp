@@ -152,7 +152,7 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
         t_s = i * kDt_s;
         const tp::vehicle::Input input = pull_input(t_s, options);
         const tp::vehicle::Output out =
-            tp::vehicle::step(state, model, input, options.resistance_n, kDt_s);
+            tp::vehicle::step(state, model, input, {.pull_n = options.resistance_n}, kDt_s);
         if (out.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
             return EXIT_FAILURE;

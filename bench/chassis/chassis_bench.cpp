@@ -9,6 +9,7 @@ namespace {
 
 constexpr double kDt_s = 0.001;
 constexpr double kDrawbar_n = 8000.0;
+constexpr tp::chassis::Drawbar kPull{.pull_n = kDrawbar_n};
 
 // The pitch part of one 1 kHz step: axle loads from the state, then pitch
 // with both contacts evaluated. Pulling steadily, so the front tires are in
@@ -25,11 +26,11 @@ void BM_ChassisPitchStep(benchmark::State& state) {
     // The rear tires carry the pull at the ground.
     const double axle_torque_nm = kDrawbar_n * chassis.rear_axle_height_m;
     for (auto _ : state) {
-        benchmark::DoNotOptimize(tp::chassis::axle_loads(chassis, body));
-        tp::chassis::advance_pitch(body, chassis, axle_torque_nm, kDrawbar_n, kDt_s);
+        benchmark::DoNotOptimize(tp::chassis::axle_loads(chassis, body, kPull));
+        tp::chassis::advance_pitch(body, chassis, axle_torque_nm, kPull, kDt_s);
         benchmark::ClobberMemory();
     }
-    if (tp::chassis::axle_loads(chassis, body).front_n <= 0.0) {
+    if (tp::chassis::axle_loads(chassis, body, kPull).front_n <= 0.0) {
         state.SkipWithError("front lifted: the benchmark would time something else");
     }
 }

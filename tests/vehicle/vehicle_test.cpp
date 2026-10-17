@@ -38,7 +38,7 @@ struct Pull {
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
-            last = step(state, model, input, drawbar_n, kDt_s);
+            last = step(state, model, input, {.pull_n = drawbar_n}, kDt_s);
             EXPECT_FALSE(last.shift_refused);
             if (t_s >= 3.0) {
                 max_slip = std::max(max_slip, last.slip_ratio);
@@ -94,7 +94,7 @@ TEST(Vehicle, ModelPutsTheRearWheelsOnTheAxle) {
 TEST(Vehicle, IdlesAtRestInNeutral) {
     Pull pull;
     for (int i = 0; i < 3000; ++i) {
-        pull.last = step(pull.state, pull.model, {}, 0.0, kDt_s);
+        pull.last = step(pull.state, pull.model, {}, {}, kDt_s);
     }
     EXPECT_TRUE(pull.state.engine.running);
     EXPECT_EQ(pull.state.chassis.position_m, 0.0);
@@ -105,7 +105,7 @@ TEST(Vehicle, IdlesAtRestInNeutral) {
 TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
     Pull pull;
     const Output out =
-        step(pull.state, pull.model, {.throttle = 0.0, .clutch_pedal = 0.0, .gear = 3}, 0.0, kDt_s);
+        step(pull.state, pull.model, {.throttle = 0.0, .clutch_pedal = 0.0, .gear = 3}, {}, kDt_s);
     EXPECT_TRUE(out.shift_refused);
     EXPECT_EQ(pull.state.driveline.gear, driveline::kNeutral);
 }
@@ -223,7 +223,7 @@ GrowingLoad pull_growing_load(int gear) {
                           .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
                           .gear = t_s < 0.5 ? driveline::kNeutral : gear};
         result.load_n = kStartLoad_n + std::max(0.0, t_s - kRiseFrom_s) * kLoadRate_n_per_s;
-        const Output out = step(state, model, input, result.load_n, kDt_s);
+        const Output out = step(state, model, input, {.pull_n = result.load_n}, kDt_s);
         if (t_s > kRiseFrom_s + 2.0) {
             result.max_slip = std::max(result.max_slip, out.slip_ratio);
         }
@@ -271,7 +271,7 @@ std::uint64_t pull_hash() {
         const Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                           .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
                           .gear = t_s < 0.5 ? driveline::kNeutral : 3};
-        step(pull.state, pull.model, input, 8000.0, kDt_s);
+        step(pull.state, pull.model, input, {.pull_n = 8000.0}, kDt_s);
         hash_append(hash, pull.state);
     }
     return hash.value();

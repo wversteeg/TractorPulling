@@ -65,15 +65,20 @@ struct PitchRig {
     bool front_lifted = false;
 
     void run(double axle_torque_nm, double drawbar_n, double acceleration_m_s2, double seconds) {
+        run(axle_torque_nm, {.pull_n = drawbar_n}, acceleration_m_s2, seconds);
+    }
+
+    void run(double axle_torque_nm, const Drawbar& drawbar, double acceleration_m_s2,
+             double seconds) {
         for (int i = 0; i < static_cast<int>(seconds / kDt_s); ++i) {
             state.acceleration_m_s2 = acceleration_m_s2;
-            loads = axle_loads(params, state);
+            loads = axle_loads(params, state, drawbar);
             front_lifted = front_lifted || loads.front_lifted;
-            advance_pitch(state, params, axle_torque_nm, drawbar_n, kDt_s);
+            advance_pitch(state, params, axle_torque_nm, drawbar, kDt_s);
             max_pitch_rad = std::max(max_pitch_rad, state.pitch_rad);
             min_pitch_rad = std::min(min_pitch_rad, state.pitch_rad);
         }
-        loads = axle_loads(params, state);
+        loads = axle_loads(params, state, drawbar);
     }
 };
 
@@ -132,7 +137,7 @@ TEST(ChassisParams, RejectsNonsense) {
 
 TEST(Chassis, StaticLoadsFollowTheCentreOfGravity) {
     const Params params = reference_params();
-    const AxleLoads loads = axle_loads(params, State{});
+    const AxleLoads loads = axle_loads(params, State{}, {});
     EXPECT_NEAR(loads.rear_n, 0.6 * weight_n(params), 1e-9);
     EXPECT_NEAR(loads.front_n, 0.4 * weight_n(params), 1e-9);
     EXPECT_EQ(loads.wheelie_bar_n, 0.0);
@@ -154,7 +159,7 @@ TEST(Chassis, StillLoadsAddUpToTheWeight) {
     const int last = static_cast<int>(bar_contact_pitch_rad(params) / 0.001);
     for (int i = -20; i <= last; ++i) {
         const State state{.pitch_rad = i * 0.001};
-        const AxleLoads loads = axle_loads(params, state);
+        const AxleLoads loads = axle_loads(params, state, {});
         EXPECT_NEAR(loads.rear_n + loads.front_n + loads.wheelie_bar_n, weight_n(params), 1e-6);
         EXPECT_GE(loads.rear_n, 0.0);
     }
@@ -253,6 +258,49 @@ TEST(Chassis, LowHitchHoldsTheNoseDown) {
     rig.run(0.0, 20000.0, 0.0, 3.0);
     EXPECT_LT(rig.state.pitch_rad, 0.0);
     EXPECT_GT(rig.loads.front_n, 0.4 * weight_n(params));
+}
+
+// Level, the hitch sits where the data puts it; nose-up, a hitch behind the
+// axle swings down and forward.
+TEST(Chassis, HitchFollowsThePitch) {
+    const Params params = reference_params();
+    const Hitch level = hitch(params, State{.position_m = 10.0});
+    EXPECT_DOUBLE_EQ(level.x_m, 10.0 - params.hitch_behind_rear_axle_m);
+    EXPECT_NEAR(level.z_m, params.hitch_height_m, 1e-15);
+
+    const Hitch raised = hitch(params, State{.position_m = 10.0, .pitch_rad = 0.12});
+    EXPECT_LT(raised.z_m, level.z_m - 0.04) << "about 5 cm lower on the wheelie bar";
+    EXPECT_GT(raised.x_m, level.x_m);
+}
+
+// The hitch's velocity is the time derivative of its position.
+TEST(Chassis, HitchVelocityMatchesItsMotion) {
+    const Params params = reference_params();
+    const State state{
+        .position_m = 3.0, .velocity_m_s = 2.0, .pitch_rad = 0.05, .pitch_rate_rad_s = 0.4};
+    constexpr double kStep_s = 1e-6;
+    State later = state;
+    later.position_m += state.velocity_m_s * kStep_s;
+    later.pitch_rad += state.pitch_rate_rad_s * kStep_s;
+    const Hitch now = hitch(params, state);
+    const Hitch next = hitch(params, later);
+    EXPECT_NEAR(now.velocity_x_m_s, (next.x_m - now.x_m) / kStep_s, 1e-6);
+    EXPECT_NEAR(now.velocity_z_m_s, (next.z_m - now.z_m) / kStep_s, 1e-6);
+}
+
+// A drawbar pulling the hitch down loads the rear tires by more than its
+// own pull: the hitch is behind the axle, so it also levers weight off the
+// front, by F d / L.
+TEST(Chassis, DownwardPullAtTheHitchLoadsTheRearTires) {
+    const Params params = reference_params();
+    constexpr double kDown_n = 5000.0;
+    PitchRig level;
+    level.run(0.0, 0.0, 0.0, 3.0);
+    PitchRig pulled_down;
+    pulled_down.run(0.0, Drawbar{.lift_n = -kDown_n}, 0.0, 5.0);
+    const double lever_n = kDown_n * params.hitch_behind_rear_axle_m / params.wheelbase_m;
+    EXPECT_NEAR(level.loads.front_n - pulled_down.loads.front_n, lever_n, 0.01 * lever_n);
+    EXPECT_NEAR(pulled_down.loads.rear_n - level.loads.rear_n, kDown_n + lever_n, 0.01 * kDown_n);
 }
 
 double pitch_energy_j(const Params& params, const State& state) {

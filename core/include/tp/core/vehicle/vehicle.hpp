@@ -94,13 +94,14 @@ struct Output {
 /// Engine idling, clutch pressed, neutral, at rest.
 [[nodiscard]] State initial_state(const Model& model) noexcept;
 
-/// Advances the tractor by `dt_s` while it pulls `drawbar_force_n` backwards
-/// at the hitch (the sled; a constant stand-in until Milestone 1, step 6).
+/// Advances the tractor by `dt_s` while the drawbar pulls on its hitch (see
+/// tp::pull for the chain to a sled; tools and tests may pass a constant
+/// pull).
 ///
 /// Order: gear change, axle loads from the last step's state, every body's
 /// prediction, the exact chain solve for clutch torque and tire force, every
 /// body advances, then the chassis pitches under the axle torque's reaction.
-Output step(State& state, const Model& model, const Input& input, double drawbar_force_n,
+Output step(State& state, const Model& model, const Input& input, const chassis::Drawbar& drawbar,
             double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
