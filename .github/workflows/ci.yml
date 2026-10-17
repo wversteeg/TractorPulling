@@ -57,6 +57,11 @@ jobs:
           ./build/${{ matrix.preset }}/tools/tp_pull engine-dyno
           data/engines/farm_stock_light.toml -o dyno.csv
 
+      - name: Check the tractor against its class
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull check
+          data/tractors/farm_stock_light.toml data/classes/ntto_standard_3500.toml
+
       - name: Run pulls in every gear
         run: |
           for gear in 1 2 3 4 5 6 7 8; do

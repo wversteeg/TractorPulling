@@ -99,6 +99,10 @@ cmake --preset release && cmake --build --preset release
 # The whole tractor pulling a constant drawbar force: clutch slipped in, or dumped
 ./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml \
     [--gear 4] [--resistance-kn 8] [--dump] -o pull.csv
+
+# May this tractor compete in this class? Exits non-zero if not
+./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
+    data/classes/ntto_standard_3500.toml
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; update this section when presets change.
