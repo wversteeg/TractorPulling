@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tp/core/driveline/driveline.hpp"
+#include "tp/core/units/conversions.hpp"
 
 namespace tp::driveline::testing {
 
@@ -15,7 +16,7 @@ inline Params reference_params() {
         .input_inertia_kg_m2 = 0.05,
         .output_inertia_kg_m2 = 2.0,
         .drag_torque_nm = 2.0,
-        .viscous_drag_nm_s_rad = 0.01,
+        .viscous_drag_nm_s_rad = 1.05 / units::rpm_to_rad_s(1000.0),
     };
 }
 

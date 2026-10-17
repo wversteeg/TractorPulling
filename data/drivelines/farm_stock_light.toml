@@ -1,0 +1,16 @@
+# 8-speed gearbox, final drive and rear axle for the light farm-stock class.
+# With 0.8 m rear tires at 2200 rpm: 1st ~2 km/h, 4th-5th ~6-8 km/h (pulling
+# gears), 8th ~30 km/h.
+
+[driveline]
+final_drive_ratio = 22.0       # bevel gear and final reduction together
+efficiency = 0.90              # all meshes, applied in the direction power flows
+input_inertia_kg_m2 = 0.05     # clutch disc, input shaft, countershaft
+output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tires
+
+[driveline.gearbox]
+ratios = [15.0, 10.5, 7.4, 5.2, 3.6, 2.5, 1.7, 1.0]   # 1st to 8th
+
+[driveline.drag]                # churning and bearings, on the input shaft
+constant_nm = 2.0
+viscous_nm_per_1000_rpm = 1.05  # ~0.01 N·m per rad/s
