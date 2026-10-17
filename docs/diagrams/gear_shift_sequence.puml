@@ -1,0 +1,23 @@
+@startuml gear_shift_sequence
+title Changing gear (between steps)
+autonumber
+participant "Caller\n(tool or test; later the vehicle step)" as Caller
+participant "clutch::capacity_nm" as Capacity
+participant "driveline::shift" as Shift
+
+Caller -> Capacity : capacity_nm(clutch_params, pedal)
+Capacity --> Caller : 0 when the pedal is fully pressed
+Caller -> Shift : shift(state, params, gear, capacity == 0)
+alt same gear
+  Shift --> Caller : true (nothing to do)
+else gear does not exist, or clutch still transmits torque
+  Shift --> Caller : false, gear unchanged
+else to neutral
+  Shift -> Shift : gear = 0; input shaft and axle now turn freely
+  Shift --> Caller : true
+else into a gear
+  Shift -> Shift : gear = g, G = gear_ratio * final_drive
+  Shift -> Shift : synchronize (inelastic, momentum conserved):\nomega_axle = (I_out omega_axle + I_in G omega_in) / (I_out + I_in G^2)\nomega_in = G omega_axle
+  Shift --> Caller : true
+end
+@enduml

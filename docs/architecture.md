@@ -21,6 +21,14 @@ sequence below.
 
 ![Clutch classes](diagrams/svg/clutch_classes.svg)
 
+### Driveline (`tp::driveline`)
+
+A rigid gear train: one degree of freedom in gear, two in neutral. Mesh
+losses apply in the direction power flows, which is why `ShaftPrediction`
+has a response for each torque direction.
+
+![Driveline classes](diagrams/svg/driveline_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
@@ -41,6 +49,10 @@ end of the step, limited by its capacity. This keeps the stiff friction
 contact stable and free of chatter at 1 kHz.
 
 ![Clutch coupling](diagrams/svg/clutch_coupling_sequence.svg)
+
+### Changing gear
+
+![Gear shift](diagrams/svg/gear_shift_sequence.svg)
 
 ### Loading a component definition
 

@@ -1,0 +1,57 @@
+@startuml driveline_classes
+title Driveline (tp::driveline): gearbox, final drive and axle
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::coupling (see core_classes)" {
+  class ShaftPrediction <<struct>> {
+    +free_omega_next_rad_s : double
+    +omega_per_torque : double
+    +omega_per_negative_torque : double
+  }
+}
+package "tp::hash (see core_classes)" {
+  class Fnv1a
+}
+
+package "tp::driveline" {
+  class Params <<struct>> {
+    +gear_ratios : array<double, 16>
+    +gear_count : size_t
+    +final_drive_ratio : double
+    +efficiency : double
+    +input_inertia_kg_m2 : double
+    +output_inertia_kg_m2 : double
+    +drag_torque_nm : double
+    +viscous_drag_nm_s_rad : double
+  }
+  class State <<struct>> {
+    +gear : int, 0 = neutral
+    +input_omega_rad_s : double
+    +output_omega_rad_s : double
+  }
+  class Prediction <<struct>> {
+    +ratio : double
+    +efficiency : double
+    +free_input_rad_s, input_per_nm : double
+    +free_output_rad_s : double
+  }
+  enum ParamError
+  class "driveline functions" as DrivelineFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +overall_ratio(const Params&, gear) : double
+    +shift(State&, const Params&, gear, clutch_disengaged) : bool
+    +predict(const State&, const Params&, axle_load_torque_nm, dt_s) : Prediction
+    +input_shaft(const Prediction&) : ShaftPrediction
+    +advance(State&, const Prediction&, clutch_torque_nm)
+    +hash_append(Fnv1a&, const State&)
+  }
+  DrivelineFns ..> Params
+  DrivelineFns ..> State
+  DrivelineFns ..> Prediction
+  DrivelineFns ..> ParamError
+}
+DrivelineFns ..> ShaftPrediction : for the clutch
+DrivelineFns ..> Fnv1a
+@enduml
