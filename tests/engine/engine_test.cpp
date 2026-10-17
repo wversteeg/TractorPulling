@@ -230,6 +230,18 @@ TEST(Engine, CutsFuelWhenOverrun) {
     EXPECT_DOUBLE_EQ(out.combustion_torque_nm, 0.0);
 }
 
+// The decaying turbo lag must settle at exactly zero instead of sliding into
+// subnormal numbers, which are very slow on many CPUs.
+TEST(Engine, BoostDecaysToExactlyZero) {
+    const Params params = reference_params();
+    State state{.omega_rad_s = 0.0, .boost = 1.0, .running = false};
+    for (int i = 0; i < 1'000'000; ++i) {
+        step(state, params, {}, kDt_s);
+        ASSERT_NE(std::fpclassify(state.boost), FP_SUBNORMAL) << "step " << i;
+    }
+    EXPECT_EQ(state.boost, 0.0);
+}
+
 TEST(Engine, PredictDoesNotChangeState) {
     const Params params = reference_params();
     const State before{.omega_rad_s = rpm_to_rad_s(1500.0), .boost = 0.3, .running = true};

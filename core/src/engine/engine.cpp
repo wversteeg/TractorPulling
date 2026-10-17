@@ -68,6 +68,11 @@ State initial_state(const Params& params) noexcept {
 
 namespace {
 
+// Below this the turbo is at rest. The lag decays geometrically and would
+// otherwise reach subnormal values after ~10 minutes without fuel, which are
+// very slow on many CPUs.
+constexpr double kBoostAtRest = 1e-9;
+
 double governor_fuel(const Params& params, double throttle, double omega_rad_s) noexcept {
     const double target_rad_s = params.idle_omega_rad_s +
                                 throttle * (params.high_idle_omega_rad_s - params.idle_omega_rad_s);
@@ -99,6 +104,9 @@ Prediction predict(const State& state, const Params& params, double throttle,
     const double boost_target = p.output.fuel * exhaust_energy(params, omega_rad_s);
     p.boost_next =
         state.boost + (boost_target - state.boost) * dt_s / (params.turbo_time_constant_s + dt_s);
+    if (p.boost_next < kBoostAtRest) {
+        p.boost_next = 0.0;
+    }
 
     const double boost_factor =
         params.na_torque_fraction + (1.0 - params.na_torque_fraction) * p.boost_next;
