@@ -42,7 +42,7 @@ package "tp::vehicle" {
   class Output <<struct>> {
     +engine : engine::Output
     +clutch_torque_nm, clutch_slip_rad_s, clutch_slip_power_w
-    +tire_force_n, slip_ratio
+    +tire_force_n (held pull at a standstill), slip_ratio
     +axle_loads : AxleLoads
     +shift_refused : bool
   }

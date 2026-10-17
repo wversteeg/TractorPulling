@@ -35,6 +35,19 @@ skinparam classAttributeIconSize 0
     }
     Curve *-- "2..16" CurvePoint
     Curve ..> CurveError
+    class SinCos <<struct>> {
+      +sin : double
+      +cos : double
+    }
+    class "trig" as Trig <<free functions>> {
+      +{static} kSinCosMaxAngle_rad = π/4
+      +sin_cos(angle_rad) : SinCos
+    }
+    Trig ..> SinCos
+    note bottom of Trig
+      fixed polynomials, + and × only:
+      bit-identical on every platform
+    end note
   }
 
   package "tp::engine" {
@@ -117,6 +130,7 @@ skinparam classAttributeIconSize 0
     class "conversions" as Units <<free functions>> {
       +rpm_to_rad_s(rpm) : double
       +rad_s_to_rpm(omega_rad_s) : double
+      +rad_to_deg(angle_rad) : double
     }
   }
 

@@ -13,4 +13,10 @@ inline constexpr double kRadPerSecPerRpm = 2.0 * std::numbers::pi / 60.0;
     return omega_rad_s / kRadPerSecPerRpm;
 }
 
+inline constexpr double kDegreesPerRad = 180.0 / std::numbers::pi;
+
+[[nodiscard]] constexpr double rad_to_deg(double angle_rad) noexcept {
+    return angle_rad * kDegreesPerRad;
+}
+
 }  // namespace tp::units

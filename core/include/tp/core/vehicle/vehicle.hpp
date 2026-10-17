@@ -32,6 +32,8 @@ enum class ParamError : std::uint8_t {
     kRearTire,
     kRearTireCount,
     kChassis,
+    /// The chassis' rear axle height is not the rear tire's radius.
+    kRearAxleHeight,
 };
 
 /// Which part of `params` is invalid, if any; each component's own validate()
@@ -76,7 +78,8 @@ struct Output {
     /// Engine speed minus gearbox input speed at the end of the step [rad/s].
     double clutch_slip_rad_s = 0.0;
     double clutch_slip_power_w = 0.0;
-    /// Traction of all rear tires on the vehicle [N].
+    /// Traction of all rear tires on the vehicle [N]. At a standstill, the
+    /// drawbar pull they hold.
     double tire_force_n = 0.0;
     double slip_ratio = 0.0;
     chassis::AxleLoads axle_loads;
@@ -90,9 +93,9 @@ struct Output {
 /// Advances the tractor by `dt_s` while it pulls `drawbar_force_n` backwards
 /// at the hitch (the sled; a constant stand-in until Milestone 1, step 6).
 ///
-/// Order: gear change, axle loads from the last step's acceleration, every
-/// body's prediction, the exact chain solve for clutch torque and tire force,
-/// then every body advances.
+/// Order: gear change, axle loads from the last step's state, every body's
+/// prediction, the exact chain solve for clutch torque and tire force, every
+/// body advances, then the chassis pitches under the axle torque's reaction.
 Output step(State& state, const Model& model, const Input& input, double drawbar_force_n,
             double dt_s) noexcept;
 

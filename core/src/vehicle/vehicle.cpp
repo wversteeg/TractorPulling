@@ -23,6 +23,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (chassis::validate(params.chassis)) {
         return ParamError::kChassis;
     }
+    if (params.chassis.rear_axle_height_m != params.rear_tire.radius_m) {
+        return ParamError::kRearAxleHeight;
+    }
     return std::nullopt;
 }
 
@@ -59,23 +62,23 @@ Output step(State& state, const Model& model, const Input& input, double drawbar
                                               clutch_capacity_nm == 0.0);
     }
 
-    out.axle_loads =
-        chassis::axle_loads(params.chassis, state.chassis.acceleration_m_s2, drawbar_force_n);
+    out.axle_loads = chassis::axle_loads(params.chassis, state.chassis);
     const double load_per_tire_n = out.axle_loads.rear_n / tires;
 
     // Predictions. Rolling resistance acts as a known torque on the axle
-    // (rear) and force on the body (front); like the drawbar pull, it holds
-    // things at rest but never drives them backwards.
+    // (rear) and force on the body (front tires, wheelie bar); like the
+    // drawbar pull, it holds things at rest but never drives them backwards.
     const engine::Prediction engine_prediction =
         engine::predict(state.engine, params.engine, input.throttle, dt_s);
     const double rear_rolling_nm =
         tires * tire::rolling_resistance_n(tire_params, load_per_tire_n) * tire_params.radius_m;
     const driveline::Prediction driveline_prediction =
         driveline::predict(state.driveline, driveline_params, rear_rolling_nm, dt_s);
-    const double front_rolling_n =
-        params.chassis.front_rolling_resistance_coefficient * out.axle_loads.front_n;
+    const double front_drag_n =
+        params.chassis.front_rolling_resistance_coefficient * out.axle_loads.front_n +
+        params.chassis.wheelie_bar.rolling_resistance_coefficient * out.axle_loads.wheelie_bar_n;
     const chassis::Prediction body_prediction =
-        chassis::predict(state.chassis, params.chassis, drawbar_force_n + front_rolling_n, dt_s);
+        chassis::predict(state.chassis, params.chassis, drawbar_force_n + front_drag_n, dt_s);
 
     const double wheel_m_s = state.driveline.output_omega_rad_s * tire_params.radius_m;
     const double ground_m_s = state.chassis.velocity_m_s;
@@ -91,17 +94,32 @@ Output step(State& state, const Model& model, const Input& input, double drawbar
         engine::shaft_prediction(engine_prediction), driveline::response(driveline_prediction),
         tire_line, body_prediction, state.clutch, params.clutch, clutch_capacity_nm);
 
+    const double axle_omega_rad_s = state.driveline.output_omega_rad_s;
     engine::advance(state.engine, params.engine, engine_prediction, solution.clutch_torque_nm);
     driveline::advance(state.driveline, driveline_prediction, solution.clutch_torque_nm,
                        -tire_params.radius_m * solution.tire_force_n);
     chassis::advance(state.chassis, body_prediction, solution.tire_force_n, dt_s);
+
+    // The torque the gearbox puts on the rear axle, from the axle's own
+    // balance: it spins up the wheels and overcomes the tires' traction and
+    // rolling resistance. Its reaction on the body lifts the nose. At a
+    // standstill the resistances only hold, and the solved tire force is not
+    // a physical one: the tires then hold just the drawbar pull. Rolling
+    // resistance counts only while the wheels turn, as in the driveline.
+    const double next_axle_omega_rad_s = state.driveline.output_omega_rad_s;
+    const bool standstill = next_axle_omega_rad_s == 0.0 && state.chassis.velocity_m_s == 0.0;
+    const double tire_force_n = standstill ? drawbar_force_n : solution.tire_force_n;
+    const double axle_torque_nm =
+        driveline_params.output_inertia_kg_m2 * (next_axle_omega_rad_s - axle_omega_rad_s) / dt_s +
+        tire_params.radius_m * tire_force_n + (next_axle_omega_rad_s > 0.0 ? rear_rolling_nm : 0.0);
+    chassis::advance_pitch(state.chassis, params.chassis, axle_torque_nm, drawbar_force_n, dt_s);
 
     out.engine = engine_prediction.output;
     out.clutch_torque_nm = solution.clutch_torque_nm;
     out.clutch_slip_rad_s = state.engine.omega_rad_s - state.driveline.input_omega_rad_s;
     out.clutch_slip_power_w =
         state.clutch.locked ? 0.0 : out.clutch_torque_nm * out.clutch_slip_rad_s;
-    out.tire_force_n = solution.tire_force_n;
+    out.tire_force_n = tire_force_n;
     return out;
 }
 

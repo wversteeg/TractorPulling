@@ -1,11 +1,15 @@
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include "tp/core/hash/fnv1a.hpp"
+#include "tp/core/math/curve.hpp"
+#include "tp/core/units/constants.hpp"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
+#include <vector>
 
 #include "reference_vehicle.hpp"
 
@@ -20,11 +24,15 @@ constexpr double kDt_s = 0.001;
 // A driver: idle in neutral, select a gear, rev up with the clutch pressed,
 // then slip the clutch in over 3 s or dump it, and pull at full throttle.
 struct Pull {
+    Pull() = default;
+    explicit Pull(const Model& tractor) : model(tractor), state(initial_state(tractor)) {}
+
     Model model = reference_model();
     State state = initial_state(model);
     Output last;
     double max_slip = 0.0;
     double min_front_n = 1e12;
+    double max_pitch_rad = 0.0;
 
     void run(int gear, double drawbar_n, bool dump, double seconds) {
         for (int i = 0; i < static_cast<int>(seconds / kDt_s); ++i) {
@@ -41,6 +49,7 @@ struct Pull {
                 max_slip = std::max(max_slip, last.slip_ratio);
             }
             min_front_n = std::min(min_front_n, last.axle_loads.front_n);
+            max_pitch_rad = std::max(max_pitch_rad, state.chassis.pitch_rad);
             if (!state.engine.running) {
                 return;
             }
@@ -64,6 +73,8 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.rear_tire.radius_m = 0.0; }), ParamError::kRearTire);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
+    EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
+              ParamError::kRearAxleHeight);
     EXPECT_FALSE(Model::create([] {
                      Params p = reference_params();
                      p.chassis.mass_kg = 0.0;
@@ -87,6 +98,7 @@ TEST(Vehicle, IdlesAtRestInNeutral) {
     EXPECT_TRUE(pull.state.engine.running);
     EXPECT_EQ(pull.state.chassis.position_m, 0.0);
     EXPECT_EQ(pull.state.driveline.output_omega_rad_s, 0.0);
+    EXPECT_NEAR(pull.state.chassis.pitch_rad, 0.0, 1e-12);
 }
 
 TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
@@ -149,6 +161,66 @@ TEST(Vehicle, TooHeavyALoadStallsTheEngineInTopGear) {
     EXPECT_FALSE(pull.state.engine.running);
 }
 
+// Pulling steadily, the front axle carries its static share less the
+// moments about the rear contact patch: the drawbar pull at hitch height and
+// the rear tires' rolling resistance (a forward shift of their load).
+TEST(Vehicle, SteadyPullUnloadsTheFrontByItsMoments) {
+    Pull pull;
+    constexpr double kDrawbar_n = 5000.0;
+    pull.run(4, kDrawbar_n, false, 15.0);
+    ASSERT_TRUE(pull.state.engine.running);
+    const Params& p = pull.model.params();
+    const chassis::AxleLoads& loads = pull.last.axle_loads;
+    const double weight_n = p.chassis.mass_kg * units::kStandardGravity_m_s2;
+    const double rolling_nm =
+        p.rear_tire.rolling_resistance_coefficient * loads.rear_n * p.rear_tire.radius_m;
+    const double expected_front_n =
+        weight_n * p.chassis.cg_ahead_of_rear_axle_m / p.chassis.wheelbase_m -
+        (kDrawbar_n * p.chassis.hitch_height_m + rolling_nm) / p.chassis.wheelbase_m;
+    EXPECT_NEAR(loads.front_n, expected_front_n, 20.0);
+    EXPECT_GT(pull.state.chassis.pitch_rad, 0.0) << "squats onto the rear";
+    EXPECT_NEAR(loads.rear_n + loads.front_n, weight_n, 1.0);
+}
+
+// The reference tractor on a track that grips 60 % better.
+Model grippy_model() {
+    Params params = reference_params();
+    std::vector<math::CurvePoint> grip;
+    for (const math::CurvePoint& point : params.rear_tire.traction_coefficient.points()) {
+        grip.push_back({.x = point.x, .y = 1.6 * point.y});
+    }
+    const auto curve = math::Curve::create(grip);
+    if (!curve) {
+        std::abort();
+    }
+    params.rear_tire.traction_coefficient = *curve;
+    const auto model = Model::create(params);
+    if (!model) {
+        std::abort();
+    }
+    return *model;
+}
+
+// On the reference tires the wheels spin before the front can lift: that
+// takes a traction torque above the weight's moment about the rear axle,
+// μ r > b. On a grippy track (60 % more grip) dumping the clutch throws the
+// front up, while slipping it in keeps the front on the ground.
+TEST(Vehicle, DumpingTheClutchOnAGrippyTrackLiftsTheFront) {
+    const Model model = grippy_model();
+    Pull dumped{model};
+    dumped.run(3, 8000.0, true, 15.0);
+    EXPECT_EQ(dumped.min_front_n, 0.0);
+    EXPECT_GT(dumped.max_pitch_rad, 0.01);
+
+    Pull slipped{model};
+    slipped.run(3, 8000.0, false, 15.0);
+    EXPECT_GT(slipped.min_front_n, 0.0);
+
+    Pull reference;
+    reference.run(3, 8000.0, true, 15.0);
+    EXPECT_GT(reference.min_front_n, 0.0);
+}
+
 TEST(Vehicle, PullingLoadsTheRearAxle) {
     Pull light;
     light.run(4, 2000.0, false, 15.0);
@@ -179,7 +251,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xe8a234b2c4d4aef4ULL);
+    EXPECT_EQ(pull_hash(), 0x85e14ca8fc4b4949ULL);
 }
 
 }  // namespace

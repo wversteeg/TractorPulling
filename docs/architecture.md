@@ -38,8 +38,9 @@ linearized over a step so the stiff contact can be solved implicitly.
 
 ### Chassis (`tp::chassis`)
 
-The body moving along the track and the quasi-static split of its weight
-between the axles. Pitch arrives in Milestone 1, step 5.
+The body moving along the track and pitching about the rear axle. The
+front tires and the wheelie bar are one-sided spring-damper contacts; the
+rear tires carry the rest of the weight.
 
 ![Chassis classes](diagrams/svg/chassis_classes.svg)
 
@@ -65,6 +66,14 @@ The main flow: predict every body, solve the chain of couplings exactly,
 advance every body.
 
 ![Vehicle step](diagrams/svg/vehicle_step_sequence.svg)
+
+### Weight on the axles and pitch
+
+Where the axle loads come from at the start of a step, and how the body
+pitches at its end under the reaction of the axle torque. Wheelies are not
+scripted: they appear when that reaction outweighs the tractor.
+
+![Pitch step](diagrams/svg/pitch_step_sequence.svg)
 
 ### One engine step (1 kHz)
 

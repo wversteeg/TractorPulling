@@ -31,8 +31,21 @@ mass_kg = 3500.0
 wheelbase_m = 2.4
 cg_ahead_of_rear_axle_m = 0.96
 cg_height_m = 1.0
+pitch_inertia_kg_m2 = 2800.0
 hitch_height_m = 0.5
+hitch_behind_rear_axle_m = 0.4
 front_rolling_resistance_coefficient = 0.06
+
+[tractor.chassis.front_tires]
+stiffness_n_per_m = 400000.0
+damping_n_s_per_m = 6000.0
+
+[tractor.chassis.wheelie_bar]
+behind_rear_axle_m = 1.3
+tip_height_m = 0.15
+stiffness_n_per_m = 2.0e6
+damping_n_s_per_m = 50000.0
+rolling_resistance_coefficient = 0.05
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -86,6 +99,14 @@ TEST(TractorLoader, ResolvesComponentsRelativeToTheTractor) {
     EXPECT_DOUBLE_EQ(result.value().rear_tire.radius_m, 0.8);
 }
 
+// The rear axle rides at the rear tire's radius; the file does not repeat it.
+TEST(TractorLoader, TakesTheRearAxleHeightFromTheTire) {
+    const auto result = parse_tractor(kTractor, "tractor.toml", kDataDir);
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().chassis.rear_axle_height_m, result.value().rear_tire.radius_m);
+    EXPECT_EQ(vehicle::validate(result.value()), std::nullopt);
+}
+
 TEST(TractorLoader, ReportsAMissingComponentFile) {
     const std::string message =
         error_of(with("tires/pulling_rear.toml", "tires/does_not_exist.toml"));
@@ -117,6 +138,21 @@ TEST(TractorLoader, RejectsNonsenseChassisValues) {
               std::string::npos);
     EXPECT_NE(error_of(with("cg_ahead_of_rear_axle_m = 0.96", "cg_ahead_of_rear_axle_m = 3.0"))
                   .find("tractor.chassis.cg_ahead_of_rear_axle_m: must lie between the axles"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("pitch_inertia_kg_m2 = 2800.0", "pitch_inertia_kg_m2 = -1.0"))
+                  .find("tractor.chassis.pitch_inertia_kg_m2: must be > 0"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("damping_n_s_per_m = 6000.0", "damping_n_s_per_m = -1.0"))
+                  .find("tractor.chassis.front_tires.damping_n_s_per_m: must not be negative"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("tip_height_m = 0.15", "tip_height_m = 0.9"))
+                  .find("tractor.chassis.wheelie_bar: the tip must touch down before 30°"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("stiffness_n_per_m = 2.0e6", "stiffness_n_per_m = 0.0"))
+                  .find("tractor.chassis.wheelie_bar.stiffness_n_per_m: must be > 0"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("tip_height_m = 0.15", ""))
+                  .find("tractor.chassis.wheelie_bar.tip_height_m: missing or not a number"),
               std::string::npos);
     EXPECT_NE(error_of(with("rear_tire_count = 2", "rear_tire_count = 0"))
                   .find("tractor.rear_tire_count: must be 1 to 8"),
