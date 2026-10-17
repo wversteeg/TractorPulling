@@ -64,6 +64,24 @@ double Reader::number(std::string_view path) {
     return *value;
 }
 
+std::int64_t Reader::integer(std::string_view path) {
+    const std::optional<std::int64_t> value = root_->at_path(path).value_exact<std::int64_t>();
+    if (!value) {
+        fail(path, "missing or not an integer");
+        return 0;
+    }
+    return *value;
+}
+
+std::string Reader::text(std::string_view path) {
+    const std::optional<std::string> value = root_->at_path(path).value_exact<std::string>();
+    if (!value) {
+        fail(path, "missing or not a string");
+        return {};
+    }
+    return *value;
+}
+
 std::vector<double> Reader::numbers(std::string_view path) {
     const toml::array* array = root_->at_path(path).as_array();
     if (array == nullptr) {

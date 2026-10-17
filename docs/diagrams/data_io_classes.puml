@@ -19,17 +19,29 @@ package "tp::data" {
     +load_engine(path) / parse_engine(text, source) : Result<engine::Params>
     +load_clutch(path) / parse_clutch(text, source) : Result<clutch::Params>
     +load_driveline(path) / parse_driveline(text, source) : Result<driveline::Params>
+    +load_tire(path) / parse_tire(text, source) : Result<tire::Params>
     --
     each: read fields, convert to SI, build Params,
     <component>::validate(), name the field on error
   }
+  class "tractor_loader" as TractorLoader <<free functions>> {
+    +load_tractor(path) : Result<vehicle::Params>
+    +parse_tractor(text, source, base_directory) : Result<vehicle::Params>
+    --
+    reads the chassis and the component paths,
+    loads each component relative to the tractor file
+  }
   Result o-- LoadError
   Loaders ..> Result : returns
+  TractorLoader ..> Loaders : components
+  TractorLoader ..> Result : returns
 }
 
 package "tp::data::detail (internal)" {
   class Reader {
     +number(dotted_path) : double
+    +integer(dotted_path) : int64
+    +text(dotted_path) : string
     +numbers(dotted_path) : vector<double>
     +curve(table, x_key, y_key, x_to_si) : optional<Curve>
     +error() : optional<LoadError>
@@ -55,4 +67,6 @@ package "third party" {
 TomlFns ..> Toml : parse
 Reader ..> Curve : create
 Loaders ..> CoreParams : builds, validates
+TractorLoader ..> Reader
+TractorLoader ..> CoreParams : vehicle::Params
 @enduml

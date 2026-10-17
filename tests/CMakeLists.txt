@@ -22,7 +22,9 @@ if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
         data/clutch_loader_test.cpp
         data/driveline_loader_test.cpp
-        data/engine_loader_test.cpp)
+        data/engine_loader_test.cpp
+        data/tire_loader_test.cpp
+        data/tractor_loader_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE
         TP_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
