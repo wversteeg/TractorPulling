@@ -1,5 +1,5 @@
-# Reference light 2WD farm-stock tractor: the components it is built from
-# (paths relative to this file) and its chassis.
+# Reference light 2WD farm-stock tractor (NTTO standard class, 3.5 t): the
+# components it is built from (paths relative to this file) and its chassis.
 
 [tractor]
 engine = "../engines/farm_stock_light.toml"
@@ -8,10 +8,28 @@ driveline = "../drivelines/farm_stock_light.toml"
 rear_tire = "../tires/pulling_rear.toml"
 rear_tire_count = 2
 
+# Body points are measured with the tractor level. The rear axle height is
+# the rear tire's radius.
 [tractor.chassis]
 mass_kg = 3500.0                  # whole tractor, wheels included
 wheelbase_m = 2.4
 cg_ahead_of_rear_axle_m = 0.96    # 60 % of the weight on the rear axle at rest
 cg_height_m = 1.0
-hitch_height_m = 0.5
+pitch_inertia_kg_m2 = 2800.0      # about the centre of gravity; m k², k ≈ 0.9 m
+hitch_height_m = 0.5              # NTTO: at most 0.5 m, not above the rear axle
+hitch_behind_rear_axle_m = 0.4
 front_rolling_resistance_coefficient = 0.06
+
+# Both front tires together, as one spring-damper below the front axle.
+[tractor.chassis.front_tires]
+stiffness_n_per_m = 400000.0
+damping_n_s_per_m = 6000.0        # about 15 % of critical in pitch
+
+# Mandatory in the NTTO standard classes. Starting values to tune: the tip
+# touches down at about 7° nose-up.
+[tractor.chassis.wheelie_bar]
+behind_rear_axle_m = 1.3
+tip_height_m = 0.15
+stiffness_n_per_m = 2.0e6         # steel bar on skids
+damping_n_s_per_m = 50000.0       # about 30 % of critical in pitch
+rolling_resistance_coefficient = 0.05

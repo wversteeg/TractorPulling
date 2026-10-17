@@ -64,6 +64,8 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.rear_tire.radius_m = 0.0; }), ParamError::kRearTire);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
+    EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
+              ParamError::kRearAxleHeight);
     EXPECT_FALSE(Model::create([] {
                      Params p = reference_params();
                      p.chassis.mass_kg = 0.0;
@@ -179,7 +181,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xe8a234b2c4d4aef4ULL);
+    EXPECT_EQ(pull_hash(), 0x85e14ca8fc4b4949ULL);
 }
 
 }  // namespace

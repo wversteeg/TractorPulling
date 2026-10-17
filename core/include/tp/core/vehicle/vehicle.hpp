@@ -32,6 +32,8 @@ enum class ParamError : std::uint8_t {
     kRearTire,
     kRearTireCount,
     kChassis,
+    /// The chassis' rear axle height is not the rear tire's radius.
+    kRearAxleHeight,
 };
 
 /// Which part of `params` is invalid, if any; each component's own validate()
