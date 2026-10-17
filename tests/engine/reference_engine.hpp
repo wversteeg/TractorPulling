@@ -11,19 +11,19 @@ namespace tp::engine::testing {
 
 using units::rpm_to_rad_s;
 
-// Light farm-stock class: ~75 kW four-cylinder turbo diesel. Mirrors
+// Light farm-stock class: ~68 kW net four-cylinder turbo diesel. Mirrors
 // data/engines/farm_stock_light.toml so tests do not depend on file loading.
 inline Params reference_params() {
     const std::array<math::CurvePoint, 9> torque = {{
-        {rpm_to_rad_s(800.0), 300.0},
-        {rpm_to_rad_s(1000.0), 360.0},
-        {rpm_to_rad_s(1200.0), 410.0},
-        {rpm_to_rad_s(1400.0), 430.0},
-        {rpm_to_rad_s(1600.0), 425.0},
-        {rpm_to_rad_s(1800.0), 410.0},
-        {rpm_to_rad_s(2000.0), 385.0},
-        {rpm_to_rad_s(2200.0), 340.0},
-        {rpm_to_rad_s(2400.0), 290.0},
+        {rpm_to_rad_s(800.0), 279.0},
+        {rpm_to_rad_s(1000.0), 335.0},
+        {rpm_to_rad_s(1200.0), 381.0},
+        {rpm_to_rad_s(1400.0), 400.0},
+        {rpm_to_rad_s(1600.0), 395.0},
+        {rpm_to_rad_s(1800.0), 381.0},
+        {rpm_to_rad_s(2000.0), 358.0},
+        {rpm_to_rad_s(2200.0), 316.0},
+        {rpm_to_rad_s(2400.0), 270.0},
     }};
     const auto curve = math::Curve::create(torque);
     if (!curve) {

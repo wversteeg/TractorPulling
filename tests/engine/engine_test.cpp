@@ -143,7 +143,8 @@ TEST(Engine, LugsDownBelowRatedSpeedUnderHeavyLoad) {
     const Params params = reference_params();
     State state = initial_state(params);
     run(state, params, {.throttle = 1.0}, 3.0);
-    run(state, params, {.throttle = 1.0, .load_torque_nm = 360.0}, 10.0);
+    const double load_nm = 0.84 * params.full_load_torque_nm.max_y();
+    run(state, params, {.throttle = 1.0, .load_torque_nm = load_nm}, 10.0);
     EXPECT_TRUE(state.running);
     EXPECT_LT(state.omega_rad_s, params.rated_omega_rad_s);
     EXPECT_GT(state.omega_rad_s, rpm_to_rad_s(1400.0));

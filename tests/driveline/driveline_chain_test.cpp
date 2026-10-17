@@ -114,7 +114,7 @@ TEST(DrivelineChain, LowGearPullsWhatHighGearCannot) {
 // At a steady pull the axle delivers the efficiency times the power the
 // clutch puts in, less the input shaft's drag; the rest heats the gearbox.
 TEST(DrivelineChain, SteadyPullDeliversEfficiencyTimesClutchPower) {
-    Rig rig{30000.0};
+    Rig rig{25000.0};
     rig.launch(5, 15.0);
     ASSERT_TRUE(rig.engine.running);
     ASSERT_TRUE(rig.clutch.locked);
@@ -156,7 +156,7 @@ TEST(DrivelineChain, LaunchIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(DrivelineChain, LaunchMatchesRegressionHash) {
-    EXPECT_EQ(launch_hash(), 0xe6bee6c757c42da2ULL);
+    EXPECT_EQ(launch_hash(), 0x8f64f3583e1d0b1ULL);
 }
 
 }  // namespace
