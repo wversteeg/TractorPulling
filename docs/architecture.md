@@ -42,9 +42,9 @@ contact stable and free of chatter at 1 kHz.
 
 ![Clutch coupling](diagrams/svg/clutch_coupling_sequence.svg)
 
-### Loading an engine definition
+### Loading a component definition
 
-![Load engine](diagrams/svg/load_engine_sequence.svg)
+![Load component](diagrams/svg/load_component_sequence.svg)
 
 ### Frame loop
 

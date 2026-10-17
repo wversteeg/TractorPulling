@@ -3,14 +3,10 @@
 #include "tp/core/math/curve.hpp"
 #include "tp/core/units/conversions.hpp"
 
-#include <toml++/toml.hpp>
-
-#include <cstddef>
-#include <fstream>
 #include <optional>
-#include <sstream>
-#include <string>
-#include <vector>
+#include <string_view>
+
+#include "../common/toml_reader.hpp"
 
 namespace tp::data {
 
@@ -20,61 +16,6 @@ using units::rpm_to_rad_s;
 
 // Rpm per "1000 rpm", for friction given per 1000 rpm in the data files.
 constexpr double kRpmPerKiloRpm = 1000.0;
-
-// Reads typed values by dotted path and remembers the first failure, so the
-// loader can read every field and check for errors once.
-class Reader {
-public:
-    Reader(const toml::table& root, std::string_view source) : root_(&root), source_(source) {}
-
-    double number(std::string_view path) {
-        const std::optional<double> value = root_->at_path(path).value<double>();
-        if (!value) {
-            fail(path, "missing or not a number");
-            return 0.0;
-        }
-        return *value;
-    }
-
-    std::vector<double> numbers(std::string_view path) {
-        const toml::array* array = root_->at_path(path).as_array();
-        if (array == nullptr) {
-            fail(path, "missing or not an array");
-            return {};
-        }
-        std::vector<double> values;
-        values.reserve(array->size());
-        for (const toml::node& node : *array) {
-            const std::optional<double> value = node.value<double>();
-            if (!value) {
-                fail(path, "must contain only numbers");
-                return {};
-            }
-            values.push_back(*value);
-        }
-        return values;
-    }
-
-    void fail(std::string_view field, std::string_view reason) {
-        if (!error_) {
-            error_ = make_error(source_, field, reason);
-        }
-    }
-
-    [[nodiscard]] const std::optional<LoadError>& error() const noexcept { return error_; }
-
-    static LoadError make_error(std::string_view source, std::string_view field,
-                                std::string_view reason) {
-        std::string message{source};
-        message.append(": ").append(field).append(": ").append(reason);
-        return LoadError{std::move(message)};
-    }
-
-private:
-    const toml::table* root_;
-    std::string_view source_;
-    std::optional<LoadError> error_;
-};
 
 struct FieldError {
     std::string_view field;
@@ -112,26 +53,11 @@ FieldError describe(engine::ParamError error) {
     return {"engine", "invalid"};
 }
 
-std::string_view describe(math::CurveError error) {
-    using math::CurveError;
-    switch (error) {
-        case CurveError::kTooFewPoints:
-            return "needs at least 2 points";
-        case CurveError::kTooManyPoints:
-            return "has more than 16 points";
-        case CurveError::kNotFinite:
-            return "values must be finite";
-        case CurveError::kNotStrictlyIncreasing:
-            return "rpm must be strictly increasing";
-    }
-    return "invalid";
-}
-
 Result<engine::Params> read_engine(const toml::table& root, std::string_view source) {
-    Reader reader{root, source};
+    detail::Reader reader{root, source};
 
-    const std::vector<double> rpm = reader.numbers("engine.torque_curve.rpm");
-    const std::vector<double> torque_nm = reader.numbers("engine.torque_curve.torque_nm");
+    const std::optional<math::Curve> torque_curve =
+        reader.curve("engine.torque_curve", "rpm", "torque_nm", units::kRadPerSecPerRpm);
     const double inertia_kg_m2 = reader.number("engine.inertia_kg_m2");
     const double idle_rpm = reader.number("engine.idle_rpm");
     const double rated_rpm = reader.number("engine.rated_rpm");
@@ -146,25 +72,12 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
-
-    if (rpm.size() != torque_nm.size()) {
-        return Reader::make_error(source, "engine.torque_curve",
-                                  "rpm and torque_nm must have the same length");
-    }
-    std::vector<math::CurvePoint> points;
-    points.reserve(rpm.size());
-    for (std::size_t i = 0; i < rpm.size(); ++i) {
-        points.push_back({rpm_to_rad_s(rpm[i]), torque_nm[i]});
-    }
-    const std::optional<math::Curve> curve = math::Curve::create(points);
-    if (!curve) {
-        const auto error = math::Curve::validate(points);
-        return Reader::make_error(source, "engine.torque_curve",
-                                  error ? describe(*error) : "invalid");
+    if (!torque_curve) {
+        return detail::make_error(source, "engine.torque_curve", "invalid");
     }
 
     const engine::Params params{
-        .full_load_torque_nm = *curve,
+        .full_load_torque_nm = *torque_curve,
         .inertia_kg_m2 = inertia_kg_m2,
         .idle_omega_rad_s = rpm_to_rad_s(idle_rpm),
         .rated_omega_rad_s = rpm_to_rad_s(rated_rpm),
@@ -179,7 +92,7 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
     };
     if (const auto error = engine::validate(params)) {
         const FieldError field_error = describe(*error);
-        return Reader::make_error(source, field_error.field, field_error.reason);
+        return detail::make_error(source, field_error.field, field_error.reason);
     }
     return params;
 }
@@ -187,25 +100,11 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
 }  // namespace
 
 Result<engine::Params> parse_engine(std::string_view toml_text, std::string_view source_name) {
-    try {
-        const toml::table root = toml::parse(toml_text, source_name);
-        return read_engine(root, source_name);
-    } catch (const toml::parse_error& e) {
-        std::ostringstream message;
-        message << source_name << ':' << e.source().begin.line << ':' << e.source().begin.column
-                << ": " << e.description();
-        return LoadError{message.str()};
-    }
+    return detail::parse_with<engine::Params>(toml_text, source_name, &read_engine);
 }
 
 Result<engine::Params> load_engine(const std::filesystem::path& path) {
-    const std::ifstream file{path, std::ios::binary};
-    if (!file) {
-        return LoadError{path.string() + ": cannot open file"};
-    }
-    std::ostringstream text;
-    text << file.rdbuf();
-    return parse_engine(text.str(), path.string());
+    return detail::load_file_with<engine::Params>(path, &read_engine);
 }
 
 }  // namespace tp::data

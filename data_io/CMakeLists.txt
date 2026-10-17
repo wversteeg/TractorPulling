@@ -1,6 +1,8 @@
 # Loads data/ definitions into core parameter structs. Kept out of core: it
 # parses files, allocates and reports errors as strings.
 add_library(tp_data STATIC
+    src/clutch/clutch_loader.cpp
+    src/common/toml_reader.cpp
     src/engine/engine_loader.cpp)
 add_library(tp::data ALIAS tp_data)
 
