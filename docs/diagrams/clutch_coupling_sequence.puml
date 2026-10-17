@@ -1,0 +1,33 @@
+@startuml clutch_coupling_sequence
+title Engine, clutch and driveline in one 1 kHz step
+autonumber
+participant "Caller\n(tool or test; later the vehicle step)" as Caller
+participant "engine" as Engine
+participant "driveline\n(stand-in flywheel until step 3)" as Driveline
+participant "clutch::step" as Clutch
+
+Caller -> Engine : predict(state, params, throttle, dt_s)
+Engine --> Caller : Prediction
+Caller -> Engine : shaft_prediction(prediction)
+Engine --> Caller : omega_e' = free_e + k_e * applied
+Caller -> Driveline : predict(dt_s)
+Driveline --> Caller : omega_d' = free_d + k_d * applied
+
+Caller -> Clutch : step(state, params, {pedal}, engine_side, driveline_side)
+Clutch -> Clutch : capacity = engagement(pedal) * static_capacity
+alt capacity == 0 (pedal pressed)
+  Clutch -> Clutch : torque = 0, unlocked
+else
+  Clutch -> Clutch : lock_torque = (free_e - free_d) / (k_e + k_d)\n(torque that matches speeds at end of step)
+  alt |lock_torque| <= (locked ? static : kinetic) capacity
+    Clutch -> Clutch : torque = lock_torque, locked
+  else
+    Clutch -> Clutch : torque = sign(lock_torque) * kinetic capacity, slipping\nslip_power = torque * slip
+  end
+end
+Clutch --> Caller : Output {torque_nm, slip_rad_s, slip_power_w, capacity_nm}
+
+Caller -> Engine : advance(state, params, prediction, load = torque_nm)
+Caller -> Driveline : advance(dt_s, +torque_nm)
+note over Engine : stalls here if the clutch\ndrags it below stall speed
+@enduml

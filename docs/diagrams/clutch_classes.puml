@@ -1,0 +1,55 @@
+@startuml clutch_classes
+title Clutch (tp::clutch)
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::math (see core_classes)" {
+  class Curve
+}
+package "tp::coupling (see core_classes)" {
+  class ShaftPrediction <<struct>> {
+    +free_omega_next_rad_s : double
+    +omega_per_torque : double
+  }
+}
+package "tp::hash (see core_classes)" {
+  class Fnv1a
+}
+
+  package "tp::clutch" {
+    class "Params" as ClutchParams <<struct>> {
+      +engagement : Curve
+      +static_torque_capacity_nm : double
+      +kinetic_ratio : double
+    }
+    class "State" as ClutchState <<struct>> {
+      +locked : bool
+    }
+    class "Input" as ClutchInput <<struct>> {
+      +pedal : double
+    }
+    class "Output" as ClutchOutput <<struct>> {
+      +torque_nm : double
+      +slip_rad_s : double
+      +slip_power_w : double
+      +capacity_nm : double
+    }
+    enum "ParamError" as ClutchParamError
+    class "clutch functions" as ClutchFns <<free functions>> {
+      +validate(const Params&) : optional<ParamError>
+      +step(State&, const Params&, const Input&,
+            engine_side, driveline_side : ShaftPrediction) : Output
+      +hash_append(Fnv1a&, const State&)
+    }
+    ClutchParams *-- Curve
+    ClutchFns ..> ClutchParams
+    ClutchFns ..> ClutchState
+    ClutchFns ..> ClutchInput
+    ClutchFns ..> ClutchOutput
+    ClutchFns ..> ClutchParamError
+  }
+
+ClutchFns ..> ShaftPrediction : engine_side,\ndriveline_side
+ClutchFns ..> Fnv1a
+@enduml

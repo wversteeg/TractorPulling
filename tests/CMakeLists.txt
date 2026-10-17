@@ -1,6 +1,8 @@
 include(GoogleTest)
 
 add_executable(tp_core_tests
+    clutch/clutch_engine_test.cpp
+    clutch/clutch_test.cpp
     engine/engine_determinism_test.cpp
     engine/engine_test.cpp
     hash/fnv1a_test.cpp
@@ -12,6 +14,7 @@ gtest_discover_tests(tp_core_tests DISCOVERY_MODE PRE_TEST)
 
 if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
+        data/clutch_loader_test.cpp
         data/engine_loader_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE

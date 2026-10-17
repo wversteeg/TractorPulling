@@ -68,6 +68,11 @@ State initial_state(const Params& params) noexcept {
 
 namespace {
 
+// Below this the turbo is at rest. The lag decays geometrically and would
+// otherwise reach subnormal values after ~10 minutes without fuel, which are
+// very slow on many CPUs.
+constexpr double kBoostAtRest = 1e-9;
+
 double governor_fuel(const Params& params, double throttle, double omega_rad_s) noexcept {
     const double target_rad_s = params.idle_omega_rad_s +
                                 throttle * (params.high_idle_omega_rad_s - params.idle_omega_rad_s);
@@ -85,33 +90,54 @@ double exhaust_energy(const Params& params, double omega_rad_s) noexcept {
 
 }  // namespace
 
-Output step(State& state, const Params& params, const Input& input, double dt_s) noexcept {
-    const double throttle = std::clamp(input.throttle, 0.0, 1.0);
+Prediction predict(const State& state, const Params& params, double throttle,
+                   double dt_s) noexcept {
+    throttle = std::clamp(throttle, 0.0, 1.0);
     const double omega_rad_s = state.omega_rad_s;
 
-    Output out;
-    out.fuel = state.running ? governor_fuel(params, throttle, omega_rad_s) : 0.0;
+    Prediction p;
+    p.output.fuel = state.running ? governor_fuel(params, throttle, omega_rad_s) : 0.0;
 
     // Implicit (backward Euler) form of the first-order lag. It is stable for
     // any dt and uses only basic arithmetic: exp() is not guaranteed to be
     // bit-identical across platforms' math libraries.
-    const double boost_target = out.fuel * exhaust_energy(params, omega_rad_s);
-    state.boost += (boost_target - state.boost) * dt_s / (params.turbo_time_constant_s + dt_s);
+    const double boost_target = p.output.fuel * exhaust_energy(params, omega_rad_s);
+    p.boost_next =
+        state.boost + (boost_target - state.boost) * dt_s / (params.turbo_time_constant_s + dt_s);
+    if (p.boost_next < kBoostAtRest) {
+        p.boost_next = 0.0;
+    }
 
     const double boost_factor =
-        params.na_torque_fraction + (1.0 - params.na_torque_fraction) * state.boost;
-    out.combustion_torque_nm =
-        out.fuel * params.full_load_torque_nm.evaluate(omega_rad_s) * boost_factor;
-    out.friction_torque_nm =
+        params.na_torque_fraction + (1.0 - params.na_torque_fraction) * p.boost_next;
+    p.output.combustion_torque_nm =
+        p.output.fuel * params.full_load_torque_nm.evaluate(omega_rad_s) * boost_factor;
+    p.output.friction_torque_nm =
         params.friction_torque_nm + params.viscous_friction_nm_s_rad * omega_rad_s;
 
     // Semi-implicit Euler: explicit in combustion and load torque, implicit in
     // the viscous term so strong damping cannot destabilise the step.
-    const double dt_over_inertia = dt_s / params.inertia_kg_m2;
+    p.omega_rad_s = omega_rad_s;
+    p.drive_torque_nm = p.output.combustion_torque_nm - params.friction_torque_nm;
+    p.dt_over_inertia = dt_s / params.inertia_kg_m2;
+    p.viscous_divisor = 1.0 + p.dt_over_inertia * params.viscous_friction_nm_s_rad;
+    return p;
+}
+
+coupling::ShaftPrediction shaft_prediction(const Prediction& p) noexcept {
+    return {
+        .free_omega_next_rad_s =
+            (p.omega_rad_s + p.dt_over_inertia * p.drive_torque_nm) / p.viscous_divisor,
+        .omega_per_torque = p.dt_over_inertia / p.viscous_divisor,
+    };
+}
+
+void advance(State& state, const Params& params, const Prediction& p,
+             double load_torque_nm) noexcept {
+    state.boost = p.boost_next;
     const double next_omega_rad_s =
-        (omega_rad_s + dt_over_inertia * (out.combustion_torque_nm - params.friction_torque_nm -
-                                          input.load_torque_nm)) /
-        (1.0 + dt_over_inertia * params.viscous_friction_nm_s_rad);
+        (p.omega_rad_s + p.dt_over_inertia * (p.drive_torque_nm - load_torque_nm)) /
+        p.viscous_divisor;
 
     // Friction only opposes forward rotation, so it must not drive the engine
     // backwards; it holds the crankshaft at rest instead.
@@ -120,7 +146,12 @@ Output step(State& state, const Params& params, const Input& input, double dt_s)
     if (state.running && state.omega_rad_s < params.stall_omega_rad_s) {
         state.running = false;
     }
-    return out;
+}
+
+Output step(State& state, const Params& params, const Input& input, double dt_s) noexcept {
+    const Prediction p = predict(state, params, input.throttle, dt_s);
+    advance(state, params, p, input.load_torque_nm);
+    return p.output;
 }
 
 }  // namespace tp::engine

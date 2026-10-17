@@ -95,6 +95,10 @@ cmake --preset release && cmake --build --preset release
 
 # Engine alone on a virtual dynamometer, CSV to plot
 ./build/release/tools/tp_pull engine-dyno data/engines/farm_stock_light.toml -o dyno.csv
+
+# Engine and clutch launching a heavy load: slipped in, or dumped (--dump)
+./build/release/tools/tp_pull clutch-launch data/engines/farm_stock_light.toml \
+    data/clutches/farm_stock_light.toml [--dump] -o launch.csv
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; update this section when presets change.
@@ -116,7 +120,7 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 ## Documentation and diagrams
 
 - `docs/architecture.md` shows the class and sequence diagrams. Sources are PlantUML in `docs/diagrams/*.puml`; rendered SVGs live next to them in `docs/diagrams/svg/` and are committed for easy review.
-- **Update the diagrams in the same PR as every change** that adds, removes or changes a type, a public function, a dependency between libraries, or the order of calls in a documented flow. Add a new sequence diagram for each new flow (e.g. clutch coupling, a full pull).
+- **Update the diagrams in the same PR as every change** that adds, removes or changes a type, a public function, a dependency between libraries, or the order of calls in a documented flow. Each component gets its own class diagram (`<topic>_classes.puml`; shared types and the engine are in `core_classes.puml`), and each new flow its own sequence diagram (e.g. clutch coupling, a full pull).
 - Render with `scripts/render_diagrams.sh` (needs Java and Graphviz; downloads a pinned PlantUML). `scripts/render_diagrams.sh --check` verifies every SVG matches its source; CI runs it.
 - On pull requests, CI posts the changed diagrams as one PR comment (`scripts/post_diagram_preview.sh`) and updates it on each push, so they can be reviewed as images.
 

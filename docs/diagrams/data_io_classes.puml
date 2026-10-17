@@ -1,6 +1,7 @@
 @startuml data_io_classes
 title Data loading (tp::data): may throw internally, allocates, never used in the step
 hide empty members
+top to bottom direction
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
 
@@ -18,30 +19,45 @@ package "tp::data" {
     +load_engine(path) : Result<engine::Params>
     +parse_engine(toml_text, source_name) : Result<engine::Params>
   }
-  class Reader <<internal>> {
-    +number(dotted_path) : double
-    +numbers(dotted_path) : vector<double>
-    +error() : optional<LoadError>
+  class "clutch_loader" as ClutchLoader <<free functions>> {
+    +load_clutch(path) : Result<clutch::Params>
+    +parse_clutch(toml_text, source_name) : Result<clutch::Params>
   }
   Result o-- LoadError
   EngineLoader ..> Result : returns
-  EngineLoader ..> Reader : reads fields
+  ClutchLoader ..> Result : returns
 }
 
-package "tp::core (see core_classes)" {
-  class "engine::Params" as Params <<struct>>
-  class "engine::validate()" as Validate <<function>>
+package "tp::data::detail (internal)" {
+  class Reader {
+    +number(dotted_path) : double
+    +numbers(dotted_path) : vector<double>
+    +curve(table, x_key, y_key, x_to_si) : optional<Curve>
+    +error() : optional<LoadError>
+  }
+  class "toml_reader" as TomlFns <<free functions>> {
+    +parse_with<T>(text, source, loader) : Result<T>
+    +load_file_with<T>(path, loader) : Result<T>
+    +make_error(source, field, reason) : LoadError
+  }
+}
+EngineLoader ..> TomlFns
+ClutchLoader ..> TomlFns
+EngineLoader ..> Reader
+ClutchLoader ..> Reader
+
+package "tp::core (see core_classes, clutch_classes)" {
+  class "engine::Params\n+ engine::validate()" as EngineCore <<struct>>
+  class "clutch::Params\n+ clutch::validate()" as ClutchCore <<struct>>
   class "math::Curve" as Curve
-  class "units::rpm_to_rad_s()" as Units <<function>>
 }
 
 package "third party" {
   class "toml++" as Toml <<library>>
 }
 
-EngineLoader ..> Toml : parse
-EngineLoader ..> Units : rpm to SI
-EngineLoader ..> Curve : create
-EngineLoader ..> Params : builds
-EngineLoader ..> Validate : checks
+TomlFns ..> Toml : parse
+Reader ..> Curve : create
+EngineLoader ..> EngineCore : builds, validates
+ClutchLoader ..> ClutchCore : builds, validates
 @enduml
