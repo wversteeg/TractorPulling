@@ -1,5 +1,6 @@
 add_library(tp_core STATIC
     src/clutch/clutch.cpp
+    src/driveline/driveline.cpp
     src/engine/engine.cpp
     src/math/curve.cpp
     src/time/fixed_step_clock.cpp)

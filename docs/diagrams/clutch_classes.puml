@@ -11,6 +11,7 @@ package "tp::coupling (see core_classes)" {
   class ShaftPrediction <<struct>> {
     +free_omega_next_rad_s : double
     +omega_per_torque : double
+    +omega_per_negative_torque : double
   }
 }
 package "tp::hash (see core_classes)" {
@@ -38,6 +39,7 @@ package "tp::hash (see core_classes)" {
     enum "ParamError" as ClutchParamError
     class "clutch functions" as ClutchFns <<free functions>> {
       +validate(const Params&) : optional<ParamError>
+      +capacity_nm(const Params&, pedal) : double
       +step(State&, const Params&, const Input&,
             engine_side, driveline_side : ShaftPrediction) : Output
       +hash_append(Fnv1a&, const State&)

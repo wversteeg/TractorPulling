@@ -80,6 +80,15 @@ TEST(Clutch, CapacityNeverIncreasesWithPedalTravel) {
     EXPECT_DOUBLE_EQ(previous_nm, 0.0);
 }
 
+TEST(Clutch, CapacityHelperMatchesStep) {
+    const Params params = reference_params();
+    State state;
+    for (const double pedal : {-1.0, 0.0, 0.4, 0.5, 0.6, 1.0, 2.0}) {
+        const Output out = step(state, params, {.pedal = pedal}, {}, {.omega_per_torque = 1.0});
+        EXPECT_EQ(capacity_nm(params, pedal), out.capacity_nm) << "pedal " << pedal;
+    }
+}
+
 TEST(Clutch, PressedPedalTransmitsNothing) {
     const Params params = reference_params();
     State state{.locked = true};
@@ -137,6 +146,23 @@ TEST(Clutch, LocksUpWithoutOvershootConservingMomentum) {
     EXPECT_NEAR(initial_energy_j - energy_j, expected_loss_j, 1e-6 * expected_loss_j);
     // Integrated slip power accounts for that loss to within the step error.
     EXPECT_NEAR(dissipated_j, expected_loss_j, 0.01 * expected_loss_j);
+}
+
+// Through a lossy gearbox the driveline responds less to driving torque than
+// to braking torque. The clutch must use the response for the direction the
+// torque actually acts in, or a locked clutch would leave residual slip.
+TEST(Clutch, LocksExactlyWithDirectionDependentResponse) {
+    const Params params = reference_params();
+    for (const double engine_rad_s : {150.0, 50.0}) {
+        State state{.locked = true};
+        Flywheel engine{.inertia_kg_m2 = 1.2, .omega_rad_s = engine_rad_s};
+        Flywheel driveline{.inertia_kg_m2 = 2.0, .omega_rad_s = 100.0, .efficiency = 0.9};
+        // Small speed differences the locked clutch absorbs in one step.
+        engine.omega_rad_s = 100.0 + (engine_rad_s - 100.0) * 1e-3;
+        const Output out = step_pair(state, params, 0.0, engine, driveline);
+        EXPECT_TRUE(state.locked);
+        EXPECT_NEAR(engine.omega_rad_s, driveline.omega_rad_s, 1e-12) << "torque " << out.torque_nm;
+    }
 }
 
 // Slipping clutch transmits its kinetic capacity, in the direction that

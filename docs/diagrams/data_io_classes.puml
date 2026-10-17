@@ -15,17 +15,16 @@ package "tp::data" {
     +value() : const T&
     +error() : const LoadError&
   }
-  class "engine_loader" as EngineLoader <<free functions>> {
-    +load_engine(path) : Result<engine::Params>
-    +parse_engine(toml_text, source_name) : Result<engine::Params>
-  }
-  class "clutch_loader" as ClutchLoader <<free functions>> {
-    +load_clutch(path) : Result<clutch::Params>
-    +parse_clutch(toml_text, source_name) : Result<clutch::Params>
+  class "component loaders" as Loaders <<free functions>> {
+    +load_engine(path) / parse_engine(text, source) : Result<engine::Params>
+    +load_clutch(path) / parse_clutch(text, source) : Result<clutch::Params>
+    +load_driveline(path) / parse_driveline(text, source) : Result<driveline::Params>
+    --
+    each: read fields, convert to SI, build Params,
+    <component>::validate(), name the field on error
   }
   Result o-- LoadError
-  EngineLoader ..> Result : returns
-  ClutchLoader ..> Result : returns
+  Loaders ..> Result : returns
 }
 
 package "tp::data::detail (internal)" {
@@ -41,14 +40,11 @@ package "tp::data::detail (internal)" {
     +make_error(source, field, reason) : LoadError
   }
 }
-EngineLoader ..> TomlFns
-ClutchLoader ..> TomlFns
-EngineLoader ..> Reader
-ClutchLoader ..> Reader
+Loaders ..> TomlFns
+Loaders ..> Reader
 
-package "tp::core (see core_classes, clutch_classes)" {
-  class "engine::Params\n+ engine::validate()" as EngineCore <<struct>>
-  class "clutch::Params\n+ clutch::validate()" as ClutchCore <<struct>>
+package "tp::core (see the component class diagrams)" {
+  class "<component>::Params\n+ <component>::validate()" as CoreParams <<struct>>
   class "math::Curve" as Curve
 }
 
@@ -58,6 +54,5 @@ package "third party" {
 
 TomlFns ..> Toml : parse
 Reader ..> Curve : create
-EngineLoader ..> EngineCore : builds, validates
-ClutchLoader ..> ClutchCore : builds, validates
+Loaders ..> CoreParams : builds, validates
 @enduml
