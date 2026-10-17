@@ -8,6 +8,7 @@ skinparam classAttributeIconSize 0
     class ShaftPrediction <<struct>> {
       +free_omega_next_rad_s : double
       +omega_per_torque : double
+      +omega_per_negative_torque : double
     }
   }
 

@@ -18,6 +18,7 @@ Clutch -> Clutch : capacity = engagement(pedal) * static_capacity
 alt capacity == 0 (pedal pressed)
   Clutch -> Clutch : torque = 0, unlocked
 else
+  Clutch -> Clutch : k_e, k_d = each side's response for the torque's sign\n(the sign of free_e - free_d)
   Clutch -> Clutch : lock_torque = (free_e - free_d) / (k_e + k_d)\n(torque that matches speeds at end of step)
   alt |lock_torque| <= (locked ? static : kinetic) capacity
     Clutch -> Clutch : torque = lock_torque, locked

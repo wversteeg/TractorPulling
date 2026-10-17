@@ -66,6 +66,10 @@ struct Output {
     double capacity_nm = 0.0;
 };
 
+/// Static torque capacity at `pedal` (clamped to [0, 1]) [N·m]. Zero means
+/// the clutch is fully disengaged, e.g. so gears may be changed.
+[[nodiscard]] double capacity_nm(const Params& params, double pedal) noexcept;
+
 /// Solves the clutch torque for this step from both shafts' predictions.
 Output step(State& state, const Params& params, const Input& input,
             const coupling::ShaftPrediction& engine_side,

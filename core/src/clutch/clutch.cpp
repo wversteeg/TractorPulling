@@ -45,13 +45,16 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     return std::nullopt;
 }
 
+double capacity_nm(const Params& params, double pedal) noexcept {
+    pedal = std::clamp(pedal, kPedalReleased, kPedalPressed);
+    return params.engagement.evaluate(pedal) * params.static_torque_capacity_nm;
+}
+
 Output step(State& state, const Params& params, const Input& input,
             const coupling::ShaftPrediction& engine_side,
             const coupling::ShaftPrediction& driveline_side) noexcept {
-    const double pedal = std::clamp(input.pedal, kPedalReleased, kPedalPressed);
-
     Output out;
-    out.capacity_nm = params.engagement.evaluate(pedal) * params.static_torque_capacity_nm;
+    out.capacity_nm = capacity_nm(params, input.pedal);
     const double free_slip_rad_s =
         engine_side.free_omega_next_rad_s - driveline_side.free_omega_next_rad_s;
 
@@ -63,8 +66,12 @@ Output step(State& state, const Params& params, const Input& input,
 
     // End-of-step slip is linear in the clutch torque T (the engine gets -T,
     // the driveline +T): slip = free_slip - (k_engine + k_driveline) * T.
-    // Solve for the torque that makes it zero.
-    const double compliance = engine_side.omega_per_torque + driveline_side.omega_per_torque;
+    // Solve for the torque that makes it zero. T has the sign of free_slip,
+    // which picks each side's response to the torque it receives.
+    const bool engine_drives = free_slip_rad_s >= 0.0;
+    const double compliance =
+        engine_drives ? engine_side.omega_per_negative_torque + driveline_side.omega_per_torque
+                      : engine_side.omega_per_torque + driveline_side.omega_per_negative_torque;
     const double lock_torque_nm = free_slip_rad_s / compliance;
     const double kinetic_capacity_nm = params.kinetic_ratio * out.capacity_nm;
     const double holding_capacity_nm = state.locked ? out.capacity_nm : kinetic_capacity_nm;
