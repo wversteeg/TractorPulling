@@ -10,6 +10,7 @@ add_executable(tp_core_tests
     engine/engine_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp
+    math/trig_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
     vehicle/chain_solver_test.cpp
