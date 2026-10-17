@@ -7,6 +7,7 @@ clutch = "../clutches/farm_stock_light.toml"
 driveline = "../drivelines/farm_stock_light.toml"
 rear_tire = "../tires/pulling_rear.toml"
 rear_tire_count = 2
+pto_efficiency = 0.9              # crankshaft to PTO; class power limits apply at the PTO
 
 # Body points are measured with the tractor level. The rear axle height is
 # the rear tire's radius.

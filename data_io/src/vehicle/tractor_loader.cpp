@@ -86,6 +86,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     const std::string driveline_path = reader.text("tractor.driveline");
     const std::string tire_path = reader.text("tractor.rear_tire");
     const std::int64_t rear_tire_count = reader.integer("tractor.rear_tire_count");
+    const double pto_efficiency = reader.number("tractor.pto_efficiency");
     chassis::Params chassis{
         .mass_kg = reader.number("tractor.chassis.mass_kg"),
         .wheelbase_m = reader.number("tractor.chassis.wheelbase_m"),
@@ -143,14 +144,24 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         const FieldError field_error = describe(*chassis_error);
         return detail::make_error(source, field_error.field, field_error.reason);
     }
-    return vehicle::Params{
+    const vehicle::Params params{
         .engine = *engine,
         .clutch = *clutch,
         .driveline = *driveline,
         .rear_tire = *rear_tire,
         .rear_tire_count = static_cast<int>(rear_tire_count),
         .chassis = chassis,
+        .pto_efficiency = pto_efficiency,
     };
+    // The components and chassis passed their own checks above; what is left
+    // is how the tractor puts them together.
+    if (const auto tractor_error = vehicle::validate(params)) {
+        if (*tractor_error == vehicle::ParamError::kPtoEfficiencyOutOfRange) {
+            return detail::make_error(source, "tractor.pto_efficiency", "must be in (0, 1]");
+        }
+        return detail::make_error(source, "tractor", "inconsistent components");
+    }
+    return params;
 }
 
 }  // namespace

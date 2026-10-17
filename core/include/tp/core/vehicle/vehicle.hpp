@@ -23,6 +23,9 @@ struct Params {
     tire::Params rear_tire;
     int rear_tire_count = 2;
     chassis::Params chassis;
+    /// Crankshaft to PTO shaft, in (0, 1]. The PTO is not simulated; class
+    /// rules limit power measured there.
+    double pto_efficiency = 1.0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -34,6 +37,7 @@ enum class ParamError : std::uint8_t {
     kChassis,
     /// The chassis' rear axle height is not the rear tire's radius.
     kRearAxleHeight,
+    kPtoEfficiencyOutOfRange,
 };
 
 /// Which part of `params` is invalid, if any; each component's own validate()

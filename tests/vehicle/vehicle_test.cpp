@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 #include "reference_vehicle.hpp"
@@ -69,6 +70,12 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
     EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
               ParamError::kRearAxleHeight);
+    EXPECT_EQ(with([](Params& p) { p.pto_efficiency = 0.0; }),
+              ParamError::kPtoEfficiencyOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pto_efficiency = 1.1; }),
+              ParamError::kPtoEfficiencyOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pto_efficiency = std::nan(""); }),
+              ParamError::kPtoEfficiencyOutOfRange);
     EXPECT_FALSE(Model::create([] {
                      Params p = reference_params();
                      p.chassis.mass_kg = 0.0;
