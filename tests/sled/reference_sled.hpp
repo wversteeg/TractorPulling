@@ -7,12 +7,12 @@ namespace tp::sled::testing {
 // Mirrors data/sleds/light_class.toml.
 inline Params reference_params() {
     return Params{
-        .frame_mass_kg = 4000.0,
+        .frame_mass_kg = 3200.0,
         .frame_cg_ahead_of_wheels_m = 0.75,
         .pan_ahead_of_wheels_m = 3.0,
         .hook_ahead_of_wheels_m = 3.3,
         .hook_height_m = 0.45,
-        .box_mass_kg = 2500.0,
+        .box_mass_kg = 2000.0,
         .box_start_ahead_of_wheels_m = 0.0,
         .box_end_ahead_of_wheels_m = 3.0,
         .box_travel_distance_m = 100.0,

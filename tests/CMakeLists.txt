@@ -11,6 +11,7 @@ add_executable(tp_core_tests
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/trig_test.cpp
+    pull/pull_test.cpp
     rules/class_rules_test.cpp
     sled/sled_test.cpp
     tire/tire_test.cpp
