@@ -98,12 +98,12 @@ TEST(Tire, TractionPeaksThenFalls) {
         return traction(params, wheel_speed_for(percent / 100.0, 2.0), 2.0, kLoad_n).force_n;
     };
     double previous_n = 0.0;
-    for (int percent = 1; percent <= 25; ++percent) {
+    for (int percent = 1; percent <= 20; ++percent) {
         ASSERT_GT(force_at(percent), previous_n) << "slip " << percent << " %";
         previous_n = force_at(percent);
     }
-    EXPECT_NEAR(previous_n, 0.75 * kLoad_n, 1e-6);
-    for (int percent = 26; percent < 100; ++percent) {
+    EXPECT_NEAR(previous_n, 0.95 * kLoad_n, 1e-6);
+    for (int percent = 21; percent < 100; ++percent) {
         ASSERT_LE(force_at(percent), previous_n) << "slip " << percent << " %";
         previous_n = force_at(percent);
     }
@@ -136,7 +136,7 @@ TEST(Tire, NeverAddsEnergy) {
 // More load gives more traction, but μ falls: less than proportional.
 TEST(Tire, LoadSensitivity) {
     const Params params = reference_params();
-    const double wheel_m_s = wheel_speed_for(0.25, 2.0);
+    const double wheel_m_s = wheel_speed_for(0.2, 2.0);
     double previous_force_n = 0.0;
     double previous_mu = std::numeric_limits<double>::infinity();
     for (int i = 0; i < 12; ++i) {
@@ -149,7 +149,7 @@ TEST(Tire, LoadSensitivity) {
         previous_mu = mu;
     }
     EXPECT_NEAR(traction(params, wheel_m_s, 2.0, params.nominal_load_n).force_n,
-                0.75 * params.nominal_load_n, 1e-6);
+                0.95 * params.nominal_load_n, 1e-6);
 }
 
 TEST(Tire, NoLoadNoTraction) {

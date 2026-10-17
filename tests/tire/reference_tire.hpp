@@ -9,15 +9,15 @@
 namespace tp::tire::testing {
 
 // Mirrors data/tires/pulling_rear.toml: a large rear tractor tire on a
-// prepared pulling track. Peak μ 0.75 at 25 % slip, 0.5 at full wheelspin.
+// prepared pulling track. Peak μ 0.95 at 20 % slip, 0.78 at full wheelspin.
 inline Params reference_params() {
     const std::array<math::CurvePoint, 6> mu = {{
         {0.0, 0.0},
-        {0.05, 0.35},
-        {0.15, 0.65},
-        {0.25, 0.75},
-        {0.5, 0.62},
-        {1.0, 0.5},
+        {0.05, 0.5},
+        {0.12, 0.88},
+        {0.2, 0.95},
+        {0.4, 0.88},
+        {1.0, 0.78},
     }};
     const auto curve = math::Curve::create(mu);
     if (!curve) {
