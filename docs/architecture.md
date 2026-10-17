@@ -14,6 +14,13 @@ is plain data. Free functions operate on `Params`, `State` and `Input`.
 
 ![Core classes](diagrams/svg/core_classes.svg)
 
+### Clutch (`tp::clutch`)
+
+Couples two shafts through their `ShaftPrediction`s; see the coupling
+sequence below.
+
+![Clutch classes](diagrams/svg/clutch_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
@@ -26,6 +33,14 @@ validation rules. Never used inside the simulation step.
 ### One engine step (1 kHz)
 
 ![Engine step](diagrams/svg/engine_step_sequence.svg)
+
+### Engine, clutch and driveline coupled
+
+The clutch solves for the torque that makes both shafts' speeds match at the
+end of the step, limited by its capacity. This keeps the stiff friction
+contact stable and free of chatter at 1 kHz.
+
+![Clutch coupling](diagrams/svg/clutch_coupling_sequence.svg)
 
 ### Loading an engine definition
 

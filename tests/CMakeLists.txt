@@ -1,6 +1,8 @@
 include(GoogleTest)
 
 add_executable(tp_core_tests
+    clutch/clutch_engine_test.cpp
+    clutch/clutch_test.cpp
     engine/engine_determinism_test.cpp
     engine/engine_test.cpp
     hash/fnv1a_test.cpp

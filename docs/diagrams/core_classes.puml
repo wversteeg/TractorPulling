@@ -1,8 +1,15 @@
 @startuml core_classes
-title Simulation core (tp::core): types and dependencies
+title Simulation core (tp::core): shared types and the engine
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
+
+  package "tp::coupling" {
+    class ShaftPrediction <<struct>> {
+      +free_omega_next_rad_s : double
+      +omega_per_torque : double
+    }
+  }
 
   package "tp::math" {
     class CurvePoint <<struct>> {
@@ -80,12 +87,7 @@ skinparam classAttributeIconSize 0
     EngineFns ..> ParamError
   }
 
-  package "tp::coupling" {
-    class ShaftPrediction <<struct>> {
-      +free_omega_next_rad_s : double
-      +omega_per_torque : double
-    }
-  }
+
   EngineFns ..> ShaftPrediction
 
   package "tp::hash" {
