@@ -1,0 +1,11 @@
+# NTTO standard class (standaardklasse, farm stock), 3.5 t. Limits from the
+# NTTO technical rules, chapter 13 (standard classes); check the current
+# year's rulebook before changing them. Rules the simulation does not model
+# (at most 4 cylinders with a turbo or 6 without, rubber tires only, a
+# wheelie bar that can carry the tractor) are not listed here.
+
+[class]
+max_mass_kg = 3500.0          # tractor as weighed, driver included
+max_pto_power_hp = 85.0       # metric hp (pk) at the PTO shaft
+max_engine_speed_rpm = 2700.0 # unloaded
+max_hitch_height_m = 0.5      # and never above the rear axle centre

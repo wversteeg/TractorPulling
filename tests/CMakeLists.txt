@@ -23,6 +23,7 @@ gtest_discover_tests(tp_core_tests DISCOVERY_MODE PRE_TEST)
 
 if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
+        data/class_rules_loader_test.cpp
         data/clutch_loader_test.cpp
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp
