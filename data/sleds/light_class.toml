@@ -1,0 +1,33 @@
+# Transfer sled set up for the light farm-stock class (NTTO standard 3.5 t).
+# Lengths along the sled are measured forward from the rear wheels' contact.
+# Masses, friction and the push-down distance are starting values to tune:
+# with the push-down at 60 m the reference tractor stalls a little after it
+# in its pulling gear, and spins out in a low gear.
+
+[sled]
+frame_mass_kg = 3200.0
+frame_cg_ahead_of_wheels_m = 0.75
+pan_ahead_of_wheels_m = 3.0          # centre of the pan's contact
+pan_friction_coefficient = 0.5
+wheel_rolling_resistance_coefficient = 0.05
+
+[sled.hook]
+ahead_of_wheels_m = 3.3
+height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
+
+[sled.weight_box]
+mass_kg = 2000.0
+start_ahead_of_wheels_m = 0.0        # over the rear wheels
+end_ahead_of_wheels_m = 3.0          # over the pan
+travel_distance_m = 100.0            # sled travel to move it from start to end
+
+# Engages at a set distance on the track, chosen per event from the test
+# pull and the track's state (for example 60 or 80 m).
+[sled.pushdown]
+start_m = 60.0
+ramp_m = 2.0                         # travel until the wheels are fully off
+
+[sled.chain]
+length_m = 1.15                      # 1.1 to 1.2 m
+stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
+damping_n_s_per_m = 15000.0
