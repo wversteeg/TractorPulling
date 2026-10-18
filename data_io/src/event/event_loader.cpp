@@ -36,6 +36,8 @@ FieldError describe(event::ParamError error) {
             return {"event.rules", "need 0 <= decide_after_pulls < repull_after_pulls"};
         case ParamError::kStepNotPositive:
             return {"event.rules.step_m", "must be > 0"};
+        case ParamError::kMaxStepsNotPositive:
+            return {"event.rules.max_steps_per_change", "must be >= 1"};
         case ParamError::kSled:
             return {"event.sled", "invalid"};
         case ParamError::kRunningOrder:
@@ -102,6 +104,8 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .repull_after_pulls = static_cast<int>(reader.integer("event.rules.repull_after_pulls")),
         .sled_target_m = reader.number("event.rules.sled_target_m"),
         .step_m = reader.number("event.rules.step_m"),
+        .max_steps_per_change =
+            static_cast<int>(reader.integer("event.rules.max_steps_per_change")),
     };
     const driver::Plan driver{
         .gear = static_cast<int>(gear),

@@ -23,7 +23,8 @@ constexpr Rules kRules{.full_pull_m = 100.0,
                        .decide_after_pulls = 2,
                        .repull_after_pulls = 5,
                        .sled_target_m = 90.0,
-                       .step_m = 5.0};
+                       .step_m = 5.0,
+                       .max_steps_per_change = 4};
 
 std::vector<int> in_order(int count) {
     std::vector<int> order(static_cast<std::size_t>(count));
@@ -89,6 +90,7 @@ TEST(EventRules, RejectsNonsense) {
     EXPECT_EQ(with([](Rules& r) { r.pull_off_places = 0; }), ParamError::kPlacesOutOfRange);
     EXPECT_EQ(with([](Rules& r) { r.repull_after_pulls = 2; }), ParamError::kTurnsOutOfOrder);
     EXPECT_EQ(with([](Rules& r) { r.step_m = 0.0; }), ParamError::kStepNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.max_steps_per_change = 0; }), ParamError::kMaxStepsNotPositive);
 }
 
 TEST(Event, RejectsABadRunningOrder) {
@@ -142,6 +144,27 @@ TEST(Event, TestPullBeatenByLaterTestPullsIsRepulled) {
     event.record(95.0);  // within the target: no change
     ASSERT_EQ(event.decision_due(), 0);
     EXPECT_FALSE(event.suggested_keep());
+}
+
+// The operator learns what a step is worth from what each change does:
+// two steps lighter that bring the next test pull 20 m further are worth
+// about 10 m each, so the next change is smaller.
+TEST(Event, OperatorLearnsWhatAStepIsWorth) {
+    Event event = make(8);
+    EXPECT_EQ(event.step_estimate_m(), kRules.step_m);
+    event.record(84.0);   // 2 steps lighter
+    event.record(104.0);  // 20 m further: 10 m a step (and the line moves to 110 m)
+    EXPECT_GT(event.step_estimate_m(), kRules.step_m);
+    EXPECT_NEAR(event.step_estimate_m(), 0.5 * (kRules.step_m + 10.0), 1e-12);
+}
+
+// A change is never more than the rules allow, however far off the test
+// pull, and the pull-off sled neither.
+TEST(Event, ChangesAreCapped) {
+    Event event = make(6);
+    const Outcome outcome = event.record(130.0);
+    EXPECT_EQ(outcome.change, SledChange::kHeavier);
+    EXPECT_EQ(outcome.steps, kRules.max_steps_per_change);
 }
 
 // A test pull between 100 and 110 m moves the line to 110 m; the sled stays.

@@ -36,8 +36,12 @@ struct Rules {
     /// A test pull stopping short of this makes the operator lighten the
     /// sled.
     double sled_target_m = 0.0;
-    /// The operator's rule of thumb: what one sled step is worth [m].
+    /// The operator's rule of thumb at the start of the day: what one sled
+    /// step is worth [m]. They learn better from each change they make.
     double step_m = 0.0;
+    /// Most steps the operator changes the sled by at once, after a test
+    /// pull or for a pull-off.
+    int max_steps_per_change = 0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -46,6 +50,7 @@ enum class ParamError : std::uint8_t {
     kPlacesOutOfRange,
     kTurnsOutOfOrder,
     kStepNotPositive,
+    kMaxStepsNotPositive,
     kSled,
     kRunningOrder,
 };
@@ -123,6 +128,8 @@ public:
     /// The sled and full-pull line for the next pull.
     [[nodiscard]] const sled::Params& sled() const noexcept { return sled_; }
     [[nodiscard]] double full_pull_m() const noexcept { return line_m_; }
+    /// What the operator now reckons one sled step is worth [m].
+    [[nodiscard]] double step_estimate_m() const noexcept { return step_estimate_m_; }
 
     /// Records where the sled stopped in the pull next() named, and what the
     /// operator does about it if it was a test pull.
@@ -162,6 +169,9 @@ private:
     void insert(std::size_t position, const Pull& pull) noexcept;
     void schedule_repull(int puller) noexcept;
     Outcome judge_test(int puller, double reached_m) noexcept;
+    /// What the last change did, seen in this test pull.
+    void learn(double reached_m) noexcept;
+    [[nodiscard]] int steps_for(double distance_m) const noexcept;
     /// After a pull or a decision: a decision now due, or the next round.
     void advance() noexcept;
     void start_pull_off() noexcept;
@@ -180,6 +190,11 @@ private:
     int completed_ = 0;
     int pull_off_round_ = 0;
     std::optional<int> pending_decision_;
+    double step_estimate_m_ = 0.0;
+    /// Steps of the last change, heavier positive, and the test pull before
+    /// it; 0 once a test pull has shown its effect.
+    int last_change_steps_ = 0;
+    double last_test_m_ = 0.0;
     std::array<Standing, kMaxPullers> standings_{};
 };
 

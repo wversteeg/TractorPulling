@@ -75,10 +75,11 @@ for the big features; they are repeated at the end for completeness.
   the same millimetre, so a re-pull repeats the test pull exactly. Real
   pulls differ: the driver's timing, the track under the tires. A seeded
   variation per pull would make re-pulls a gamble.
-- **Smarter sled operator and pullers.** The operator works from a rule of
-  thumb (one step is about 5 m) and only changes knives and push-down;
-  scripted pullers keep a test pull only when no one has beaten it since.
-  Both could learn from the pulls they see.
+- **Smarter sled operator and pullers.** The operator learns what a step is
+  worth from each change, but treats every test puller as equal (a strong
+  puller after a change looks like a big effect) and only changes knives
+  and push-down. Scripted pullers keep a test pull only when no one has
+  beaten it.
 
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
