@@ -73,7 +73,7 @@ TEST(ClassRules, FlagsEachViolation) {
 
     // On small rear tires a 0.5 m hitch sits above the axle.
     const Compliance small_tires = check_with([](vehicle::Params& t) {
-        t.rear_tire.radius_m = 0.45;
+        t.rear_tire.size.radius_m = 0.45;
         t.chassis.rear_axle_height_m = 0.45;
     });
     EXPECT_TRUE(small_tires.hitch_above_rear_axle);

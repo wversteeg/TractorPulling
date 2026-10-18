@@ -14,16 +14,19 @@
 namespace tp::vehicle {
 namespace {
 
+using testing::reference_ground;
 using testing::reference_model;
 using testing::reference_params;
 
 constexpr double kDt_s = 0.001;
+const Ground kGround = reference_ground();
 
 // A driver: idle in neutral, select a gear, rev up with the clutch pressed,
 // then slip the clutch in over 3 s or dump it, and pull at full throttle.
 struct Pull {
     Model model = reference_model();
     State state = initial_state(model);
+    Ground ground = kGround;
     Output last;
     double max_slip = 0.0;
     double min_front_n = 1e12;
@@ -38,7 +41,7 @@ struct Pull {
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
-            last = step(state, model, input, {.pull_n = drawbar_n}, kDt_s);
+            last = step(state, model, input, ground, {.pull_n = drawbar_n}, kDt_s);
             EXPECT_FALSE(last.shift_refused);
             if (t_s >= 3.0) {
                 max_slip = std::max(max_slip, last.slip_ratio);
@@ -65,8 +68,9 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.engine.inertia_kg_m2 = 0.0; }), ParamError::kEngine);
     EXPECT_EQ(with([](Params& p) { p.clutch.kinetic_ratio = 0.0; }), ParamError::kClutch);
     EXPECT_EQ(with([](Params& p) { p.driveline.gear_count = 0; }), ParamError::kDriveline);
-    EXPECT_EQ(with([](Params& p) { p.rear_tire.radius_m = 0.0; }), ParamError::kRearTire);
+    EXPECT_EQ(with([](Params& p) { p.rear_tire.size.radius_m = 0.0; }), ParamError::kRearTire);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
+    EXPECT_EQ(with([](Params& p) { p.front_tire.section_width_m = 0.0; }), ParamError::kFrontTire);
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
     EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
               ParamError::kRearAxleHeight);
@@ -94,7 +98,7 @@ TEST(Vehicle, ModelPutsTheRearWheelsOnTheAxle) {
 TEST(Vehicle, IdlesAtRestInNeutral) {
     Pull pull;
     for (int i = 0; i < 3000; ++i) {
-        pull.last = step(pull.state, pull.model, {}, {}, kDt_s);
+        pull.last = step(pull.state, pull.model, {}, kGround, {}, kDt_s);
     }
     EXPECT_TRUE(pull.state.engine.running);
     EXPECT_EQ(pull.state.chassis.position_m, 0.0);
@@ -104,8 +108,8 @@ TEST(Vehicle, IdlesAtRestInNeutral) {
 
 TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
     Pull pull;
-    const Output out =
-        step(pull.state, pull.model, {.throttle = 0.0, .clutch_pedal = 0.0, .gear = 3}, {}, kDt_s);
+    const Output out = step(pull.state, pull.model,
+                            {.throttle = 0.0, .clutch_pedal = 0.0, .gear = 3}, kGround, {}, kDt_s);
     EXPECT_TRUE(out.shift_refused);
     EXPECT_EQ(pull.state.driveline.gear, driveline::kNeutral);
 }
@@ -121,11 +125,11 @@ TEST(Vehicle, SteadyPullBalancesTractionAndResistance) {
     EXPECT_TRUE(pull.state.clutch.locked);
     const Params& p = pull.model.params();
     const double front_rolling_n =
-        p.chassis.front_rolling_resistance_coefficient * pull.last.axle_loads.front_n;
+        pull.last.front_rolling_resistance * pull.last.axle_loads.front_n;
     EXPECT_NEAR(pull.last.tire_force_n, kDrawbar_n + front_rolling_n, 1.0);
     EXPECT_GT(pull.last.slip_ratio, 0.0);
-    EXPECT_LT(pull.last.slip_ratio, 0.1) << "well below the 25 % peak";
-    const double wheel_m_s = pull.state.driveline.output_omega_rad_s * p.rear_tire.radius_m;
+    EXPECT_LT(pull.last.slip_ratio, 0.1) << "well below the 28 % peak";
+    const double wheel_m_s = pull.state.driveline.output_omega_rad_s * p.rear_tire.size.radius_m;
     EXPECT_NEAR(pull.state.chassis.velocity_m_s, wheel_m_s * (1.0 - pull.last.slip_ratio), 1e-3);
     EXPECT_NEAR(pull.state.engine.omega_rad_s, pull.state.driveline.input_omega_rad_s, 1e-9);
 }
@@ -144,7 +148,7 @@ TEST(Vehicle, DumpingTheClutchSpinsTheWheels) {
     EXPECT_LT(slipped.max_slip, dumped.max_slip);
 }
 
-// A load the tires cannot hold (beyond μ 0.95 of the loaded rear axle): in a
+// A load the tires cannot hold (beyond μ 0.91 of the loaded rear axle): in a
 // low gear the engine spins the wheels and the tractor stays where it is.
 TEST(Vehicle, TooHeavyALoadSpinsTheWheelsInALowGear) {
     Pull pull;
@@ -174,7 +178,7 @@ TEST(Vehicle, SteadyPullUnloadsTheFrontByItsMoments) {
     const chassis::AxleLoads& loads = pull.last.axle_loads;
     const double weight_n = p.chassis.mass_kg * units::kStandardGravity_m_s2;
     const double rolling_nm =
-        p.rear_tire.rolling_resistance_coefficient * loads.rear_n * p.rear_tire.radius_m;
+        pull.last.rear_rolling_resistance * loads.rear_n * p.rear_tire.size.radius_m;
     const double expected_front_n =
         weight_n * p.chassis.cg_ahead_of_rear_axle_m / p.chassis.wheelbase_m -
         (kDrawbar_n * p.chassis.hitch_height_m + rolling_nm) / p.chassis.wheelbase_m;
@@ -223,7 +227,7 @@ GrowingLoad pull_growing_load(int gear) {
                           .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
                           .gear = t_s < 0.5 ? driveline::kNeutral : gear};
         result.load_n = kStartLoad_n + std::max(0.0, t_s - kRiseFrom_s) * kLoadRate_n_per_s;
-        const Output out = step(state, model, input, {.pull_n = result.load_n}, kDt_s);
+        const Output out = step(state, model, input, kGround, {.pull_n = result.load_n}, kDt_s);
         if (t_s > kRiseFrom_s + 2.0) {
             result.max_slip = std::max(result.max_slip, out.slip_ratio);
         }
@@ -240,18 +244,37 @@ GrowingLoad pull_growing_load(int gear) {
 }
 
 // The light class pulls on engine torque: in its pulling gears the engine
-// lugs down and stalls while the tires still grip (slip below the 20 % peak).
+// lugs down and stalls while the tires still grip (slip below the 28 % peak).
 // In a low gear the engine multiplies enough torque to break the tires loose
 // first, and the pull ends in wheelspin. Choosing the gear matters.
 TEST(Vehicle, LightClassPullsOnTorqueInItsPullingGears) {
+    // Where traction peaks on the reference track (see the tire tests).
+    constexpr double kPeakSlip = 0.28;
     for (const int gear : {6, 7}) {
         const GrowingLoad pull = pull_growing_load(gear);
         EXPECT_TRUE(pull.stalled) << "gear " << gear;
-        EXPECT_LT(pull.max_slip, 0.2) << "gear " << gear;
+        EXPECT_LT(pull.max_slip, kPeakSlip) << "gear " << gear;
     }
     const GrowingLoad low = pull_growing_load(4);
     EXPECT_TRUE(low.spun_out);
     EXPECT_FALSE(low.stalled);
+}
+
+// On softer ground both axles sink in further: the same drawbar pull costs
+// more rolling resistance, so the rear tires work harder for it.
+TEST(Vehicle, SofterGroundRollsHarder) {
+    Pull firm;
+    firm.run(4, 5000.0, false, 15.0);
+    Pull soft;
+    soft.ground.rear.cone_index_pa *= 0.3;
+    soft.ground.front.cone_index_pa *= 0.3;
+    soft.run(4, 5000.0, false, 15.0);
+    ASSERT_TRUE(firm.state.engine.running);
+    ASSERT_TRUE(soft.state.engine.running);
+    EXPECT_GT(soft.last.front_rolling_resistance, firm.last.front_rolling_resistance);
+    EXPECT_GT(soft.last.rear_rolling_resistance, firm.last.rear_rolling_resistance);
+    EXPECT_GT(soft.last.tire_force_n, firm.last.tire_force_n);
+    EXPECT_GT(soft.last.slip_ratio, firm.last.slip_ratio);
 }
 
 TEST(Vehicle, PullingLoadsTheRearAxle) {
@@ -271,7 +294,7 @@ std::uint64_t pull_hash() {
         const Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                           .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
                           .gear = t_s < 0.5 ? driveline::kNeutral : 3};
-        step(pull.state, pull.model, input, {.pull_n = 8000.0}, kDt_s);
+        step(pull.state, pull.model, input, kGround, {.pull_n = 8000.0}, kDt_s);
         hash_append(hash, pull.state);
     }
     return hash.value();
@@ -284,7 +307,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xa521455e13baae45ULL);
+    EXPECT_EQ(pull_hash(), 0xdcf03755977420c1ULL);
 }
 
 }  // namespace

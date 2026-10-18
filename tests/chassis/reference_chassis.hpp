@@ -16,7 +16,6 @@ inline Params reference_params() {
         .rear_axle_height_m = 0.8,
         .hitch_height_m = 0.5,
         .hitch_behind_rear_axle_m = 0.4,
-        .front_rolling_resistance_coefficient = 0.06,
         .front_tires = {.stiffness_n_per_m = 400000.0, .damping_n_s_per_m = 6000.0},
         .wheelie_bar = {.behind_rear_axle_m = 1.3,
                         .tip_height_m = 0.15,

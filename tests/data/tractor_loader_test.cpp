@@ -27,6 +27,12 @@ rear_tire = "tires/pulling_rear.toml"
 rear_tire_count = 2
 pto_efficiency = 0.9
 
+[tractor.front_tire]
+radius_m = 0.5
+section_width_m = 0.28
+section_height_m = 0.25
+deflection_m = 0.025
+
 [tractor.chassis]
 mass_kg = 3500.0
 wheelbase_m = 2.4
@@ -35,7 +41,6 @@ cg_height_m = 1.0
 pitch_inertia_kg_m2 = 2800.0
 hitch_height_m = 0.5
 hitch_behind_rear_axle_m = 0.4
-front_rolling_resistance_coefficient = 0.06
 
 [tractor.chassis.front_tires]
 stiffness_n_per_m = 400000.0
@@ -78,7 +83,8 @@ std::uint64_t pull_signature(const vehicle::Params& params) {
         const double t_s = i * 0.001;
         const vehicle::Input input{
             .throttle = 1.0, .clutch_pedal = t_s < 2.0 ? 1.0 : 0.0, .gear = 3};
-        vehicle::step(state, *model, input, {.pull_n = 6000.0}, 0.001);
+        vehicle::step(state, *model, input, vehicle::testing::reference_ground(),
+                      {.pull_n = 6000.0}, 0.001);
         vehicle::hash_append(hash, state);
     }
     return hash.value();
@@ -98,14 +104,14 @@ TEST(TractorLoader, ShippedTractorMatchesTestReference) {
 TEST(TractorLoader, ResolvesComponentsRelativeToTheTractor) {
     const auto result = parse_tractor(kTractor, "tractor.toml", kDataDir);
     ASSERT_TRUE(result.ok()) << result.error().message;
-    EXPECT_DOUBLE_EQ(result.value().rear_tire.radius_m, 0.8);
+    EXPECT_DOUBLE_EQ(result.value().rear_tire.size.radius_m, 0.8);
 }
 
 // The rear axle rides at the rear tire's radius; the file does not repeat it.
 TEST(TractorLoader, TakesTheRearAxleHeightFromTheTire) {
     const auto result = parse_tractor(kTractor, "tractor.toml", kDataDir);
     ASSERT_TRUE(result.ok()) << result.error().message;
-    EXPECT_EQ(result.value().chassis.rear_axle_height_m, result.value().rear_tire.radius_m);
+    EXPECT_EQ(result.value().chassis.rear_axle_height_m, result.value().rear_tire.size.radius_m);
     EXPECT_EQ(vehicle::validate(result.value()), std::nullopt);
 }
 
@@ -132,6 +138,25 @@ TEST(TractorLoader, ReportsAnInvalidComponentInItsOwnFile) {
     const std::string message = error_of(with("tires/pulling_rear.toml", tire_path));
     EXPECT_NE(message.find("bad_tire.toml: tire.radius_m: must be > 0"), std::string::npos)
         << message;
+}
+
+TEST(TractorLoader, ReadsTheFrontTire) {
+    const auto result = parse_tractor(kTractor, "tractor.toml", kDataDir);
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().front_tire.radius_m, 0.5);
+    EXPECT_DOUBLE_EQ(result.value().front_tire.section_width_m, 0.28);
+    EXPECT_DOUBLE_EQ(result.value().front_tire.section_height_m, 0.25);
+    EXPECT_DOUBLE_EQ(result.value().front_tire.deflection_m, 0.025);
+}
+
+TEST(TractorLoader, RejectsANonsenseFrontTire) {
+    EXPECT_NE(error_of(with("deflection_m = 0.025", "deflection_m = 0.3"))
+                  .find("tractor.toml: tractor.front_tire.deflection_m: must be at least 0 and "
+                        "less than the section height"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("section_width_m = 0.28", ""))
+                  .find("tractor.front_tire.section_width_m: missing or not a number"),
+              std::string::npos);
 }
 
 TEST(TractorLoader, RejectsNonsenseChassisValues) {

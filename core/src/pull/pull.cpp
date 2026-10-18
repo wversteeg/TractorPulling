@@ -12,11 +12,15 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (sled::validate(params.sled)) {
         return ParamError::kSled;
     }
+    if (soil::validate(params.soil)) {
+        return ParamError::kSoil;
+    }
     return std::nullopt;
 }
 
-Model::Model(const vehicle::Model& tractor, const sled::Params& sled) noexcept
-    : tractor_(tractor), sled_(sled) {}
+Model::Model(const vehicle::Model& tractor, const sled::Params& sled,
+             const soil::Surface& surface) noexcept
+    : tractor_(tractor), sled_(sled), surface_(surface) {}
 
 std::optional<Model> Model::create(const Params& params) noexcept {
     if (validate(params)) {
@@ -26,7 +30,7 @@ std::optional<Model> Model::create(const Params& params) noexcept {
     if (!tractor) {
         return std::nullopt;
     }
-    return Model{*tractor, params.sled};
+    return Model{*tractor, params.sled, soil::surface(params.soil)};
 }
 
 ChainForce chain_force(const sled::Chain& chain, const ChainEnd& hitch,
@@ -100,7 +104,8 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
     const chassis::Drawbar drawbar{.pull_n = along_x_n, .lift_n = -along_z_n};
     const sled::HookForce hook{.forward_n = along_x_n, .up_n = along_z_n};
 
-    out.tractor = vehicle::step(state.tractor, model.tractor(), input, drawbar, dt_s);
+    const vehicle::Ground ground{.rear = model.surface(), .front = model.surface()};
+    out.tractor = vehicle::step(state.tractor, model.tractor(), input, ground, drawbar, dt_s);
 
     out.sled = sled::loads(sled, state.sled, hook);
     const sled::Prediction prediction =

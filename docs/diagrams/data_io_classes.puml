@@ -31,7 +31,7 @@ package "tp::data" {
     +load_tractor(path) : Result<vehicle::Params>
     +parse_tractor(text, source, base_directory) : Result<vehicle::Params>
     --
-    reads the chassis, PTO efficiency and the component paths,
+    reads the chassis, front tire size, PTO efficiency and the component paths,
     loads each component relative to the tractor file,
     then vehicle::validate()
   }

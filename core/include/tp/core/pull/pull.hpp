@@ -3,6 +3,7 @@
 #include "tp/core/chassis/chassis.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/sled/sled.hpp"
+#include "tp/core/soil/soil.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include <cstdint>
@@ -10,15 +11,18 @@
 
 namespace tp::pull {
 
-/// A pull: the tractor, the sled and the chain between them.
+/// A pull: the tractor, the sled and the chain between them, on one soil
+/// along the whole track.
 struct Params {
     vehicle::Params tractor;
     sled::Params sled;
+    soil::Composition soil;
 };
 
 enum class ParamError : std::uint8_t {
     kTractor,
     kSled,
+    kSoil,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
@@ -29,12 +33,16 @@ public:
 
     [[nodiscard]] const vehicle::Model& tractor() const noexcept { return tractor_; }
     [[nodiscard]] const sled::Params& sled() const noexcept { return sled_; }
+    /// The track's surface, derived from its soil at setup.
+    [[nodiscard]] const soil::Surface& surface() const noexcept { return surface_; }
 
 private:
-    Model(const vehicle::Model& tractor, const sled::Params& sled) noexcept;
+    Model(const vehicle::Model& tractor, const sled::Params& sled,
+          const soil::Surface& surface) noexcept;
 
     vehicle::Model tractor_;
     sled::Params sled_;
+    soil::Surface surface_;
 };
 
 struct State {

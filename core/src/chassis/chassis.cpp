@@ -103,7 +103,6 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.rear_axle_height_m,
                                 params.hitch_height_m,
                                 params.hitch_behind_rear_axle_m,
-                                params.front_rolling_resistance_coefficient,
                                 params.front_tires.stiffness_n_per_m,
                                 params.front_tires.damping_n_s_per_m,
                                 bar.behind_rear_axle_m,
@@ -138,10 +137,6 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.hitch_behind_rear_axle_m < 0.0) {
         return ParamError::kHitchAheadOfRearAxle;
-    }
-    if (params.front_rolling_resistance_coefficient < 0.0 ||
-        params.front_rolling_resistance_coefficient >= 1.0) {
-        return ParamError::kRollingResistanceOutOfRange;
     }
     if (params.front_tires.stiffness_n_per_m <= 0.0) {
         return ParamError::kFrontTireStiffnessNotPositive;
@@ -229,7 +224,7 @@ void advance(State& state, const Prediction& prediction, double drive_force_n,
 }
 
 void advance_pitch(State& state, const Params& params, double axle_torque_nm,
-                   const Drawbar& drawbar, double dt_s) noexcept {
+                   const Drawbar& drawbar, double front_rolling_resistance, double dt_s) noexcept {
     const SinCos pitch = math::sin_cos(state.pitch_rad);
     const double b_m = params.cg_ahead_of_rear_axle_m;
     const double h_m = cg_above_axle_m(params);
@@ -253,7 +248,7 @@ void advance_pitch(State& state, const Params& params, double axle_torque_nm,
         // Rolling drag of the front tires and the bar acts backwards at the
         // ground, below the axle: nose-down. Like all rolling resistance it
         // only acts while moving.
-        const double drag_n = params.front_rolling_resistance_coefficient * front.force_n +
+        const double drag_n = front_rolling_resistance * front.force_n +
                               params.wheelie_bar.rolling_resistance_coefficient * bar.force_n;
         moment_nm -= drag_n * params.rear_axle_height_m;
     }

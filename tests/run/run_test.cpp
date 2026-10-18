@@ -19,8 +19,9 @@ constexpr double kDt_s = 0.001;
 constexpr Rules kRules{.track_length_m = 100.0, .max_duration_s = 120.0};
 
 pull::Model model_with(const sled::Params& sled) {
-    const auto model =
-        pull::Model::create({.tractor = vehicle::testing::reference_params(), .sled = sled});
+    const auto model = pull::Model::create({.tractor = vehicle::testing::reference_params(),
+                                            .sled = sled,
+                                            .soil = tire::testing::reference_soil()});
     if (!model) {
         std::abort();
     }
@@ -194,9 +195,9 @@ TEST(Run, ReplayMatchesRegression) {
     Result again;
     EXPECT_EQ(run_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x7f545e6b4681229cULL);
-    // 70.338686391909093 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.195ad09b03663p+6);
+    EXPECT_EQ(hash, 0x715ce99300e9a4cULL);
+    // 72.003697615397158 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.2003c94ec4d0ep+6);
     EXPECT_EQ(result.ending, Ending::kStalled);
 }
 

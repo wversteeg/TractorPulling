@@ -10,6 +10,8 @@ namespace {
 constexpr double kDt_s = 0.001;
 constexpr double kDrawbar_n = 8000.0;
 constexpr tp::chassis::Drawbar kPull{.pull_n = kDrawbar_n};
+// Front tires' motion resistance per unit of load on a firm track.
+constexpr double kFrontRollingResistance = 0.06;
 
 // The pitch part of one 1 kHz step: axle loads from the state, then pitch
 // with both contacts evaluated. Pulling steadily, so the front tires are in
@@ -27,7 +29,8 @@ void BM_ChassisPitchStep(benchmark::State& state) {
     const double axle_torque_nm = kDrawbar_n * chassis.rear_axle_height_m;
     for (auto _ : state) {
         benchmark::DoNotOptimize(tp::chassis::axle_loads(chassis, body, kPull));
-        tp::chassis::advance_pitch(body, chassis, axle_torque_nm, kPull, kDt_s);
+        tp::chassis::advance_pitch(body, chassis, axle_torque_nm, kPull, kFrontRollingResistance,
+                                   kDt_s);
         benchmark::ClobberMemory();
     }
     if (tp::chassis::axle_loads(chassis, body, kPull).front_n <= 0.0) {

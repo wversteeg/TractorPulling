@@ -1,3 +1,4 @@
+#include "tp/core/soil/soil.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
@@ -11,6 +12,8 @@ namespace {
 constexpr double kDt_s = 0.001;
 constexpr int kPullingGear = 4;
 constexpr double kDrawbar_n = 8000.0;
+// The reference track: moist, rolled clay and sand.
+constexpr tp::soil::Composition kSoil{.clay_fraction = 0.5, .moisture = 0.14, .compaction = 0.8};
 
 // One full 1 kHz step of the whole tractor pulling steadily: engine, clutch,
 // driveline, tires and chassis, with the chain solve. The per-step cost of
@@ -27,6 +30,8 @@ void BM_VehicleStep(benchmark::State& state) {
         state.SkipWithError("inconsistent tractor");
         return;
     }
+    const tp::soil::Surface surface = tp::soil::surface(kSoil);
+    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
     // Get to a steady pull before timing.
     tp::vehicle::State vehicle = tp::vehicle::initial_state(*model);
     for (int i = 0; i < 20000; ++i) {
@@ -35,12 +40,12 @@ void BM_VehicleStep(benchmark::State& state) {
             .throttle = 1.0,
             .clutch_pedal = std::clamp(1.0 - (t_s - 2.0) / 3.0, 0.0, 1.0),
             .gear = kPullingGear};
-        tp::vehicle::step(vehicle, *model, input, {.pull_n = kDrawbar_n}, kDt_s);
+        tp::vehicle::step(vehicle, *model, input, ground, {.pull_n = kDrawbar_n}, kDt_s);
     }
     const tp::vehicle::Input pulling{.throttle = 1.0, .clutch_pedal = 0.0, .gear = kPullingGear};
     for (auto _ : state) {
         benchmark::DoNotOptimize(
-            tp::vehicle::step(vehicle, *model, pulling, {.pull_n = kDrawbar_n}, kDt_s));
+            tp::vehicle::step(vehicle, *model, pulling, ground, {.pull_n = kDrawbar_n}, kDt_s));
         benchmark::ClobberMemory();
     }
     if (!vehicle.engine.running || !vehicle.clutch.locked) {

@@ -22,8 +22,13 @@ for the big features; they are repeated at the end for completeness.
   pull on the day's track. A reference tractor could run that test pull and
   choose the push-down for a target distance.
 - **Tires digging in.** Under sustained wheelspin a tire digs down and its
-  grip changes over time; modelled only through the soil's fall-off past the
-  grip peak, not as a state.
+  grip changes over time. Modelled without memory: the soil's fall-off past
+  the grip peak, and a motion resistance that grows with slip (Brixius). A
+  rut that deepens while the tire keeps spinning would need a state.
+- **Tire deflection that follows the load.** Brixius' mobility number uses
+  the tire's working deflection as a fixed size; a deflection that follows
+  the load (and tire pressure as a tuning setting) would make light and
+  heavy setups differ more.
 
 ## Sled
 

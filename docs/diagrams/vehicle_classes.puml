@@ -8,7 +8,8 @@ package "components (see their class diagrams)" {
   class "engine::Params / State" as Engine
   class "clutch::Params / State" as Clutch
   class "driveline::Params / State\n+ Response" as Driveline
-  class "tire::Params\n+ Traction" as Tire
+  class "tire::Params / Size\n+ Traction" as Tire
+  class "soil::Surface" as Surface
   class "chassis::Params / State\n+ AxleLoads" as Chassis
 }
 
@@ -19,6 +20,7 @@ package "tp::vehicle" {
     +driveline : driveline::Params
     +rear_tire : tire::Params
     +rear_tire_count : int
+    +front_tire : tire::Size
     +chassis : chassis::Params
     +pto_efficiency : double
   }
@@ -40,10 +42,15 @@ package "tp::vehicle" {
     +clutch_pedal : double
     +gear : int
   }
+  class Ground <<struct>> {
+    +rear : soil::Surface
+    +front : soil::Surface
+  }
   class Output <<struct>> {
     +engine : engine::Output
     +clutch_torque_nm, clutch_slip_rad_s, clutch_slip_power_w
     +tire_force_n (held pull at a standstill), slip_ratio
+    +rear_rolling_resistance, front_rolling_resistance
     +axle_loads : AxleLoads
     +shift_refused : bool
   }
@@ -58,7 +65,7 @@ package "tp::vehicle" {
   class "vehicle functions" as VehicleFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +initial_state(const Model&) : State
-    +step(State&, const Model&, const Input&, const chassis::Drawbar&, dt_s) : Output
+    +step(State&, const Model&, const Input&, const Ground&,\n      const chassis::Drawbar&, dt_s) : Output
     +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
     +hash_append(Fnv1a&, const State&)
   }
@@ -66,6 +73,7 @@ package "tp::vehicle" {
   VehicleFns ..> Model
   VehicleFns ..> State
   VehicleFns ..> Input
+  VehicleFns ..> Ground
   VehicleFns ..> Output
   VehicleFns ..> TireLine
   VehicleFns ..> ChainSolution
@@ -75,4 +83,5 @@ Params *-- Clutch
 Params *-- Driveline
 Params *-- Tire
 Params *-- Chassis
+Ground *-- Surface
 @enduml

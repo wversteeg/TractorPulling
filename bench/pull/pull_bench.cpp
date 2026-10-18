@@ -1,4 +1,5 @@
 #include "tp/core/pull/pull.hpp"
+#include "tp/core/soil/soil.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
@@ -15,6 +16,8 @@ constexpr int kPullingGear = 6;
 // the engine; out of reach, the pull stays steady and the cost per step is
 // the same.
 constexpr double kOutOfReach_m = 1.0e9;
+// The reference track: moist, rolled clay and sand.
+constexpr tp::soil::Composition kSoil{.clay_fraction = 0.5, .moisture = 0.14, .compaction = 0.8};
 
 // One full 1 kHz step of a pull: the chain, the whole tractor and the sled.
 // The per-step cost of the simulation.
@@ -29,7 +32,8 @@ void BM_PullStep(benchmark::State& state) {
     tp::sled::Params steady_sled = sled.value();
     steady_sled.pushdown_start_m = kOutOfReach_m;
     steady_sled.box_travel_distance_m = kOutOfReach_m;
-    const auto model = tp::pull::Model::create({.tractor = tractor.value(), .sled = steady_sled});
+    const auto model =
+        tp::pull::Model::create({.tractor = tractor.value(), .sled = steady_sled, .soil = kSoil});
     if (!model) {
         state.SkipWithError("inconsistent tractor or sled");
         return;

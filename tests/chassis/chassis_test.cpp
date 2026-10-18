@@ -17,6 +17,8 @@ using testing::reference_params;
 using units::kStandardGravity_m_s2;
 
 constexpr double kDt_s = 0.001;
+// Front tires' motion resistance per unit of load on a firm track.
+constexpr double kFrontRollingResistance = 0.06;
 
 double weight_n(const Params& params) {
     return params.mass_kg * kStandardGravity_m_s2;
@@ -74,7 +76,7 @@ struct PitchRig {
             state.acceleration_m_s2 = acceleration_m_s2;
             loads = axle_loads(params, state, drawbar);
             front_lifted = front_lifted || loads.front_lifted;
-            advance_pitch(state, params, axle_torque_nm, drawbar, kDt_s);
+            advance_pitch(state, params, axle_torque_nm, drawbar, kFrontRollingResistance, kDt_s);
             max_pitch_rad = std::max(max_pitch_rad, state.pitch_rad);
             min_pitch_rad = std::min(min_pitch_rad, state.pitch_rad);
         }
@@ -111,8 +113,6 @@ TEST(ChassisParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.hitch_height_m = -0.1; }), ParamError::kHitchHeightNegative);
     EXPECT_EQ(with([](Params& p) { p.hitch_behind_rear_axle_m = -0.1; }),
               ParamError::kHitchAheadOfRearAxle);
-    EXPECT_EQ(with([](Params& p) { p.front_rolling_resistance_coefficient = 1.0; }),
-              ParamError::kRollingResistanceOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.front_tires.stiffness_n_per_m = 0.0; }),
               ParamError::kFrontTireStiffnessNotPositive);
     EXPECT_EQ(with([](Params& p) { p.front_tires.damping_n_s_per_m = -1.0; }),

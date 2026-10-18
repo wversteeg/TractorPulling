@@ -31,6 +31,7 @@
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/sled/sled.hpp"
+#include "tp/core/soil/soil.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
@@ -66,6 +67,10 @@ constexpr double kWattsPerKilowatt = 1000.0;
 constexpr double kJoulesPerKilojoule = 1000.0;
 constexpr double kNewtonsPerKilonewton = 1000.0;
 constexpr double kPercent = 100.0;
+// The reference track, moist and rolled clay and sand, until track files
+// describe their soil.
+constexpr tp::soil::Composition kReferenceSoil{
+    .clay_fraction = 0.5, .moisture = 0.14, .compaction = 0.8};
 
 // --- engine-dyno ------------------------------------------------------------
 
@@ -161,12 +166,14 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     bool front_lifted = false;
     bool on_wheelie_bar = false;
     double max_pitch_rad = 0.0;
+    const tp::soil::Surface surface = tp::soil::surface(kReferenceSoil);
+    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
     double t_s = 0.0;
     for (int i = 0; t_s < kPullMaxDuration_s; ++i) {
         t_s = i * kDt_s;
         const tp::vehicle::Input input = pull_input(t_s, options);
         const tp::vehicle::Output out =
-            tp::vehicle::step(state, model, input, {.pull_n = options.resistance_n}, kDt_s);
+            tp::vehicle::step(state, model, input, ground, {.pull_n = options.resistance_n}, kDt_s);
         if (out.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
             return EXIT_FAILURE;
@@ -277,7 +284,8 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& first_sled,
            "sled_pan_load_kn,sled_resistance_kn\n";
     tp::sled::Params sled = first_sled;
     for (int round = 0; round <= kMaxPullOffs; ++round) {
-        const auto model = tp::pull::Model::create({.tractor = tractor, .sled = sled});
+        const auto model =
+            tp::pull::Model::create({.tractor = tractor, .sled = sled, .soil = kReferenceSoil});
         if (!model) {
             std::cerr << "inconsistent tractor or sled\n";
             return EXIT_FAILURE;

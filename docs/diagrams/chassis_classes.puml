@@ -14,7 +14,6 @@ package "tp::chassis" {
     +rear_axle_height_m : double
     +hitch_height_m : double
     +hitch_behind_rear_axle_m : double
-    +front_rolling_resistance_coefficient : double
     +front_tires : Contact
     +wheelie_bar : WheelieBar
   }
@@ -62,7 +61,7 @@ package "tp::chassis" {
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
     +advance(State&, const Prediction&, drive_force_n, dt_s)
-    +advance_pitch(State&, const Params&, axle_torque_nm, const Drawbar&, dt_s)
+    +advance_pitch(State&, const Params&, axle_torque_nm, const Drawbar&,\n      front_rolling_resistance, dt_s)
     +hash_append(Fnv1a&, const State&)
   }
   Params *-- Contact : front_tires

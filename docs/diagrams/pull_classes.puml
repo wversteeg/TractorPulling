@@ -8,19 +8,23 @@ package "components (see their class diagrams)" {
   class "vehicle::Params / Model / State\n+ Input, Output" as Vehicle
   class "sled::Params / State\n+ Chain, Loads, HookForce" as Sled
   class "chassis::Drawbar / Hitch" as Chassis
+  class "soil::Composition / Surface" as Soil
 }
 
 package "tp::pull" {
   class Params <<struct>> {
     +tractor : vehicle::Params
     +sled : sled::Params
+    +soil : soil::Composition, one along the track
   }
   class Model {
     -tractor_ : vehicle::Model
     -sled_ : sled::Params
+    -surface_ : soil::Surface, from the soil at setup
     +{static} create(const Params&) : optional<Model>
     +tractor() : const vehicle::Model&
     +sled() : const sled::Params&
+    +surface() : const soil::Surface&
   }
   class State <<struct>> {
     +tractor : vehicle::State
@@ -42,6 +46,7 @@ package "tp::pull" {
   enum ParamError {
     kTractor
     kSled
+    kSoil
   }
   class "pull functions" as PullFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
