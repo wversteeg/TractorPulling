@@ -64,6 +64,18 @@ double Reader::number(std::string_view path) {
     return *value;
 }
 
+std::optional<double> Reader::optional_number(std::string_view path) {
+    if (!has(path)) {
+        return std::nullopt;
+    }
+    const double value = number(path);
+    return error_ ? std::nullopt : std::optional<double>{value};
+}
+
+bool Reader::has(std::string_view path) const {
+    return static_cast<bool>(root_->at_path(path));
+}
+
 std::int64_t Reader::integer(std::string_view path) {
     const std::optional<std::int64_t> value = root_->at_path(path).value_exact<std::int64_t>();
     if (!value) {

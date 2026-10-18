@@ -36,8 +36,8 @@
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
-#include "tp/data/run/track_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
+#include "tp/data/track/track_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
 #include <algorithm>
@@ -67,8 +67,8 @@ constexpr double kWattsPerKilowatt = 1000.0;
 constexpr double kJoulesPerKilojoule = 1000.0;
 constexpr double kNewtonsPerKilonewton = 1000.0;
 constexpr double kPercent = 100.0;
-// The reference track, moist and rolled clay and sand, until track files
-// describe their soil.
+// The constant-force pull runs on the reference track's soil: moist, rolled
+// clay and sand (data/tracks/ideal_clay_sand.toml).
 constexpr tp::soil::Composition kReferenceSoil{
     .clay_fraction = 0.5, .moisture = 0.14, .compaction = 0.8};
 
@@ -277,23 +277,21 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
 }
 
 // A run, and after every full pull a pull-off on a heavier sled.
-int run(const tp::vehicle::Params& tractor, const tp::sled::Params& first_sled,
-        const tp::run::Rules& rules, const PullOptions& options, std::ostream& csv) {
+int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
+        const tp::data::Track& track, const PullOptions& options, std::ostream& csv) {
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
            "sled_pan_load_kn,sled_resistance_kn\n";
-    tp::sled::Params sled = first_sled;
+    // The class's sled with the day's push-down.
+    tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
-        const auto model = tp::pull::Model::create({.tractor = tractor,
-                                                    .sled = sled,
-                                                    .track = {.soil = kReferenceSoil,
-                                                              .moisture_along_m = std::nullopt,
-                                                              .compaction_along_m = std::nullopt}});
+        const auto model =
+            tp::pull::Model::create({.tractor = tractor, .sled = sled, .track = track.ground});
         if (!model) {
-            std::cerr << "inconsistent tractor or sled\n";
+            std::cerr << "inconsistent tractor, sled or track\n";
             return EXIT_FAILURE;
         }
-        const auto result = one_run(*model, rules, options, round, csv);
+        const auto result = one_run(*model, track.rules, options, round, csv);
         if (!result) {
             return EXIT_FAILURE;
         }
@@ -452,12 +450,12 @@ int main(int argc, char** argv) {
     if (command == "run" && positional.size() == 3) {
         const auto tractor = load_or_report(tp::data::load_tractor(positional[0]));
         const auto sled = load_or_report(tp::data::load_sled(positional[1]));
-        const auto rules = load_or_report(tp::data::load_track(positional[2]));
-        if (!tractor || !sled || !rules) {
+        const auto track = load_or_report(tp::data::load_track(positional[2]));
+        if (!tractor || !sled || !track) {
             return EXIT_FAILURE;
         }
         return with_output(*options, [&](std::ostream& csv) {
-            return run(*tractor, *sled, *rules, options->pull, csv);
+            return run(*tractor, *sled, *track, options->pull, csv);
         });
     }
     if (command == "check" && positional.size() == 2) {

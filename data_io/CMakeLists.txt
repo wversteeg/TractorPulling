@@ -6,7 +6,7 @@ add_library(tp_data STATIC
     src/driveline/driveline_loader.cpp
     src/engine/engine_loader.cpp
     src/rules/class_rules_loader.cpp
-    src/run/track_loader.cpp
+    src/track/track_loader.cpp
     src/sled/sled_loader.cpp
     src/tire/tire_fields.cpp
     src/tire/tire_loader.cpp

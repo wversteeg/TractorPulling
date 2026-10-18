@@ -22,8 +22,8 @@ Try a run:
 ```bash
 cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/standard_100m.toml --gear 6 -o run.csv
-# run: 70.34 m, engine stalled (29.3 s, top 12.0 km/h)
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 -o run.csv
+# run: 71.76 m, engine stalled (29.9 s, top 12.1 km/h)
 ```
 
 ## Requirements

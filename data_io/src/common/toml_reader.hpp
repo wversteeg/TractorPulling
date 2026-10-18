@@ -27,6 +27,9 @@ public:
     Reader(const toml::table& root, std::string_view source) : root_(&root), source_(source) {}
 
     double number(std::string_view path);
+    // Absent is fine (nothing); present but not a number is an error.
+    std::optional<double> optional_number(std::string_view path);
+    [[nodiscard]] bool has(std::string_view path) const;
     std::int64_t integer(std::string_view path);
     std::string text(std::string_view path);
     std::vector<double> numbers(std::string_view path);

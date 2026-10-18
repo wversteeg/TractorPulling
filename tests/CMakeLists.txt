@@ -33,6 +33,7 @@ if(TP_BUILD_DATA_IO)
         data/clutch_loader_test.cpp
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp
+        data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp
         data/tire_loader_test.cpp
         data/track_loader_test.cpp
