@@ -109,6 +109,10 @@ for the big features; they are repeated at the end for completeness.
   derived values (front tire preload, pitch inertia about the axle) every
   step. Moving them into a model built at setup would save some of its
   ~60 ns.
+- **Side grip shares the traction's mobility number.** Steering added about
+  80 ns to a vehicle step (about 290 ns now, x86-64 release): each axle's
+  side grip computes its own mobility number and exponential. The rear
+  tires could reuse the one traction already computed.
 
 ## Roadmap features (from CLAUDE.md "Later")
 

@@ -120,6 +120,8 @@ struct Traction {
     double force_n = 0.0;
     double force_per_slip_speed = 0.0;  // [N per m/s]
     double slip_ratio = 0.0;
+    /// full_bite() for this load and ground, which traction works from.
+    double full_bite = 0.0;
 };
 
 [[nodiscard]] Traction traction(const Params& params, double wheel_surface_speed_m_s,

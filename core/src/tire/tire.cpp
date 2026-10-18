@@ -120,6 +120,7 @@ Traction traction(const Params& params, double wheel_surface_speed_m_s, double g
 
     const TractionCurve& curve = params.traction;
     const double bite = full_bite(params, load_n, surface);
+    out.full_bite = bite;
     const double slip_term = math::exp(-curve.slip_rate * s);
     const double built = 1.0 - slip_term;
     const double kept = 1.0 - surface.spin_fall_off * s * s;

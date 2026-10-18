@@ -139,9 +139,7 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
                         out.axle_loads.front_n / kFrontTires, ground.front);
     const tire::SideGrip rear_grip = tire::with_traction(
         tire::side_grip(tire_params.size, tire_params.cornering, load_per_tire_n, ground.rear),
-        traction.force_n,
-        tire::full_bite(tire_params, load_per_tire_n, ground.rear) * load_per_tire_n,
-        traction.slip_ratio);
+        traction.force_n, traction.full_bite * load_per_tire_n, traction.slip_ratio);
     out.front_side_force_n =
         kFrontTires * tire::side_force_n(front_grip, state.front_side_deflection_m);
     out.rear_side_force_n = tires * tire::side_force_n(rear_grip, state.rear_side_deflection_m);
