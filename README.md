@@ -26,6 +26,28 @@ cmake --preset release && cmake --build --preset release
 # run: 71.76 m, engine stalled (29.9 s, top 12.1 km/h)
 ```
 
+### Track conditions
+
+Every event's track is different. A track file gives its soil (clay
+fraction, moisture, compaction), optionally how that changes along the
+track, and the push-down the sled operator sets for the day. The soil sets
+how strong the ground is and how well it grips. The tires (Brixius), the
+sled's pan and its wheels all work on the ground where they are. Compare
+the shipped tracks:
+
+```bash
+./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
+    data/sleds/light_class.toml data/tracks/*.toml --gear 6
+# track                         cone index   grip  fall-off  push-down  result
+# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  72.69 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  71.76 m, engine stalled
+# loose_sand                        907 kPa   1.00      0.29     60.0 m  67.84 m, engine stalled
+# wet_heavy_clay                    539 kPa   1.00      0.28     70.0 m  75.64 m, wheels spun out
+```
+
+On the wet clay even the pulling gear ends in wheelspin: grip, not engine
+torque, limits the pull there.
+
 ## Requirements
 
 - CMake 3.25+ and Ninja

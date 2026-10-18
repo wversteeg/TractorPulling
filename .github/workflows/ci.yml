@@ -84,6 +84,12 @@ jobs:
             done
           done
 
+      - name: Compare the tracks
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull compare-tracks
+          data/tractors/farm_stock_light.toml data/sleds/light_class.toml
+          data/tracks/*.toml --gear 6
+
       - name: Run pulls in every gear
         run: |
           for gear in 1 2 3 4 5 6 7 8; do

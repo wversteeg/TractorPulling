@@ -108,6 +108,10 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] -o run.csv
 
+# The same tractor, sled and driving on several tracks: one line per track
+./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
+    data/sleds/light_class.toml data/tracks/*.toml [--gear 6] [--dump]
+
 # May this tractor compete in this class? Exits non-zero if not
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
     data/classes/ntto_standard_3500.toml
