@@ -90,7 +90,9 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
     const auto field = field::generate(base.reference, base.variation, base.class_rules,
                                        base.pullers, season.seed);
     auto championship = season::Championship::create(season.points, base.pullers);
-    ASSERT_TRUE(field && championship);
+    if (!field || !championship) {
+        FAIL() << "the field or championship";
+    }
     hash::Fnv1a hash;
     std::uint64_t number = 0;
     for (const SeasonRound& round : season.rounds) {
@@ -102,7 +104,9 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
         const auto played = field::play_event(
             base.rules, venue, *field, base.variation, base.pull_to_pull,
             std::span{order.data(), static_cast<std::size_t>(base.pullers)}, event_seed + 1);
-        ASSERT_TRUE(played.has_value()) << round.name;
+        if (!played) {
+            FAIL() << round.name;
+        }
         for (const field::LogEntry& entry : played->entries()) {
             hash.add(entry.reached_m);
         }
