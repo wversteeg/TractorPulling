@@ -134,6 +134,7 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 - `docs/architecture.md` shows the class and sequence diagrams. Sources are PlantUML in `docs/diagrams/*.puml`; rendered SVGs live next to them in `docs/diagrams/svg/` and are committed for easy review.
 - **Update the diagrams in the same PR as every change** that adds, removes or changes a type, a public function, a dependency between libraries, or the order of calls in a documented flow. Each component gets its own class diagram (`<topic>_classes.puml`; shared types and the engine are in `core_classes.puml`), and each new flow its own sequence diagram (e.g. clutch coupling, a full pull).
 - Render with `scripts/render_diagrams.sh` (needs Java and Graphviz; downloads a pinned PlantUML). `scripts/render_diagrams.sh --check` verifies every SVG matches its source; CI runs it.
+- `docs/future_improvements.md` collects ideas, known simplifications and anything put out of scope. When a step consciously leaves something out, add it there; when it gets built, remove it.
 - On pull requests, CI posts the changed diagrams as one PR comment (`scripts/post_diagram_preview.sh`) and updates it on each push, so they can be reviewed as images.
 
 ## Workflow
