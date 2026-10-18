@@ -3,8 +3,8 @@
 //   tp_pull engine-dyno <engine.toml> [-o <out.csv>]
 //   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
 //                [-o <out.csv>]
-//   tp_pull pull <tractor.toml> --sled <sled.toml> [--gear N] [--dump]
-//                [-o <out.csv>]
+//   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
+//               [-o <out.csv>]
 //   tp_pull check <tractor.toml> <class.toml>
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
@@ -13,9 +13,11 @@
 // pull drives the whole tractor: idle in neutral, select the gear with the
 // clutch pressed, rev up, slip the clutch in over 3 s or, with --dump, drop
 // it, and pull at full throttle until 100 m, a stall or 30 s, against a
-// constant drawbar force. With --sled it pulls that sled on its chain
-// instead, until the sled reaches 100 m, the engine stalls or the wheels
-// spin with the sled stopped.
+// constant drawbar force: a test stand for the tractor.
+//
+// run drives the same way against a sled on its chain, by the track's rules:
+// the run ends at the sled's first stop or with a full pull, and every full
+// pull is followed by a pull-off on a heavier sled. It prints each result.
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility. A scripted full pull follows in Milestone 1, step 7.
@@ -27,10 +29,13 @@
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/pull/pull.hpp"
 #include "tp/core/rules/class_rules.hpp"
+#include "tp/core/run/run.hpp"
+#include "tp/core/sled/sled.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
+#include "tp/data/run/track_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
@@ -40,6 +45,8 @@
 #include <cstdlib>
 #include <fstream>
 #include <functional>
+#include <iomanip>
+#include <ios>
 #include <iostream>
 #include <optional>
 #include <span>
@@ -123,15 +130,11 @@ constexpr double kPullSelectGear_s = 0.5;
 constexpr double kPullRevUpEnd_s = 3.0;
 constexpr double kPullSlipIn_s = 3.0;
 constexpr double kPullMaxDuration_s = 30.0;
-constexpr double kSledPullMaxDuration_s = 120.0;
-// The run is over when the wheels spin this hard with the sled stopped.
-constexpr double kSpunOutSlip = 0.9;
 
 struct PullOptions {
     int gear = 4;
     double resistance_n = 8000.0;
     bool dump = false;
-    std::optional<std::string_view> sled_path;
 };
 
 tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
@@ -212,60 +215,88 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     return EXIT_SUCCESS;
 }
 
-int sled_pull(const tp::pull::Model& model, const PullOptions& options, std::ostream& csv) {
-    csv << "time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
-           "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
-           "sled_pan_load_kn,sled_resistance_kn\n";
+// --- run --------------------------------------------------------------------
 
-    tp::pull::State state = tp::pull::initial_state(model);
-    double max_tension_n = 0.0;
-    double max_pitch_rad = 0.0;
-    double t_s = 0.0;
-    std::string_view ending = "time up";
-    for (int i = 0; t_s < kSledPullMaxDuration_s; ++i) {
-        t_s = i * kDt_s;
+// Pull-offs after full pulls before the tool gives up making the sled heavier.
+constexpr int kMaxPullOffs = 10;
+
+std::string_view describe(tp::run::Ending ending) {
+    switch (ending) {
+        case tp::run::Ending::kFullPull:
+            return "full pull";
+        case tp::run::Ending::kStalled:
+            return "engine stalled";
+        case tp::run::Ending::kSpunOut:
+            return "wheels spun out";
+        case tp::run::Ending::kStopped:
+            return "stopped";
+        case tp::run::Ending::kTimedOut:
+            return "timed out";
+    }
+    return "?";
+}
+
+// One run on `model`, writing CSV rows tagged with the pull-off `round`.
+std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::run::Rules& rules,
+                                       const PullOptions& options, int round, std::ostream& csv) {
+    tp::run::State state = tp::run::start(model);
+    for (int i = 0; !state.result; ++i) {
+        const double t_s = i * kDt_s;
         const tp::vehicle::Input input = pull_input(t_s, options);
-        const tp::pull::Output out = tp::pull::step(state, model, input, kDt_s);
+        const tp::pull::Output out = tp::run::step(state, model, rules, input, kDt_s);
         if (out.tractor.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
-            return EXIT_FAILURE;
+            return std::nullopt;
         }
-        max_tension_n = std::max(max_tension_n, out.chain.tension_n);
-        max_pitch_rad = std::max(max_pitch_rad, state.tractor.chassis.pitch_rad);
-
         if (i % kStepsPerRow == 0) {
+            const tp::pull::State& pull = state.pull;
             // Output only: atan2 may differ in the last bit between platforms.
             const double chain_angle_rad = std::atan2(out.chain.direction_z, out.chain.direction_x);
-            csv << t_s << ',' << input.clutch_pedal << ',' << state.tractor.driveline.gear << ','
-                << rad_s_to_rpm(state.tractor.engine.omega_rad_s) << ','
-                << state.sled.velocity_m_s * kMetersPerSecondToKmh << ',' << state.sled.distance_m
+            csv << round << ',' << t_s << ',' << input.clutch_pedal << ','
+                << pull.tractor.driveline.gear << ','
+                << rad_s_to_rpm(pull.tractor.engine.omega_rad_s) << ','
+                << pull.sled.velocity_m_s * kMetersPerSecondToKmh << ',' << pull.sled.distance_m
                 << ',' << out.tractor.slip_ratio << ','
                 << out.tractor.axle_loads.rear_n / kNewtonsPerKilonewton << ','
                 << out.tractor.axle_loads.front_n / kNewtonsPerKilonewton << ','
-                << rad_to_deg(state.tractor.chassis.pitch_rad) << ','
+                << rad_to_deg(pull.tractor.chassis.pitch_rad) << ','
                 << out.chain.tension_n / kNewtonsPerKilonewton << ',' << rad_to_deg(chain_angle_rad)
                 << ',' << out.sled.box_ahead_of_wheels_m << ',' << out.sled.pushdown << ','
                 << out.sled.pan_n / kNewtonsPerKilonewton << ','
                 << out.sled.resistance_n / kNewtonsPerKilonewton << '\n';
         }
-        if (!state.tractor.engine.running) {
-            ending = "engine stalled";
-            break;
-        }
-        if (state.sled.distance_m >= kTrackLength_m) {
-            ending = "full pull";
-            break;
-        }
-        if (t_s > kPullRevUpEnd_s + kPullSlipIn_s && state.sled.velocity_m_s == 0.0 &&
-            out.tractor.slip_ratio > kSpunOutSlip) {
-            ending = "wheels spun out";
-            break;
-        }
     }
-    std::cerr << "gear " << options.gear << ", " << (options.dump ? "dumped" : "slipped in") << ": "
-              << ending << " at " << state.sled.distance_m << " m after " << t_s
-              << " s; peak chain tension " << max_tension_n / kNewtonsPerKilonewton
-              << " kN; peak pitch " << rad_to_deg(max_pitch_rad) << "°\n";
+    return state.result;
+}
+
+// A run, and after every full pull a pull-off on a heavier sled.
+int run(const tp::vehicle::Params& tractor, const tp::sled::Params& first_sled,
+        const tp::run::Rules& rules, const PullOptions& options, std::ostream& csv) {
+    csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
+           "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
+           "sled_pan_load_kn,sled_resistance_kn\n";
+    tp::sled::Params sled = first_sled;
+    for (int round = 0; round <= kMaxPullOffs; ++round) {
+        const auto model = tp::pull::Model::create({.tractor = tractor, .sled = sled});
+        if (!model) {
+            std::cerr << "inconsistent tractor or sled\n";
+            return EXIT_FAILURE;
+        }
+        const auto result = one_run(*model, rules, options, round, csv);
+        if (!result) {
+            return EXIT_FAILURE;
+        }
+        std::cout << (round == 0 ? std::string{"run"} : "pull-off " + std::to_string(round)) << ": "
+                  << std::fixed << std::setprecision(2) << result->distance_m << " m, "
+                  << describe(result->ending) << " (" << std::setprecision(1) << result->time_s
+                  << " s, top " << result->top_speed_m_s * kMetersPerSecondToKmh << " km/h)\n";
+        std::cout.unsetf(std::ios::fixed);
+        if (result->ending != tp::run::Ending::kFullPull) {
+            return EXIT_SUCCESS;
+        }
+        sled = tp::sled::heavier(sled);
+    }
+    std::cerr << "still full pulls after " << kMaxPullOffs << " pull-offs\n";
     return EXIT_SUCCESS;
 }
 
@@ -318,8 +349,6 @@ std::optional<Options> parse_options(std::span<char* const> args) {
         const bool has_value = i + 1 < args.size();
         if (arg == "-o" && has_value) {
             options.output_path = args[++i];
-        } else if (arg == "--sled" && has_value) {
-            options.pull.sled_path = args[++i];
         } else if (arg == "--dump") {
             options.pull.dump = true;
         } else if (arg == "--gear" && has_value) {
@@ -347,8 +376,8 @@ int usage() {
     std::cerr << "usage: tp_pull engine-dyno <engine.toml> [-o <out.csv>]\n"
                  "       tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]\n"
                  "                    [-o <out.csv>]\n"
-                 "       tp_pull pull <tractor.toml> --sled <sled.toml> [--gear N] [--dump]\n"
-                 "                    [-o <out.csv>]\n"
+                 "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
+                 "                   [--dump] [-o <out.csv>]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
 }
@@ -401,19 +430,6 @@ int main(int argc, char** argv) {
         if (!params) {
             return EXIT_FAILURE;
         }
-        if (options->pull.sled_path) {
-            const auto sled = load_or_report(tp::data::load_sled(*options->pull.sled_path));
-            if (!sled) {
-                return EXIT_FAILURE;
-            }
-            const auto model = tp::pull::Model::create({.tractor = *params, .sled = *sled});
-            if (!model) {
-                std::cerr << positional[0] << ": inconsistent tractor or sled\n";
-                return EXIT_FAILURE;
-            }
-            return with_output(
-                *options, [&](std::ostream& csv) { return sled_pull(*model, options->pull, csv); });
-        }
         const auto model = tp::vehicle::Model::create(*params);
         if (!model) {
             std::cerr << positional[0] << ": inconsistent tractor\n";
@@ -421,6 +437,17 @@ int main(int argc, char** argv) {
         }
         return with_output(*options,
                            [&](std::ostream& csv) { return pull(*model, options->pull, csv); });
+    }
+    if (command == "run" && positional.size() == 3) {
+        const auto tractor = load_or_report(tp::data::load_tractor(positional[0]));
+        const auto sled = load_or_report(tp::data::load_sled(positional[1]));
+        const auto rules = load_or_report(tp::data::load_track(positional[2]));
+        if (!tractor || !sled || !rules) {
+            return EXIT_FAILURE;
+        }
+        return with_output(*options, [&](std::ostream& csv) {
+            return run(*tractor, *sled, *rules, options->pull, csv);
+        });
     }
     if (command == "check" && positional.size() == 2) {
         const auto tractor = load_or_report(tp::data::load_tractor(positional[0]));
