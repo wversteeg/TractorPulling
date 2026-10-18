@@ -45,6 +45,7 @@ package "tp::tire" {
     +force_n : double
     +force_per_slip_speed : double
     +slip_ratio : double
+    +full_bite : double
   }
   enum ParamError
   class "tire functions" as TireFns <<free functions>> {
