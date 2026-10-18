@@ -17,16 +17,26 @@ env:
 
 jobs:
   build-test:
-    name: ${{ matrix.compiler }} ${{ matrix.preset }}
-    runs-on: ubuntu-24.04
+    name: ${{ matrix.compiler }} ${{ matrix.preset }}${{ matrix.arch == 'arm64' && ' arm64' || '' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
         compiler: [gcc, clang]
         preset: [debug, release]
+        arch: [x86-64]
         include:
           - compiler: clang
             preset: asan-ubsan
+            arch: x86-64
+          # The regression hashes in the tests are fixed values: passing them
+          # on ARM shows the simulation is bit-identical across platforms.
+          - compiler: gcc
+            preset: release
+            arch: arm64
+          - compiler: clang
+            preset: release
+            arch: arm64
     steps:
       - uses: actions/checkout@v4
 
