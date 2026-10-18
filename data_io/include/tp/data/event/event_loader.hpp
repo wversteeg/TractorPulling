@@ -21,6 +21,7 @@ struct EventDefinition {
     event::Rules rules;
     field::Puller reference;
     field::Variation variation;
+    field::PullToPull pull_to_pull;
     int pullers = 0;
     std::uint64_t seed = 0;
     /// The class's sled, before the track's conditions.

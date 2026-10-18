@@ -2,6 +2,7 @@
 
 #include "tp/core/driver/driver.hpp"
 #include "tp/core/event/event.hpp"
+#include "tp/core/math/random.hpp"
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/sled/sled.hpp"
 #include "tp/core/track/track.hpp"
@@ -17,6 +18,8 @@ namespace tp::field {
 struct Puller {
     vehicle::Params tractor;
     driver::Plan driver;
+    /// How often the driver picks the best gear for the day's track, 0 to 1.
+    double track_reading = 1.0;
 };
 
 struct Range {
@@ -33,10 +36,22 @@ struct Variation {
     Range mass_kg;
     /// The rear tires' traction limit (rubber, pressure, lugs).
     Range traction_limit;
-    /// Gears the drivers choose between, inclusive.
+    /// Gears the drivers choose between for each track, inclusive.
     int lowest_gear = 0;
     int highest_gear = 0;
     Range clutch_slip_in_s;
+    /// How often a driver picks the best gear for the day's track.
+    Range track_reading;
+};
+
+/// How one pull differs from the next for the same puller: the spot on the
+/// track under the tires, and the driver's timing. Each pull draws both
+/// uniformly within plus or minus these.
+struct PullToPull {
+    /// Share of the rear tires' grip.
+    double grip_share = 0.0;
+    /// On the time the driver lets the clutch in [s].
+    double clutch_slip_in_s = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -76,5 +91,22 @@ struct Field {
                                                  const Variation& variation,
                                                  const rules::ClassRules& class_rules,
                                                  int count) noexcept;
+
+/// The gear among `lowest` to `highest` that takes `puller` furthest on this
+/// sled and track: what a driver who reads the track right picks. Runs a
+/// pull per gear; for setup, not inside a frame.
+[[nodiscard]] std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
+                                           const track::Params& track, int lowest, int highest,
+                                           double max_distance_m, double max_duration_s) noexcept;
+
+/// The driver's guess: the best gear as often as they read the track
+/// right, otherwise one gear off (within `lowest` to `highest`).
+[[nodiscard]] int guess_gear(const Puller& puller, int best, int lowest, int highest,
+                             math::SplitMix64& random) noexcept;
+
+/// The puller as they are on this pull: grip and clutch timing drawn
+/// within `variation`.
+[[nodiscard]] Puller on_this_pull(const Puller& puller, const PullToPull& variation,
+                                  math::SplitMix64& random) noexcept;
 
 }  // namespace tp::field

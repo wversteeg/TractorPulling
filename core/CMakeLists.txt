@@ -6,6 +6,7 @@ add_library(tp_core STATIC
     src/engine/engine.cpp
     src/event/event.cpp
     src/field/field.cpp
+    src/field/play.cpp
     src/math/curve.cpp
     src/math/exp.cpp
     src/pull/pull.cpp

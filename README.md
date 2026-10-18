@@ -61,7 +61,9 @@ push-down), and the next puller tests it again. A test pull between 100 and
 110 m moves the full-pull line to 110 m instead. A test puller may keep
 their pull unless the sled got heavier, deciding after the 3rd pull and
 re-pulling after the 6th. Every full pull, filled up to four with the best
-runs from 90 m, goes to the pull-off on a heavier sled.
+runs from 90 m, goes to the pull-off on a heavier sled. Each driver picks a
+gear for the day's track, the best one as often as they read the track
+right, and no two pulls are quite the same.
 
 ```bash
 ./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]

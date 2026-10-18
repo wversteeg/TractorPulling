@@ -6,6 +6,8 @@
 #include <set>
 
 #include "../rules/reference_class.hpp"
+#include "../sled/reference_sled.hpp"
+#include "../track/reference_track.hpp"
 #include "../vehicle/reference_vehicle.hpp"
 
 namespace tp::field {
@@ -23,7 +25,8 @@ constexpr Variation kVariation{.torque_scale = {.low = 0.95, .high = 1.03},
                                .traction_limit = {.low = 0.90, .high = 0.95},
                                .lowest_gear = 5,
                                .highest_gear = 6,
-                               .clutch_slip_in_s = {.low = 2.0, .high = 4.0}};
+                               .clutch_slip_in_s = {.low = 2.0, .high = 4.0},
+                               .track_reading = {.low = 0.5, .high = 0.95}};
 
 Field field_of(int count, std::uint64_t seed) {
     const auto field = generate(reference(), kVariation, ntto_standard_3500(), count, seed);
@@ -62,8 +65,8 @@ TEST(Field, EveryPullerMayCompete) {
         most_power_w = std::max(most_power_w, rules::pto_power_w(p.tractor));
         EXPECT_TRUE(rules::check(ntto_standard_3500(), p.tractor).ok()) << i;
         EXPECT_EQ(vehicle::validate(p.tractor), std::nullopt) << i;
-        EXPECT_GE(p.driver.gear, 5);
-        EXPECT_LE(p.driver.gear, 6);
+        EXPECT_GE(p.track_reading, 0.5);
+        EXPECT_LT(p.track_reading, 0.95);
         EXPECT_GE(p.driver.clutch_slip_in_s, 2.0);
         EXPECT_LT(p.driver.clutch_slip_in_s, 4.0);
         EXPECT_GE(p.tractor.rear_tire.traction.limit, 0.90);
@@ -79,13 +82,13 @@ TEST(Field, EveryPullerMayCompete) {
 TEST(Field, PullersDifferAndTheSeedRepeats) {
     const Field field = field_of(15, 3);
     std::set<double> masses;
-    std::set<int> gears;
+    std::set<double> readings;
     for (int i = 0; i < field.count; ++i) {
         masses.insert(field.pullers[static_cast<std::size_t>(i)].tractor.chassis.mass_kg);
-        gears.insert(field.pullers[static_cast<std::size_t>(i)].driver.gear);
+        readings.insert(field.pullers[static_cast<std::size_t>(i)].track_reading);
     }
     EXPECT_GT(masses.size(), 10U);
-    EXPECT_EQ(gears.size(), 2U);
+    EXPECT_EQ(readings.size(), static_cast<std::size_t>(field.count));
 
     const Field again = field_of(15, 3);
     const Field other = field_of(15, 4);
@@ -109,6 +112,69 @@ TEST(Field, MassKeepsTheBalance) {
                     base.chassis.pitch_inertia_kg_m2 / base.chassis.mass_kg, 1e-12);
         EXPECT_EQ(c.cg_ahead_of_rear_axle_m, base.chassis.cg_ahead_of_rear_axle_m);
     }
+}
+
+constexpr double kMaxDistance_m = 130.0;
+constexpr double kMaxDuration_s = 120.0;
+
+// The best gear is the one that pulls furthest: no other gear in the range
+// gets further.
+TEST(Driver, BestGearPullsFurthest) {
+    const Puller puller = reference();
+    const sled::Params sled = sled::testing::reference_params();
+    const track::Params track = track::testing::reference_params();
+    const std::optional<int> best =
+        best_gear(puller, sled, track, 4, 6, kMaxDistance_m, kMaxDuration_s);
+    ASSERT_TRUE(best.has_value());
+    Puller in_best = puller;
+    in_best.driver.gear = best.value_or(0);
+    const double best_m =
+        pull_distance(in_best, sled, track, kMaxDistance_m, kMaxDuration_s).value_or(0.0);
+    for (int gear = 4; gear <= 6; ++gear) {
+        Puller other = puller;
+        other.driver.gear = gear;
+        EXPECT_LE(pull_distance(other, sled, track, kMaxDistance_m, kMaxDuration_s).value_or(0.0),
+                  best_m)
+            << "gear " << gear;
+    }
+}
+
+// A driver who always reads the track right picks the best gear; one who
+// never does is one gear off, within the range.
+TEST(Driver, GuessesAreTheBestGearOrOneOff) {
+    Puller sharp = reference();
+    sharp.track_reading = 1.0;
+    Puller lost = reference();
+    lost.track_reading = 0.0;
+    math::SplitMix64 random{9};
+    for (int i = 0; i < 100; ++i) {
+        EXPECT_EQ(guess_gear(sharp, 5, 4, 6, random), 5);
+        const int guess = guess_gear(lost, 5, 4, 6, random);
+        EXPECT_TRUE(guess == 4 || guess == 6) << guess;
+        EXPECT_EQ(guess_gear(lost, 4, 4, 6, random), 5);
+        EXPECT_EQ(guess_gear(lost, 6, 4, 6, random), 5);
+    }
+}
+
+// No two pulls are quite the same: grip and clutch timing vary within the
+// set bounds, and not at all with zero bounds.
+TEST(Driver, EveryPullDiffersALittle) {
+    const Puller puller = reference();
+    const PullToPull variation{.grip_share = 0.01, .clutch_slip_in_s = 0.3};
+    math::SplitMix64 random{4};
+    std::set<double> grips;
+    for (int i = 0; i < 50; ++i) {
+        const Puller today = on_this_pull(puller, variation, random);
+        const double share =
+            today.tractor.rear_tire.traction.limit / puller.tractor.rear_tire.traction.limit - 1.0;
+        EXPECT_LE(std::abs(share), 0.01 + 1e-12);
+        EXPECT_LE(std::abs(today.driver.clutch_slip_in_s - puller.driver.clutch_slip_in_s),
+                  0.3 + 1e-12);
+        grips.insert(today.tractor.rear_tire.traction.limit);
+    }
+    EXPECT_GT(grips.size(), 40U);
+    const Puller same = on_this_pull(puller, {}, random);
+    EXPECT_EQ(same.tractor.rear_tire.traction.limit, puller.tractor.rear_tire.traction.limit);
 }
 
 }  // namespace

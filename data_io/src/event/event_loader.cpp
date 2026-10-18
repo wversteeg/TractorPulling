@@ -52,7 +52,9 @@ FieldError describe(field::ParamError error) {
         case ParamError::kNotFinite:
             return {"event.field", "all values must be finite"};
         case ParamError::kRangeOutOfOrder:
-            return {"event.field", "every range is [low, high] with low <= high, low > 0"};
+            return {"event.field",
+                    "every range is [low, high] with low <= high, low > 0, track_reading within "
+                    "[0, 1]"};
         case ParamError::kGearsOutOfRange:
             return {"event.field.gears", "must be [lowest, highest] within the gearbox"};
         case ParamError::kCountOutOfRange:
@@ -120,6 +122,11 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .lowest_gear = 0,
         .highest_gear = 0,
         .clutch_slip_in_s = range(reader, "event.field.clutch_slip_in_s"),
+        .track_reading = range(reader, "event.field.track_reading"),
+    };
+    const field::PullToPull pull_to_pull{
+        .grip_share = reader.number("event.field.pull_to_pull_grip_share"),
+        .clutch_slip_in_s = reader.number("event.field.pull_to_pull_clutch_slip_in_s"),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
@@ -129,6 +136,13 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
     variation.lowest_gear = static_cast<int>(gears[0]);
     variation.highest_gear = static_cast<int>(gears[1]);
+    // Written to also reject NaN.
+    const bool grip_ok = pull_to_pull.grip_share >= 0.0 && pull_to_pull.grip_share < 1.0;
+    const bool clutch_ok = pull_to_pull.clutch_slip_in_s >= 0.0;
+    if (!grip_ok || !clutch_ok) {
+        return detail::make_error(source, "event.field",
+                                  "pull_to_pull values must be >= 0, the grip share < 1");
+    }
     if (seed < 0) {
         return detail::make_error(source, "event.seed", "must not be negative");
     }
@@ -161,6 +175,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
                            .rules = rules,
                            .reference = reference,
                            .variation = variation,
+                           .pull_to_pull = pull_to_pull,
                            .pullers = count,
                            .seed = static_cast<std::uint64_t>(seed),
                            .sled = *sled,

@@ -2,10 +2,12 @@
 
 #include "tp/core/event/event.hpp"
 #include "tp/core/field/field.hpp"
+#include "tp/core/field/play.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -49,7 +51,6 @@ struct EventLog {
     int pulls = 0;
     int full_pulls_in_round = 0;
     int pull_off_pulls = 0;
-    int sled_changes = 0;
     std::array<event::Standing, event::kMaxPullers> standings{};
     std::size_t standing_count = 0;
 };
@@ -59,41 +60,34 @@ EventLog run(const EventDefinition& definition) {
     const auto field = field::generate(definition.reference, definition.variation,
                                        definition.class_rules, definition.pullers, definition.seed);
     const auto order = event::running_order(definition.pullers, definition.seed + 1);
-    auto ev = event::Event::create(
-        definition.rules, sled::with_conditions(definition.sled, definition.track.sled),
-        std::span{order.data(), static_cast<std::size_t>(definition.pullers)});
-    EXPECT_TRUE(field && ev);
-    if (!field || !ev) {
+    const field::Venue venue{.track = definition.track.ground,
+                             .sled = sled::with_conditions(definition.sled, definition.track.sled),
+                             .max_duration_s = definition.track.rules.max_duration_s};
+    const auto played =
+        field ? field::play_event(
+                    definition.rules, venue, *field, definition.variation, definition.pull_to_pull,
+                    std::span{order.data(), static_cast<std::size_t>(definition.pullers)},
+                    definition.seed + 2)
+              : std::nullopt;
+    EXPECT_TRUE(played.has_value());
+    if (!played) {
         return log;
     }
     hash::Fnv1a hash;
-    while (!ev->finished()) {
-        if (ev->decision_due()) {
-            ev->decide(ev->suggested_keep());
+    for (const field::LogEntry& entry : played->entries()) {
+        if (entry.deciding >= 0) {
             continue;
         }
-        const std::optional<event::Pull> pull = ev->next();
-        if (!pull) {
-            break;
-        }
-        const std::optional<double> reached =
-            field::pull_distance(field->pullers[static_cast<std::size_t>(pull->puller)], ev->sled(),
-                                 definition.track.ground, definition.rules.max_distance_m,
-                                 definition.track.rules.max_duration_s);
-        EXPECT_TRUE(reached.has_value());
-        const double distance_m = reached.value_or(0.0);
-        hash.add(distance_m);
+        hash.add(entry.reached_m);
         ++log.pulls;
-        if (pull->kind == event::PullKind::kPullOff) {
+        if (entry.pull.kind == event::PullKind::kPullOff) {
             ++log.pull_off_pulls;
-        } else if (distance_m >= ev->full_pull_m()) {
+        } else if (entry.reached_m >= entry.full_pull_m) {
             ++log.full_pulls_in_round;
         }
-        if (ev->record(distance_m).change != event::SledChange::kNone) {
-            ++log.sled_changes;
-        }
     }
-    const auto standings = ev->standings();
+    event::Event ev = played->event;
+    const auto standings = ev.standings();
     log.standing_count = standings.size();
     std::copy(standings.begin(), standings.end(), log.standings.begin());
     log.hash = hash.value();
@@ -110,8 +104,11 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.rules.extended_full_pull_m, 110.0);
     EXPECT_EQ(definition.rules.pull_off_places, 4);
     EXPECT_EQ(definition.reference.driver.gear, 6);
-    EXPECT_EQ(definition.variation.lowest_gear, 5);
+    EXPECT_EQ(definition.variation.lowest_gear, 4);
     EXPECT_EQ(definition.variation.highest_gear, 6);
+    EXPECT_EQ(definition.variation.track_reading.low, 0.5);
+    EXPECT_EQ(definition.pull_to_pull.grip_share, 0.01);
+    EXPECT_EQ(definition.pull_to_pull.clutch_slip_in_s, 0.3);
     EXPECT_EQ(definition.variation.mass_kg.high, 3550.0);
     EXPECT_EQ(definition.track.rules.track_length_m, 100.0);
 }
@@ -119,7 +116,7 @@ TEST(EventLoader, LoadsTheShippedEvent) {
 TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("pullers = 15", "pullers = 40")).find("event.pullers: must be 1 to 32"),
               std::string::npos);
-    EXPECT_NE(error_of(with("gears = [5, 6]", "gears = [5, 12]"))
+    EXPECT_NE(error_of(with("gears = [4, 6]", "gears = [4, 12]"))
                   .find("event.field.gears: must be [lowest, highest] within the gearbox"),
               std::string::npos);
     EXPECT_NE(error_of(with("mass_kg = [3300.0, 3550.0]", "mass_kg = [3300.0]"))
@@ -127,6 +124,12 @@ TEST(EventLoader, RejectsNonsense) {
               std::string::npos);
     EXPECT_NE(error_of(with("extended_full_pull_m = 110.0", "extended_full_pull_m = 90.0"))
                   .find("event.rules: need 0 < qualifying_distance_m"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("pull_to_pull_grip_share = 0.01", "pull_to_pull_grip_share = -0.1"))
+                  .find("event.field: pull_to_pull values must be >= 0"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("track_reading = [0.5, 0.95]", "track_reading = [0.5, 1.5]"))
+                  .find("track_reading within [0, 1]"),
               std::string::npos);
     EXPECT_NE(error_of(with("seed = 2026", "seed = -1")).find("event.seed: must not be negative"),
               std::string::npos);
@@ -160,8 +163,8 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog first = run(definition.value());
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
-    EXPECT_EQ(first.pulls, 22);
-    EXPECT_EQ(first.hash, 0x48fd9a85d46d6673ULL);
+    EXPECT_EQ(first.pulls, 21);
+    EXPECT_EQ(first.hash, 0xd1aea02caf8ee264ULL);
 }
 
 }  // namespace

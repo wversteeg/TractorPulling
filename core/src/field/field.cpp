@@ -82,11 +82,10 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     const double mass_kg = random.uniform(variation.mass_kg.low, variation.mass_kg.high);
     const double traction_limit =
         random.uniform(variation.traction_limit.low, variation.traction_limit.high);
-    const int gear_choices = variation.highest_gear - variation.lowest_gear + 1;
-    const auto gears = static_cast<std::uint64_t>(gear_choices);
-    const int gear = variation.lowest_gear + static_cast<int>(random.below(gears));
     const double slip_in_s =
         random.uniform(variation.clutch_slip_in_s.low, variation.clutch_slip_in_s.high);
+    const double track_reading =
+        random.uniform(variation.track_reading.low, variation.track_reading.high);
 
     // An engine within the class's PTO power, and a tractor within its
     // weight. The pitch inertia goes with the mass; the balance stays.
@@ -100,8 +99,8 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     puller.tractor.chassis.pitch_inertia_kg_m2 *= mass / base.chassis.mass_kg;
     puller.tractor.chassis.mass_kg = mass;
     puller.tractor.rear_tire.traction.limit = traction_limit;
-    puller.driver.gear = gear;
     puller.driver.clutch_slip_in_s = slip_in_s;
+    puller.track_reading = track_reading;
     if (vehicle::validate(puller.tractor) || !rules::check(class_rules, puller.tractor).ok()) {
         return std::nullopt;
     }
@@ -125,7 +124,8 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
         return ParamError::kNotFinite;
     }
     if (!std::ranges::all_of(ranges, range_valid) || variation.torque_scale.low <= 0.0 ||
-        variation.mass_kg.low <= 0.0 || variation.clutch_slip_in_s.low < 0.0) {
+        variation.mass_kg.low <= 0.0 || variation.clutch_slip_in_s.low < 0.0 ||
+        variation.track_reading.low < 0.0 || variation.track_reading.high > 1.0) {
         return ParamError::kRangeOutOfOrder;
     }
     const auto gear_count = static_cast<int>(reference.tractor.driveline.gear_count);
@@ -184,6 +184,60 @@ std::optional<double> pull_distance(const Puller& puller, const sled::Params& sl
         run::step(state, *model, rules, driver::input(puller.driver, t_s), kDt_s);
     }
     return state.result->distance_m;
+}
+
+}  // namespace tp::field
+
+namespace tp::field {
+
+std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
+                             const track::Params& track, int lowest, int highest,
+                             double max_distance_m, double max_duration_s) noexcept {
+    std::optional<int> best;
+    double best_m = -1.0;
+    for (int gear = lowest; gear <= highest; ++gear) {
+        Puller trying = puller;
+        trying.driver.gear = gear;
+        const std::optional<double> reached =
+            pull_distance(trying, sled, track, max_distance_m, max_duration_s);
+        if (!reached) {
+            return std::nullopt;
+        }
+        // On a tie the higher gear: it gets there quicker.
+        if (*reached >= best_m) {
+            best_m = *reached;
+            best = gear;
+        }
+    }
+    return best;
+}
+
+int guess_gear(const Puller& puller, int best, int lowest, int highest,
+               math::SplitMix64& random) noexcept {
+    const bool reads_it = random.uniform() < puller.track_reading;
+    const bool higher = random.uniform() < 0.5;
+    if (reads_it || lowest == highest) {
+        return best;
+    }
+    if (best == lowest) {
+        return best + 1;
+    }
+    if (best == highest) {
+        return best - 1;
+    }
+    return higher ? best + 1 : best - 1;
+}
+
+Puller on_this_pull(const Puller& puller, const PullToPull& variation,
+                    math::SplitMix64& random) noexcept {
+    Puller out = puller;
+    out.tractor.rear_tire.traction.limit *=
+        1.0 + random.uniform(-variation.grip_share, variation.grip_share);
+    out.driver.clutch_slip_in_s =
+        std::max(puller.driver.clutch_slip_in_s +
+                     random.uniform(-variation.clutch_slip_in_s, variation.clutch_slip_in_s),
+                 0.0);
+    return out;
 }
 
 }  // namespace tp::field

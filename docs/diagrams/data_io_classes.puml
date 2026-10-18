@@ -37,6 +37,7 @@ package "tp::data" {
     +rules : event::Rules
     +reference : field::Puller
     +variation : field::Variation
+    +pull_to_pull : field::PullToPull
     +pullers : int
     +seed : uint64
     +sled : sled::Params
