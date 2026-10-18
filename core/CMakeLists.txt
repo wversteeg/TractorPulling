@@ -3,6 +3,7 @@ add_library(tp_core STATIC
     src/clutch/clutch.cpp
     src/driveline/driveline.cpp
     src/engine/engine.cpp
+    src/event/event.cpp
     src/math/curve.cpp
     src/math/exp.cpp
     src/pull/pull.cpp

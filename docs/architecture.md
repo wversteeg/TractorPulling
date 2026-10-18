@@ -95,6 +95,18 @@ heavier sled.
 
 ![Run classes](diagrams/svg/run_classes.svg)
 
+### Event (`tp::event`)
+
+One class at an event, pull by pull: a seeded running order, the test pull
+and the sled operator's changes, test pullers keeping or re-pulling, the
+full-pull line (100 or 110 m), qualifying for the pull-off and the
+pull-offs. Plain rules logic: the caller runs each pull and records where
+the sled stopped.
+
+![Event classes](diagrams/svg/event_classes.svg)
+
+![Event sequence](diagrams/svg/event_sequence.svg)
+
 ### Class rules (`tp::rules`)
 
 A pulling class's technical limits and the check whether a tractor may

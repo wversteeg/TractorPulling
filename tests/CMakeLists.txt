@@ -8,9 +8,11 @@ add_executable(tp_core_tests
     driveline/driveline_test.cpp
     engine/engine_determinism_test.cpp
     engine/engine_test.cpp
+    event/event_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/exp_test.cpp
+    math/random_test.cpp
     math/trig_test.cpp
     pull/pull_test.cpp
     rules/class_rules_test.cpp
