@@ -69,6 +69,16 @@ right, and no two pulls are quite the same.
 ./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
 ```
 
+### A season
+
+A season file names the class's event, the points per place and the events,
+each on its own track. The same pullers pull every event; each event draws a
+new running order, and every driver guesses a gear for the day's track.
+
+```bash
+./build/release/tools/tp_pull season data/seasons/club_season.toml [--seed N]
+```
+
 ## Requirements
 
 - CMake 3.25+ and Ninja

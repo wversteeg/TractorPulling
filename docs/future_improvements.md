@@ -75,6 +75,10 @@ for the big features; they are repeated at the end for completeness.
   the gear that really pulls furthest (found by simulating each gear); one
   who misreads it is one gear off. Real drivers learn from the test pulls
   and the pullers before them, and may change gear between pulls.
+- **Changing the sled between pulls.** The operator changes the sled only
+  after a test pull. When the test pullers happen to stay short of the
+  target, the strong pullers after them can make many full pulls (11 at one
+  dry-clay event in the club season); a real operator might step in sooner.
 - **Smarter sled operator and pullers.** The operator learns what a step is
   worth from each change, but treats every test puller as equal (a strong
   puller after a change looks like a big effect) and only changes knives

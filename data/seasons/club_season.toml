@@ -1,0 +1,49 @@
+# A club season: the club event's class and field pull ten events, each on
+# its own track. The pullers stay the same all season; each event draws a
+# new running order, and every driver picks a gear for the day's track.
+
+[season]
+event = "../events/club_pull.toml"   # class, field, rules and the class sled
+seed = 2026                          # the field and every event's draws
+# Points per place: 20, 17, 15, then one less per place.
+points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+
+[[season.events]]
+name = "Spring opener, watered start"
+track = "../tracks/watered_start.toml"
+
+[[season.events]]
+name = "Firm loam"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Rainy day, covered heavy clay"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Sandy clay"
+track = "../tracks/sandy_clay.toml"
+
+[[season.events]]
+name = "Summer, dry hard clay"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Clay-sand"
+track = "../tracks/ideal_clay_sand.toml"
+
+[[season.events]]
+name = "Dry hard clay again"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Firm loam, late summer"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Autumn, covered heavy clay"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Final, clay-sand"
+track = "../tracks/ideal_clay_sand.toml"

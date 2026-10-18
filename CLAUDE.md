@@ -18,7 +18,7 @@ Current focus: **game mechanics only**. Graphics come later. Do not add renderin
 ```
 core/        Pure C++20 static library. The whole simulation lives here.
 data_io/     tp::data: loads and validates data/ files into core parameter structs.
-data/        Tractor, engine, tire, sled, track, class and event definitions (TOML).
+data/        Tractor, engine, tire, sled, track, class, event and season definitions (TOML).
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
 bench/       Google Benchmark micro-benchmarks.
@@ -77,6 +77,27 @@ Build in this order, one PR each, each piece tested in isolation first:
 
 Reference vehicle: lowest class, light 2WD farm-stock tractor. Exact numbers live in `data/`.
 
+## Milestone 2: track conditions and competition (done)
+
+Soil and track conditions (Brixius tires, a ploughing sled with knives and a
+berm, track profiles), a class at an event by the NTTO rules (test pulls,
+the sled operator, keep-or-re-pull, the 100/110 m line, pull-offs) and a
+season with points per place.
+
+## Next milestones
+
+First get something working, then give it more possibilities. In order:
+
+3. **Steering and the lane:** lane width, steering, two independent brakes,
+   the sled's sideways drag (leaving the lane ends the run), "easy" and
+   "pro" input mappings, the easy-mode clutch assist.
+4. **Phone readiness:** an Android NDK build in CI, a speed budget measured
+   on ARM, a small stable interface for the binding layer.
+5. **Godot front end:** 3D scene, cameras, interpolated rendering, touch
+   input (sliders and tilt).
+6. **Career:** heavier classes (where wheelspin matters more), tuning and
+   upgrades as parameter changes, a season mode in the game.
+
 ## Later (do not build yet)
 
 - Lane steering and sled sideways drag (leaving the lane ends the run).
@@ -115,6 +136,10 @@ cmake --preset release && cmake --build --preset release
 # A class at an event: a seeded field, test pulls and the sled operator,
 # keep-or-re-pull, qualifying and pull-offs; prints every pull and the standings
 ./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
+
+# A season: the same field at every event, each on its own track; prints each
+# event's top four and the championship
+./build/release/tools/tp_pull season data/seasons/club_season.toml [--seed N]
 
 # May this tractor compete in this class? Exits non-zero if not
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \

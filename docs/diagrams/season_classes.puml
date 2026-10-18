@@ -1,0 +1,46 @@
+@startuml season_classes
+title Season (tp::season): points per place and the championship
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "event::Standing" as EventStanding
+  class "field::play_event()" as Play
+}
+
+package "tp::season" {
+  class Points <<struct>> {
+    +by_place : array<int, 32>
+    +places : int
+  }
+  class Standing <<struct>> {
+    +puller, place : int
+    +points, wins : int
+    +event_points : array<int, 24>
+  }
+  class Championship {
+    -points_ : Points
+    -totals_ : array<Standing, 32>
+    +{static} create(const Points&, pullers) : optional<Championship>
+    +add(span<const event::Standing>) : bool
+    +events() : int
+    +standings() : span<const Standing>
+  }
+  class "season functions" as SeasonFns <<free functions>> {
+    +validate(const Points&) : optional<ParamError>
+    +points_for(const Points&, place) : int
+  }
+  Championship *-- Points
+  Championship ..> Standing
+  SeasonFns ..> Points
+}
+Championship ..> EventStanding : scores each event
+note bottom of Championship
+  the same field at every event (tp_pull season):
+  per event a new running order, gears guessed for the track,
+  field::play_event, then add(event standings);
+  most points first, more wins break a tie, equal pullers share a place
+end note
+Play ..> EventStanding
+@enduml

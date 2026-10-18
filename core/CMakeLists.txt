@@ -12,6 +12,7 @@ add_library(tp_core STATIC
     src/pull/pull.cpp
     src/rules/class_rules.cpp
     src/run/run.cpp
+    src/season/season.cpp
     src/sled/sled.cpp
     src/soil/soil.cpp
     src/tire/tire.cpp

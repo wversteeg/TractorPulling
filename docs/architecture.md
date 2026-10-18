@@ -117,6 +117,14 @@ the sled stopped.
 
 ![Event sequence](diagrams/svg/event_sequence.svg)
 
+### Season (`tp::season`)
+
+A season's championship: the same field at every event, each on its own
+track; each event's places score points (20, 17, 15, then one less per place
+for the club season), the most points win and more event wins break a tie.
+
+![Season classes](diagrams/svg/season_classes.svg)
+
 ### Class rules (`tp::rules`)
 
 A pulling class's technical limits and the check whether a tractor may
