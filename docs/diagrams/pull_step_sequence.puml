@@ -16,7 +16,7 @@ Chain --> Step : tension along the hook-to-hitch line\n(zero when slack, never p
 Step -> Step : equal and opposite:\nDrawbar{pull, lift} on the hitch, HookForce{forward, up} on the hook
 Step -> Vehicle : step(tractor, input, ground = track surface, drawbar)\n(see the vehicle step)
 Vehicle --> Step : tractor output
-Step -> Sled : loads(state, hook force)
+Step -> Sled : loads(state, hook force, ground = track surface)
 Sled --> Step : pan / wheel loads, box position,\npush-down, resistance
 Step -> Sled : predict(resistance), advance(forward pull)
 Step --> Caller : Output{tractor, sled loads, chain}

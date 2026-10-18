@@ -6,6 +6,7 @@
 
 #include <cmath>
 
+#include "../tire/reference_tire.hpp"
 #include "reference_sled.hpp"
 
 namespace tp::sled {
@@ -20,8 +21,20 @@ double weight_n(const Params& params) {
     return total_mass_kg(params) * kStandardGravity_m_s2;
 }
 
-Loads at(const Params& params, double distance_m, const HookForce& hook = {}) {
-    return loads(params, State{.position_m = distance_m, .distance_m = distance_m}, hook);
+Ground reference_ground() {
+    const soil::Surface surface = tire::testing::reference_surface();
+    return {.pan = surface, .wheels = surface};
+}
+
+Loads at(const Params& params, double distance_m, const HookForce& hook = {},
+         const Ground& ground = reference_ground()) {
+    return loads(params, State{.position_m = distance_m, .distance_m = distance_m}, hook, ground);
+}
+
+Ground softer(Ground ground) {
+    ground.pan.cone_index_pa *= 0.25;
+    ground.wheels.cone_index_pa *= 0.25;
+    return ground;
 }
 
 TEST(SledParams, ReferenceIsValid) {
@@ -52,8 +65,15 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kPushdownRampNotPositive);
     EXPECT_EQ(with([](Params& p) { p.pan_friction_coefficient = 0.0; }),
               ParamError::kPanFrictionOutOfRange);
-    EXPECT_EQ(with([](Params& p) { p.wheel_rolling_resistance_coefficient = 1.0; }),
-              ParamError::kRollingResistanceOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pan_area_m2 = 0.0; }), ParamError::kPanAreaNotPositive);
+    EXPECT_EQ(with([](Params& p) { p.pan_plough_coefficient = -1.0; }),
+              ParamError::kPanPloughNegative);
+    EXPECT_EQ(with([](Params& p) { p.wheel.radius_m = 0.0; }), ParamError::kWheel);
+    EXPECT_EQ(with([](Params& p) { p.wheel_count = 0; }), ParamError::kWheelCountOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.wheel_count = kMaxWheels + 1; }),
+              ParamError::kWheelCountOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pull_off.pushdown_start_m = -1.0; }),
+              ParamError::kPullOffNegative);
     EXPECT_EQ(with([](Params& p) { p.chain.length_m = 0.0; }), ParamError::kChainInvalid);
     EXPECT_EQ(with([](Params& p) { p.pull_off.extra_pan_friction = -0.1; }),
               ParamError::kPullOffNegative);
@@ -95,7 +115,8 @@ TEST(Sled, ResistanceGrowsWithDistance) {
 }
 
 // The push-down lifts the wheels over its ramp: from then on the pan
-// carries everything and the resistance jumps to pan friction times weight.
+// carries everything and the resistance jumps to the pan's friction (with
+// its ploughing) times the weight.
 TEST(Sled, PushdownPutsAllWeightOnThePan) {
     const Params params = reference_params();
     EXPECT_EQ(at(params, params.pushdown_start_m).pushdown, 0.0);
@@ -105,7 +126,8 @@ TEST(Sled, PushdownPutsAllWeightOnThePan) {
     EXPECT_EQ(full.pushdown, 1.0);
     EXPECT_EQ(full.wheels_n, 0.0);
     EXPECT_NEAR(full.pan_n, weight_n(params), 1e-9);
-    EXPECT_NEAR(full.resistance_n, params.pan_friction_coefficient * weight_n(params), 1e-9);
+    EXPECT_NEAR(full.resistance_n, full.pan_friction * weight_n(params), 1e-9);
+    EXPECT_GT(full.pan_friction, params.pan_friction_coefficient);
     EXPECT_GT(full.resistance_n, 1.5 * at(params, params.pushdown_start_m).resistance_n);
 }
 
@@ -131,15 +153,15 @@ TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
 }
 
 // Each pull-off sled drags harder everywhere along the track: more weight
-// in the box, an earlier push-down and knives in the pan.
+// in the box, the pull-off's (earlier) push-down and knives in the pan.
 TEST(Sled, PullOffSledIsHeavierEverywhere) {
     const Params first = reference_params();
     const Params second = heavier(first);
     const Params third = heavier(second);
     EXPECT_EQ(validate(second), std::nullopt);
     EXPECT_DOUBLE_EQ(second.box_mass_kg, first.box_mass_kg + first.pull_off.extra_box_mass_kg);
-    EXPECT_DOUBLE_EQ(second.pushdown_start_m,
-                     first.pushdown_start_m - first.pull_off.pushdown_earlier_m);
+    EXPECT_DOUBLE_EQ(second.pushdown_start_m, first.pull_off.pushdown_start_m);
+    EXPECT_DOUBLE_EQ(third.pushdown_start_m, first.pull_off.pushdown_start_m);
     EXPECT_DOUBLE_EQ(second.pan_friction_coefficient,
                      first.pan_friction_coefficient + first.pull_off.extra_pan_friction);
     for (int metre = 0; metre <= 100; ++metre) {
@@ -148,15 +170,76 @@ TEST(Sled, PullOffSledIsHeavierEverywhere) {
     }
 }
 
-// However many pull-offs, the push-down stays on the track and the pan's
-// friction stays valid.
+// However many pull-offs, the pan's friction stays valid.
 TEST(Sled, PullOffsStayValid) {
     Params params = reference_params();
     for (int i = 0; i < 50; ++i) {
         params = heavier(params);
         ASSERT_EQ(validate(params), std::nullopt) << "pull-off " << i;
     }
-    EXPECT_EQ(params.pushdown_start_m, 0.0);
+    EXPECT_EQ(params.pushdown_start_m, reference_params().pull_off.pushdown_start_m);
+}
+
+// The day's track sets the push-down for the run and for pull-offs; the
+// rest of the class's sled stays.
+TEST(Sled, ConditionsSetThePushdown) {
+    const Params sled = reference_params();
+    const Params wet =
+        with_conditions(sled, {.pushdown_start_m = 75.0, .pull_off_pushdown_start_m = 65.0});
+    EXPECT_EQ(wet.pushdown_start_m, 75.0);
+    EXPECT_EQ(wet.pull_off.pushdown_start_m, 65.0);
+    EXPECT_EQ(heavier(wet).pushdown_start_m, 65.0);
+    EXPECT_EQ(wet.box_mass_kg, sled.box_mass_kg);
+    EXPECT_EQ(validate(wet), std::nullopt);
+
+    const Params unchanged = with_conditions(sled, {});
+    EXPECT_EQ(unchanged.pushdown_start_m, sled.pushdown_start_m);
+    EXPECT_EQ(unchanged.pull_off.pushdown_start_m, sled.pull_off.pushdown_start_m);
+}
+
+// On softer ground the pan ploughs deeper and the wheels sink in: the same
+// sled drags harder everywhere.
+TEST(Sled, SofterTrackDragsHarder) {
+    const Params params = reference_params();
+    for (int metre = 0; metre <= 100; metre += 5) {
+        const Loads firm = at(params, metre);
+        const Loads soft = at(params, metre, {}, softer(reference_ground()));
+        ASSERT_GT(soft.resistance_n, firm.resistance_n) << metre << " m";
+        ASSERT_GT(soft.pan_friction, firm.pan_friction) << metre << " m";
+    }
+}
+
+// Ploughing grows with the pan's pressure over the soil's strength; without
+// it the pan just slides.
+TEST(Sled, PanPloughsWithPressure) {
+    Params params = reference_params();
+    const Loads start = at(params, 0.0);
+    const Loads end = at(params, 100.0);
+    ASSERT_GT(end.pan_n, start.pan_n);
+    EXPECT_GT(end.pan_friction, start.pan_friction);
+    const double cone_index_pa = reference_ground().pan.cone_index_pa;
+    EXPECT_NEAR(end.pan_friction,
+                params.pan_friction_coefficient * (1.0 + params.pan_plough_coefficient * end.pan_n /
+                                                             params.pan_area_m2 / cone_index_pa),
+                1e-12);
+
+    params.pan_plough_coefficient = 0.0;
+    EXPECT_EQ(at(params, 100.0).pan_friction, params.pan_friction_coefficient);
+}
+
+// The wheels roll as towed tires: their resistance is Brixius' for their
+// share of the load.
+TEST(Sled, WheelsRollAsTowedTires) {
+    Params params = reference_params();
+    params.pan_plough_coefficient = 0.0;
+    const Loads start = at(params, 0.0);
+    const double per_wheel_n = start.wheels_n / params.wheel_count;
+    const double rolling =
+        tire::towed_rolling_resistance(params.wheel, per_wheel_n, reference_ground().wheels);
+    EXPECT_NEAR(start.resistance_n,
+                params.pan_friction_coefficient * start.pan_n + rolling * start.wheels_n, 1e-9);
+    EXPECT_GT(rolling, 0.04);
+    EXPECT_LT(rolling, 0.15);
 }
 
 TEST(Sled, ResistanceHoldsAtRestWithoutPullingBack) {

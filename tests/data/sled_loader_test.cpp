@@ -17,7 +17,15 @@ frame_mass_kg = 3000.0
 frame_cg_ahead_of_wheels_m = 0.8
 pan_ahead_of_wheels_m = 3.0
 pan_friction_coefficient = 0.55
-wheel_rolling_resistance_coefficient = 0.04
+pan_area_m2 = 2.0
+pan_plough_coefficient = 4.0
+
+[sled.wheels]
+count = 4
+radius_m = 0.45
+section_width_m = 0.3
+section_height_m = 0.25
+deflection_m = 0.03
 
 [sled.hook]
 ahead_of_wheels_m = 3.2
@@ -40,7 +48,7 @@ damping_n_s_per_m = 10000.0
 
 [sled.pull_off]
 extra_box_mass_kg = 400.0
-pushdown_earlier_m = 15.0
+pushdown_start_m = 65.0
 extra_pan_friction = 0.04
 )";
 
@@ -72,13 +80,18 @@ TEST(SledLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.pushdown_start_m, reference.pushdown_start_m);
     EXPECT_EQ(loaded.pushdown_ramp_m, reference.pushdown_ramp_m);
     EXPECT_EQ(loaded.pan_friction_coefficient, reference.pan_friction_coefficient);
-    EXPECT_EQ(loaded.wheel_rolling_resistance_coefficient,
-              reference.wheel_rolling_resistance_coefficient);
+    EXPECT_EQ(loaded.pan_area_m2, reference.pan_area_m2);
+    EXPECT_EQ(loaded.pan_plough_coefficient, reference.pan_plough_coefficient);
+    EXPECT_EQ(loaded.wheel.radius_m, reference.wheel.radius_m);
+    EXPECT_EQ(loaded.wheel.section_width_m, reference.wheel.section_width_m);
+    EXPECT_EQ(loaded.wheel.section_height_m, reference.wheel.section_height_m);
+    EXPECT_EQ(loaded.wheel.deflection_m, reference.wheel.deflection_m);
+    EXPECT_EQ(loaded.wheel_count, reference.wheel_count);
     EXPECT_EQ(loaded.chain.length_m, reference.chain.length_m);
     EXPECT_EQ(loaded.chain.stiffness_n_per_m, reference.chain.stiffness_n_per_m);
     EXPECT_EQ(loaded.chain.damping_n_s_per_m, reference.chain.damping_n_s_per_m);
     EXPECT_EQ(loaded.pull_off.extra_box_mass_kg, reference.pull_off.extra_box_mass_kg);
-    EXPECT_EQ(loaded.pull_off.pushdown_earlier_m, reference.pull_off.pushdown_earlier_m);
+    EXPECT_EQ(loaded.pull_off.pushdown_start_m, reference.pull_off.pushdown_start_m);
     EXPECT_EQ(loaded.pull_off.extra_pan_friction, reference.pull_off.extra_pan_friction);
 }
 
@@ -89,7 +102,14 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(result.value().box_start_ahead_of_wheels_m, 0.2);
     EXPECT_DOUBLE_EQ(result.value().chain.length_m, 1.2);
     EXPECT_DOUBLE_EQ(result.value().hook_height_m, 0.5);
-    EXPECT_DOUBLE_EQ(result.value().pull_off.pushdown_earlier_m, 15.0);
+    EXPECT_DOUBLE_EQ(result.value().pull_off.pushdown_start_m, 65.0);
+    EXPECT_DOUBLE_EQ(result.value().pan_area_m2, 2.0);
+    EXPECT_DOUBLE_EQ(result.value().pan_plough_coefficient, 4.0);
+    EXPECT_DOUBLE_EQ(result.value().wheel.radius_m, 0.45);
+    EXPECT_DOUBLE_EQ(result.value().wheel.section_width_m, 0.3);
+    EXPECT_DOUBLE_EQ(result.value().wheel.section_height_m, 0.25);
+    EXPECT_DOUBLE_EQ(result.value().wheel.deflection_m, 0.03);
+    EXPECT_EQ(result.value().wheel_count, 4);
 }
 
 TEST(SledLoader, RejectsNonsenseValues) {
@@ -98,7 +118,13 @@ TEST(SledLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 6> cases = {{
+    const std::array<Case, 10> cases = {{
+        {"pan_area_m2 = 2.0", "pan_area_m2 = 0.0", "sled.pan_area_m2: must be > 0"},
+        {"pan_plough_coefficient = 4.0", "pan_plough_coefficient = -1.0",
+         "sled.pan_plough_coefficient: must not be negative"},
+        {"count = 4", "count = 0", "sled.wheels.count: must be 1 to 8"},
+        {"deflection_m = 0.03", "deflection_m = 0.3",
+         "sled.wheels.deflection_m: must be at least 0 and less than the section height"},
         {"extra_box_mass_kg = 400.0", "extra_box_mass_kg = -1.0",
          "sled.pull_off: all values must be >= 0"},
         {"frame_mass_kg = 3000.0", "frame_mass_kg = -1.0", "sled.frame_mass_kg: must be > 0"},

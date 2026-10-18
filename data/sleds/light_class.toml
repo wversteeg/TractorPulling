@@ -8,8 +8,17 @@
 frame_mass_kg = 3200.0
 frame_cg_ahead_of_wheels_m = 0.75
 pan_ahead_of_wheels_m = 3.0          # centre of the pan's contact
-pan_friction_coefficient = 0.5
-wheel_rolling_resistance_coefficient = 0.05
+pan_friction_coefficient = 0.46      # steel sliding on a firm track
+pan_area_m2 = 1.8                    # the pan's contact with the track
+pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
+
+# The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
+[sled.wheels]
+count = 2
+radius_m = 0.55
+section_width_m = 0.43
+section_height_m = 0.35
+deflection_m = 0.04
 
 [sled.hook]
 ahead_of_wheels_m = 3.3
@@ -33,9 +42,9 @@ stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
 damping_n_s_per_m = 15000.0
 
 # After full pulls the tractors rerun on a heavier sled. Each pull-off adds
-# weight to the box, brings the push-down earlier and adds knives under the
-# pan, which bite into the track.
+# weight to the box, sets the push-down (usually earlier) and adds knives
+# under the pan, which bite into the track.
 [sled.pull_off]
 extra_box_mass_kg = 500.0
-pushdown_earlier_m = 10.0
+pushdown_start_m = 50.0
 extra_pan_friction = 0.05            # knives

@@ -1,9 +1,11 @@
 #include "tp/data/sled/sled_loader.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <string_view>
 
 #include "../common/toml_reader.hpp"
+#include "../tire/tire_fields.hpp"
 
 namespace tp::data {
 
@@ -39,8 +41,14 @@ FieldError describe(sled::ParamError error) {
             return {"sled.pushdown.ramp_m", "must be > 0"};
         case ParamError::kPanFrictionOutOfRange:
             return {"sled.pan_friction_coefficient", "must be in (0, 2]"};
-        case ParamError::kRollingResistanceOutOfRange:
-            return {"sled.wheel_rolling_resistance_coefficient", "must be in [0, 1)"};
+        case ParamError::kPanAreaNotPositive:
+            return {"sled.pan_area_m2", "must be > 0"};
+        case ParamError::kPanPloughNegative:
+            return {"sled.pan_plough_coefficient", "must not be negative"};
+        case ParamError::kWheel:
+            return {"sled.wheels", "invalid tire size"};
+        case ParamError::kWheelCountOutOfRange:
+            return {"sled.wheels.count", "must be 1 to 8"};
         case ParamError::kChainInvalid:
             return {"sled.chain", "length and stiffness must be > 0, damping >= 0"};
         case ParamError::kPullOffNegative:
@@ -49,9 +57,12 @@ FieldError describe(sled::ParamError error) {
     return {"sled", "invalid"};
 }
 
+constexpr std::string_view kWheels = "sled.wheels";
+
 Result<sled::Params> read_sled(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
-    const sled::Params params{
+    const std::int64_t wheel_count = reader.integer("sled.wheels.count");
+    sled::Params params{
         .frame_mass_kg = reader.number("sled.frame_mass_kg"),
         .frame_cg_ahead_of_wheels_m = reader.number("sled.frame_cg_ahead_of_wheels_m"),
         .pan_ahead_of_wheels_m = reader.number("sled.pan_ahead_of_wheels_m"),
@@ -64,8 +75,10 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .pushdown_start_m = reader.number("sled.pushdown.start_m"),
         .pushdown_ramp_m = reader.number("sled.pushdown.ramp_m"),
         .pan_friction_coefficient = reader.number("sled.pan_friction_coefficient"),
-        .wheel_rolling_resistance_coefficient =
-            reader.number("sled.wheel_rolling_resistance_coefficient"),
+        .pan_area_m2 = reader.number("sled.pan_area_m2"),
+        .pan_plough_coefficient = reader.number("sled.pan_plough_coefficient"),
+        .wheel = detail::read_tire_size(reader, kWheels),
+        .wheel_count = 0,  // checked below
         .chain =
             {
                 .length_m = reader.number("sled.chain.length_m"),
@@ -75,12 +88,21 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .pull_off =
             {
                 .extra_box_mass_kg = reader.number("sled.pull_off.extra_box_mass_kg"),
-                .pushdown_earlier_m = reader.number("sled.pull_off.pushdown_earlier_m"),
+                .pushdown_start_m = reader.number("sled.pull_off.pushdown_start_m"),
                 .extra_pan_friction = reader.number("sled.pull_off.extra_pan_friction"),
             },
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
+    }
+    if (wheel_count < 1 || wheel_count > sled::kMaxWheels) {
+        return detail::make_error(source, "sled.wheels.count", "must be 1 to 8");
+    }
+    params.wheel_count = static_cast<int>(wheel_count);
+    if (const auto tire_error = tire::validate(params.wheel)) {
+        const detail::TireFieldError field_error = detail::describe(*tire_error);
+        return detail::make_error(source, detail::field_path(kWheels, field_error.field),
+                                  field_error.reason);
     }
     if (const auto error = sled::validate(params)) {
         const FieldError field_error = describe(*error);

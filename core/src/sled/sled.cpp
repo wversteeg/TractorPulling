@@ -32,12 +32,13 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pushdown_start_m,
                                 params.pushdown_ramp_m,
                                 params.pan_friction_coefficient,
-                                params.wheel_rolling_resistance_coefficient,
+                                params.pan_area_m2,
+                                params.pan_plough_coefficient,
                                 params.chain.length_m,
                                 params.chain.stiffness_n_per_m,
                                 params.chain.damping_n_s_per_m,
                                 params.pull_off.extra_box_mass_kg,
-                                params.pull_off.pushdown_earlier_m,
+                                params.pull_off.pushdown_start_m,
                                 params.pull_off.extra_pan_friction};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
@@ -75,15 +76,23 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.pan_friction_coefficient > kMaxPanFrictionCoefficient) {
         return ParamError::kPanFrictionOutOfRange;
     }
-    if (params.wheel_rolling_resistance_coefficient < 0.0 ||
-        params.wheel_rolling_resistance_coefficient >= 1.0) {
-        return ParamError::kRollingResistanceOutOfRange;
+    if (params.pan_area_m2 <= 0.0) {
+        return ParamError::kPanAreaNotPositive;
+    }
+    if (params.pan_plough_coefficient < 0.0) {
+        return ParamError::kPanPloughNegative;
+    }
+    if (tire::validate(params.wheel)) {
+        return ParamError::kWheel;
+    }
+    if (params.wheel_count < 1 || params.wheel_count > kMaxWheels) {
+        return ParamError::kWheelCountOutOfRange;
     }
     if (params.chain.length_m <= 0.0 || params.chain.stiffness_n_per_m <= 0.0 ||
         params.chain.damping_n_s_per_m < 0.0) {
         return ParamError::kChainInvalid;
     }
-    if (params.pull_off.extra_box_mass_kg < 0.0 || params.pull_off.pushdown_earlier_m < 0.0 ||
+    if (params.pull_off.extra_box_mass_kg < 0.0 || params.pull_off.pushdown_start_m < 0.0 ||
         params.pull_off.extra_pan_friction < 0.0) {
         return ParamError::kPullOffNegative;
     }
@@ -94,18 +103,38 @@ double total_mass_kg(const Params& params) noexcept {
     return params.frame_mass_kg + params.box_mass_kg;
 }
 
+Params with_conditions(const Params& params, const Conditions& conditions) noexcept {
+    Params out = params;
+    out.pushdown_start_m = conditions.pushdown_start_m.value_or(params.pushdown_start_m);
+    out.pull_off.pushdown_start_m =
+        conditions.pull_off_pushdown_start_m.value_or(params.pull_off.pushdown_start_m);
+    return out;
+}
+
 Params heavier(const Params& params) noexcept {
     Params next = params;
     next.box_mass_kg += params.pull_off.extra_box_mass_kg;
-    next.pushdown_start_m =
-        std::max(params.pushdown_start_m - params.pull_off.pushdown_earlier_m, 0.0);
+    next.pushdown_start_m = params.pull_off.pushdown_start_m;
     next.pan_friction_coefficient =
         std::min(params.pan_friction_coefficient + params.pull_off.extra_pan_friction,
                  kMaxPanFrictionCoefficient);
     return next;
 }
 
-Loads loads(const Params& params, const State& state, const HookForce& hook) noexcept {
+namespace {
+
+// The pan sinks in until the soil carries its pressure and pushes soil
+// ahead of it: the ploughing grows with pressure over strength.
+double pan_friction(const Params& params, double pan_n, const soil::Surface& surface) noexcept {
+    const double pressure_pa = pan_n / params.pan_area_m2;
+    return params.pan_friction_coefficient *
+           (1.0 + params.pan_plough_coefficient * pressure_pa / surface.cone_index_pa);
+}
+
+}  // namespace
+
+Loads loads(const Params& params, const State& state, const HookForce& hook,
+            const Ground& ground) noexcept {
     using units::kStandardGravity_m_s2;
     const double travel = std::clamp(state.distance_m / params.box_travel_distance_m, 0.0, 1.0);
     const double box_m =
@@ -132,12 +161,17 @@ Loads loads(const Params& params, const State& state, const HookForce& hook) noe
     pan_n += pushdown * wheels_n;
     wheels_n -= pushdown * wheels_n;
 
+    const double wheel_count = params.wheel_count;
+    const double rolling = wheels_n > 0.0 ? tire::towed_rolling_resistance(
+                                                params.wheel, wheels_n / wheel_count, ground.wheels)
+                                          : 0.0;
+    const double friction = pan_friction(params, pan_n, ground.pan);
     return {.pan_n = pan_n,
             .wheels_n = wheels_n,
             .box_ahead_of_wheels_m = box_m,
             .pushdown = pushdown,
-            .resistance_n = params.pan_friction_coefficient * pan_n +
-                            params.wheel_rolling_resistance_coefficient * wheels_n};
+            .pan_friction = friction,
+            .resistance_n = friction * pan_n + rolling * wheels_n};
 }
 
 Prediction predict(const State& state, const Params& params, double resistance_n,

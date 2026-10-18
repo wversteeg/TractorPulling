@@ -145,7 +145,7 @@ TEST(Run, FullPullThenPullOffOnAHeavierSled) {
     EXPECT_EQ(full.result.distance_m, kRules.track_length_m);
 
     sled.pull_off = {
-        .extra_box_mass_kg = 1000.0, .pushdown_earlier_m = 920.0, .extra_pan_friction = 0.05};
+        .extra_box_mass_kg = 1000.0, .pushdown_start_m = 80.0, .extra_pan_friction = 0.05};
     const Outcome pull_off = drive(model_with(sled::heavier(sled)), {.gear = 6});
     EXPECT_NE(pull_off.result.ending, Ending::kFullPull);
     EXPECT_LT(pull_off.result.distance_m, kRules.track_length_m);
@@ -195,9 +195,9 @@ TEST(Run, ReplayMatchesRegression) {
     Result again;
     EXPECT_EQ(run_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x715ce99300e9a4cULL);
-    // 72.003697615397158 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.2003c94ec4d0ep+6);
+    EXPECT_EQ(hash, 0xdc70529f8bf1669cULL);
+    // 71.75645655137582 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.1f069c8bd4043p+6);
     EXPECT_EQ(result.ending, Ending::kStalled);
 }
 

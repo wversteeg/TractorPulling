@@ -107,7 +107,8 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
     const vehicle::Ground ground{.rear = model.surface(), .front = model.surface()};
     out.tractor = vehicle::step(state.tractor, model.tractor(), input, ground, drawbar, dt_s);
 
-    out.sled = sled::loads(sled, state.sled, hook);
+    out.sled =
+        sled::loads(sled, state.sled, hook, {.pan = model.surface(), .wheels = model.surface()});
     const sled::Prediction prediction =
         sled::predict(state.sled, sled, out.sled.resistance_n, dt_s);
     sled::advance(state.sled, prediction, hook.forward_n, dt_s);
