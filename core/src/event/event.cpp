@@ -10,10 +10,11 @@ namespace tp::event {
 
 namespace {
 
-// Sled steps that cover `distance_m`, at least one.
-int steps_for(double distance_m, double step_m) noexcept {
-    return std::max(static_cast<int>(std::ceil(distance_m / step_m)), 1);
-}
+// How quickly the operator's step estimate follows what they see, and the
+// range they keep it in, as shares of the rule of thumb.
+constexpr double kLearningRate = 0.5;
+constexpr double kLowestStepShare = 0.25;
+constexpr double kHighestStepShare = 6.0;
 
 // Lighter by `steps`: the operator takes knives out first (quick to do);
 // once there are none left, the push-down moves later instead, a step's
@@ -67,6 +68,9 @@ std::optional<ParamError> validate(const Rules& rules) noexcept {
     if (rules.step_m <= 0.0) {
         return ParamError::kStepNotPositive;
     }
+    if (rules.max_steps_per_change < 1) {
+        return ParamError::kMaxStepsNotPositive;
+    }
     return std::nullopt;
 }
 
@@ -91,6 +95,7 @@ Event::Event(const Rules& rules, const sled::Params& class_sled,
                      .pull_off_round = 0};
     }
     queue_size_ = running_order.size();
+    step_estimate_m_ = rules.step_m;
 }
 
 std::optional<Pull> Event::next() const noexcept {
@@ -125,9 +130,36 @@ void Event::schedule_repull(int puller) noexcept {
            {.puller = puller, .kind = PullKind::kRepull, .pull_off_round = 0});
 }
 
+int Event::steps_for(double distance_m) const noexcept {
+    const int steps = static_cast<int>(std::ceil(distance_m / step_estimate_m_));
+    return std::clamp(steps, 1, rules_.max_steps_per_change);
+}
+
+void Event::learn(double reached_m) noexcept {
+    if (last_change_steps_ == 0) {
+        return;
+    }
+    // Heavier should shorten the pull, lighter lengthen it; a test puller
+    // who goes the other way is simply stronger or weaker, and says little.
+    const double gained_m =
+        last_change_steps_ > 0 ? last_test_m_ - reached_m : reached_m - last_test_m_;
+    const double per_step_m = gained_m / std::abs(last_change_steps_);
+    last_change_steps_ = 0;
+    if (per_step_m <= 0.0) {
+        return;
+    }
+    const double seen_m =
+        std::clamp(per_step_m, kLowestStepShare * rules_.step_m, kHighestStepShare * rules_.step_m);
+    // A pull stopped at the maximum distance shows only "at least this".
+    const bool capped = std::max(last_test_m_, reached_m) >= rules_.max_distance_m;
+    const double blended = step_estimate_m_ + kLearningRate * (seen_m - step_estimate_m_);
+    step_estimate_m_ = capped ? std::max(step_estimate_m_, blended) : blended;
+}
+
 Outcome Event::judge_test(int puller, double reached_m) noexcept {
     Entry& entry = entries_[static_cast<std::size_t>(puller)];
     entry.may_keep = true;
+    learn(reached_m);
     Outcome outcome;
     const bool standard_line = line_m_ == rules_.full_pull_m;
     if (standard_line && reached_m >= rules_.full_pull_m &&
@@ -138,18 +170,19 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     }
     if (reached_m >= line_m_) {
         // Too easy: heavier, so that a pull like this stops at the line.
-        outcome = {.change = SledChange::kHeavier,
-                   .steps = steps_for(reached_m - line_m_, rules_.step_m)};
+        outcome = {.change = SledChange::kHeavier, .steps = steps_for(reached_m - line_m_)};
         sled_ = sled::heavier(sled_, outcome.steps);
         entry.may_keep = false;
         schedule_repull(puller);
     } else if (reached_m < rules_.sled_target_m) {
         outcome = {.change = SledChange::kLighter,
-                   .steps = steps_for(rules_.sled_target_m - reached_m, rules_.step_m)};
+                   .steps = steps_for(rules_.sled_target_m - reached_m)};
         sled_ = lighter(sled_, outcome.steps, rules_.step_m);
     } else {
         return outcome;
     }
+    last_test_m_ = reached_m;
+    last_change_steps_ = outcome.change == SledChange::kHeavier ? outcome.steps : -outcome.steps;
     // After every change the next puller tests the sled again.
     if (head_ < queue_size_ && queue_[head_].kind == PullKind::kCompetition) {
         queue_[head_].kind = PullKind::kTest;
@@ -303,7 +336,7 @@ void Event::start_pull_off() noexcept {
     }
     // Heavy enough that the strongest pull so far stops at the line; one
     // step at least.
-    const int steps = best_full_m >= line_m_ ? steps_for(best_full_m - line_m_, rules_.step_m) : 1;
+    const int steps = best_full_m >= line_m_ ? steps_for(best_full_m - line_m_) : 1;
     sled_ = sled::heavier(sled_, steps);
     ++pull_off_round_;
     queue_size_ = 0;

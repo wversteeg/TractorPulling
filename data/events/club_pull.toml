@@ -18,13 +18,19 @@ select_gear_s = 0.5
 launch_s = 3.0
 clutch_slip_in_s = 3.0
 
-# How the pullers differ. Power and weight are kept within the class.
+# How the pullers differ. Power and weight are kept within the class. Each
+# driver picks a gear between `gears` for the day's track: the best one as
+# often as their track_reading says, otherwise one off. And no two pulls are
+# the same: the spot on the track and the driver's timing differ a little.
 [event.field]
 torque_scale = [0.95, 1.03]
 mass_kg = [3300.0, 3550.0]
 traction_limit = [0.90, 0.95]
-gears = [5, 6]
+gears = [4, 6]                         # gear 7 cannot get this class's sled moving
 clutch_slip_in_s = [2.0, 4.0]
+track_reading = [0.5, 0.95]
+pull_to_pull_grip_share = 0.01         # +- 1 % grip
+pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s
 
 # The NTTO's competition rules and the sled operator's rule of thumb.
 [event.rules]
@@ -36,4 +42,5 @@ qualifying_distance_m = 90.0     # ...from 90 m on
 decide_after_pulls = 2           # the test puller decides after the 3rd pull
 repull_after_pulls = 5           # and re-pulls after the 6th
 sled_target_m = 94.0             # a shorter test pull: the sled goes lighter, so a couple of the best make full pulls
-step_m = 5.0                     # one sled step is worth about 5 m
+step_m = 5.0                     # rule of thumb: a sled step is worth about 5 m (learnt better on the day)
+max_steps_per_change = 4         # at most this many steps at once

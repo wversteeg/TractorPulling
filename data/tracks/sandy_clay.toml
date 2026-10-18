@@ -1,0 +1,16 @@
+# A light, sandy clay worked deeper further down: weaker than the
+# reference, and the tires dig in once they spin.
+
+[track]
+length_m = 100.0
+max_duration_s = 120.0
+
+[track.soil]
+clay_fraction = 0.3
+moisture = 0.10
+compaction = 0.7
+
+# Rolled firmer at the start, looser from 40 m on.
+[track.profile.compaction]
+x_m = [0.0, 20.0, 40.0]
+value = [0.8, 0.8, 0.6]

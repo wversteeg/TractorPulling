@@ -71,14 +71,19 @@ for the big features; they are repeated at the end for completeness.
   instead (pull until you stop, at most 130 m, on a sled heavy enough that
   pullers stop around 100 to 110 m), or keep going until the strongest is
   found. Could become an event option.
-- **Pull-to-pull variation.** The same puller on the same sled pulls to
-  the same millimetre, so a re-pull repeats the test pull exactly. Real
-  pulls differ: the driver's timing, the track under the tires. A seeded
-  variation per pull would make re-pulls a gamble.
-- **Smarter sled operator and pullers.** The operator works from a rule of
-  thumb (one step is about 5 m) and only changes knives and push-down;
-  scripted pullers keep a test pull only when no one has beaten it since.
-  Both could learn from the pulls they see.
+- **How drivers read the track.** A driver who reads the track right picks
+  the gear that really pulls furthest (found by simulating each gear); one
+  who misreads it is one gear off. Real drivers learn from the test pulls
+  and the pullers before them, and may change gear between pulls.
+- **Changing the sled between pulls.** The operator changes the sled only
+  after a test pull. When the test pullers happen to stay short of the
+  target, the strong pullers after them can make many full pulls (11 at one
+  dry-clay event in the club season); a real operator might step in sooner.
+- **Smarter sled operator and pullers.** The operator learns what a step is
+  worth from each change, but treats every test puller as equal (a strong
+  puller after a change looks like a big effect) and only changes knives
+  and push-down. Scripted pullers keep a test pull only when no one has
+  beaten it.
 
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.

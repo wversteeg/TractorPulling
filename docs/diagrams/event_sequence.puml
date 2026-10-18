@@ -5,6 +5,7 @@ participant "Front end\n(or tp_pull event)" as Caller
 participant "event::Event" as Event
 participant "pull + run\n(one pull each)" as Run
 
+Caller -> Caller : every driver guesses a gear for the track\n(field::best_gear, guess_gear)
 Caller -> Event : create(rules, class sled, running_order(n, seed))
 loop until finished()
   alt decision_due()
@@ -12,7 +13,7 @@ loop until finished()
     Event -> Event : keep: the test pull counts;\nre-pull: queued after the 6th pull
   else next() is a pull
     Caller -> Event : next(), sled(), full_pull_m()
-    Caller -> Run : run the puller on sled() until the sled stops\nor reaches max_distance_m
+    Caller -> Run : run the puller (a little different each pull)\non sled() until the sled stops or reaches max_distance_m
     Run --> Caller : where it stopped
     Caller -> Event : record(reached_m)
     opt test pull

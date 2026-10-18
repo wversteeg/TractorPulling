@@ -76,7 +76,8 @@ TEST(TrackLoader, ShippedReferenceMatchesTestReference) {
 
 TEST(TrackLoader, LoadsEveryShippedTrack) {
     for (const char* name :
-         {"ideal_clay_sand.toml", "dry_hard_clay.toml", "wet_heavy_clay.toml", "loose_sand.toml"}) {
+         {"ideal_clay_sand.toml", "dry_hard_clay.toml", "covered_heavy_clay.toml",
+          "sandy_clay.toml", "firm_loam.toml", "watered_start.toml"}) {
         const auto result = load_track(kTracks / name);
         ASSERT_TRUE(result.ok()) << result.error().message;
         EXPECT_TRUE(track::Model::create(result.value().ground).has_value()) << name;

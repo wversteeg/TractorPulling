@@ -19,7 +19,8 @@ package "tp::event" {
     +decide_after_pulls : int, 2
     +repull_after_pulls : int, 5
     +sled_target_m : double, 90
-    +step_m : double, 5
+    +step_m : double, 5 (the rule of thumb)
+    +max_steps_per_change : int, 4
   }
   class Pull <<struct>> {
     +puller : int
@@ -53,12 +54,14 @@ package "tp::event" {
     -rules_ : Rules
     -sled_ : sled::Params
     -line_m_ : double
+    -step_estimate_m_ : double, learnt from each change
     -queue_ : array<Pull>
     -entries_ : array<Entry, 32>
     +{static} create(const Rules&, const sled::Params&, span<const int> order) : optional<Event>
     +next() : optional<Pull>
     +sled() : const sled::Params&
     +full_pull_m() : double
+    +step_estimate_m() : double
     +record(reached_m) : Outcome
     +decision_due() : optional<int>
     +suggested_keep() : bool
@@ -83,7 +86,8 @@ EventFns ..> Random
 note bottom of Event
   test pull: first pull, and the first after every sled change;
   100 m <= test < 110 m: line to 110 m, sled stays;
-  test past the line: heavier by ceil(over / step); the test puller re-pulls;
+  test past the line: heavier by ceil(over / learnt step), at most max steps; the test puller re-pulls;
+  the operator learns what a step is worth from each change and the next test pull;
   test short of the target: lighter (knives out, then push-down later);
   test puller may keep an unchanged or lighter sled's pull: decides after pull +2,
   re-pulls after pull +5 (the 6th);

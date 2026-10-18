@@ -8,6 +8,7 @@ add_library(tp_data STATIC
     src/event/event_loader.cpp
     src/rules/class_rules_loader.cpp
     src/track/track_loader.cpp
+    src/season/season_loader.cpp
     src/sled/sled_loader.cpp
     src/tire/tire_fields.cpp
     src/tire/tire_loader.cpp

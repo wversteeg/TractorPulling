@@ -37,6 +37,7 @@ package "tp::data" {
     +rules : event::Rules
     +reference : field::Puller
     +variation : field::Variation
+    +pull_to_pull : field::PullToPull
     +pullers : int
     +seed : uint64
     +sled : sled::Params
@@ -48,6 +49,16 @@ package "tp::data" {
     --
     loads the class, tractor, sled and track it names
     relative to the event file, then validates the rules and field
+  }
+  class SeasonDefinition <<struct>> {
+    +event : EventDefinition
+    +points : season::Points
+    +rounds : vector<SeasonRound{name, Track}>
+    +seed : uint64
+  }
+  class "season_loader" as SeasonLoader <<free functions>> {
+    +load_season(path) : Result<SeasonDefinition>
+    +parse_season(text, source, base_directory) : Result<SeasonDefinition>
   }
   class "tractor_loader" as TractorLoader <<free functions>> {
     +load_tractor(path) : Result<vehicle::Params>
@@ -64,6 +75,9 @@ package "tp::data" {
   EventLoader ..> Loaders : components
   EventLoader ..> TractorLoader
   EventDefinition *-- Track
+  SeasonLoader ..> SeasonDefinition
+  SeasonLoader ..> EventLoader
+  SeasonDefinition *-- EventDefinition
   TractorLoader ..> Loaders : components
   TractorLoader ..> Result : returns
 }

@@ -1,0 +1,12 @@
+# A heavy clay track on a rainy day. The track was covered with plastic
+# while it rained, so it is moist rather than wet: still softer and
+# stickier than the reference, and the tires smear it once they spin.
+
+[track]
+length_m = 100.0
+max_duration_s = 120.0
+
+[track.soil]
+clay_fraction = 0.75
+moisture = 0.19
+compaction = 0.8

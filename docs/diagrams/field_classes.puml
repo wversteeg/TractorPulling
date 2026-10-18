@@ -29,6 +29,30 @@ package "tp::field" {
   class Puller <<struct>> {
     +tractor : vehicle::Params
     +driver : driver::Plan
+    +track_reading : double
+  }
+  class PullToPull <<struct>> {
+    +grip_share : double
+    +clutch_slip_in_s : double
+  }
+  class Venue <<struct>> {
+    +track : track::Params
+    +sled : sled::Params
+    +max_duration_s : double
+  }
+  class LogEntry <<struct>> {
+    +pull : event::Pull
+    +reached_m : double
+    +outcome : event::Outcome
+    +gear : int
+    +full_pull_m, knives, pushdown_start_m
+    +deciding : int, keep : bool
+  }
+  class PlayedEvent <<struct>> {
+    +event : event::Event
+    +log : array<LogEntry, 160>
+    +gears : array<int, 32>
+    +entries() : span<const LogEntry>
   }
   class Range <<struct>> {
     +low, high : double
@@ -39,6 +63,7 @@ package "tp::field" {
     +traction_limit : Range
     +lowest_gear, highest_gear : int
     +clutch_slip_in_s : Range
+    +track_reading : Range
   }
   class Field <<struct>> {
     +pullers : array<Puller, 32>
@@ -48,12 +73,20 @@ package "tp::field" {
     +validate(reference, variation, rules, count) : optional<ParamError>
     +generate(reference, variation, rules, count, seed) : optional<Field>
     +pull_distance(const Puller&, const sled::Params&, const track::Params&,\n      max_distance_m, max_duration_s) : optional<double>
+    +best_gear(const Puller&, sled, track, lowest, highest, max_m, max_s) : optional<int>
+    +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
+    +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
+    +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
   }
   Puller *-- Plan
   Variation *-- Range
   Field *-- Puller
   FieldFns ..> Variation
   FieldFns ..> Field
+  FieldFns ..> PullToPull
+  FieldFns ..> Venue
+  FieldFns ..> PlayedEvent
+  PlayedEvent *-- LogEntry
 }
 Puller *-- Vehicle
 DriverFns ..> Vehicle
@@ -63,6 +96,8 @@ FieldFns ..> Run : pull_distance runs\na whole pull
 note bottom of FieldFns
   each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
   torque tuned down to the class's PTO limit (bisection), mass capped at its limit;
-  pitch inertia follows the mass; the same seed gives the same field everywhere
+  pitch inertia follows the mass; the same seed gives the same field everywhere;
+  at each event every driver guesses a gear (the best as often as they read the track),
+  and every pull differs a little in grip and clutch timing
 end note
 @enduml
