@@ -170,7 +170,26 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     return std::nullopt;
 }
 
-AxleLoads axle_loads(const Params& params, const State& state) noexcept {
+namespace {
+
+Point hitch_offset(const Params& params, const SinCos& pitch) noexcept {
+    return rotate(pitch, -params.hitch_behind_rear_axle_m,
+                  params.hitch_height_m - params.rear_axle_height_m);
+}
+
+}  // namespace
+
+Hitch hitch(const Params& params, const State& state) noexcept {
+    const Point offset = hitch_offset(params, math::sin_cos(state.pitch_rad));
+    // A point at (x, z) from the axle, turning nose-up at θ', moves at
+    // (-z θ', x θ') relative to the axle.
+    return {.x_m = state.position_m + offset.x_m,
+            .z_m = params.rear_axle_height_m + offset.z_m,
+            .velocity_x_m_s = state.velocity_m_s - offset.z_m * state.pitch_rate_rad_s,
+            .velocity_z_m_s = offset.x_m * state.pitch_rate_rad_s};
+}
+
+AxleLoads axle_loads(const Params& params, const State& state, const Drawbar& drawbar) noexcept {
     const SinCos pitch = math::sin_cos(state.pitch_rad);
     const Penetration front = front_tires(params, pitch);
     const double front_n = contact_load(params.front_tires, front, state.pitch_rate_rad_s).force_n;
@@ -183,7 +202,8 @@ AxleLoads axle_loads(const Params& params, const State& state) noexcept {
     const Point cg = rotate(pitch, params.cg_ahead_of_rear_axle_m, cg_above_axle_m(params));
     const double cg_vertical_m_s2 = state.pitch_acceleration_rad_s2 * cg.x_m -
                                     state.pitch_rate_rad_s * state.pitch_rate_rad_s * cg.z_m;
-    const double rear_n = weight_n(params) + params.mass_kg * cg_vertical_m_s2 - front_n - bar_n;
+    const double rear_n =
+        weight_n(params) + params.mass_kg * cg_vertical_m_s2 - front_n - bar_n - drawbar.lift_n;
 
     return {.rear_n = std::max(rear_n, 0.0),
             .front_n = front_n,
@@ -209,13 +229,12 @@ void advance(State& state, const Prediction& prediction, double drive_force_n,
 }
 
 void advance_pitch(State& state, const Params& params, double axle_torque_nm,
-                   double drawbar_force_n, double dt_s) noexcept {
+                   const Drawbar& drawbar, double dt_s) noexcept {
     const SinCos pitch = math::sin_cos(state.pitch_rad);
     const double b_m = params.cg_ahead_of_rear_axle_m;
     const double h_m = cg_above_axle_m(params);
     const Point cg = rotate(pitch, b_m, h_m);
-    const Point hitch = rotate(pitch, -params.hitch_behind_rear_axle_m,
-                               params.hitch_height_m - params.rear_axle_height_m);
+    const Point hitch = hitch_offset(params, pitch);
     const double inertia_kg_m2 =
         params.pitch_inertia_kg_m2 + params.mass_kg * (b_m * b_m + h_m * h_m);
 
@@ -224,8 +243,10 @@ void advance_pitch(State& state, const Params& params, double axle_torque_nm,
     const ContactLoad bar = contact_load(params.wheelie_bar.contact, wheelie_bar(params, pitch),
                                          state.pitch_rate_rad_s);
 
-    // A backward force below the axle pitches nose-down: moment = -z F_x.
-    double moment_nm = axle_torque_nm + drawbar_force_n * hitch.z_m - weight_n(params) * cg.x_m +
+    // Moment of a force (F_x, F_z) at (x, z) from the axle: x F_z - z F_x.
+    // The drawbar pulls back (F_x = -pull) and lifts (F_z = lift) at the hitch.
+    double moment_nm = axle_torque_nm + drawbar.pull_n * hitch.z_m + drawbar.lift_n * hitch.x_m -
+                       weight_n(params) * cg.x_m +
                        params.mass_kg * state.acceleration_m_s2 * cg.z_m + front.moment_nm +
                        bar.moment_nm;
     if (state.velocity_m_s > 0.0) {

@@ -78,7 +78,7 @@ std::uint64_t pull_signature(const vehicle::Params& params) {
         const double t_s = i * 0.001;
         const vehicle::Input input{
             .throttle = 1.0, .clutch_pedal = t_s < 2.0 ? 1.0 : 0.0, .gear = 3};
-        vehicle::step(state, *model, input, 6000.0, 0.001);
+        vehicle::step(state, *model, input, {.pull_n = 6000.0}, 0.001);
         vehicle::hash_append(hash, state);
     }
     return hash.value();

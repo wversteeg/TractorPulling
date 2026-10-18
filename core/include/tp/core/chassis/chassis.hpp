@@ -38,17 +38,20 @@ struct WheelieBar {
 ///
 /// Moments about the rear axle, nose-up positive:
 ///
-///   I θ'' = τ_axle + F_drawbar z_hitch(θ) - m g x_cg(θ) + m a z_cg(θ)
-///           + front tires + wheelie bar
+///   I θ'' = τ_axle + F_pull z_hitch(θ) + F_lift x_hitch(θ) - m g x_cg(θ)
+///           + m a z_cg(θ) + front tires + wheelie bar
 ///
 /// with I the pitch inertia about the axle, τ_axle the torque the gearbox
 /// puts on the rear axle (its reaction lifts the nose), and m a the inertial
 /// load of the accelerating pivot. The rear tires carry what the contacts do
 /// not, including the vertical inertia of the pitching body.
 ///
+/// The drawbar (the chain to the sled) pulls at the hitch along its own
+/// line, so it can pull the hitch down or up as well as back; that also
+/// shifts load between the rear tires and the contacts.
+///
 /// Left out: the centre of gravity moving along x as the body pitches does
-/// not feed back into the longitudinal motion, and the drawbar pull stays
-/// horizontal.
+/// not feed back into the longitudinal motion.
 struct Params {
     /// Whole tractor, wheels included [kg].
     double mass_kg = 0.0;
@@ -110,6 +113,27 @@ struct State {
     double pitch_acceleration_rad_s2 = 0.0;
 };
 
+/// What the drawbar puts on the tractor at the hitch [N].
+struct Drawbar {
+    /// Backward: the pull the tractor works against.
+    double pull_n = 0.0;
+    /// Upward; negative when the drawbar runs down from the hitch.
+    double lift_n = 0.0;
+};
+
+/// The hitch point in the world: x along the track from where the rear axle
+/// started, z above the ground [m, m/s].
+struct Hitch {
+    double x_m = 0.0;
+    double z_m = 0.0;
+    double velocity_x_m_s = 0.0;
+    double velocity_z_m_s = 0.0;
+};
+
+/// Where the hitch is and how it moves, with the body's pitch. The rear axle
+/// is at `state.position_m`.
+[[nodiscard]] Hitch hitch(const Params& params, const State& state) noexcept;
+
 /// The ground's vertical forces on the tractor [N].
 struct AxleLoads {
     double rear_n = 0.0;
@@ -120,9 +144,11 @@ struct AxleLoads {
 };
 
 /// Loads at the start of a step, from the state: the contacts' spring and
-/// damper forces, and the rear tires carrying the rest of the weight and
-/// the body's vertical inertia (from the last step's pitch acceleration).
-[[nodiscard]] AxleLoads axle_loads(const Params& params, const State& state) noexcept;
+/// damper forces, and the rear tires carrying the rest of the weight, the
+/// drawbar's downward pull and the body's vertical inertia (from the last
+/// step's pitch acceleration).
+[[nodiscard]] AxleLoads axle_loads(const Params& params, const State& state,
+                                   const Drawbar& drawbar) noexcept;
 
 /// Speed at the end of a step as a line in the drive force: free + k · F.
 struct Prediction {
@@ -145,7 +171,7 @@ void advance(State& state, const Prediction& prediction, double drive_force_n,
 /// rule: stable however stiff the wheelie bar, and free of the numerical
 /// damping backward Euler would add to the front tires' bounce.
 void advance_pitch(State& state, const Params& params, double axle_torque_nm,
-                   double drawbar_force_n, double dt_s) noexcept;
+                   const Drawbar& drawbar, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);

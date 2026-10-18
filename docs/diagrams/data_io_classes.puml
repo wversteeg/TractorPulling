@@ -21,6 +21,7 @@ package "tp::data" {
     +load_driveline(path) / parse_driveline(text, source) : Result<driveline::Params>
     +load_tire(path) / parse_tire(text, source) : Result<tire::Params>
     +load_class_rules(path) / parse_class_rules(text, source) : Result<rules::ClassRules>
+    +load_sled(path) / parse_sled(text, source) : Result<sled::Params>
     --
     each: read fields, convert to SI, build Params,
     <component>::validate(), name the field on error

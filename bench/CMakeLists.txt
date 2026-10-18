@@ -9,6 +9,7 @@ if(TP_BUILD_DATA_IO)
         clutch/clutch_bench.cpp
         driveline/driveline_bench.cpp
         engine/engine_bench.cpp
+        pull/pull_bench.cpp
         tire/tire_bench.cpp
         vehicle/vehicle_bench.cpp)
     target_link_libraries(core_bench PRIVATE tp::data)

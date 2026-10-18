@@ -11,7 +11,9 @@ add_executable(tp_core_tests
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/trig_test.cpp
+    pull/pull_test.cpp
     rules/class_rules_test.cpp
+    sled/sled_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
     units/conversions_test.cpp
@@ -27,6 +29,7 @@ if(TP_BUILD_DATA_IO)
         data/clutch_loader_test.cpp
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp
+        data/sled_loader_test.cpp
         data/tire_loader_test.cpp
         data/tractor_loader_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)

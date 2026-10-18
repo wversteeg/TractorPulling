@@ -1,0 +1,68 @@
+@startuml sled_classes
+title Sled (tp::sled): weight box, pan and push-down
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::sled" {
+  class Params <<struct>> {
+    +frame_mass_kg : double
+    +frame_cg_ahead_of_wheels_m : double
+    +pan_ahead_of_wheels_m : double
+    +hook_ahead_of_wheels_m, hook_height_m : double
+    +box_mass_kg : double
+    +box_start / box_end_ahead_of_wheels_m : double
+    +box_travel_distance_m : double
+    +pushdown_start_m, pushdown_ramp_m : double
+    +pan_friction_coefficient : double
+    +wheel_rolling_resistance_coefficient : double
+    +chain : Chain
+  }
+  class Chain <<struct>> {
+    +length_m : double
+    +stiffness_n_per_m : double
+    +damping_n_s_per_m : double
+  }
+  class State <<struct>> {
+    +position_m : double
+    +velocity_m_s : double
+    +distance_m : double
+  }
+  class HookForce <<struct>> {
+    +forward_n : double
+    +up_n : double
+  }
+  class Loads <<struct>> {
+    +pan_n, wheels_n : double
+    +box_ahead_of_wheels_m : double
+    +pushdown : double
+    +resistance_n : double
+  }
+  class Prediction <<struct>> {
+    +free_velocity_m_s : double
+    +velocity_per_n : double
+  }
+  enum ParamError
+  class "sled functions" as SledFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +total_mass_kg(const Params&) : double
+    +loads(const Params&, const State&, const HookForce&) : Loads
+    +predict(const State&, const Params&, resistance_n, dt_s) : Prediction
+    +advance(State&, const Prediction&, forward_n, dt_s)
+    +hash_append(Fnv1a&, const State&)
+  }
+  Params *-- Chain
+  SledFns ..> Params
+  SledFns ..> State
+  SledFns ..> HookForce
+  SledFns ..> Loads
+  SledFns ..> Prediction
+  SledFns ..> ParamError
+}
+note bottom of SledFns
+  pan = (W_frame x_frame + W_box x_box - F_up x_hook + F_fwd h_hook) / x_pan
+  the box moves forward with the distance travelled;
+  the push-down moves the wheels' share onto the pan over its ramp;
+  resistance = μ_pan pan + c_rr wheels, holding but never pulling back
+end note
+@enduml

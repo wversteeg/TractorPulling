@@ -54,7 +54,7 @@ State initial_state(const Model& model) noexcept {
                  .chassis = {}};
 }
 
-Output step(State& state, const Model& model, const Input& input, double drawbar_force_n,
+Output step(State& state, const Model& model, const Input& input, const chassis::Drawbar& drawbar,
             double dt_s) noexcept {
     const Params& params = model.params();
     const driveline::Params& driveline_params = model.driveline();
@@ -68,7 +68,7 @@ Output step(State& state, const Model& model, const Input& input, double drawbar
                                               clutch_capacity_nm == 0.0);
     }
 
-    out.axle_loads = chassis::axle_loads(params.chassis, state.chassis);
+    out.axle_loads = chassis::axle_loads(params.chassis, state.chassis, drawbar);
     const double load_per_tire_n = out.axle_loads.rear_n / tires;
 
     // Predictions. Rolling resistance acts as a known torque on the axle
@@ -84,7 +84,7 @@ Output step(State& state, const Model& model, const Input& input, double drawbar
         params.chassis.front_rolling_resistance_coefficient * out.axle_loads.front_n +
         params.chassis.wheelie_bar.rolling_resistance_coefficient * out.axle_loads.wheelie_bar_n;
     const chassis::Prediction body_prediction =
-        chassis::predict(state.chassis, params.chassis, drawbar_force_n + front_drag_n, dt_s);
+        chassis::predict(state.chassis, params.chassis, drawbar.pull_n + front_drag_n, dt_s);
 
     const double wheel_m_s = state.driveline.output_omega_rad_s * tire_params.radius_m;
     const double ground_m_s = state.chassis.velocity_m_s;
@@ -114,11 +114,11 @@ Output step(State& state, const Model& model, const Input& input, double drawbar
     // resistance counts only while the wheels turn, as in the driveline.
     const double next_axle_omega_rad_s = state.driveline.output_omega_rad_s;
     const bool standstill = next_axle_omega_rad_s == 0.0 && state.chassis.velocity_m_s == 0.0;
-    const double tire_force_n = standstill ? drawbar_force_n : solution.tire_force_n;
+    const double tire_force_n = standstill ? drawbar.pull_n : solution.tire_force_n;
     const double axle_torque_nm =
         driveline_params.output_inertia_kg_m2 * (next_axle_omega_rad_s - axle_omega_rad_s) / dt_s +
         tire_params.radius_m * tire_force_n + (next_axle_omega_rad_s > 0.0 ? rear_rolling_nm : 0.0);
-    chassis::advance_pitch(state.chassis, params.chassis, axle_torque_nm, drawbar_force_n, dt_s);
+    chassis::advance_pitch(state.chassis, params.chassis, axle_torque_nm, drawbar, dt_s);
 
     out.engine = engine_prediction.output;
     out.clutch_torque_nm = solution.clutch_torque_nm;

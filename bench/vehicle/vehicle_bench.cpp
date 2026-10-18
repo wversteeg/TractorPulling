@@ -35,11 +35,12 @@ void BM_VehicleStep(benchmark::State& state) {
             .throttle = 1.0,
             .clutch_pedal = std::clamp(1.0 - (t_s - 2.0) / 3.0, 0.0, 1.0),
             .gear = kPullingGear};
-        tp::vehicle::step(vehicle, *model, input, kDrawbar_n, kDt_s);
+        tp::vehicle::step(vehicle, *model, input, {.pull_n = kDrawbar_n}, kDt_s);
     }
     const tp::vehicle::Input pulling{.throttle = 1.0, .clutch_pedal = 0.0, .gear = kPullingGear};
     for (auto _ : state) {
-        benchmark::DoNotOptimize(tp::vehicle::step(vehicle, *model, pulling, kDrawbar_n, kDt_s));
+        benchmark::DoNotOptimize(
+            tp::vehicle::step(vehicle, *model, pulling, {.pull_n = kDrawbar_n}, kDt_s));
         benchmark::ClobberMemory();
     }
     if (!vehicle.engine.running || !vehicle.clutch.locked) {
