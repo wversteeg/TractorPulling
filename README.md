@@ -49,6 +49,21 @@ With the class's own push-down the wet clay is the shortest track and the
 hard clay the longest; the sled operator evens that out with the push-down
 for the day.
 
+### A class at an event
+
+An event file names the class, the sled and the track, and how a field of
+pullers varies around the reference tractor and driver. The first puller
+tests the sled; the sled operator makes it lighter or heavier (knives and
+push-down), and the next puller tests it again. A test pull between 100 and
+110 m moves the full-pull line to 110 m instead. A test puller may keep
+their pull unless the sled got heavier, deciding after the 3rd pull and
+re-pulling after the 6th. Every full pull, filled up to four with the best
+runs from 90 m, goes to the pull-off on a heavier sled.
+
+```bash
+./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
+```
+
 ## Requirements
 
 - CMake 3.25+ and Ninja

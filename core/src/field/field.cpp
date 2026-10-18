@@ -2,6 +2,9 @@
 
 #include "tp/core/math/curve.hpp"
 #include "tp/core/math/random.hpp"
+#include "tp/core/pull/pull.hpp"
+#include "tp/core/run/run.hpp"
+#include "tp/core/time/fixed_step_clock.hpp"
 
 #include <algorithm>
 #include <array>
@@ -158,6 +161,29 @@ std::optional<Field> generate(const Puller& reference, const Variation& variatio
     }
     field.count = count;
     return field;
+}
+
+}  // namespace tp::field
+
+namespace tp::field {
+
+std::optional<double> pull_distance(const Puller& puller, const sled::Params& sled,
+                                    const track::Params& track, double max_distance_m,
+                                    double max_duration_s) noexcept {
+    constexpr double kDt_s =
+        static_cast<double>(kSimulationStepNs) / static_cast<double>(kNanosecondsPerSecond);
+    const auto model =
+        pull::Model::create({.tractor = puller.tractor, .sled = sled, .track = track});
+    const run::Rules rules{.track_length_m = max_distance_m, .max_duration_s = max_duration_s};
+    if (!model || run::validate(rules)) {
+        return std::nullopt;
+    }
+    run::State state = run::start(*model);
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        run::step(state, *model, rules, driver::input(puller.driver, t_s), kDt_s);
+    }
+    return state.result->distance_m;
 }
 
 }  // namespace tp::field

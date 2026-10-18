@@ -1,0 +1,39 @@
+# A club pulling event: one NTTO standard 3.5 t class of 15 pullers on the
+# reference track. The pullers are the reference tractor and driver, each a
+# little different; the running order and the field come from the seed.
+
+[event]
+class = "../classes/ntto_standard_3500.toml"
+tractor = "../tractors/farm_stock_light.toml"   # the reference the field varies
+sled = "../sleds/light_class.toml"
+track = "../tracks/ideal_clay_sand.toml"
+pullers = 15
+seed = 2026
+
+# The reference driver: neutral, the gear in at 0.5 s, rev up, then the
+# clutch up over 3 s from 3 s.
+[event.driver]
+gear = 6
+select_gear_s = 0.5
+launch_s = 3.0
+clutch_slip_in_s = 3.0
+
+# How the pullers differ. Power and weight are kept within the class.
+[event.field]
+torque_scale = [0.95, 1.03]
+mass_kg = [3300.0, 3550.0]
+traction_limit = [0.90, 0.95]
+gears = [5, 6]
+clutch_slip_in_s = [2.0, 4.0]
+
+# The NTTO's competition rules and the sled operator's rule of thumb.
+[event.rules]
+full_pull_m = 100.0
+extended_full_pull_m = 110.0     # when a test pull stops between the two
+max_distance_m = 130.0           # a pull past the line stops here at the latest
+pull_off_places = 4              # full pulls, filled up with the best...
+qualifying_distance_m = 90.0     # ...from 90 m on
+decide_after_pulls = 2           # the test puller decides after the 3rd pull
+repull_after_pulls = 5           # and re-pulls after the 6th
+sled_target_m = 90.0             # a shorter test pull: the sled goes lighter
+step_m = 5.0                     # one sled step is worth about 5 m

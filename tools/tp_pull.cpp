@@ -7,6 +7,7 @@
 //               [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump]
+//   tp_pull event <event.toml> [--seed N]
 //   tp_pull check <tractor.toml> <class.toml>
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
@@ -28,11 +29,17 @@
 // and prints one line per track: its surface at the start line, the day's
 // push-down and how far the run got.
 //
+// event runs one class at an event: a seeded field and running order, test
+// pulls and the sled operator's changes, test pullers keeping or re-pulling,
+// qualifying and pull-offs. It prints every pull and the standings.
+//
 // check compares a tractor with a pulling class's rules and exits non-zero
 // if it may not compete.
 
 #include "tp/core/driveline/driveline.hpp"
 #include "tp/core/engine/engine.hpp"
+#include "tp/core/event/event.hpp"
+#include "tp/core/field/field.hpp"
 #include "tp/core/pull/pull.hpp"
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/run/run.hpp"
@@ -41,6 +48,7 @@
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
+#include "tp/data/event/event_loader.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
@@ -50,6 +58,7 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -358,6 +367,110 @@ int compare_tracks(const tp::vehicle::Params& tractor, const tp::sled::Params& c
     return EXIT_SUCCESS;
 }
 
+// --- event ------------------------------------------------------------------
+
+std::string_view describe(tp::event::PullKind kind) {
+    switch (kind) {
+        case tp::event::PullKind::kTest:
+            return "test pull";
+        case tp::event::PullKind::kCompetition:
+            return "";
+        case tp::event::PullKind::kRepull:
+            return "re-pull";
+        case tp::event::PullKind::kPullOff:
+            return "pull-off";
+    }
+    return "?";
+}
+
+void report_change(const tp::event::Outcome& outcome, const tp::event::Event& event) {
+    switch (outcome.change) {
+        case tp::event::SledChange::kNone:
+            return;
+        case tp::event::SledChange::kLineExtended:
+            std::cout << "      operator: full pull at " << event.full_pull_m() << " m\n";
+            return;
+        case tp::event::SledChange::kLighter:
+        case tp::event::SledChange::kHeavier:
+            std::cout << "      operator: "
+                      << (outcome.change == tp::event::SledChange::kLighter ? "lighter" : "heavier")
+                      << " by " << outcome.steps << " step(s): " << event.sled().knives.count
+                      << " knives, push-down at " << event.sled().pushdown_start_m
+                      << " m; the next puller tests it\n";
+            return;
+    }
+}
+
+void report_standings(tp::event::Event& event) {
+    std::cout << "\nstandings\n";
+    for (const tp::event::Standing& s : event.standings()) {
+        std::cout << std::setw(4) << s.place << ".  #" << std::setw(2) << s.puller + 1 << "  "
+                  << std::setw(7) << s.distance_m << " m" << (s.full_pull ? " full pull" : "");
+        if (s.pull_off_rounds > 0) {
+            std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m
+                      << " m";
+        }
+        std::cout << '\n';
+    }
+}
+
+int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
+    const auto field = tp::field::generate(definition.reference, definition.variation,
+                                           definition.class_rules, definition.pullers, seed);
+    // The draw for the running order is separate from the field's.
+    const auto order = tp::event::running_order(definition.pullers, seed + 1);
+    const std::span<const int> running{order.data(), static_cast<std::size_t>(definition.pullers)};
+    auto event = tp::event::Event::create(
+        definition.rules, tp::sled::with_conditions(definition.sled, definition.track.sled),
+        running);
+    if (!field || !event) {
+        std::cerr << "inconsistent event\n";
+        return EXIT_FAILURE;
+    }
+    std::cout << std::fixed << std::setprecision(2) << definition.pullers << " pullers, seed "
+              << seed << "; running order:";
+    for (const int puller : running) {
+        std::cout << " #" << puller + 1;
+    }
+    std::cout << "\n\n";
+    int pull_number = 0;
+    while (!event->finished()) {
+        if (const std::optional<int> deciding = event->decision_due()) {
+            const bool keep = event->suggested_keep();
+            std::cout << "      #" << *deciding + 1
+                      << (keep ? " keeps the test pull\n" : " will re-pull after the 6th pull\n");
+            event->decide(keep);
+            continue;
+        }
+        const std::optional<tp::event::Pull> pull = event->next();
+        if (!pull) {
+            break;
+        }
+        const tp::field::Puller& puller = field->pullers[static_cast<std::size_t>(pull->puller)];
+        const std::optional<double> reached = tp::field::pull_distance(
+            puller, event->sled(), definition.track.ground, definition.rules.max_distance_m,
+            definition.track.rules.max_duration_s);
+        if (!reached) {
+            std::cerr << "inconsistent puller or sled\n";
+            return EXIT_FAILURE;
+        }
+        const double line_m = event->full_pull_m();
+        std::cout << std::setw(4) << ++pull_number << ".  #" << std::setw(2) << pull->puller + 1
+                  << "  gear " << puller.driver.gear << "  " << std::setw(7) << *reached << " m"
+                  << (*reached >= line_m ? " full pull" : "          ") << "  "
+                  << describe(pull->kind);
+        if (pull->kind == tp::event::PullKind::kPullOff) {
+            std::cout << ' ' << pull->pull_off_round << " (" << event->sled().knives.count
+                      << " knives)";
+        }
+        std::cout << '\n';
+        report_change(event->record(*reached), *event);
+    }
+    report_standings(*event);
+    std::cout.unsetf(std::ios::fixed);
+    return EXIT_SUCCESS;
+}
+
 // --- check ------------------------------------------------------------------
 
 void report_rule(std::string_view rule, double value, double limit, std::string_view unit,
@@ -387,6 +500,7 @@ int check(const tp::vehicle::Params& tractor, const tp::rules::ClassRules& rules
 struct Options {
     std::vector<std::string_view> positional;
     std::optional<std::string_view> output_path;
+    std::optional<std::uint64_t> seed;
     PullOptions pull;
 };
 
@@ -415,6 +529,11 @@ std::optional<Options> parse_options(std::span<char* const> args) {
                 return std::nullopt;
             }
             options.pull.gear = *gear;
+        } else if (arg == "--seed" && has_value) {
+            options.seed = parse_number<std::uint64_t>(args[++i]);
+            if (!options.seed) {
+                return std::nullopt;
+            }
         } else if (arg == "--resistance-kn" && has_value) {
             const auto kilonewtons = parse_number<double>(args[++i]);
             if (!kilonewtons || *kilonewtons < 0.0) {
@@ -438,6 +557,7 @@ int usage() {
                  "                   [--dump] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump]\n"
+                 "       tp_pull event <event.toml> [--seed N]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
 }
@@ -508,6 +628,14 @@ int compare_tracks_command(const Options& options) {
     return compare_tracks(*tractor, *sled, std::span{options.positional}.subspan(2), options.pull);
 }
 
+int event_command(const Options& options) {
+    const auto definition = load_or_report(tp::data::load_event(options.positional[0]));
+    if (!definition) {
+        return EXIT_FAILURE;
+    }
+    return run_event(*definition, options.seed.value_or(definition->seed));
+}
+
 int check_command(const Options& options) {
     const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
     const auto rules = load_or_report(tp::data::load_class_rules(options.positional[1]));
@@ -531,6 +659,7 @@ constexpr std::array kCommands = {
     Command{"pull", 1, 1, &pull_command},
     Command{"run", 3, 3, &run_command},
     Command{"compare-tracks", 3, kAnyNumber, &compare_tracks_command},
+    Command{"event", 1, 1, &event_command},
     Command{"check", 2, 2, &check_command},
 };
 

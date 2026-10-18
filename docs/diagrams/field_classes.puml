@@ -8,6 +8,7 @@ package "other components" {
   class "vehicle::Params / Input" as Vehicle
   class "rules::ClassRules\n+ check(), pto_power_w()" as Rules
   class "math::SplitMix64" as Random
+  class "pull + run" as Run
 }
 
 package "tp::driver" {
@@ -46,6 +47,7 @@ package "tp::field" {
   class "field functions" as FieldFns <<free functions>> {
     +validate(reference, variation, rules, count) : optional<ParamError>
     +generate(reference, variation, rules, count, seed) : optional<Field>
+    +pull_distance(const Puller&, const sled::Params&, const track::Params&,\n      max_distance_m, max_duration_s) : optional<double>
   }
   Puller *-- Plan
   Variation *-- Range
@@ -57,6 +59,7 @@ Puller *-- Vehicle
 DriverFns ..> Vehicle
 FieldFns ..> Rules : every puller\nmay compete
 FieldFns ..> Random
+FieldFns ..> Run : pull_distance runs\na whole pull
 note bottom of FieldFns
   each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
   torque tuned down to the class's PTO limit (bisection), mass capped at its limit;

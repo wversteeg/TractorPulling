@@ -32,6 +32,23 @@ package "tp::data" {
     +ground : track::Params, soil and profile
     +sled : sled::Conditions, the day's push-down
   }
+  class EventDefinition <<struct>> {
+    +class_rules : rules::ClassRules
+    +rules : event::Rules
+    +reference : field::Puller
+    +variation : field::Variation
+    +pullers : int
+    +seed : uint64
+    +sled : sled::Params
+    +track : Track
+  }
+  class "event_loader" as EventLoader <<free functions>> {
+    +load_event(path) : Result<EventDefinition>
+    +parse_event(text, source, base_directory) : Result<EventDefinition>
+    --
+    loads the class, tractor, sled and track it names
+    relative to the event file, then validates the rules and field
+  }
   class "tractor_loader" as TractorLoader <<free functions>> {
     +load_tractor(path) : Result<vehicle::Params>
     +parse_tractor(text, source, base_directory) : Result<vehicle::Params>
@@ -43,6 +60,10 @@ package "tp::data" {
   Result o-- LoadError
   Loaders ..> Result : returns
   Loaders ..> Track
+  EventLoader ..> EventDefinition
+  EventLoader ..> Loaders : components
+  EventLoader ..> TractorLoader
+  EventDefinition *-- Track
   TractorLoader ..> Loaders : components
   TractorLoader ..> Result : returns
 }
