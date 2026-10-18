@@ -16,6 +16,7 @@ add_executable(tp_core_tests
     rules/class_rules_test.cpp
     run/run_test.cpp
     sled/sled_test.cpp
+    soil/soil_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
     units/conversions_test.cpp

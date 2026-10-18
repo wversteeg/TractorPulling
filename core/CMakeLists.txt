@@ -9,6 +9,7 @@ add_library(tp_core STATIC
     src/rules/class_rules.cpp
     src/run/run.cpp
     src/sled/sled.cpp
+    src/soil/soil.cpp
     src/tire/tire.cpp
     src/time/fixed_step_clock.cpp
     src/vehicle/chain_solver.cpp
