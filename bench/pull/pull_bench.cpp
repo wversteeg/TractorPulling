@@ -6,6 +6,7 @@
 #include <benchmark/benchmark.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
 
 namespace {
@@ -32,8 +33,11 @@ void BM_PullStep(benchmark::State& state) {
     tp::sled::Params steady_sled = sled.value();
     steady_sled.pushdown_start_m = kOutOfReach_m;
     steady_sled.box_travel_distance_m = kOutOfReach_m;
-    const auto model =
-        tp::pull::Model::create({.tractor = tractor.value(), .sled = steady_sled, .soil = kSoil});
+    const auto model = tp::pull::Model::create(
+        {.tractor = tractor.value(),
+         .sled = steady_sled,
+         .track = {
+             .soil = kSoil, .moisture_along_m = std::nullopt, .compaction_along_m = std::nullopt}});
     if (!model) {
         state.SkipWithError("inconsistent tractor or sled");
         return;

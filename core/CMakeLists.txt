@@ -12,6 +12,7 @@ add_library(tp_core STATIC
     src/soil/soil.cpp
     src/tire/tire.cpp
     src/time/fixed_step_clock.cpp
+    src/track/track.cpp
     src/vehicle/chain_solver.cpp
     src/vehicle/vehicle.cpp)
 add_library(tp::core ALIAS tp_core)

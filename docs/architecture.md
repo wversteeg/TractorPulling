@@ -38,6 +38,14 @@ a tire spins (sand digs, wet clay smears).
 
 ![Soil classes](diagrams/svg/soil_classes.svg)
 
+### Track (`tp::track`)
+
+A track's soil and how its moisture and compaction change along it (a wet
+patch, a worked stretch). Sampled into a fixed table at setup, so the step
+only looks up and blends the surface under each contact.
+
+![Track classes](diagrams/svg/track_classes.svg)
+
 ### Tire (`tp::tire`)
 
 Longitudinal force from slip on soil, after Brixius: the soil's cone index
@@ -66,14 +74,16 @@ solve that couples engine, clutch, driveline, tires and body each step.
 
 The transfer sled: rear wheels and a pan share the frame and the weight box
 by their levers. The box moves forward with the sled's travel and the
-push-down lifts the wheels, so the pan drags harder along the track.
+push-down lifts the wheels, so the pan drags harder along the track. On
+soft ground the pan ploughs and the wheels sink in.
 
 ![Sled classes](diagrams/svg/sled_classes.svg)
 
 ### Pull (`tp::pull`)
 
 A pull: the tractor and the sled joined by the chain, which pulls along its
-own line between the hitch and the hook.
+own line between the hitch and the hook, on a track whose ground each
+contact reads where it is.
 
 ![Pull classes](diagrams/svg/pull_classes.svg)
 

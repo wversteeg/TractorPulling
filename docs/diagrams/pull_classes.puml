@@ -8,23 +8,25 @@ package "components (see their class diagrams)" {
   class "vehicle::Params / Model / State\n+ Input, Output" as Vehicle
   class "sled::Params / State\n+ Chain, Loads, HookForce" as Sled
   class "chassis::Drawbar / Hitch" as Chassis
-  class "soil::Composition / Surface" as Soil
+  class "track::Params / Model" as Track
 }
 
 package "tp::pull" {
   class Params <<struct>> {
     +tractor : vehicle::Params
     +sled : sled::Params
-    +soil : soil::Composition, one along the track
+    +track : track::Params
   }
   class Model {
     -tractor_ : vehicle::Model
     -sled_ : sled::Params
-    -surface_ : soil::Surface, from the soil at setup
+    -track_ : track::Model
+    -start_line_m_ : double
     +{static} create(const Params&) : optional<Model>
     +tractor() : const vehicle::Model&
     +sled() : const sled::Params&
-    +surface() : const soil::Surface&
+    +track() : const track::Model&
+    +start_line_m() : double
   }
   class State <<struct>> {
     +tractor : vehicle::State
@@ -46,7 +48,7 @@ package "tp::pull" {
   enum ParamError {
     kTractor
     kSled
-    kSoil
+    kTrack
   }
   class "pull functions" as PullFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
@@ -65,6 +67,7 @@ package "tp::pull" {
 }
 Params *-- Vehicle
 Params *-- Sled
+Params *-- Track
 PullFns ..> Chassis : hitch(), Drawbar
 note bottom of PullFns
   the chain pulls only when stretched, along its own line:

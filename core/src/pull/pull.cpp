@@ -12,25 +12,28 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (sled::validate(params.sled)) {
         return ParamError::kSled;
     }
-    if (soil::validate(params.soil)) {
-        return ParamError::kSoil;
+    if (track::validate(params.track)) {
+        return ParamError::kTrack;
     }
     return std::nullopt;
 }
 
 Model::Model(const vehicle::Model& tractor, const sled::Params& sled,
-             const soil::Surface& surface) noexcept
-    : tractor_(tractor), sled_(sled), surface_(surface) {}
+             const track::Model& track) noexcept
+    : tractor_(tractor), sled_(sled), track_(track) {
+    start_line_m_ = initial_state(*this).sled.position_m;
+}
 
 std::optional<Model> Model::create(const Params& params) noexcept {
     if (validate(params)) {
         return std::nullopt;
     }
     const std::optional<vehicle::Model> tractor = vehicle::Model::create(params.tractor);
-    if (!tractor) {
+    const std::optional<track::Model> track = track::Model::create(params.track);
+    if (!tractor || !track) {
         return std::nullopt;
     }
-    return Model{*tractor, params.sled, soil::surface(params.soil)};
+    return Model{*tractor, params.sled, *track};
 }
 
 ChainForce chain_force(const sled::Chain& chain, const ChainEnd& hitch,
@@ -104,11 +107,23 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
     const chassis::Drawbar drawbar{.pull_n = along_x_n, .lift_n = -along_z_n};
     const sled::HookForce hook{.forward_n = along_x_n, .up_n = along_z_n};
 
-    const vehicle::Ground ground{.rear = model.surface(), .front = model.surface()};
-    out.tractor = vehicle::step(state.tractor, model.tractor(), input, ground, drawbar, dt_s);
+    // The ground under each contact, by where it is along the track. The
+    // front tires are taken a wheelbase ahead: pitch moves them by
+    // centimetres, far less than the track changes over.
+    const track::Model& track = model.track();
+    const double rear_axle_m = state.tractor.chassis.position_m - model.start_line_m();
+    const double sled_wheels_m = state.sled.position_m - model.start_line_m();
+    const vehicle::Ground tractor_ground{
+        .rear = track.surface_at(rear_axle_m),
+        .front = track.surface_at(rear_axle_m + model.tractor().params().chassis.wheelbase_m)};
+    const sled::Ground sled_ground{
+        .pan = track.surface_at(sled_wheels_m + sled.pan_ahead_of_wheels_m),
+        .wheels = track.surface_at(sled_wheels_m)};
 
-    out.sled =
-        sled::loads(sled, state.sled, hook, {.pan = model.surface(), .wheels = model.surface()});
+    out.tractor =
+        vehicle::step(state.tractor, model.tractor(), input, tractor_ground, drawbar, dt_s);
+
+    out.sled = sled::loads(sled, state.sled, hook, sled_ground);
     const sled::Prediction prediction =
         sled::predict(state.sled, sled, out.sled.resistance_n, dt_s);
     sled::advance(state.sled, prediction, hook.forward_n, dt_s);

@@ -19,6 +19,7 @@ add_executable(tp_core_tests
     soil/soil_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
+    track/track_test.cpp
     units/conversions_test.cpp
     vehicle/chain_solver_test.cpp
     vehicle/vehicle_test.cpp)

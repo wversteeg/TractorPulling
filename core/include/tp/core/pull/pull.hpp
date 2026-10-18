@@ -3,7 +3,7 @@
 #include "tp/core/chassis/chassis.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/sled/sled.hpp"
-#include "tp/core/soil/soil.hpp"
+#include "tp/core/track/track.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include <cstdint>
@@ -11,18 +11,17 @@
 
 namespace tp::pull {
 
-/// A pull: the tractor, the sled and the chain between them, on one soil
-/// along the whole track.
+/// A pull: the tractor, the sled and the chain between them, on a track.
 struct Params {
     vehicle::Params tractor;
     sled::Params sled;
-    soil::Composition soil;
+    track::Params track;
 };
 
 enum class ParamError : std::uint8_t {
     kTractor,
     kSled,
-    kSoil,
+    kTrack,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
@@ -33,16 +32,19 @@ public:
 
     [[nodiscard]] const vehicle::Model& tractor() const noexcept { return tractor_; }
     [[nodiscard]] const sled::Params& sled() const noexcept { return sled_; }
-    /// The track's surface, derived from its soil at setup.
-    [[nodiscard]] const soil::Surface& surface() const noexcept { return surface_; }
+    [[nodiscard]] const track::Model& track() const noexcept { return track_; }
+    /// Where the start line is in the pull's coordinates (the tractor's rear
+    /// axle starts at 0): the sled's rear wheels at the start [m].
+    [[nodiscard]] double start_line_m() const noexcept { return start_line_m_; }
 
 private:
     Model(const vehicle::Model& tractor, const sled::Params& sled,
-          const soil::Surface& surface) noexcept;
+          const track::Model& track) noexcept;
 
     vehicle::Model tractor_;
     sled::Params sled_;
-    soil::Surface surface_;
+    track::Model track_;
+    double start_line_m_ = 0.0;
 };
 
 struct State {
@@ -81,8 +83,9 @@ struct Output {
 /// chain laid out with a millimetre of slack.
 [[nodiscard]] State initial_state(const Model& model) noexcept;
 
-/// One step: the chain force from where the hitch and hook are, then the
-/// tractor and the sled each advance under it. The chain is explicit within
+/// One step: the chain force from where the hitch and hook are, the ground
+/// under each of the tractor's axles and under the sled's pan and wheels,
+/// then the tractor and the sled each advance under the chain. The chain is explicit within
 /// a step; at 1 kHz its oscillation (tens of rad/s) is well resolved.
 Output step(State& state, const Model& model, const vehicle::Input& input, double dt_s) noexcept;
 

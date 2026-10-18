@@ -1,0 +1,49 @@
+@startuml track_classes
+title Track (tp::track): the soil along the track, sampled at setup
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "soil::Composition / Surface\n+ surface()" as Soil
+  class "math::Curve" as Curve
+}
+
+package "tp::track" {
+  class Params <<struct>> {
+    +soil : soil::Composition
+    +moisture_along_m : optional<Curve>
+    +compaction_along_m : optional<Curve>
+  }
+  class Model {
+    +{static} kMaxSamples = 512
+    +{static} kSampleSpacing_m = 0.5
+    -params_ : Params
+    -first_x_m_, spacing_m_ : double
+    -samples_ : array<soil::Surface, 512>
+    +{static} create(const Params&) : optional<Model>
+    +params() : const Params&
+    +surface_at(x_m) : soil::Surface
+  }
+  enum ParamError {
+    kSoil
+    kMoistureProfile
+    kCompactionProfile
+  }
+  class "track functions" as TrackFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +composition_at(const Params&, x_m) : soil::Composition
+  }
+  Model *-- Params
+  TrackFns ..> Params
+  TrackFns ..> ParamError
+}
+Params *-- Curve
+Params *-- Soil
+Model ..> Soil : samples surface()\nat setup
+note bottom of Model
+  x from the start line (the sled's rear wheels at the start);
+  profiles hold their end values beyond their ends;
+  in the step: a lookup and a blend of two samples, no soil model
+end note
+@enduml

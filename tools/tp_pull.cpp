@@ -284,8 +284,11 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& first_sled,
            "sled_pan_load_kn,sled_resistance_kn\n";
     tp::sled::Params sled = first_sled;
     for (int round = 0; round <= kMaxPullOffs; ++round) {
-        const auto model =
-            tp::pull::Model::create({.tractor = tractor, .sled = sled, .soil = kReferenceSoil});
+        const auto model = tp::pull::Model::create({.tractor = tractor,
+                                                    .sled = sled,
+                                                    .track = {.soil = kReferenceSoil,
+                                                              .moisture_along_m = std::nullopt,
+                                                              .compaction_along_m = std::nullopt}});
         if (!model) {
             std::cerr << "inconsistent tractor or sled\n";
             return EXIT_FAILURE;

@@ -5,11 +5,13 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 
 #include "../sled/reference_sled.hpp"
+#include "../track/reference_track.hpp"
 #include "../vehicle/reference_vehicle.hpp"
 
 namespace tp::run {
@@ -18,10 +20,10 @@ namespace {
 constexpr double kDt_s = 0.001;
 constexpr Rules kRules{.track_length_m = 100.0, .max_duration_s = 120.0};
 
-pull::Model model_with(const sled::Params& sled) {
-    const auto model = pull::Model::create({.tractor = vehicle::testing::reference_params(),
-                                            .sled = sled,
-                                            .soil = tire::testing::reference_soil()});
+pull::Model model_with(const sled::Params& sled,
+                       const track::Params& track = track::testing::reference_params()) {
+    const auto model = pull::Model::create(
+        {.tractor = vehicle::testing::reference_params(), .sled = sled, .track = track});
     if (!model) {
         std::abort();
     }
@@ -149,6 +151,33 @@ TEST(Run, FullPullThenPullOffOnAHeavierSled) {
     const Outcome pull_off = drive(model_with(sled::heavier(sled)), {.gear = 6});
     EXPECT_NE(pull_off.result.ending, Ending::kFullPull);
     EXPECT_LT(pull_off.result.distance_m, kRules.track_length_m);
+}
+
+// The reference track, watered from 30 m on: the wet stretch is softer and
+// slicker, so the tires lose their grip and the sled ploughs harder there.
+track::Params wet_from_30_m() {
+    constexpr std::array<math::CurvePoint, 2> kMoisture = {{{28.0, 0.14}, {32.0, 0.25}}};
+    track::Params track = track::testing::reference_params();
+    const auto moisture = math::Curve::create(kMoisture);
+    if (!moisture) {
+        std::abort();
+    }
+    track.moisture_along_m = *moisture;
+    return track;
+}
+
+// The same tractor and sled get less far once the track turns wet under
+// them. On the slick clay even the pulling gear, which stalls the engine on
+// the dry track, ends in wheelspin: grip, not torque, limits the pull.
+TEST(Run, AWetStretchEndsTheRunSooner) {
+    for (const int gear : {4, 6}) {
+        const sled::Params sled = sled::testing::reference_params();
+        const Outcome dry = drive(model_with(sled), {.gear = gear});
+        const Outcome wet = drive(model_with(sled, wet_from_30_m()), {.gear = gear});
+        EXPECT_LT(wet.result.distance_m, dry.result.distance_m - 5.0) << "gear " << gear;
+        EXPECT_GT(wet.result.distance_m, 30.0) << "gear " << gear;
+        EXPECT_EQ(wet.result.ending, Ending::kSpunOut) << "gear " << gear;
+    }
 }
 
 TEST(Run, TimesOutAsASafetyNet) {

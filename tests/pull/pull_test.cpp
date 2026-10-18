@@ -10,6 +10,7 @@
 #include <cstdlib>
 
 #include "../sled/reference_sled.hpp"
+#include "../track/reference_track.hpp"
 #include "../vehicle/reference_vehicle.hpp"
 
 namespace tp::pull {
@@ -21,7 +22,7 @@ constexpr double kSpunOutSlip = 0.9;
 Model reference_model() {
     const auto model = Model::create({.tractor = vehicle::testing::reference_params(),
                                       .sled = sled::testing::reference_params(),
-                                      .soil = tire::testing::reference_soil()});
+                                      .track = track::testing::reference_params()});
     if (!model) {
         std::abort();
     }
@@ -77,21 +78,21 @@ struct Driver {
 TEST(PullParams, NamesTheInvalidPart) {
     Params params{.tractor = vehicle::testing::reference_params(),
                   .sled = sled::testing::reference_params(),
-                  .soil = tire::testing::reference_soil()};
+                  .track = track::testing::reference_params()};
     EXPECT_EQ(validate(params), std::nullopt);
     params.sled.pushdown_ramp_m = 0.0;
     EXPECT_EQ(validate(params), ParamError::kSled);
     EXPECT_FALSE(Model::create(params).has_value());
     params = {.tractor = vehicle::testing::reference_params(),
               .sled = sled::testing::reference_params(),
-              .soil = tire::testing::reference_soil()};
+              .track = track::testing::reference_params()};
     params.tractor.chassis.mass_kg = 0.0;
     EXPECT_EQ(validate(params), ParamError::kTractor);
     params = {.tractor = vehicle::testing::reference_params(),
               .sled = sled::testing::reference_params(),
-              .soil = tire::testing::reference_soil()};
-    params.soil.moisture = -0.1;
-    EXPECT_EQ(validate(params), ParamError::kSoil);
+              .track = track::testing::reference_params()};
+    params.track.soil.moisture = -0.1;
+    EXPECT_EQ(validate(params), ParamError::kTrack);
 }
 
 TEST(Chain, PullsOnlyWhenStretched) {
