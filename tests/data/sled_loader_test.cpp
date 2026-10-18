@@ -37,6 +37,11 @@ ramp_m = 1.5
 length_m = 1.2
 stiffness_n_per_m = 1.5e6
 damping_n_s_per_m = 10000.0
+
+[sled.pull_off]
+extra_box_mass_kg = 400.0
+pushdown_earlier_m = 15.0
+extra_pan_friction = 0.04
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -72,6 +77,9 @@ TEST(SledLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.chain.length_m, reference.chain.length_m);
     EXPECT_EQ(loaded.chain.stiffness_n_per_m, reference.chain.stiffness_n_per_m);
     EXPECT_EQ(loaded.chain.damping_n_s_per_m, reference.chain.damping_n_s_per_m);
+    EXPECT_EQ(loaded.pull_off.extra_box_mass_kg, reference.pull_off.extra_box_mass_kg);
+    EXPECT_EQ(loaded.pull_off.pushdown_earlier_m, reference.pull_off.pushdown_earlier_m);
+    EXPECT_EQ(loaded.pull_off.extra_pan_friction, reference.pull_off.extra_pan_friction);
 }
 
 TEST(SledLoader, ParsesValues) {
@@ -81,6 +89,7 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(result.value().box_start_ahead_of_wheels_m, 0.2);
     EXPECT_DOUBLE_EQ(result.value().chain.length_m, 1.2);
     EXPECT_DOUBLE_EQ(result.value().hook_height_m, 0.5);
+    EXPECT_DOUBLE_EQ(result.value().pull_off.pushdown_earlier_m, 15.0);
 }
 
 TEST(SledLoader, RejectsNonsenseValues) {
@@ -89,7 +98,9 @@ TEST(SledLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 5> cases = {{
+    const std::array<Case, 6> cases = {{
+        {"extra_box_mass_kg = 400.0", "extra_box_mass_kg = -1.0",
+         "sled.pull_off: all values must be >= 0"},
         {"frame_mass_kg = 3000.0", "frame_mass_kg = -1.0", "sled.frame_mass_kg: must be > 0"},
         {"end_ahead_of_wheels_m = 2.8", "end_ahead_of_wheels_m = 3.5",
          "sled.weight_box: must stay between the wheels and the pan"},

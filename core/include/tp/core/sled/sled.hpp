@@ -16,6 +16,16 @@ struct Chain {
     double damping_n_s_per_m = 0.0;
 };
 
+/// How the sled is made heavier for a pull-off, when tractors reach the end
+/// of the track: each pull-off adds weight to the box, brings the push-down
+/// earlier, and adds knives under the pan, which bite into the track.
+struct PullOff {
+    double extra_box_mass_kg = 0.0;
+    double pushdown_earlier_m = 0.0;
+    /// Added to the pan's friction coefficient.
+    double extra_pan_friction = 0.0;
+};
+
 /// A transfer sled: a frame on rear wheels with a pan (a steel plate) at the
 /// front that drags on the track, and a weight box that moves forward as the
 /// sled advances. Lengths along the sled are measured forward from the rear
@@ -49,6 +59,7 @@ struct Params {
     double pan_friction_coefficient = 0.0;
     double wheel_rolling_resistance_coefficient = 0.0;
     Chain chain;
+    PullOff pull_off;
 };
 
 enum class ParamError : std::uint8_t {
@@ -65,6 +76,7 @@ enum class ParamError : std::uint8_t {
     kPanFrictionOutOfRange,
     kRollingResistanceOutOfRange,
     kChainInvalid,
+    kPullOffNegative,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
@@ -97,6 +109,11 @@ struct Loads {
 };
 
 [[nodiscard]] double total_mass_kg(const Params& params) noexcept;
+
+/// The sled for the next pull-off: heavier by `params.pull_off`. The
+/// push-down never moves before the start line, and the pan's friction stays
+/// within what validate() accepts.
+[[nodiscard]] Params heavier(const Params& params) noexcept;
 
 /// Loads for the sled's travel so far and the chain's force on the hook.
 [[nodiscard]] Loads loads(const Params& params, const State& state, const HookForce& hook) noexcept;

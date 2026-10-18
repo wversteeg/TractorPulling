@@ -43,6 +43,8 @@ FieldError describe(sled::ParamError error) {
             return {"sled.wheel_rolling_resistance_coefficient", "must be in [0, 1)"};
         case ParamError::kChainInvalid:
             return {"sled.chain", "length and stiffness must be > 0, damping >= 0"};
+        case ParamError::kPullOffNegative:
+            return {"sled.pull_off", "all values must be >= 0"};
     }
     return {"sled", "invalid"};
 }
@@ -69,6 +71,12 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
                 .length_m = reader.number("sled.chain.length_m"),
                 .stiffness_n_per_m = reader.number("sled.chain.stiffness_n_per_m"),
                 .damping_n_s_per_m = reader.number("sled.chain.damping_n_s_per_m"),
+            },
+        .pull_off =
+            {
+                .extra_box_mass_kg = reader.number("sled.pull_off.extra_box_mass_kg"),
+                .pushdown_earlier_m = reader.number("sled.pull_off.pushdown_earlier_m"),
+                .extra_pan_friction = reader.number("sled.pull_off.extra_pan_friction"),
             },
     };
     if (const std::optional<LoadError>& error = reader.error()) {
