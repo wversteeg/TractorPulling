@@ -13,6 +13,7 @@ add_executable(tp_core_tests
     math/trig_test.cpp
     pull/pull_test.cpp
     rules/class_rules_test.cpp
+    run/run_test.cpp
     sled/sled_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
@@ -31,6 +32,7 @@ if(TP_BUILD_DATA_IO)
         data/engine_loader_test.cpp
         data/sled_loader_test.cpp
         data/tire_loader_test.cpp
+        data/track_loader_test.cpp
         data/tractor_loader_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE

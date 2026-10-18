@@ -31,3 +31,11 @@ ramp_m = 2.0                         # travel until the wheels are fully off
 length_m = 1.15                      # 1.1 to 1.2 m
 stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
 damping_n_s_per_m = 15000.0
+
+# After full pulls the tractors rerun on a heavier sled. Each pull-off adds
+# weight to the box, brings the push-down earlier and adds knives under the
+# pan, which bite into the track.
+[sled.pull_off]
+extra_box_mass_kg = 500.0
+pushdown_earlier_m = 10.0
+extra_pan_friction = 0.05            # knives

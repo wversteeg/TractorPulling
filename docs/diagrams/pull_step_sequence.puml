@@ -1,7 +1,7 @@
 @startuml pull_step_sequence
 title pull::step: one 1 kHz step of tractor, chain and sled
 autonumber
-participant "Caller\n(tool, test; later the run logic)" as Caller
+participant "Caller\n(run::step, test)" as Caller
 participant "pull::step" as Step
 participant "chassis::hitch" as Hitch
 participant "chain_force" as Chain

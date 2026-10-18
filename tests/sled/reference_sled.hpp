@@ -21,6 +21,9 @@ inline Params reference_params() {
         .pan_friction_coefficient = 0.5,
         .wheel_rolling_resistance_coefficient = 0.05,
         .chain = {.length_m = 1.15, .stiffness_n_per_m = 2.0e6, .damping_n_s_per_m = 15000.0},
+        .pull_off = {.extra_box_mass_kg = 500.0,
+                     .pushdown_earlier_m = 10.0,
+                     .extra_pan_friction = 0.05},
     };
 }
 

@@ -17,6 +17,12 @@ package "tp::sled" {
     +pan_friction_coefficient : double
     +wheel_rolling_resistance_coefficient : double
     +chain : Chain
+    +pull_off : PullOff
+  }
+  class PullOff <<struct>> {
+    +extra_box_mass_kg : double
+    +pushdown_earlier_m : double
+    +extra_pan_friction : double
   }
   class Chain <<struct>> {
     +length_m : double
@@ -46,12 +52,14 @@ package "tp::sled" {
   class "sled functions" as SledFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +total_mass_kg(const Params&) : double
+    +heavier(const Params&) : Params
     +loads(const Params&, const State&, const HookForce&) : Loads
     +predict(const State&, const Params&, resistance_n, dt_s) : Prediction
     +advance(State&, const Prediction&, forward_n, dt_s)
     +hash_append(Fnv1a&, const State&)
   }
   Params *-- Chain
+  Params *-- PullOff
   SledFns ..> Params
   SledFns ..> State
   SledFns ..> HookForce
@@ -63,6 +71,7 @@ note bottom of SledFns
   pan = (W_frame x_frame + W_box x_box - F_up x_hook + F_fwd h_hook) / x_pan
   the box moves forward with the distance travelled;
   the push-down moves the wheels' share onto the pan over its ramp;
-  resistance = μ_pan pan + c_rr wheels, holding but never pulling back
+  resistance = μ_pan pan + c_rr wheels, holding but never pulling back;
+  heavier(): the pull-off sled after full pulls (box, push-down, knives)
 end note
 @enduml

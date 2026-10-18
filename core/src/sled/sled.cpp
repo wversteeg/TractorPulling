@@ -35,7 +35,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.wheel_rolling_resistance_coefficient,
                                 params.chain.length_m,
                                 params.chain.stiffness_n_per_m,
-                                params.chain.damping_n_s_per_m};
+                                params.chain.damping_n_s_per_m,
+                                params.pull_off.extra_box_mass_kg,
+                                params.pull_off.pushdown_earlier_m,
+                                params.pull_off.extra_pan_friction};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -80,11 +83,26 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.chain.damping_n_s_per_m < 0.0) {
         return ParamError::kChainInvalid;
     }
+    if (params.pull_off.extra_box_mass_kg < 0.0 || params.pull_off.pushdown_earlier_m < 0.0 ||
+        params.pull_off.extra_pan_friction < 0.0) {
+        return ParamError::kPullOffNegative;
+    }
     return std::nullopt;
 }
 
 double total_mass_kg(const Params& params) noexcept {
     return params.frame_mass_kg + params.box_mass_kg;
+}
+
+Params heavier(const Params& params) noexcept {
+    Params next = params;
+    next.box_mass_kg += params.pull_off.extra_box_mass_kg;
+    next.pushdown_start_m =
+        std::max(params.pushdown_start_m - params.pull_off.pushdown_earlier_m, 0.0);
+    next.pan_friction_coefficient =
+        std::min(params.pan_friction_coefficient + params.pull_off.extra_pan_friction,
+                 kMaxPanFrictionCoefficient);
+    return next;
 }
 
 Loads loads(const Params& params, const State& state, const HookForce& hook) noexcept {

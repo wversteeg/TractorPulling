@@ -55,6 +55,8 @@ TEST(SledParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.wheel_rolling_resistance_coefficient = 1.0; }),
               ParamError::kRollingResistanceOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.chain.length_m = 0.0; }), ParamError::kChainInvalid);
+    EXPECT_EQ(with([](Params& p) { p.pull_off.extra_pan_friction = -0.1; }),
+              ParamError::kPullOffNegative);
 }
 
 // At the start the box sits over the wheels: the pan carries only its
@@ -126,6 +128,35 @@ TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
 
     const Loads pressed = at(params, 10.0, {.up_n = -kUp_n});
     EXPECT_GT(pressed.resistance_n, free.resistance_n);
+}
+
+// Each pull-off sled drags harder everywhere along the track: more weight
+// in the box, an earlier push-down and knives in the pan.
+TEST(Sled, PullOffSledIsHeavierEverywhere) {
+    const Params first = reference_params();
+    const Params second = heavier(first);
+    const Params third = heavier(second);
+    EXPECT_EQ(validate(second), std::nullopt);
+    EXPECT_DOUBLE_EQ(second.box_mass_kg, first.box_mass_kg + first.pull_off.extra_box_mass_kg);
+    EXPECT_DOUBLE_EQ(second.pushdown_start_m,
+                     first.pushdown_start_m - first.pull_off.pushdown_earlier_m);
+    EXPECT_DOUBLE_EQ(second.pan_friction_coefficient,
+                     first.pan_friction_coefficient + first.pull_off.extra_pan_friction);
+    for (int metre = 0; metre <= 100; ++metre) {
+        ASSERT_GT(at(second, metre).resistance_n, at(first, metre).resistance_n) << metre;
+        ASSERT_GT(at(third, metre).resistance_n, at(second, metre).resistance_n) << metre;
+    }
+}
+
+// However many pull-offs, the push-down stays on the track and the pan's
+// friction stays valid.
+TEST(Sled, PullOffsStayValid) {
+    Params params = reference_params();
+    for (int i = 0; i < 50; ++i) {
+        params = heavier(params);
+        ASSERT_EQ(validate(params), std::nullopt) << "pull-off " << i;
+    }
+    EXPECT_EQ(params.pushdown_start_m, 0.0);
 }
 
 TEST(Sled, ResistanceHoldsAtRestWithoutPullingBack) {

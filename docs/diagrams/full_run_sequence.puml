@@ -1,0 +1,30 @@
+@startuml full_run_sequence
+title A full run: scripted driver, pull-offs and the result
+autonumber
+participant "Driver\n(tool, test; later the player)" as Driver
+participant "run::step" as Run
+participant "pull::step" as Pull
+participant "sled::heavier" as Heavier
+
+Driver -> Run : start(model)
+loop until the run has a result (1 kHz)
+  Driver -> Driver : input for this moment\n(gear, clutch, throttle)
+  Driver -> Run : step(state, model, rules, input, dt)
+  Run -> Pull : step(pull state, input)\n(see the pull step)
+  Pull --> Run : output
+  Run -> Run : count the step, track top speed
+  alt sled reached the end of the track
+    Run -> Run : result: full pull, track length
+  else sled stopped after moving
+    Run -> Run : result: distance where it stands;\nstalled / spun out / stopped
+  else safety cut-off
+    Run -> Run : result: timed out
+  end
+end
+Run --> Driver : Result
+opt full pull
+  Driver -> Heavier : heavier(sled)
+  Heavier --> Driver : pull-off sled: more box weight,\nearlier push-down, knives
+  Driver -> Run : start(model on the pull-off sled)\n... and run again
+end
+@enduml

@@ -6,6 +6,7 @@ add_library(tp_core STATIC
     src/math/curve.cpp
     src/pull/pull.cpp
     src/rules/class_rules.cpp
+    src/run/run.cpp
     src/sled/sled.cpp
     src/tire/tire.cpp
     src/time/fixed_step_clock.cpp

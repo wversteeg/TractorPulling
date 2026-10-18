@@ -17,16 +17,26 @@ env:
 
 jobs:
   build-test:
-    name: ${{ matrix.compiler }} ${{ matrix.preset }}
-    runs-on: ubuntu-24.04
+    name: ${{ matrix.compiler }} ${{ matrix.preset }}${{ matrix.arch == 'arm64' && ' arm64' || '' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
       matrix:
         compiler: [gcc, clang]
         preset: [debug, release]
+        arch: [x86-64]
         include:
           - compiler: clang
             preset: asan-ubsan
+            arch: x86-64
+          # The regression hashes in the tests are fixed values: passing them
+          # on ARM shows the simulation is bit-identical across platforms.
+          - compiler: gcc
+            preset: release
+            arch: arm64
+          - compiler: clang
+            preset: release
+            arch: arm64
     steps:
       - uses: actions/checkout@v4
 
@@ -62,13 +72,13 @@ jobs:
           ./build/${{ matrix.preset }}/tools/tp_pull check
           data/tractors/farm_stock_light.toml data/classes/ntto_standard_3500.toml
 
-      - name: Pull the sled in the usable gears
+      - name: Run on the sled in the usable gears
         run: |
           for gear in 4 5 6 7; do
             for mode in "" --dump; do
-              ./build/${{ matrix.preset }}/tools/tp_pull pull \
-                data/tractors/farm_stock_light.toml --sled data/sleds/light_class.toml \
-                --gear $gear $mode -o sled_pull.csv
+              ./build/${{ matrix.preset }}/tools/tp_pull run \
+                data/tractors/farm_stock_light.toml data/sleds/light_class.toml \
+                data/tracks/standard_100m.toml --gear $gear $mode -o run.csv
             done
           done
 
