@@ -39,15 +39,18 @@ the shipped tracks:
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml --gear 6
 # track                         cone index   grip  fall-off  push-down  result
+# covered_heavy_clay                875 kPa   1.00      0.21     60.0 m  86.58 m, engine stalled
 # dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  88.60 m, engine stalled
+# firm_loam                        1943 kPa   1.00      0.24     60.0 m  89.09 m, engine stalled
 # ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  89.20 m, engine stalled
-# loose_sand                        907 kPa   1.00      0.29     60.0 m  84.35 m, engine stalled
-# wet_heavy_clay                    539 kPa   1.00      0.28     70.0 m  85.53 m, engine stalled
+# sandy_clay                       2107 kPa   1.00      0.26     60.0 m  89.30 m, engine stalled
+# watered_start                     584 kPa   1.00      0.25     60.0 m  88.51 m, engine stalled
 ```
 
-With the class's own push-down the wet clay is the shortest track and the
-hard clay the longest; the sled operator evens that out with the push-down
-for the day.
+Pulling tracks are clay mixes, prepared and covered when it rains, so they
+differ by a few metres for the same tractor: the moist heavy clay is the
+shortest, and the sled operator evens out the rest with the push-down and
+the knives on the day.
 
 ### A class at an event
 

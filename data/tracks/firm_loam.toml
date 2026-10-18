@@ -1,0 +1,10 @@
+# A firm, well-rolled loam: strong ground with good grip.
+
+[track]
+length_m = 100.0
+max_duration_s = 120.0
+
+[track.soil]
+clay_fraction = 0.4
+moisture = 0.12
+compaction = 0.9

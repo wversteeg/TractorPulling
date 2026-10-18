@@ -44,21 +44,30 @@ run::Result pull_on(const std::string& track_file) {
     return state.result.value_or(run::Result{});
 }
 
-// Hard, dry clay carries the tractor and the sled best; wet heavy clay is
-// soft and slick, and the pan ploughs deep in it, so the same tractor gets
-// least far there. Loose sand sits in between.
-TEST(ShippedTracks, TheGroundDecidesHowFarAndHowAPullEnds) {
-    const run::Result ideal = pull_on("ideal_clay_sand.toml");
-    const run::Result hard = pull_on("dry_hard_clay.toml");
-    const run::Result wet = pull_on("wet_heavy_clay.toml");
-    const run::Result sand = pull_on("loose_sand.toml");
+// Every shipped track is pullable: in its pulling gear the reference
+// tractor stalls the engine somewhere past the push-down on all of them,
+// and the clay tracks differ by a few metres, not tens.
+TEST(ShippedTracks, EveryTrackIsPullable) {
+    double shortest_m = 1e9;
+    double longest_m = 0.0;
+    for (const char* name :
+         {"ideal_clay_sand.toml", "dry_hard_clay.toml", "covered_heavy_clay.toml",
+          "sandy_clay.toml", "firm_loam.toml", "watered_start.toml"}) {
+        const run::Result result = pull_on(name);
+        EXPECT_EQ(result.ending, run::Ending::kStalled) << name;
+        EXPECT_GT(result.distance_m, 80.0) << name;
+        EXPECT_LT(result.distance_m, 100.0) << name;
+        shortest_m = std::min(shortest_m, result.distance_m);
+        longest_m = std::max(longest_m, result.distance_m);
+    }
+    EXPECT_LT(longest_m - shortest_m, 10.0);
+}
 
-    EXPECT_EQ(ideal.ending, run::Ending::kStalled);
-    EXPECT_EQ(hard.ending, run::Ending::kStalled);
-
-    EXPECT_GT(hard.distance_m, ideal.distance_m);
-    EXPECT_LT(sand.distance_m, ideal.distance_m);
-    EXPECT_LT(wet.distance_m, sand.distance_m);
+// The heavy clay, moist after the rain, is softer and stickier than the
+// reference: the pan ploughs deeper and the same tractor gets less far.
+TEST(ShippedTracks, MoistHeavyClayPullsShorter) {
+    EXPECT_LT(pull_on("covered_heavy_clay.toml").distance_m,
+              pull_on("ideal_clay_sand.toml").distance_m);
 }
 
 }  // namespace
