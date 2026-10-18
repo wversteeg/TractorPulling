@@ -226,11 +226,19 @@ bool Event::suggested_keep() const noexcept {
     if (entry.test_reached_m >= line_m_) {
         return true;
     }
+    // Everyone else's pulls since count, test pulls too: they show what the
+    // sled allows.
     double best_m = 0.0;
     for (int i = 0; i < count_; ++i) {
         const Entry& other = entries_[static_cast<std::size_t>(i)];
-        if (i != *pending_decision_ && other.pulled) {
+        if (i == *pending_decision_) {
+            continue;
+        }
+        if (other.pulled) {
             best_m = std::max(best_m, other.reached_m);
+        }
+        if (other.tested) {
+            best_m = std::max(best_m, other.test_reached_m);
         }
     }
     return entry.test_reached_m >= best_m;

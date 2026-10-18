@@ -131,7 +131,7 @@ public:
     /// The test puller whose keep-or-re-pull decision is due.
     [[nodiscard]] std::optional<int> decision_due() const noexcept;
     /// What a sensible puller would choose: keep a full pull, or a test pull
-    /// no one has beaten since.
+    /// no one has beaten, in a test pull or a counting one.
     [[nodiscard]] bool suggested_keep() const noexcept;
     void decide(bool keep) noexcept;
 

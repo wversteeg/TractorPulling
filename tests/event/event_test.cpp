@@ -133,6 +133,17 @@ TEST(Event, FirstPullIsATestPull) {
     EXPECT_EQ(event.standings()[0].distance_m, 95.0);
 }
 
+// Later test pulls count for the decision too: a test pull beaten by the
+// next test pullers is better re-pulled.
+TEST(Event, TestPullBeatenByLaterTestPullsIsRepulled) {
+    Event event = make(6);
+    event.record(80.0);  // lighter: the next puller tests
+    event.record(88.0);  // lighter again
+    event.record(95.0);  // within the target: no change
+    ASSERT_EQ(event.decision_due(), 0);
+    EXPECT_FALSE(event.suggested_keep());
+}
+
 // A test pull between 100 and 110 m moves the line to 110 m; the sled stays.
 TEST(Event, TestPullJustPastTheLineExtendsIt) {
     Event event = make(6);
