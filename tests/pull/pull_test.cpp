@@ -218,6 +218,14 @@ TEST(Pull, ChainTurnsTheTractorBackInLine) {
     EXPECT_LT(std::abs(run.state.tractor.chassis.heading_rad), 0.5 * kTurned_rad);
 }
 
+// Straight, then left, then right: exercises the chain at an angle.
+double steering_rad(double t_s) {
+    if (t_s < 8.0) {
+        return 0.0;
+    }
+    return t_s < 12.0 ? 0.05 : -0.05;
+}
+
 std::uint64_t pull_hash() {
     Driver run;
     hash::Fnv1a hash;
@@ -227,8 +235,7 @@ std::uint64_t pull_hash() {
             .throttle = t_s < 0.5 ? 0.0 : 1.0,
             .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
             .gear = t_s < 0.5 ? driveline::kNeutral : 6,
-            // Steering left, then right, exercises the chain at an angle.
-            .steering_rad = t_s < 8.0 ? 0.0 : (t_s < 12.0 ? 0.05 : -0.05)};
+            .steering_rad = steering_rad(t_s)};
         step(run.state, run.model, input, kDt_s);
         hash_append(hash, run.state);
     }

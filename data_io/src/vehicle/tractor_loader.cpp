@@ -146,7 +146,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         return detail::make_error(source, detail::field_path(kSteering, field_error.field),
                                   field_error.reason);
     }
-    if (!(steering.max_angle_rad > 0.0 && steering.max_angle_rad <= math::kSinCosMaxAngle_rad)) {
+    // Written to reject NaN too.
+    const bool angle_ok =
+        steering.max_angle_rad > 0.0 && steering.max_angle_rad <= math::kSinCosMaxAngle_rad;
+    if (!angle_ok) {
         return detail::make_error(source, "tractor.steering.max_angle_deg", "must be in (0, 45]");
     }
 

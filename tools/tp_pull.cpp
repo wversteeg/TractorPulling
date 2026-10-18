@@ -627,43 +627,61 @@ std::optional<T> parse_number(std::string_view text) {
     return value;
 }
 
+enum class Parsed : std::uint8_t { kUnknown, kOk, kInvalid };
+
+// An option that takes a value: `-o`, `--gear` and so on.
+Parsed parse_valued_option(std::string_view arg, std::string_view value, Options& options) {
+    if (arg == "-o") {
+        options.output_path = value;
+        return Parsed::kOk;
+    }
+    if (arg == "--gear") {
+        const auto gear = parse_number<int>(value);
+        options.pull.gear = gear.value_or(options.pull.gear);
+        return gear ? Parsed::kOk : Parsed::kInvalid;
+    }
+    if (arg == "--steer-deg") {
+        const auto degrees = parse_number<double>(value);
+        options.pull.steering_rad = deg_to_rad(degrees.value_or(0.0));
+        return degrees ? Parsed::kOk : Parsed::kInvalid;
+    }
+    if (arg == "--seed") {
+        options.seed = parse_number<std::uint64_t>(value);
+        return options.seed ? Parsed::kOk : Parsed::kInvalid;
+    }
+    if (arg == "--resistance-kn") {
+        const auto kilonewtons = parse_number<double>(value);
+        if (!kilonewtons || *kilonewtons < 0.0) {
+            return Parsed::kInvalid;
+        }
+        options.pull.resistance_n = *kilonewtons * kNewtonsPerKilonewton;
+        return Parsed::kOk;
+    }
+    return Parsed::kUnknown;
+}
+
 std::optional<Options> parse_options(std::span<char* const> args) {
     Options options;
     for (std::size_t i = 0; i < args.size(); ++i) {
         const std::string_view arg{args[i]};
-        const bool has_value = i + 1 < args.size();
-        if (arg == "-o" && has_value) {
-            options.output_path = args[++i];
-        } else if (arg == "--dump") {
+        if (arg == "--dump") {
             options.pull.dump = true;
-        } else if (arg == "--gear" && has_value) {
-            const auto gear = parse_number<int>(args[++i]);
-            if (!gear) {
-                return std::nullopt;
-            }
-            options.pull.gear = *gear;
-        } else if (arg == "--steer-deg" && has_value) {
-            const auto degrees = parse_number<double>(args[++i]);
-            if (!degrees) {
-                return std::nullopt;
-            }
-            options.pull.steering_rad = deg_to_rad(*degrees);
-        } else if (arg == "--seed" && has_value) {
-            options.seed = parse_number<std::uint64_t>(args[++i]);
-            if (!options.seed) {
-                return std::nullopt;
-            }
-        } else if (arg == "--resistance-kn" && has_value) {
-            const auto kilonewtons = parse_number<double>(args[++i]);
-            if (!kilonewtons || *kilonewtons < 0.0) {
-                return std::nullopt;
-            }
-            options.pull.resistance_n = *kilonewtons * kNewtonsPerKilonewton;
-        } else if (arg.starts_with('-')) {
-            return std::nullopt;
-        } else {
-            options.positional.push_back(arg);
+            continue;
         }
+        if (i + 1 < args.size()) {
+            const Parsed parsed = parse_valued_option(arg, args[i + 1], options);
+            if (parsed == Parsed::kInvalid) {
+                return std::nullopt;
+            }
+            if (parsed == Parsed::kOk) {
+                ++i;
+                continue;
+            }
+        }
+        if (arg.starts_with('-')) {
+            return std::nullopt;
+        }
+        options.positional.push_back(arg);
     }
     return options;
 }
