@@ -32,9 +32,9 @@ for the big features; they are repeated at the end for completeness.
 
 ## Sled
 
-- **Pull-off steps.** One pull-off currently costs 35 to 45 m, more than real
-  pull-offs usually separate tractors. Tune the extra box weight, push-down
-  and knives per class.
+- **Knife penetration.** Knives cut at their set depth up to a soil
+  strength of 2 MPa and shallower beyond it; how deep a knife actually
+  reaches could follow from the load on the pan and the blade's shape.
 - **Speed-dependent pan resistance.** The pan's drag does not depend on speed.
   Right for the stock classes, which crawl because they lack the power to run
   fast; faster classes may need the pan to plough harder with speed.
