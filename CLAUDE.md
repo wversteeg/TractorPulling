@@ -54,7 +54,10 @@ app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
 - Validate data on load with clear error messages. Reject nonsense (negative mass, non-monotonic curves).
 - Physical validation rules live in `core/` (e.g. `engine::validate`) so every front end shares them; `data_io/` parses TOML (toml++), converts units and turns validation errors into messages naming the file and field.
 
-## Milestone 1: straight-line pull
+## Milestone 1: straight-line pull (done)
+
+Complete: every criterion below is covered by a test (see the README). Kept
+here as the record of how the simulation was built.
 
 Build in this order, one PR each, each piece tested in isolation first:
 

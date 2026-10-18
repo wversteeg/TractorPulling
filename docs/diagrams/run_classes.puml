@@ -1,0 +1,59 @@
+@startuml run_classes
+title Run (tp::run): a pull from the start line to its result
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "pull::Model / State / Output" as Pull
+  class "sled::Params\n+ heavier()" as Sled
+  class "vehicle::Input" as Input
+}
+
+package "tp::run" {
+  class Rules <<struct>> {
+    +track_length_m : double
+    +max_duration_s : double
+  }
+  enum Ending {
+    kFullPull
+    kStalled
+    kSpunOut
+    kStopped
+    kTimedOut
+  }
+  class Result <<struct>> {
+    +ending : Ending
+    +distance_m : double
+    +time_s : double
+    +top_speed_m_s : double
+  }
+  class State <<struct>> {
+    +pull : pull::State
+    +steps : uint64
+    +top_speed_m_s : double
+    +result : optional<Result>
+  }
+  enum ParamError
+  class "run functions" as RunFns <<free functions>> {
+    +validate(const Rules&) : optional<ParamError>
+    +start(const pull::Model&) : State
+    +step(State&, const pull::Model&, const Rules&, const vehicle::Input&, dt_s) : pull::Output
+    +hash_append(Fnv1a&, const State&)
+  }
+  Result *-- Ending
+  State *-- Result
+  RunFns ..> Rules
+  RunFns ..> State
+  RunFns ..> ParamError
+}
+State *-- Pull
+RunFns ..> Input
+RunFns ..> Pull : steps
+Result ..> Sled : full pull:\npull-off on heavier()
+note bottom of RunFns
+  the run ends at the sled's first stop after it has moved,
+  measured where it stands, or with a full pull at the track's end;
+  the clock is steps × dt, exact
+end note
+@enduml

@@ -66,6 +66,14 @@ own line between the hitch and the hook.
 
 ![Pull classes](diagrams/svg/pull_classes.svg)
 
+### Run (`tp::run`)
+
+A run from the start line to its result: it ends at the sled's first stop, or
+with a full pull at the end of the track, which calls for a pull-off on a
+heavier sled.
+
+![Run classes](diagrams/svg/run_classes.svg)
+
 ### Class rules (`tp::rules`)
 
 A pulling class's technical limits and the check whether a tractor may
@@ -81,6 +89,13 @@ validation rules. Never used inside the simulation step.
 ![Data loading classes](diagrams/svg/data_io_classes.svg)
 
 ## Sequence diagrams
+
+### A full run
+
+The driver's inputs step the run until it has a result; after a full pull the
+tractor reruns on a heavier sled.
+
+![Full run](diagrams/svg/full_run_sequence.svg)
 
 ### One pull step (1 kHz)
 
