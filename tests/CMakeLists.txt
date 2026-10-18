@@ -13,6 +13,7 @@ add_executable(tp_core_tests
     math/trig_test.cpp
     pull/pull_test.cpp
     rules/class_rules_test.cpp
+    run/run_test.cpp
     sled/sled_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
