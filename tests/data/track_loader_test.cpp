@@ -34,7 +34,6 @@ value = [0.8, 0.6]
 
 [track.pushdown]
 start_m = 70.0
-pull_off_start_m = 55.0
 )";
 
 constexpr std::string_view kPlainTrack = R"(
@@ -73,7 +72,6 @@ TEST(TrackLoader, ShippedReferenceMatchesTestReference) {
     EXPECT_FALSE(track.ground.moisture_along_m.has_value());
     EXPECT_FALSE(track.ground.compaction_along_m.has_value());
     EXPECT_FALSE(track.sled.pushdown_start_m.has_value());
-    EXPECT_FALSE(track.sled.pull_off_pushdown_start_m.has_value());
 }
 
 TEST(TrackLoader, LoadsEveryShippedTrack) {
@@ -98,7 +96,6 @@ TEST(TrackLoader, ParsesValues) {
     EXPECT_EQ(track::composition_at(track.ground, 40.0).moisture, 0.22);
     EXPECT_EQ(track::composition_at(track.ground, 100.0).compaction, 0.6);
     EXPECT_EQ(track.sled.pushdown_start_m, 70.0);
-    EXPECT_EQ(track.sled.pull_off_pushdown_start_m, 55.0);
 }
 
 // Profiles and push-down are optional: without them the soil holds
@@ -128,8 +125,8 @@ TEST(TrackLoader, RejectsNonsense) {
         {"x_m = [0.0, 40.0, 100.0]", "x_m = [0.0, 100.0]",
          "track.profile.moisture: x_m and value must have the same length"},
         {"start_m = 70.0", "start_m = -1.0", "track.pushdown.start_m: must be >= 0"},
-        {"pull_off_start_m = 55.0", "pull_off_start_m = \"early\"",
-         "track.pushdown.pull_off_start_m: missing or not a number"},
+        {"start_m = 70.0", "start_m = \"early\"",
+         "track.pushdown.start_m: missing or not a number"},
     }};
     for (const Case& c : cases) {
         const auto result = parse_track(with(c.from, c.to), "t.toml");

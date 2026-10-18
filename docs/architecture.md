@@ -75,7 +75,9 @@ solve that couples engine, clutch, driveline, tires and body each step.
 The transfer sled: rear wheels and a pan share the frame and the weight box
 by their levers. The box moves forward with the sled's travel and the
 push-down lifts the wheels, so the pan drags harder along the track. On
-soft ground the pan ploughs and the wheels sink in.
+soft ground the pan ploughs and the wheels sink in. Knives under the pan
+cut grooves, and soil the tractor's tires throw back piles up in front of
+the pan as a berm it has to push.
 
 ![Sled classes](diagrams/svg/sled_classes.svg)
 
@@ -94,6 +96,26 @@ with a full pull at the end of the track, which calls for a pull-off on a
 heavier sled.
 
 ![Run classes](diagrams/svg/run_classes.svg)
+
+### Driver and field (`tp::driver`, `tp::field`)
+
+The competitors: a scripted driver's plan (gear and clutch technique) and a
+seeded field of pullers, each the reference tractor and driver varied within
+ranges and kept within the class's rules.
+
+![Field classes](diagrams/svg/field_classes.svg)
+
+### Event (`tp::event`)
+
+One class at an event, pull by pull: a seeded running order, the test pull
+and the sled operator's changes, test pullers keeping or re-pulling, the
+full-pull line (100 or 110 m), qualifying for the pull-off and the
+pull-offs. Plain rules logic: the caller runs each pull and records where
+the sled stopped.
+
+![Event classes](diagrams/svg/event_classes.svg)
+
+![Event sequence](diagrams/svg/event_sequence.svg)
 
 ### Class rules (`tp::rules`)
 

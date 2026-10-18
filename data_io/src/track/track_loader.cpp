@@ -93,8 +93,6 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
         .sled =
             {
                 .pushdown_start_m = reader.optional_number("track.pushdown.start_m"),
-                .pull_off_pushdown_start_m =
-                    reader.optional_number("track.pushdown.pull_off_start_m"),
             },
     };
     if (const std::optional<LoadError>& error = reader.error()) {
@@ -114,9 +112,6 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
     }
     if (!valid_distance(track.sled.pushdown_start_m)) {
         return detail::make_error(source, "track.pushdown.start_m", "must be >= 0");
-    }
-    if (!valid_distance(track.sled.pull_off_pushdown_start_m)) {
-        return detail::make_error(source, "track.pushdown.pull_off_start_m", "must be >= 0");
     }
     return track;
 }

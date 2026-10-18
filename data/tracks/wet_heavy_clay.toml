@@ -19,4 +19,3 @@ value = [0.22, 0.24, 0.24, 0.22]
 # The sled operator sets the push-down later on this slow track.
 [track.pushdown]
 start_m = 70.0
-pull_off_start_m = 60.0

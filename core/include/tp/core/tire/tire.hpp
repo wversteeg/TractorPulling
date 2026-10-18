@@ -100,6 +100,14 @@ struct Traction {
 [[nodiscard]] double driven_rolling_resistance(const Size& size, double load_n, double slip_ratio,
                                                const soil::Surface& surface) noexcept;
 
+/// Soil a driven tire loosens and throws back [m³/s]: the rut it works,
+/// section width times sinkage (diameter times its motion resistance, which
+/// grows with slip), along the distance its surface travels. A tire that
+/// spins in place still throws soil.
+[[nodiscard]] double thrown_soil_m3_s(const Size& size, double load_n, double slip_ratio,
+                                      double wheel_surface_speed_m_s,
+                                      const soil::Surface& surface) noexcept;
+
 /// Motion resistance of a towed (unpowered) tire per unit of load: 1/Bn
 /// plus the tire's own losses, 0.04.
 [[nodiscard]] double towed_rolling_resistance(const Size& size, double load_n,

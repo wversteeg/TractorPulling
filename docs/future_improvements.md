@@ -32,9 +32,17 @@ for the big features; they are repeated at the end for completeness.
 
 ## Sled
 
-- **Pull-off steps.** One pull-off currently costs 35 to 45 m, more than real
-  pull-offs usually separate tractors. Tune the extra box weight, push-down
-  and knives per class.
+- **Knife penetration.** Knives cut at their set depth up to a soil
+  strength of 2 MPa and shallower beyond it; how deep a knife actually
+  reaches could follow from the load on the pan and the blade's shape.
+- **Where thrown soil lands.** The rear tires' thrown soil lands in front
+  of the pan at once, a fixed share of it. Where it falls (it lies on the
+  track until the pan reaches it, or flies straight at the sled when the
+  tires spin hard) and how much the pan's width catches could follow from
+  the tractor's track width and wheel speed.
+- **Drag after the push-down.** Once the push-down is fully engaged the
+  drag grows only with the berm and ploughing; on hard tracks the sled
+  stays touchier than on soft ones.
 - **Speed-dependent pan resistance.** The pan's drag does not depend on speed.
   Right for the stock classes, which crawl because they lack the power to run
   fast; faster classes may need the pan to plough harder with speed.
@@ -57,6 +65,20 @@ for the big features; they are repeated at the end for completeness.
   in stronger classes wheelspin matters more than engine torque.
 
 ## Competition
+
+- **Pull-off modes.** A pull-off is run on a heavier sled, again among
+  those who make a full pull again. Some events use a floating finish
+  instead (pull until you stop, at most 130 m, on a sled heavy enough that
+  pullers stop around 100 to 110 m), or keep going until the strongest is
+  found. Could become an event option.
+- **Pull-to-pull variation.** The same puller on the same sled pulls to
+  the same millimetre, so a re-pull repeats the test pull exactly. Real
+  pulls differ: the driver's timing, the track under the tires. A seeded
+  variation per pull would make re-pulls a gamble.
+- **Smarter sled operator and pullers.** The operator works from a rule of
+  thumb (one step is about 5 m) and only changes knives and push-down;
+  scripted pullers keep a test pull only when no one has beaten it since.
+  Both could learn from the pulls they see.
 
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.

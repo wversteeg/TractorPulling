@@ -17,6 +17,22 @@ bool within(double value, double low, double high) noexcept {
     return value >= low && value <= high;
 }
 
+bool knives_valid(const Knives& knives) noexcept {
+    return knives.count >= 0 && knives.count <= kMaxKnives &&
+           within(knives.depth_m, 0.0, kMaxKnifeDepth_m) && knives.width_m >= 0.0 &&
+           (knives.count == 0 || knives.width_m > 0.0);
+}
+
+// Every part of a step adds resistance or none, at least one adds some, and
+// knives added need a width to cut with.
+bool makes_heavier(const Adjustment& step, const Knives& knives) noexcept {
+    const bool none_lighter = step.box_mass_kg >= 0.0 && step.knives >= 0 &&
+                              step.knife_depth_m >= 0.0 && step.pushdown_earlier_m >= 0.0;
+    const bool some_heavier = step.box_mass_kg > 0.0 || step.knives > 0 ||
+                              step.knife_depth_m > 0.0 || step.pushdown_earlier_m > 0.0;
+    return none_lighter && some_heavier && (step.knives == 0 || knives.width_m > 0.0);
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const Params& params) noexcept {
@@ -37,9 +53,14 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.chain.length_m,
                                 params.chain.stiffness_n_per_m,
                                 params.chain.damping_n_s_per_m,
-                                params.pull_off.extra_box_mass_kg,
-                                params.pull_off.pushdown_start_m,
-                                params.pull_off.extra_pan_friction};
+                                params.knives.depth_m,
+                                params.knives.width_m,
+                                params.berm.collected_share,
+                                params.berm.spill_distance_m,
+                                params.berm.friction_coefficient,
+                                params.pull_off_step.box_mass_kg,
+                                params.pull_off_step.knife_depth_m,
+                                params.pull_off_step.pushdown_earlier_m};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -82,6 +103,13 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.pan_plough_coefficient < 0.0) {
         return ParamError::kPanPloughNegative;
     }
+    if (!knives_valid(params.knives)) {
+        return ParamError::kKnivesOutOfRange;
+    }
+    if (!within(params.berm.collected_share, 0.0, 1.0) || params.berm.spill_distance_m <= 0.0 ||
+        params.berm.friction_coefficient < 0.0) {
+        return ParamError::kBermOutOfRange;
+    }
     if (tire::validate(params.wheel)) {
         return ParamError::kWheel;
     }
@@ -92,9 +120,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.chain.damping_n_s_per_m < 0.0) {
         return ParamError::kChainInvalid;
     }
-    if (params.pull_off.extra_box_mass_kg < 0.0 || params.pull_off.pushdown_start_m < 0.0 ||
-        params.pull_off.extra_pan_friction < 0.0) {
-        return ParamError::kPullOffNegative;
+    if (!makes_heavier(params.pull_off_step, params.knives)) {
+        return ParamError::kPullOffStepNotHeavier;
     }
     return std::nullopt;
 }
@@ -106,19 +133,23 @@ double total_mass_kg(const Params& params) noexcept {
 Params with_conditions(const Params& params, const Conditions& conditions) noexcept {
     Params out = params;
     out.pushdown_start_m = conditions.pushdown_start_m.value_or(params.pushdown_start_m);
-    out.pull_off.pushdown_start_m =
-        conditions.pull_off_pushdown_start_m.value_or(params.pull_off.pushdown_start_m);
     return out;
 }
 
-Params heavier(const Params& params) noexcept {
-    Params next = params;
-    next.box_mass_kg += params.pull_off.extra_box_mass_kg;
-    next.pushdown_start_m = params.pull_off.pushdown_start_m;
-    next.pan_friction_coefficient =
-        std::min(params.pan_friction_coefficient + params.pull_off.extra_pan_friction,
-                 kMaxPanFrictionCoefficient);
-    return next;
+Params adjusted(const Params& params, const Adjustment& adjustment, int times) noexcept {
+    const double n = times;
+    Params out = params;
+    out.box_mass_kg = std::max(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0);
+    out.knives.count = std::clamp(params.knives.count + times * adjustment.knives, 0, kMaxKnives);
+    out.knives.depth_m =
+        std::clamp(params.knives.depth_m + n * adjustment.knife_depth_m, 0.0, kMaxKnifeDepth_m);
+    out.pushdown_start_m =
+        std::max(params.pushdown_start_m - n * adjustment.pushdown_earlier_m, 0.0);
+    return out;
+}
+
+Params heavier(const Params& params, int steps) noexcept {
+    return adjusted(params, params.pull_off_step, steps);
 }
 
 namespace {
@@ -129,6 +160,20 @@ double pan_friction(const Params& params, double pan_n, const soil::Surface& sur
     const double pressure_pa = pan_n / params.pan_area_m2;
     return params.pan_friction_coefficient *
            (1.0 + params.pan_plough_coefficient * pressure_pa / surface.cone_index_pa);
+}
+
+// Soil cutting by a narrow blade: the draft is about this share of the
+// soil's strength times the groove's cross-section (a narrow-tine estimate,
+// lowered for blades that only skim the prepared top of the track).
+constexpr double kKnifeCutting = 0.2;
+// Above this strength the sled's weight no longer presses the knives to
+// their full depth: in harder ground they cut shallower, so their draft
+// stops growing with strength [Pa].
+constexpr double kKnifeFullDepthStrength_pa = 2.0e6;
+
+double knives_n(const Knives& knives, const soil::Surface& surface) noexcept {
+    const double strength_pa = std::min(surface.cone_index_pa, kKnifeFullDepthStrength_pa);
+    return kKnifeCutting * strength_pa * knives.count * knives.width_m * knives.depth_m;
 }
 
 }  // namespace
@@ -166,12 +211,16 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
                                                 params.wheel, wheels_n / wheel_count, ground.wheels)
                                           : 0.0;
     const double friction = pan_friction(params, pan_n, ground.pan);
+    const double cutting_n = pan_n > 0.0 ? knives_n(params.knives, ground.pan) : 0.0;
+    const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
     return {.pan_n = pan_n,
             .wheels_n = wheels_n,
             .box_ahead_of_wheels_m = box_m,
             .pushdown = pushdown,
             .pan_friction = friction,
-            .resistance_n = friction * pan_n + rolling * wheels_n};
+            .knives_n = cutting_n,
+            .berm_n = berm_n,
+            .resistance_n = friction * pan_n + cutting_n + berm_n + rolling * wheels_n};
 }
 
 Prediction predict(const State& state, const Params& params, double resistance_n,
@@ -188,6 +237,13 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
     state.velocity_m_s = velocity_m_s;
     state.position_m += velocity_m_s * dt_s;
     state.distance_m += velocity_m_s * dt_s;
+}
+
+void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept {
+    const double landed_kg = params.berm.collected_share * soil::kLooseDensity_kg_m3 *
+                             std::max(thrown_soil_m3_s, 0.0) * dt_s;
+    const double spilled_share = state.velocity_m_s * dt_s / params.berm.spill_distance_m;
+    state.berm_kg = (state.berm_kg + landed_kg) / (1.0 + spilled_share);
 }
 
 }  // namespace tp::sled

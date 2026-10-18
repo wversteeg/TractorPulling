@@ -277,6 +277,22 @@ TEST(Vehicle, SofterGroundRollsHarder) {
     EXPECT_GT(soft.last.slip_ratio, firm.last.slip_ratio);
 }
 
+// Pulling with grip throws back a little soil for every metre gained;
+// spinning in place throws it back without gaining any ground.
+TEST(Vehicle, SpinningThrowsSoilBack) {
+    Pull gripping;
+    gripping.run(4, 5000.0, false, 15.0);
+    const double per_metre_m3 =
+        gripping.last.thrown_soil_m3_s / gripping.state.chassis.velocity_m_s;
+    EXPECT_GT(per_metre_m3, 0.0);
+
+    Pull spinning;
+    spinning.run(1, 26000.0, false, 15.0);
+    ASSERT_DOUBLE_EQ(spinning.last.slip_ratio, 1.0);
+    EXPECT_LT(spinning.state.chassis.position_m, 0.1);
+    EXPECT_GT(spinning.last.thrown_soil_m3_s, 0.5 * gripping.last.thrown_soil_m3_s);
+}
+
 TEST(Vehicle, PullingLoadsTheRearAxle) {
     Pull light;
     light.run(4, 2000.0, false, 15.0);

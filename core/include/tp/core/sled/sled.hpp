@@ -18,16 +18,45 @@ struct Chain {
     double damping_n_s_per_m = 0.0;
 };
 
-/// How the sled is made heavier for a pull-off, when tractors reach the end
-/// of the track: each pull-off adds weight to the box, sets the push-down
-/// (usually earlier), and adds knives under the pan, which bite into the
-/// track.
-struct PullOff {
-    double extra_box_mass_kg = 0.0;
-    /// Where the push-down starts to engage on a pull-off [m].
-    double pushdown_start_m = 0.0;
-    /// Added to the pan's friction coefficient.
-    double extra_pan_friction = 0.0;
+/// Blades under the pan that cut grooves in the track. Each cuts with a
+/// force that grows with the soil's strength and the groove's cross-section
+/// (width × depth), so knives bite hardest on a firm track. They cut while
+/// the pan carries load.
+struct Knives {
+    int count = 0;
+    double depth_m = 0.0;
+    /// One knife's cutting width [m].
+    double width_m = 0.0;
+};
+
+/// Soil the tractor's rear tires throw back piles up in front of the pan,
+/// which has to push it along: a berm. It grows with what the tires throw
+/// (more when they spin, even with the sled standing still) and spills off
+/// to the sides as the sled moves, so over a pull it builds up and then
+/// levels off.
+struct Berm {
+    /// Share of the thrown soil that lands in front of the pan.
+    double collected_share = 0.0;
+    /// Sled travel over which the berm spills off its own size [m].
+    double spill_distance_m = 0.0;
+    /// Pushing it costs this times its weight (soil sliding on soil).
+    double friction_coefficient = 0.0;
+};
+
+inline constexpr int kMaxKnives = 24;
+/// Knives deeper than this would dig the pan in: a data error [m].
+inline constexpr double kMaxKnifeDepth_m = 0.15;
+
+/// A change to the sled's setting, as the sled operator makes it between
+/// pulls: each field is added (negative makes the sled lighter, or the
+/// push-down later for pushdown_earlier_m). After a test pull operators
+/// prefer knives and push-down; the box takes longer to change.
+struct Adjustment {
+    double box_mass_kg = 0.0;
+    int knives = 0;
+    double knife_depth_m = 0.0;
+    /// Moves the push-down this much earlier [m].
+    double pushdown_earlier_m = 0.0;
 };
 
 /// A transfer sled: a frame on rear wheels with a pan (a steel plate) at the
@@ -49,8 +78,9 @@ struct PullOff {
 ///
 ///   μ = μ_pan (1 + plough · p / CI)
 ///
-/// with CI the soil's cone index. The rear wheels roll as towed tires
-/// (Brixius), sinking further into softer ground.
+/// with CI the soil's cone index. Knives under the pan cut grooves on top
+/// of that. The rear wheels roll as towed tires (Brixius), sinking further
+/// into softer ground.
 struct Params {
     /// Sled without the weight box [kg].
     double frame_mass_kg = 0.0;
@@ -76,10 +106,14 @@ struct Params {
     /// How much harder the pan drags per unit of its pressure over the
     /// soil's strength.
     double pan_plough_coefficient = 0.0;
+    Knives knives;
+    Berm berm;
     tire::Size wheel;
     int wheel_count = 2;
     Chain chain;
-    PullOff pull_off;
+    /// One pull-off step, about 5 m of pull on this class's sled; a pull-off
+    /// may take several.
+    Adjustment pull_off_step;
 };
 
 enum class ParamError : std::uint8_t {
@@ -96,22 +130,24 @@ enum class ParamError : std::uint8_t {
     kPanFrictionOutOfRange,
     kPanAreaNotPositive,
     kPanPloughNegative,
+    kKnivesOutOfRange,
+    kBermOutOfRange,
     kWheel,
     kWheelCountOutOfRange,
     kChainInvalid,
-    kPullOffNegative,
+    /// The pull-off step would not make the sled heavier.
+    kPullOffStepNotHeavier,
 };
 
 inline constexpr int kMaxWheels = 8;
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
-/// What the day's track changes about a class's sled. The sled operator
-/// keeps the class's sled but sets the push-down from the test pull and the
-/// track's state; a pull-off may get its own. Unset keeps the sled's value.
+/// What the day's track changes about a class's sled: the sled operator
+/// keeps the class's sled but may set the push-down for the track's state.
+/// Unset keeps the sled's value.
 struct Conditions {
     std::optional<double> pushdown_start_m;
-    std::optional<double> pull_off_pushdown_start_m;
 };
 
 /// The sled with the day's conditions applied.
@@ -123,6 +159,8 @@ struct State {
     double velocity_m_s = 0.0;
     /// Travelled since the start: drives the box and the push-down [m].
     double distance_m = 0.0;
+    /// Soil piled up in front of the pan [kg].
+    double berm_kg = 0.0;
 };
 
 /// What the chain puts on the sled at the hook [N].
@@ -147,16 +185,24 @@ struct Loads {
     double pushdown = 0.0;
     /// The pan's friction coefficient with ploughing.
     double pan_friction = 0.0;
-    /// Pan friction plus wheel rolling resistance; it holds the sled at rest
-    /// but never pushes it back [N].
+    /// All knives' cutting force [N].
+    double knives_n = 0.0;
+    /// Pushing the berm [N].
+    double berm_n = 0.0;
+    /// Pan friction, knives, the berm and wheel rolling resistance; it holds
+    /// the sled at rest but never pushes it back [N].
     double resistance_n = 0.0;
 };
 
 [[nodiscard]] double total_mass_kg(const Params& params) noexcept;
 
-/// The sled for the next pull-off: heavier by `params.pull_off`, with its
-/// push-down. The pan's friction stays within what validate() accepts.
-[[nodiscard]] Params heavier(const Params& params) noexcept;
+/// The sled after `adjustment`, applied `times` over. Box mass, knife count
+/// and depth and the push-down stay within what validate() accepts.
+[[nodiscard]] Params adjusted(const Params& params, const Adjustment& adjustment,
+                              int times = 1) noexcept;
+
+/// The pull-off sled, `steps` pull-off steps heavier.
+[[nodiscard]] Params heavier(const Params& params, int steps = 1) noexcept;
 
 /// Loads for the sled's travel so far and the chain's force on the hook, on
 /// `ground`.
@@ -174,10 +220,16 @@ struct Prediction {
 
 void advance(State& state, const Prediction& prediction, double forward_n, double dt_s) noexcept;
 
+/// The berm over a step, after advance(): soil the tractor threw back
+/// [m³/s] lands in front of the pan, and the berm spills by the distance
+/// the sled moved. Implicit in the spill, so it never goes negative.
+void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept;
+
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);
     hash.add(state.velocity_m_s);
     hash.add(state.distance_m);
+    hash.add(state.berm_kg);
 }
 
 }  // namespace tp::sled

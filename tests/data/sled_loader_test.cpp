@@ -46,10 +46,21 @@ length_m = 1.2
 stiffness_n_per_m = 1.5e6
 damping_n_s_per_m = 10000.0
 
-[sled.pull_off]
-extra_box_mass_kg = 400.0
-pushdown_start_m = 65.0
-extra_pan_friction = 0.04
+[sled.knives]
+count = 3
+depth_m = 0.05
+width_m = 0.04
+
+[sled.berm]
+collected_share = 0.2
+spill_distance_m = 30.0
+friction_coefficient = 0.7
+
+[sled.pull_off_step]
+box_mass_kg = 100.0
+knives = 2
+knife_depth_m = 0.01
+pushdown_earlier_m = 3.0
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -90,9 +101,16 @@ TEST(SledLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.chain.length_m, reference.chain.length_m);
     EXPECT_EQ(loaded.chain.stiffness_n_per_m, reference.chain.stiffness_n_per_m);
     EXPECT_EQ(loaded.chain.damping_n_s_per_m, reference.chain.damping_n_s_per_m);
-    EXPECT_EQ(loaded.pull_off.extra_box_mass_kg, reference.pull_off.extra_box_mass_kg);
-    EXPECT_EQ(loaded.pull_off.pushdown_start_m, reference.pull_off.pushdown_start_m);
-    EXPECT_EQ(loaded.pull_off.extra_pan_friction, reference.pull_off.extra_pan_friction);
+    EXPECT_EQ(loaded.knives.count, reference.knives.count);
+    EXPECT_EQ(loaded.knives.depth_m, reference.knives.depth_m);
+    EXPECT_EQ(loaded.knives.width_m, reference.knives.width_m);
+    EXPECT_EQ(loaded.berm.collected_share, reference.berm.collected_share);
+    EXPECT_EQ(loaded.berm.spill_distance_m, reference.berm.spill_distance_m);
+    EXPECT_EQ(loaded.berm.friction_coefficient, reference.berm.friction_coefficient);
+    EXPECT_EQ(loaded.pull_off_step.box_mass_kg, reference.pull_off_step.box_mass_kg);
+    EXPECT_EQ(loaded.pull_off_step.knives, reference.pull_off_step.knives);
+    EXPECT_EQ(loaded.pull_off_step.knife_depth_m, reference.pull_off_step.knife_depth_m);
+    EXPECT_EQ(loaded.pull_off_step.pushdown_earlier_m, reference.pull_off_step.pushdown_earlier_m);
 }
 
 TEST(SledLoader, ParsesValues) {
@@ -102,7 +120,16 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(result.value().box_start_ahead_of_wheels_m, 0.2);
     EXPECT_DOUBLE_EQ(result.value().chain.length_m, 1.2);
     EXPECT_DOUBLE_EQ(result.value().hook_height_m, 0.5);
-    EXPECT_DOUBLE_EQ(result.value().pull_off.pushdown_start_m, 65.0);
+    EXPECT_DOUBLE_EQ(result.value().berm.collected_share, 0.2);
+    EXPECT_DOUBLE_EQ(result.value().berm.spill_distance_m, 30.0);
+    EXPECT_DOUBLE_EQ(result.value().berm.friction_coefficient, 0.7);
+    EXPECT_EQ(result.value().knives.count, 3);
+    EXPECT_DOUBLE_EQ(result.value().knives.depth_m, 0.05);
+    EXPECT_DOUBLE_EQ(result.value().knives.width_m, 0.04);
+    EXPECT_DOUBLE_EQ(result.value().pull_off_step.box_mass_kg, 100.0);
+    EXPECT_EQ(result.value().pull_off_step.knives, 2);
+    EXPECT_DOUBLE_EQ(result.value().pull_off_step.knife_depth_m, 0.01);
+    EXPECT_DOUBLE_EQ(result.value().pull_off_step.pushdown_earlier_m, 3.0);
     EXPECT_DOUBLE_EQ(result.value().pan_area_m2, 2.0);
     EXPECT_DOUBLE_EQ(result.value().pan_plough_coefficient, 4.0);
     EXPECT_DOUBLE_EQ(result.value().wheel.radius_m, 0.45);
@@ -118,15 +145,21 @@ TEST(SledLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 10> cases = {{
+    const std::array<Case, 15> cases = {{
+        {"collected_share = 0.2", "collected_share = 1.5",
+         "sled.berm: collected_share 0 to 1, spill_distance_m > 0"},
+        {"spill_distance_m = 30.0", "", "sled.berm.spill_distance_m: missing or not a number"},
+        {"count = 3", "count = 30", "sled.knives.count: must be 0 to 24"},
+        {"depth_m = 0.05", "depth_m = 0.5", "sled.knives: count 0 to 24, depth 0 to 0.15 m"},
+        {"knives = 2", "knives = -1", "sled.pull_off_step.knives: must be 0 to 24"},
         {"pan_area_m2 = 2.0", "pan_area_m2 = 0.0", "sled.pan_area_m2: must be > 0"},
         {"pan_plough_coefficient = 4.0", "pan_plough_coefficient = -1.0",
          "sled.pan_plough_coefficient: must not be negative"},
         {"count = 4", "count = 0", "sled.wheels.count: must be 1 to 8"},
         {"deflection_m = 0.03", "deflection_m = 0.3",
          "sled.wheels.deflection_m: must be at least 0 and less than the section height"},
-        {"extra_box_mass_kg = 400.0", "extra_box_mass_kg = -1.0",
-         "sled.pull_off: all values must be >= 0"},
+        {"box_mass_kg = 100.0", "box_mass_kg = -1.0",
+         "sled.pull_off_step: must make the sled heavier"},
         {"frame_mass_kg = 3000.0", "frame_mass_kg = -1.0", "sled.frame_mass_kg: must be > 0"},
         {"end_ahead_of_wheels_m = 2.8", "end_ahead_of_wheels_m = 3.5",
          "sled.weight_box: must stay between the wheels and the pan"},

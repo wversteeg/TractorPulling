@@ -14,4 +14,3 @@ compaction = 0.95
 # The sled operator brings the push-down earlier on this fast track.
 [track.pushdown]
 start_m = 55.0
-pull_off_start_m = 45.0

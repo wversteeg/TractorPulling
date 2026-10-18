@@ -89,6 +89,9 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         load_per_tire_n > 0.0 ? tire::driven_rolling_resistance(tire_params.size, load_per_tire_n,
                                                                 traction.slip_ratio, ground.rear)
                               : 0.0;
+    out.thrown_soil_m3_s =
+        tires * tire::thrown_soil_m3_s(tire_params.size, load_per_tire_n, traction.slip_ratio,
+                                       wheel_m_s, ground.rear);
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
             ? tire::towed_rolling_resistance(params.front_tire,

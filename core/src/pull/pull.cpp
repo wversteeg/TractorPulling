@@ -127,6 +127,7 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
     const sled::Prediction prediction =
         sled::predict(state.sled, sled, out.sled.resistance_n, dt_s);
     sled::advance(state.sled, prediction, hook.forward_n, dt_s);
+    sled::collect(state.sled, sled, out.tractor.thrown_soil_m3_s, dt_s);
     return out;
 }
 

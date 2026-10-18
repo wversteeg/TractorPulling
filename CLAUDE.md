@@ -18,7 +18,7 @@ Current focus: **game mechanics only**. Graphics come later. Do not add renderin
 ```
 core/        Pure C++20 static library. The whole simulation lives here.
 data_io/     tp::data: loads and validates data/ files into core parameter structs.
-data/        Tractor, engine, tire, sled, track and class definitions (TOML).
+data/        Tractor, engine, tire, sled, track, class and event definitions (TOML).
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
 bench/       Google Benchmark micro-benchmarks.
@@ -111,6 +111,10 @@ cmake --preset release && cmake --build --preset release
 # The same tractor, sled and driving on several tracks: one line per track
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml [--gear 6] [--dump]
+
+# A class at an event: a seeded field, test pulls and the sled operator,
+# keep-or-re-pull, qualifying and pull-offs; prints every pull and the standings
+./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
 
 # May this tractor compete in this class? Exits non-zero if not
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \

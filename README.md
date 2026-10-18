@@ -23,7 +23,7 @@ Try a run:
 cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 -o run.csv
-# run: 71.76 m, engine stalled (29.9 s, top 12.1 km/h)
+# run: 89.20 m, engine stalled (36.4 s, top 11.9 km/h)
 ```
 
 ### Track conditions
@@ -39,14 +39,30 @@ the shipped tracks:
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml --gear 6
 # track                         cone index   grip  fall-off  push-down  result
-# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  72.69 m, engine stalled
-# ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  71.76 m, engine stalled
-# loose_sand                        907 kPa   1.00      0.29     60.0 m  67.84 m, engine stalled
-# wet_heavy_clay                    539 kPa   1.00      0.28     70.0 m  75.64 m, wheels spun out
+# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  88.60 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  89.20 m, engine stalled
+# loose_sand                        907 kPa   1.00      0.29     60.0 m  84.35 m, engine stalled
+# wet_heavy_clay                    539 kPa   1.00      0.28     70.0 m  85.53 m, engine stalled
 ```
 
-On the wet clay even the pulling gear ends in wheelspin: grip, not engine
-torque, limits the pull there.
+With the class's own push-down the wet clay is the shortest track and the
+hard clay the longest; the sled operator evens that out with the push-down
+for the day.
+
+### A class at an event
+
+An event file names the class, the sled and the track, and how a field of
+pullers varies around the reference tractor and driver. The first puller
+tests the sled; the sled operator makes it lighter or heavier (knives and
+push-down), and the next puller tests it again. A test pull between 100 and
+110 m moves the full-pull line to 110 m instead. A test puller may keep
+their pull unless the sled got heavier, deciding after the 3rd pull and
+re-pulling after the 6th. Every full pull, filled up to four with the best
+runs from 90 m, goes to the pull-off on a heavier sled.
+
+```bash
+./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
+```
 
 ## Requirements
 

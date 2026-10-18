@@ -146,9 +146,13 @@ TEST(Run, FullPullThenPullOffOnAHeavierSled) {
     EXPECT_EQ(full.result.ending, Ending::kFullPull);
     EXPECT_EQ(full.result.distance_m, kRules.track_length_m);
 
-    sled.pull_off = {
-        .extra_box_mass_kg = 1000.0, .pushdown_start_m = 80.0, .extra_pan_friction = 0.05};
-    const Outcome pull_off = drive(model_with(sled::heavier(sled)), {.gear = 6});
+    // Two steps: the box 1 t heavier, four more knives, the push-down back
+    // on the track at 80 m.
+    sled.pull_off_step = {.box_mass_kg = 500.0,
+                          .knives = 2,
+                          .knife_depth_m = 0.0,
+                          .pushdown_earlier_m = (sled.pushdown_start_m - 80.0) / 2.0};
+    const Outcome pull_off = drive(model_with(sled::heavier(sled, 2)), {.gear = 6});
     EXPECT_NE(pull_off.result.ending, Ending::kFullPull);
     EXPECT_LT(pull_off.result.distance_m, kRules.track_length_m);
 }
@@ -224,9 +228,9 @@ TEST(Run, ReplayMatchesRegression) {
     Result again;
     EXPECT_EQ(run_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0xdc70529f8bf1669cULL);
-    // 71.75645655137582 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.1f069c8bd4043p+6);
+    EXPECT_EQ(hash, 0x6e016eaf1485f4cdULL);
+    // 89.19649425121466 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.64c935c9fb46ap+6);
     EXPECT_EQ(result.ending, Ending::kStalled);
 }
 

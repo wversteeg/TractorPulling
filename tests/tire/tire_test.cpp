@@ -270,6 +270,22 @@ TEST(Tire, RollingResistance) {
     EXPECT_NEAR(towed_rolling_resistance(front_size(), 7000.0, surface), 0.06, 0.01);
 }
 
+// A tire throws back the soil of its rut along the distance its surface
+// travels: more the faster it turns, more when it slips (it digs deeper),
+// more on soft ground, and even when it spins in place.
+TEST(Tire, ThrownSoilGrowsWithSlipSpeedAndSoftness) {
+    const Size size = reference_params().size;
+    const soil::Surface firm = reference_surface();
+    const double rolling = thrown_soil_m3_s(size, kLoad_n, 0.05, 2.0, firm);
+    EXPECT_GT(rolling, 0.0);
+    EXPECT_NEAR(thrown_soil_m3_s(size, kLoad_n, 0.05, 4.0, firm), 2.0 * rolling, 1e-15);
+    EXPECT_GT(thrown_soil_m3_s(size, kLoad_n, 0.5, 2.0, firm), rolling);
+    EXPECT_GT(thrown_soil_m3_s(size, kLoad_n, 0.05, 2.0, softer(firm)), rolling);
+    EXPECT_GT(thrown_soil_m3_s(size, kLoad_n, 1.0, 3.0, firm), 0.0) << "spinning in place";
+    EXPECT_EQ(thrown_soil_m3_s(size, kLoad_n, 0.0, 0.0, firm), 0.0);
+    EXPECT_EQ(thrown_soil_m3_s(size, 0.0, 0.5, 2.0, firm), 0.0);
+}
+
 // The slope used for the implicit solve is the change in force per change in
 // slip speed with the reference speed held; on the rising side of the curve
 // a small drop in ground speed (wheel faster) reproduces it. Beyond the peak

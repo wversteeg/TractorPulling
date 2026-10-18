@@ -6,11 +6,15 @@ add_executable(tp_core_tests
     clutch/clutch_test.cpp
     driveline/driveline_chain_test.cpp
     driveline/driveline_test.cpp
+    driver/driver_test.cpp
     engine/engine_determinism_test.cpp
     engine/engine_test.cpp
+    event/event_test.cpp
+    field/field_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/exp_test.cpp
+    math/random_test.cpp
     math/trig_test.cpp
     pull/pull_test.cpp
     rules/class_rules_test.cpp
@@ -33,6 +37,7 @@ if(TP_BUILD_DATA_IO)
         data/clutch_loader_test.cpp
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp
+        data/event_loader_test.cpp
         data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp
         data/tire_loader_test.cpp

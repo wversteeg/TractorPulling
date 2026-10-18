@@ -1,0 +1,68 @@
+@startuml field_classes
+title Driver and field (tp::driver, tp::field): the competitors
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "vehicle::Params / Input" as Vehicle
+  class "rules::ClassRules\n+ check(), pto_power_w()" as Rules
+  class "math::SplitMix64" as Random
+  class "pull + run" as Run
+}
+
+package "tp::driver" {
+  class Plan <<struct>> {
+    +gear : int
+    +select_gear_s : double
+    +launch_s : double
+    +clutch_slip_in_s : double
+  }
+  class "driver functions" as DriverFns <<free functions>> {
+    +validate(const Plan&, gear_count) : optional<ParamError>
+    +input(const Plan&, t_s) : vehicle::Input
+  }
+  DriverFns ..> Plan
+}
+
+package "tp::field" {
+  class Puller <<struct>> {
+    +tractor : vehicle::Params
+    +driver : driver::Plan
+  }
+  class Range <<struct>> {
+    +low, high : double
+  }
+  class Variation <<struct>> {
+    +torque_scale : Range
+    +mass_kg : Range
+    +traction_limit : Range
+    +lowest_gear, highest_gear : int
+    +clutch_slip_in_s : Range
+  }
+  class Field <<struct>> {
+    +pullers : array<Puller, 32>
+    +count : int
+  }
+  class "field functions" as FieldFns <<free functions>> {
+    +validate(reference, variation, rules, count) : optional<ParamError>
+    +generate(reference, variation, rules, count, seed) : optional<Field>
+    +pull_distance(const Puller&, const sled::Params&, const track::Params&,\n      max_distance_m, max_duration_s) : optional<double>
+  }
+  Puller *-- Plan
+  Variation *-- Range
+  Field *-- Puller
+  FieldFns ..> Variation
+  FieldFns ..> Field
+}
+Puller *-- Vehicle
+DriverFns ..> Vehicle
+FieldFns ..> Rules : every puller\nmay compete
+FieldFns ..> Random
+FieldFns ..> Run : pull_distance runs\na whole pull
+note bottom of FieldFns
+  each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
+  torque tuned down to the class's PTO limit (bisection), mass capped at its limit;
+  pitch inertia follows the mass; the same seed gives the same field everywhere
+end note
+@enduml

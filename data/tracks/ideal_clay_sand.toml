@@ -2,7 +2,7 @@
 # enough to carry the tractor and the sled, moist enough not to dust: about
 # as good as a track gets. The run ends at the first stop of the sled, or
 # with a full pull at the end of the track (then a pull-off follows on a
-# heavier sled, see the sled's [sled.pull_off]).
+# heavier sled, see the sled's [sled.pull_off_step]).
 
 [track]
 length_m = 100.0
