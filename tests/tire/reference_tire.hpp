@@ -14,6 +14,10 @@ inline Params reference_params() {
                  .section_height_m = 0.4,
                  .deflection_m = 0.05},
         .traction = {.limit = 0.93, .mobility_rate = 0.1, .slip_rate = 18.0},
+        .cornering = {.stiffness_per_rad = 4.0,
+                      .limit = 0.8,
+                      .mobility_rate = 0.1,
+                      .relaxation_length_m = 0.8},
         .wheel_inertia_kg_m2 = 30.0,
         .min_reference_speed_m_s = 0.5,
     };
@@ -23,6 +27,12 @@ inline Params reference_params() {
 inline Size front_size() {
     return Size{
         .radius_m = 0.5, .section_width_m = 0.28, .section_height_m = 0.25, .deflection_m = 0.025};
+}
+
+// Mirrors the front tires' side grip in data/tractors/farm_stock_light.toml.
+inline Cornering front_cornering() {
+    return Cornering{
+        .stiffness_per_rad = 5.0, .limit = 0.7, .mobility_rate = 0.1, .relaxation_length_m = 0.5};
 }
 
 // The reference track's soil: moist, rolled clay and sand.

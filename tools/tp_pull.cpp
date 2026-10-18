@@ -2,9 +2,9 @@
 //
 //   tp_pull engine-dyno <engine.toml> [-o <out.csv>]
 //   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
-//                [-o <out.csv>]
+//                [--steer-deg A] [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
-//               [-o <out.csv>]
+//               [--steer-deg A] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump]
 //   tp_pull event <event.toml> [--seed N]
@@ -17,7 +17,8 @@
 // pull drives the whole tractor: idle in neutral, select the gear with the
 // clutch pressed, rev up, slip the clutch in over 3 s or, with --dump, drop
 // it, and pull at full throttle until 100 m, a stall or 30 s, against a
-// constant drawbar force: a test stand for the tractor.
+// constant drawbar force: a test stand for the tractor. --steer-deg holds
+// the front wheels at that angle (positive left) from the launch.
 //
 // run drives the same way against a sled on its chain, by the track's rules:
 // the run ends at the sled's first stop or with a full pull, and every full
@@ -84,6 +85,7 @@
 
 namespace {
 
+using tp::units::deg_to_rad;
 using tp::units::rad_s_to_rpm;
 using tp::units::rad_to_deg;
 
@@ -166,6 +168,7 @@ struct PullOptions {
     int gear = 4;
     double resistance_n = 8000.0;
     bool dump = false;
+    double steering_rad = 0.0;
 };
 
 tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
@@ -177,6 +180,7 @@ tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
         input.clutch_pedal =
             options.dump ? 0.0
                          : std::clamp(1.0 - (t_s - kPullRevUpEnd_s) / kPullSlipIn_s, 0.0, 1.0);
+        input.steering_rad = options.steering_rad;
     }
     return input;
 }
@@ -184,7 +188,8 @@ tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
 int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostream& csv) {
     csv << "time_s,pedal,gear,engine_rpm,axle_rpm,speed_kmh,distance_m,slip_ratio,"
            "tire_force_kn,rear_load_kn,front_load_kn,wheelie_bar_load_kn,pitch_deg,"
-           "clutch_torque_nm,clutch_slip_power_kw,locked,boost\n";
+           "clutch_torque_nm,clutch_slip_power_kw,locked,boost,lateral_m,heading_deg,"
+           "front_side_force_kn,rear_side_force_kn\n";
 
     tp::vehicle::State state = tp::vehicle::initial_state(model);
     double max_slip = 0.0;
@@ -224,7 +229,10 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
                 << out.axle_loads.wheelie_bar_n / kNewtonsPerKilonewton << ','
                 << rad_to_deg(state.chassis.pitch_rad) << ',' << out.clutch_torque_nm << ','
                 << out.clutch_slip_power_w / kWattsPerKilowatt << ','
-                << (state.clutch.locked ? 1 : 0) << ',' << state.engine.boost << '\n';
+                << (state.clutch.locked ? 1 : 0) << ',' << state.engine.boost << ','
+                << state.chassis.lateral_position_m << ',' << rad_to_deg(state.chassis.heading_rad)
+                << ',' << out.front_side_force_n / kNewtonsPerKilonewton << ','
+                << out.rear_side_force_n / kNewtonsPerKilonewton << '\n';
         }
         if (!state.engine.running || state.chassis.position_m >= kTrackLength_m) {
             break;
@@ -244,7 +252,12 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     std::cerr << "; peak wheel slip " << max_slip * kPercent << " %; peak pitch "
               << rad_to_deg(max_pitch_rad) << "°" << (front_lifted ? ", front lifted" : "")
               << (on_wheelie_bar ? ", on the wheelie bar" : "") << "; heat into the clutch "
-              << dissipated_j / kJoulesPerKilojoule << " kJ\n";
+              << dissipated_j / kJoulesPerKilojoule << " kJ";
+    if (options.steering_rad != 0.0) {
+        std::cerr << "; ended " << state.chassis.lateral_position_m << " m to the left, heading "
+                  << rad_to_deg(state.chassis.heading_rad) << "°";
+    }
+    std::cerr << '\n';
     return EXIT_SUCCESS;
 }
 
@@ -297,7 +310,9 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
                 << ',' << out.sled.box_ahead_of_wheels_m << ',' << out.sled.pushdown << ','
                 << out.sled.pan_n / kNewtonsPerKilonewton << ','
                 << out.sled.resistance_n / kNewtonsPerKilonewton << ',' << pull.sled.berm_kg << ','
-                << out.sled.berm_n / kNewtonsPerKilonewton << '\n';
+                << out.sled.berm_n / kNewtonsPerKilonewton << ','
+                << pull.tractor.chassis.lateral_position_m << ','
+                << rad_to_deg(pull.tractor.chassis.heading_rad) << '\n';
         }
     }
     return state.result;
@@ -308,7 +323,7 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
         const tp::data::Track& track, const PullOptions& options, std::ostream& csv) {
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
-           "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn\n";
+           "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg\n";
     // The class's sled with the day's push-down.
     tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
@@ -627,6 +642,12 @@ std::optional<Options> parse_options(std::span<char* const> args) {
                 return std::nullopt;
             }
             options.pull.gear = *gear;
+        } else if (arg == "--steer-deg" && has_value) {
+            const auto degrees = parse_number<double>(args[++i]);
+            if (!degrees) {
+                return std::nullopt;
+            }
+            options.pull.steering_rad = deg_to_rad(*degrees);
         } else if (arg == "--seed" && has_value) {
             options.seed = parse_number<std::uint64_t>(args[++i]);
             if (!options.seed) {
@@ -650,9 +671,9 @@ std::optional<Options> parse_options(std::span<char* const> args) {
 int usage() {
     std::cerr << "usage: tp_pull engine-dyno <engine.toml> [-o <out.csv>]\n"
                  "       tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]\n"
-                 "                    [-o <out.csv>]\n"
+                 "                    [--steer-deg A] [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
-                 "                   [--dump] [-o <out.csv>]\n"
+                 "                   [--dump] [--steer-deg A] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump]\n"
                  "       tp_pull event <event.toml> [--seed N]\n"

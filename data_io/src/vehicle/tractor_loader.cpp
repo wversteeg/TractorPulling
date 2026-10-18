@@ -1,5 +1,7 @@
 #include "tp/data/vehicle/tractor_loader.hpp"
 
+#include "tp/core/math/trig.hpp"
+#include "tp/core/units/conversions.hpp"
 #include "tp/data/clutch/clutch_loader.hpp"
 #include "tp/data/driveline/driveline_loader.hpp"
 #include "tp/data/engine/engine_loader.hpp"
@@ -37,6 +39,8 @@ FieldError describe(chassis::ParamError error) {
             return {"tractor.chassis.cg_height_m", "must be > 0"};
         case ParamError::kPitchInertiaNotPositive:
             return {"tractor.chassis.pitch_inertia_kg_m2", "must be > 0"};
+        case ParamError::kYawInertiaNotPositive:
+            return {"tractor.chassis.yaw_inertia_kg_m2", "must be > 0"};
         case ParamError::kRearAxleHeightNotPositive:
             return {"tractor.rear_tire", "the tire radius (rear axle height) must be > 0"};
         case ParamError::kHitchHeightNegative:
@@ -88,12 +92,20 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     const double pto_efficiency = reader.number("tractor.pto_efficiency");
     constexpr std::string_view kFrontTire = "tractor.front_tire";
     const tire::Size front_tire = detail::read_tire_size(reader, kFrontTire);
+    // The front tires' side grip sits with the steering, in the steering
+    // table's `cornering` sub-table.
+    constexpr std::string_view kSteering = "tractor.steering";
+    const vehicle::Steering steering{
+        .max_angle_rad = units::deg_to_rad(reader.number("tractor.steering.max_angle_deg")),
+        .front_tires = detail::read_cornering(reader, "tractor.steering.cornering"),
+    };
     chassis::Params chassis{
         .mass_kg = reader.number("tractor.chassis.mass_kg"),
         .wheelbase_m = reader.number("tractor.chassis.wheelbase_m"),
         .cg_ahead_of_rear_axle_m = reader.number("tractor.chassis.cg_ahead_of_rear_axle_m"),
         .cg_height_m = reader.number("tractor.chassis.cg_height_m"),
         .pitch_inertia_kg_m2 = reader.number("tractor.chassis.pitch_inertia_kg_m2"),
+        .yaw_inertia_kg_m2 = reader.number("tractor.chassis.yaw_inertia_kg_m2"),
         .rear_axle_height_m = 0.0,  // the rear tire's radius, below
         .hitch_height_m = reader.number("tractor.chassis.hitch_height_m"),
         .hitch_behind_rear_axle_m = reader.number("tractor.chassis.hitch_behind_rear_axle_m"),
@@ -129,6 +141,14 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         return detail::make_error(source, detail::field_path(kFrontTire, field_error.field),
                                   field_error.reason);
     }
+    if (const auto tire_error = tire::validate(steering.front_tires)) {
+        const detail::TireFieldError field_error = detail::describe(*tire_error);
+        return detail::make_error(source, detail::field_path(kSteering, field_error.field),
+                                  field_error.reason);
+    }
+    if (!(steering.max_angle_rad > 0.0 && steering.max_angle_rad <= math::kSinCosMaxAngle_rad)) {
+        return detail::make_error(source, "tractor.steering.max_angle_deg", "must be in (0, 45]");
+    }
 
     std::optional<LoadError> error;
     const auto engine = component(load_engine(base / engine_path), error);
@@ -155,6 +175,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .rear_tire = *rear_tire,
         .rear_tire_count = static_cast<int>(rear_tire_count),
         .front_tire = front_tire,
+        .steering = steering,
         .chassis = chassis,
         .pto_efficiency = pto_efficiency,
     };

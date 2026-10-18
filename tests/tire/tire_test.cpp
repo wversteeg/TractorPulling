@@ -306,5 +306,126 @@ TEST(Tire, LinearizationMatchesTheCurve) {
     EXPECT_EQ(traction(params, falling_m_s, kFast_m_s, kLoad_n, surface).force_per_slip_speed, 0.0);
 }
 
+// ---- Side grip
+
+double strong_ground_grip_n(const Cornering& cornering, double load_n,
+                            const soil::Surface& surface) {
+    // C / stiffness_per_rad: g m W, the load the tire's side grip works with.
+    return side_grip(reference_params().size, cornering, load_n, surface).limit_n / cornering.limit;
+}
+
+TEST(SideGrip, GrowsWithLoadAndFirmGround) {
+    const Params params = reference_params();
+    const soil::Surface firm = reference_surface();
+    soil::Surface soft = firm;
+    soft.cone_index_pa *= 0.2;
+    const SideGrip light = side_grip(params.size, params.cornering, kLoad_n, firm);
+    const SideGrip heavy = side_grip(params.size, params.cornering, 2.0 * kLoad_n, firm);
+    const SideGrip on_soft = side_grip(params.size, params.cornering, kLoad_n, soft);
+    EXPECT_GT(heavy.limit_n, light.limit_n);
+    EXPECT_GT(heavy.stiffness_n_per_m, light.stiffness_n_per_m);
+    EXPECT_LT(on_soft.limit_n, light.limit_n);
+    EXPECT_LT(on_soft.stiffness_n_per_m, light.stiffness_n_per_m);
+    // Never more than the limit coefficient times the load.
+    EXPECT_LE(light.limit_n, params.cornering.limit * kLoad_n);
+    EXPECT_EQ(side_grip(params.size, params.cornering, 0.0, firm).limit_n, 0.0);
+}
+
+// Rolling steadily at a small slip angle, the side force settles at C α.
+TEST(SideGrip, RollingSteadilyGivesCorneringStiffnessTimesSlipAngle) {
+    const Params params = reference_params();
+    const soil::Surface surface = reference_surface();
+    const SideGrip grip = side_grip(params.size, params.cornering, kLoad_n, surface);
+    constexpr double kSlipAngle_rad = 0.02;
+    // Sliding to the right while rolling forward: the force pushes left.
+    const double lateral_m_s = -kGround_m_s * std::tan(kSlipAngle_rad);
+    double deflection_m = 0.0;
+    // 40 m: fifty relaxation lengths.
+    for (int i = 0; i < 20000; ++i) {
+        deflection_m = relax_deflection_m(grip, params.cornering, deflection_m, lateral_m_s,
+                                          kGround_m_s, params.min_reference_speed_m_s, 0.001);
+    }
+    const double cornering_stiffness_n_per_rad =
+        params.cornering.stiffness_per_rad *
+        strong_ground_grip_n(params.cornering, kLoad_n, surface);
+    EXPECT_NEAR(side_force_n(grip, deflection_m),
+                cornering_stiffness_n_per_rad * std::tan(kSlipAngle_rad), 1e-6);
+}
+
+TEST(SideGrip, BuildsOverTheRelaxationLength) {
+    const Params params = reference_params();
+    const SideGrip grip = side_grip(params.size, params.cornering, kLoad_n, reference_surface());
+    const double lateral_m_s = -0.01 * kGround_m_s;
+    double deflection_m = 0.0;
+    // After rolling one relaxation length the force has built to 1 - 1/e of
+    // its steady value.
+    const int steps = static_cast<int>(params.cornering.relaxation_length_m / kGround_m_s / 0.001);
+    for (int i = 0; i < steps; ++i) {
+        deflection_m = relax_deflection_m(grip, params.cornering, deflection_m, lateral_m_s,
+                                          kGround_m_s, params.min_reference_speed_m_s, 0.001);
+    }
+    const double steady_m = lateral_m_s * params.cornering.relaxation_length_m / kGround_m_s;
+    EXPECT_NEAR(deflection_m / steady_m, 1.0 - std::exp(-1.0), 0.01);
+}
+
+TEST(SideGrip, SlidesAtTheLimit) {
+    const Params params = reference_params();
+    const SideGrip grip = side_grip(params.size, params.cornering, kLoad_n, reference_surface());
+    double deflection_m = 0.0;
+    for (int i = 0; i < 5000; ++i) {
+        deflection_m = relax_deflection_m(grip, params.cornering, deflection_m, -kGround_m_s,
+                                          kGround_m_s, params.min_reference_speed_m_s, 0.001);
+        ASSERT_LE(std::abs(side_force_n(grip, deflection_m)), grip.limit_n * (1.0 + 1e-12));
+    }
+    EXPECT_NEAR(side_force_n(grip, deflection_m), grip.limit_n, 1e-9 * grip.limit_n);
+}
+
+// Pushed sideways at rest, the patch holds like a spring.
+TEST(SideGrip, HoldsAtRest) {
+    const Params params = reference_params();
+    const SideGrip grip = side_grip(params.size, params.cornering, kLoad_n, reference_surface());
+    const double deflection_m = relax_deflection_m(grip, params.cornering, 0.0, -0.01, 0.0,
+                                                   params.min_reference_speed_m_s, 0.001);
+    EXPECT_GT(side_force_n(grip, deflection_m), 0.0);
+    EXPECT_NEAR(side_force_n(grip, deflection_m), grip.stiffness_n_per_m * 1e-5,
+                0.01 * grip.stiffness_n_per_m * 1e-5);
+}
+
+TEST(SideGrip, TractionAndWheelspinUseItUp) {
+    const Params params = reference_params();
+    const soil::Surface surface = reference_surface();
+    const SideGrip grip = side_grip(params.size, params.cornering, kLoad_n, surface);
+    const double full_bite_n = full_bite(params, kLoad_n, surface) * kLoad_n;
+    EXPECT_EQ(with_traction(grip, 0.0, full_bite_n, 0.0).limit_n, grip.limit_n);
+    const double pulling = with_traction(grip, 0.5 * full_bite_n, full_bite_n, 0.1).limit_n;
+    const double pulling_hard = with_traction(grip, 0.9 * full_bite_n, full_bite_n, 0.3).limit_n;
+    EXPECT_LT(pulling, grip.limit_n);
+    EXPECT_LT(pulling_hard, pulling);
+    EXPECT_EQ(with_traction(grip, 0.8 * full_bite_n, full_bite_n, 1.0).limit_n, 0.0);
+    // The patch's stiffness stays; it just slides sooner.
+    EXPECT_EQ(with_traction(grip, 0.5 * full_bite_n, full_bite_n, 0.1).stiffness_n_per_m,
+              grip.stiffness_n_per_m);
+}
+
+TEST(SideGrip, PatchSpringsBackOffTheGround) {
+    const Params params = reference_params();
+    EXPECT_EQ(relax_deflection_m({}, params.cornering, 0.02, 1.0, 2.0,
+                                 params.min_reference_speed_m_s, 0.001),
+              0.0);
+    EXPECT_EQ(side_force_n({}, 0.02), 0.0);
+}
+
+TEST(SideGrip, RejectsNonsense) {
+    Params params = reference_params();
+    params.cornering.limit = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kCorneringLimitOutOfRange);
+    params = reference_params();
+    params.cornering.relaxation_length_m = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kCorneringNotPositive);
+    params = reference_params();
+    params.cornering.stiffness_per_rad = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_EQ(validate(params), ParamError::kNotFinite);
+}
+
 }  // namespace
 }  // namespace tp::tire

@@ -17,6 +17,19 @@ section_width_m = 0.28
 section_height_m = 0.25
 deflection_m = 0.025
 
+# The front wheels' steering, and the front tires' side grip (see
+# tp::tire::Cornering). Starting values to tune, in the range measured for
+# agricultural tires on firm soil: side force builds at about 0.09 of the
+# load per degree of slip angle and tops out at about 0.7 of it.
+[tractor.steering]
+max_angle_deg = 40.0              # each way; at most 45
+
+[tractor.steering.cornering]
+stiffness_per_rad = 5.0           # side force per unit of load per rad of slip angle
+limit = 0.7                       # side force per unit of load at most
+mobility_rate = 0.1               # as for traction: soft ground grips less
+relaxation_length_m = 0.5         # about the tire's radius
+
 # Body points are measured with the tractor level. The rear axle height is
 # the rear tire's radius.
 [tractor.chassis]
@@ -25,6 +38,7 @@ wheelbase_m = 2.4
 cg_ahead_of_rear_axle_m = 0.96    # 60 % of the weight on the rear axle at rest
 cg_height_m = 1.0
 pitch_inertia_kg_m2 = 2800.0      # about the centre of gravity; m k², k ≈ 0.9 m
+yaw_inertia_kg_m2 = 5500.0        # about the centre of gravity; m (l² + w²) / 12, 3.9 m by 2.2 m
 hitch_height_m = 0.5              # NTTO: at most 0.5 m, not above the rear axle
 hitch_behind_rear_axle_m = 0.4
 

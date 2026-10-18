@@ -29,6 +29,34 @@ struct TractionCurve {
     double slip_rate = 0.0;
 };
 
+/// A tire's side grip on soil. Like traction, it follows the mobility
+/// number: soft ground gives a tire less side grip, and lets it build more
+/// slowly with slip angle. With m = 1 - e^(-mobility_rate Bn) and g the
+/// surface's grip factor, a tire under load W has the cornering stiffness
+/// and side-force limit
+///
+///   C = stiffness_per_rad · g m W    [N/rad]
+///   F_max = limit · g m W            [N]
+///
+/// The side force builds as the contact patch deflects sideways and relaxes
+/// as the tire rolls (a first-order relaxation-length model): a lateral
+/// deflection d gives F = -(C / σ) d, and d' = v_lat - |v_roll| d / σ with
+/// σ the relaxation length. Rolling steadily, F = C α for small slip angles
+/// α = -v_lat / v_roll; at a standstill the patch holds like a spring
+/// instead of the slip angle becoming undefined. Past F_max the patch slides.
+struct Cornering {
+    /// Side force per unit of load per radian of slip angle on strong
+    /// ground [1/rad].
+    double stiffness_per_rad = 0.0;
+    /// Side force per unit of load at most, on strong ground.
+    double limit = 0.0;
+    /// How quickly side grip approaches its strong-ground values as the
+    /// mobility number grows.
+    double mobility_rate = 0.0;
+    /// Distance the tire rolls while its side force builds [m].
+    double relaxation_length_m = 0.0;
+};
+
 /// A driven tire on soil, after Brixius (1987, ASAE D497): soil strength
 /// (cone index) and the tire's size and load combine into a mobility number
 ///
@@ -48,6 +76,8 @@ struct TractionCurve {
 struct Params {
     Size size;
     TractionCurve traction;
+    /// Side grip; see Cornering.
+    Cornering cornering;
     /// Wheel and tire about the axle [kg·m²].
     double wheel_inertia_kg_m2 = 0.0;
     /// Smallest reference speed for the slip ratio [m/s].
@@ -63,9 +93,12 @@ enum class ParamError : std::uint8_t {
     kTractionRateNotPositive,
     kInertiaNotPositive,
     kMinReferenceSpeedNotPositive,
+    kCorneringNotPositive,
+    kCorneringLimitOutOfRange,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Size& size) noexcept;
+[[nodiscard]] std::optional<ParamError> validate(const Cornering& cornering) noexcept;
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
 /// Brixius' mobility number for one tire under `load_n` [-]; very large
@@ -112,5 +145,42 @@ struct Traction {
 /// plus the tire's own losses, 0.04.
 [[nodiscard]] double towed_rolling_resistance(const Size& size, double load_n,
                                               const soil::Surface& surface) noexcept;
+
+/// Traction coefficient at full bite on this ground: what the tire could
+/// pull per unit of load at the best slip, before spin fall-off [-].
+[[nodiscard]] double full_bite(const Params& params, double load_n,
+                               const soil::Surface& surface) noexcept;
+
+/// A tire's side grip under its load on this ground, for the step.
+struct SideGrip {
+    /// Lateral stiffness of the contact patch, C / σ [N/m].
+    double stiffness_n_per_m = 0.0;
+    /// Side force at most [N].
+    double limit_n = 0.0;
+};
+
+[[nodiscard]] SideGrip side_grip(const Size& size, const Cornering& cornering, double load_n,
+                                 const soil::Surface& surface) noexcept;
+
+/// A driven tire's side grip is what its traction leaves: the force it
+/// pulls with uses up part of its grip (a friction ellipse against full
+/// bite), and a spinning tire's patch slides mostly along the tire, so its
+/// side grip falls with slip and is gone at full spin.
+[[nodiscard]] SideGrip with_traction(SideGrip grip, double traction_n, double full_bite_n,
+                                     double slip_ratio) noexcept;
+
+/// The side force from a lateral patch deflection, positive to the tire's
+/// left [N].
+[[nodiscard]] double side_force_n(const SideGrip& grip, double deflection_m) noexcept;
+
+/// The patch deflection after a step: it follows the contact's sideways
+/// speed `lateral_m_s` (to the tire's left) and relaxes as the tire rolls at
+/// `rolling_m_s`, taken implicitly so it is stable at any speed. Below
+/// `min_rolling_m_s` the patch relaxes as if rolling that fast, so a tire at
+/// rest creeps under a side load rather than holding it for ever. Where the
+/// force would pass the limit, the patch slides and stays at the limit.
+[[nodiscard]] double relax_deflection_m(const SideGrip& grip, const Cornering& cornering,
+                                        double deflection_m, double lateral_m_s, double rolling_m_s,
+                                        double min_rolling_m_s, double dt_s) noexcept;
 
 }  // namespace tp::tire

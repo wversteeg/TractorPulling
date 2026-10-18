@@ -200,6 +200,24 @@ TEST(Pull, TheChainKeepsTractorAndSledTogether) {
     EXPECT_NEAR(gap_m, start_gap_m, 0.05);
 }
 
+TEST(Chain, RunsSidewaysToAnOffsetHitch) {
+    const sled::Chain chain{.length_m = 3.0, .stiffness_n_per_m = 1e5, .damping_n_s_per_m = 0.0};
+    const ChainForce force = chain_force(chain, {.x_m = 4.0, .y_m = 0.5}, {.x_m = 0.0});
+    const double span_m = std::sqrt(4.0 * 4.0 + 0.5 * 0.5);
+    EXPECT_NEAR(force.direction_y, 0.5 / span_m, 1e-15);
+    EXPECT_NEAR(force.tension_n, 1e5 * (span_m - 3.0), 1e-6);
+}
+
+// Turned off the line, the tractor feels the chain partly sideways at its
+// hitch behind the rear axle, which turns it back in line.
+TEST(Pull, ChainTurnsTheTractorBackInLine) {
+    Driver run;
+    constexpr double kTurned_rad = 0.05;
+    run.state.tractor.chassis.heading_rad = kTurned_rad;
+    run.drive(6, false, 15.0);
+    EXPECT_LT(std::abs(run.state.tractor.chassis.heading_rad), 0.5 * kTurned_rad);
+}
+
 std::uint64_t pull_hash() {
     Driver run;
     hash::Fnv1a hash;
@@ -208,7 +226,9 @@ std::uint64_t pull_hash() {
         const vehicle::Input input{
             .throttle = t_s < 0.5 ? 0.0 : 1.0,
             .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
-            .gear = t_s < 0.5 ? driveline::kNeutral : 6};
+            .gear = t_s < 0.5 ? driveline::kNeutral : 6,
+            // Steering left, then right, exercises the chain at an angle.
+            .steering_rad = t_s < 8.0 ? 0.0 : (t_s < 12.0 ? 0.05 : -0.05)};
         step(run.state, run.model, input, kDt_s);
         hash_append(hash, run.state);
     }
@@ -221,7 +241,7 @@ TEST(Pull, IsDeterministic) {
 
 // Regression hash; must match on every compiler, build type and platform.
 TEST(Pull, MatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x87528c137a1d5aeULL);
+    EXPECT_EQ(pull_hash(), 0x44e535dde9130148ULL);
 }
 
 }  // namespace

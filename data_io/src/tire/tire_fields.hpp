@@ -14,6 +14,11 @@ namespace tp::data::detail {
 /// front tires.
 [[nodiscard]] tire::Size read_tire_size(Reader& reader, std::string_view table);
 
+/// Reads a tire's side grip from `table` (stiffness_per_rad, limit,
+/// mobility_rate, relaxation_length_m). Shared by tire files and the
+/// tractor's front tires.
+[[nodiscard]] tire::Cornering read_cornering(Reader& reader, std::string_view table);
+
 /// The field, under the tire's table, and the reason for a tire error.
 struct TireFieldError {
     std::string_view field;

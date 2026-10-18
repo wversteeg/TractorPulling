@@ -22,6 +22,7 @@ Result<tire::Params> read_tire(const toml::table& root, std::string_view source)
                 .mobility_rate = reader.number("tire.traction.mobility_rate"),
                 .slip_rate = reader.number("tire.traction.slip_rate"),
             },
+        .cornering = detail::read_cornering(reader, "tire.cornering"),
         .wheel_inertia_kg_m2 = reader.number("tire.wheel_inertia_kg_m2"),
         .min_reference_speed_m_s = reader.number("tire.min_reference_speed_m_s"),
     };

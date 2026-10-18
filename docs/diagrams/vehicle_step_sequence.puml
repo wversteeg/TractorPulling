@@ -10,7 +10,7 @@ participant "tire" as Tire
 participant "solve_chain" as Solve
 participant "clutch::resolve" as Clutch
 
-Caller -> Step : step(state, model, {throttle, clutch_pedal, gear},\n  Ground{rear, front surface}, Drawbar{pull, lift}, dt_s)
+Caller -> Step : step(state, model, {throttle, clutch_pedal, gear, steering},\n  Ground{rear, front surface}, Drawbar{pull, lift, side}, dt_s)
 opt requested gear differs
   Step -> Driveline : shift(gear, clutch capacity == 0)
 end
@@ -21,9 +21,11 @@ Tire --> Step : force, slope (linearized), slip
 Step -> Tire : driven_rolling_resistance(rear load per tire, slip, rear surface)
 Step -> Tire : thrown_soil_m3_s(rear load per tire, slip, wheel speed, rear surface)
 Step -> Tire : towed_rolling_resistance(front load per tire, front surface)
+Step -> Tire : side_grip(front, rear); with_traction(rear grip, traction, full bite, slip)
+Step -> Tire : side_force_n(grip, patch deflection) for front and rear
 Step -> Engine : predict(throttle)
 Step -> Driveline : predict(rear rolling resistance torque)
-Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag)
+Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag\n  + steered front tires' side force along the body)
 Step -> Solve : engine line, driveline Response, TireLine, body line
 Solve -> Solve : lock torque with the tire force eliminated\n(branch by the torque's sign: gearbox efficiency)
 Solve -> Clutch : resolve(capacity, lock torque)
@@ -32,7 +34,9 @@ Solve -> Solve : tire force for that clutch torque
 Solve --> Step : clutch torque, tire force
 Step -> Engine : advance(load = clutch torque)
 Step -> Driveline : advance(clutch torque, axle torque = -r * tire force)
-Step -> Chassis : advance(drive force = tire force)
+Step -> Chassis : advance_lateral(front, rear and hitch side forces)
+Step -> Chassis : advance(drive force = tire force): moves along the heading
+Step -> Tire : relax_deflection_m(front, rear) at the new speeds
 Step -> Step : axle torque from the axle's balance
 Step -> Chassis : advance_pitch(axle torque, drawbar pull and lift,\n  front rolling resistance)\n(see the pitch step)
 Step --> Caller : Output

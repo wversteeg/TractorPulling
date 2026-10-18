@@ -33,12 +33,22 @@ section_width_m = 0.28
 section_height_m = 0.25
 deflection_m = 0.025
 
+[tractor.steering]
+max_angle_deg = 40.0
+
+[tractor.steering.cornering]
+stiffness_per_rad = 5.0
+limit = 0.7
+mobility_rate = 0.1
+relaxation_length_m = 0.5
+
 [tractor.chassis]
 mass_kg = 3500.0
 wheelbase_m = 2.4
 cg_ahead_of_rear_axle_m = 0.96
 cg_height_m = 1.0
 pitch_inertia_kg_m2 = 2800.0
+yaw_inertia_kg_m2 = 5500.0
 hitch_height_m = 0.5
 hitch_behind_rear_axle_m = 0.4
 
@@ -147,6 +157,38 @@ TEST(TractorLoader, ReadsTheFrontTire) {
     EXPECT_DOUBLE_EQ(result.value().front_tire.section_width_m, 0.28);
     EXPECT_DOUBLE_EQ(result.value().front_tire.section_height_m, 0.25);
     EXPECT_DOUBLE_EQ(result.value().front_tire.deflection_m, 0.025);
+}
+
+TEST(TractorLoader, ReadsTheSteering) {
+    const auto result = parse_tractor(kTractor, "test.toml", kDataDir);
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const vehicle::Steering& steering = result.value().steering;
+    const vehicle::Steering reference = vehicle::testing::reference_params().steering;
+    EXPECT_DOUBLE_EQ(steering.max_angle_rad, reference.max_angle_rad);
+    EXPECT_EQ(steering.front_tires.stiffness_per_rad, reference.front_tires.stiffness_per_rad);
+    EXPECT_EQ(steering.front_tires.limit, reference.front_tires.limit);
+    EXPECT_EQ(steering.front_tires.mobility_rate, reference.front_tires.mobility_rate);
+    EXPECT_EQ(steering.front_tires.relaxation_length_m, reference.front_tires.relaxation_length_m);
+    EXPECT_EQ(result.value().chassis.yaw_inertia_kg_m2,
+              vehicle::testing::reference_params().chassis.yaw_inertia_kg_m2);
+}
+
+TEST(TractorLoader, RejectsNonsenseSteering) {
+    EXPECT_NE(error_of(with("max_angle_deg = 40.0", "max_angle_deg = 50.0"))
+                  .find("tractor.steering.max_angle_deg: must be in (0, 45]"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("max_angle_deg = 40.0", "max_angle_deg = 0.0"))
+                  .find("tractor.steering.max_angle_deg: must be in (0, 45]"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("limit = 0.7", "limit = -0.7"))
+                  .find("tractor.steering.cornering.limit: must be in (0, 2]"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("relaxation_length_m = 0.5", ""))
+                  .find("tractor.steering.cornering.relaxation_length_m: missing"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("yaw_inertia_kg_m2 = 5500.0", "yaw_inertia_kg_m2 = 0.0"))
+                  .find("tractor.chassis.yaw_inertia_kg_m2: must be > 0"),
+              std::string::npos);
 }
 
 TEST(TractorLoader, RejectsANonsenseFrontTire) {

@@ -51,6 +51,19 @@ for the big features; they are repeated at the end for completeness.
 
 ## Tractor
 
+- **No roll, so no sideways load transfer.** Side forces do not shift load
+  between the left and right tires; the left and right rear tires come with
+  the brakes (milestone 3, step 2).
+- **Combined slip, simply.** A rear tire's side grip is cut by its traction
+  (a friction ellipse against full bite) and by its slip (1 - |s|), and the
+  side force does not take grip from traction in turn. A proper combined-slip
+  model would let both trade off along the sliding direction.
+- **Front tires' rolling drag along the body.** Their rolling resistance acts
+  along the body, not along the steered wheels (a few degrees off).
+- **Sled follows the tractor sideways.** Until the sled gets its own sideways
+  motion (milestone 3, step 3), its hook stays straight behind the hitch.
+- **Steering is instant.** The front wheels take the asked angle at once; a
+  steering rate (the driver turning the wheel) belongs in the input mapping.
 - **Rear tire compliance.** The rear axle stays at the tire radius; a springy
   rear tire would soften launches and let the tractor squat.
 - **Centre of gravity moving with pitch.** When the body pitches, the centre

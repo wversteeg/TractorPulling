@@ -24,6 +24,12 @@ min_reference_speed_m_s = 0.3
 limit = 0.9
 mobility_rate = 0.1
 slip_rate = 12.0
+
+[tire.cornering]
+stiffness_per_rad = 4.5
+limit = 0.75
+mobility_rate = 0.2
+relaxation_length_m = 0.6
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -57,6 +63,10 @@ TEST(TireLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.traction.slip_rate, reference.traction.slip_rate);
     EXPECT_EQ(loaded.wheel_inertia_kg_m2, reference.wheel_inertia_kg_m2);
     EXPECT_EQ(loaded.min_reference_speed_m_s, reference.min_reference_speed_m_s);
+    EXPECT_EQ(loaded.cornering.stiffness_per_rad, reference.cornering.stiffness_per_rad);
+    EXPECT_EQ(loaded.cornering.limit, reference.cornering.limit);
+    EXPECT_EQ(loaded.cornering.mobility_rate, reference.cornering.mobility_rate);
+    EXPECT_EQ(loaded.cornering.relaxation_length_m, reference.cornering.relaxation_length_m);
 }
 
 TEST(TireLoader, ParsesValues) {
@@ -72,6 +82,10 @@ TEST(TireLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(tire.traction.slip_rate, 12.0);
     EXPECT_DOUBLE_EQ(tire.wheel_inertia_kg_m2, 20.0);
     EXPECT_DOUBLE_EQ(tire.min_reference_speed_m_s, 0.3);
+    EXPECT_DOUBLE_EQ(tire.cornering.stiffness_per_rad, 4.5);
+    EXPECT_DOUBLE_EQ(tire.cornering.limit, 0.75);
+    EXPECT_DOUBLE_EQ(tire.cornering.mobility_rate, 0.2);
+    EXPECT_DOUBLE_EQ(tire.cornering.relaxation_length_m, 0.6);
 }
 
 TEST(TireLoader, RejectsNonsenseValues) {
@@ -80,7 +94,7 @@ TEST(TireLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 9> cases = {{
+    const std::array<Case, 12> cases = {{
         {"radius_m = 0.7", "", "tire.radius_m: missing or not a number"},
         {"radius_m = 0.7", "radius_m = 0.0", "tire.radius_m: must be > 0"},
         {"section_width_m = 0.42", "section_width_m = 0.0", "tire.section_width_m: section width"},
@@ -93,6 +107,11 @@ TEST(TireLoader, RejectsNonsenseValues) {
          "tire.wheel_inertia_kg_m2: must be > 0"},
         {"min_reference_speed_m_s = 0.3", "min_reference_speed_m_s = 0.0",
          "tire.min_reference_speed_m_s: must be > 0"},
+        {"limit = 0.75", "limit = 0.0", "tire.cornering.limit: must be in (0, 2]"},
+        {"relaxation_length_m = 0.6", "relaxation_length_m = 0.0",
+         "tire.cornering: stiffness_per_rad, mobility_rate and relaxation_length_m must be > 0"},
+        {"stiffness_per_rad = 4.5", "",
+         "tire.cornering.stiffness_per_rad: missing or not a number"},
     }};
     for (const Case& c : cases) {
         const std::string message = error_of(with(c.from, c.to));

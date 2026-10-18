@@ -50,8 +50,21 @@ struct WheelieBar {
 /// line, so it can pull the hitch down or up as well as back; that also
 /// shifts load between the rear tires and the contacts.
 ///
+/// In the ground plane the body moves forward and sideways and turns
+/// (yaws) as a rigid body, written in the body frame at the centre of
+/// gravity: with u forward and v_cg sideways (to the left) at the centre of
+/// gravity and r the yaw rate (positive turning left),
+///
+///   m (u' - v_cg r) = ΣF_x      m (v_cg' + u r) = ΣF_y      I_z r' = ΣM_z
+///
+/// Side forces act at the front axle (front tires), the rear axle (rear
+/// tires) and the hitch (the chain). The state keeps the sideways speed at
+/// the rear axle, v = v_cg - b r, which is what the rear tires feel.
+///
 /// Left out: the centre of gravity moving along x as the body pitches does
-/// not feed back into the longitudinal motion.
+/// not feed back into the longitudinal motion; the body does not roll, so
+/// side forces shift no load between left and right; pitch and yaw do not
+/// couple.
 struct Params {
     /// Whole tractor, wheels included [kg].
     double mass_kg = 0.0;
@@ -62,6 +75,8 @@ struct Params {
     double cg_height_m = 0.0;
     /// Pitch inertia of the whole tractor about its centre of gravity [kg·m²].
     double pitch_inertia_kg_m2 = 0.0;
+    /// Yaw inertia of the whole tractor about its centre of gravity [kg·m²].
+    double yaw_inertia_kg_m2 = 0.0;
     /// Rear axle above the ground: the rear tire radius [m].
     double rear_axle_height_m = 0.0;
     /// Drawbar hitch point above the ground [m].
@@ -84,6 +99,7 @@ enum class ParamError : std::uint8_t {
     kCgOutsideWheelbase,
     kCgHeightNotPositive,
     kPitchInertiaNotPositive,
+    kYawInertiaNotPositive,
     kRearAxleHeightNotPositive,
     kHitchHeightNegative,
     kHitchAheadOfRearAxle,
@@ -99,8 +115,12 @@ enum class ParamError : std::uint8_t {
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
+/// Positions are in the world: x along the track from where the rear axle
+/// started, y to its left. Speeds are in the body frame.
 struct State {
+    /// Rear axle along the track [m].
     double position_m = 0.0;
+    /// Forward speed [m/s].
     double velocity_m_s = 0.0;
     /// Over the last step; feeds the pitch moment and the rear axle load.
     double acceleration_m_s2 = 0.0;
@@ -108,6 +128,14 @@ struct State {
     double pitch_rate_rad_s = 0.0;
     /// Over the last step; feeds the rear axle load.
     double pitch_acceleration_rad_s2 = 0.0;
+    /// Rear axle to the left of the track's centre line [m].
+    double lateral_position_m = 0.0;
+    /// Body x from the track's direction, positive turned left [rad].
+    double heading_rad = 0.0;
+    /// Sideways speed of the rear axle, to the left [m/s].
+    double lateral_velocity_m_s = 0.0;
+    /// Positive turning left [rad/s].
+    double yaw_rate_rad_s = 0.0;
 };
 
 /// What the drawbar puts on the tractor at the hitch [N].
@@ -116,14 +144,18 @@ struct Drawbar {
     double pull_n = 0.0;
     /// Upward; negative when the drawbar runs down from the hitch.
     double lift_n = 0.0;
+    /// To the tractor's left, in the body frame.
+    double side_n = 0.0;
 };
 
 /// The hitch point in the world: x along the track from where the rear axle
-/// started, z above the ground [m, m/s].
+/// started, y to its left, z above the ground [m, m/s].
 struct Hitch {
     double x_m = 0.0;
+    double y_m = 0.0;
     double z_m = 0.0;
     double velocity_x_m_s = 0.0;
+    double velocity_y_m_s = 0.0;
     double velocity_z_m_s = 0.0;
 };
 
@@ -155,11 +187,29 @@ struct Prediction {
 
 /// `resisting_force_n` opposes forward motion (drawbar pull, rolling
 /// resistance). It can hold the body at rest but never push it backwards;
-/// there is no reverse.
+/// there is no reverse. A turning body's sideways motion adds v_cg r.
 [[nodiscard]] Prediction predict(const State& state, const Params& params, double resisting_force_n,
                                  double dt_s) noexcept;
 
-/// Longitudinal motion over the step.
+/// Side forces on the body, to its left [N].
+struct SideForces {
+    /// Front tires, at the front axle.
+    double front_n = 0.0;
+    /// Rear tires, at the rear axle.
+    double rear_n = 0.0;
+    /// The drawbar, at the hitch.
+    double hitch_n = 0.0;
+};
+
+/// Sideways motion and yaw over the step, semi-implicit Euler: the forces
+/// are this step's, the speeds advance first and the heading follows with
+/// the new yaw rate. Comes before advance(), which moves the body along its
+/// new heading.
+void advance_lateral(State& state, const Params& params, const SideForces& forces,
+                     double dt_s) noexcept;
+
+/// Forward speed over the step, then position: the rear axle moves with its
+/// new forward and sideways speeds along the heading.
 void advance(State& state, const Prediction& prediction, double drive_force_n,
              double dt_s) noexcept;
 
@@ -179,6 +229,10 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.pitch_rad);
     hash.add(state.pitch_rate_rad_s);
     hash.add(state.pitch_acceleration_rad_s2);
+    hash.add(state.lateral_position_m);
+    hash.add(state.heading_rad);
+    hash.add(state.lateral_velocity_m_s);
+    hash.add(state.yaw_rate_rad_s);
 }
 
 }  // namespace tp::chassis
