@@ -95,6 +95,14 @@ heavier sled.
 
 ![Run classes](diagrams/svg/run_classes.svg)
 
+### Driver and field (`tp::driver`, `tp::field`)
+
+The competitors: a scripted driver's plan (gear and clutch technique) and a
+seeded field of pullers, each the reference tractor and driver varied within
+ranges and kept within the class's rules.
+
+![Field classes](diagrams/svg/field_classes.svg)
+
 ### Event (`tp::event`)
 
 One class at an event, pull by pull: a seeded running order, the test pull

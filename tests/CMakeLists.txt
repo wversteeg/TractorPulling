@@ -6,9 +6,11 @@ add_executable(tp_core_tests
     clutch/clutch_test.cpp
     driveline/driveline_chain_test.cpp
     driveline/driveline_test.cpp
+    driver/driver_test.cpp
     engine/engine_determinism_test.cpp
     engine/engine_test.cpp
     event/event_test.cpp
+    field/field_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/exp_test.cpp
