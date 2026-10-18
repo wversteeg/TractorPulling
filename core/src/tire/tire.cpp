@@ -123,6 +123,16 @@ double driven_rolling_resistance(const Size& size, double load_n, double slip_ra
     return 1.0 / mobility + kSlipSinkage * std::abs(slip_ratio) / std::sqrt(mobility);
 }
 
+double thrown_soil_m3_s(const Size& size, double load_n, double slip_ratio,
+                        double wheel_surface_speed_m_s, const soil::Surface& surface) noexcept {
+    if (load_n <= 0.0) {
+        return 0.0;
+    }
+    const double sinkage_m =
+        2.0 * size.radius_m * driven_rolling_resistance(size, load_n, slip_ratio, surface);
+    return size.section_width_m * sinkage_m * std::abs(wheel_surface_speed_m_s);
+}
+
 double towed_rolling_resistance(const Size& size, double load_n,
                                 const soil::Surface& surface) noexcept {
     return 1.0 / mobility_number(size, load_n, surface) + kTireLosses;

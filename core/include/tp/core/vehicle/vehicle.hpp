@@ -103,6 +103,8 @@ struct Output {
     double rear_rolling_resistance = 0.0;
     /// Motion resistance of the front tires per unit of their load.
     double front_rolling_resistance = 0.0;
+    /// Soil all rear tires throw back behind the tractor [m³/s].
+    double thrown_soil_m3_s = 0.0;
     chassis::AxleLoads axle_loads;
     /// The requested gear could not be engaged this step.
     bool shift_refused = false;

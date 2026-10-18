@@ -48,6 +48,9 @@ FieldError describe(sled::ParamError error) {
         case ParamError::kKnivesOutOfRange:
             return {"sled.knives",
                     "count 0 to 24, depth 0 to 0.15 m, width >= 0 (> 0 with knives)"};
+        case ParamError::kBermOutOfRange:
+            return {"sled.berm",
+                    "collected_share 0 to 1, spill_distance_m > 0, friction_coefficient >= 0"};
         case ParamError::kWheel:
             return {"sled.wheels", "invalid tire size"};
         case ParamError::kWheelCountOutOfRange:
@@ -86,6 +89,9 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .knives = {.count = 0,  // checked below
                    .depth_m = reader.number("sled.knives.depth_m"),
                    .width_m = reader.number("sled.knives.width_m")},
+        .berm = {.collected_share = reader.number("sled.berm.collected_share"),
+                 .spill_distance_m = reader.number("sled.berm.spill_distance_m"),
+                 .friction_coefficient = reader.number("sled.berm.friction_coefficient")},
         .wheel = detail::read_tire_size(reader, kWheels),
         .wheel_count = 0,  // checked below
         .chain =

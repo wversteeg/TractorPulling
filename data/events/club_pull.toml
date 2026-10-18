@@ -35,5 +35,5 @@ pull_off_places = 4              # full pulls, filled up with the best...
 qualifying_distance_m = 90.0     # ...from 90 m on
 decide_after_pulls = 2           # the test puller decides after the 3rd pull
 repull_after_pulls = 5           # and re-pulls after the 6th
-sled_target_m = 90.0             # a shorter test pull: the sled goes lighter
+sled_target_m = 94.0             # a shorter test pull: the sled goes lighter, so a couple of the best make full pulls
 step_m = 5.0                     # one sled step is worth about 5 m

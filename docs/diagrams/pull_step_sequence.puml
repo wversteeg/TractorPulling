@@ -22,5 +22,6 @@ Vehicle --> Step : tractor output
 Step -> Sled : loads(state, hook force, Ground{pan, wheels})
 Sled --> Step : pan / wheel loads, box position,\npush-down, resistance
 Step -> Sled : predict(resistance), advance(forward pull)
+Step -> Sled : collect(soil the tractor threw back)\n(the berm grows, and spills as the sled moves)
 Step --> Caller : Output{tractor, sled loads, chain}
 @enduml

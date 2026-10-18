@@ -51,6 +51,11 @@ count = 3
 depth_m = 0.05
 width_m = 0.04
 
+[sled.berm]
+collected_share = 0.2
+spill_distance_m = 30.0
+friction_coefficient = 0.7
+
 [sled.pull_off_step]
 box_mass_kg = 100.0
 knives = 2
@@ -99,6 +104,9 @@ TEST(SledLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.knives.count, reference.knives.count);
     EXPECT_EQ(loaded.knives.depth_m, reference.knives.depth_m);
     EXPECT_EQ(loaded.knives.width_m, reference.knives.width_m);
+    EXPECT_EQ(loaded.berm.collected_share, reference.berm.collected_share);
+    EXPECT_EQ(loaded.berm.spill_distance_m, reference.berm.spill_distance_m);
+    EXPECT_EQ(loaded.berm.friction_coefficient, reference.berm.friction_coefficient);
     EXPECT_EQ(loaded.pull_off_step.box_mass_kg, reference.pull_off_step.box_mass_kg);
     EXPECT_EQ(loaded.pull_off_step.knives, reference.pull_off_step.knives);
     EXPECT_EQ(loaded.pull_off_step.knife_depth_m, reference.pull_off_step.knife_depth_m);
@@ -112,6 +120,9 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(result.value().box_start_ahead_of_wheels_m, 0.2);
     EXPECT_DOUBLE_EQ(result.value().chain.length_m, 1.2);
     EXPECT_DOUBLE_EQ(result.value().hook_height_m, 0.5);
+    EXPECT_DOUBLE_EQ(result.value().berm.collected_share, 0.2);
+    EXPECT_DOUBLE_EQ(result.value().berm.spill_distance_m, 30.0);
+    EXPECT_DOUBLE_EQ(result.value().berm.friction_coefficient, 0.7);
     EXPECT_EQ(result.value().knives.count, 3);
     EXPECT_DOUBLE_EQ(result.value().knives.depth_m, 0.05);
     EXPECT_DOUBLE_EQ(result.value().knives.width_m, 0.04);
@@ -134,7 +145,10 @@ TEST(SledLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 13> cases = {{
+    const std::array<Case, 15> cases = {{
+        {"collected_share = 0.2", "collected_share = 1.5",
+         "sled.berm: collected_share 0 to 1, spill_distance_m > 0"},
+        {"spill_distance_m = 30.0", "", "sled.berm.spill_distance_m: missing or not a number"},
         {"count = 3", "count = 30", "sled.knives.count: must be 0 to 24"},
         {"depth_m = 0.05", "depth_m = 0.5", "sled.knives: count 0 to 24, depth 0 to 0.15 m"},
         {"knives = 2", "knives = -1", "sled.pull_off_step.knives: must be 0 to 24"},

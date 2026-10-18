@@ -23,6 +23,7 @@ package "tp::sled" {
     +pan_area_m2 : double
     +pan_plough_coefficient : double
     +knives : Knives
+    +berm : Berm
     +wheel : tire::Size
     +wheel_count : int
     +chain : Chain
@@ -32,6 +33,11 @@ package "tp::sled" {
     +count : int
     +depth_m : double
     +width_m : double
+  }
+  class Berm <<struct>> {
+    +collected_share : double
+    +spill_distance_m : double
+    +friction_coefficient : double
   }
   class Adjustment <<struct>> {
     +box_mass_kg : double
@@ -55,6 +61,7 @@ package "tp::sled" {
     +position_m : double
     +velocity_m_s : double
     +distance_m : double
+    +berm_kg : double
   }
   class HookForce <<struct>> {
     +forward_n : double
@@ -66,6 +73,7 @@ package "tp::sled" {
     +pushdown : double
     +pan_friction : double
     +knives_n : double
+    +berm_n : double
     +resistance_n : double
   }
   class Prediction <<struct>> {
@@ -82,10 +90,12 @@ package "tp::sled" {
     +loads(const Params&, const State&, const HookForce&, const Ground&) : Loads
     +predict(const State&, const Params&, resistance_n, dt_s) : Prediction
     +advance(State&, const Prediction&, forward_n, dt_s)
+    +collect(State&, const Params&, thrown_soil_m3_s, dt_s)
     +hash_append(Fnv1a&, const State&)
   }
   Params *-- Chain
   Params *-- Knives
+  Params *-- Berm
   Params *-- Adjustment : pull_off_step
   SledFns ..> Adjustment
   SledFns ..> Params
@@ -103,7 +113,8 @@ note bottom of SledFns
   the push-down moves the wheels' share onto the pan over its ramp;
   pan friction μ = μ_pan (1 + plough · p / CI), p = pan load / pan area;
   knives = 0.2 · min(CI, 2 MPa) · count · width · depth (while the pan carries load);
-  resistance = μ pan + knives + towed rolling (Brixius) wheels, holding but never pulling back;
+  berm: dM = share · ρ · thrown · dt, spilling M · v dt / spill distance; drag μ_berm · M · g;
+  resistance = μ pan + knives + berm + towed rolling (Brixius) wheels, holding but never pulling back;
   with_conditions(): the day's push-down;
   adjusted(): the operator's change; heavier(): the pull-off sled, some steps heavier
 end note

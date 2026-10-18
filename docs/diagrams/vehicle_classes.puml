@@ -51,6 +51,7 @@ package "tp::vehicle" {
     +clutch_torque_nm, clutch_slip_rad_s, clutch_slip_power_w
     +tire_force_n (held pull at a standstill), slip_ratio
     +rear_rolling_resistance, front_rolling_resistance
+    +thrown_soil_m3_s
     +axle_loads : AxleLoads
     +shift_refused : bool
   }

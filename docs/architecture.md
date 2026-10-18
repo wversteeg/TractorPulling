@@ -75,7 +75,9 @@ solve that couples engine, clutch, driveline, tires and body each step.
 The transfer sled: rear wheels and a pan share the frame and the weight box
 by their levers. The box moves forward with the sled's travel and the
 push-down lifts the wheels, so the pan drags harder along the track. On
-soft ground the pan ploughs and the wheels sink in.
+soft ground the pan ploughs and the wheels sink in. Knives under the pan
+cut grooves, and soil the tractor's tires throw back piles up in front of
+the pan as a berm it has to push.
 
 ![Sled classes](diagrams/svg/sled_classes.svg)
 

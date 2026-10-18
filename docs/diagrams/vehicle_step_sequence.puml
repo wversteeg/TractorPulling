@@ -19,6 +19,7 @@ Chassis --> Step : rear / front / wheelie bar load
 Step -> Tire : traction(wheel speed, ground speed, load per tire, rear surface)
 Tire --> Step : force, slope (linearized), slip
 Step -> Tire : driven_rolling_resistance(rear load per tire, slip, rear surface)
+Step -> Tire : thrown_soil_m3_s(rear load per tire, slip, wheel speed, rear surface)
 Step -> Tire : towed_rolling_resistance(front load per tire, front surface)
 Step -> Engine : predict(throttle)
 Step -> Driveline : predict(rear rolling resistance torque)

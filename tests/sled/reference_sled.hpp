@@ -22,6 +22,7 @@ inline Params reference_params() {
         .pan_area_m2 = 1.8,
         .pan_plough_coefficient = 5.0,
         .knives = {.count = 4, .depth_m = 0.04, .width_m = 0.05},
+        .berm = {.collected_share = 0.15, .spill_distance_m = 40.0, .friction_coefficient = 0.6},
         .wheel = {.radius_m = 0.55,
                   .section_width_m = 0.43,
                   .section_height_m = 0.35,

@@ -50,6 +50,13 @@ count = 4
 depth_m = 0.04
 width_m = 0.05
 
+# Soil the tractor's tires throw back piles up in front of the pan and has
+# to be pushed along; it spills off to the sides as the sled moves.
+[sled.berm]
+collected_share = 0.15               # of what the rear tires throw back
+spill_distance_m = 40.0              # the berm spills its own size over this travel
+friction_coefficient = 0.6           # soil sliding on soil
+
 # After the full pulls, the qualifiers pull off on a heavier sled: as many
 # of these steps as the sled operator judges they need. One step costs the
 # reference tractor about 5 m.

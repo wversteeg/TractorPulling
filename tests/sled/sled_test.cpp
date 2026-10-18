@@ -78,6 +78,10 @@ TEST(SledParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.knives.depth_m = kMaxKnifeDepth_m + 0.01; }),
               ParamError::kKnivesOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.knives.width_m = 0.0; }), ParamError::kKnivesOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.berm.collected_share = 1.5; }), ParamError::kBermOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.berm.spill_distance_m = 0.0; }), ParamError::kBermOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.berm.friction_coefficient = -0.1; }),
+              ParamError::kBermOutOfRange);
     EXPECT_EQ(with([](Params& p) {
                   p.knives = {.count = 0, .depth_m = 0.0, .width_m = 0.0};
                   p.pull_off_step = {.box_mass_kg = 100.0};
@@ -231,6 +235,58 @@ TEST(Sled, KnivesCutWithTheSoilsStrength) {
     bare.knives.count = 0;
     EXPECT_EQ(at(bare, 30.0).knives_n, 0.0);
     EXPECT_NEAR(at(params, 30.0).resistance_n - at(bare, 30.0).resistance_n, firm.knives_n, 1e-9);
+}
+
+// Soil thrown back lands in front of the pan; standing still, nothing
+// spills, so a tractor spinning in place buries its own sled.
+TEST(Sled, ThrownSoilBuildsABermAtRest) {
+    const Params params = reference_params();
+    State state;
+    constexpr double kThrown_m3_s = 0.01;
+    for (int i = 0; i < 1000; ++i) {
+        collect(state, params, kThrown_m3_s, kDt_s);
+    }
+    EXPECT_NEAR(state.berm_kg,
+                params.berm.collected_share * soil::kLooseDensity_kg_m3 * kThrown_m3_s * 1.0, 1e-9);
+    const Loads l = loads(params, state, {}, reference_ground());
+    EXPECT_NEAR(l.berm_n, params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2,
+                1e-9);
+}
+
+// Moving, the berm spills to the sides: with nothing thrown it shrinks by
+// e over its spill distance, and with a steady supply it levels off where
+// what lands balances what spills.
+TEST(Sled, BermSpillsAsTheSledMoves) {
+    const Params params = reference_params();
+    constexpr double kSpeed_m_s = 2.0;
+    State coasting{.velocity_m_s = kSpeed_m_s, .berm_kg = 300.0};
+    const int steps = static_cast<int>(params.berm.spill_distance_m / kSpeed_m_s / kDt_s);
+    for (int i = 0; i < steps; ++i) {
+        collect(coasting, params, 0.0, kDt_s);
+    }
+    EXPECT_NEAR(coasting.berm_kg, 300.0 / std::exp(1.0), 0.5);
+
+    constexpr double kThrown_m3_s = 0.02;
+    State fed{.velocity_m_s = kSpeed_m_s};
+    for (int i = 0; i < 20 * steps; ++i) {
+        collect(fed, params, kThrown_m3_s, kDt_s);
+    }
+    const double landing_kg_s =
+        params.berm.collected_share * soil::kLooseDensity_kg_m3 * kThrown_m3_s;
+    EXPECT_NEAR(fed.berm_kg, landing_kg_s * params.berm.spill_distance_m / kSpeed_m_s,
+                0.01 * fed.berm_kg);
+}
+
+// The berm only adds drag, and only ever holds the sled.
+TEST(Sled, BermAddsToTheResistance) {
+    const Params params = reference_params();
+    const State clean{.position_m = 30.0, .distance_m = 30.0};
+    State buried = clean;
+    buried.berm_kg = 200.0;
+    const Loads a = loads(params, clean, {}, reference_ground());
+    const Loads b = loads(params, buried, {}, reference_ground());
+    EXPECT_EQ(a.berm_n, 0.0);
+    EXPECT_NEAR(b.resistance_n - a.resistance_n, b.berm_n, 1e-9);
 }
 
 // The day's track sets the push-down; the rest of the class's sled stays.

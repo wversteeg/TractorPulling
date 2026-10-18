@@ -25,6 +25,10 @@ enum class ParamError : std::uint8_t {
 /// Moisture above this is mud, not a pulling track.
 inline constexpr double kMaxMoisture = 0.5;
 
+/// Bulk density of soil a tire has loosened or thrown up: between loose
+/// sand and loose clay [kg/m³].
+inline constexpr double kLooseDensity_kg_m3 = 1500.0;
+
 [[nodiscard]] std::optional<ParamError> validate(const Composition& composition) noexcept;
 
 /// How the ground behaves under a tire or the sled's pan.

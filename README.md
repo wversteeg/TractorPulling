@@ -23,7 +23,7 @@ Try a run:
 cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 -o run.csv
-# run: 92.60 m, engine stalled (37.4 s, top 11.9 km/h)
+# run: 89.20 m, engine stalled (36.4 s, top 11.9 km/h)
 ```
 
 ### Track conditions
@@ -39,10 +39,10 @@ the shipped tracks:
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml --gear 6
 # track                         cone index   grip  fall-off  push-down  result
-# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  90.05 m, engine stalled
-# ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  92.60 m, engine stalled
-# loose_sand                        907 kPa   1.00      0.29     60.0 m  89.92 m, engine stalled
-# wet_heavy_clay                    539 kPa   1.00      0.28     70.0 m  97.16 m, engine stalled
+# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  88.60 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  89.20 m, engine stalled
+# loose_sand                        907 kPa   1.00      0.29     60.0 m  84.35 m, engine stalled
+# wet_heavy_clay                    539 kPa   1.00      0.28     70.0 m  85.53 m, engine stalled
 ```
 
 With the class's own push-down the wet clay is the shortest track and the

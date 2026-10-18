@@ -287,7 +287,8 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
                 << out.chain.tension_n / kNewtonsPerKilonewton << ',' << rad_to_deg(chain_angle_rad)
                 << ',' << out.sled.box_ahead_of_wheels_m << ',' << out.sled.pushdown << ','
                 << out.sled.pan_n / kNewtonsPerKilonewton << ','
-                << out.sled.resistance_n / kNewtonsPerKilonewton << '\n';
+                << out.sled.resistance_n / kNewtonsPerKilonewton << ',' << pull.sled.berm_kg << ','
+                << out.sled.berm_n / kNewtonsPerKilonewton << '\n';
         }
     }
     return state.result;
@@ -298,7 +299,7 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
         const tp::data::Track& track, const PullOptions& options, std::ostream& csv) {
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
-           "sled_pan_load_kn,sled_resistance_kn\n";
+           "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn\n";
     // The class's sled with the day's push-down.
     tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {

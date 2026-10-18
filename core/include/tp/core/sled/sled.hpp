@@ -29,6 +29,20 @@ struct Knives {
     double width_m = 0.0;
 };
 
+/// Soil the tractor's rear tires throw back piles up in front of the pan,
+/// which has to push it along: a berm. It grows with what the tires throw
+/// (more when they spin, even with the sled standing still) and spills off
+/// to the sides as the sled moves, so over a pull it builds up and then
+/// levels off.
+struct Berm {
+    /// Share of the thrown soil that lands in front of the pan.
+    double collected_share = 0.0;
+    /// Sled travel over which the berm spills off its own size [m].
+    double spill_distance_m = 0.0;
+    /// Pushing it costs this times its weight (soil sliding on soil).
+    double friction_coefficient = 0.0;
+};
+
 inline constexpr int kMaxKnives = 24;
 /// Knives deeper than this would dig the pan in: a data error [m].
 inline constexpr double kMaxKnifeDepth_m = 0.15;
@@ -93,6 +107,7 @@ struct Params {
     /// soil's strength.
     double pan_plough_coefficient = 0.0;
     Knives knives;
+    Berm berm;
     tire::Size wheel;
     int wheel_count = 2;
     Chain chain;
@@ -116,6 +131,7 @@ enum class ParamError : std::uint8_t {
     kPanAreaNotPositive,
     kPanPloughNegative,
     kKnivesOutOfRange,
+    kBermOutOfRange,
     kWheel,
     kWheelCountOutOfRange,
     kChainInvalid,
@@ -143,6 +159,8 @@ struct State {
     double velocity_m_s = 0.0;
     /// Travelled since the start: drives the box and the push-down [m].
     double distance_m = 0.0;
+    /// Soil piled up in front of the pan [kg].
+    double berm_kg = 0.0;
 };
 
 /// What the chain puts on the sled at the hook [N].
@@ -169,8 +187,10 @@ struct Loads {
     double pan_friction = 0.0;
     /// All knives' cutting force [N].
     double knives_n = 0.0;
-    /// Pan friction, knives and wheel rolling resistance; it holds the sled
-    /// at rest but never pushes it back [N].
+    /// Pushing the berm [N].
+    double berm_n = 0.0;
+    /// Pan friction, knives, the berm and wheel rolling resistance; it holds
+    /// the sled at rest but never pushes it back [N].
     double resistance_n = 0.0;
 };
 
@@ -200,10 +220,16 @@ struct Prediction {
 
 void advance(State& state, const Prediction& prediction, double forward_n, double dt_s) noexcept;
 
+/// The berm over a step, after advance(): soil the tractor threw back
+/// [m³/s] lands in front of the pan, and the berm spills by the distance
+/// the sled moved. Implicit in the spill, so it never goes negative.
+void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept;
+
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);
     hash.add(state.velocity_m_s);
     hash.add(state.distance_m);
+    hash.add(state.berm_kg);
 }
 
 }  // namespace tp::sled

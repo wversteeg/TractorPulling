@@ -35,12 +35,14 @@ for the big features; they are repeated at the end for completeness.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.
-- **Soil building up in front of the pan.** Once the push-down is fully
-  engaged the drag only grows with ploughing, so a puller who gets past
-  that point with power to spare can run on to the end. A berm of soil
-  growing in front of the pan would keep the drag rising, and make the
-  sled less touchy on hard tracks, where the operator now swings between
-  too light and too heavy for a few test pulls.
+- **Where thrown soil lands.** The rear tires' thrown soil lands in front
+  of the pan at once, a fixed share of it. Where it falls (it lies on the
+  track until the pan reaches it, or flies straight at the sled when the
+  tires spin hard) and how much the pan's width catches could follow from
+  the tractor's track width and wheel speed.
+- **Drag after the push-down.** Once the push-down is fully engaged the
+  drag grows only with the berm and ploughing; on hard tracks the sled
+  stays touchier than on soft ones.
 - **Speed-dependent pan resistance.** The pan's drag does not depend on speed.
   Right for the stock classes, which crawl because they lack the power to run
   fast; faster classes may need the pan to plough harder with speed.

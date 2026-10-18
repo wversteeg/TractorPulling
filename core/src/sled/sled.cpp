@@ -55,6 +55,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.chain.damping_n_s_per_m,
                                 params.knives.depth_m,
                                 params.knives.width_m,
+                                params.berm.collected_share,
+                                params.berm.spill_distance_m,
+                                params.berm.friction_coefficient,
                                 params.pull_off_step.box_mass_kg,
                                 params.pull_off_step.knife_depth_m,
                                 params.pull_off_step.pushdown_earlier_m};
@@ -102,6 +105,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (!knives_valid(params.knives)) {
         return ParamError::kKnivesOutOfRange;
+    }
+    if (!within(params.berm.collected_share, 0.0, 1.0) || params.berm.spill_distance_m <= 0.0 ||
+        params.berm.friction_coefficient < 0.0) {
+        return ParamError::kBermOutOfRange;
     }
     if (tire::validate(params.wheel)) {
         return ParamError::kWheel;
@@ -205,13 +212,15 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
                                           : 0.0;
     const double friction = pan_friction(params, pan_n, ground.pan);
     const double cutting_n = pan_n > 0.0 ? knives_n(params.knives, ground.pan) : 0.0;
+    const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
     return {.pan_n = pan_n,
             .wheels_n = wheels_n,
             .box_ahead_of_wheels_m = box_m,
             .pushdown = pushdown,
             .pan_friction = friction,
             .knives_n = cutting_n,
-            .resistance_n = friction * pan_n + cutting_n + rolling * wheels_n};
+            .berm_n = berm_n,
+            .resistance_n = friction * pan_n + cutting_n + berm_n + rolling * wheels_n};
 }
 
 Prediction predict(const State& state, const Params& params, double resistance_n,
@@ -228,6 +237,13 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
     state.velocity_m_s = velocity_m_s;
     state.position_m += velocity_m_s * dt_s;
     state.distance_m += velocity_m_s * dt_s;
+}
+
+void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept {
+    const double landed_kg = params.berm.collected_share * soil::kLooseDensity_kg_m3 *
+                             std::max(thrown_soil_m3_s, 0.0) * dt_s;
+    const double spilled_share = state.velocity_m_s * dt_s / params.berm.spill_distance_m;
+    state.berm_kg = (state.berm_kg + landed_kg) / (1.0 + spilled_share);
 }
 
 }  // namespace tp::sled
