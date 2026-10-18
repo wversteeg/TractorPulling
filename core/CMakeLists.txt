@@ -4,6 +4,7 @@ add_library(tp_core STATIC
     src/driveline/driveline.cpp
     src/engine/engine.cpp
     src/math/curve.cpp
+    src/math/exp.cpp
     src/pull/pull.cpp
     src/rules/class_rules.cpp
     src/run/run.cpp
