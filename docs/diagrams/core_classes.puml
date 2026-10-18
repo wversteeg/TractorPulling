@@ -48,6 +48,13 @@ skinparam classAttributeIconSize 0
       fixed polynomials, + and × only:
       bit-identical on every platform
     end note
+    class "exp" as Exp <<free functions>> {
+      +exp(x) : double
+    }
+    note bottom of Exp
+      range reduction by ln 2, Taylor to 1/13!,
+      2^k via the exponent bits: no libm
+    end note
   }
 
   package "tp::engine" {

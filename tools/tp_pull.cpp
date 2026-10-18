@@ -5,6 +5,8 @@
 //                [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
 //               [-o <out.csv>]
+//   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
+//                          [--gear N] [--dump]
 //   tp_pull check <tractor.toml> <class.toml>
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
@@ -20,7 +22,11 @@
 // pull is followed by a pull-off on a heavier sled. It prints each result.
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
-// for plausibility. A scripted full pull follows in Milestone 1, step 7.
+// for plausibility.
+//
+// compare-tracks runs the same tractor, sled and driving on several tracks
+// and prints one line per track: its surface at the start line, the day's
+// push-down and how far the run got.
 //
 // check compares a tractor with a pulling class's rules and exits non-zero
 // if it may not compete.
@@ -31,18 +37,21 @@
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/sled/sled.hpp"
+#include "tp/core/soil/soil.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/engine/engine_loader.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
-#include "tp/data/run/track_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
+#include "tp/data/track/track_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iomanip>
@@ -66,6 +75,10 @@ constexpr double kWattsPerKilowatt = 1000.0;
 constexpr double kJoulesPerKilojoule = 1000.0;
 constexpr double kNewtonsPerKilonewton = 1000.0;
 constexpr double kPercent = 100.0;
+// The constant-force pull runs on the reference track's soil: moist, rolled
+// clay and sand (data/tracks/ideal_clay_sand.toml).
+constexpr tp::soil::Composition kReferenceSoil{
+    .clay_fraction = 0.5, .moisture = 0.14, .compaction = 0.8};
 
 // --- engine-dyno ------------------------------------------------------------
 
@@ -161,12 +174,14 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     bool front_lifted = false;
     bool on_wheelie_bar = false;
     double max_pitch_rad = 0.0;
+    const tp::soil::Surface surface = tp::soil::surface(kReferenceSoil);
+    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
     double t_s = 0.0;
     for (int i = 0; t_s < kPullMaxDuration_s; ++i) {
         t_s = i * kDt_s;
         const tp::vehicle::Input input = pull_input(t_s, options);
         const tp::vehicle::Output out =
-            tp::vehicle::step(state, model, input, {.pull_n = options.resistance_n}, kDt_s);
+            tp::vehicle::step(state, model, input, ground, {.pull_n = options.resistance_n}, kDt_s);
         if (out.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
             return EXIT_FAILURE;
@@ -270,19 +285,21 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
 }
 
 // A run, and after every full pull a pull-off on a heavier sled.
-int run(const tp::vehicle::Params& tractor, const tp::sled::Params& first_sled,
-        const tp::run::Rules& rules, const PullOptions& options, std::ostream& csv) {
+int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
+        const tp::data::Track& track, const PullOptions& options, std::ostream& csv) {
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
            "sled_pan_load_kn,sled_resistance_kn\n";
-    tp::sled::Params sled = first_sled;
+    // The class's sled with the day's push-down.
+    tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
-        const auto model = tp::pull::Model::create({.tractor = tractor, .sled = sled});
+        const auto model =
+            tp::pull::Model::create({.tractor = tractor, .sled = sled, .track = track.ground});
         if (!model) {
-            std::cerr << "inconsistent tractor or sled\n";
+            std::cerr << "inconsistent tractor, sled or track\n";
             return EXIT_FAILURE;
         }
-        const auto result = one_run(*model, rules, options, round, csv);
+        const auto result = one_run(*model, track.rules, options, round, csv);
         if (!result) {
             return EXIT_FAILURE;
         }
@@ -297,6 +314,47 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& first_sled,
         sled = tp::sled::heavier(sled);
     }
     std::cerr << "still full pulls after " << kMaxPullOffs << " pull-offs\n";
+    return EXIT_SUCCESS;
+}
+
+// --- compare-tracks ---------------------------------------------------------
+
+constexpr double kPascalsPerKilopascal = 1000.0;
+
+// Runs the tractor once on each track (no pull-offs) and prints a table.
+int compare_tracks(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
+                   std::span<const std::string_view> track_paths, const PullOptions& options) {
+    std::cout << "track                         cone index   grip  fall-off  push-down  result\n";
+    // The runs' CSV rows go nowhere.
+    std::ostream discard{nullptr};
+    for (const std::string_view path : track_paths) {
+        const auto track = tp::data::load_track(path);
+        if (!track) {
+            std::cerr << track.error().message << '\n';
+            return EXIT_FAILURE;
+        }
+        const tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.value().sled);
+        const auto model = tp::pull::Model::create(
+            {.tractor = tractor, .sled = sled, .track = track.value().ground});
+        if (!model) {
+            std::cerr << path << ": inconsistent tractor, sled or track\n";
+            return EXIT_FAILURE;
+        }
+        const auto result = one_run(*model, track.value().rules, options, 0, discard);
+        if (!result) {
+            return EXIT_FAILURE;
+        }
+        const tp::soil::Surface start = model->track().surface_at(0.0);
+        const std::string name = std::filesystem::path{path}.stem().string();
+        std::cout << std::left << std::setw(28) << name << std::right << std::fixed
+                  << std::setprecision(0) << std::setw(9)
+                  << start.cone_index_pa / kPascalsPerKilopascal << " kPa" << std::setprecision(2)
+                  << std::setw(7) << start.grip_factor << std::setw(10) << start.spin_fall_off
+                  << std::setprecision(1) << std::setw(9) << sled.pushdown_start_m << " m  "
+                  << std::setprecision(2) << result->distance_m << " m, "
+                  << describe(result->ending) << '\n';
+        std::cout.unsetf(std::ios::fixed);
+    }
     return EXIT_SUCCESS;
 }
 
@@ -378,6 +436,8 @@ int usage() {
                  "                    [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [-o <out.csv>]\n"
+                 "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
+                 "                              [--gear N] [--dump]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
 }
@@ -404,6 +464,76 @@ int with_output(const Options& options, const std::function<int(std::ostream&)>&
     return command(file);
 }
 
+// Each command loads its files and runs; positional arguments are checked
+// against the command's range before.
+int engine_dyno_command(const Options& options) {
+    const auto engine = load_or_report(tp::data::load_engine(options.positional[0]));
+    if (!engine) {
+        return EXIT_FAILURE;
+    }
+    return with_output(options, [&](std::ostream& csv) { return engine_dyno(*engine, csv); });
+}
+
+int pull_command(const Options& options) {
+    const auto params = load_or_report(tp::data::load_tractor(options.positional[0]));
+    if (!params) {
+        return EXIT_FAILURE;
+    }
+    const auto model = tp::vehicle::Model::create(*params);
+    if (!model) {
+        std::cerr << options.positional[0] << ": inconsistent tractor\n";
+        return EXIT_FAILURE;
+    }
+    return with_output(options, [&](std::ostream& csv) { return pull(*model, options.pull, csv); });
+}
+
+int run_command(const Options& options) {
+    const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto sled = load_or_report(tp::data::load_sled(options.positional[1]));
+    const auto track = load_or_report(tp::data::load_track(options.positional[2]));
+    if (!tractor || !sled || !track) {
+        return EXIT_FAILURE;
+    }
+    return with_output(options, [&](std::ostream& csv) {
+        return run(*tractor, *sled, *track, options.pull, csv);
+    });
+}
+
+int compare_tracks_command(const Options& options) {
+    const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto sled = load_or_report(tp::data::load_sled(options.positional[1]));
+    if (!tractor || !sled) {
+        return EXIT_FAILURE;
+    }
+    return compare_tracks(*tractor, *sled, std::span{options.positional}.subspan(2), options.pull);
+}
+
+int check_command(const Options& options) {
+    const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto rules = load_or_report(tp::data::load_class_rules(options.positional[1]));
+    if (!tractor || !rules) {
+        return EXIT_FAILURE;
+    }
+    return check(*tractor, *rules);
+}
+
+struct Command {
+    std::string_view name;
+    std::size_t min_files;
+    std::size_t max_files;
+    int (*run)(const Options&);
+};
+
+constexpr std::size_t kAnyNumber = 1000;
+
+constexpr std::array kCommands = {
+    Command{"engine-dyno", 1, 1, &engine_dyno_command},
+    Command{"pull", 1, 1, &pull_command},
+    Command{"run", 3, 3, &run_command},
+    Command{"compare-tracks", 3, kAnyNumber, &compare_tracks_command},
+    Command{"check", 2, 2, &check_command},
+};
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -411,51 +541,16 @@ int main(int argc, char** argv) {
     if (args.size() < 2) {
         return usage();
     }
-    const std::string_view command{args[1]};
+    const std::string_view name{args[1]};
     const std::optional<Options> options = parse_options(args.subspan(2));
     if (!options) {
         return usage();
     }
-    const auto& positional = options->positional;
-
-    if (command == "engine-dyno" && positional.size() == 1) {
-        const auto engine = load_or_report(tp::data::load_engine(positional[0]));
-        if (!engine) {
-            return EXIT_FAILURE;
+    const std::size_t files = options->positional.size();
+    for (const Command& command : kCommands) {
+        if (command.name == name && files >= command.min_files && files <= command.max_files) {
+            return command.run(*options);
         }
-        return with_output(*options, [&](std::ostream& csv) { return engine_dyno(*engine, csv); });
-    }
-    if (command == "pull" && positional.size() == 1) {
-        const auto params = load_or_report(tp::data::load_tractor(positional[0]));
-        if (!params) {
-            return EXIT_FAILURE;
-        }
-        const auto model = tp::vehicle::Model::create(*params);
-        if (!model) {
-            std::cerr << positional[0] << ": inconsistent tractor\n";
-            return EXIT_FAILURE;
-        }
-        return with_output(*options,
-                           [&](std::ostream& csv) { return pull(*model, options->pull, csv); });
-    }
-    if (command == "run" && positional.size() == 3) {
-        const auto tractor = load_or_report(tp::data::load_tractor(positional[0]));
-        const auto sled = load_or_report(tp::data::load_sled(positional[1]));
-        const auto rules = load_or_report(tp::data::load_track(positional[2]));
-        if (!tractor || !sled || !rules) {
-            return EXIT_FAILURE;
-        }
-        return with_output(*options, [&](std::ostream& csv) {
-            return run(*tractor, *sled, *rules, options->pull, csv);
-        });
-    }
-    if (command == "check" && positional.size() == 2) {
-        const auto tractor = load_or_report(tp::data::load_tractor(positional[0]));
-        const auto rules = load_or_report(tp::data::load_class_rules(positional[1]));
-        if (!tractor || !rules) {
-            return EXIT_FAILURE;
-        }
-        return check(*tractor, *rules);
     }
     return usage();
 }

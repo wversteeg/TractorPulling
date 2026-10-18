@@ -5,6 +5,7 @@
 #include "tp/core/driveline/driveline.hpp"
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/hash/fnv1a.hpp"
+#include "tp/core/soil/soil.hpp"
 #include "tp/core/tire/tire.hpp"
 
 #include <cstdint>
@@ -22,6 +23,9 @@ struct Params {
     driveline::Params driveline;
     tire::Params rear_tire;
     int rear_tire_count = 2;
+    /// One of the two (unpowered) front tires; its size sets their rolling
+    /// resistance on soil.
+    tire::Size front_tire;
     chassis::Params chassis;
     /// Crankshaft to PTO shaft, in (0, 1]. The PTO is not simulated; class
     /// rules limit power measured there.
@@ -34,6 +38,7 @@ enum class ParamError : std::uint8_t {
     kDriveline,
     kRearTire,
     kRearTireCount,
+    kFrontTire,
     kChassis,
     /// The chassis' rear axle height is not the rear tire's radius.
     kRearAxleHeight,
@@ -76,6 +81,13 @@ struct Input {
     int gear = driveline::kNeutral;
 };
 
+/// The ground under the tractor's tires this step. The track decides it from
+/// where each axle is; tests and tools may pass one surface for both.
+struct Ground {
+    soil::Surface rear;
+    soil::Surface front;
+};
+
 struct Output {
     engine::Output engine;
     double clutch_torque_nm = 0.0;
@@ -86,6 +98,11 @@ struct Output {
     /// drawbar pull they hold.
     double tire_force_n = 0.0;
     double slip_ratio = 0.0;
+    /// Motion resistance of all rear tires, per unit of their load: sinkage
+    /// and the rut a slipping tire digs.
+    double rear_rolling_resistance = 0.0;
+    /// Motion resistance of the front tires per unit of their load.
+    double front_rolling_resistance = 0.0;
     chassis::AxleLoads axle_loads;
     /// The requested gear could not be engaged this step.
     bool shift_refused = false;
@@ -94,15 +111,17 @@ struct Output {
 /// Engine idling, clutch pressed, neutral, at rest.
 [[nodiscard]] State initial_state(const Model& model) noexcept;
 
-/// Advances the tractor by `dt_s` while the drawbar pulls on its hitch (see
-/// tp::pull for the chain to a sled; tools and tests may pass a constant
-/// pull).
+/// Advances the tractor by `dt_s` on `ground` while the drawbar pulls on its
+/// hitch (see tp::pull for the chain to a sled; tools and tests may pass a
+/// constant pull).
 ///
-/// Order: gear change, axle loads from the last step's state, every body's
-/// prediction, the exact chain solve for clutch torque and tire force, every
-/// body advances, then the chassis pitches under the axle torque's reaction.
-Output step(State& state, const Model& model, const Input& input, const chassis::Drawbar& drawbar,
-            double dt_s) noexcept;
+/// Order: gear change, axle loads from the last step's state, the rear
+/// tires' traction and both axles' rolling resistance at the current speeds,
+/// every body's prediction, the exact chain solve for clutch torque and tire
+/// force, every body advances, then the chassis pitches under the axle
+/// torque's reaction.
+Output step(State& state, const Model& model, const Input& input, const Ground& ground,
+            const chassis::Drawbar& drawbar, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     engine::hash_append(hash, state.engine);

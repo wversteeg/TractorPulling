@@ -1,8 +1,13 @@
 @startuml sled_classes
-title Sled (tp::sled): weight box, pan and push-down
+title Sled (tp::sled): weight box, pan and push-down on soil
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "soil::Surface" as Surface
+  class "tire::Size\n+ towed_rolling_resistance()" as Tire
+}
 
 package "tp::sled" {
   class Params <<struct>> {
@@ -15,19 +20,30 @@ package "tp::sled" {
     +box_travel_distance_m : double
     +pushdown_start_m, pushdown_ramp_m : double
     +pan_friction_coefficient : double
-    +wheel_rolling_resistance_coefficient : double
+    +pan_area_m2 : double
+    +pan_plough_coefficient : double
+    +wheel : tire::Size
+    +wheel_count : int
     +chain : Chain
     +pull_off : PullOff
   }
   class PullOff <<struct>> {
     +extra_box_mass_kg : double
-    +pushdown_earlier_m : double
+    +pushdown_start_m : double
     +extra_pan_friction : double
   }
   class Chain <<struct>> {
     +length_m : double
     +stiffness_n_per_m : double
     +damping_n_s_per_m : double
+  }
+  class Conditions <<struct>> {
+    +pushdown_start_m : optional<double>
+    +pull_off_pushdown_start_m : optional<double>
+  }
+  class Ground <<struct>> {
+    +pan : soil::Surface
+    +wheels : soil::Surface
   }
   class State <<struct>> {
     +position_m : double
@@ -42,6 +58,7 @@ package "tp::sled" {
     +pan_n, wheels_n : double
     +box_ahead_of_wheels_m : double
     +pushdown : double
+    +pan_friction : double
     +resistance_n : double
   }
   class Prediction <<struct>> {
@@ -52,8 +69,9 @@ package "tp::sled" {
   class "sled functions" as SledFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +total_mass_kg(const Params&) : double
+    +with_conditions(const Params&, const Conditions&) : Params
     +heavier(const Params&) : Params
-    +loads(const Params&, const State&, const HookForce&) : Loads
+    +loads(const Params&, const State&, const HookForce&, const Ground&) : Loads
     +predict(const State&, const Params&, resistance_n, dt_s) : Prediction
     +advance(State&, const Prediction&, forward_n, dt_s)
     +hash_append(Fnv1a&, const State&)
@@ -63,6 +81,8 @@ package "tp::sled" {
   SledFns ..> Params
   SledFns ..> State
   SledFns ..> HookForce
+  SledFns ..> Conditions
+  SledFns ..> Ground
   SledFns ..> Loads
   SledFns ..> Prediction
   SledFns ..> ParamError
@@ -71,7 +91,12 @@ note bottom of SledFns
   pan = (W_frame x_frame + W_box x_box - F_up x_hook + F_fwd h_hook) / x_pan
   the box moves forward with the distance travelled;
   the push-down moves the wheels' share onto the pan over its ramp;
-  resistance = μ_pan pan + c_rr wheels, holding but never pulling back;
+  pan friction μ = μ_pan (1 + plough · p / CI), p = pan load / pan area;
+  resistance = μ pan + towed rolling (Brixius) wheels, holding but never pulling back;
+  with_conditions(): the day's push-down for the run and the pull-offs;
   heavier(): the pull-off sled after full pulls (box, push-down, knives)
 end note
+Params *-- Tire
+Ground *-- Surface
+SledFns ..> Tire
 @enduml

@@ -31,6 +31,12 @@ Right-handed, body fixed to the tractor chassis:
 - Moments about the rear axle are nose-up positive: a force (F_x, F_z) at (x, z) gives x F_z − z F_x.
 - Contact forces (front tires, wheelie bar) are vertical and push only; rolling drag acts backwards at the ground.
 
+## Along the track
+
+- A pull's world x is measured from where the tractor's rear axle starts; the sled starts behind it, at negative x.
+- **Track x** (soil profiles, `tp::track`) is measured from the **start line**: where the sled's rear wheels stand at the start. The sled's distance travelled is its rear wheels' track x.
+- Each contact reads the ground where it is: the rear tires at the rear axle, the front tires a wheelbase ahead, the sled's wheels and its pan by their positions.
+
 ## Time
 
 The simulation advances in fixed steps of 1 ms (1 kHz). The core never reads a clock; front ends use `tp::FixedStepClock` to turn frame time into step counts.

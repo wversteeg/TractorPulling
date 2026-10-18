@@ -4,12 +4,15 @@ add_library(tp_core STATIC
     src/driveline/driveline.cpp
     src/engine/engine.cpp
     src/math/curve.cpp
+    src/math/exp.cpp
     src/pull/pull.cpp
     src/rules/class_rules.cpp
     src/run/run.cpp
     src/sled/sled.cpp
+    src/soil/soil.cpp
     src/tire/tire.cpp
     src/time/fixed_step_clock.cpp
+    src/track/track.cpp
     src/vehicle/chain_solver.cpp
     src/vehicle/vehicle.cpp)
 add_library(tp::core ALIAS tp_core)

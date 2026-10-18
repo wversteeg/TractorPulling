@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include "../common/toml_reader.hpp"
+#include "../tire/tire_fields.hpp"
 
 namespace tp::data {
 
@@ -42,8 +43,6 @@ FieldError describe(chassis::ParamError error) {
             return {"tractor.chassis.hitch_height_m", "must not be negative"};
         case ParamError::kHitchAheadOfRearAxle:
             return {"tractor.chassis.hitch_behind_rear_axle_m", "must not be negative"};
-        case ParamError::kRollingResistanceOutOfRange:
-            return {"tractor.chassis.front_rolling_resistance_coefficient", "must be in [0, 1)"};
         case ParamError::kFrontTireStiffnessNotPositive:
             return {"tractor.chassis.front_tires.stiffness_n_per_m", "must be > 0"};
         case ParamError::kFrontTireDampingNegative:
@@ -87,6 +86,8 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     const std::string tire_path = reader.text("tractor.rear_tire");
     const std::int64_t rear_tire_count = reader.integer("tractor.rear_tire_count");
     const double pto_efficiency = reader.number("tractor.pto_efficiency");
+    constexpr std::string_view kFrontTire = "tractor.front_tire";
+    const tire::Size front_tire = detail::read_tire_size(reader, kFrontTire);
     chassis::Params chassis{
         .mass_kg = reader.number("tractor.chassis.mass_kg"),
         .wheelbase_m = reader.number("tractor.chassis.wheelbase_m"),
@@ -96,8 +97,6 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .rear_axle_height_m = 0.0,  // the rear tire's radius, below
         .hitch_height_m = reader.number("tractor.chassis.hitch_height_m"),
         .hitch_behind_rear_axle_m = reader.number("tractor.chassis.hitch_behind_rear_axle_m"),
-        .front_rolling_resistance_coefficient =
-            reader.number("tractor.chassis.front_rolling_resistance_coefficient"),
         .front_tires =
             {
                 .stiffness_n_per_m = reader.number("tractor.chassis.front_tires.stiffness_n_per_m"),
@@ -125,6 +124,11 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     if (rear_tire_count < 1 || rear_tire_count > vehicle::kMaxRearTires) {
         return detail::make_error(source, "tractor.rear_tire_count", "must be 1 to 8");
     }
+    if (const auto tire_error = tire::validate(front_tire)) {
+        const detail::TireFieldError field_error = detail::describe(*tire_error);
+        return detail::make_error(source, detail::field_path(kFrontTire, field_error.field),
+                                  field_error.reason);
+    }
 
     std::optional<LoadError> error;
     const auto engine = component(load_engine(base / engine_path), error);
@@ -139,7 +143,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     }
     // The rear axle rides at the rear tire's radius; a valid tire makes this
     // positive.
-    chassis.rear_axle_height_m = rear_tire->radius_m;
+    chassis.rear_axle_height_m = rear_tire->size.radius_m;
     if (const auto chassis_error = chassis::validate(chassis)) {
         const FieldError field_error = describe(*chassis_error);
         return detail::make_error(source, field_error.field, field_error.reason);
@@ -150,6 +154,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .driveline = *driveline,
         .rear_tire = *rear_tire,
         .rear_tire_count = static_cast<int>(rear_tire_count),
+        .front_tire = front_tire,
         .chassis = chassis,
         .pto_efficiency = pto_efficiency,
     };

@@ -1,0 +1,17 @@
+# A dry, hard-rolled clay track late on a hot day. Very strong: the tires
+# hardly sink in and the sled's pan barely ploughs, but a layer of dust
+# takes the edge off the grip.
+
+[track]
+length_m = 100.0
+max_duration_s = 120.0
+
+[track.soil]
+clay_fraction = 0.75
+moisture = 0.06
+compaction = 0.95
+
+# The sled operator brings the push-down earlier on this fast track.
+[track.pushdown]
+start_m = 55.0
+pull_off_start_m = 45.0

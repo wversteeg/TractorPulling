@@ -68,8 +68,6 @@ struct Params {
     double hitch_height_m = 0.0;
     /// Drawbar hitch point behind the rear axle [m].
     double hitch_behind_rear_axle_m = 0.0;
-    /// Rolling resistance of the (unpowered) front tires per unit of load.
-    double front_rolling_resistance_coefficient = 0.0;
     /// Both front tires together, acting below the front axle.
     Contact front_tires;
     WheelieBar wheelie_bar;
@@ -89,7 +87,6 @@ enum class ParamError : std::uint8_t {
     kRearAxleHeightNotPositive,
     kHitchHeightNegative,
     kHitchAheadOfRearAxle,
-    kRollingResistanceOutOfRange,
     kFrontTireStiffnessNotPositive,
     kFrontTireDampingNegative,
     kWheelieBarNotBehindRearAxle,
@@ -170,8 +167,10 @@ void advance(State& state, const Prediction& prediction, double drive_force_n,
 /// The contacts are linearized and integrated with the implicit midpoint
 /// rule: stable however stiff the wheelie bar, and free of the numerical
 /// damping backward Euler would add to the front tires' bounce.
+/// `front_rolling_resistance` is the front tires' motion resistance per unit
+/// of load on today's ground (see tire::towed_rolling_resistance).
 void advance_pitch(State& state, const Params& params, double axle_torque_nm,
-                   const Drawbar& drawbar, double dt_s) noexcept;
+                   const Drawbar& drawbar, double front_rolling_resistance, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);

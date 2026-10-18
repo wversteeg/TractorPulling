@@ -20,9 +20,16 @@ inline Params reference_params() {
         .driveline = driveline::testing::reference_params(),
         .rear_tire = tire::testing::reference_params(),
         .rear_tire_count = 2,
+        .front_tire = tire::testing::front_size(),
         .chassis = chassis::testing::reference_params(),
         .pto_efficiency = 0.9,
     };
+}
+
+// The reference track's surface under both axles.
+inline Ground reference_ground() {
+    const soil::Surface surface = tire::testing::reference_surface();
+    return Ground{.rear = surface, .front = surface};
 }
 
 inline Model reference_model() {

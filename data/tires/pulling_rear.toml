@@ -1,16 +1,21 @@
-# Large rear tractor tire on a prepared pulling track, which grips better
-# than a field: traction peaks at μ 0.95 at 20 % slip and full wheelspin
+# Large rear tractor tire (18.4-38 class) on a prepared pulling track. The
+# Brixius model turns the track's cone index and the tire's size and load
+# into a mobility number; the traction curve's coefficients are tuned for a
+# pulling tire, which grips harder and bites at less slip than Brixius'
+# field tires (0.88, 0.1, 7.5). On the reference track (moist, rolled clay
+# and sand) traction peaks at μ ≈ 0.91 near 28 % slip and full wheelspin
 # keeps about 80 % of it. With this grip the light class pulls on engine
-# torque in its pulling gears (6 and 7) and only spins out in low gears.
+# torque in its pulling gears (6 and 7) and spins out in the low gears.
 
 [tire]
-radius_m = 0.8
-nominal_load_n = 10000.0           # per tire; the traction table applies here
-load_sensitivity = 0.1             # μ loss per unit of load above nominal
-rolling_resistance_coefficient = 0.06
+radius_m = 0.8                     # rolling radius
+section_width_m = 0.47
+section_height_m = 0.4
+deflection_m = 0.05                # sidewall deflection at working load
 wheel_inertia_kg_m2 = 30.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-slip = [0.0, 0.05, 0.12, 0.2,  0.4,  1.0]
-mu   = [0.0, 0.5,  0.88, 0.95, 0.88, 0.78]
+limit = 0.93                       # μ on very strong ground at full bite
+mobility_rate = 0.1                # how fast grip reaches the limit with Bn
+slip_rate = 18.0                   # how fast grip builds with slip

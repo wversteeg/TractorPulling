@@ -5,6 +5,7 @@ participant "Caller\n(run::step, test)" as Caller
 participant "pull::step" as Step
 participant "chassis::hitch" as Hitch
 participant "chain_force" as Chain
+participant "track::Model" as Track
 participant "vehicle::step" as Vehicle
 participant "sled" as Sled
 
@@ -14,9 +15,11 @@ Hitch --> Step : hitch position and velocity (with pitch)
 Step -> Chain : chain_force(chain, hitch, hook)
 Chain --> Step : tension along the hook-to-hitch line\n(zero when slack, never pushing)
 Step -> Step : equal and opposite:\nDrawbar{pull, lift} on the hitch, HookForce{forward, up} on the hook
-Step -> Vehicle : step(tractor, input, drawbar)\n(see the vehicle step)
+Step -> Track : surface_at(rear axle), surface_at(front axle),\nsurface_at(sled pan), surface_at(sled wheels)
+Track --> Step : the ground under each contact
+Step -> Vehicle : step(tractor, input, Ground{rear, front}, drawbar)\n(see the vehicle step)
 Vehicle --> Step : tractor output
-Step -> Sled : loads(state, hook force)
+Step -> Sled : loads(state, hook force, Ground{pan, wheels})
 Sled --> Step : pan / wheel loads, box position,\npush-down, resistance
 Step -> Sled : predict(resistance), advance(forward pull)
 Step --> Caller : Output{tractor, sled loads, chain}

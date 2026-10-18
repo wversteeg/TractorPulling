@@ -1,23 +1,32 @@
 @startuml tire_classes
-title Tire (tp::tire): longitudinal force from slip
+title Tire (tp::tire): traction and motion resistance on soil (Brixius)
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
 
-package "tp::math (see core_classes)" {
-  class Curve {
-    +evaluate(x) : double
-    +slope(x) : double
+package "tp::soil (see soil_classes)" {
+  class Surface <<struct>> {
+    +cone_index_pa : double
+    +grip_factor : double
+    +spin_fall_off : double
   }
 }
 
 package "tp::tire" {
-  class Params <<struct>> {
+  class Size <<struct>> {
     +radius_m : double
-    +traction_coefficient : Curve, mu vs slip 0..1
-    +nominal_load_n : double
-    +load_sensitivity : double
-    +rolling_resistance_coefficient : double
+    +section_width_m : double
+    +section_height_m : double
+    +deflection_m : double
+  }
+  class TractionCurve <<struct>> {
+    +limit : double
+    +mobility_rate : double
+    +slip_rate : double
+  }
+  class Params <<struct>> {
+    +size : Size
+    +traction : TractionCurve
     +wheel_inertia_kg_m2 : double
     +min_reference_speed_m_s : double
   }
@@ -28,16 +37,26 @@ package "tp::tire" {
   }
   enum ParamError
   class "tire functions" as TireFns <<free functions>> {
+    +validate(const Size&) : optional<ParamError>
     +validate(const Params&) : optional<ParamError>
+    +mobility_number(const Size&, load_n, const Surface&) : double
     +slip_ratio(const Params&, wheel_m_s, ground_m_s) : double
-    +traction(const Params&, wheel_m_s, ground_m_s, load_n) : Traction
-    +rolling_resistance_n(const Params&, load_n) : double
+    +traction(const Params&, wheel_m_s, ground_m_s, load_n, const Surface&) : Traction
+    +driven_rolling_resistance(const Size&, load_n, slip_ratio, const Surface&) : double
+    +towed_rolling_resistance(const Size&, load_n, const Surface&) : double
   }
-  Params *-- Curve
+  Params *-- Size
+  Params *-- TractionCurve
   TireFns ..> Params
   TireFns ..> Traction
   TireFns ..> ParamError
+  TireFns ..> Surface
 }
+note bottom of TireFns
+  Bn = CI b d / W · (1 + 5 δ/h) / (1 + 3 b/d)
+  μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²)
+  driven: 1/Bn + 0.5 |s| / √Bn;  towed: 1/Bn + 0.04
+end note
 note bottom of Traction
   force over a step = force_n + force_per_slip_speed * change in slip speed
   (linearly implicit; slope >= 0, so explicit beyond the peak)

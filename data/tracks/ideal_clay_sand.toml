@@ -1,0 +1,16 @@
+# The reference track: an even clay and sand mix, moist and rolled. Firm
+# enough to carry the tractor and the sled, moist enough not to dust: about
+# as good as a track gets. The run ends at the first stop of the sled, or
+# with a full pull at the end of the track (then a pull-off follows on a
+# heavier sled, see the sled's [sled.pull_off]).
+
+[track]
+length_m = 100.0
+max_duration_s = 120.0   # safety cut-off; real pulls end long before
+
+[track.soil]
+clay_fraction = 0.5      # 0 sand to 1 clay
+moisture = 0.14          # kg of water per kg of dry soil
+compaction = 0.8         # 0 freshly worked to 1 rolled hard
+
+# The class's own push-down (see the sled) suits this track.

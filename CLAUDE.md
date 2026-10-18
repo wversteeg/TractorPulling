@@ -18,7 +18,7 @@ Current focus: **game mechanics only**. Graphics come later. Do not add renderin
 ```
 core/        Pure C++20 static library. The whole simulation lives here.
 data_io/     tp::data: loads and validates data/ files into core parameter structs.
-data/        Tractor, engine, tire, sled and class definitions (TOML).
+data/        Tractor, engine, tire, sled, track and class definitions (TOML).
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
 bench/       Google Benchmark micro-benchmarks.
@@ -50,7 +50,7 @@ app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
 
 ### Data-driven design
 
-- Tractor, engine, tires, sled and class rules are TOML files in `data/`. Progression and upgrades only change parameters; the core does not know about "levels".
+- Tractor, engine, tires, sled, tracks and class rules are TOML files in `data/`. Progression and upgrades only change parameters; the core does not know about "levels".
 - Validate data on load with clear error messages. Reject nonsense (negative mass, non-monotonic curves).
 - Physical validation rules live in `core/` (e.g. `engine::validate`) so every front end shares them; `data_io/` parses TOML (toml++), converts units and turns validation errors into messages naming the file and field.
 
@@ -106,7 +106,11 @@ cmake --preset release && cmake --build --preset release
 # A run: the tractor pulls the sled on its chain until the sled's first stop
 # or a full pull (then pull-offs on a heavier sled); prints each result
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/standard_100m.toml [--gear 6] [--dump] -o run.csv
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] -o run.csv
+
+# The same tractor, sled and driving on several tracks: one line per track
+./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
+    data/sleds/light_class.toml data/tracks/*.toml [--gear 6] [--dump]
 
 # May this tractor compete in this class? Exits non-zero if not
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
@@ -134,6 +138,7 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 - `docs/architecture.md` shows the class and sequence diagrams. Sources are PlantUML in `docs/diagrams/*.puml`; rendered SVGs live next to them in `docs/diagrams/svg/` and are committed for easy review.
 - **Update the diagrams in the same PR as every change** that adds, removes or changes a type, a public function, a dependency between libraries, or the order of calls in a documented flow. Each component gets its own class diagram (`<topic>_classes.puml`; shared types and the engine are in `core_classes.puml`), and each new flow its own sequence diagram (e.g. clutch coupling, a full pull).
 - Render with `scripts/render_diagrams.sh` (needs Java and Graphviz; downloads a pinned PlantUML). `scripts/render_diagrams.sh --check` verifies every SVG matches its source; CI runs it.
+- `docs/future_improvements.md` collects ideas, known simplifications and anything put out of scope. When a step consciously leaves something out, add it there; when it gets built, remove it.
 - On pull requests, CI posts the changed diagrams as one PR comment (`scripts/post_diagram_preview.sh`) and updates it on each push, so they can be reviewed as images.
 
 ## Workflow

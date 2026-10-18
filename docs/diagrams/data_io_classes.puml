@@ -22,21 +22,27 @@ package "tp::data" {
     +load_tire(path) / parse_tire(text, source) : Result<tire::Params>
     +load_class_rules(path) / parse_class_rules(text, source) : Result<rules::ClassRules>
     +load_sled(path) / parse_sled(text, source) : Result<sled::Params>
-    +load_track(path) / parse_track(text, source) : Result<run::Rules>
+    +load_track(path) / parse_track(text, source) : Result<Track>
     --
     each: read fields, convert to SI, build Params,
     <component>::validate(), name the field on error
+  }
+  class Track <<struct>> {
+    +rules : run::Rules
+    +ground : track::Params, soil and profile
+    +sled : sled::Conditions, the day's push-down
   }
   class "tractor_loader" as TractorLoader <<free functions>> {
     +load_tractor(path) : Result<vehicle::Params>
     +parse_tractor(text, source, base_directory) : Result<vehicle::Params>
     --
-    reads the chassis, PTO efficiency and the component paths,
+    reads the chassis, front tire size, PTO efficiency and the component paths,
     loads each component relative to the tractor file,
     then vehicle::validate()
   }
   Result o-- LoadError
   Loaders ..> Result : returns
+  Loaders ..> Track
   TractorLoader ..> Loaders : components
   TractorLoader ..> Result : returns
 }

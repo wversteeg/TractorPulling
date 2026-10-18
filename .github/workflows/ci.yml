@@ -72,15 +72,23 @@ jobs:
           ./build/${{ matrix.preset }}/tools/tp_pull check
           data/tractors/farm_stock_light.toml data/classes/ntto_standard_3500.toml
 
-      - name: Run on the sled in the usable gears
+      - name: Run on the sled on every track in the usable gears
         run: |
-          for gear in 4 5 6 7; do
-            for mode in "" --dump; do
-              ./build/${{ matrix.preset }}/tools/tp_pull run \
-                data/tractors/farm_stock_light.toml data/sleds/light_class.toml \
-                data/tracks/standard_100m.toml --gear $gear $mode -o run.csv
+          for track in data/tracks/*.toml; do
+            for gear in 4 5 6 7; do
+              for mode in "" --dump; do
+                ./build/${{ matrix.preset }}/tools/tp_pull run \
+                  data/tractors/farm_stock_light.toml data/sleds/light_class.toml \
+                  "$track" --gear $gear $mode -o run.csv
+              done
             done
           done
+
+      - name: Compare the tracks
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull compare-tracks
+          data/tractors/farm_stock_light.toml data/sleds/light_class.toml
+          data/tracks/*.toml --gear 6
 
       - name: Run pulls in every gear
         run: |

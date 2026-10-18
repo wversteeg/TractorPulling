@@ -10,6 +10,7 @@
 #include <cstdlib>
 
 #include "../sled/reference_sled.hpp"
+#include "../track/reference_track.hpp"
 #include "../vehicle/reference_vehicle.hpp"
 
 namespace tp::pull {
@@ -20,7 +21,8 @@ constexpr double kSpunOutSlip = 0.9;
 
 Model reference_model() {
     const auto model = Model::create({.tractor = vehicle::testing::reference_params(),
-                                      .sled = sled::testing::reference_params()});
+                                      .sled = sled::testing::reference_params(),
+                                      .track = track::testing::reference_params()});
     if (!model) {
         std::abort();
     }
@@ -75,15 +77,22 @@ struct Driver {
 
 TEST(PullParams, NamesTheInvalidPart) {
     Params params{.tractor = vehicle::testing::reference_params(),
-                  .sled = sled::testing::reference_params()};
+                  .sled = sled::testing::reference_params(),
+                  .track = track::testing::reference_params()};
     EXPECT_EQ(validate(params), std::nullopt);
     params.sled.pushdown_ramp_m = 0.0;
     EXPECT_EQ(validate(params), ParamError::kSled);
     EXPECT_FALSE(Model::create(params).has_value());
     params = {.tractor = vehicle::testing::reference_params(),
-              .sled = sled::testing::reference_params()};
+              .sled = sled::testing::reference_params(),
+              .track = track::testing::reference_params()};
     params.tractor.chassis.mass_kg = 0.0;
     EXPECT_EQ(validate(params), ParamError::kTractor);
+    params = {.tractor = vehicle::testing::reference_params(),
+              .sled = sled::testing::reference_params(),
+              .track = track::testing::reference_params()};
+    params.track.soil.moisture = -0.1;
+    EXPECT_EQ(validate(params), ParamError::kTrack);
 }
 
 TEST(Chain, PullsOnlyWhenStretched) {
@@ -212,7 +221,7 @@ TEST(Pull, IsDeterministic) {
 
 // Regression hash; must match on every compiler, build type and platform.
 TEST(Pull, MatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x9a3c25ecd37c8cfaULL);
+    EXPECT_EQ(pull_hash(), 0xd11a086930a2c267ULL);
 }
 
 }  // namespace

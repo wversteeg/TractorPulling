@@ -20,7 +20,7 @@ end note
 
 == end of the step, after the chain solve and advance() ==
 Step -> Step : axle torque = I_wheels α_axle + r F_tire + rear rolling\n(at a standstill the tires hold just the drawbar pull)
-Step -> Pitch : advance_pitch(state, params, axle torque, drawbar, dt)
+Step -> Pitch : advance_pitch(state, params, axle torque, drawbar,\n  front rolling resistance, dt)
 Pitch -> Trig : sin_cos(pitch)
 Pitch -> Pitch : moment = axle torque + F_drawbar z_hitch\n  - m g x_cg + m a z_cg - ground drag · r
 Pitch -> Pitch : contacts: force, moment and its\nderivatives K (pitch) and C (rate)
