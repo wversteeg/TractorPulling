@@ -44,6 +44,8 @@ FieldError describe(chassis::ParamError error) {
             return {"tractor.chassis.yaw_inertia_kg_m2", "must be > 0"};
         case ParamError::kRearTrackNotPositive:
             return {"tractor.chassis.rear_track_m", "must be > 0"};
+        case ParamError::kFrontTrackNotPositive:
+            return {"tractor.chassis.front_track_m", "must be > 0"};
         case ParamError::kRearAxleHeightNotPositive:
             return {"tractor.rear_tire", "the tire radius (rear axle height) must be > 0"};
         case ParamError::kHitchHeightNegative:
@@ -112,6 +114,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .yaw_inertia_kg_m2 = reader.number("tractor.chassis.yaw_inertia_kg_m2"),
         .rear_axle_height_m = 0.0,  // the rear tire's radius, below
         .rear_track_m = reader.number("tractor.chassis.rear_track_m"),
+        .front_track_m = reader.number("tractor.chassis.front_track_m"),
         .hitch_height_m = reader.number("tractor.chassis.hitch_height_m"),
         .hitch_behind_rear_axle_m = reader.number("tractor.chassis.hitch_behind_rear_axle_m"),
         .front_tires =

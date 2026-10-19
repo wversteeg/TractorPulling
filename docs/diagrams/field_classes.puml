@@ -39,6 +39,7 @@ package "tp::field" {
     +track : track::Params
     +sled : sled::Params
     +max_duration_s : double
+    +lane_width_m : double
   }
   class LogEntry <<struct>> {
     +pull : event::Pull
@@ -72,8 +73,8 @@ package "tp::field" {
   class "field functions" as FieldFns <<free functions>> {
     +validate(reference, variation, rules, count) : optional<ParamError>
     +generate(reference, variation, rules, count, seed) : optional<Field>
-    +pull_distance(const Puller&, const sled::Params&, const track::Params&,\n      max_distance_m, max_duration_s) : optional<double>
-    +best_gear(const Puller&, sled, track, lowest, highest, max_m, max_s) : optional<int>
+    +pull_distance(const Puller&, const sled::Params&, const track::Params&,\n      const run::Rules&) : optional<double>
+    +best_gear(const Puller&, sled, track, lowest, highest, const run::Rules&) : optional<int>
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
     +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>

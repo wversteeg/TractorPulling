@@ -27,6 +27,14 @@ FieldError describe(run::ParamError error) {
             return {"track.length_m", "must be > 0"};
         case ParamError::kMaxDurationNotPositive:
             return {"track.max_duration_s", "must be > 0"};
+        case ParamError::kLaneWidthNotPositive:
+            return {"track.lane_width_m", "must be > 0"};
+        // A track file sets the full-pull line at its length, so these name
+        // the length (kTrackLengthNotPositive already catches a bad one).
+        case ParamError::kFullPullLineNotPositive:
+            return {"track.length_m", "must be > 0"};
+        case ParamError::kFullPullLinePastTrackEnd:
+            return {"track.length_m", "full-pull line must not be past the end"};
     }
     return {"track", "invalid"};
 }
@@ -73,11 +81,15 @@ bool valid_distance(const std::optional<double>& distance_m) {
 
 Result<Track> read_track(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
+    // On its own track a run ends at the full-pull line.
+    const double length_m = reader.number("track.length_m");
     const Track track{
         .rules =
             {
-                .track_length_m = reader.number("track.length_m"),
+                .track_length_m = length_m,
                 .max_duration_s = reader.number("track.max_duration_s"),
+                .lane_width_m = reader.number("track.lane_width_m"),
+                .full_pull_line_m = length_m,
             },
         .ground =
             {

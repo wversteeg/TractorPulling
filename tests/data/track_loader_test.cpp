@@ -18,6 +18,7 @@ constexpr std::string_view kValidTrack = R"(
 [track]
 length_m = 100.0
 max_duration_s = 90.0
+lane_width_m = 11.0
 
 [track.soil]
 clay_fraction = 0.6
@@ -40,6 +41,7 @@ constexpr std::string_view kPlainTrack = R"(
 [track]
 length_m = 100.0
 max_duration_s = 120.0
+lane_width_m = 12.0
 
 [track.soil]
 clay_fraction = 0.5
@@ -89,6 +91,8 @@ TEST(TrackLoader, ParsesValues) {
     ASSERT_TRUE(result.ok()) << result.error().message;
     const Track& track = result.value();
     EXPECT_EQ(track.rules.max_duration_s, 90.0);
+    EXPECT_EQ(track.rules.lane_width_m, 11.0);
+    EXPECT_EQ(track.rules.full_pull_line_m, track.rules.track_length_m);
     EXPECT_EQ(track.ground.soil.clay_fraction, 0.6);
     EXPECT_EQ(track.ground.soil.moisture, 0.18);
     EXPECT_EQ(track.ground.soil.compaction, 0.7);
@@ -114,7 +118,9 @@ TEST(TrackLoader, RejectsNonsense) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 9> cases = {{
+    const std::array<Case, 11> cases = {{
+        {"lane_width_m = 11.0", "lane_width_m = 0.0", "t.toml: track.lane_width_m: must be > 0"},
+        {"lane_width_m = 11.0", "", "track.lane_width_m: missing or not a number"},
         {"length_m = 100.0", "length_m = -5.0", "t.toml: track.length_m: must be > 0"},
         {"max_duration_s = 90.0", "", "track.max_duration_s: missing or not a number"},
         {"clay_fraction = 0.6", "clay_fraction = 1.2",

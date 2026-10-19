@@ -1,10 +1,12 @@
 #include "tp/core/sled/sled.hpp"
 
+#include "tp/core/math/trig.hpp"
 #include "tp/core/units/constants.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <numbers>
 
 namespace tp::sled {
 
@@ -33,11 +35,43 @@ bool makes_heavier(const Adjustment& step, const Knives& knives) noexcept {
     return none_lighter && some_heavier && (step.knives == 0 || knives.width_m > 0.0);
 }
 
+// The masses and where the parts sit along the sled.
+std::optional<ParamError> layout_error(const Params& params) noexcept {
+    if (params.frame_mass_kg <= 0.0) {
+        return ParamError::kFrameMassNotPositive;
+    }
+    if (params.frame_yaw_inertia_kg_m2 <= 0.0) {
+        return ParamError::kYawInertiaNotPositive;
+    }
+    if (params.box_mass_kg < 0.0) {
+        return ParamError::kBoxMassNegative;
+    }
+    const double pan_m = params.pan_ahead_of_wheels_m;
+    if (pan_m <= 0.0) {
+        return ParamError::kPanNotAheadOfWheels;
+    }
+    if (!within(params.frame_cg_ahead_of_wheels_m, 0.0, pan_m)) {
+        return ParamError::kFrameCgOutsideSled;
+    }
+    if (!within(params.box_start_ahead_of_wheels_m, 0.0, pan_m) ||
+        !within(params.box_end_ahead_of_wheels_m, 0.0, pan_m)) {
+        return ParamError::kBoxOutsideSled;
+    }
+    if (params.box_travel_distance_m <= 0.0) {
+        return ParamError::kBoxTravelNotPositive;
+    }
+    if (params.hook_ahead_of_wheels_m <= 0.0 || params.hook_height_m <= 0.0) {
+        return ParamError::kHookInvalid;
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const Params& params) noexcept {
     const std::array scalars = {params.frame_mass_kg,
                                 params.frame_cg_ahead_of_wheels_m,
+                                params.frame_yaw_inertia_kg_m2,
                                 params.pan_ahead_of_wheels_m,
                                 params.hook_ahead_of_wheels_m,
                                 params.hook_height_m,
@@ -64,28 +98,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
-    if (params.frame_mass_kg <= 0.0) {
-        return ParamError::kFrameMassNotPositive;
-    }
-    if (params.box_mass_kg < 0.0) {
-        return ParamError::kBoxMassNegative;
-    }
-    const double pan_m = params.pan_ahead_of_wheels_m;
-    if (pan_m <= 0.0) {
-        return ParamError::kPanNotAheadOfWheels;
-    }
-    if (!within(params.frame_cg_ahead_of_wheels_m, 0.0, pan_m)) {
-        return ParamError::kFrameCgOutsideSled;
-    }
-    if (!within(params.box_start_ahead_of_wheels_m, 0.0, pan_m) ||
-        !within(params.box_end_ahead_of_wheels_m, 0.0, pan_m)) {
-        return ParamError::kBoxOutsideSled;
-    }
-    if (params.box_travel_distance_m <= 0.0) {
-        return ParamError::kBoxTravelNotPositive;
-    }
-    if (params.hook_ahead_of_wheels_m <= 0.0 || params.hook_height_m <= 0.0) {
-        return ParamError::kHookInvalid;
+    if (const auto error = layout_error(params)) {
+        return error;
     }
     if (params.pushdown_start_m < 0.0) {
         return ParamError::kPushdownStartNegative;
@@ -112,6 +126,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (tire::validate(params.wheel)) {
         return ParamError::kWheel;
+    }
+    if (tire::validate(params.wheel_cornering)) {
+        return ParamError::kWheelCornering;
     }
     if (params.wheel_count < 1 || params.wheel_count > kMaxWheels) {
         return ParamError::kWheelCountOutOfRange;
@@ -154,6 +171,14 @@ Params heavier(const Params& params, int steps) noexcept {
 
 namespace {
 
+// Below this sliding speed the pan's friction is taken as a stiff, viscous
+// hold rather than Coulomb's jump, which a fixed step cannot follow [m/s].
+constexpr double kPanStickSpeed_m_s = 0.05;
+// Below this rolling speed the rear wheels' side grip relaxes as if they
+// rolled this fast, so a sled at rest creeps rather than holds for ever
+// [m/s].
+constexpr double kWheelMinRolling_m_s = 0.5;
+
 // The pan sinks in until the soil carries its pressure and pushes soil
 // ahead of it: the ploughing grows with pressure over strength.
 double pan_friction(const Params& params, double pan_n, const soil::Surface& surface) noexcept {
@@ -176,15 +201,37 @@ double knives_n(const Knives& knives, const soil::Surface& surface) noexcept {
     return kKnifeCutting * strength_pa * knives.count * knives.width_m * knives.depth_m;
 }
 
+// Where the box is after `distance_m` of sled travel [m ahead of the wheels].
+double box_ahead_m(const Params& params, double distance_m) noexcept {
+    const double travel = std::clamp(distance_m / params.box_travel_distance_m, 0.0, 1.0);
+    return params.box_start_ahead_of_wheels_m +
+           travel * (params.box_end_ahead_of_wheels_m - params.box_start_ahead_of_wheels_m);
+}
+
+// The centre of gravity, frame and box together [m ahead of the wheels].
+double cg_ahead_m(const Params& params, double box_m) noexcept {
+    return (params.frame_mass_kg * params.frame_cg_ahead_of_wheels_m + params.box_mass_kg * box_m) /
+           total_mass_kg(params);
+}
+
 }  // namespace
+
+Hook hook(const Params& params, const State& state) noexcept {
+    const math::SinCos heading = math::sin_cos_any(state.heading_rad);
+    const double ahead_m = params.hook_ahead_of_wheels_m;
+    // The hook is ahead of the wheels: turning left moves it left at x r.
+    const double side_m_s = state.lateral_velocity_m_s + ahead_m * state.yaw_rate_rad_s;
+    return {.x_m = state.position_m + ahead_m * heading.cos,
+            .y_m = state.lateral_position_m + ahead_m * heading.sin,
+            .z_m = params.hook_height_m,
+            .velocity_x_m_s = state.velocity_m_s * heading.cos - side_m_s * heading.sin,
+            .velocity_y_m_s = state.velocity_m_s * heading.sin + side_m_s * heading.cos};
+}
 
 Loads loads(const Params& params, const State& state, const HookForce& hook,
             const Ground& ground) noexcept {
     using units::kStandardGravity_m_s2;
-    const double travel = std::clamp(state.distance_m / params.box_travel_distance_m, 0.0, 1.0);
-    const double box_m =
-        params.box_start_ahead_of_wheels_m +
-        travel * (params.box_end_ahead_of_wheels_m - params.box_start_ahead_of_wheels_m);
+    const double box_m = box_ahead_m(params, state.distance_m);
     const double frame_n = params.frame_mass_kg * kStandardGravity_m_s2;
     const double box_n = params.box_mass_kg * kStandardGravity_m_s2;
 
@@ -226,8 +273,74 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
 Prediction predict(const State& state, const Params& params, double resistance_n,
                    double dt_s) noexcept {
     const double velocity_per_n = dt_s / total_mass_kg(params);
-    return {.free_velocity_m_s = state.velocity_m_s - velocity_per_n * resistance_n,
+    const double cg_side_m_s =
+        state.lateral_velocity_m_s +
+        cg_ahead_m(params, box_ahead_m(params, state.distance_m)) * state.yaw_rate_rad_s;
+    return {.free_velocity_m_s = state.velocity_m_s - velocity_per_n * resistance_n +
+                                 dt_s * cg_side_m_s * state.yaw_rate_rad_s,
             .velocity_per_n = velocity_per_n};
+}
+
+void advance_lateral(State& state, const Params& params, const Loads& loads, double hook_side_n,
+                     const soil::Surface& wheel_ground, double dt_s) noexcept {
+    const double mass_kg = total_mass_kg(params);
+    const double box_m = loads.box_ahead_of_wheels_m;
+    const double cg_m = cg_ahead_m(params, box_m);
+    const double frame_arm_m = params.frame_cg_ahead_of_wheels_m - cg_m;
+    const double box_arm_m = box_m - cg_m;
+    const double inertia_kg_m2 = params.frame_yaw_inertia_kg_m2 +
+                                 params.frame_mass_kg * frame_arm_m * frame_arm_m +
+                                 params.box_mass_kg * box_arm_m * box_arm_m;
+
+    // Explicit: the hook's pull and the wheels' side grip from their patch.
+    const double wheel_count = params.wheel_count;
+    const tire::SideGrip grip = tire::side_grip(params.wheel, params.wheel_cornering,
+                                                loads.wheels_n / wheel_count, wheel_ground);
+    const double wheels_n = wheel_count * tire::side_force_n(grip, state.wheel_side_deflection_m);
+    const double hook_arm_m = params.hook_ahead_of_wheels_m - cg_m;
+    const double side_n = hook_side_n + wheels_n;
+    const double moment_nm = hook_side_n * hook_arm_m - wheels_n * cg_m;
+
+    // Implicit: the pan's sliding friction against its sideways speed at the
+    // step's end, F = -c v_pan with c = drag / sliding speed (held below
+    // the stick speed). With v_cg and r the unknowns and a the pan's arm
+    // from the centre of gravity:
+    //
+    //   (m/dt + c) v_cg' + c a r'       = m/dt v_cg + F - m u r
+    //   c a v_cg' + (I/dt + c a²) r'    = I/dt r + M
+    const double pan_arm_m = params.pan_ahead_of_wheels_m - cg_m;
+    const double pan_side_m_s =
+        state.lateral_velocity_m_s + params.pan_ahead_of_wheels_m * state.yaw_rate_rad_s;
+    const double sliding_m_s =
+        std::max(std::sqrt(state.velocity_m_s * state.velocity_m_s + pan_side_m_s * pan_side_m_s),
+                 kPanStickSpeed_m_s);
+    const double drag_n = loads.pan_friction * loads.pan_n + loads.knives_n;
+    const double c = drag_n / sliding_m_s;
+    const double cg_side_m_s = state.lateral_velocity_m_s + cg_m * state.yaw_rate_rad_s;
+    const double a11 = mass_kg / dt_s + c;
+    const double a12 = c * pan_arm_m;
+    const double a22 = inertia_kg_m2 / dt_s + c * pan_arm_m * pan_arm_m;
+    const double b1 =
+        mass_kg / dt_s * cg_side_m_s + side_n - mass_kg * state.velocity_m_s * state.yaw_rate_rad_s;
+    const double b2 = inertia_kg_m2 / dt_s * state.yaw_rate_rad_s + moment_nm;
+    const double determinant = a11 * a22 - a12 * a12;
+    const double next_cg_side_m_s = (b1 * a22 - a12 * b2) / determinant;
+    const double yaw_rate_rad_s = (a11 * b2 - a12 * b1) / determinant;
+
+    state.yaw_rate_rad_s = yaw_rate_rad_s;
+    state.lateral_velocity_m_s = next_cg_side_m_s - cg_m * yaw_rate_rad_s;
+    // Kept within ±π, where sin_cos_any() works.
+    constexpr double kFullTurn_rad = 2.0 * std::numbers::pi;
+    double heading_rad = state.heading_rad + yaw_rate_rad_s * dt_s;
+    if (heading_rad > std::numbers::pi) {
+        heading_rad -= kFullTurn_rad;
+    } else if (heading_rad < -std::numbers::pi) {
+        heading_rad += kFullTurn_rad;
+    }
+    state.heading_rad = heading_rad;
+    state.wheel_side_deflection_m = tire::relax_deflection_m(
+        grip, params.wheel_cornering, state.wheel_side_deflection_m, state.lateral_velocity_m_s,
+        state.velocity_m_s, kWheelMinRolling_m_s, dt_s);
 }
 
 void advance(State& state, const Prediction& prediction, double forward_n, double dt_s) noexcept {
@@ -235,7 +348,11 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
     const double velocity_m_s =
         std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * forward_n, 0.0);
     state.velocity_m_s = velocity_m_s;
-    state.position_m += velocity_m_s * dt_s;
+    const math::SinCos heading = math::sin_cos_any(state.heading_rad);
+    state.position_m +=
+        (velocity_m_s * heading.cos - state.lateral_velocity_m_s * heading.sin) * dt_s;
+    state.lateral_position_m +=
+        (velocity_m_s * heading.sin + state.lateral_velocity_m_s * heading.cos) * dt_s;
     state.distance_m += velocity_m_s * dt_s;
 }
 

@@ -51,6 +51,23 @@ high gear it takes more torque than the engine gives and stalls it:
 # ... ended -11.37 m to the left, heading -33.39°
 ```
 
+### The lane
+
+Each track has a lane, 12 m between the chalk lines by the NTTO's minimum.
+A tractor tire touching a chalk line before the full-pull line disqualifies
+the pull: out of bounds, 0 m. Past the line it may, and the sled may cross
+the lines anywhere. The sled follows the tractor as a trailer does: its
+wheels keep its tail in line, but its pan, sliding forward, resists sideways
+only weakly, so when the driver corrects the tractor's line the sled swings
+out wider than the tractor (the dog-tail). Steer a little and the tractor
+wanders out of its lane:
+
+```bash
+./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 --steer-deg 0.5
+# run: 0.00 m, out of bounds: a tire touched the chalk line (22.6 s, top 11.9 km/h)
+```
+
 ### Track conditions
 
 Every event's track is different. A track file gives its soil (clay

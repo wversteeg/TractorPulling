@@ -16,8 +16,8 @@ for the big features; they are repeated at the end for completeness.
 - **Wear during an event.** Each pull leaves ruts and loosens the surface,
   and the track dries out or is watered between classes. Needs a track state
   that persists between runs.
-- **Lane-to-lane differences.** Lanes are prepared and worn differently.
-  Needs lane steering first.
+- **Lane-to-lane differences.** Lanes are prepared and worn differently;
+  one lane per track for now.
 - **Automatic test pull.** The sled operator sets the push-down from a test
   pull on the day's track. A reference tractor could run that test pull and
   choose the push-down for a target distance.
@@ -70,8 +70,15 @@ for the big features; they are repeated at the end for completeness.
   model would let both trade off along the sliding direction.
 - **Front tires' rolling drag along the body.** Their rolling resistance acts
   along the body, not along the steered wheels (a few degrees off).
-- **Sled follows the tractor sideways.** Until the sled gets its own sideways
-  motion (milestone 3, step 3), its hook stays straight behind the hitch.
+- **The sled sideways, simply.** The pan's drag (friction and knives) acts
+  against its sliding direction for the sideways part, while the forward
+  resistance keeps its full value; the knives, sitting in their grooves,
+  probably hold the sled harder sideways than plain friction does; the berm
+  only drags along the track. The weight box is a point mass for the yaw
+  inertia.
+- **Tires on the chalk, simply.** A tire is out when its outer edge, taken
+  at the axle and as wide as its section, reaches the line; the contact
+  patch's own length and the tire's bulge are left out.
 - **Steering is instant.** The front wheels take the asked angle at once; a
   steering rate (the driver turning the wheel) belongs in the input mapping.
 - **Rear tire compliance.** The rear axle stays at the tire radius; a springy
@@ -108,6 +115,11 @@ for the big features; they are repeated at the end for completeness.
   and push-down. Scripted pullers keep a test pull only when no one has
   beaten it.
 
+- **A disqualified pull reaches the event as 0 m.** `field::pull_distance`
+  turns out of bounds into 0 m, so `event::Event` cannot tell it from a
+  pull that went nowhere: a disqualified test pull would make the operator
+  lighten the sled. Scripted pullers drive straight, so it cannot happen
+  yet; pass the `run::Ending` on once pullers steer (milestone 3, step 4).
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
 - **Easy-mode clutch assist.** The lowest classes get an assist around the
@@ -127,9 +139,14 @@ for the big features; they are repeated at the end for completeness.
   share their footing already; the rest could share more, or skip the
   difference motion while it and both brakes are at rest.
 
+- **The sled's sideways step.** The sled's sideways motion added about
+  100 ns to a pull step (about 580 ns against 490 ns, x86-64 release): its
+  wheels' side grip, the pan's sliding speed and the headings' sine and
+  cosine. The hook's position and the sled's heading could share one
+  sine and cosine per step.
+
 ## Roadmap features (from CLAUDE.md "Later")
 
-- Lane steering and sled sideways drag; leaving the lane ends the run.
 - Steering plus two independent brakes, with a "pro" input mapping.
 - Touch-only input (sliders and tilt).
 - Godot 4 GDExtension front end: 3D scene, cameras, interpolated rendering.

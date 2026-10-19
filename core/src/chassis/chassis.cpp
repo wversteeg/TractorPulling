@@ -104,6 +104,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.yaw_inertia_kg_m2,
                                 params.rear_axle_height_m,
                                 params.rear_track_m,
+                                params.front_track_m,
                                 params.hitch_height_m,
                                 params.hitch_behind_rear_axle_m,
                                 params.front_tires.stiffness_n_per_m,
@@ -140,6 +141,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.rear_track_m <= 0.0) {
         return ParamError::kRearTrackNotPositive;
+    }
+    if (params.front_track_m <= 0.0) {
+        return ParamError::kFrontTrackNotPositive;
     }
     if (params.hitch_height_m < 0.0) {
         return ParamError::kHitchHeightNegative;

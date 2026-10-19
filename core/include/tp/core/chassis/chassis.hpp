@@ -82,6 +82,8 @@ struct Params {
     double rear_axle_height_m = 0.0;
     /// Between the left and right rear tires' centres [m].
     double rear_track_m = 0.0;
+    /// Between the left and right front tires' centres [m].
+    double front_track_m = 0.0;
     /// Drawbar hitch point above the ground [m].
     double hitch_height_m = 0.0;
     /// Drawbar hitch point behind the rear axle [m].
@@ -105,6 +107,7 @@ enum class ParamError : std::uint8_t {
     kYawInertiaNotPositive,
     kRearAxleHeightNotPositive,
     kRearTrackNotPositive,
+    kFrontTrackNotPositive,
     kHitchHeightNegative,
     kHitchAheadOfRearAxle,
     kFrontTireStiffnessNotPositive,

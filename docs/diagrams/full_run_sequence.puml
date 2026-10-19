@@ -13,7 +13,9 @@ loop until the run has a result (1 kHz)
   Run -> Pull : step(pull state, input)\n(see the pull step)
   Pull --> Run : output
   Run -> Run : count the step, track top speed
-  alt sled reached the end of the track
+  alt a tractor tire touches a chalk line before the full-pull line
+    Run -> Run : result: out of bounds, 0 m
+  else sled reached the end of the track
     Run -> Run : result: full pull, track length
   else sled stopped after moving
     Run -> Run : result: distance where it stands;\nstalled / spun out / stopped

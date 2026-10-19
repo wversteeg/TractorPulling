@@ -16,6 +16,7 @@ inline Params reference_params() {
         .yaw_inertia_kg_m2 = 5500.0,
         .rear_axle_height_m = 0.8,
         .rear_track_m = 1.9,
+        .front_track_m = 1.6,
         .hitch_height_m = 0.5,
         .hitch_behind_rear_axle_m = 0.4,
         .front_tires = {.stiffness_n_per_m = 400000.0, .damping_n_s_per_m = 6000.0},

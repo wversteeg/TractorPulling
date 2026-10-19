@@ -13,6 +13,7 @@ package "tp::sled" {
   class Params <<struct>> {
     +frame_mass_kg : double
     +frame_cg_ahead_of_wheels_m : double
+    +frame_yaw_inertia_kg_m2 : double
     +pan_ahead_of_wheels_m : double
     +hook_ahead_of_wheels_m, hook_height_m : double
     +box_mass_kg : double
@@ -25,6 +26,7 @@ package "tp::sled" {
     +knives : Knives
     +berm : Berm
     +wheel : tire::Size
+    +wheel_cornering : tire::Cornering
     +wheel_count : int
     +chain : Chain
     +pull_off_step : Adjustment
@@ -62,10 +64,20 @@ package "tp::sled" {
     +velocity_m_s : double
     +distance_m : double
     +berm_kg : double
+    +lateral_position_m : double
+    +heading_rad : double
+    +lateral_velocity_m_s : double
+    +yaw_rate_rad_s : double
+    +wheel_side_deflection_m : double
   }
   class HookForce <<struct>> {
     +forward_n : double
     +up_n : double
+    +side_n : double
+  }
+  class Hook <<struct>> {
+    +x_m, y_m, z_m : double
+    +velocity_x_m_s, velocity_y_m_s : double
   }
   class Loads <<struct>> {
     +pan_n, wheels_n : double
@@ -88,7 +100,9 @@ package "tp::sled" {
     +adjusted(const Params&, const Adjustment&, times = 1) : Params
     +heavier(const Params&, steps = 1) : Params
     +loads(const Params&, const State&, const HookForce&, const Ground&) : Loads
+    +hook(const Params&, const State&) : Hook
     +predict(const State&, const Params&, resistance_n, dt_s) : Prediction
+    +advance_lateral(State&, const Params&, const Loads&, hook_side_n,\n      const soil::Surface& wheel_ground, dt_s)
     +advance(State&, const Prediction&, forward_n, dt_s)
     +collect(State&, const Params&, thrown_soil_m3_s, dt_s)
     +hash_append(Fnv1a&, const State&)
@@ -101,6 +115,7 @@ package "tp::sled" {
   SledFns ..> Params
   SledFns ..> State
   SledFns ..> HookForce
+  SledFns ..> Hook
   SledFns ..> Conditions
   SledFns ..> Ground
   SledFns ..> Loads
@@ -117,6 +132,9 @@ note bottom of SledFns
   resistance = μ pan + knives + berm + towed rolling (Brixius) wheels, holding but never pulling back;
   with_conditions(): the day's push-down;
   adjusted(): the operator's change; heavier(): the pull-off sled, some steps heavier
+  sideways, a trailer on the chain: hook pull, rear wheels' side grip
+  (relaxation length), pan friction against its sliding direction,
+  implicit; sliding forward, the pan resists sideways weakly: the dog-tail
 end note
 Params *-- Tire
 Ground *-- Surface

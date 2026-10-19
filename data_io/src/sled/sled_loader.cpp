@@ -23,6 +23,8 @@ FieldError describe(sled::ParamError error) {
             return {"sled", "all values must be finite"};
         case ParamError::kFrameMassNotPositive:
             return {"sled.frame_mass_kg", "must be > 0"};
+        case ParamError::kYawInertiaNotPositive:
+            return {"sled.frame_yaw_inertia_kg_m2", "must be > 0"};
         case ParamError::kBoxMassNegative:
             return {"sled.weight_box.mass_kg", "must not be negative"};
         case ParamError::kPanNotAheadOfWheels:
@@ -53,6 +55,11 @@ FieldError describe(sled::ParamError error) {
                     "collected_share 0 to 1, spill_distance_m > 0, friction_coefficient >= 0"};
         case ParamError::kWheel:
             return {"sled.wheels", "invalid tire size"};
+        case ParamError::kWheelCornering:
+            return {
+                "sled.wheels.cornering",
+                "stiffness_per_rad, mobility_rate and relaxation_length_m must be > 0, limit in "
+                "(0, 2]"};
         case ParamError::kWheelCountOutOfRange:
             return {"sled.wheels.count", "must be 1 to 8"};
         case ParamError::kChainInvalid:
@@ -74,6 +81,7 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
     sled::Params params{
         .frame_mass_kg = reader.number("sled.frame_mass_kg"),
         .frame_cg_ahead_of_wheels_m = reader.number("sled.frame_cg_ahead_of_wheels_m"),
+        .frame_yaw_inertia_kg_m2 = reader.number("sled.frame_yaw_inertia_kg_m2"),
         .pan_ahead_of_wheels_m = reader.number("sled.pan_ahead_of_wheels_m"),
         .hook_ahead_of_wheels_m = reader.number("sled.hook.ahead_of_wheels_m"),
         .hook_height_m = reader.number("sled.hook.height_m"),
@@ -93,6 +101,7 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
                  .spill_distance_m = reader.number("sled.berm.spill_distance_m"),
                  .friction_coefficient = reader.number("sled.berm.friction_coefficient")},
         .wheel = detail::read_tire_size(reader, kWheels),
+        .wheel_cornering = detail::read_cornering(reader, "sled.wheels.cornering"),
         .wheel_count = 0,  // checked below
         .chain =
             {

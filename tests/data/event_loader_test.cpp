@@ -62,7 +62,8 @@ EventLog run(const EventDefinition& definition) {
     const auto order = event::running_order(definition.pullers, definition.seed + 1);
     const field::Venue venue{.track = definition.track.ground,
                              .sled = sled::with_conditions(definition.sled, definition.track.sled),
-                             .max_duration_s = definition.track.rules.max_duration_s};
+                             .max_duration_s = definition.track.rules.max_duration_s,
+                             .lane_width_m = definition.track.rules.lane_width_m};
     const auto played =
         field ? field::play_event(
                     definition.rules, venue, *field, definition.variation, definition.pull_to_pull,
@@ -164,7 +165,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 21);
-    EXPECT_EQ(first.hash, 0xd1aea02caf8ee264ULL);
+    EXPECT_EQ(first.hash, 0x79943504a419470eULL);
 }
 
 }  // namespace
