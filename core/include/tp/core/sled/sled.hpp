@@ -176,7 +176,9 @@ struct State {
     double position_m = 0.0;
     /// Forward speed [m/s].
     double velocity_m_s = 0.0;
-    /// Travelled since the start: drives the box and the push-down [m].
+    /// Travelled along the sled's heading since the start: drives the box
+    /// and the push-down. Not track x: a sled that weaves travels further
+    /// than it pulls down the track [m].
     double distance_m = 0.0;
     /// Soil piled up in front of the pan [kg].
     double berm_kg = 0.0;

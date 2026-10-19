@@ -39,6 +39,9 @@ std::optional<ParamError> validate(const Rules& rules) noexcept {
     if (!(rules.full_pull_line_m > 0.0)) {
         return ParamError::kFullPullLineNotPositive;
     }
+    if (rules.full_pull_line_m > rules.track_length_m) {
+        return ParamError::kFullPullLinePastTrackEnd;
+    }
     return std::nullopt;
 }
 
@@ -89,6 +92,9 @@ pull::Output step(State& state, const pull::Model& model, const Rules& rules,
     const double time_s = static_cast<double>(state.steps) * dt_s;
     const sled::State& sled = state.pull.sled;
     state.top_speed_m_s = std::max(state.top_speed_m_s, sled.velocity_m_s);
+    // Measured down the track, like the chalk lines: a sled that weaves
+    // travels further than it pulls (sled.distance_m is that travel).
+    const double pulled_m = sled.position_m - model.start_line_m();
 
     const auto finish = [&](Ending ending, double distance_m) {
         state.result = Result{.ending = ending,
@@ -98,13 +104,13 @@ pull::Output step(State& state, const pull::Model& model, const Rules& rules,
     };
     if (touches_line(model, state.pull, rules)) {
         finish(Ending::kOutOfBounds, 0.0);
-    } else if (sled.distance_m >= rules.track_length_m) {
+    } else if (pulled_m >= rules.track_length_m) {
         finish(Ending::kFullPull, rules.track_length_m);
     } else if (sled_was_moving && sled.velocity_m_s == 0.0) {
         // Any stop ends the run, measured where the sled stands.
-        finish(why_it_stopped(state.pull, out), sled.distance_m);
+        finish(why_it_stopped(state.pull, out), pulled_m);
     } else if (time_s >= rules.max_duration_s) {
-        finish(Ending::kTimedOut, sled.distance_m);
+        finish(Ending::kTimedOut, pulled_m);
     }
     return out;
 }

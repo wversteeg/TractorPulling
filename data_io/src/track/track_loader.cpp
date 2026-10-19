@@ -29,8 +29,12 @@ FieldError describe(run::ParamError error) {
             return {"track.max_duration_s", "must be > 0"};
         case ParamError::kLaneWidthNotPositive:
             return {"track.lane_width_m", "must be > 0"};
+        // A track file sets the full-pull line at its length, so these name
+        // the length (kTrackLengthNotPositive already catches a bad one).
         case ParamError::kFullPullLineNotPositive:
             return {"track.length_m", "must be > 0"};
+        case ParamError::kFullPullLinePastTrackEnd:
+            return {"track.length_m", "full-pull line must not be past the end"};
     }
     return {"track", "invalid"};
 }

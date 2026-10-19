@@ -28,6 +28,7 @@ enum class ParamError : std::uint8_t {
     kMaxDurationNotPositive,
     kLaneWidthNotPositive,
     kFullPullLineNotPositive,
+    kFullPullLinePastTrackEnd,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Rules& rules) noexcept;

@@ -38,7 +38,7 @@ Right-handed, body fixed to the tractor chassis:
 ## Along the track
 
 - A pull's world x is measured from where the tractor's rear axle starts; the sled starts behind it, at negative x. World y is measured from the track's centre line, to the left. The chassis' position is the rear axle's; its forward and sideways speeds are in the body frame.
-- **Track x** (soil profiles, `tp::track`) is measured from the **start line**: where the sled's rear wheels stand at the start. The sled's distance travelled is its rear wheels' track x.
+- **Track x** (soil profiles, `tp::track`) is measured from the **start line**: where the sled's rear wheels stand at the start. A pull's result and the full-pull line are measured on the sled's rear wheels' track x. The sled's distance travelled (`sled::State::distance_m`, which moves the box and the push-down) is its path along its own heading, a little longer than its track x once it has turned.
 - Each contact reads the ground where it is: the rear tires at the rear axle, the front tires a wheelbase ahead, the sled's wheels and its pan by their positions.
 - **The lane** is centred on the track's centre line (world y = 0), its chalk lines half the lane width to either side. The sled's position is its rear wheels' contact, its heading and speeds in its own frame, with the same signs as the tractor's.
 

@@ -109,6 +109,8 @@ TEST(RunRules, RejectsNonsense) {
     EXPECT_EQ(with([](Rules& r) { r.lane_width_m = 0.0; }), ParamError::kLaneWidthNotPositive);
     EXPECT_EQ(with([](Rules& r) { r.full_pull_line_m = -1.0; }),
               ParamError::kFullPullLineNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.full_pull_line_m = r.track_length_m + 1.0; }),
+              ParamError::kFullPullLinePastTrackEnd);
 }
 
 // In its pulling gear the engine stalls after the push-down; the run ends
@@ -120,7 +122,7 @@ TEST(Run, PullingGearEndsWithAStall) {
     EXPECT_GT(result.distance_m, sled::testing::reference_params().pushdown_start_m);
     EXPECT_LT(result.distance_m, kRules.track_length_m);
     EXPECT_GE(result.distance_m, outcome.distance_when_engine_stopped_m);
-    EXPECT_EQ(result.distance_m, outcome.state.pull.sled.distance_m);
+    EXPECT_NEAR(result.distance_m, outcome.state.pull.sled.distance_m, 1e-9);
     EXPECT_EQ(outcome.state.pull.sled.velocity_m_s, 0.0);
 }
 
@@ -190,6 +192,21 @@ TEST(Run, LeavingTheLaneIsOutOfBounds) {
     EXPECT_EQ(outcome.result.ending, Ending::kOutOfBounds);
     EXPECT_EQ(outcome.result.distance_m, 0.0);
     EXPECT_GT(outcome.state.pull.sled.distance_m, 5.0);
+}
+
+// A pull that turns is measured down the track, not along the sled's
+// path: turning, it travels further than it pulls.
+TEST(Run, ATurningPullIsMeasuredDownTheTrack) {
+    Rules wide = kRules;
+    wide.lane_width_m = 1000.0;
+    const pull::Model model = model_with(sled::testing::reference_params());
+    const Outcome outcome =
+        drive(model, {.gear = 6, .lift_at_s = 15.0, .steering_rad = 0.05}, wide);
+    const sled::State& sled = outcome.state.pull.sled;
+    EXPECT_EQ(outcome.result.ending, Ending::kStopped);
+    EXPECT_EQ(outcome.result.distance_m, sled.position_m - model.start_line_m());
+    EXPECT_GT(std::abs(sled.heading_rad), 0.05);
+    EXPECT_LT(outcome.result.distance_m, sled.distance_m - 0.1);
 }
 
 // Lifting off mid-track: the sled drags to a halt with the engine running
@@ -307,8 +324,8 @@ TEST(Run, ReplayMatchesRegression) {
     EXPECT_EQ(run_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
     EXPECT_EQ(hash, 0x850bb0462d0e1e8dULL);
-    // 89.19649425121466 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.64c935c9fb46ap+6);
+    // 89.19649425121477 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.64c935c9fb472p+6);
     EXPECT_EQ(result.ending, Ending::kStalled);
 }
 

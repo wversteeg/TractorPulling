@@ -115,6 +115,11 @@ for the big features; they are repeated at the end for completeness.
   and push-down. Scripted pullers keep a test pull only when no one has
   beaten it.
 
+- **A disqualified pull reaches the event as 0 m.** `field::pull_distance`
+  turns out of bounds into 0 m, so `event::Event` cannot tell it from a
+  pull that went nowhere: a disqualified test pull would make the operator
+  lighten the sled. Scripted pullers drive straight, so it cannot happen
+  yet; pass the `run::Ending` on once pullers steer (milestone 3, step 4).
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
 - **Easy-mode clutch assist.** The lowest classes get an assist around the
