@@ -13,6 +13,7 @@ package "tp::chassis" {
     +pitch_inertia_kg_m2 : double
     +yaw_inertia_kg_m2 : double
     +rear_axle_height_m : double
+    +rear_track_m : double
     +hitch_height_m : double
     +hitch_behind_rear_axle_m : double
     +front_tires : Contact
@@ -55,6 +56,7 @@ package "tp::chassis" {
     +front_n : double
     +rear_n : double
     +hitch_n : double
+    +yaw_moment_nm : double
   }
   class Hitch <<struct>> {
     +x_m, y_m, z_m : double

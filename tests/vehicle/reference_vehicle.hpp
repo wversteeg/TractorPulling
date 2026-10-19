@@ -24,6 +24,7 @@ inline Params reference_params() {
         .front_tire = tire::testing::front_size(),
         .steering = {.max_angle_rad = units::deg_to_rad(40.0),
                      .front_tires = tire::testing::front_cornering()},
+        .brakes = {.max_torque_nm = 8000.0},
         .chassis = chassis::testing::reference_params(),
         .pto_efficiency = 0.9,
     };

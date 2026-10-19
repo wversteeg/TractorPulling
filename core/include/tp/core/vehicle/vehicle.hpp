@@ -23,18 +23,29 @@ struct Steering {
     tire::Cornering front_tires;
 };
 
+/// The rear wheels' brakes, one per side, each worked by its own pedal.
+struct Brakes {
+    /// Braking torque on one side's wheels at full pedal [N·m].
+    double max_torque_nm = 0.0;
+};
+
 /// A whole tractor: the components and how many rear tires share the drive.
+/// The rear tires are split evenly between the left and right side, which an
+/// open differential drives: it gives both sides the same torque and lets
+/// them turn at different speeds.
 struct Params {
     engine::Params engine;
     clutch::Params clutch;
     /// Without the wheels; Model adds the rear wheels' inertia to the axle.
     driveline::Params driveline;
     tire::Params rear_tire;
+    /// All rear tires, an even number: half on each side.
     int rear_tire_count = 2;
     /// One of the two (unpowered) front tires; its size sets their rolling
     /// resistance on soil.
     tire::Size front_tire;
     Steering steering;
+    Brakes brakes;
     chassis::Params chassis;
     /// Crankshaft to PTO shaft, in (0, 1]. The PTO is not simulated; class
     /// rules limit power measured there.
@@ -49,6 +60,7 @@ enum class ParamError : std::uint8_t {
     kRearTireCount,
     kFrontTire,
     kSteering,
+    kBrakes,
     kChassis,
     /// The chassis' rear axle height is not the rear tire's radius.
     kRearAxleHeight,
@@ -80,10 +92,25 @@ struct State {
     clutch::State clutch;
     driveline::State driveline;
     chassis::State chassis;
+    /// The open differential: half the right rear wheels' speed minus the
+    /// left's. The left wheels turn at the axle speed (the driveline's
+    /// output) minus this, the right at the axle speed plus it [rad/s].
+    double differential_rad_s = 0.0;
     /// Sideways deflection of the tires' contact patches, to the tire's
-    /// left (see tire::Cornering): each front tire, and each rear tire [m].
+    /// left (see tire::Cornering): each front tire, and each rear tire on
+    /// the left and the right [m].
     double front_side_deflection_m = 0.0;
-    double rear_side_deflection_m = 0.0;
+    double rear_left_side_deflection_m = 0.0;
+    double rear_right_side_deflection_m = 0.0;
+};
+
+/// One side's rear wheels this step.
+struct RearWheels {
+    double slip_ratio = 0.0;
+    /// Traction of that side's tires [N].
+    double tire_force_n = 0.0;
+    /// Brake torque on that side [N·m].
+    double brake_torque_nm = 0.0;
 };
 
 struct Input {
@@ -96,6 +123,9 @@ struct Input {
     /// Front wheel angle, positive to the left; held to the steering's
     /// range [rad].
     double steering_rad = 0.0;
+    /// Brake pedals for the left and right rear wheels, 0 to 1.
+    double brake_left = 0.0;
+    double brake_right = 0.0;
 };
 
 /// The ground under the tractor's tires this step. The track decides it from
@@ -114,9 +144,12 @@ struct Output {
     /// Traction of all rear tires on the vehicle [N]. At a standstill, the
     /// drawbar pull they hold.
     double tire_force_n = 0.0;
+    /// The two sides' mean.
     double slip_ratio = 0.0;
-    /// Motion resistance of all rear tires, per unit of their load: sinkage
-    /// and the rut a slipping tire digs.
+    RearWheels rear_left;
+    RearWheels rear_right;
+    /// Motion resistance of the rear tires per unit of their load, the two
+    /// sides' mean: sinkage and the rut a slipping tire digs.
     double rear_rolling_resistance = 0.0;
     /// Motion resistance of the front tires per unit of their load.
     double front_rolling_resistance = 0.0;
@@ -138,13 +171,14 @@ struct Output {
 /// hitch (see tp::pull for the chain to a sled; tools and tests may pass a
 /// constant pull).
 ///
-/// Order: gear change, axle loads from the last step's state, the rear
-/// tires' traction and both axles' rolling resistance at the current speeds,
+/// Order: gear change, axle loads from the last step's state, each side's
+/// rear traction and both axles' rolling resistance at the current speeds,
 /// both axles' side forces from their tires' patch deflections, every
 /// body's prediction, the exact chain solve for clutch torque and tire
-/// force, the chassis' sideways motion and yaw, every body advances, the
-/// patch deflections follow the new speeds, then the chassis pitches under
-/// the axle torque's reaction.
+/// force with the differential and brakes folded in (a brake that would
+/// turn its wheels backwards holds them instead), the chassis' sideways
+/// motion and yaw, every body advances, the patch deflections follow the
+/// new speeds, then the chassis pitches under the axle torque's reaction.
 Output step(State& state, const Model& model, const Input& input, const Ground& ground,
             const chassis::Drawbar& drawbar, double dt_s) noexcept;
 
@@ -153,8 +187,10 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     clutch::hash_append(hash, state.clutch);
     driveline::hash_append(hash, state.driveline);
     chassis::hash_append(hash, state.chassis);
+    hash.add(state.differential_rad_s);
     hash.add(state.front_side_deflection_m);
-    hash.add(state.rear_side_deflection_m);
+    hash.add(state.rear_left_side_deflection_m);
+    hash.add(state.rear_right_side_deflection_m);
 }
 
 }  // namespace tp::vehicle

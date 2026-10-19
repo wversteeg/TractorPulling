@@ -30,6 +30,11 @@ package "tp::tire" {
     +mobility_rate : double
     +relaxation_length_m : double
   }
+  class Footing <<struct>> {
+    +mobility_number : double
+    +root_mobility : double
+    +full_bite : double
+  }
   class SideGrip <<struct>> {
     +stiffness_n_per_m : double
     +limit_n : double
@@ -59,6 +64,8 @@ package "tp::tire" {
     +towed_rolling_resistance(const Size&, load_n, const Surface&) : double
     +thrown_soil_m3_s(const Size&, load_n, slip_ratio, wheel_m_s, const Surface&) : double
     +full_bite(const Params&, load_n, const Surface&) : double
+    +footing(const Params&, load_n, const Surface&) : Footing
+    +traction / driven_rolling_resistance / thrown_soil_m3_s / side_grip\n      on a Footing: the same results, worked out once per step
     +side_grip(const Size&, const Cornering&, load_n, const Surface&) : SideGrip
     +with_traction(SideGrip, traction_n, full_bite_n, slip_ratio) : SideGrip
     +side_force_n(const SideGrip&, deflection_m) : double
@@ -68,6 +75,7 @@ package "tp::tire" {
   Params *-- TractionCurve
   Params *-- Cornering
   TireFns ..> SideGrip
+  TireFns ..> Footing
   TireFns ..> Params
   TireFns ..> Traction
   TireFns ..> ParamError

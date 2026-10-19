@@ -10,31 +10,38 @@ participant "tire" as Tire
 participant "solve_chain" as Solve
 participant "clutch::resolve" as Clutch
 
-Caller -> Step : step(state, model, {throttle, clutch_pedal, gear, steering},\n  Ground{rear, front surface}, Drawbar{pull, lift, side}, dt_s)
+Caller -> Step : step(state, model, {throttle, clutch_pedal, gear, steering, brakes},\n  Ground{rear, front surface}, Drawbar{pull, lift, side}, dt_s)
 opt requested gear differs
   Step -> Driveline : shift(gear, clutch capacity == 0)
 end
 Step -> Chassis : axle_loads(state, drawbar)
 Chassis --> Step : rear / front / wheelie bar load
-Step -> Tire : traction(wheel speed, ground speed, load per tire, rear surface)
-Tire --> Step : force, slope (linearized), slip
+loop left and right side (wheel speed = axle ∓ differential,\n  ground speed = u ∓ yaw rate · track / 2)
+  Step -> Tire : traction(wheel speed, ground speed, load per tire, rear surface)
+  Tire --> Step : force, slope (linearized), slip
+end
 Step -> Tire : driven_rolling_resistance(rear load per tire, slip, rear surface)
 Step -> Tire : thrown_soil_m3_s(rear load per tire, slip, wheel speed, rear surface)
 Step -> Tire : towed_rolling_resistance(front load per tire, front surface)
 Step -> Tire : side_grip(front, rear); with_traction(rear grip, traction, full bite, slip)
 Step -> Tire : side_force_n(grip, patch deflection) for front and rear
 Step -> Engine : predict(throttle)
-Step -> Driveline : predict(rear rolling resistance torque)
 Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag\n  + steered front tires' side force along the body)
+group solve_rear_with_brakes (once, or up to three times while a brake holds)
+Step -> Driveline : predict(rear rolling resistance + both brakes' torque)
+Step -> Step : differential as a line in the common slip change;\n  both sides' traction folded into one TireLine
 Step -> Solve : engine line, driveline Response, TireLine, body line
 Solve -> Solve : lock torque with the tire force eliminated\n(branch by the torque's sign: gearbox efficiency)
 Solve -> Clutch : resolve(capacity, lock torque)
 Clutch --> Solve : torque: locked, or kinetic capacity if slipping
 Solve -> Solve : tire force for that clutch torque
 Solve --> Step : clutch torque, tire force
+Step -> Step : end speeds of both sides' wheels;\n  a brake that would turn its wheels backwards:\n  solve for the torque that holds them
+end
 Step -> Engine : advance(load = clutch torque)
 Step -> Driveline : advance(clutch torque, axle torque = -r * tire force)
-Step -> Chassis : advance_lateral(front, rear and hitch side forces)
+Step -> Step : differential advances (no side turns backwards)
+Step -> Chassis : advance_lateral(front, rear and hitch side forces,\n  yaw moment of the sides' unequal traction)
 Step -> Chassis : advance(drive force = tire force): moves along the heading
 Step -> Tire : relax_deflection_m(front, rear) at the new speeds
 Step -> Step : axle torque from the axle's balance

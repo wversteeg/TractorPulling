@@ -42,6 +42,9 @@ limit = 0.7
 mobility_rate = 0.1
 relaxation_length_m = 0.5
 
+[tractor.brakes]
+max_torque_nm = 8000.0
+
 [tractor.chassis]
 mass_kg = 3500.0
 wheelbase_m = 2.4
@@ -49,6 +52,7 @@ cg_ahead_of_rear_axle_m = 0.96
 cg_height_m = 1.0
 pitch_inertia_kg_m2 = 2800.0
 yaw_inertia_kg_m2 = 5500.0
+rear_track_m = 1.9
 hitch_height_m = 0.5
 hitch_behind_rear_axle_m = 0.4
 
@@ -227,7 +231,7 @@ TEST(TractorLoader, RejectsNonsenseChassisValues) {
                   .find("tractor.pto_efficiency: must be in (0, 1]"),
               std::string::npos);
     EXPECT_NE(error_of(with("rear_tire_count = 2", "rear_tire_count = 0"))
-                  .find("tractor.rear_tire_count: must be 1 to 8"),
+                  .find("tractor.rear_tire_count: must be 2, 4, 6 or 8"),
               std::string::npos);
     EXPECT_NE(error_of(with("rear_tire_count = 2", "rear_tire_count = 2.5"))
                   .find("tractor.rear_tire_count: missing or not an integer"),

@@ -128,6 +128,30 @@ struct Traction {
                                 double ground_speed_m_s, double load_n,
                                 const soil::Surface& surface) noexcept;
 
+/// What the ground gives a tire under its load, which traction, motion
+/// resistance and side grip all start from. Working it out once per step
+/// and sharing it between tires on the same ground and load saves the
+/// repeated mobility number and exponentials.
+struct Footing {
+    /// Brixius' mobility number, and its square root.
+    double mobility_number = 0.0;
+    double root_mobility = 0.0;
+    /// full_bite(); 0 without load.
+    double full_bite = 0.0;
+};
+
+[[nodiscard]] Footing footing(const Params& params, double load_n,
+                              const soil::Surface& surface) noexcept;
+
+/// traction(), driven_rolling_resistance(), thrown_soil_m3_s() and
+/// side_grip() on a footing worked out beforehand; the same results.
+[[nodiscard]] Traction traction(const Params& params, const Footing& footing,
+                                double wheel_surface_speed_m_s, double ground_speed_m_s,
+                                double load_n, const soil::Surface& surface) noexcept;
+[[nodiscard]] double driven_rolling_resistance(const Footing& footing, double slip_ratio) noexcept;
+[[nodiscard]] double thrown_soil_m3_s(const Size& size, const Footing& footing, double load_n,
+                                      double slip_ratio, double wheel_surface_speed_m_s) noexcept;
+
 /// Motion resistance of a driven tire per unit of load: sinkage, 1/Bn, plus
 /// the extra rut a slipping tire digs, 0.5 |s| / √Bn. Brixius adds 0.04 for
 /// the tire's own losses to both gross traction and motion resistance; for
@@ -162,6 +186,8 @@ struct SideGrip {
 };
 
 [[nodiscard]] SideGrip side_grip(const Size& size, const Cornering& cornering, double load_n,
+                                 const soil::Surface& surface) noexcept;
+[[nodiscard]] SideGrip side_grip(const Cornering& cornering, const Footing& footing, double load_n,
                                  const soil::Surface& surface) noexcept;
 
 /// A driven tire's side grip is what its traction leaves: the force it

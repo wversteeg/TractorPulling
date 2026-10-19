@@ -126,7 +126,7 @@ cmake --preset release && cmake --build --preset release
 
 # The whole tractor pulling a constant drawbar force: clutch slipped in, or dumped
 ./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml \
-    [--gear 4] [--resistance-kn 8] [--dump] [--steer-deg 5] -o pull.csv
+    [--gear 4] [--resistance-kn 8] [--dump] [--steer-deg 5] [--brake-right 0.3] -o pull.csv
 
 # A run: the tractor pulls the sled on its chain until the sled's first stop
 # or a full pull (then pull-offs on a heavier sled); prints each result

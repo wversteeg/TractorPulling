@@ -21,7 +21,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (tire::validate(params.rear_tire)) {
         return ParamError::kRearTire;
     }
-    if (params.rear_tire_count < 1 || params.rear_tire_count > kMaxRearTires) {
+    if (params.rear_tire_count < 2 || params.rear_tire_count > kMaxRearTires ||
+        params.rear_tire_count % 2 != 0) {
         return ParamError::kRearTireCount;
     }
     if (tire::validate(params.front_tire)) {
@@ -31,6 +32,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.steering.max_angle_rad > math::kSinCosMaxAngle_rad ||
         tire::validate(params.steering.front_tires)) {
         return ParamError::kSteering;
+    }
+    if (!std::isfinite(params.brakes.max_torque_nm) || params.brakes.max_torque_nm < 0.0) {
+        return ParamError::kBrakes;
     }
     if (chassis::validate(params.chassis)) {
         return ParamError::kChassis;
@@ -66,11 +70,168 @@ State initial_state(const Model& model) noexcept {
 
 namespace {
 
+// Front tires come in a pair.
+constexpr double kFrontTires = 2.0;
+// The rear tires are split between two sides.
+constexpr double kSides = 2.0;
+
+// One side's rear tires at the current speeds: traction per tire,
+// linearized for the solve, and the motion resistance its slip digs.
+struct Side {
+    double wheel_m_s = 0.0;
+    double ground_m_s = 0.0;
+    tire::Traction traction;
+    double rolling_resistance = 0.0;
+};
+
+Side rear_side(const tire::Params& tire, const tire::Footing& footing, double omega_rad_s,
+               double ground_m_s, double load_per_tire_n, const soil::Surface& surface) noexcept {
+    Side side;
+    side.wheel_m_s = omega_rad_s * tire.size.radius_m;
+    side.ground_m_s = ground_m_s;
+    side.traction =
+        tire::traction(tire, footing, side.wheel_m_s, ground_m_s, load_per_tire_n, surface);
+    side.rolling_resistance =
+        load_per_tire_n > 0.0 ? tire::driven_rolling_resistance(footing, side.traction.slip_ratio)
+                              : 0.0;
+    return side;
+}
+
+// Everything the rear solve needs that the brakes do not change.
+//
+// The open differential gives both sides the same torque. Its two motions
+// separate: the axle (the sides' mean speed, driven through the gearbox) and
+// the difference d (half the right side's speed minus the left's), which
+// only the sides' unequal traction and brakes drive:
+//
+//   2 I_s d' = -r (F_R - F_L) - (B_R - B_L)
+//
+// with I_s one side's wheel inertia. Each side's traction is a line in its
+// own slip speed change, F = f + k (c ∓ r Δd) for the common change c, so
+// over a step Δd = a0 + a1 c, solved implicitly; the total traction is then
+// again a line in c, which the chain solve takes as one tire.
+struct RearProblem {
+    coupling::ShaftPrediction engine;
+    chassis::Prediction body;
+    double rolling_nm = 0.0;
+    double clutch_capacity_nm = 0.0;
+    double side_inertia_kg_m2 = 0.0;
+    // Each side's traction (all its tires) and its slope per slip speed.
+    double force_left_n = 0.0;
+    double force_right_n = 0.0;
+    double slope_left = 0.0;
+    double slope_right = 0.0;
+    // Mean wheel surface speed minus ground speed [m/s].
+    double common_slip_m_s = 0.0;
+    double dt_s = 0.0;
+};
+
+struct RearSolution {
+    driveline::Prediction driveline;
+    ChainSolution chain;
+    clutch::State clutch;
+    double brake_left_nm = 0.0;
+    double brake_right_nm = 0.0;
+    // Change of the common slip speed over the step [m/s], and of the
+    // differential [rad/s].
+    double slip_change_m_s = 0.0;
+    double differential_change_rad_s = 0.0;
+    // End-of-step speeds of the axle and both sides' wheels [rad/s].
+    double axle_rad_s = 0.0;
+    double left_rad_s = 0.0;
+    double right_rad_s = 0.0;
+};
+
+RearSolution solve_rear(const State& state, const Model& model, const RearProblem& p,
+                        double brake_left_nm, double brake_right_nm) noexcept {
+    const Params& params = model.params();
+    const double r = params.rear_tire.size.radius_m;
+    RearSolution out;
+    out.brake_left_nm = brake_left_nm;
+    out.brake_right_nm = brake_right_nm;
+    out.driveline = driveline::predict(state.driveline, model.driveline(),
+                                       p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s);
+
+    const double slope_difference = p.slope_right - p.slope_left;
+    const double denominator =
+        2.0 * p.side_inertia_kg_m2 / p.dt_s + r * r * (p.slope_left + p.slope_right);
+    const double a0 =
+        (-r * (p.force_right_n - p.force_left_n) - (brake_right_nm - brake_left_nm)) / denominator;
+    const double a1 = -r * slope_difference / denominator;
+    const TireLine line{
+        .force_n = p.force_left_n + p.force_right_n + r * slope_difference * a0,
+        .force_per_slip_speed = p.slope_left + p.slope_right + r * slope_difference * a1,
+        .slip_speed_m_s = p.common_slip_m_s,
+        .radius_m = r};
+
+    out.clutch = state.clutch;
+    out.chain = solve_chain(p.engine, driveline::response(out.driveline), line, p.body, out.clutch,
+                            params.clutch, p.clutch_capacity_nm);
+
+    // End-of-step speeds as advancing would set them (see chassis::advance).
+    driveline::State driveline = state.driveline;
+    driveline::advance(driveline, out.driveline, out.chain.clutch_torque_nm,
+                       -r * out.chain.tire_force_n);
+    const double ground_m_s =
+        std::max(p.body.free_velocity_m_s + p.body.velocity_per_n * out.chain.tire_force_n, 0.0);
+    out.axle_rad_s = driveline.output_omega_rad_s;
+    out.slip_change_m_s = r * out.axle_rad_s - ground_m_s - p.common_slip_m_s;
+    out.differential_change_rad_s = a0 + a1 * out.slip_change_m_s;
+    const double differential_rad_s = state.differential_rad_s + out.differential_change_rad_s;
+    out.left_rad_s = out.axle_rad_s - differential_rad_s;
+    out.right_rad_s = out.axle_rad_s + differential_rad_s;
+    return out;
+}
+
+// A brake only resists: where its full torque would turn a side's wheels
+// backwards, it holds them still with just the torque that takes. The
+// wheels' end speeds are affine in the brake torques (for a given clutch
+// state), so that torque follows from one or two more solves.
+RearSolution solve_rear_with_brakes(const State& state, const Model& model, const RearProblem& p,
+                                    double left_nm, double right_nm) noexcept {
+    const RearSolution full = solve_rear(state, model, p, left_nm, right_nm);
+    const bool left_held = left_nm > 0.0 && full.left_rad_s < 0.0;
+    const bool right_held = right_nm > 0.0 && full.right_rad_s < 0.0;
+    if (!left_held && !right_held) {
+        return full;
+    }
+    double left_hold_nm = left_nm;
+    double right_hold_nm = right_nm;
+    if (left_held && right_held) {
+        const RearSolution free_left = solve_rear(state, model, p, 0.0, right_nm);
+        const RearSolution free_right = solve_rear(state, model, p, left_nm, 0.0);
+        // Speed change per N·m of each brake, and the torques at which both
+        // sides end at rest.
+        const double ll = (full.left_rad_s - free_left.left_rad_s) / left_nm;
+        const double lr = (full.left_rad_s - free_right.left_rad_s) / right_nm;
+        const double rl = (full.right_rad_s - free_left.right_rad_s) / left_nm;
+        const double rr = (full.right_rad_s - free_right.right_rad_s) / right_nm;
+        const double determinant = ll * rr - lr * rl;
+        if (determinant != 0.0) {
+            left_hold_nm += (-full.left_rad_s * rr + full.right_rad_s * lr) / determinant;
+            right_hold_nm += (-full.right_rad_s * ll + full.left_rad_s * rl) / determinant;
+        }
+    } else if (left_held) {
+        const RearSolution free = solve_rear(state, model, p, 0.0, right_nm);
+        left_hold_nm = free.left_rad_s > 0.0
+                           ? left_nm * free.left_rad_s / (free.left_rad_s - full.left_rad_s)
+                           : 0.0;
+    } else {
+        const RearSolution free = solve_rear(state, model, p, left_nm, 0.0);
+        right_hold_nm = free.right_rad_s > 0.0
+                            ? right_nm * free.right_rad_s / (free.right_rad_s - full.right_rad_s)
+                            : 0.0;
+    }
+    return solve_rear(state, model, p, std::clamp(left_hold_nm, 0.0, left_nm),
+                      std::clamp(right_hold_nm, 0.0, right_nm));
+}
+
 // Each patch follows its contact's sideways speed at the step's end speeds:
 // the rear tires' at the rear axle, the front tires' at the front axle,
 // turned into the steered wheels' frame.
 void relax_side_deflections(State& state, const Params& params, const tire::SideGrip& front_grip,
-                            const tire::SideGrip& rear_grip, const math::SinCos& steer,
+                            const tire::SideGrip& rear_left_grip,
+                            const tire::SideGrip& rear_right_grip, const math::SinCos& steer,
                             double dt_s) noexcept {
     const chassis::State& body = state.chassis;
     const double min_rolling_m_s = params.rear_tire.min_reference_speed_m_s;
@@ -80,8 +241,11 @@ void relax_side_deflections(State& state, const Params& params, const tire::Side
         front_grip, params.steering.front_tires, state.front_side_deflection_m,
         front_side_m_s * steer.cos - body.velocity_m_s * steer.sin,
         body.velocity_m_s * steer.cos + front_side_m_s * steer.sin, min_rolling_m_s, dt_s);
-    state.rear_side_deflection_m = tire::relax_deflection_m(
-        rear_grip, params.rear_tire.cornering, state.rear_side_deflection_m,
+    state.rear_left_side_deflection_m = tire::relax_deflection_m(
+        rear_left_grip, params.rear_tire.cornering, state.rear_left_side_deflection_m,
+        body.lateral_velocity_m_s, body.velocity_m_s, min_rolling_m_s, dt_s);
+    state.rear_right_side_deflection_m = tire::relax_deflection_m(
+        rear_right_grip, params.rear_tire.cornering, state.rear_right_side_deflection_m,
         body.lateral_velocity_m_s, body.velocity_m_s, min_rolling_m_s, dt_s);
 }
 
@@ -93,9 +257,7 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const driveline::Params& driveline_params = model.driveline();
     const tire::Params& tire_params = params.rear_tire;
     const double radius_m = tire_params.size.radius_m;
-    const double tires = params.rear_tire_count;
-    // Front tires come in a pair.
-    constexpr double kFrontTires = 2.0;
+    const double tires_per_side = params.rear_tire_count / kSides;
     Output out;
 
     const double clutch_capacity_nm = clutch::capacity_nm(params.clutch, input.clutch_pedal);
@@ -105,23 +267,29 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     }
 
     out.axle_loads = chassis::axle_loads(params.chassis, state.chassis, drawbar);
-    const double load_per_tire_n = out.axle_loads.rear_n / tires;
+    const double load_per_tire_n = out.axle_loads.rear_n / params.rear_tire_count;
 
-    // Traction at the current speeds, linearized for the chain solve. The
-    // slip also sets how deep the rear tires dig, so their rolling
-    // resistance follows from it.
-    const double wheel_m_s = state.driveline.output_omega_rad_s * radius_m;
+    // Each side's traction at its own speeds: the differential splits the
+    // wheels' speeds, and a turning tractor moves its outer side faster
+    // over the ground. The slip also sets how deep the tires dig.
+    const double axle_rad_s = state.driveline.output_omega_rad_s;
     const double ground_m_s = state.chassis.velocity_m_s;
-    const tire::Traction traction =
-        tire::traction(tire_params, wheel_m_s, ground_m_s, load_per_tire_n, ground.rear);
-    out.slip_ratio = traction.slip_ratio;
-    out.rear_rolling_resistance =
-        load_per_tire_n > 0.0 ? tire::driven_rolling_resistance(tire_params.size, load_per_tire_n,
-                                                                traction.slip_ratio, ground.rear)
-                              : 0.0;
+    const double turning_m_s = state.chassis.yaw_rate_rad_s * params.chassis.rear_track_m / kSides;
+    // Both sides stand on the same ground with the same load.
+    const tire::Footing footing = tire::footing(tire_params, load_per_tire_n, ground.rear);
+    const Side left = rear_side(tire_params, footing, axle_rad_s - state.differential_rad_s,
+                                ground_m_s - turning_m_s, load_per_tire_n, ground.rear);
+    const Side right = rear_side(tire_params, footing, axle_rad_s + state.differential_rad_s,
+                                 ground_m_s + turning_m_s, load_per_tire_n, ground.rear);
+    out.slip_ratio = (left.traction.slip_ratio + right.traction.slip_ratio) / kSides;
+    out.rear_left.slip_ratio = left.traction.slip_ratio;
+    out.rear_right.slip_ratio = right.traction.slip_ratio;
+    out.rear_rolling_resistance = (left.rolling_resistance + right.rolling_resistance) / kSides;
     out.thrown_soil_m3_s =
-        tires * tire::thrown_soil_m3_s(tire_params.size, load_per_tire_n, traction.slip_ratio,
-                                       wheel_m_s, ground.rear);
+        tires_per_side * (tire::thrown_soil_m3_s(tire_params.size, footing, load_per_tire_n,
+                                                 left.traction.slip_ratio, left.wheel_m_s) +
+                          tire::thrown_soil_m3_s(tire_params.size, footing, load_per_tire_n,
+                                                 right.traction.slip_ratio, right.wheel_m_s));
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
             ? tire::towed_rolling_resistance(params.front_tire,
@@ -137,21 +305,28 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const tire::SideGrip front_grip =
         tire::side_grip(params.front_tire, params.steering.front_tires,
                         out.axle_loads.front_n / kFrontTires, ground.front);
-    const tire::SideGrip rear_grip = tire::with_traction(
-        tire::side_grip(tire_params.size, tire_params.cornering, load_per_tire_n, ground.rear),
-        traction.force_n, traction.full_bite * load_per_tire_n, traction.slip_ratio);
+    const tire::SideGrip rear_grip =
+        tire::side_grip(tire_params.cornering, footing, load_per_tire_n, ground.rear);
+    const tire::SideGrip rear_left_grip =
+        tire::with_traction(rear_grip, left.traction.force_n,
+                            left.traction.full_bite * load_per_tire_n, left.traction.slip_ratio);
+    const tire::SideGrip rear_right_grip =
+        tire::with_traction(rear_grip, right.traction.force_n,
+                            right.traction.full_bite * load_per_tire_n, right.traction.slip_ratio);
     out.front_side_force_n =
         kFrontTires * tire::side_force_n(front_grip, state.front_side_deflection_m);
-    out.rear_side_force_n = tires * tire::side_force_n(rear_grip, state.rear_side_deflection_m);
+    out.rear_side_force_n =
+        tires_per_side * (tire::side_force_n(rear_left_grip, state.rear_left_side_deflection_m) +
+                          tire::side_force_n(rear_right_grip, state.rear_right_side_deflection_m));
 
     // Predictions. Rolling resistance acts as a known torque on the axle
     // (rear) and force on the body (front tires, wheelie bar); like the
     // drawbar pull, it holds things at rest but never drives them backwards.
     const engine::Prediction engine_prediction =
         engine::predict(state.engine, params.engine, input.throttle, dt_s);
-    const double rear_rolling_nm = out.rear_rolling_resistance * out.axle_loads.rear_n * radius_m;
-    const driveline::Prediction driveline_prediction =
-        driveline::predict(state.driveline, driveline_params, rear_rolling_nm, dt_s);
+    const double side_load_n = out.axle_loads.rear_n / kSides;
+    const double rear_rolling_nm = left.rolling_resistance * side_load_n * radius_m +
+                                   right.rolling_resistance * side_load_n * radius_m;
     // The steered front tires' side force has a component along the body
     // that holds the tractor back.
     const double front_drag_n =
@@ -161,48 +336,73 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const chassis::Prediction body_prediction =
         chassis::predict(state.chassis, params.chassis, drawbar.pull_n + front_drag_n, dt_s);
 
-    const TireLine tire_line{.force_n = tires * traction.force_n,
-                             .force_per_slip_speed = tires * traction.force_per_slip_speed,
-                             .slip_speed_m_s = wheel_m_s - ground_m_s,
-                             .radius_m = radius_m};
+    const RearProblem problem{
+        .engine = engine::shaft_prediction(engine_prediction),
+        .body = body_prediction,
+        .rolling_nm = rear_rolling_nm,
+        .clutch_capacity_nm = clutch_capacity_nm,
+        .side_inertia_kg_m2 = tires_per_side * tire_params.wheel_inertia_kg_m2,
+        .force_left_n = tires_per_side * left.traction.force_n,
+        .force_right_n = tires_per_side * right.traction.force_n,
+        .slope_left = tires_per_side * left.traction.force_per_slip_speed,
+        .slope_right = tires_per_side * right.traction.force_per_slip_speed,
+        .common_slip_m_s = axle_rad_s * radius_m - ground_m_s,
+        .dt_s = dt_s};
+    const RearSolution solution = solve_rear_with_brakes(
+        state, model, problem, std::clamp(input.brake_left, 0.0, 1.0) * params.brakes.max_torque_nm,
+        std::clamp(input.brake_right, 0.0, 1.0) * params.brakes.max_torque_nm);
+    const ChainSolution& chain = solution.chain;
 
-    const ChainSolution solution = solve_chain(
-        engine::shaft_prediction(engine_prediction), driveline::response(driveline_prediction),
-        tire_line, body_prediction, state.clutch, params.clutch, clutch_capacity_nm);
+    // Each side's traction at the solved speeds.
+    const double side_change_m_s = radius_m * solution.differential_change_rad_s;
+    const double left_force_n =
+        problem.force_left_n + problem.slope_left * (solution.slip_change_m_s - side_change_m_s);
+    const double right_force_n =
+        problem.force_right_n + problem.slope_right * (solution.slip_change_m_s + side_change_m_s);
 
-    const double axle_omega_rad_s = state.driveline.output_omega_rad_s;
-    engine::advance(state.engine, params.engine, engine_prediction, solution.clutch_torque_nm);
-    driveline::advance(state.driveline, driveline_prediction, solution.clutch_torque_nm,
-                       -radius_m * solution.tire_force_n);
-    chassis::advance_lateral(state.chassis, params.chassis,
-                             {.front_n = out.front_side_force_n * steer.cos,
-                              .rear_n = out.rear_side_force_n,
-                              .hitch_n = drawbar.side_n},
-                             dt_s);
-    chassis::advance(state.chassis, body_prediction, solution.tire_force_n, dt_s);
-    relax_side_deflections(state, params, front_grip, rear_grip, steer, dt_s);
+    state.clutch = solution.clutch;
+    engine::advance(state.engine, params.engine, engine_prediction, chain.clutch_torque_nm);
+    driveline::advance(state.driveline, solution.driveline, chain.clutch_torque_nm,
+                       -radius_m * chain.tire_force_n);
+    // Neither side's wheels turn backwards: there is no reverse.
+    const double next_axle_rad_s = state.driveline.output_omega_rad_s;
+    state.differential_rad_s =
+        std::clamp(state.differential_rad_s + solution.differential_change_rad_s, -next_axle_rad_s,
+                   next_axle_rad_s);
+    chassis::advance_lateral(
+        state.chassis, params.chassis,
+        {.front_n = out.front_side_force_n * steer.cos,
+         .rear_n = out.rear_side_force_n,
+         .hitch_n = drawbar.side_n,
+         .yaw_moment_nm = (right_force_n - left_force_n) * params.chassis.rear_track_m / kSides},
+        dt_s);
+    chassis::advance(state.chassis, body_prediction, chain.tire_force_n, dt_s);
+    relax_side_deflections(state, params, front_grip, rear_left_grip, rear_right_grip, steer, dt_s);
 
-    // The torque the gearbox puts on the rear axle, from the axle's own
-    // balance: it spins up the wheels and overcomes the tires' traction and
-    // rolling resistance. Its reaction on the body lifts the nose. At a
+    // The torque the gearbox and the brakes put on the rear wheels, from
+    // their own balance: it spins them up and overcomes the tires' traction
+    // and rolling resistance. Its reaction on the body lifts the nose. At a
     // standstill the resistances only hold, and the solved tire force is not
     // a physical one: the tires then hold just the drawbar pull. Rolling
     // resistance counts only while the wheels turn, as in the driveline.
-    const double next_axle_omega_rad_s = state.driveline.output_omega_rad_s;
-    const bool standstill = next_axle_omega_rad_s == 0.0 && state.chassis.velocity_m_s == 0.0;
-    const double tire_force_n = standstill ? drawbar.pull_n : solution.tire_force_n;
+    const bool standstill = next_axle_rad_s == 0.0 && state.chassis.velocity_m_s == 0.0;
+    const double tire_force_n = standstill ? drawbar.pull_n : chain.tire_force_n;
     const double axle_torque_nm =
-        driveline_params.output_inertia_kg_m2 * (next_axle_omega_rad_s - axle_omega_rad_s) / dt_s +
-        radius_m * tire_force_n + (next_axle_omega_rad_s > 0.0 ? rear_rolling_nm : 0.0);
+        driveline_params.output_inertia_kg_m2 * (next_axle_rad_s - axle_rad_s) / dt_s +
+        radius_m * tire_force_n + (next_axle_rad_s > 0.0 ? rear_rolling_nm : 0.0);
     chassis::advance_pitch(state.chassis, params.chassis, axle_torque_nm, drawbar,
                            out.front_rolling_resistance, dt_s);
 
     out.engine = engine_prediction.output;
-    out.clutch_torque_nm = solution.clutch_torque_nm;
+    out.clutch_torque_nm = chain.clutch_torque_nm;
     out.clutch_slip_rad_s = state.engine.omega_rad_s - state.driveline.input_omega_rad_s;
     out.clutch_slip_power_w =
         state.clutch.locked ? 0.0 : out.clutch_torque_nm * out.clutch_slip_rad_s;
     out.tire_force_n = tire_force_n;
+    out.rear_left.tire_force_n = standstill ? tire_force_n / kSides : left_force_n;
+    out.rear_right.tire_force_n = standstill ? tire_force_n / kSides : right_force_n;
+    out.rear_left.brake_torque_nm = solution.brake_left_nm;
+    out.rear_right.brake_torque_nm = solution.brake_right_nm;
     return out;
 }
 
