@@ -11,6 +11,15 @@ tire::Size read_tire_size(Reader& reader, std::string_view table) {
     };
 }
 
+tire::Cornering read_cornering(Reader& reader, std::string_view table) {
+    return {
+        .stiffness_per_rad = reader.number(field_path(table, "stiffness_per_rad")),
+        .limit = reader.number(field_path(table, "limit")),
+        .mobility_rate = reader.number(field_path(table, "mobility_rate")),
+        .relaxation_length_m = reader.number(field_path(table, "relaxation_length_m")),
+    };
+}
+
 TireFieldError describe(tire::ParamError error) {
     using tire::ParamError;
     switch (error) {
@@ -30,6 +39,11 @@ TireFieldError describe(tire::ParamError error) {
             return {"wheel_inertia_kg_m2", "must be > 0"};
         case ParamError::kMinReferenceSpeedNotPositive:
             return {"min_reference_speed_m_s", "must be > 0"};
+        case ParamError::kCorneringNotPositive:
+            return {"cornering",
+                    "stiffness_per_rad, mobility_rate and relaxation_length_m must be > 0"};
+        case ParamError::kCorneringLimitOutOfRange:
+            return {"cornering.limit", "must be in (0, 2]"};
     }
     return {"", "invalid"};
 }

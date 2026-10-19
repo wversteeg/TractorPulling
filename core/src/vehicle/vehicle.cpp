@@ -1,7 +1,9 @@
 #include "tp/core/vehicle/vehicle.hpp"
 
+#include "tp/core/math/trig.hpp"
 #include "tp/core/vehicle/chain_solver.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace tp::vehicle {
@@ -24,6 +26,11 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (tire::validate(params.front_tire)) {
         return ParamError::kFrontTire;
+    }
+    if (!std::isfinite(params.steering.max_angle_rad) || params.steering.max_angle_rad <= 0.0 ||
+        params.steering.max_angle_rad > math::kSinCosMaxAngle_rad ||
+        tire::validate(params.steering.front_tires)) {
+        return ParamError::kSteering;
     }
     if (chassis::validate(params.chassis)) {
         return ParamError::kChassis;
@@ -56,6 +63,29 @@ State initial_state(const Model& model) noexcept {
                  .driveline = {},
                  .chassis = {}};
 }
+
+namespace {
+
+// Each patch follows its contact's sideways speed at the step's end speeds:
+// the rear tires' at the rear axle, the front tires' at the front axle,
+// turned into the steered wheels' frame.
+void relax_side_deflections(State& state, const Params& params, const tire::SideGrip& front_grip,
+                            const tire::SideGrip& rear_grip, const math::SinCos& steer,
+                            double dt_s) noexcept {
+    const chassis::State& body = state.chassis;
+    const double min_rolling_m_s = params.rear_tire.min_reference_speed_m_s;
+    const double front_side_m_s =
+        body.lateral_velocity_m_s + params.chassis.wheelbase_m * body.yaw_rate_rad_s;
+    state.front_side_deflection_m = tire::relax_deflection_m(
+        front_grip, params.steering.front_tires, state.front_side_deflection_m,
+        front_side_m_s * steer.cos - body.velocity_m_s * steer.sin,
+        body.velocity_m_s * steer.cos + front_side_m_s * steer.sin, min_rolling_m_s, dt_s);
+    state.rear_side_deflection_m = tire::relax_deflection_m(
+        rear_grip, params.rear_tire.cornering, state.rear_side_deflection_m,
+        body.lateral_velocity_m_s, body.velocity_m_s, min_rolling_m_s, dt_s);
+}
+
+}  // namespace
 
 Output step(State& state, const Model& model, const Input& input, const Ground& ground,
             const chassis::Drawbar& drawbar, double dt_s) noexcept {
@@ -98,6 +128,22 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
                                              out.axle_loads.front_n / kFrontTires, ground.front)
             : 0.0;
 
+    // Side forces from the patch deflections at the start of the step. The
+    // front pair steers as one; a rear tire's side grip is what its
+    // traction leaves.
+    const double steering_rad = std::clamp(input.steering_rad, -params.steering.max_angle_rad,
+                                           params.steering.max_angle_rad);
+    const math::SinCos steer = math::sin_cos(steering_rad);
+    const tire::SideGrip front_grip =
+        tire::side_grip(params.front_tire, params.steering.front_tires,
+                        out.axle_loads.front_n / kFrontTires, ground.front);
+    const tire::SideGrip rear_grip = tire::with_traction(
+        tire::side_grip(tire_params.size, tire_params.cornering, load_per_tire_n, ground.rear),
+        traction.force_n, traction.full_bite * load_per_tire_n, traction.slip_ratio);
+    out.front_side_force_n =
+        kFrontTires * tire::side_force_n(front_grip, state.front_side_deflection_m);
+    out.rear_side_force_n = tires * tire::side_force_n(rear_grip, state.rear_side_deflection_m);
+
     // Predictions. Rolling resistance acts as a known torque on the axle
     // (rear) and force on the body (front tires, wheelie bar); like the
     // drawbar pull, it holds things at rest but never drives them backwards.
@@ -106,9 +152,12 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const double rear_rolling_nm = out.rear_rolling_resistance * out.axle_loads.rear_n * radius_m;
     const driveline::Prediction driveline_prediction =
         driveline::predict(state.driveline, driveline_params, rear_rolling_nm, dt_s);
+    // The steered front tires' side force has a component along the body
+    // that holds the tractor back.
     const double front_drag_n =
         out.front_rolling_resistance * out.axle_loads.front_n +
-        params.chassis.wheelie_bar.rolling_resistance_coefficient * out.axle_loads.wheelie_bar_n;
+        params.chassis.wheelie_bar.rolling_resistance_coefficient * out.axle_loads.wheelie_bar_n +
+        out.front_side_force_n * steer.sin;
     const chassis::Prediction body_prediction =
         chassis::predict(state.chassis, params.chassis, drawbar.pull_n + front_drag_n, dt_s);
 
@@ -125,7 +174,13 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     engine::advance(state.engine, params.engine, engine_prediction, solution.clutch_torque_nm);
     driveline::advance(state.driveline, driveline_prediction, solution.clutch_torque_nm,
                        -radius_m * solution.tire_force_n);
+    chassis::advance_lateral(state.chassis, params.chassis,
+                             {.front_n = out.front_side_force_n * steer.cos,
+                              .rear_n = out.rear_side_force_n,
+                              .hitch_n = drawbar.side_n},
+                             dt_s);
     chassis::advance(state.chassis, body_prediction, solution.tire_force_n, dt_s);
+    relax_side_deflections(state, params, front_grip, rear_grip, steer, dt_s);
 
     // The torque the gearbox puts on the rear axle, from the axle's own
     // balance: it spins up the wheels and overcomes the tires' traction and

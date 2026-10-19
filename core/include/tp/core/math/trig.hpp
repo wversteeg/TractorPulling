@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <numbers>
 
 namespace tp::math {
 
@@ -62,6 +63,41 @@ constexpr double horner(const std::array<double, 9>& coefficients, double x2) no
     const double x2 = angle_rad * angle_rad;
     return {.sin = angle_rad * detail::horner(detail::kSinCoefficients, x2),
             .cos = detail::horner(detail::kCosCoefficients, x2)};
+}
+
+/// Sine and cosine for any |angle_rad| ≤ π (a heading), to within a few
+/// 1e-16: the angle is brought within ±π/4 by the nearest multiple k of π/2,
+/// then sin_cos() applies and the quadrant swaps the results. π/2 is split
+/// in two parts (Cody and Waite), the first with trailing zero bits so that
+/// k times it is exact. Within ±π/4 this is sin_cos() bit for bit.
+[[nodiscard]] constexpr SinCos sin_cos_any(double angle_rad) noexcept {
+    // π/2 to 33 bits, and the rest.
+    constexpr double kHalfPiHigh = 1.57079632673412561417e+00;
+    constexpr double kHalfPiLow = 6.07710050650619224932e-11;
+    constexpr double kThreeQuarterPi = 3.0 * std::numbers::pi / 4.0;
+    int quadrant = 0;
+    if (angle_rad > kThreeQuarterPi) {
+        quadrant = 2;
+    } else if (angle_rad > kSinCosMaxAngle_rad) {
+        quadrant = 1;
+    } else if (angle_rad < -kThreeQuarterPi) {
+        quadrant = -2;
+    } else if (angle_rad < -kSinCosMaxAngle_rad) {
+        quadrant = -1;
+    }
+    const double k = quadrant;
+    const SinCos r = sin_cos((angle_rad - k * kHalfPiHigh) - k * kHalfPiLow);
+    switch (quadrant) {
+        case 1:
+            return {.sin = r.cos, .cos = -r.sin};
+        case -1:
+            return {.sin = -r.cos, .cos = r.sin};
+        case 2:
+        case -2:
+            return {.sin = -r.sin, .cos = -r.cos};
+        default:
+            return r;
+    }
 }
 
 }  // namespace tp::math

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <numbers>
 
 namespace tp::chassis {
 
@@ -100,6 +101,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.cg_ahead_of_rear_axle_m,
                                 params.cg_height_m,
                                 params.pitch_inertia_kg_m2,
+                                params.yaw_inertia_kg_m2,
                                 params.rear_axle_height_m,
                                 params.hitch_height_m,
                                 params.hitch_behind_rear_axle_m,
@@ -128,6 +130,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.pitch_inertia_kg_m2 <= 0.0) {
         return ParamError::kPitchInertiaNotPositive;
+    }
+    if (params.yaw_inertia_kg_m2 <= 0.0) {
+        return ParamError::kYawInertiaNotPositive;
     }
     if (params.rear_axle_height_m <= 0.0) {
         return ParamError::kRearAxleHeightNotPositive;
@@ -176,11 +181,17 @@ Point hitch_offset(const Params& params, const SinCos& pitch) noexcept {
 
 Hitch hitch(const Params& params, const State& state) noexcept {
     const Point offset = hitch_offset(params, math::sin_cos(state.pitch_rad));
+    const SinCos heading = math::sin_cos_any(state.heading_rad);
     // A point at (x, z) from the axle, turning nose-up at θ', moves at
-    // (-z θ', x θ') relative to the axle.
-    return {.x_m = state.position_m + offset.x_m,
+    // (-z θ', x θ') relative to the axle; turning left at r, it moves
+    // sideways at x r. Body-frame speeds, then turned into the world.
+    const double forward_m_s = state.velocity_m_s - offset.z_m * state.pitch_rate_rad_s;
+    const double side_m_s = state.lateral_velocity_m_s + offset.x_m * state.yaw_rate_rad_s;
+    return {.x_m = state.position_m + offset.x_m * heading.cos,
+            .y_m = state.lateral_position_m + offset.x_m * heading.sin,
             .z_m = params.rear_axle_height_m + offset.z_m,
-            .velocity_x_m_s = state.velocity_m_s - offset.z_m * state.pitch_rate_rad_s,
+            .velocity_x_m_s = forward_m_s * heading.cos - side_m_s * heading.sin,
+            .velocity_y_m_s = forward_m_s * heading.sin + side_m_s * heading.cos,
             .velocity_z_m_s = offset.x_m * state.pitch_rate_rad_s};
 }
 
@@ -209,8 +220,38 @@ AxleLoads axle_loads(const Params& params, const State& state, const Drawbar& dr
 Prediction predict(const State& state, const Params& params, double resisting_force_n,
                    double dt_s) noexcept {
     const double velocity_per_n = dt_s / params.mass_kg;
-    return {.free_velocity_m_s = state.velocity_m_s - velocity_per_n * resisting_force_n,
+    const double cg_side_m_s =
+        state.lateral_velocity_m_s + params.cg_ahead_of_rear_axle_m * state.yaw_rate_rad_s;
+    return {.free_velocity_m_s = state.velocity_m_s - velocity_per_n * resisting_force_n +
+                                 dt_s * cg_side_m_s * state.yaw_rate_rad_s,
             .velocity_per_n = velocity_per_n};
+}
+
+void advance_lateral(State& state, const Params& params, const SideForces& forces,
+                     double dt_s) noexcept {
+    const double b_m = params.cg_ahead_of_rear_axle_m;
+    // Yaw moments about the centre of gravity, left turn positive. The
+    // hitch's pitch is left out: it moves the hitch by centimetres.
+    const double moment_nm = forces.front_n * (params.wheelbase_m - b_m) - forces.rear_n * b_m -
+                             forces.hitch_n * (b_m + params.hitch_behind_rear_axle_m);
+    const double side_n = forces.front_n + forces.rear_n + forces.hitch_n;
+    const double cg_side_m_s = state.lateral_velocity_m_s + b_m * state.yaw_rate_rad_s;
+
+    const double yaw_rate_rad_s =
+        state.yaw_rate_rad_s + dt_s * moment_nm / params.yaw_inertia_kg_m2;
+    const double next_cg_side_m_s =
+        cg_side_m_s + dt_s * (side_n / params.mass_kg - state.velocity_m_s * state.yaw_rate_rad_s);
+    state.yaw_rate_rad_s = yaw_rate_rad_s;
+    state.lateral_velocity_m_s = next_cg_side_m_s - b_m * yaw_rate_rad_s;
+    // Kept within ±π, where sin_cos_any() works.
+    constexpr double kFullTurn_rad = 2.0 * std::numbers::pi;
+    double heading_rad = state.heading_rad + yaw_rate_rad_s * dt_s;
+    if (heading_rad > std::numbers::pi) {
+        heading_rad -= kFullTurn_rad;
+    } else if (heading_rad < -std::numbers::pi) {
+        heading_rad += kFullTurn_rad;
+    }
+    state.heading_rad = heading_rad;
 }
 
 void advance(State& state, const Prediction& prediction, double drive_force_n,
@@ -219,8 +260,12 @@ void advance(State& state, const Prediction& prediction, double drive_force_n,
         std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n, 0.0);
     state.acceleration_m_s2 = (velocity_m_s - state.velocity_m_s) / dt_s;
     state.velocity_m_s = velocity_m_s;
-    // Semi-implicit Euler: position advances with the new velocity.
-    state.position_m += velocity_m_s * dt_s;
+    // Semi-implicit Euler: position advances with the new velocities.
+    const SinCos heading = math::sin_cos_any(state.heading_rad);
+    state.position_m +=
+        (velocity_m_s * heading.cos - state.lateral_velocity_m_s * heading.sin) * dt_s;
+    state.lateral_position_m +=
+        (velocity_m_s * heading.sin + state.lateral_velocity_m_s * heading.cos) * dt_s;
 }
 
 void advance_pitch(State& state, const Params& params, double axle_torque_nm,

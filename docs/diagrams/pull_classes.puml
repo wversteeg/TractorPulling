@@ -33,12 +33,12 @@ package "tp::pull" {
     +sled : sled::State
   }
   class ChainEnd <<struct>> {
-    +x_m, z_m : double
-    +velocity_x_m_s, velocity_z_m_s : double
+    +x_m, y_m, z_m : double
+    +velocity_x_m_s, velocity_y_m_s, velocity_z_m_s : double
   }
   class ChainForce <<struct>> {
     +tension_n : double
-    +direction_x, direction_z : double
+    +direction_x, direction_y, direction_z : double
   }
   class Output <<struct>> {
     +tractor : vehicle::Output
@@ -72,6 +72,8 @@ PullFns ..> Chassis : hitch(), Drawbar
 note bottom of PullFns
   the chain pulls only when stretched, along its own line:
   backwards and down/up on the tractor's hitch,
-  forwards and up/down on the sled's hook
+  forwards and up/down on the sled's hook;
+  the tractor feels it in its body frame (pull, lift, side);
+  the sled follows the tractor's line sideways (hook behind the hitch)
 end note
 @enduml

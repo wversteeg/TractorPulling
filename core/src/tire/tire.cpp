@@ -45,8 +45,27 @@ std::optional<ParamError> validate(const Size& size) noexcept {
     return std::nullopt;
 }
 
+std::optional<ParamError> validate(const Cornering& cornering) noexcept {
+    const std::array scalars = {cornering.stiffness_per_rad, cornering.limit,
+                                cornering.mobility_rate, cornering.relaxation_length_m};
+    if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
+        return ParamError::kNotFinite;
+    }
+    if (cornering.stiffness_per_rad <= 0.0 || cornering.mobility_rate <= 0.0 ||
+        cornering.relaxation_length_m <= 0.0) {
+        return ParamError::kCorneringNotPositive;
+    }
+    if (cornering.limit <= 0.0 || cornering.limit > kMaxTractionLimit) {
+        return ParamError::kCorneringLimitOutOfRange;
+    }
+    return std::nullopt;
+}
+
 std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto error = validate(params.size)) {
+        return error;
+    }
+    if (const auto error = validate(params.cornering)) {
         return error;
     }
     const std::array scalars = {params.traction.limit, params.traction.mobility_rate,
@@ -100,9 +119,8 @@ Traction traction(const Params& params, double wheel_surface_speed_m_s, double g
     const double s = std::abs(out.slip_ratio);
 
     const TractionCurve& curve = params.traction;
-    const double bite =
-        surface.grip_factor * curve.limit *
-        (1.0 - math::exp(-curve.mobility_rate * mobility_number(params.size, load_n, surface)));
+    const double bite = full_bite(params, load_n, surface);
+    out.full_bite = bite;
     const double slip_term = math::exp(-curve.slip_rate * s);
     const double built = 1.0 - slip_term;
     const double kept = 1.0 - surface.spin_fall_off * s * s;
@@ -136,6 +154,52 @@ double thrown_soil_m3_s(const Size& size, double load_n, double slip_ratio,
 double towed_rolling_resistance(const Size& size, double load_n,
                                 const soil::Surface& surface) noexcept {
     return 1.0 / mobility_number(size, load_n, surface) + kTireLosses;
+}
+
+double full_bite(const Params& params, double load_n, const soil::Surface& surface) noexcept {
+    const TractionCurve& curve = params.traction;
+    return surface.grip_factor * curve.limit *
+           (1.0 - math::exp(-curve.mobility_rate * mobility_number(params.size, load_n, surface)));
+}
+
+SideGrip side_grip(const Size& size, const Cornering& cornering, double load_n,
+                   const soil::Surface& surface) noexcept {
+    if (load_n <= 0.0) {
+        return {};
+    }
+    const double grip_n =
+        surface.grip_factor *
+        (1.0 - math::exp(-cornering.mobility_rate * mobility_number(size, load_n, surface))) *
+        load_n;
+    return {
+        .stiffness_n_per_m = cornering.stiffness_per_rad * grip_n / cornering.relaxation_length_m,
+        .limit_n = cornering.limit * grip_n};
+}
+
+SideGrip with_traction(SideGrip grip, double traction_n, double full_bite_n,
+                       double slip_ratio) noexcept {
+    const double used = full_bite_n > 0.0 ? std::min(std::abs(traction_n) / full_bite_n, 1.0) : 1.0;
+    const double sliding = std::min(std::abs(slip_ratio), kFullSlip);
+    grip.limit_n *= std::sqrt(1.0 - used * used) * (kFullSlip - sliding);
+    return grip;
+}
+
+double side_force_n(const SideGrip& grip, double deflection_m) noexcept {
+    return std::clamp(-grip.stiffness_n_per_m * deflection_m, -grip.limit_n, grip.limit_n);
+}
+
+double relax_deflection_m(const SideGrip& grip, const Cornering& cornering, double deflection_m,
+                          double lateral_m_s, double rolling_m_s, double min_rolling_m_s,
+                          double dt_s) noexcept {
+    if (grip.stiffness_n_per_m <= 0.0) {
+        // Off the ground: the patch springs back.
+        return 0.0;
+    }
+    const double rolling = std::max(std::abs(rolling_m_s), min_rolling_m_s);
+    const double next_m = (deflection_m + dt_s * lateral_m_s) /
+                          (1.0 + dt_s * rolling / cornering.relaxation_length_m);
+    const double sliding_m = grip.limit_n / grip.stiffness_n_per_m;
+    return std::clamp(next_m, -sliding_m, sliding_m);
 }
 
 }  // namespace tp::tire

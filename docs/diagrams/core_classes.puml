@@ -42,6 +42,7 @@ skinparam classAttributeIconSize 0
     class "trig" as Trig <<free functions>> {
       +{static} kSinCosMaxAngle_rad = π/4
       +sin_cos(angle_rad) : SinCos
+      +sin_cos_any(angle_rad) : SinCos, |angle| ≤ π
     }
     Trig ..> SinCos
     note bottom of Trig
@@ -138,7 +139,7 @@ skinparam classAttributeIconSize 0
     class "conversions" as Units <<free functions>> {
       +rpm_to_rad_s(rpm) : double
       +rad_s_to_rpm(omega_rad_s) : double
-      +rad_to_deg(angle_rad) : double
+      +rad_to_deg(angle_rad) / deg_to_rad(angle_deg) : double
       +metric_hp_to_w(hp) / w_to_metric_hp(power_w) : double
     }
   }

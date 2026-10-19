@@ -51,22 +51,29 @@ only looks up and blends the surface under each contact.
 Longitudinal force from slip on soil, after Brixius: the soil's cone index
 and the tire's size and load give a mobility number that sets grip, load
 sensitivity and motion resistance. The force is linearized over a step so
-the stiff contact can be solved implicitly.
+the stiff contact can be solved implicitly. Side grip follows the same
+mobility number: the contact patch deflects sideways like a spring and
+relaxes as the tire rolls (relaxation length), so it works from a standstill
+up, and a driven tire's traction and wheelspin use up its side grip.
 
 ![Tire classes](diagrams/svg/tire_classes.svg)
 
 ### Chassis (`tp::chassis`)
 
-The body moving along the track and pitching about the rear axle. The
-front tires and the wheelie bar are one-sided spring-damper contacts; the
-rear tires carry the rest of the weight.
+The body moving along the track and pitching about the rear axle, and in the
+ground plane moving sideways and turning (yaw) under the front tires', rear
+tires' and drawbar's side forces. The front tires and the wheelie bar are
+one-sided spring-damper contacts; the rear tires carry the rest of the
+weight.
 
 ![Chassis classes](diagrams/svg/chassis_classes.svg)
 
 ### Vehicle (`tp::vehicle`)
 
 The whole tractor: components, the validated `Model`, and the exact chain
-solve that couples engine, clutch, driveline, tires and body each step.
+solve that couples engine, clutch, driveline, tires and body each step. The
+input steers the front wheels; a front axle in the air (a wheelie) steers
+nothing.
 
 ![Vehicle classes](diagrams/svg/vehicle_classes.svg)
 

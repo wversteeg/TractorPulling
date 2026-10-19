@@ -8,7 +8,7 @@ package "components (see their class diagrams)" {
   class "engine::Params / State" as Engine
   class "clutch::Params / State" as Clutch
   class "driveline::Params / State\n+ Response" as Driveline
-  class "tire::Params / Size\n+ Traction" as Tire
+  class "tire::Params / Size / Cornering\n+ Traction, SideGrip" as Tire
   class "soil::Surface" as Surface
   class "chassis::Params / State\n+ AxleLoads" as Chassis
 }
@@ -21,8 +21,13 @@ package "tp::vehicle" {
     +rear_tire : tire::Params
     +rear_tire_count : int
     +front_tire : tire::Size
+    +steering : Steering
     +chassis : chassis::Params
     +pto_efficiency : double
+  }
+  class Steering <<struct>> {
+    +max_angle_rad : double
+    +front_tires : tire::Cornering
   }
   class Model {
     -params_ : Params
@@ -36,11 +41,14 @@ package "tp::vehicle" {
     +clutch : clutch::State
     +driveline : driveline::State
     +chassis : chassis::State
+    +front_side_deflection_m : double
+    +rear_side_deflection_m : double
   }
   class Input <<struct>> {
     +throttle : double
     +clutch_pedal : double
     +gear : int
+    +steering_rad : double
   }
   class Ground <<struct>> {
     +rear : soil::Surface
@@ -53,6 +61,7 @@ package "tp::vehicle" {
     +rear_rolling_resistance, front_rolling_resistance
     +thrown_soil_m3_s
     +axle_loads : AxleLoads
+    +front_side_force_n, rear_side_force_n
     +shift_refused : bool
   }
   class TireLine <<struct>> {
@@ -71,6 +80,7 @@ package "tp::vehicle" {
     +hash_append(Fnv1a&, const State&)
   }
   Model *-- Params
+  Params *-- Steering
   VehicleFns ..> Model
   VehicleFns ..> State
   VehicleFns ..> Input

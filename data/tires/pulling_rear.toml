@@ -19,3 +19,13 @@ min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 limit = 0.93                       # μ on very strong ground at full bite
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 18.0                   # how fast grip builds with slip
+
+# Side grip (see tp::tire::Cornering). Starting values to tune: a big lugged
+# tire builds side force a little more slowly than the front tires and
+# holds a bit more of its load sideways. Traction uses up side grip, and a
+# spinning tire has almost none.
+[tire.cornering]
+stiffness_per_rad = 4.0            # side force per unit of load per rad of slip angle
+limit = 0.8                        # side force per unit of load at most
+mobility_rate = 0.1                # as for traction: soft ground grips less
+relaxation_length_m = 0.8          # about the tire's radius

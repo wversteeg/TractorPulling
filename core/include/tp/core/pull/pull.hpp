@@ -53,18 +53,22 @@ struct State {
 };
 
 /// The chain's tension and the direction it runs in, from the hook to the
-/// hitch (a unit vector; z positive when the hitch is higher).
+/// hitch (a unit vector in the world; y positive when the hitch is further
+/// left, z when it is higher).
 struct ChainForce {
     double tension_n = 0.0;
     double direction_x = 1.0;
+    double direction_y = 0.0;
     double direction_z = 0.0;
 };
 
 /// A point in the world and its velocity, for the chain's ends.
 struct ChainEnd {
     double x_m = 0.0;
+    double y_m = 0.0;
     double z_m = 0.0;
     double velocity_x_m_s = 0.0;
+    double velocity_y_m_s = 0.0;
     double velocity_z_m_s = 0.0;
 };
 
@@ -87,6 +91,11 @@ struct Output {
 /// under each of the tractor's axles and under the sled's pan and wheels,
 /// then the tractor and the sled each advance under the chain. The chain is explicit within
 /// a step; at 1 kHz its oscillation (tens of rad/s) is well resolved.
+///
+/// The sled does not move sideways yet: it is taken to follow the tractor's
+/// line, its hook straight behind the hitch, so the chain pulls along the
+/// track. A tractor turned off that line feels the pull partly sideways at
+/// its hitch, which turns it back in line, as a towed load does.
 Output step(State& state, const Model& model, const vehicle::Input& input, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {

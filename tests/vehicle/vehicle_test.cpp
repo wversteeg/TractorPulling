@@ -31,17 +31,23 @@ struct Pull {
     double max_slip = 0.0;
     double min_front_n = 1e12;
     double max_pitch_rad = 0.0;
+    double steering_rad = 0.0;
+    bool steered_in_the_air = false;
 
     void run(int gear, double drawbar_n, bool dump, double seconds) {
         for (int i = 0; i < static_cast<int>(seconds / kDt_s); ++i) {
             const double t_s = i * kDt_s;
             Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                         .clutch_pedal = 1.0,
-                        .gear = t_s < 0.5 ? driveline::kNeutral : gear};
+                        .gear = t_s < 0.5 ? driveline::kNeutral : gear,
+                        .steering_rad = steering_rad};
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
             last = step(state, model, input, ground, {.pull_n = drawbar_n}, kDt_s);
+            if (last.axle_loads.front_lifted && last.front_side_force_n != 0.0) {
+                steered_in_the_air = true;
+            }
             EXPECT_FALSE(last.shift_refused);
             if (t_s >= 3.0) {
                 max_slip = std::max(max_slip, last.slip_ratio);
@@ -302,14 +308,94 @@ TEST(Vehicle, PullingLoadsTheRearAxle) {
     EXPECT_GT(heavy.last.axle_loads.rear_n, light.last.axle_loads.rear_n);
 }
 
+// ---- Steering
+
+TEST(VehicleSteering, StraightWheelsKeepItOnTheLine) {
+    Pull pull;
+    pull.run(6, 10000.0, false, 15.0);
+    ASSERT_GT(pull.state.chassis.position_m, 10.0);
+    EXPECT_EQ(pull.state.chassis.lateral_position_m, 0.0);
+    EXPECT_EQ(pull.state.chassis.heading_rad, 0.0);
+    EXPECT_EQ(pull.state.chassis.yaw_rate_rad_s, 0.0);
+    EXPECT_EQ(pull.last.front_side_force_n, 0.0);
+    EXPECT_EQ(pull.last.rear_side_force_n, 0.0);
+}
+
+TEST(VehicleSteering, TurnsTheWayTheWheelsPoint) {
+    Pull left;
+    left.steering_rad = 0.1;
+    left.run(6, 10000.0, false, 12.0);
+    Pull right;
+    right.steering_rad = -0.1;
+    right.run(6, 10000.0, false, 12.0);
+    EXPECT_GT(left.state.chassis.heading_rad, 0.05);
+    EXPECT_GT(left.state.chassis.lateral_position_m, 0.1);
+    // Left and right mirror each other exactly.
+    EXPECT_EQ(right.state.chassis.heading_rad, -left.state.chassis.heading_rad);
+    EXPECT_EQ(right.state.chassis.lateral_position_m, -left.state.chassis.lateral_position_m);
+    EXPECT_EQ(right.state.chassis.position_m, left.state.chassis.position_m);
+}
+
+// Slowly, on firm ground, the tires barely slip sideways: the tractor turns
+// about where the wheels point, at r = u tan(δ) / L.
+TEST(VehicleSteering, TurnsAtTheGeometricRateWhenSlow) {
+    Pull pull;
+    pull.steering_rad = 0.15;
+    pull.run(4, 5000.0, false, 10.0);
+    const chassis::State& body = pull.state.chassis;
+    ASSERT_GT(body.velocity_m_s, 0.5);
+    const double geometric_rad_s =
+        body.velocity_m_s * std::tan(pull.steering_rad) / pull.model.params().chassis.wheelbase_m;
+    EXPECT_NEAR(body.yaw_rate_rad_s / geometric_rad_s, 1.0, 0.1);
+    EXPECT_LT(body.yaw_rate_rad_s, geometric_rad_s);
+}
+
+TEST(VehicleSteering, HeldToTheSteeringRange) {
+    Pull far;
+    far.steering_rad = 2.0;
+    far.run(4, 5000.0, false, 8.0);
+    Pull full;
+    full.steering_rad = full.model.params().steering.max_angle_rad;
+    full.run(4, 5000.0, false, 8.0);
+    EXPECT_EQ(far.state.chassis.heading_rad, full.state.chassis.heading_rad);
+}
+
+// A wheelie lifts the front tires off the ground: steering does nothing.
+TEST(VehicleSteering, CannotSteerWithTheFrontInTheAir) {
+    Pull pull;
+    pull.steering_rad = 0.3;
+    pull.run(1, 15000.0, true, 6.0);
+    EXPECT_FALSE(pull.steered_in_the_air);
+}
+
+TEST(VehicleSteering, SteeringHoldsTheTractorBack) {
+    Pull straight;
+    straight.run(6, 10000.0, false, 12.0);
+    Pull steered;
+    steered.steering_rad = 0.3;
+    steered.run(6, 10000.0, false, 12.0);
+    EXPECT_LT(steered.state.chassis.velocity_m_s, straight.state.chassis.velocity_m_s);
+}
+
+TEST(VehicleParams, RejectsAnImpossibleSteeringRange) {
+    Params params = reference_params();
+    params.steering.max_angle_rad = 1.0;
+    EXPECT_EQ(validate(params), ParamError::kSteering);
+    params = reference_params();
+    params.steering.front_tires.limit = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kSteering);
+}
+
 std::uint64_t pull_hash() {
     Pull pull;
     hash::Fnv1a hash;
     for (int i = 0; i < 15000; ++i) {
         const double t_s = i * kDt_s;
+        // Steering left after 8 s exercises the sideways motion too.
         const Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                           .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
-                          .gear = t_s < 0.5 ? driveline::kNeutral : 3};
+                          .gear = t_s < 0.5 ? driveline::kNeutral : 3,
+                          .steering_rad = t_s < 8.0 ? 0.0 : 0.1};
         step(pull.state, pull.model, input, kGround, {.pull_n = 8000.0}, kDt_s);
         hash_append(hash, pull.state);
     }
@@ -323,7 +409,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xdcf03755977420c1ULL);
+    EXPECT_EQ(pull_hash(), 0xbaf0c1b1fa375607ULL);
 }
 
 }  // namespace

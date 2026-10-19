@@ -28,5 +28,8 @@ inline constexpr double kDegreesPerRad = 180.0 / std::numbers::pi;
 [[nodiscard]] constexpr double rad_to_deg(double angle_rad) noexcept {
     return angle_rad * kDegreesPerRad;
 }
+[[nodiscard]] constexpr double deg_to_rad(double angle_deg) noexcept {
+    return angle_deg / kDegreesPerRad;
+}
 
 }  // namespace tp::units

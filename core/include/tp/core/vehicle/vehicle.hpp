@@ -15,6 +15,14 @@ namespace tp::vehicle {
 
 inline constexpr int kMaxRearTires = 8;
 
+/// The front wheels' steering.
+struct Steering {
+    /// Largest front wheel angle either way [rad]; at most 45°.
+    double max_angle_rad = 0.0;
+    /// Side grip of one front tire.
+    tire::Cornering front_tires;
+};
+
 /// A whole tractor: the components and how many rear tires share the drive.
 struct Params {
     engine::Params engine;
@@ -26,6 +34,7 @@ struct Params {
     /// One of the two (unpowered) front tires; its size sets their rolling
     /// resistance on soil.
     tire::Size front_tire;
+    Steering steering;
     chassis::Params chassis;
     /// Crankshaft to PTO shaft, in (0, 1]. The PTO is not simulated; class
     /// rules limit power measured there.
@@ -39,6 +48,7 @@ enum class ParamError : std::uint8_t {
     kRearTire,
     kRearTireCount,
     kFrontTire,
+    kSteering,
     kChassis,
     /// The chassis' rear axle height is not the rear tire's radius.
     kRearAxleHeight,
@@ -70,6 +80,10 @@ struct State {
     clutch::State clutch;
     driveline::State driveline;
     chassis::State chassis;
+    /// Sideways deflection of the tires' contact patches, to the tire's
+    /// left (see tire::Cornering): each front tire, and each rear tire [m].
+    double front_side_deflection_m = 0.0;
+    double rear_side_deflection_m = 0.0;
 };
 
 struct Input {
@@ -79,6 +93,9 @@ struct Input {
     double clutch_pedal = 1.0;
     /// Requested gear; 0 is neutral. Changes only with the clutch pressed.
     int gear = driveline::kNeutral;
+    /// Front wheel angle, positive to the left; held to the steering's
+    /// range [rad].
+    double steering_rad = 0.0;
 };
 
 /// The ground under the tractor's tires this step. The track decides it from
@@ -106,6 +123,10 @@ struct Output {
     /// Soil all rear tires throw back behind the tractor [m³/s].
     double thrown_soil_m3_s = 0.0;
     chassis::AxleLoads axle_loads;
+    /// Side force of both front tires, across the wheels, and of all rear
+    /// tires; positive to the left [N].
+    double front_side_force_n = 0.0;
+    double rear_side_force_n = 0.0;
     /// The requested gear could not be engaged this step.
     bool shift_refused = false;
 };
@@ -119,9 +140,11 @@ struct Output {
 ///
 /// Order: gear change, axle loads from the last step's state, the rear
 /// tires' traction and both axles' rolling resistance at the current speeds,
-/// every body's prediction, the exact chain solve for clutch torque and tire
-/// force, every body advances, then the chassis pitches under the axle
-/// torque's reaction.
+/// both axles' side forces from their tires' patch deflections, every
+/// body's prediction, the exact chain solve for clutch torque and tire
+/// force, the chassis' sideways motion and yaw, every body advances, the
+/// patch deflections follow the new speeds, then the chassis pitches under
+/// the axle torque's reaction.
 Output step(State& state, const Model& model, const Input& input, const Ground& ground,
             const chassis::Drawbar& drawbar, double dt_s) noexcept;
 
@@ -130,6 +153,8 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     clutch::hash_append(hash, state.clutch);
     driveline::hash_append(hash, state.driveline);
     chassis::hash_append(hash, state.chassis);
+    hash.add(state.front_side_deflection_m);
+    hash.add(state.rear_side_deflection_m);
 }
 
 }  // namespace tp::vehicle

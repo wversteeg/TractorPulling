@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include <cstdlib>
@@ -21,6 +22,8 @@ inline Params reference_params() {
         .rear_tire = tire::testing::reference_params(),
         .rear_tire_count = 2,
         .front_tire = tire::testing::front_size(),
+        .steering = {.max_angle_rad = units::deg_to_rad(40.0),
+                     .front_tires = tire::testing::front_cornering()},
         .chassis = chassis::testing::reference_params(),
         .pto_efficiency = 0.9,
     };

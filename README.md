@@ -26,6 +26,19 @@ cmake --preset release && cmake --build --preset release
 # run: 89.20 m, engine stalled (36.4 s, top 11.9 km/h)
 ```
 
+### Steering
+
+The tractor moves in the ground plane: it slides sideways and turns under
+its tires' side grip and the chain. The front wheels steer, and a tractor on
+its wheelie bar cannot steer. Hold the wheels at an angle (positive left) to
+see it; the CSV gains the sideways position and heading:
+
+```bash
+./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml --gear 4 \
+    --resistance-kn 8 --steer-deg 5 -o pull.csv
+# ... ended 25.79 m to the left, heading 86.69°
+```
+
 ### Track conditions
 
 Every event's track is different. A track file gives its soil (clay

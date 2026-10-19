@@ -19,6 +19,9 @@ Right-handed, body fixed to the tractor chassis:
 ## Signs
 
 - **Pitch** θ is rotation about the lateral axis, positive nose-up. A wheelie is positive pitch. Note that with y to the left, nose-up is a *negative* right-handed rotation about y; the simulation works in the x–z plane and uses nose-up positive throughout.
+- **Heading** (yaw) is the body's x from the track's direction, positive turned left (counter-clockwise seen from above); the **yaw rate** is positive turning left. Headings are kept within ±π.
+- **Steering**: the front wheel angle is positive to the left.
+- **Side forces and sideways speeds** are positive to the left, in the body frame (in the steered wheel's frame for a front tire).
 - **Longitudinal velocity** is positive when moving forward.
 - **Engine and wheel speed** are positive in the direction that drives the tractor forward.
 - **Torque** is positive when it accelerates its shaft in the positive direction.
@@ -33,7 +36,7 @@ Right-handed, body fixed to the tractor chassis:
 
 ## Along the track
 
-- A pull's world x is measured from where the tractor's rear axle starts; the sled starts behind it, at negative x.
+- A pull's world x is measured from where the tractor's rear axle starts; the sled starts behind it, at negative x. World y is measured from the track's centre line, to the left. The chassis' position is the rear axle's; its forward and sideways speeds are in the body frame.
 - **Track x** (soil profiles, `tp::track`) is measured from the **start line**: where the sled's rear wheels stand at the start. The sled's distance travelled is its rear wheels' track x.
 - Each contact reads the ground where it is: the rear tires at the rear axle, the front tires a wheelbase ahead, the sled's wheels and its pan by their positions.
 

@@ -88,7 +88,7 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
         random.uniform(variation.track_reading.low, variation.track_reading.high);
 
     // An engine within the class's PTO power, and a tractor within its
-    // weight. The pitch inertia goes with the mass; the balance stays.
+    // weight. The pitch and yaw inertias go with the mass; the balance stays.
     const auto tractor = with_torque_scale(base, torque_scale, class_rules);
     if (!tractor) {
         return std::nullopt;
@@ -97,6 +97,7 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     puller.tractor = *tractor;
     const double mass = std::min(mass_kg, class_rules.max_mass_kg);
     puller.tractor.chassis.pitch_inertia_kg_m2 *= mass / base.chassis.mass_kg;
+    puller.tractor.chassis.yaw_inertia_kg_m2 *= mass / base.chassis.mass_kg;
     puller.tractor.chassis.mass_kg = mass;
     puller.tractor.rear_tire.traction.limit = traction_limit;
     puller.driver.clutch_slip_in_s = slip_in_s;

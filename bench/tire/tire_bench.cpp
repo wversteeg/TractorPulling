@@ -35,4 +35,29 @@ void BM_TireTraction(benchmark::State& state) {
 }
 BENCHMARK(BM_TireTraction);
 
+// Side grip for one tire, cut by its traction, its side force and the
+// patch's relaxation: what the tractor adds per axle each step.
+void BM_TireSideGrip(benchmark::State& state) {
+    const auto params = tp::data::load_tire(std::string{TP_DATA_DIR} + "/tires/pulling_rear.toml");
+    if (!params) {
+        state.SkipWithError(params.error().message);
+        return;
+    }
+    const tp::tire::Params& tire = params.value();
+    const tp::soil::Surface surface = tp::soil::surface(kSoil);
+    double deflection_m = 0.0;
+    double lateral_m_s = -0.05;
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(lateral_m_s);
+        const tp::tire::SideGrip grip = tp::tire::with_traction(
+            tp::tire::side_grip(tire.size, tire.cornering, kLoad_n, surface), 0.5 * kLoad_n,
+            tp::tire::full_bite(tire, kLoad_n, surface) * kLoad_n, 0.1);
+        benchmark::DoNotOptimize(tp::tire::side_force_n(grip, deflection_m));
+        deflection_m =
+            tp::tire::relax_deflection_m(grip, tire.cornering, deflection_m, lateral_m_s,
+                                         kGround_m_s, tire.min_reference_speed_m_s, 0.001);
+    }
+}
+BENCHMARK(BM_TireSideGrip);
+
 }  // namespace

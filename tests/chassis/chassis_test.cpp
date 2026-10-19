@@ -372,5 +372,93 @@ TEST(Chassis, ResistanceHoldsAtRestWithoutPushingBack) {
     }
 }
 
+// ---- Moving in the ground plane
+
+TEST(ChassisPlane, StaysOnTheLineWithoutSideForces) {
+    const Params params = reference_params();
+    State state;
+    for (int i = 0; i < 1000; ++i) {
+        const Prediction p = predict(state, params, 0.0, kDt_s);
+        advance_lateral(state, params, {}, kDt_s);
+        advance(state, p, 7000.0, kDt_s);
+    }
+    EXPECT_GT(state.position_m, 0.5);
+    EXPECT_EQ(state.lateral_position_m, 0.0);
+    EXPECT_EQ(state.heading_rad, 0.0);
+    EXPECT_EQ(state.lateral_velocity_m_s, 0.0);
+    EXPECT_EQ(state.yaw_rate_rad_s, 0.0);
+}
+
+// Side forces balanced about the centre of gravity push the body sideways
+// without turning it.
+TEST(ChassisPlane, ForceThroughTheCentreOfGravityDoesNotTurn) {
+    const Params params = reference_params();
+    const double b_m = params.cg_ahead_of_rear_axle_m;
+    constexpr double kSide_n = 3500.0;
+    // F_f (L - b) = F_r b, F_f + F_r = kSide_n.
+    const SideForces forces{.front_n = kSide_n * b_m / params.wheelbase_m,
+                            .rear_n = kSide_n * (params.wheelbase_m - b_m) / params.wheelbase_m};
+    State state;
+    for (int i = 0; i < 1000; ++i) {
+        advance_lateral(state, params, forces, kDt_s);
+    }
+    EXPECT_NEAR(state.yaw_rate_rad_s, 0.0, 1e-12);
+    EXPECT_NEAR(state.lateral_velocity_m_s, kSide_n / params.mass_kg * 1.0, 1e-9);
+}
+
+TEST(ChassisPlane, FrontForceTurnsTowardsIt) {
+    const Params params = reference_params();
+    State state;
+    constexpr double kSide_n = 1000.0;
+    for (int i = 0; i < 100; ++i) {
+        advance_lateral(state, params, {.front_n = kSide_n}, kDt_s);
+    }
+    const double moment_nm = kSide_n * (params.wheelbase_m - params.cg_ahead_of_rear_axle_m);
+    EXPECT_NEAR(state.yaw_rate_rad_s, moment_nm / params.yaw_inertia_kg_m2 * 0.1, 1e-12);
+    EXPECT_GT(state.heading_rad, 0.0);
+    // A drawbar pulling the hitch to the right turns the nose left.
+    State towed;
+    advance_lateral(towed, params, {.hitch_n = -kSide_n}, kDt_s);
+    EXPECT_GT(towed.yaw_rate_rad_s, 0.0);
+}
+
+TEST(ChassisPlane, MovesAlongItsHeading) {
+    const Params params = reference_params();
+    State state{.velocity_m_s = 2.0, .heading_rad = 0.3};
+    const Prediction p = predict(state, params, 0.0, kDt_s);
+    advance(state, p, 0.0, kDt_s);
+    EXPECT_NEAR(state.position_m, 2.0 * std::cos(0.3) * kDt_s, 1e-15);
+    EXPECT_NEAR(state.lateral_position_m, 2.0 * std::sin(0.3) * kDt_s, 1e-15);
+}
+
+// Turning at r while sliding sideways at v_cg feeds the forward speed by
+// v_cg r: the body's momentum turns with it.
+TEST(ChassisPlane, TurningSwapsSidewaysForForwardSpeed) {
+    const Params params = reference_params();
+    const State state{.lateral_velocity_m_s = 0.5, .yaw_rate_rad_s = 0.2};
+    const Prediction p = predict(state, params, 0.0, kDt_s);
+    const double cg_side_m_s = 0.5 + params.cg_ahead_of_rear_axle_m * 0.2;
+    EXPECT_NEAR(p.free_velocity_m_s, cg_side_m_s * 0.2 * kDt_s, 1e-15);
+}
+
+TEST(ChassisPlane, HitchSwingsWithTheHeading) {
+    const Params params = reference_params();
+    const Hitch straight = hitch(params, State{.position_m = 10.0});
+    const Hitch turned = hitch(params, State{.position_m = 10.0, .heading_rad = 0.2});
+    const double behind_m = 10.0 - straight.x_m;
+    EXPECT_NEAR(turned.x_m, 10.0 - behind_m * std::cos(0.2), 1e-12);
+    // Turned left, the hitch behind the axle swings right.
+    EXPECT_NEAR(turned.y_m, -behind_m * std::sin(0.2), 1e-12);
+    // Turning left, it moves right.
+    const Hitch turning = hitch(params, State{.yaw_rate_rad_s = 0.5});
+    EXPECT_NEAR(turning.velocity_y_m_s, -behind_m * 0.5, 1e-12);
+}
+
+TEST(ChassisPlane, RejectsNoYawInertia) {
+    Params params = reference_params();
+    params.yaw_inertia_kg_m2 = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kYawInertiaNotPositive);
+}
+
 }  // namespace
 }  // namespace tp::chassis

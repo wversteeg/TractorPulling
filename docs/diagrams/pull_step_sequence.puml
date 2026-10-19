@@ -11,10 +11,10 @@ participant "sled" as Sled
 
 Caller -> Step : step(state, model, {throttle, clutch_pedal, gear}, dt_s)
 Step -> Hitch : hitch(tractor chassis state)
-Hitch --> Step : hitch position and velocity (with pitch)
-Step -> Chain : chain_force(chain, hitch, hook)
+Hitch --> Step : hitch position and velocity (with pitch and heading)
+Step -> Chain : chain_force(chain, hitch, hook straight behind it)
 Chain --> Step : tension along the hook-to-hitch line\n(zero when slack, never pushing)
-Step -> Step : equal and opposite:\nDrawbar{pull, lift} on the hitch, HookForce{forward, up} on the hook
+Step -> Step : equal and opposite:\nDrawbar{pull, lift, side} on the hitch (body frame),\nHookForce{forward, up} on the hook
 Step -> Track : surface_at(rear axle), surface_at(front axle),\nsurface_at(sled pan), surface_at(sled wheels)
 Track --> Step : the ground under each contact
 Step -> Vehicle : step(tractor, input, Ground{rear, front}, drawbar)\n(see the vehicle step)
