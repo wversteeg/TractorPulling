@@ -90,7 +90,11 @@ First get something working, then give it more possibilities. In order:
 
 3. **Steering and the lane:** lane width, steering, two independent brakes,
    the sled's sideways drag (leaving the lane ends the run), "easy" and
-   "pro" input mappings, the easy-mode clutch assist.
+   "pro" input mappings, the easy-mode clutch assist. The lane is 12 m
+   between the chalk lines by default (the NTTO's minimum prepared width),
+   set per track. A tractor tire touching a chalk line before the full-pull
+   line disqualifies the pull (0 m); past that line it may. The sled may
+   cross the line (dog-tail).
 4. **Phone readiness:** an Android NDK build in CI, a speed budget measured
    on ARM, a small stable interface for the binding layer.
 5. **Godot front end:** 3D scene, cameras, interpolated rendering, touch
