@@ -314,9 +314,9 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
             csv << round << ',' << t_s << ',' << input.clutch_pedal << ','
                 << pull.tractor.driveline.gear << ','
                 << rad_s_to_rpm(pull.tractor.engine.omega_rad_s) << ','
-                << pull.sled.velocity_m_s * kMetersPerSecondToKmh << ',' << pull.sled.distance_m
-                << ',' << out.tractor.slip_ratio << ','
-                << out.tractor.axle_loads.rear_n / kNewtonsPerKilonewton << ','
+                << pull.sled.velocity_m_s * kMetersPerSecondToKmh << ','
+                << pull.sled.position_m - model.start_line_m() << ',' << out.tractor.slip_ratio
+                << ',' << out.tractor.axle_loads.rear_n / kNewtonsPerKilonewton << ','
                 << out.tractor.axle_loads.front_n / kNewtonsPerKilonewton << ','
                 << rad_to_deg(pull.tractor.chassis.pitch_rad) << ','
                 << out.chain.tension_n / kNewtonsPerKilonewton << ',' << rad_to_deg(chain_angle_rad)
@@ -326,7 +326,8 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
                 << out.sled.berm_n / kNewtonsPerKilonewton << ','
                 << pull.tractor.chassis.lateral_position_m << ','
                 << rad_to_deg(pull.tractor.chassis.heading_rad) << ','
-                << pull.sled.lateral_position_m << ',' << rad_to_deg(pull.sled.heading_rad) << '\n';
+                << pull.sled.lateral_position_m << ',' << rad_to_deg(pull.sled.heading_rad) << ','
+                << pull.sled.distance_m << '\n';
         }
     }
     return state.result;
@@ -338,7 +339,7 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
            "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg,"
-           "sled_lateral_m,sled_heading_deg\n";
+           "sled_lateral_m,sled_heading_deg,sled_travel_m\n";
     // The class's sled with the day's push-down.
     tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
