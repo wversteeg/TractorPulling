@@ -134,6 +134,12 @@ for the big features; they are repeated at the end for completeness.
   share their footing already; the rest could share more, or skip the
   difference motion while it and both brakes are at rest.
 
+- **The sled's sideways step.** The sled's sideways motion added about
+  100 ns to a pull step (about 580 ns against 490 ns, x86-64 release): its
+  wheels' side grip, the pan's sliding speed and the headings' sine and
+  cosine. The hook's position and the sled's heading could share one
+  sine and cosine per step.
+
 ## Roadmap features (from CLAUDE.md "Later")
 
 - Steering plus two independent brakes, with a "pro" input mapping.
