@@ -103,6 +103,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pitch_inertia_kg_m2,
                                 params.yaw_inertia_kg_m2,
                                 params.rear_axle_height_m,
+                                params.rear_track_m,
                                 params.hitch_height_m,
                                 params.hitch_behind_rear_axle_m,
                                 params.front_tires.stiffness_n_per_m,
@@ -136,6 +137,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.rear_axle_height_m <= 0.0) {
         return ParamError::kRearAxleHeightNotPositive;
+    }
+    if (params.rear_track_m <= 0.0) {
+        return ParamError::kRearTrackNotPositive;
     }
     if (params.hitch_height_m < 0.0) {
         return ParamError::kHitchHeightNegative;
@@ -233,7 +237,8 @@ void advance_lateral(State& state, const Params& params, const SideForces& force
     // Yaw moments about the centre of gravity, left turn positive. The
     // hitch's pitch is left out: it moves the hitch by centimetres.
     const double moment_nm = forces.front_n * (params.wheelbase_m - b_m) - forces.rear_n * b_m -
-                             forces.hitch_n * (b_m + params.hitch_behind_rear_axle_m);
+                             forces.hitch_n * (b_m + params.hitch_behind_rear_axle_m) +
+                             forces.yaw_moment_nm;
     const double side_n = forces.front_n + forces.rear_n + forces.hitch_n;
     const double cg_side_m_s = state.lateral_velocity_m_s + b_m * state.yaw_rate_rad_s;
 
@@ -254,10 +259,13 @@ void advance_lateral(State& state, const Params& params, const SideForces& force
     state.heading_rad = heading_rad;
 }
 
+double end_velocity_m_s(const Prediction& prediction, double drive_force_n) noexcept {
+    return std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n, 0.0);
+}
+
 void advance(State& state, const Prediction& prediction, double drive_force_n,
              double dt_s) noexcept {
-    const double velocity_m_s =
-        std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n, 0.0);
+    const double velocity_m_s = end_velocity_m_s(prediction, drive_force_n);
     state.acceleration_m_s2 = (velocity_m_s - state.velocity_m_s) / dt_s;
     state.velocity_m_s = velocity_m_s;
     // Semi-implicit Euler: position advances with the new velocities.

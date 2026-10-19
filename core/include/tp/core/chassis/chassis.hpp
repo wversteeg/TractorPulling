@@ -58,7 +58,8 @@ struct WheelieBar {
 ///   m (u' - v_cg r) = ΣF_x      m (v_cg' + u r) = ΣF_y      I_z r' = ΣM_z
 ///
 /// Side forces act at the front axle (front tires), the rear axle (rear
-/// tires) and the hitch (the chain). The state keeps the sideways speed at
+/// tires) and the hitch (the chain); unequal pull of the left and right rear
+/// tires adds a yaw moment. The state keeps the sideways speed at
 /// the rear axle, v = v_cg - b r, which is what the rear tires feel.
 ///
 /// Left out: the centre of gravity moving along x as the body pitches does
@@ -79,6 +80,8 @@ struct Params {
     double yaw_inertia_kg_m2 = 0.0;
     /// Rear axle above the ground: the rear tire radius [m].
     double rear_axle_height_m = 0.0;
+    /// Between the left and right rear tires' centres [m].
+    double rear_track_m = 0.0;
     /// Drawbar hitch point above the ground [m].
     double hitch_height_m = 0.0;
     /// Drawbar hitch point behind the rear axle [m].
@@ -101,6 +104,7 @@ enum class ParamError : std::uint8_t {
     kPitchInertiaNotPositive,
     kYawInertiaNotPositive,
     kRearAxleHeightNotPositive,
+    kRearTrackNotPositive,
     kHitchHeightNegative,
     kHitchAheadOfRearAxle,
     kFrontTireStiffnessNotPositive,
@@ -191,7 +195,12 @@ struct Prediction {
 [[nodiscard]] Prediction predict(const State& state, const Params& params, double resisting_force_n,
                                  double dt_s) noexcept;
 
-/// Side forces on the body, to its left [N].
+/// Forward speed at the end of the step under `drive_force_n`, as advance()
+/// sets it: the resistance holds the body at rest but never pushes it back.
+[[nodiscard]] double end_velocity_m_s(const Prediction& prediction, double drive_force_n) noexcept;
+
+/// Side forces on the body, to its left [N], and the yaw moment of forces
+/// along it.
 struct SideForces {
     /// Front tires, at the front axle.
     double front_n = 0.0;
@@ -199,6 +208,9 @@ struct SideForces {
     double rear_n = 0.0;
     /// The drawbar, at the hitch.
     double hitch_n = 0.0;
+    /// From forces along the body that differ left and right, turning left
+    /// positive [N·m].
+    double yaw_moment_nm = 0.0;
 };
 
 /// Sideways motion and yaw over the step, semi-implicit Euler: the forces

@@ -110,6 +110,7 @@ TEST(ChassisParams, RejectsNonsense) {
               ParamError::kPitchInertiaNotPositive);
     EXPECT_EQ(with([](Params& p) { p.rear_axle_height_m = 0.0; }),
               ParamError::kRearAxleHeightNotPositive);
+    EXPECT_EQ(with([](Params& p) { p.rear_track_m = 0.0; }), ParamError::kRearTrackNotPositive);
     EXPECT_EQ(with([](Params& p) { p.hitch_height_m = -0.1; }), ParamError::kHitchHeightNegative);
     EXPECT_EQ(with([](Params& p) { p.hitch_behind_rear_axle_m = -0.1; }),
               ParamError::kHitchAheadOfRearAxle);
@@ -359,6 +360,20 @@ TEST(Chassis, ConstantForceAcceleratesTheMass) {
     EXPECT_NEAR(state.acceleration_m_s2, a_m_s2, 1e-9);
     // Semi-implicit Euler is half a step ahead of the exact a t² / 2.
     EXPECT_NEAR(state.position_m, 0.5 * a_m_s2 * (1.0 + kDt_s), 1e-9);
+}
+
+// end_velocity_m_s() is the speed advance() moves to: the solvers that
+// look ahead rely on it.
+TEST(Chassis, EndVelocityIsWhatAdvanceSets) {
+    const Params params = reference_params();
+    for (const double force_n : {-30000.0, 0.0, 5000.0}) {
+        State state{.velocity_m_s = 1.0};
+        const Prediction p = predict(state, params, 8000.0, kDt_s);
+        const double expected_m_s = end_velocity_m_s(p, force_n);
+        advance(state, p, force_n, kDt_s);
+        EXPECT_EQ(state.velocity_m_s, expected_m_s) << force_n;
+        EXPECT_GE(expected_m_s, 0.0);
+    }
 }
 
 TEST(Chassis, ResistanceHoldsAtRestWithoutPushingBack) {

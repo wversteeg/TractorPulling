@@ -110,6 +110,19 @@ double slip_ratio(const Params& params, double wheel_surface_speed_m_s,
 
 Traction traction(const Params& params, double wheel_surface_speed_m_s, double ground_speed_m_s,
                   double load_n, const soil::Surface& surface) noexcept {
+    return traction(params, footing(params, load_n, surface), wheel_surface_speed_m_s,
+                    ground_speed_m_s, load_n, surface);
+}
+
+Footing footing(const Params& params, double load_n, const soil::Surface& surface) noexcept {
+    const double mobility = mobility_number(params.size, load_n, surface);
+    return {.mobility_number = mobility,
+            .root_mobility = std::sqrt(mobility),
+            .full_bite = load_n > 0.0 ? full_bite(params, load_n, surface) : 0.0};
+}
+
+Traction traction(const Params& params, const Footing& footing, double wheel_surface_speed_m_s,
+                  double ground_speed_m_s, double load_n, const soil::Surface& surface) noexcept {
     Traction out;
     if (load_n <= 0.0) {
         return out;
@@ -119,7 +132,7 @@ Traction traction(const Params& params, double wheel_surface_speed_m_s, double g
     const double s = std::abs(out.slip_ratio);
 
     const TractionCurve& curve = params.traction;
-    const double bite = full_bite(params, load_n, surface);
+    const double bite = footing.full_bite;
     out.full_bite = bite;
     const double slip_term = math::exp(-curve.slip_rate * s);
     const double built = 1.0 - slip_term;
@@ -138,16 +151,29 @@ Traction traction(const Params& params, double wheel_surface_speed_m_s, double g
 double driven_rolling_resistance(const Size& size, double load_n, double slip_ratio,
                                  const soil::Surface& surface) noexcept {
     const double mobility = mobility_number(size, load_n, surface);
-    return 1.0 / mobility + kSlipSinkage * std::abs(slip_ratio) / std::sqrt(mobility);
+    return driven_rolling_resistance(
+        Footing{.mobility_number = mobility, .root_mobility = std::sqrt(mobility)}, slip_ratio);
+}
+
+double driven_rolling_resistance(const Footing& footing, double slip_ratio) noexcept {
+    return 1.0 / footing.mobility_number +
+           kSlipSinkage * std::abs(slip_ratio) / footing.root_mobility;
 }
 
 double thrown_soil_m3_s(const Size& size, double load_n, double slip_ratio,
                         double wheel_surface_speed_m_s, const soil::Surface& surface) noexcept {
+    const double mobility = mobility_number(size, load_n, surface);
+    return thrown_soil_m3_s(
+        size, Footing{.mobility_number = mobility, .root_mobility = std::sqrt(mobility)}, load_n,
+        slip_ratio, wheel_surface_speed_m_s);
+}
+
+double thrown_soil_m3_s(const Size& size, const Footing& footing, double load_n, double slip_ratio,
+                        double wheel_surface_speed_m_s) noexcept {
     if (load_n <= 0.0) {
         return 0.0;
     }
-    const double sinkage_m =
-        2.0 * size.radius_m * driven_rolling_resistance(size, load_n, slip_ratio, surface);
+    const double sinkage_m = 2.0 * size.radius_m * driven_rolling_resistance(footing, slip_ratio);
     return size.section_width_m * sinkage_m * std::abs(wheel_surface_speed_m_s);
 }
 
@@ -164,13 +190,18 @@ double full_bite(const Params& params, double load_n, const soil::Surface& surfa
 
 SideGrip side_grip(const Size& size, const Cornering& cornering, double load_n,
                    const soil::Surface& surface) noexcept {
+    return side_grip(cornering, Footing{.mobility_number = mobility_number(size, load_n, surface)},
+                     load_n, surface);
+}
+
+SideGrip side_grip(const Cornering& cornering, const Footing& footing, double load_n,
+                   const soil::Surface& surface) noexcept {
     if (load_n <= 0.0) {
         return {};
     }
-    const double grip_n =
-        surface.grip_factor *
-        (1.0 - math::exp(-cornering.mobility_rate * mobility_number(size, load_n, surface))) *
-        load_n;
+    const double grip_n = surface.grip_factor *
+                          (1.0 - math::exp(-cornering.mobility_rate * footing.mobility_number)) *
+                          load_n;
     return {
         .stiffness_n_per_m = cornering.stiffness_per_rad * grip_n / cornering.relaxation_length_m,
         .limit_n = cornering.limit * grip_n};

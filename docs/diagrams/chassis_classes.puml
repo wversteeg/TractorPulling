@@ -13,6 +13,7 @@ package "tp::chassis" {
     +pitch_inertia_kg_m2 : double
     +yaw_inertia_kg_m2 : double
     +rear_axle_height_m : double
+    +rear_track_m : double
     +hitch_height_m : double
     +hitch_behind_rear_axle_m : double
     +front_tires : Contact
@@ -55,6 +56,7 @@ package "tp::chassis" {
     +front_n : double
     +rear_n : double
     +hitch_n : double
+    +yaw_moment_nm : double
   }
   class Hitch <<struct>> {
     +x_m, y_m, z_m : double
@@ -71,6 +73,7 @@ package "tp::chassis" {
     +hitch(const Params&, const State&) : Hitch
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
+    +end_velocity_m_s(const Prediction&, drive_force_n) : double
     +advance_lateral(State&, const Params&, const SideForces&, dt_s)
     +advance(State&, const Prediction&, drive_force_n, dt_s)
     +advance_pitch(State&, const Params&, axle_torque_nm, const Drawbar&,\n      front_rolling_resistance, dt_s)

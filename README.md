@@ -36,7 +36,19 @@ see it; the CSV gains the sideways position and heading:
 ```bash
 ./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml --gear 4 \
     --resistance-kn 8 --steer-deg 5 -o pull.csv
-# ... ended 25.79 m to the left, heading 86.69°
+# ... ended 25.79 m to the left, heading 86.68°
+```
+
+Each rear side has its own brake. An open differential drives the two
+sides, so braking one side slows it, sends the drive to the other, and
+turns the tractor towards the braked side, as farm tractors steer tight
+turns. Full pedal holds a side's wheels still where the brake can; in a
+high gear it takes more torque than the engine gives and stalls it:
+
+```bash
+./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml --gear 4 \
+    --resistance-kn 8 --brake-right 0.3 -o pull.csv
+# ... ended -11.37 m to the left, heading -33.39°
 ```
 
 ### Track conditions

@@ -73,7 +73,11 @@ weight.
 The whole tractor: components, the validated `Model`, and the exact chain
 solve that couples engine, clutch, driveline, tires and body each step. The
 input steers the front wheels; a front axle in the air (a wheelie) steers
-nothing.
+nothing. An open differential drives the left and right rear wheels, each
+side with its own brake: the sides' common motion goes through the chain
+solve, their difference is solved alongside it, and a brake that would carry
+its side through rest holds it there instead (Coulomb friction, like the
+clutch).
 
 ![Vehicle classes](diagrams/svg/vehicle_classes.svg)
 

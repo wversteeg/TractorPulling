@@ -52,8 +52,18 @@ for the big features; they are repeated at the end for completeness.
 ## Tractor
 
 - **No roll, so no sideways load transfer.** Side forces do not shift load
-  between the left and right tires; the left and right rear tires come with
-  the brakes (milestone 3, step 2).
+  between the left and right rear tires; both sides carry half the rear load.
+- **No differential lock.** The open differential is the only kind. Pulling
+  tractors may lock theirs (rules permitting): both sides would then turn
+  together, the brakes would steer much less, and the side on better
+  ground would pull more.
+- **Brakes hold by Newton steps.** A brake that would carry its side
+  through rest holds it with the torque found by up to eight steps: Newton
+  steps (one more solve per held side), then, once a single held side is
+  bracketed, Illinois false position, which a kink in the step's response
+  (the axle coming to rest) cannot throw off. Both sides held at once only
+  get Newton steps. In gear a held step costs about 550 ns against 355 ns
+  for a plain one (x86-64 release). Brakes have no fade or pedal feel.
 - **Combined slip, simply.** A rear tire's side grip is cut by its traction
   (a friction ellipse against full bite) and by its slip (1 - |s|), and the
   side force does not take grip from traction in turn. A proper combined-slip
@@ -109,10 +119,13 @@ for the big features; they are repeated at the end for completeness.
   derived values (front tire preload, pitch inertia about the axle) every
   step. Moving them into a model built at setup would save some of its
   ~60 ns.
-- **Side grip shares the traction's mobility number.** Steering added about
-  80 ns to a vehicle step (about 290 ns now, x86-64 release): each axle's
-  side grip computes its own mobility number and exponential. The rear
-  tires could reuse the one traction already computed.
+- **A lighter rear step.** Steering, the differential and the brakes took a
+  vehicle step from about 210 to 400 ns (x86-64 release, still about 0.05 %
+  of a core at 1 kHz): each side's traction, rolling resistance, thrown
+  soil and side grip are worked out separately, and the solve advances a
+  copy of the driveline to read the end speeds. Sides on the same ground
+  share their footing already; the rest could share more, or skip the
+  difference motion while it and both brakes are at rest.
 
 ## Roadmap features (from CLAUDE.md "Later")
 

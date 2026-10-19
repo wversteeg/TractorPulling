@@ -22,12 +22,16 @@ package "tp::vehicle" {
     +rear_tire_count : int
     +front_tire : tire::Size
     +steering : Steering
+    +brakes : Brakes
     +chassis : chassis::Params
     +pto_efficiency : double
   }
   class Steering <<struct>> {
     +max_angle_rad : double
     +front_tires : tire::Cornering
+  }
+  class Brakes <<struct>> {
+    +max_torque_nm : double
   }
   class Model {
     -params_ : Params
@@ -41,14 +45,22 @@ package "tp::vehicle" {
     +clutch : clutch::State
     +driveline : driveline::State
     +chassis : chassis::State
+    +differential_rad_s : double
     +front_side_deflection_m : double
-    +rear_side_deflection_m : double
+    +rear_left_side_deflection_m : double
+    +rear_right_side_deflection_m : double
   }
   class Input <<struct>> {
     +throttle : double
     +clutch_pedal : double
     +gear : int
     +steering_rad : double
+    +brake_left, brake_right : double
+  }
+  class RearWheels <<struct>> {
+    +slip_ratio : double
+    +tire_force_n : double
+    +brake_torque_nm : double
   }
   class Ground <<struct>> {
     +rear : soil::Surface
@@ -57,7 +69,8 @@ package "tp::vehicle" {
   class Output <<struct>> {
     +engine : engine::Output
     +clutch_torque_nm, clutch_slip_rad_s, clutch_slip_power_w
-    +tire_force_n (held pull at a standstill), slip_ratio
+    +tire_force_n (held pull at a standstill), slip_ratio (sides' mean)
+    +rear_left, rear_right : RearWheels
     +rear_rolling_resistance, front_rolling_resistance
     +thrown_soil_m3_s
     +axle_loads : AxleLoads
@@ -81,6 +94,8 @@ package "tp::vehicle" {
   }
   Model *-- Params
   Params *-- Steering
+  Params *-- Brakes
+  Output *-- RearWheels
   VehicleFns ..> Model
   VehicleFns ..> State
   VehicleFns ..> Input

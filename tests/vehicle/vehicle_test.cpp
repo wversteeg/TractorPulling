@@ -21,6 +21,20 @@ using testing::reference_params;
 constexpr double kDt_s = 0.001;
 const Ground kGround = reference_ground();
 
+// Coulomb friction: a brake holds its side at rest with up to its capacity,
+// or slips at exactly its capacity against the side's rotation. It never
+// drives the side, and a side still moving with less than full torque
+// would be a hold that did not converge.
+bool brakes_right(double brake_torque_nm, double end_rad_s, double capacity_nm) {
+    if (std::abs(brake_torque_nm) > capacity_nm) {
+        return false;
+    }
+    if (std::abs(end_rad_s) <= kBrakeHoldTolerance_rad_s) {
+        return true;
+    }
+    return std::abs(brake_torque_nm) == capacity_nm && brake_torque_nm * end_rad_s >= 0.0;
+}
+
 // A driver: idle in neutral, select a gear, rev up with the clutch pressed,
 // then slip the clutch in over 3 s or dump it, and pull at full throttle.
 struct Pull {
@@ -32,7 +46,20 @@ struct Pull {
     double min_front_n = 1e12;
     double max_pitch_rad = 0.0;
     double steering_rad = 0.0;
+    double brake_left = 0.0;
+    double brake_right = 0.0;
     bool steered_in_the_air = false;
+    // A brake that broke Coulomb friction (see brakes_right).
+    bool brake_misbehaved = false;
+    // A brake held its side with torque against backward rotation.
+    bool held_against_backward = false;
+
+    [[nodiscard]] double left_rad_s() const {
+        return state.driveline.output_omega_rad_s - state.differential_rad_s;
+    }
+    [[nodiscard]] double right_rad_s() const {
+        return state.driveline.output_omega_rad_s + state.differential_rad_s;
+    }
 
     void run(int gear, double drawbar_n, bool dump, double seconds) {
         for (int i = 0; i < static_cast<int>(seconds / kDt_s); ++i) {
@@ -40,7 +67,9 @@ struct Pull {
             Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                         .clutch_pedal = 1.0,
                         .gear = t_s < 0.5 ? driveline::kNeutral : gear,
-                        .steering_rad = steering_rad};
+                        .steering_rad = steering_rad,
+                        .brake_left = t_s >= 6.0 ? brake_left : 0.0,
+                        .brake_right = t_s >= 6.0 ? brake_right : 0.0};
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
@@ -48,6 +77,15 @@ struct Pull {
             if (last.axle_loads.front_lifted && last.front_side_force_n != 0.0) {
                 steered_in_the_air = true;
             }
+            const double max_nm = model.params().brakes.max_torque_nm;
+            brake_misbehaved = brake_misbehaved ||
+                               !brakes_right(last.rear_left.brake_torque_nm, left_rad_s(),
+                                             input.brake_left * max_nm) ||
+                               !brakes_right(last.rear_right.brake_torque_nm, right_rad_s(),
+                                             input.brake_right * max_nm);
+            held_against_backward =
+                held_against_backward || (last.rear_left.brake_torque_nm < 0.0 &&
+                                          std::abs(left_rad_s()) <= kBrakeHoldTolerance_rad_s);
             EXPECT_FALSE(last.shift_refused);
             if (t_s >= 3.0) {
                 max_slip = std::max(max_slip, last.slip_ratio);
@@ -76,6 +114,8 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.driveline.gear_count = 0; }), ParamError::kDriveline);
     EXPECT_EQ(with([](Params& p) { p.rear_tire.size.radius_m = 0.0; }), ParamError::kRearTire);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
+    EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 3; }), ParamError::kRearTireCount);
+    EXPECT_EQ(with([](Params& p) { p.brakes.max_torque_nm = -1.0; }), ParamError::kBrakes);
     EXPECT_EQ(with([](Params& p) { p.front_tire.section_width_m = 0.0; }), ParamError::kFrontTire);
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
     EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
@@ -386,16 +426,148 @@ TEST(VehicleParams, RejectsAnImpossibleSteeringRange) {
     EXPECT_EQ(validate(params), ParamError::kSteering);
 }
 
+// ---- Brakes and the differential
+
+// Turning, the outer wheels cover more ground: the open differential lets
+// them turn faster.
+TEST(VehicleDifferential, OuterWheelsTurnFasterInATurn) {
+    Pull pull;
+    pull.steering_rad = 0.2;
+    pull.run(4, 5000.0, false, 10.0);
+    ASSERT_GT(pull.state.chassis.yaw_rate_rad_s, 0.0);
+    EXPECT_GT(pull.state.differential_rad_s, 0.0);
+    // Both sides grip alike, so their speeds follow the ground they cover.
+    const double track_m = pull.model.params().chassis.rear_track_m;
+    EXPECT_NEAR(
+        pull.right_rad_s() / pull.left_rad_s(),
+        (pull.state.chassis.velocity_m_s + 0.5 * track_m * pull.state.chassis.yaw_rate_rad_s) /
+            (pull.state.chassis.velocity_m_s - 0.5 * track_m * pull.state.chassis.yaw_rate_rad_s),
+        0.01);
+}
+
+TEST(VehicleBrakes, OneBrakeTurnsTheTractorToItsSide) {
+    Pull right;
+    right.brake_right = 0.3;
+    right.run(4, 5000.0, false, 12.0);
+    EXPECT_LT(right.state.chassis.heading_rad, -0.02);
+    EXPECT_LT(right.state.chassis.lateral_position_m, 0.0);
+    // The braked side turns slower; the differential gives the other side
+    // the difference.
+    EXPECT_LT(right.right_rad_s(), right.left_rad_s());
+    Pull left;
+    left.brake_left = 0.3;
+    left.run(4, 5000.0, false, 12.0);
+    EXPECT_EQ(left.state.chassis.heading_rad, -right.state.chassis.heading_rad);
+    EXPECT_EQ(left.state.chassis.lateral_position_m, -right.state.chassis.lateral_position_m);
+}
+
+TEST(VehicleBrakes, BothBrakesSlowItDownWithoutTurning) {
+    Pull free;
+    free.run(4, 5000.0, false, 12.0);
+    Pull braked;
+    braked.brake_left = 0.2;
+    braked.brake_right = 0.2;
+    braked.run(4, 5000.0, false, 12.0);
+    EXPECT_LT(braked.state.chassis.position_m, free.state.chassis.position_m);
+    EXPECT_EQ(braked.state.chassis.heading_rad, 0.0);
+    EXPECT_EQ(braked.state.differential_rad_s, 0.0);
+}
+
+// Rolling in neutral, full pedal on one side stops its wheels and holds
+// them with no more torque than the ground's drag on them; the open
+// differential lets the other side roll on.
+TEST(VehicleBrakes, FullPedalHoldsOneSideStill) {
+    const Model model = reference_model();
+    State state = initial_state(model);
+    constexpr double kSpeed_m_s = 2.0;
+    const double radius_m = model.params().rear_tire.size.radius_m;
+    state.chassis.velocity_m_s = kSpeed_m_s;
+    state.driveline.output_omega_rad_s = kSpeed_m_s / radius_m;
+    const Input input{.clutch_pedal = 1.0, .gear = driveline::kNeutral, .brake_left = 1.0};
+    Output out;
+    int held_steps = 0;
+    for (int i = 0; i < 1500; ++i) {
+        out = step(state, model, input, kGround, {}, kDt_s);
+        const double left_rad_s = state.driveline.output_omega_rad_s - state.differential_rad_s;
+        ASSERT_TRUE(brakes_right(out.rear_left.brake_torque_nm, left_rad_s,
+                                 model.params().brakes.max_torque_nm))
+            << i;
+        held_steps += std::abs(left_rad_s) <= kBrakeHoldTolerance_rad_s ? 1 : 0;
+    }
+    EXPECT_GT(held_steps, 1000);
+    EXPECT_GT(out.rear_left.brake_torque_nm, 0.0);
+    EXPECT_LT(out.rear_left.brake_torque_nm, model.params().brakes.max_torque_nm);
+    const double right_rad_s = state.driveline.output_omega_rad_s + state.differential_rad_s;
+    EXPECT_NEAR(right_rad_s * radius_m, state.chassis.velocity_m_s, 0.1);
+    // The held side drags: the tractor slows and turns towards it.
+    EXPECT_LT(state.chassis.velocity_m_s, kSpeed_m_s);
+    EXPECT_GT(state.chassis.heading_rad, 0.0)
+        << state.chassis.velocity_m_s << ' ' << state.chassis.yaw_rate_rad_s;
+}
+
+// Whatever the gear, pedals, load and steering, a brake follows Coulomb
+// friction (see brakes_right): it holds its side at rest or slips at full
+// torque against it, and never drives it.
+TEST(VehicleBrakes, NeverDriveTheWheels) {
+    for (const int gear : {1, 2, 4, 6}) {
+        for (const double pedal : {0.05, 0.5, 1.0}) {
+            for (const double drawbar_n : {5000.0, 20000.0}) {
+                for (const double steering_rad : {0.0, 0.3}) {
+                    Pull pull;
+                    pull.brake_left = pedal;
+                    pull.brake_right = 0.6 * pedal;
+                    pull.steering_rad = steering_rad;
+                    pull.run(gear, drawbar_n, false, 12.0);
+                    EXPECT_FALSE(pull.brake_misbehaved)
+                        << "gear " << gear << ", pedal " << pedal << ", drawbar " << drawbar_n
+                        << " N, steering " << steering_rad << " rad";
+                }
+            }
+        }
+    }
+}
+
+// Pulling hard in first gear with the left brake full on, the tractor
+// comes to rest; the held side's tire then pushes it backwards and the
+// brake holds it with negative torque: friction works both ways.
+TEST(VehicleBrakes, HoldAgainstTurningBackwards) {
+    Pull pull;
+    pull.brake_left = 1.0;
+    pull.run(1, 20000.0, false, 14.0);
+    EXPECT_FALSE(pull.brake_misbehaved);
+    EXPECT_TRUE(pull.held_against_backward);
+}
+
+// The reported slip is the more positive (driving) slip of the two sides:
+// one side spinning is how an open differential spins out.
+TEST(VehicleBrakes, SlipIsTheSideThatSlipsMore) {
+    Pull pull;
+    pull.brake_right = 0.5;
+    pull.run(4, 8000.0, false, 12.0);
+    EXPECT_GT(pull.last.rear_left.slip_ratio, pull.last.rear_right.slip_ratio);
+    EXPECT_EQ(pull.last.slip_ratio, pull.last.rear_left.slip_ratio);
+}
+
+// In a high gear, one brake can take more torque than the engine gives.
+TEST(VehicleBrakes, FullPedalInATopGearStallsTheEngine) {
+    Pull pull;
+    pull.brake_left = 1.0;
+    pull.run(8, 1000.0, false, 15.0);
+    EXPECT_FALSE(pull.state.engine.running);
+}
+
 std::uint64_t pull_hash() {
     Pull pull;
     hash::Fnv1a hash;
     for (int i = 0; i < 15000; ++i) {
         const double t_s = i * kDt_s;
-        // Steering left after 8 s exercises the sideways motion too.
+        // Steering left after 8 s and braking the right side after 11 s
+        // exercise the sideways motion, the differential and the brakes.
         const Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                           .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
                           .gear = t_s < 0.5 ? driveline::kNeutral : 3,
-                          .steering_rad = t_s < 8.0 ? 0.0 : 0.1};
+                          .steering_rad = t_s < 8.0 ? 0.0 : 0.1,
+                          .brake_right = t_s < 11.0 ? 0.0 : 0.3};
         step(pull.state, pull.model, input, kGround, {.pull_n = 8000.0}, kDt_s);
         hash_append(hash, pull.state);
     }
@@ -409,7 +581,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xbaf0c1b1fa375607ULL);
+    EXPECT_EQ(pull_hash(), 0xedd67a74dba30656ULL);
 }
 
 }  // namespace
