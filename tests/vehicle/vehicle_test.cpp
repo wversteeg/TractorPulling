@@ -21,10 +21,18 @@ using testing::reference_params;
 constexpr double kDt_s = 0.001;
 const Ground kGround = reference_ground();
 
-// A brake resists its side's rotation or holds the side at rest; it never
-// drives it.
-bool resists(double brake_torque_nm, double end_rad_s) {
-    return std::abs(end_rad_s) <= 1e-9 || brake_torque_nm * end_rad_s >= 0.0;
+// Coulomb friction: a brake holds its side at rest with up to its capacity,
+// or slips at exactly its capacity against the side's rotation. It never
+// drives the side, and a side still moving with less than full torque
+// would be a hold that did not converge.
+bool brakes_right(double brake_torque_nm, double end_rad_s, double capacity_nm) {
+    if (std::abs(brake_torque_nm) > capacity_nm) {
+        return false;
+    }
+    if (std::abs(end_rad_s) <= kBrakeHoldTolerance_rad_s) {
+        return true;
+    }
+    return std::abs(brake_torque_nm) == capacity_nm && brake_torque_nm * end_rad_s >= 0.0;
 }
 
 // A driver: idle in neutral, select a gear, rev up with the clutch pressed,
@@ -41,9 +49,10 @@ struct Pull {
     double brake_left = 0.0;
     double brake_right = 0.0;
     bool steered_in_the_air = false;
-    // A brake that drove its side (pushed it the way it turned) or took
-    // more than its capacity; neither may happen.
+    // A brake that broke Coulomb friction (see brakes_right).
     bool brake_misbehaved = false;
+    // A brake held its side with torque against backward rotation.
+    bool held_against_backward = false;
 
     [[nodiscard]] double left_rad_s() const {
         return state.driveline.output_omega_rad_s - state.differential_rad_s;
@@ -68,11 +77,15 @@ struct Pull {
             if (last.axle_loads.front_lifted && last.front_side_force_n != 0.0) {
                 steered_in_the_air = true;
             }
-            brake_misbehaved =
-                brake_misbehaved || !resists(last.rear_left.brake_torque_nm, left_rad_s()) ||
-                !resists(last.rear_right.brake_torque_nm, right_rad_s()) ||
-                std::abs(last.rear_left.brake_torque_nm) > model.params().brakes.max_torque_nm ||
-                std::abs(last.rear_right.brake_torque_nm) > model.params().brakes.max_torque_nm;
+            const double max_nm = model.params().brakes.max_torque_nm;
+            brake_misbehaved = brake_misbehaved ||
+                               !brakes_right(last.rear_left.brake_torque_nm, left_rad_s(),
+                                             input.brake_left * max_nm) ||
+                               !brakes_right(last.rear_right.brake_torque_nm, right_rad_s(),
+                                             input.brake_right * max_nm);
+            held_against_backward =
+                held_against_backward || (last.rear_left.brake_torque_nm < 0.0 &&
+                                          std::abs(left_rad_s()) <= kBrakeHoldTolerance_rad_s);
             EXPECT_FALSE(last.shift_refused);
             if (t_s >= 3.0) {
                 max_slip = std::max(max_slip, last.slip_ratio);
@@ -476,9 +489,10 @@ TEST(VehicleBrakes, FullPedalHoldsOneSideStill) {
     for (int i = 0; i < 1500; ++i) {
         out = step(state, model, input, kGround, {}, kDt_s);
         const double left_rad_s = state.driveline.output_omega_rad_s - state.differential_rad_s;
-        ASSERT_TRUE(resists(out.rear_left.brake_torque_nm, left_rad_s)) << i;
-        ASSERT_LE(std::abs(out.rear_left.brake_torque_nm), model.params().brakes.max_torque_nm);
-        held_steps += std::abs(left_rad_s) <= 1e-9 ? 1 : 0;
+        ASSERT_TRUE(brakes_right(out.rear_left.brake_torque_nm, left_rad_s,
+                                 model.params().brakes.max_torque_nm))
+            << i;
+        held_steps += std::abs(left_rad_s) <= kBrakeHoldTolerance_rad_s ? 1 : 0;
     }
     EXPECT_GT(held_steps, 1000);
     EXPECT_GT(out.rear_left.brake_torque_nm, 0.0);
@@ -491,22 +505,41 @@ TEST(VehicleBrakes, FullPedalHoldsOneSideStill) {
         << state.chassis.velocity_m_s << ' ' << state.chassis.yaw_rate_rad_s;
 }
 
-// Whatever the pedals, a brake only resists its side's rotation or holds it
-// at rest, with no more than its capacity.
+// Whatever the gear, pedals, load and steering, a brake follows Coulomb
+// friction (see brakes_right): it holds its side at rest or slips at full
+// torque against it, and never drives it.
 TEST(VehicleBrakes, NeverDriveTheWheels) {
-    for (const double pedal : {0.1, 0.5, 1.0}) {
-        for (const int gear : {2, 4, 6}) {
-            Pull pull;
-            pull.brake_left = pedal;
-            pull.brake_right = 0.6 * pedal;
-            pull.run(gear, 5000.0, false, 12.0);
-            EXPECT_FALSE(pull.brake_misbehaved) << pedal << ' ' << gear;
+    for (const int gear : {1, 2, 4, 6}) {
+        for (const double pedal : {0.05, 0.5, 1.0}) {
+            for (const double drawbar_n : {5000.0, 20000.0}) {
+                for (const double steering_rad : {0.0, 0.3}) {
+                    Pull pull;
+                    pull.brake_left = pedal;
+                    pull.brake_right = 0.6 * pedal;
+                    pull.steering_rad = steering_rad;
+                    pull.run(gear, drawbar_n, false, 12.0);
+                    EXPECT_FALSE(pull.brake_misbehaved)
+                        << "gear " << gear << ", pedal " << pedal << ", drawbar " << drawbar_n
+                        << " N, steering " << steering_rad << " rad";
+                }
+            }
         }
     }
 }
 
-// The reported slip is the side that slips more: one side spinning is how
-// an open differential spins out.
+// Pulling hard in first gear with the left brake full on, the tractor
+// comes to rest; the held side's tire then pushes it backwards and the
+// brake holds it with negative torque: friction works both ways.
+TEST(VehicleBrakes, HoldAgainstTurningBackwards) {
+    Pull pull;
+    pull.brake_left = 1.0;
+    pull.run(1, 20000.0, false, 14.0);
+    EXPECT_FALSE(pull.brake_misbehaved);
+    EXPECT_TRUE(pull.held_against_backward);
+}
+
+// The reported slip is the more positive (driving) slip of the two sides:
+// one side spinning is how an open differential spins out.
 TEST(VehicleBrakes, SlipIsTheSideThatSlipsMore) {
     Pull pull;
     pull.brake_right = 0.5;

@@ -14,6 +14,8 @@
 namespace tp::vehicle {
 
 inline constexpr int kMaxRearTires = 8;
+/// A side its brake holds ends the step within this of rest [rad/s].
+inline constexpr double kBrakeHoldTolerance_rad_s = 1e-9;
 
 /// The front wheels' steering.
 struct Steering {
@@ -145,8 +147,9 @@ struct Output {
     /// Traction of all rear tires on the vehicle [N]. At a standstill, the
     /// drawbar pull they hold.
     double tire_force_n = 0.0;
-    /// The side that slips more: one side spinning is how an open
-    /// differential spins out.
+    /// The more positive (driving) slip of the two sides: one side spinning
+    /// is how an open differential spins out. A side skidding under its
+    /// brake (negative slip) does not count.
     double slip_ratio = 0.0;
     RearWheels rear_left;
     RearWheels rear_right;

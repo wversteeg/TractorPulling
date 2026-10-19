@@ -58,10 +58,12 @@ for the big features; they are repeated at the end for completeness.
   together, the brakes would steer much less, and the side on better
   ground would pull more.
 - **Brakes hold by Newton steps.** A brake that would carry its side
-  through rest holds it with the torque found by up to four Newton steps,
-  each one more solve per held side; that is exact within one piece of the
-  piecewise-linear step and close to it otherwise. Brakes have no fade or
-  pedal feel.
+  through rest holds it with the torque found by up to eight steps: Newton
+  steps (one more solve per held side), then, once a single held side is
+  bracketed, Illinois false position, which a kink in the step's response
+  (the axle coming to rest) cannot throw off. Both sides held at once only
+  get Newton steps. In gear a held step costs about 550 ns against 355 ns
+  for a plain one (x86-64 release). Brakes have no fade or pedal feel.
 - **Combined slip, simply.** A rear tire's side grip is cut by its traction
   (a friction ellipse against full bite) and by its slip (1 - |s|), and the
   side force does not take grip from traction in turn. A proper combined-slip

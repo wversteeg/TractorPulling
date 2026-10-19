@@ -27,7 +27,7 @@ Step -> Tire : side_grip(front, rear); with_traction(rear grip, traction, full b
 Step -> Tire : side_force_n(grip, patch deflection) for front and rear
 Step -> Engine : predict(throttle)
 Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag\n  + steered front tires' side force along the body)
-group solve_rear_with_brakes (once; while a brake holds, Newton steps with one probe solve per held side)
+group solve_rear_with_brakes (once; while a brake holds, up to 8 more:\n  Newton steps, then Illinois once one held side is bracketed)
 Step -> Driveline : predict(rear rolling resistance + both brakes' torque)
 Step -> Step : differential as a line in the common slip change;\n  both sides' traction folded into one TireLine
 Step -> Solve : engine line, driveline Response, TireLine, body line

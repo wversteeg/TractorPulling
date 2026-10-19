@@ -5,6 +5,7 @@
 #include <benchmark/benchmark.h>
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 
 namespace {
@@ -54,10 +55,12 @@ void BM_VehicleStep(benchmark::State& state) {
 }
 BENCHMARK(BM_VehicleStep);
 
-// One step while a brake holds its side at rest: rolling in neutral, full
-// pedal on the left. The hold takes extra solves (Newton steps on the held
-// side's end speed), so this is the step's dearest case. Each iteration
-// steps from the same state, copied in: a few hundred bytes.
+// One step while a brake holds its side at rest, in gear: first gear at
+// full throttle against a heavy drawbar, full pedal on the left, so the
+// left side stands still and the right side spins. On top of the full
+// chain solve, the hold takes extra solves to find the holding torque: the
+// step's dearest case. Each iteration steps from the same state, copied in
+// (a few hundred bytes).
 void BM_VehicleStepBrakeHeld(benchmark::State& state) {
     const auto params =
         tp::data::load_tractor(std::string{TP_DATA_DIR} + "/tractors/farm_stock_light.toml");
@@ -72,24 +75,41 @@ void BM_VehicleStepBrakeHeld(benchmark::State& state) {
     }
     const tp::soil::Surface surface = tp::soil::surface(kSoil);
     const tp::vehicle::Ground ground{.rear = surface, .front = surface};
-    constexpr double kRolling_m_s = 2.0;
-    tp::vehicle::State held = tp::vehicle::initial_state(*model);
-    held.chassis.velocity_m_s = kRolling_m_s;
-    held.driveline.output_omega_rad_s = kRolling_m_s / params.value().rear_tire.size.radius_m;
-    const tp::vehicle::Input braking{
-        .clutch_pedal = 1.0, .gear = tp::driveline::kNeutral, .brake_left = 1.0};
-    // Roll until the left side is held.
-    tp::vehicle::Output out;
-    for (int i = 0; i < 300; ++i) {
-        out = tp::vehicle::step(held, *model, braking, ground, {}, kDt_s);
+    constexpr int kFirstGear = 1;
+    constexpr double kHeavyDrawbar_n = 20000.0;
+    const auto input = [](double t_s) {
+        return tp::vehicle::Input{.throttle = 1.0,
+                                  .clutch_pedal = std::clamp(1.0 - (t_s - 2.0) / 3.0, 0.0, 1.0),
+                                  .gear = kFirstGear,
+                                  .brake_left = t_s >= 6.0 ? 1.0 : 0.0};
+    };
+    // Drive until a step holds the left side with less than full torque,
+    // and keep the state just before it.
+    tp::vehicle::State vehicle = tp::vehicle::initial_state(*model);
+    tp::vehicle::State before_hold;
+    double hold_t_s = -1.0;
+    for (int i = 0; i < 20000 && hold_t_s < 0.0; ++i) {
+        const double t_s = i * kDt_s;
+        const tp::vehicle::State before = vehicle;
+        const tp::vehicle::Output out = tp::vehicle::step(vehicle, *model, input(t_s), ground,
+                                                          {.pull_n = kHeavyDrawbar_n}, kDt_s);
+        const double left_rad_s = vehicle.driveline.output_omega_rad_s - vehicle.differential_rad_s;
+        if (t_s >= 6.0 && vehicle.engine.running &&
+            std::abs(left_rad_s) <= tp::vehicle::kBrakeHoldTolerance_rad_s &&
+            std::abs(out.rear_left.brake_torque_nm) < params.value().brakes.max_torque_nm) {
+            before_hold = before;
+            hold_t_s = t_s;
+        }
     }
-    if (out.rear_left.brake_torque_nm >= params.value().brakes.max_torque_nm) {
-        state.SkipWithError("the left side is not held: the benchmark would time something else");
+    if (hold_t_s < 0.0) {
+        state.SkipWithError("no held step in gear: the benchmark would time something else");
         return;
     }
+    const tp::vehicle::Input held = input(hold_t_s);
     for (auto _ : state) {
-        tp::vehicle::State vehicle = held;
-        benchmark::DoNotOptimize(tp::vehicle::step(vehicle, *model, braking, ground, {}, kDt_s));
+        tp::vehicle::State copy = before_hold;
+        benchmark::DoNotOptimize(
+            tp::vehicle::step(copy, *model, held, ground, {.pull_n = kHeavyDrawbar_n}, kDt_s));
         benchmark::ClobberMemory();
     }
 }

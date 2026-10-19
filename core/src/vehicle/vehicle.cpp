@@ -189,10 +189,10 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
 // torques (a clutch changing state, the axle coming to rest), so Newton
 // steps on the held sides' end speeds find those torques, exactly once the
 // torque is in the right piece; each step's slopes come from one more
-// solve per held side.
-constexpr int kMaxHoldSteps = 4;
-// A held side counts as at rest below this end speed [rad/s].
-constexpr double kAtRest_rad_s = 1e-9;
+// solve per held side. A single held side, once a torque that leaves it
+// turning forwards and one that leaves it turning backwards are known, is
+// narrowed between them instead (Illinois), which a kink cannot throw off.
+constexpr int kMaxHoldSteps = 8;
 
 struct Brake {
     double capacity_nm = 0.0;
@@ -204,8 +204,50 @@ struct Brake {
 // tried turning forwards.
 Brake kinetic(double capacity_nm, double omega_rad_s) noexcept {
     return {.capacity_nm = capacity_nm,
-            .torque_nm = omega_rad_s < 0.0 ? -capacity_nm : capacity_nm,
+            .torque_nm = omega_rad_s < -kBrakeHoldTolerance_rad_s ? -capacity_nm : capacity_nm,
             .held = false};
+}
+
+// Two brake torques around the one that holds a side at rest: one that
+// leaves it turning forwards, one that leaves it turning backwards.
+struct Bracket {
+    double forward_nm = 0.0;
+    double forward_end_rad_s = 0.0;
+    double backward_nm = 0.0;
+    double backward_end_rad_s = 0.0;
+    bool has_forward = false;
+    bool has_backward = false;
+    // Which end the last torque replaced: +1 forward, -1 backward.
+    int last = 0;
+};
+
+// Keeps the torque as one end; where the same end is replaced twice in a
+// row, the other end's speed is halved (Illinois), so the guesses close in
+// from both sides instead of creeping up on one.
+void narrow(Bracket& bracket, double torque_nm, double end_rad_s) noexcept {
+    if (end_rad_s > kBrakeHoldTolerance_rad_s) {
+        if (bracket.last > 0 && bracket.has_backward) {
+            bracket.backward_end_rad_s *= 0.5;
+        }
+        bracket.forward_nm = torque_nm;
+        bracket.forward_end_rad_s = end_rad_s;
+        bracket.has_forward = true;
+        bracket.last = 1;
+    } else if (end_rad_s < -kBrakeHoldTolerance_rad_s) {
+        if (bracket.last < 0 && bracket.has_forward) {
+            bracket.forward_end_rad_s *= 0.5;
+        }
+        bracket.backward_nm = torque_nm;
+        bracket.backward_end_rad_s = end_rad_s;
+        bracket.has_backward = true;
+        bracket.last = -1;
+    }
+}
+
+// The torque where the line through the bracket's ends crosses rest.
+double false_position_nm(const Bracket& b) noexcept {
+    return (b.forward_nm * b.backward_end_rad_s - b.backward_nm * b.forward_end_rad_s) /
+           (b.backward_end_rad_s - b.forward_end_rad_s);
 }
 
 // The brake would drive the side through rest: it should hold it instead.
@@ -215,7 +257,7 @@ bool carries_through_rest(const Brake& brake, double end_rad_s) noexcept {
 
 // Free, held at rest, or slipping at capacity the way the brake resists.
 bool settled(const Brake& brake, double end_rad_s) noexcept {
-    return !brake.held || std::abs(end_rad_s) <= kAtRest_rad_s ||
+    return !brake.held || std::abs(end_rad_s) <= kBrakeHoldTolerance_rad_s ||
            (std::abs(brake.torque_nm) == brake.capacity_nm &&
             !carries_through_rest(brake, end_rad_s));
 }
@@ -273,27 +315,48 @@ Change hold_step(const Brake& left, const Brake& right, const RearSolution& at,
     return {};
 }
 
+// The next change to the held sides' brake torques: false position for a
+// single held side once it is bracketed, a Newton step otherwise.
+Change hold_change(const State& state, const Model& model, const RearProblem& p,
+                   const RearSolution& solution, const Brake& left, const Brake& right,
+                   const Bracket& left_bracket, const Bracket& right_bracket) noexcept {
+    if (left.held != right.held) {
+        const Bracket& bracket = left.held ? left_bracket : right_bracket;
+        if (bracket.has_forward && bracket.has_backward) {
+            const double nm = false_position_nm(bracket);
+            return left.held ? Change{.left_nm = nm - left.torque_nm}
+                             : Change{.right_nm = nm - right.torque_nm};
+        }
+    }
+    const Slopes per_left =
+        left.held ? slopes(state, model, p, solution, probe_nm(left), 0.0) : Slopes{};
+    const Slopes per_right =
+        right.held ? slopes(state, model, p, solution, 0.0, probe_nm(right)) : Slopes{};
+    return hold_step(left, right, solution, per_left, per_right);
+}
+
 RearSolution solve_rear_with_brakes(const State& state, const Model& model, const RearProblem& p,
                                     double left_capacity_nm, double right_capacity_nm) noexcept {
     const double axle_rad_s = state.driveline.output_omega_rad_s;
     Brake left = kinetic(left_capacity_nm, axle_rad_s - state.differential_rad_s);
     Brake right = kinetic(right_capacity_nm, axle_rad_s + state.differential_rad_s);
     RearSolution solution = solve_rear(state, model, p, left.torque_nm, right.torque_nm);
+    Bracket left_bracket;
+    Bracket right_bracket;
     for (int step = 0; step < kMaxHoldSteps; ++step) {
         left.held = left.held || carries_through_rest(left, solution.left_rad_s);
         right.held = right.held || carries_through_rest(right, solution.right_rad_s);
         if (settled(left, solution.left_rad_s) && settled(right, solution.right_rad_s)) {
             break;
         }
-        const Slopes per_left =
-            left.held ? slopes(state, model, p, solution, probe_nm(left), 0.0) : Slopes{};
-        const Slopes per_right =
-            right.held ? slopes(state, model, p, solution, 0.0, probe_nm(right)) : Slopes{};
-        const Change change = hold_step(left, right, solution, per_left, per_right);
-        left.torque_nm =
-            std::clamp(left.torque_nm + change.left_nm, -left.capacity_nm, left.capacity_nm);
-        right.torque_nm =
-            std::clamp(right.torque_nm + change.right_nm, -right.capacity_nm, right.capacity_nm);
+        narrow(left_bracket, left.torque_nm, solution.left_rad_s);
+        narrow(right_bracket, right.torque_nm, solution.right_rad_s);
+        const Change change =
+            hold_change(state, model, p, solution, left, right, left_bracket, right_bracket);
+        const double left_nm = left.torque_nm + change.left_nm;
+        const double right_nm = right.torque_nm + change.right_nm;
+        left.torque_nm = std::clamp(left_nm, -left.capacity_nm, left.capacity_nm);
+        right.torque_nm = std::clamp(right_nm, -right.capacity_nm, right.capacity_nm);
         solution = solve_rear(state, model, p, left.torque_nm, right.torque_nm);
     }
     return solution;
