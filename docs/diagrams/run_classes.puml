@@ -14,6 +14,8 @@ package "tp::run" {
   class Rules <<struct>> {
     +track_length_m : double
     +max_duration_s : double
+    +lane_width_m : double
+    +full_pull_line_m : double
   }
   enum Ending {
     kFullPull
@@ -21,6 +23,7 @@ package "tp::run" {
     kSpunOut
     kStopped
     kTimedOut
+    kOutOfBounds
   }
   class Result <<struct>> {
     +ending : Ending
@@ -38,6 +41,7 @@ package "tp::run" {
   class "run functions" as RunFns <<free functions>> {
     +validate(const Rules&) : optional<ParamError>
     +start(const pull::Model&) : State
+    +touches_line(const pull::Model&, const pull::State&, const Rules&) : bool
     +step(State&, const pull::Model&, const Rules&, const vehicle::Input&, dt_s) : pull::Output
     +hash_append(Fnv1a&, const State&)
   }

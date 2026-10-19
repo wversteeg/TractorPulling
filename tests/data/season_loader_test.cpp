@@ -100,7 +100,8 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
         const auto order = event::running_order(base.pullers, event_seed);
         const field::Venue venue{.track = round.track.ground,
                                  .sled = sled::with_conditions(base.sled, round.track.sled),
-                                 .max_duration_s = round.track.rules.max_duration_s};
+                                 .max_duration_s = round.track.rules.max_duration_s,
+                                 .lane_width_m = round.track.rules.lane_width_m};
         const auto played = field::play_event(
             base.rules, venue, *field, base.variation, base.pull_to_pull,
             std::span{order.data(), static_cast<std::size_t>(base.pullers)}, event_seed + 1);

@@ -8,18 +8,26 @@
 
 namespace tp::run {
 
-/// The track a run is pulled on.
+/// The track a run is pulled on, and its lane.
 struct Rules {
-    /// A full pull reaches this far [m].
+    /// The run ends when the sled reaches this far [m].
     double track_length_m = 0.0;
     /// Safety cut-off; a real pull always ends long before [s].
     double max_duration_s = 0.0;
+    /// Between the chalk lines, centred on the track [m].
+    double lane_width_m = 0.0;
+    /// Before this line (from the start line) a tractor tire touching a
+    /// chalk line disqualifies the pull; past it, it may [m]. The sled may
+    /// always cross the lines.
+    double full_pull_line_m = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
     kNotFinite,
     kTrackLengthNotPositive,
     kMaxDurationNotPositive,
+    kLaneWidthNotPositive,
+    kFullPullLineNotPositive,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Rules& rules) noexcept;
@@ -37,6 +45,9 @@ enum class Ending : std::uint8_t {
     /// the driver backed off.
     kStopped,
     kTimedOut,
+    /// A tractor tire touched a chalk line before the full-pull line: the
+    /// pull is disqualified and counts 0 m.
+    kOutOfBounds,
 };
 
 struct Result {
@@ -58,6 +69,13 @@ struct State {
     double top_speed_m_s = 0.0;
     std::optional<Result> result;
 };
+
+/// Whether a tractor tire's outer edge touches a chalk line before the
+/// full-pull line. The tires are taken at the axles: the rear pair a rear
+/// track apart, the front pair a front track apart, each as wide as its
+/// section.
+[[nodiscard]] bool touches_line(const pull::Model& model, const pull::State& state,
+                                const Rules& rules) noexcept;
 
 /// The tractor at the start line, ready to pull.
 [[nodiscard]] State start(const pull::Model& model) noexcept;

@@ -18,7 +18,10 @@ namespace tp::run {
 namespace {
 
 constexpr double kDt_s = 0.001;
-constexpr Rules kRules{.track_length_m = 100.0, .max_duration_s = 120.0};
+constexpr Rules kRules{.track_length_m = 100.0,
+                       .max_duration_s = 120.0,
+                       .lane_width_m = 12.0,
+                       .full_pull_line_m = 100.0};
 
 pull::Model model_with(const sled::Params& sled,
                        const track::Params& track = track::testing::reference_params()) {
@@ -46,8 +49,9 @@ struct Driver {
     int gear = 6;
     bool dump = false;
     double lift_at_s = 1e9;
-    // Right brake pedal from the launch on.
+    // Right brake pedal and front wheel angle from the launch on.
     double brake_right = 0.0;
+    double steering_rad = 0.0;
 
     [[nodiscard]] vehicle::Input input(double t_s) const {
         vehicle::Input in{.throttle = t_s < 0.5 || t_s >= lift_at_s ? 0.0 : 1.0,
@@ -56,6 +60,7 @@ struct Driver {
         if (t_s >= 3.0) {
             in.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             in.brake_right = brake_right;
+            in.steering_rad = steering_rad;
         }
         if (t_s >= lift_at_s) {
             in.clutch_pedal = 1.0;
@@ -93,12 +98,17 @@ Outcome drive(const pull::Model& model, const Driver& driver, const Rules& rules
 
 TEST(RunRules, RejectsNonsense) {
     EXPECT_EQ(validate(kRules), std::nullopt);
-    EXPECT_EQ(validate({.track_length_m = 0.0, .max_duration_s = 1.0}),
-              ParamError::kTrackLengthNotPositive);
-    EXPECT_EQ(validate({.track_length_m = 100.0, .max_duration_s = 0.0}),
-              ParamError::kMaxDurationNotPositive);
-    EXPECT_EQ(validate({.track_length_m = std::nan(""), .max_duration_s = 1.0}),
-              ParamError::kNotFinite);
+    const auto with = [](auto mutate) {
+        Rules r = kRules;
+        mutate(r);
+        return validate(r);
+    };
+    EXPECT_EQ(with([](Rules& r) { r.track_length_m = 0.0; }), ParamError::kTrackLengthNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.max_duration_s = 0.0; }), ParamError::kMaxDurationNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.track_length_m = std::nan(""); }), ParamError::kNotFinite);
+    EXPECT_EQ(with([](Rules& r) { r.lane_width_m = 0.0; }), ParamError::kLaneWidthNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.full_pull_line_m = -1.0; }),
+              ParamError::kFullPullLineNotPositive);
 }
 
 // In its pulling gear the engine stalls after the push-down; the run ends
@@ -127,6 +137,59 @@ TEST(Run, OneSideSpinningIsASpinOut) {
         drive(model_with(sled::testing::reference_params()), {.gear = 3, .brake_right = 1.0});
     EXPECT_EQ(outcome.result.ending, Ending::kSpunOut);
     EXPECT_TRUE(outcome.state.pull.tractor.engine.running);
+}
+
+// ---- The lane
+
+// A tractor at the line, a rear tire's outer edge on the chalk.
+pull::State at_line(const pull::Model& model, double along_m, double rear_tire_offset_m = 0.0) {
+    pull::State state = pull::initial_state(model);
+    const vehicle::Params& tractor = model.tractor().params();
+    const double rear_edge_m =
+        0.5 * (tractor.chassis.rear_track_m + tractor.rear_tire.size.section_width_m);
+    state.tractor.chassis.position_m = model.start_line_m() + along_m;
+    state.tractor.chassis.lateral_position_m =
+        0.5 * kRules.lane_width_m - rear_edge_m + rear_tire_offset_m;
+    return state;
+}
+
+TEST(Lane, ATireOnTheChalkBeforeTheFullPullLineIsOut) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    EXPECT_TRUE(touches_line(model, at_line(model, 50.0), kRules));
+    EXPECT_FALSE(touches_line(model, at_line(model, 50.0, -0.01), kRules));
+    // Past the full-pull line it may.
+    EXPECT_FALSE(touches_line(model, at_line(model, 100.5), kRules));
+    // On the right-hand line too.
+    pull::State right = at_line(model, 50.0);
+    right.tractor.chassis.lateral_position_m = -right.tractor.chassis.lateral_position_m;
+    EXPECT_TRUE(touches_line(model, right, kRules));
+}
+
+// Turned in the lane, the front tires reach out further than the rear.
+TEST(Lane, AFrontTireCountsToo) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    pull::State state = at_line(model, 50.0, -0.05);
+    EXPECT_FALSE(touches_line(model, state, kRules));
+    state.tractor.chassis.heading_rad = 0.2;
+    EXPECT_TRUE(touches_line(model, state, kRules));
+}
+
+// The sled may swing across the line; only the tractor's tires count.
+TEST(Lane, TheSledMayCrossTheLine) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    pull::State state = pull::initial_state(model);
+    state.sled.lateral_position_m = 10.0;
+    EXPECT_FALSE(touches_line(model, state, kRules));
+}
+
+// Steering steadily to one side, the tractor leaves the lane: the pull is
+// disqualified and counts 0 m.
+TEST(Run, LeavingTheLaneIsOutOfBounds) {
+    const Outcome outcome =
+        drive(model_with(sled::testing::reference_params()), {.gear = 6, .steering_rad = 0.05});
+    EXPECT_EQ(outcome.result.ending, Ending::kOutOfBounds);
+    EXPECT_EQ(outcome.result.distance_m, 0.0);
+    EXPECT_GT(outcome.state.pull.sled.distance_m, 5.0);
 }
 
 // Lifting off mid-track: the sled drags to a halt with the engine running
@@ -198,7 +261,10 @@ TEST(Run, AWetStretchEndsTheRunSooner) {
 
 TEST(Run, TimesOutAsASafetyNet) {
     const Outcome outcome = drive(model_with(sled::testing::reference_params()), {.gear = 4},
-                                  {.track_length_m = 100.0, .max_duration_s = 10.0});
+                                  {.track_length_m = 100.0,
+                                   .max_duration_s = 10.0,
+                                   .lane_width_m = 12.0,
+                                   .full_pull_line_m = 100.0});
     EXPECT_EQ(outcome.result.ending, Ending::kTimedOut);
     EXPECT_EQ(outcome.result.time_s, 10.0);
 }
@@ -240,7 +306,7 @@ TEST(Run, ReplayMatchesRegression) {
     Result again;
     EXPECT_EQ(run_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0xa262b4ed9e1c9dcdULL);
+    EXPECT_EQ(hash, 0x850bb0462d0e1e8dULL);
     // 89.19649425121466 m, every bit pinned.
     EXPECT_EQ(result.distance_m, 0x1.64c935c9fb46ap+6);
     EXPECT_EQ(result.ending, Ending::kStalled);

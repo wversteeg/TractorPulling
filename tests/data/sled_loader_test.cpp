@@ -15,6 +15,7 @@ constexpr std::string_view kValidSled = R"(
 [sled]
 frame_mass_kg = 3000.0
 frame_cg_ahead_of_wheels_m = 0.8
+frame_yaw_inertia_kg_m2 = 4500.0
 pan_ahead_of_wheels_m = 3.0
 pan_friction_coefficient = 0.55
 pan_area_m2 = 2.0
@@ -26,6 +27,12 @@ radius_m = 0.45
 section_width_m = 0.3
 section_height_m = 0.25
 deflection_m = 0.03
+
+[sled.wheels.cornering]
+stiffness_per_rad = 3.5
+limit = 0.7
+mobility_rate = 0.12
+relaxation_length_m = 0.45
 
 [sled.hook]
 ahead_of_wheels_m = 3.2
@@ -98,6 +105,13 @@ TEST(SledLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.wheel.section_height_m, reference.wheel.section_height_m);
     EXPECT_EQ(loaded.wheel.deflection_m, reference.wheel.deflection_m);
     EXPECT_EQ(loaded.wheel_count, reference.wheel_count);
+    EXPECT_EQ(loaded.frame_yaw_inertia_kg_m2, reference.frame_yaw_inertia_kg_m2);
+    EXPECT_EQ(loaded.wheel_cornering.stiffness_per_rad,
+              reference.wheel_cornering.stiffness_per_rad);
+    EXPECT_EQ(loaded.wheel_cornering.limit, reference.wheel_cornering.limit);
+    EXPECT_EQ(loaded.wheel_cornering.mobility_rate, reference.wheel_cornering.mobility_rate);
+    EXPECT_EQ(loaded.wheel_cornering.relaxation_length_m,
+              reference.wheel_cornering.relaxation_length_m);
     EXPECT_EQ(loaded.chain.length_m, reference.chain.length_m);
     EXPECT_EQ(loaded.chain.stiffness_n_per_m, reference.chain.stiffness_n_per_m);
     EXPECT_EQ(loaded.chain.damping_n_s_per_m, reference.chain.damping_n_s_per_m);
@@ -137,6 +151,11 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(result.value().wheel.section_height_m, 0.25);
     EXPECT_DOUBLE_EQ(result.value().wheel.deflection_m, 0.03);
     EXPECT_EQ(result.value().wheel_count, 4);
+    EXPECT_DOUBLE_EQ(result.value().frame_yaw_inertia_kg_m2, 4500.0);
+    EXPECT_DOUBLE_EQ(result.value().wheel_cornering.stiffness_per_rad, 3.5);
+    EXPECT_DOUBLE_EQ(result.value().wheel_cornering.limit, 0.7);
+    EXPECT_DOUBLE_EQ(result.value().wheel_cornering.mobility_rate, 0.12);
+    EXPECT_DOUBLE_EQ(result.value().wheel_cornering.relaxation_length_m, 0.45);
 }
 
 TEST(SledLoader, RejectsNonsenseValues) {
@@ -145,7 +164,11 @@ TEST(SledLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 15> cases = {{
+    const std::array<Case, 18> cases = {{
+        {"frame_yaw_inertia_kg_m2 = 4500.0", "frame_yaw_inertia_kg_m2 = 0.0",
+         "sled.frame_yaw_inertia_kg_m2: must be > 0"},
+        {"limit = 0.7", "limit = 3.0", "sled.wheels.cornering: stiffness_per_rad"},
+        {"relaxation_length_m = 0.45", "", "sled.wheels.cornering.relaxation_length_m: missing"},
         {"collected_share = 0.2", "collected_share = 1.5",
          "sled.berm: collected_share 0 to 1, spill_distance_m > 0"},
         {"spill_distance_m = 30.0", "", "sled.berm.spill_distance_m: missing or not a number"},

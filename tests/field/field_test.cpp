@@ -114,8 +114,11 @@ TEST(Field, MassKeepsTheBalance) {
     }
 }
 
-constexpr double kMaxDistance_m = 130.0;
-constexpr double kMaxDuration_s = 120.0;
+// An event's pull: on to 130 m, the chalk lines counting to 100 m.
+constexpr run::Rules kRules{.track_length_m = 130.0,
+                            .max_duration_s = 120.0,
+                            .lane_width_m = 12.0,
+                            .full_pull_line_m = 100.0};
 
 // The best gear is the one that pulls furthest: no other gear in the range
 // gets further.
@@ -123,18 +126,15 @@ TEST(Driver, BestGearPullsFurthest) {
     const Puller puller = reference();
     const sled::Params sled = sled::testing::reference_params();
     const track::Params track = track::testing::reference_params();
-    const std::optional<int> best =
-        best_gear(puller, sled, track, 4, 6, kMaxDistance_m, kMaxDuration_s);
+    const std::optional<int> best = best_gear(puller, sled, track, 4, 6, kRules);
     ASSERT_TRUE(best.has_value());
     Puller in_best = puller;
     in_best.driver.gear = best.value_or(0);
-    const double best_m =
-        pull_distance(in_best, sled, track, kMaxDistance_m, kMaxDuration_s).value_or(0.0);
+    const double best_m = pull_distance(in_best, sled, track, kRules).value_or(0.0);
     for (int gear = 4; gear <= 6; ++gear) {
         Puller other = puller;
         other.driver.gear = gear;
-        EXPECT_LE(pull_distance(other, sled, track, kMaxDistance_m, kMaxDuration_s).value_or(0.0),
-                  best_m)
+        EXPECT_LE(pull_distance(other, sled, track, kRules).value_or(0.0), best_m)
             << "gear " << gear;
     }
 }

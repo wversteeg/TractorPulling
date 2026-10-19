@@ -92,10 +92,10 @@ struct Output {
 /// then the tractor and the sled each advance under the chain. The chain is explicit within
 /// a step; at 1 kHz its oscillation (tens of rad/s) is well resolved.
 ///
-/// The sled does not move sideways yet: it is taken to follow the tractor's
-/// line, its hook straight behind the hitch, so the chain pulls along the
-/// track. A tractor turned off that line feels the pull partly sideways at
-/// its hitch, which turns it back in line, as a towed load does.
+/// The chain runs between the hitch and the hook wherever they are: off
+/// the tractor's line it pulls the tractor's hitch and the sled's hook
+/// sideways, and the sled swings behind the tractor as a trailer does (see
+/// sled::Params).
 Output step(State& state, const Model& model, const vehicle::Input& input, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {

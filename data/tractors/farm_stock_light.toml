@@ -46,6 +46,7 @@ cg_height_m = 1.0
 pitch_inertia_kg_m2 = 2800.0      # about the centre of gravity; m k², k ≈ 0.9 m
 yaw_inertia_kg_m2 = 5500.0        # about the centre of gravity; m (l² + w²) / 12, 3.9 m by 2.2 m
 rear_track_m = 1.9                # between the rear tires' centres
+front_track_m = 1.6               # between the front tires' centres
 hitch_height_m = 0.5              # NTTO: at most 0.5 m, not above the rear axle
 hitch_behind_rear_axle_m = 0.4
 

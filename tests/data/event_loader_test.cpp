@@ -62,7 +62,8 @@ EventLog run(const EventDefinition& definition) {
     const auto order = event::running_order(definition.pullers, definition.seed + 1);
     const field::Venue venue{.track = definition.track.ground,
                              .sled = sled::with_conditions(definition.sled, definition.track.sled),
-                             .max_duration_s = definition.track.rules.max_duration_s};
+                             .max_duration_s = definition.track.rules.max_duration_s,
+                             .lane_width_m = definition.track.rules.lane_width_m};
     const auto played =
         field ? field::play_event(
                     definition.rules, venue, *field, definition.variation, definition.pull_to_pull,

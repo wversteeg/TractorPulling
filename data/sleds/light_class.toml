@@ -9,6 +9,7 @@
 [sled]
 frame_mass_kg = 3200.0
 frame_cg_ahead_of_wheels_m = 0.75
+frame_yaw_inertia_kg_m2 = 5000.0     # about the frame's own centre of gravity; m L² / 12, L ≈ 4.3 m
 pan_ahead_of_wheels_m = 3.0          # centre of the pan's contact
 pan_friction_coefficient = 0.46      # steel sliding on a firm track
 pan_area_m2 = 1.8                    # the pan's contact with the track
@@ -21,6 +22,16 @@ radius_m = 0.55
 section_width_m = 0.43
 section_height_m = 0.35
 deflection_m = 0.04
+
+# The wheels' side grip (see tp::tire::Cornering): they keep the sled's
+# tail in line; the pan, sliding forward, resists sideways far less, so a
+# sled swings behind a tractor that wanders (the dog-tail). Starting values
+# to tune, as for the tractor's tires.
+[sled.wheels.cornering]
+stiffness_per_rad = 4.0
+limit = 0.8
+mobility_rate = 0.1
+relaxation_length_m = 0.55           # about the wheel's radius
 
 [sled.hook]
 ahead_of_wheels_m = 3.3

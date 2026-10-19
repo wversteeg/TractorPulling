@@ -5,6 +5,7 @@
 [track]
 length_m = 100.0
 max_duration_s = 120.0
+lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
 
 [track.soil]
 clay_fraction = 0.75

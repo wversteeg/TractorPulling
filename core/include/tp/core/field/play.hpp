@@ -40,6 +40,8 @@ struct Venue {
     sled::Params sled;
     /// A pull stops after this at the latest [s].
     double max_duration_s = 0.0;
+    /// Between the chalk lines [m].
+    double lane_width_m = 0.0;
 };
 
 /// A played event: the event at its end and what happened, in order.

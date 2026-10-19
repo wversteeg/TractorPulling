@@ -169,13 +169,11 @@ std::optional<Field> generate(const Puller& reference, const Variation& variatio
 namespace tp::field {
 
 std::optional<double> pull_distance(const Puller& puller, const sled::Params& sled,
-                                    const track::Params& track, double max_distance_m,
-                                    double max_duration_s) noexcept {
+                                    const track::Params& track, const run::Rules& rules) noexcept {
     constexpr double kDt_s =
         static_cast<double>(kSimulationStepNs) / static_cast<double>(kNanosecondsPerSecond);
     const auto model =
         pull::Model::create({.tractor = puller.tractor, .sled = sled, .track = track});
-    const run::Rules rules{.track_length_m = max_distance_m, .max_duration_s = max_duration_s};
     if (!model || run::validate(rules)) {
         return std::nullopt;
     }
@@ -193,14 +191,13 @@ namespace tp::field {
 
 std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
                              const track::Params& track, int lowest, int highest,
-                             double max_distance_m, double max_duration_s) noexcept {
+                             const run::Rules& rules) noexcept {
     std::optional<int> best;
     double best_m = -1.0;
     for (int gear = lowest; gear <= highest; ++gear) {
         Puller trying = puller;
         trying.driver.gear = gear;
-        const std::optional<double> reached =
-            pull_distance(trying, sled, track, max_distance_m, max_duration_s);
+        const std::optional<double> reached = pull_distance(trying, sled, track, rules);
         if (!reached) {
             return std::nullopt;
         }

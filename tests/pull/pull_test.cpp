@@ -41,13 +41,15 @@ struct Driver {
     double max_tension_n = 0.0;
     double resistance_at_20_m_n = 0.0;
     double resistance_at_50_m_n = 0.0;
+    double steering_rad = 0.0;
 
     void drive(int gear, bool dump, double max_seconds = 90.0) {
         for (int i = 0; i < static_cast<int>(max_seconds / kDt_s); ++i) {
             const double t_s = i * kDt_s;
             vehicle::Input input{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                                  .clutch_pedal = 1.0,
-                                 .gear = t_s < 0.5 ? driveline::kNeutral : gear};
+                                 .gear = t_s < 0.5 ? driveline::kNeutral : gear,
+                                 .steering_rad = t_s < 3.0 ? 0.0 : steering_rad};
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
@@ -208,18 +210,53 @@ TEST(Chain, RunsSidewaysToAnOffsetHitch) {
     EXPECT_NEAR(force.tension_n, 1e5 * (span_m - 3.0), 1e-6);
 }
 
-// Turned off the line, the tractor feels the chain partly sideways at its
-// hitch behind the rear axle, which turns it back in line.
-TEST(Pull, ChainTurnsTheTractorBackInLine) {
+// The sled follows the tractor sideways like a trailer: the same way, but
+// later and less far.
+TEST(Pull, SledFollowsTheTractorSideways) {
     Driver run;
-    constexpr double kTurned_rad = 0.05;
-    run.state.tractor.chassis.heading_rad = kTurned_rad;
-    run.drive(6, false, 15.0);
-    EXPECT_LT(std::abs(run.state.tractor.chassis.heading_rad), 0.5 * kTurned_rad);
+    run.steering_rad = 0.02;
+    run.drive(6, false, 20.0);
+    const double tractor_m = run.state.tractor.chassis.lateral_position_m;
+    const double sled_m = run.state.sled.lateral_position_m;
+    EXPECT_GT(tractor_m, 1.0);
+    EXPECT_GT(sled_m, 0.5 * tractor_m);
+    EXPECT_LT(sled_m, tractor_m);
+    EXPECT_GT(run.state.sled.heading_rad, 0.0);
+}
+
+// The dog-tail: when the tractor steers back after drifting to one side,
+// the sled, still swinging out, ends up wider than the tractor. Near a
+// chalk line the sled crosses it while the tractor stays in.
+TEST(Pull, SledSwingsWideWhenTheTractorCorrects) {
+    const Model model = reference_model();
+    State state = initial_state(model);
+    double widest_lead_m = 0.0;
+    for (int i = 0; i < 22000; ++i) {
+        const double t_s = i * kDt_s;
+        // Drift left, steer back right, straighten.
+        constexpr double kSteer_rad = 0.12;
+        double steering_rad = 0.0;
+        if (t_s >= 12.0 && t_s < 16.0) {
+            steering_rad = -kSteer_rad;
+        } else if (t_s >= 10.0 && t_s < 18.0) {
+            steering_rad = kSteer_rad;
+        }
+        const vehicle::Input input{
+            .throttle = t_s < 0.5 ? 0.0 : 1.0,
+            .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
+            .gear = t_s < 0.5 ? driveline::kNeutral : 6,
+            .steering_rad = steering_rad};
+        step(state, model, input, kDt_s);
+        widest_lead_m = std::max(widest_lead_m, state.sled.lateral_position_m -
+                                                    state.tractor.chassis.lateral_position_m);
+    }
+    EXPECT_GT(widest_lead_m, 0.5);
+    // And it settles back in line behind the tractor.
+    EXPECT_NEAR(state.sled.lateral_position_m, state.tractor.chassis.lateral_position_m, 0.05);
 }
 
 // Straight, then left, then right: exercises the chain at an angle.
-double steering_rad(double t_s) {
+double hash_steering_rad(double t_s) {
     if (t_s < 8.0) {
         return 0.0;
     }
@@ -235,7 +272,7 @@ std::uint64_t pull_hash() {
             .throttle = t_s < 0.5 ? 0.0 : 1.0,
             .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
             .gear = t_s < 0.5 ? driveline::kNeutral : 6,
-            .steering_rad = steering_rad(t_s)};
+            .steering_rad = hash_steering_rad(t_s)};
         step(run.state, run.model, input, kDt_s);
         hash_append(hash, run.state);
     }
@@ -248,7 +285,7 @@ TEST(Pull, IsDeterministic) {
 
 // Regression hash; must match on every compiler, build type and platform.
 TEST(Pull, MatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xef8fb1f437671168ULL);
+    EXPECT_EQ(pull_hash(), 0xddbf4d41fe5bfba4ULL);
 }
 
 }  // namespace

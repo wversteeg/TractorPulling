@@ -81,10 +81,22 @@ struct Adjustment {
 /// with CI the soil's cone index. Knives under the pan cut grooves on top
 /// of that. The rear wheels roll as towed tires (Brixius), sinking further
 /// into softer ground.
+///
+/// Sideways the sled is a trailer on the chain: it moves and turns (yaws)
+/// in the ground plane under the chain's pull at the hook, its rear wheels'
+/// side grip (tire::Cornering) and the pan's friction. Sliding friction
+/// acts against the pan's sliding direction, so while the sled slides
+/// forward, a sideways speed v turns only a share v / √(u² + v²) of the
+/// pan's drag against it: a sliding sled swings sideways easily (the
+/// dog-tail), one at rest holds. The weight box moves the centre of gravity
+/// and the yaw inertia as it travels.
 struct Params {
     /// Sled without the weight box [kg].
     double frame_mass_kg = 0.0;
     double frame_cg_ahead_of_wheels_m = 0.0;
+    /// The frame's yaw inertia about its own centre of gravity; the box
+    /// adds its own as a point mass [kg·m²].
+    double frame_yaw_inertia_kg_m2 = 0.0;
     /// Centre of the pan's contact with the track [m].
     double pan_ahead_of_wheels_m = 0.0;
     double hook_ahead_of_wheels_m = 0.0;
@@ -109,6 +121,8 @@ struct Params {
     Knives knives;
     Berm berm;
     tire::Size wheel;
+    /// Side grip of one rear wheel.
+    tire::Cornering wheel_cornering;
     int wheel_count = 2;
     Chain chain;
     /// One pull-off step, about 5 m of pull on this class's sled; a pull-off
@@ -119,6 +133,7 @@ struct Params {
 enum class ParamError : std::uint8_t {
     kNotFinite,
     kFrameMassNotPositive,
+    kYawInertiaNotPositive,
     kBoxMassNegative,
     kPanNotAheadOfWheels,
     kFrameCgOutsideSled,
@@ -133,6 +148,7 @@ enum class ParamError : std::uint8_t {
     kKnivesOutOfRange,
     kBermOutOfRange,
     kWheel,
+    kWheelCornering,
     kWheelCountOutOfRange,
     kChainInvalid,
     /// The pull-off step would not make the sled heavier.
@@ -153,22 +169,48 @@ struct Conditions {
 /// The sled with the day's conditions applied.
 [[nodiscard]] Params with_conditions(const Params& params, const Conditions& conditions) noexcept;
 
+/// Positions are in the world: x along the track, y to the left of its
+/// centre line. Speeds are in the sled's own frame.
 struct State {
     /// Rear wheels' contact along the track [m].
     double position_m = 0.0;
+    /// Forward speed [m/s].
     double velocity_m_s = 0.0;
     /// Travelled since the start: drives the box and the push-down [m].
     double distance_m = 0.0;
     /// Soil piled up in front of the pan [kg].
     double berm_kg = 0.0;
+    /// Rear wheels' contact to the left of the centre line [m].
+    double lateral_position_m = 0.0;
+    /// The sled's x from the track's direction, positive turned left [rad].
+    double heading_rad = 0.0;
+    /// Sideways speed of the rear wheels' contact, to the left [m/s].
+    double lateral_velocity_m_s = 0.0;
+    /// Positive turning left [rad/s].
+    double yaw_rate_rad_s = 0.0;
+    /// Sideways deflection of each rear wheel's contact patch [m].
+    double wheel_side_deflection_m = 0.0;
 };
 
-/// What the chain puts on the sled at the hook [N].
+/// What the chain puts on the sled at the hook, in the sled's frame [N].
 struct HookForce {
     double forward_n = 0.0;
     /// Negative when the chain runs up from the hook to the tractor's hitch.
     double up_n = 0.0;
+    /// To the sled's left.
+    double side_n = 0.0;
 };
+
+/// The hook in the world and how it moves [m, m/s].
+struct Hook {
+    double x_m = 0.0;
+    double y_m = 0.0;
+    double z_m = 0.0;
+    double velocity_x_m_s = 0.0;
+    double velocity_y_m_s = 0.0;
+};
+
+[[nodiscard]] Hook hook(const Params& params, const State& state) noexcept;
 
 /// The ground under the pan and under the rear wheels, some metres apart.
 struct Ground {
@@ -215,9 +257,18 @@ struct Prediction {
     double velocity_per_n = 0.0;
 };
 
+/// A turning sled's sideways motion feeds its forward speed (v_cg r).
 [[nodiscard]] Prediction predict(const State& state, const Params& params, double resistance_n,
                                  double dt_s) noexcept;
 
+/// Sideways motion and yaw over the step, before advance(): the hook's
+/// side pull, the rear wheels' side grip on `wheel_ground` and the pan's
+/// sliding friction (implicit, so it holds a sled at rest without
+/// stiffness trouble), with the loads of this step.
+void advance_lateral(State& state, const Params& params, const Loads& loads, double hook_side_n,
+                     const soil::Surface& wheel_ground, double dt_s) noexcept;
+
+/// Forward speed over the step, then position along the heading.
 void advance(State& state, const Prediction& prediction, double forward_n, double dt_s) noexcept;
 
 /// The berm over a step, after advance(): soil the tractor threw back
@@ -230,6 +281,11 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.velocity_m_s);
     hash.add(state.distance_m);
     hash.add(state.berm_kg);
+    hash.add(state.lateral_position_m);
+    hash.add(state.heading_rad);
+    hash.add(state.lateral_velocity_m_s);
+    hash.add(state.yaw_rate_rad_s);
+    hash.add(state.wheel_side_deflection_m);
 }
 
 }  // namespace tp::sled

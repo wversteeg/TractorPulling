@@ -12,6 +12,19 @@ constexpr std::uint64_t kPullStream = 0x9e3779b97f4a7c15ULL;
 
 }  // namespace
 
+namespace {
+
+// A pull at the event runs until the sled stops (the floating finish, up to
+// the rules' maximum); the chalk lines count up to today's full-pull line.
+run::Rules run_rules(const event::Rules& rules, const Venue& venue, double full_pull_m) noexcept {
+    return {.track_length_m = rules.max_distance_m,
+            .max_duration_s = venue.max_duration_s,
+            .lane_width_m = venue.lane_width_m,
+            .full_pull_line_m = full_pull_m};
+}
+
+}  // namespace
+
 std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& venue,
                                       const Field& field, const Variation& variation,
                                       const PullToPull& pull_to_pull,
@@ -33,7 +46,7 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         Puller& puller = today.pullers[static_cast<std::size_t>(i)];
         const std::optional<int> best =
             best_gear(puller, venue.sled, venue.track, variation.lowest_gear,
-                      variation.highest_gear, rules.max_distance_m, venue.max_duration_s);
+                      variation.highest_gear, run_rules(rules, venue, rules.full_pull_m));
         if (!best) {
             return std::nullopt;
         }
@@ -59,7 +72,7 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         const Puller puller = on_this_pull(today.pullers[static_cast<std::size_t>(pull->puller)],
                                            pull_to_pull, pulls);
         const std::optional<double> reached = pull_distance(
-            puller, ev.sled(), venue.track, rules.max_distance_m, venue.max_duration_s);
+            puller, ev.sled(), venue.track, run_rules(rules, venue, ev.full_pull_m()));
         if (!reached) {
             return std::nullopt;
         }

@@ -289,6 +289,8 @@ std::string_view describe(tp::run::Ending ending) {
             return "stopped";
         case tp::run::Ending::kTimedOut:
             return "timed out";
+        case tp::run::Ending::kOutOfBounds:
+            return "out of bounds: a tire touched the chalk line";
     }
     return "?";
 }
@@ -323,7 +325,8 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
                 << out.sled.resistance_n / kNewtonsPerKilonewton << ',' << pull.sled.berm_kg << ','
                 << out.sled.berm_n / kNewtonsPerKilonewton << ','
                 << pull.tractor.chassis.lateral_position_m << ','
-                << rad_to_deg(pull.tractor.chassis.heading_rad) << '\n';
+                << rad_to_deg(pull.tractor.chassis.heading_rad) << ','
+                << pull.sled.lateral_position_m << ',' << rad_to_deg(pull.sled.heading_rad) << '\n';
         }
     }
     return state.result;
@@ -334,7 +337,8 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
         const tp::data::Track& track, const PullOptions& options, std::ostream& csv) {
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
-           "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg\n";
+           "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg,"
+           "sled_lateral_m,sled_heading_deg\n";
     // The class's sled with the day's push-down.
     tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
@@ -460,7 +464,8 @@ int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
     const tp::field::Venue venue{
         .track = definition.track.ground,
         .sled = tp::sled::with_conditions(definition.sled, definition.track.sled),
-        .max_duration_s = definition.track.rules.max_duration_s};
+        .max_duration_s = definition.track.rules.max_duration_s,
+        .lane_width_m = definition.track.rules.lane_width_m};
     const auto played =
         field ? tp::field::play_event(definition.rules, venue, *field, definition.variation,
                                       definition.pull_to_pull, running, seed + 2)
@@ -570,7 +575,8 @@ int run_season(const tp::data::SeasonDefinition& definition, std::uint64_t seed)
         const auto order = tp::event::running_order(base.pullers, event_seed);
         const tp::field::Venue venue{.track = round.track.ground,
                                      .sled = tp::sled::with_conditions(base.sled, round.track.sled),
-                                     .max_duration_s = round.track.rules.max_duration_s};
+                                     .max_duration_s = round.track.rules.max_duration_s,
+                                     .lane_width_m = round.track.rules.lane_width_m};
         const auto played = tp::field::play_event(
             base.rules, venue, *field, base.variation, base.pull_to_pull,
             std::span{order.data(), static_cast<std::size_t>(base.pullers)}, event_seed + 1);

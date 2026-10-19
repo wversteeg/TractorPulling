@@ -14,6 +14,7 @@ package "tp::chassis" {
     +yaw_inertia_kg_m2 : double
     +rear_axle_height_m : double
     +rear_track_m : double
+    +front_track_m : double
     +hitch_height_m : double
     +hitch_behind_rear_axle_m : double
     +front_tires : Contact

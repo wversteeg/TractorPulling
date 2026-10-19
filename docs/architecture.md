@@ -88,7 +88,10 @@ by their levers. The box moves forward with the sled's travel and the
 push-down lifts the wheels, so the pan drags harder along the track. On
 soft ground the pan ploughs and the wheels sink in. Knives under the pan
 cut grooves, and soil the tractor's tires throw back piles up in front of
-the pan as a berm it has to push.
+the pan as a berm it has to push. Sideways it is a trailer on the chain: its
+rear wheels keep its tail in line, while the pan, sliding forward, resists
+sideways only weakly, so the sled swings behind a tractor that corrects its
+line (the dog-tail).
 
 ![Sled classes](diagrams/svg/sled_classes.svg)
 
@@ -104,7 +107,8 @@ contact reads where it is.
 
 A run from the start line to its result: it ends at the sled's first stop, or
 with a full pull at the end of the track, which calls for a pull-off on a
-heavier sled.
+heavier sled. A tractor tire touching a chalk line before the full-pull line
+disqualifies the pull (out of bounds, 0 m); the sled may cross the lines.
 
 ![Run classes](diagrams/svg/run_classes.svg)
 

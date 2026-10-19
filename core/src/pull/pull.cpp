@@ -85,15 +85,13 @@ ChainEnd hitch_end(const Model& model, const State& state) noexcept {
             .velocity_z_m_s = hitch.velocity_z_m_s};
 }
 
-// The sled does not move sideways yet: it is taken to follow the tractor's
-// line, its hook straight behind the hitch.
-ChainEnd hook_end(const sled::Params& sled, const sled::State& state,
-                  const ChainEnd& hitch) noexcept {
-    return {.x_m = state.position_m + sled.hook_ahead_of_wheels_m,
-            .y_m = hitch.y_m,
-            .z_m = sled.hook_height_m,
-            .velocity_x_m_s = state.velocity_m_s,
-            .velocity_y_m_s = hitch.velocity_y_m_s};
+ChainEnd hook_end(const sled::Params& sled, const sled::State& state) noexcept {
+    const sled::Hook hook = sled::hook(sled, state);
+    return {.x_m = hook.x_m,
+            .y_m = hook.y_m,
+            .z_m = hook.z_m,
+            .velocity_x_m_s = hook.velocity_x_m_s,
+            .velocity_y_m_s = hook.velocity_y_m_s};
 }
 
 }  // namespace
@@ -112,11 +110,10 @@ State initial_state(const Model& model) noexcept {
 Output step(State& state, const Model& model, const vehicle::Input& input, double dt_s) noexcept {
     const sled::Params& sled = model.sled();
     Output out;
-    const ChainEnd hitch = hitch_end(model, state);
-    out.chain = chain_force(sled.chain, hitch, hook_end(sled, state.sled, hitch));
+    out.chain = chain_force(sled.chain, hitch_end(model, state), hook_end(sled, state.sled));
 
-    // Equal and opposite at the two ends, along the chain; the tractor feels
-    // it in its body frame.
+    // Equal and opposite at the two ends, along the chain; the tractor and
+    // the sled each feel it in their own frame.
     const double along_x_n = out.chain.tension_n * out.chain.direction_x;
     const double along_y_n = out.chain.tension_n * out.chain.direction_y;
     const double along_z_n = out.chain.tension_n * out.chain.direction_z;
@@ -124,7 +121,11 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
     const chassis::Drawbar drawbar{.pull_n = along_x_n * heading.cos + along_y_n * heading.sin,
                                    .lift_n = -along_z_n,
                                    .side_n = along_x_n * heading.sin - along_y_n * heading.cos};
-    const sled::HookForce hook{.forward_n = along_x_n, .up_n = along_z_n};
+    const math::SinCos sled_heading = math::sin_cos_any(state.sled.heading_rad);
+    const sled::HookForce hook{
+        .forward_n = along_x_n * sled_heading.cos + along_y_n * sled_heading.sin,
+        .up_n = along_z_n,
+        .side_n = along_y_n * sled_heading.cos - along_x_n * sled_heading.sin};
 
     // The ground under each contact, by where it is along the track. The
     // front tires are taken a wheelbase ahead: pitch moves them by
@@ -145,6 +146,7 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
     out.sled = sled::loads(sled, state.sled, hook, sled_ground);
     const sled::Prediction prediction =
         sled::predict(state.sled, sled, out.sled.resistance_n, dt_s);
+    sled::advance_lateral(state.sled, sled, out.sled, hook.side_n, sled_ground.wheels, dt_s);
     sled::advance(state.sled, prediction, hook.forward_n, dt_s);
     sled::collect(state.sled, sled, out.tractor.thrown_soil_m3_s, dt_s);
     return out;

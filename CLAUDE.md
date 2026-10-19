@@ -104,7 +104,6 @@ First get something working, then give it more possibilities. In order:
 
 ## Later (do not build yet)
 
-- Lane steering and sled sideways drag (leaving the lane ends the run).
 - Steering plus two independent brakes. The first steering range turns the wheels; beyond a threshold it applies progressive brake on that side. A "pro" mode splits this into steering and two brake inputs. Same physics, different input mapping.
 - Touch-only input (sliders and tilt). Gamepad and keyboard are only for development.
 - Godot 4 GDExtension front end: 3D scene, multiple cameras, interpolated rendering of core state.

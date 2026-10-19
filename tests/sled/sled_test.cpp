@@ -369,5 +369,77 @@ TEST(Sled, NetForceAcceleratesTheWholeSled) {
     EXPECT_NEAR(state.position_m - 5.0, state.distance_m, 1e-12);
 }
 
+// ---- Sideways
+
+// Steps only the sideways motion, at a fixed forward speed, with a side
+// pull at the hook.
+State swing(const Params& params, double forward_m_s, double hook_side_n, int steps) {
+    State state{.position_m = 10.0, .velocity_m_s = forward_m_s, .distance_m = 10.0};
+    const Ground ground = reference_ground();
+    for (int i = 0; i < steps; ++i) {
+        const Loads l = loads(params, state, {.forward_n = 20000.0}, ground);
+        advance_lateral(state, params, l, hook_side_n, ground.wheels, kDt_s);
+    }
+    return state;
+}
+
+TEST(SledPlane, StaysInLineWithoutSidePull) {
+    const State state = swing(reference_params(), 2.0, 0.0, 1000);
+    EXPECT_EQ(state.lateral_velocity_m_s, 0.0);
+    EXPECT_EQ(state.yaw_rate_rad_s, 0.0);
+    EXPECT_EQ(state.heading_rad, 0.0);
+    EXPECT_EQ(state.wheel_side_deflection_m, 0.0);
+}
+
+// Pulled left at the hook, ahead of the wheels, the sled turns left.
+TEST(SledPlane, SidePullAtTheHookTurnsItThatWay) {
+    const State left = swing(reference_params(), 2.0, 3000.0, 500);
+    EXPECT_GT(left.heading_rad, 0.0);
+    const State right = swing(reference_params(), 2.0, -3000.0, 500);
+    EXPECT_EQ(right.heading_rad, -left.heading_rad);
+}
+
+// Sliding friction acts against the pan's sliding direction: sliding
+// forward, little of it is left to resist sideways, so a moving sled
+// swings far more easily than one at rest (the dog-tail).
+TEST(SledPlane, SlidingSledSwingsMoreEasily) {
+    const State moving = swing(reference_params(), 2.0, 3000.0, 500);
+    const State at_rest = swing(reference_params(), 0.0, 3000.0, 500);
+    EXPECT_GT(std::abs(moving.heading_rad), 5.0 * std::abs(at_rest.heading_rad));
+}
+
+TEST(SledPlane, HookSwingsWithTheHeading) {
+    const Params params = reference_params();
+    const Hook straight = hook(params, State{.position_m = 5.0, .velocity_m_s = 2.0});
+    EXPECT_EQ(straight.x_m, 5.0 + params.hook_ahead_of_wheels_m);
+    EXPECT_EQ(straight.y_m, 0.0);
+    EXPECT_EQ(straight.z_m, params.hook_height_m);
+    EXPECT_EQ(straight.velocity_x_m_s, 2.0);
+    const Hook turned =
+        hook(params, State{.position_m = 5.0, .heading_rad = 0.2, .yaw_rate_rad_s = 0.1});
+    EXPECT_NEAR(turned.y_m, params.hook_ahead_of_wheels_m * std::sin(0.2), 1e-15);
+    // Turning left, the hook ahead of the wheels moves left.
+    EXPECT_NEAR(turned.velocity_y_m_s, params.hook_ahead_of_wheels_m * 0.1 * std::cos(0.2), 1e-15);
+}
+
+TEST(SledPlane, MovesAlongItsHeading) {
+    const Params params = reference_params();
+    State state{.velocity_m_s = 2.0, .heading_rad = 0.3};
+    const Prediction p = predict(state, params, 0.0, kDt_s);
+    advance(state, p, 0.0, kDt_s);
+    EXPECT_NEAR(state.position_m, 2.0 * std::cos(0.3) * kDt_s, 1e-15);
+    EXPECT_NEAR(state.lateral_position_m, 2.0 * std::sin(0.3) * kDt_s, 1e-15);
+    EXPECT_NEAR(state.distance_m, 2.0 * kDt_s, 1e-15);
+}
+
+TEST(SledPlane, RejectsNonsense) {
+    Params params = reference_params();
+    params.frame_yaw_inertia_kg_m2 = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kYawInertiaNotPositive);
+    params = reference_params();
+    params.wheel_cornering.limit = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kWheelCornering);
+}
+
 }  // namespace
 }  // namespace tp::sled

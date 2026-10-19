@@ -53,6 +53,7 @@ cg_height_m = 1.0
 pitch_inertia_kg_m2 = 2800.0
 yaw_inertia_kg_m2 = 5500.0
 rear_track_m = 1.9
+front_track_m = 1.6
 hitch_height_m = 0.5
 hitch_behind_rear_axle_m = 0.4
 
