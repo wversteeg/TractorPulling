@@ -73,6 +73,7 @@ package "tp::chassis" {
     +hitch(const Params&, const State&) : Hitch
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
+    +end_velocity_m_s(const Prediction&, drive_force_n) : double
     +advance_lateral(State&, const Params&, const SideForces&, dt_s)
     +advance(State&, const Prediction&, drive_force_n, dt_s)
     +advance_pitch(State&, const Params&, axle_torque_nm, const Drawbar&,\n      front_rolling_resistance, dt_s)

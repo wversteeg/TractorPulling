@@ -177,6 +177,21 @@ TEST(TractorLoader, ReadsTheSteering) {
               vehicle::testing::reference_params().chassis.yaw_inertia_kg_m2);
 }
 
+TEST(TractorLoader, RejectsNonsenseBrakesAndTrack) {
+    for (const char* torque : {"-1.0", "inf", "nan"}) {
+        EXPECT_NE(error_of(with("max_torque_nm = 8000.0", std::string{"max_torque_nm = "} + torque))
+                      .find("tractor.brakes.max_torque_nm: must be a finite number, not negative"),
+                  std::string::npos)
+            << torque;
+    }
+    EXPECT_NE(
+        error_of(with("max_torque_nm = 8000.0", "")).find("tractor.brakes.max_torque_nm: missing"),
+        std::string::npos);
+    EXPECT_NE(error_of(with("rear_track_m = 1.9", "rear_track_m = 0.0"))
+                  .find("tractor.chassis.rear_track_m: must be > 0"),
+              std::string::npos);
+}
+
 TEST(TractorLoader, RejectsNonsenseSteering) {
     EXPECT_NE(error_of(with("max_angle_deg = 40.0", "max_angle_deg = 50.0"))
                   .find("tractor.steering.max_angle_deg: must be in (0, 45]"),

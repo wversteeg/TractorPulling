@@ -109,7 +109,8 @@ struct RearWheels {
     double slip_ratio = 0.0;
     /// Traction of that side's tires [N].
     double tire_force_n = 0.0;
-    /// Brake torque on that side [N·m].
+    /// Brake torque on that side, positive against forward rotation
+    /// (negative while it holds the side against turning backwards) [N·m].
     double brake_torque_nm = 0.0;
 };
 
@@ -144,7 +145,8 @@ struct Output {
     /// Traction of all rear tires on the vehicle [N]. At a standstill, the
     /// drawbar pull they hold.
     double tire_force_n = 0.0;
-    /// The two sides' mean.
+    /// The side that slips more: one side spinning is how an open
+    /// differential spins out.
     double slip_ratio = 0.0;
     RearWheels rear_left;
     RearWheels rear_right;
@@ -176,7 +178,7 @@ struct Output {
 /// both axles' side forces from their tires' patch deflections, every
 /// body's prediction, the exact chain solve for clutch torque and tire
 /// force with the differential and brakes folded in (a brake that would
-/// turn its wheels backwards holds them instead), the chassis' sideways
+/// carry its wheels through rest holds them there instead), the chassis' sideways
 /// motion and yaw, every body advances, the patch deflections follow the
 /// new speeds, then the chassis pitches under the axle torque's reaction.
 Output step(State& state, const Model& model, const Input& input, const Ground& ground,

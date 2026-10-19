@@ -27,7 +27,7 @@ Step -> Tire : side_grip(front, rear); with_traction(rear grip, traction, full b
 Step -> Tire : side_force_n(grip, patch deflection) for front and rear
 Step -> Engine : predict(throttle)
 Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag\n  + steered front tires' side force along the body)
-group solve_rear_with_brakes (once, or up to three times while a brake holds)
+group solve_rear_with_brakes (once; while a brake holds, Newton steps with one probe solve per held side)
 Step -> Driveline : predict(rear rolling resistance + both brakes' torque)
 Step -> Step : differential as a line in the common slip change;\n  both sides' traction folded into one TireLine
 Step -> Solve : engine line, driveline Response, TireLine, body line
@@ -36,11 +36,11 @@ Solve -> Clutch : resolve(capacity, lock torque)
 Clutch --> Solve : torque: locked, or kinetic capacity if slipping
 Solve -> Solve : tire force for that clutch torque
 Solve --> Step : clutch torque, tire force
-Step -> Step : end speeds of both sides' wheels;\n  a brake that would turn its wheels backwards:\n  solve for the torque that holds them
+Step -> Step : end speeds of both sides' wheels;\n  a brake that would carry its side through rest:\n  find the torque that holds it at rest
 end
 Step -> Engine : advance(load = clutch torque)
 Step -> Driveline : advance(clutch torque, axle torque = -r * tire force)
-Step -> Step : differential advances (no side turns backwards)
+Step -> Step : differential advances
 Step -> Chassis : advance_lateral(front, rear and hitch side forces,\n  yaw moment of the sides' unequal traction)
 Step -> Chassis : advance(drive force = tire force): moves along the heading
 Step -> Tire : relax_deflection_m(front, rear) at the new speeds

@@ -259,10 +259,13 @@ void advance_lateral(State& state, const Params& params, const SideForces& force
     state.heading_rad = heading_rad;
 }
 
+double end_velocity_m_s(const Prediction& prediction, double drive_force_n) noexcept {
+    return std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n, 0.0);
+}
+
 void advance(State& state, const Prediction& prediction, double drive_force_n,
              double dt_s) noexcept {
-    const double velocity_m_s =
-        std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n, 0.0);
+    const double velocity_m_s = end_velocity_m_s(prediction, drive_force_n);
     state.acceleration_m_s2 = (velocity_m_s - state.velocity_m_s) / dt_s;
     state.velocity_m_s = velocity_m_s;
     // Semi-implicit Euler: position advances with the new velocities.

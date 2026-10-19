@@ -46,6 +46,8 @@ struct Driver {
     int gear = 6;
     bool dump = false;
     double lift_at_s = 1e9;
+    // Right brake pedal from the launch on.
+    double brake_right = 0.0;
 
     [[nodiscard]] vehicle::Input input(double t_s) const {
         vehicle::Input in{.throttle = t_s < 0.5 || t_s >= lift_at_s ? 0.0 : 1.0,
@@ -53,6 +55,7 @@ struct Driver {
                           .gear = t_s < 0.5 ? driveline::kNeutral : gear};
         if (t_s >= 3.0) {
             in.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
+            in.brake_right = brake_right;
         }
         if (t_s >= lift_at_s) {
             in.clutch_pedal = 1.0;
@@ -113,6 +116,15 @@ TEST(Run, PullingGearEndsWithAStall) {
 
 TEST(Run, LowGearEndsSpinningOut) {
     const Outcome outcome = drive(model_with(sled::testing::reference_params()), {.gear = 4});
+    EXPECT_EQ(outcome.result.ending, Ending::kSpunOut);
+    EXPECT_TRUE(outcome.state.pull.tractor.engine.running);
+}
+
+// With the right side braked to a stop, the open differential spins the
+// left side alone: still a spin-out, though only one side slips.
+TEST(Run, OneSideSpinningIsASpinOut) {
+    const Outcome outcome =
+        drive(model_with(sled::testing::reference_params()), {.gear = 3, .brake_right = 1.0});
     EXPECT_EQ(outcome.result.ending, Ending::kSpunOut);
     EXPECT_TRUE(outcome.state.pull.tractor.engine.running);
 }

@@ -172,8 +172,7 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
     driveline::State driveline = state.driveline;
     driveline::advance(driveline, out.driveline, out.chain.clutch_torque_nm,
                        -r * out.chain.tire_force_n);
-    const double ground_m_s =
-        std::max(p.body.free_velocity_m_s + p.body.velocity_per_n * out.chain.tire_force_n, 0.0);
+    const double ground_m_s = chassis::end_velocity_m_s(p.body, out.chain.tire_force_n);
     out.axle_rad_s = driveline.output_omega_rad_s;
     out.slip_change_m_s = r * out.axle_rad_s - ground_m_s - p.common_slip_m_s;
     out.differential_change_rad_s = a0 + a1 * out.slip_change_m_s;
@@ -183,47 +182,121 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
     return out;
 }
 
-// A brake only resists: where its full torque would turn a side's wheels
-// backwards, it holds them still with just the torque that takes. The
-// wheels' end speeds are affine in the brake torques (for a given clutch
-// state), so that torque follows from one or two more solves.
-RearSolution solve_rear_with_brakes(const State& state, const Model& model, const RearProblem& p,
-                                    double left_nm, double right_nm) noexcept {
-    const RearSolution full = solve_rear(state, model, p, left_nm, right_nm);
-    const bool left_held = left_nm > 0.0 && full.left_rad_s < 0.0;
-    const bool right_held = right_nm > 0.0 && full.right_rad_s < 0.0;
-    if (!left_held && !right_held) {
-        return full;
-    }
-    double left_hold_nm = left_nm;
-    double right_hold_nm = right_nm;
-    if (left_held && right_held) {
-        const RearSolution free_left = solve_rear(state, model, p, 0.0, right_nm);
-        const RearSolution free_right = solve_rear(state, model, p, left_nm, 0.0);
-        // Speed change per N·m of each brake, and the torques at which both
-        // sides end at rest.
-        const double ll = (full.left_rad_s - free_left.left_rad_s) / left_nm;
-        const double lr = (full.left_rad_s - free_right.left_rad_s) / right_nm;
-        const double rl = (full.right_rad_s - free_left.right_rad_s) / left_nm;
-        const double rr = (full.right_rad_s - free_right.right_rad_s) / right_nm;
-        const double determinant = ll * rr - lr * rl;
-        if (determinant != 0.0) {
-            left_hold_nm += (-full.left_rad_s * rr + full.right_rad_s * lr) / determinant;
-            right_hold_nm += (-full.right_rad_s * ll + full.left_rad_s * rl) / determinant;
+// A brake resists its side's rotation, whichever way it turns, with up to
+// its capacity. Where that would carry the side through rest, it holds the
+// side at rest with just the torque that takes instead: Coulomb friction,
+// like the clutch. The sides' end speeds are piecewise affine in the brake
+// torques (a clutch changing state, the axle coming to rest), so Newton
+// steps on the held sides' end speeds find those torques, exactly once the
+// torque is in the right piece; each step's slopes come from one more
+// solve per held side.
+constexpr int kMaxHoldSteps = 4;
+// A held side counts as at rest below this end speed [rad/s].
+constexpr double kAtRest_rad_s = 1e-9;
+
+struct Brake {
+    double capacity_nm = 0.0;
+    double torque_nm = 0.0;
+    bool held = false;
+};
+
+// Kinetic friction against the side's rotation; a side at rest is first
+// tried turning forwards.
+Brake kinetic(double capacity_nm, double omega_rad_s) noexcept {
+    return {.capacity_nm = capacity_nm,
+            .torque_nm = omega_rad_s < 0.0 ? -capacity_nm : capacity_nm,
+            .held = false};
+}
+
+// The brake would drive the side through rest: it should hold it instead.
+bool carries_through_rest(const Brake& brake, double end_rad_s) noexcept {
+    return (brake.torque_nm > 0.0 && end_rad_s < 0.0) || (brake.torque_nm < 0.0 && end_rad_s > 0.0);
+}
+
+// Free, held at rest, or slipping at capacity the way the brake resists.
+bool settled(const Brake& brake, double end_rad_s) noexcept {
+    return !brake.held || std::abs(end_rad_s) <= kAtRest_rad_s ||
+           (std::abs(brake.torque_nm) == brake.capacity_nm &&
+            !carries_through_rest(brake, end_rad_s));
+}
+
+// How a solve's end speeds change per N·m of one side's brake.
+struct Slopes {
+    double left = 0.0;
+    double right = 0.0;
+};
+
+// Share of a brake's capacity a probe moves its torque by: small, so the
+// slope it measures is the one where the torque is now.
+constexpr double kProbeShare = 0.01;
+
+// A probe eases a brake towards zero torque.
+double probe_nm(const Brake& brake) noexcept {
+    const double h_nm = kProbeShare * brake.capacity_nm;
+    return brake.torque_nm > 0.0 ? -h_nm : h_nm;
+}
+
+Slopes slopes(const State& state, const Model& model, const RearProblem& p, const RearSolution& at,
+              double left_nm, double right_nm) noexcept {
+    const double h_nm = left_nm != 0.0 ? left_nm : right_nm;
+    const RearSolution s =
+        solve_rear(state, model, p, at.brake_left_nm + left_nm, at.brake_right_nm + right_nm);
+    return {.left = (s.left_rad_s - at.left_rad_s) / h_nm,
+            .right = (s.right_rad_s - at.right_rad_s) / h_nm};
+}
+
+// Newton step: the brake torque changes that bring the held sides to rest.
+struct Change {
+    double left_nm = 0.0;
+    double right_nm = 0.0;
+};
+
+Change hold_step(const Brake& left, const Brake& right, const RearSolution& at,
+                 const Slopes& per_left, const Slopes& per_right) noexcept {
+    if (left.held && right.held) {
+        const double determinant =
+            per_left.left * per_right.right - per_right.left * per_left.right;
+        if (determinant == 0.0) {
+            return {};
         }
-    } else if (left_held) {
-        const RearSolution free = solve_rear(state, model, p, 0.0, right_nm);
-        left_hold_nm = free.left_rad_s > 0.0
-                           ? left_nm * free.left_rad_s / (free.left_rad_s - full.left_rad_s)
-                           : 0.0;
-    } else {
-        const RearSolution free = solve_rear(state, model, p, left_nm, 0.0);
-        right_hold_nm = free.right_rad_s > 0.0
-                            ? right_nm * free.right_rad_s / (free.right_rad_s - full.right_rad_s)
-                            : 0.0;
+        return {.left_nm = (-at.left_rad_s * per_right.right + at.right_rad_s * per_right.left) /
+                           determinant,
+                .right_nm = (-at.right_rad_s * per_left.left + at.left_rad_s * per_left.right) /
+                            determinant};
     }
-    return solve_rear(state, model, p, std::clamp(left_hold_nm, 0.0, left_nm),
-                      std::clamp(right_hold_nm, 0.0, right_nm));
+    if (left.held && per_left.left != 0.0) {
+        return {.left_nm = -at.left_rad_s / per_left.left};
+    }
+    if (right.held && per_right.right != 0.0) {
+        return {.right_nm = -at.right_rad_s / per_right.right};
+    }
+    return {};
+}
+
+RearSolution solve_rear_with_brakes(const State& state, const Model& model, const RearProblem& p,
+                                    double left_capacity_nm, double right_capacity_nm) noexcept {
+    const double axle_rad_s = state.driveline.output_omega_rad_s;
+    Brake left = kinetic(left_capacity_nm, axle_rad_s - state.differential_rad_s);
+    Brake right = kinetic(right_capacity_nm, axle_rad_s + state.differential_rad_s);
+    RearSolution solution = solve_rear(state, model, p, left.torque_nm, right.torque_nm);
+    for (int step = 0; step < kMaxHoldSteps; ++step) {
+        left.held = left.held || carries_through_rest(left, solution.left_rad_s);
+        right.held = right.held || carries_through_rest(right, solution.right_rad_s);
+        if (settled(left, solution.left_rad_s) && settled(right, solution.right_rad_s)) {
+            break;
+        }
+        const Slopes per_left =
+            left.held ? slopes(state, model, p, solution, probe_nm(left), 0.0) : Slopes{};
+        const Slopes per_right =
+            right.held ? slopes(state, model, p, solution, 0.0, probe_nm(right)) : Slopes{};
+        const Change change = hold_step(left, right, solution, per_left, per_right);
+        left.torque_nm =
+            std::clamp(left.torque_nm + change.left_nm, -left.capacity_nm, left.capacity_nm);
+        right.torque_nm =
+            std::clamp(right.torque_nm + change.right_nm, -right.capacity_nm, right.capacity_nm);
+        solution = solve_rear(state, model, p, left.torque_nm, right.torque_nm);
+    }
+    return solution;
 }
 
 // Each patch follows its contact's sideways speed at the step's end speeds:
@@ -281,7 +354,7 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
                                 ground_m_s - turning_m_s, load_per_tire_n, ground.rear);
     const Side right = rear_side(tire_params, footing, axle_rad_s + state.differential_rad_s,
                                  ground_m_s + turning_m_s, load_per_tire_n, ground.rear);
-    out.slip_ratio = (left.traction.slip_ratio + right.traction.slip_ratio) / kSides;
+    out.slip_ratio = std::max(left.traction.slip_ratio, right.traction.slip_ratio);
     out.rear_left.slip_ratio = left.traction.slip_ratio;
     out.rear_right.slip_ratio = right.traction.slip_ratio;
     out.rear_rolling_resistance = (left.rolling_resistance + right.rolling_resistance) / kSides;
@@ -364,11 +437,11 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     engine::advance(state.engine, params.engine, engine_prediction, chain.clutch_torque_nm);
     driveline::advance(state.driveline, solution.driveline, chain.clutch_torque_nm,
                        -radius_m * chain.tire_force_n);
-    // Neither side's wheels turn backwards: there is no reverse.
+    // The axle never turns backwards (there is no reverse gear), but one
+    // side may: an open differential lets a tractor turning on the spot roll
+    // its inner wheels back.
     const double next_axle_rad_s = state.driveline.output_omega_rad_s;
-    state.differential_rad_s =
-        std::clamp(state.differential_rad_s + solution.differential_change_rad_s, -next_axle_rad_s,
-                   next_axle_rad_s);
+    state.differential_rad_s += solution.differential_change_rad_s;
     chassis::advance_lateral(
         state.chassis, params.chassis,
         {.front_n = out.front_side_force_n * steer.cos,

@@ -57,10 +57,10 @@ for the big features; they are repeated at the end for completeness.
   tractors may lock theirs (rules permitting): both sides would then turn
   together, the brakes would steer much less, and the side on better
   ground would pull more.
-- **Brakes hold by interpolation.** A brake that would turn its wheels
-  backwards holds them with the torque found from one or two extra solves,
-  exact while the clutch stays in the same state over the step; a final
-  clamp keeps any wheel from turning backwards. Brakes have no fade or
+- **Brakes hold by Newton steps.** A brake that would carry its side
+  through rest holds it with the torque found by up to four Newton steps,
+  each one more solve per held side; that is exact within one piece of the
+  piecewise-linear step and close to it otherwise. Brakes have no fade or
   pedal feel.
 - **Combined slip, simply.** A rear tire's side grip is cut by its traction
   (a friction ellipse against full bite) and by its slip (1 - |s|), and the

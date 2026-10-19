@@ -7,6 +7,7 @@
 #include "tp/data/engine/engine_loader.hpp"
 #include "tp/data/tire/tire_loader.hpp"
 
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -159,8 +160,9 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         return detail::make_error(source, "tractor.steering.max_angle_deg", "must be in (0, 45]");
     }
 
-    if (!(brakes.max_torque_nm >= 0.0)) {
-        return detail::make_error(source, "tractor.brakes.max_torque_nm", "must not be negative");
+    if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
+        return detail::make_error(source, "tractor.brakes.max_torque_nm",
+                                  "must be a finite number, not negative");
     }
 
     std::optional<LoadError> error;

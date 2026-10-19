@@ -21,6 +21,12 @@ using testing::reference_params;
 constexpr double kDt_s = 0.001;
 const Ground kGround = reference_ground();
 
+// A brake resists its side's rotation or holds the side at rest; it never
+// drives it.
+bool resists(double brake_torque_nm, double end_rad_s) {
+    return std::abs(end_rad_s) <= 1e-9 || brake_torque_nm * end_rad_s >= 0.0;
+}
+
 // A driver: idle in neutral, select a gear, rev up with the clutch pressed,
 // then slip the clutch in over 3 s or dump it, and pull at full throttle.
 struct Pull {
@@ -35,8 +41,9 @@ struct Pull {
     double brake_left = 0.0;
     double brake_right = 0.0;
     bool steered_in_the_air = false;
-    bool wheels_turned_backwards = false;
-    double min_left_rad_s = 1e12;
+    // A brake that drove its side (pushed it the way it turned) or took
+    // more than its capacity; neither may happen.
+    bool brake_misbehaved = false;
 
     [[nodiscard]] double left_rad_s() const {
         return state.driveline.output_omega_rad_s - state.differential_rad_s;
@@ -61,12 +68,11 @@ struct Pull {
             if (last.axle_loads.front_lifted && last.front_side_force_n != 0.0) {
                 steered_in_the_air = true;
             }
-            if (left_rad_s() < 0.0 || right_rad_s() < 0.0) {
-                wheels_turned_backwards = true;
-            }
-            if (t_s >= 8.0) {
-                min_left_rad_s = std::min(min_left_rad_s, left_rad_s());
-            }
+            brake_misbehaved =
+                brake_misbehaved || !resists(last.rear_left.brake_torque_nm, left_rad_s()) ||
+                !resists(last.rear_right.brake_torque_nm, right_rad_s()) ||
+                std::abs(last.rear_left.brake_torque_nm) > model.params().brakes.max_torque_nm ||
+                std::abs(last.rear_right.brake_torque_nm) > model.params().brakes.max_torque_nm;
             EXPECT_FALSE(last.shift_refused);
             if (t_s >= 3.0) {
                 max_slip = std::max(max_slip, last.slip_ratio);
@@ -470,8 +476,9 @@ TEST(VehicleBrakes, FullPedalHoldsOneSideStill) {
     for (int i = 0; i < 1500; ++i) {
         out = step(state, model, input, kGround, {}, kDt_s);
         const double left_rad_s = state.driveline.output_omega_rad_s - state.differential_rad_s;
-        ASSERT_GE(left_rad_s, 0.0);
-        held_steps += left_rad_s == 0.0 ? 1 : 0;
+        ASSERT_TRUE(resists(out.rear_left.brake_torque_nm, left_rad_s)) << i;
+        ASSERT_LE(std::abs(out.rear_left.brake_torque_nm), model.params().brakes.max_torque_nm);
+        held_steps += std::abs(left_rad_s) <= 1e-9 ? 1 : 0;
     }
     EXPECT_GT(held_steps, 1000);
     EXPECT_GT(out.rear_left.brake_torque_nm, 0.0);
@@ -484,22 +491,36 @@ TEST(VehicleBrakes, FullPedalHoldsOneSideStill) {
         << state.chassis.velocity_m_s << ' ' << state.chassis.yaw_rate_rad_s;
 }
 
+// Whatever the pedals, a brake only resists its side's rotation or holds it
+// at rest, with no more than its capacity.
+TEST(VehicleBrakes, NeverDriveTheWheels) {
+    for (const double pedal : {0.1, 0.5, 1.0}) {
+        for (const int gear : {2, 4, 6}) {
+            Pull pull;
+            pull.brake_left = pedal;
+            pull.brake_right = 0.6 * pedal;
+            pull.run(gear, 5000.0, false, 12.0);
+            EXPECT_FALSE(pull.brake_misbehaved) << pedal << ' ' << gear;
+        }
+    }
+}
+
+// The reported slip is the side that slips more: one side spinning is how
+// an open differential spins out.
+TEST(VehicleBrakes, SlipIsTheSideThatSlipsMore) {
+    Pull pull;
+    pull.brake_right = 0.5;
+    pull.run(4, 8000.0, false, 12.0);
+    EXPECT_GT(pull.last.rear_left.slip_ratio, pull.last.rear_right.slip_ratio);
+    EXPECT_EQ(pull.last.slip_ratio, pull.last.rear_left.slip_ratio);
+}
+
 // In a high gear, one brake can take more torque than the engine gives.
 TEST(VehicleBrakes, FullPedalInATopGearStallsTheEngine) {
     Pull pull;
     pull.brake_left = 1.0;
     pull.run(8, 1000.0, false, 15.0);
     EXPECT_FALSE(pull.state.engine.running);
-}
-
-TEST(VehicleBrakes, NeverTurnTheWheelsBackwards) {
-    for (const double pedal : {0.1, 0.5, 1.0}) {
-        Pull pull;
-        pull.brake_left = pedal;
-        pull.brake_right = 0.5 * pedal;
-        pull.run(6, 8000.0, false, 12.0);
-        EXPECT_FALSE(pull.wheels_turned_backwards) << pedal;
-    }
 }
 
 std::uint64_t pull_hash() {
