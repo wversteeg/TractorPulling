@@ -204,8 +204,9 @@ their range or at rest.
 
 Build the extension with `cmake --preset godot && cmake --build --preset godot`
 (it fetches godot-cpp and copies `data/` into the project), then open
-`app/godot` in Godot 4.7. `scripts/godot_test.sh <godot binary>` plays a
-scripted run headless and checks it ends in the same state as `tp_pull`'s.
+`app/godot` in Godot 4.7. `scripts/godot_test.sh <godot binary>` plays two
+scripted runs (with a renderer, under Xvfb if there is no display) and
+checks they end in the same state as `tp_pull`'s.
 There is no scene yet: that is the next step of milestone 5.
 
 ## Requirements

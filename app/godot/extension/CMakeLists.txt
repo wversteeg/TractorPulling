@@ -11,6 +11,13 @@ add_library(tp_godot SHARED
     src/tractor_pull_run.cpp)
 target_link_libraries(tp_godot PRIVATE tp::core tp::data godot::cpp)
 tp_configure_target(tp_godot)
+# The C++ runtime is linked in statically (godot-cpp's default on Linux).
+# Its symbols must stay inside the library: a renderer's driver (Mesa) loads
+# the system's shared libstdc++ into Godot, and that one would otherwise take
+# over half of ours, which crashes on the first file read.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID)
+    target_link_options(tp_godot PRIVATE "LINKER:--exclude-libs,ALL")
+endif()
 
 # godot-cpp's suffix: platform, build target and architecture, e.g.
 # libtp_godot.linux.template_debug.x86_64.so, as the .gdextension file lists.

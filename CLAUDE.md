@@ -41,7 +41,7 @@ app/godot/   Godot 4.7 project: GDScript scenes, input and UI.
 - Scenes, input, UI and the run flow are GDScript, with static types (`:=`, typed parameters and returns). Physics and pulling rules never go in GDScript.
 - The game hands `advance()` each frame's real time; the session alone decides how many 1 ms steps that is.
 - The game reads `data/` as `res://data`, a copy the build makes; edit `data/` only.
-- CI plays a scripted run through the extension headless (`scripts/godot_test.sh`); it must end in the same state hash as `tp_pull run --hash`.
+- CI plays scripted runs through the extension in Godot, with a software renderer under Xvfb (`scripts/godot_test.sh`); they must end in the same state hashes as `tp_pull run --hash`.
 
 ### Determinism
 
@@ -190,7 +190,8 @@ scripts/android_bench.sh build/android-arm64
 
 # The Godot extension (fetches godot-cpp) into app/godot/bin, data/ copied to
 # app/godot/data, and tp_pull; then open app/godot in Godot 4.7, or play the
-# scripted run headless and compare its state hash with tp_pull's
+# scripted runs (under Xvfb if there is no display) and compare their state
+# hashes with tp_pull's
 cmake --preset godot && cmake --build --preset godot
 scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
 # The extension for Android (needs ANDROID_NDK_HOME)
@@ -227,7 +228,7 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `g
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
-- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the headless test, downloaded from Godot's releases at a pinned version and checked against its SHA-512; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
+- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, downloaded from Godot's releases at a pinned version and checked against its SHA-512; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
 
 ## Dependencies
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Plays the same two scripted runs (the easy layout, and the pro one with a
 # dumped clutch and a brake) through tp_pull and through the Godot
-# extension, headless, and checks they end in the same state hashes: the
+# extension, and checks they end in the same state hashes: the
 # binding passes the controls and the time to tp::session unchanged. The
 # GDScript also checks the binding's edges (run_test.gd).
 #
@@ -50,10 +50,23 @@ if [[ ! -f "${project}/.godot/extension_list.cfg" ]]; then
     echo "${project}/.godot/extension_list.cfg is missing: build the godot preset first" >&2
     exit 1
 fi
+# Godot runs with a renderer where it can, as on a desktop: a GPU driver
+# loads libraries of its own (Mesa's brings the system's libstdc++), which a
+# headless run never sees. Under Xvfb when there is no display; headless,
+# with a warning, when neither is there.
+if [[ -n "${DISPLAY:-}" ]]; then
+    runner=("${godot}" --rendering-method gl_compatibility)
+elif command -v xvfb-run >/dev/null; then
+    runner=(xvfb-run -a -s "-screen 0 640x480x24" "${godot}" --rendering-method gl_compatibility)
+else
+    echo "warning: no display and no xvfb-run: running headless, without a renderer" >&2
+    runner=("${godot}" --headless)
+fi
+
 # A script error leaves Godot running instead of quitting: the timeout fails
 # the test then (its exit status is non-zero).
 readonly timeout_s=300
-output="$(timeout "${timeout_s}" "${godot}" --headless --path "${project}" \
+output="$(timeout "${timeout_s}" "${runner[@]}" --path "${project}" \
     --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
     --brake-right="${brake_right}" 2>&1)" || {
     echo "${output:-}"
