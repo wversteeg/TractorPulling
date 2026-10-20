@@ -73,11 +73,18 @@ namespace {
 // very slow on many CPUs.
 constexpr double kBoostAtRest = 1e-9;
 
+double governor_target_rad_s(const Params& params, double throttle) noexcept {
+    return params.idle_omega_rad_s +
+           throttle * (params.high_idle_omega_rad_s - params.idle_omega_rad_s);
+}
+
+double droop_rad_s(const Params& params) noexcept {
+    return params.high_idle_omega_rad_s - params.rated_omega_rad_s;
+}
+
 double governor_fuel(const Params& params, double throttle, double omega_rad_s) noexcept {
-    const double target_rad_s = params.idle_omega_rad_s +
-                                throttle * (params.high_idle_omega_rad_s - params.idle_omega_rad_s);
-    const double droop_rad_s = params.high_idle_omega_rad_s - params.rated_omega_rad_s;
-    return std::clamp((target_rad_s - omega_rad_s) / droop_rad_s, 0.0, 1.0);
+    return std::clamp((governor_target_rad_s(params, throttle) - omega_rad_s) / droop_rad_s(params),
+                      0.0, 1.0);
 }
 
 // Exhaust energy available to spin the turbo, 0 to 1, rising linearly with
@@ -105,6 +112,10 @@ double max_net_power_w(const Params& params) noexcept {
         best_w = std::max(best_w, torque_nm * omega_rad_s);
     }
     return best_w;
+}
+
+double full_fuel_omega_rad_s(const Params& params, double throttle) noexcept {
+    return governor_target_rad_s(params, throttle) - droop_rad_s(params);
 }
 
 Prediction predict(const State& state, const Params& params, double throttle,

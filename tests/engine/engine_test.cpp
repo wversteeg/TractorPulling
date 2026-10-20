@@ -80,6 +80,24 @@ TEST(EngineParams, RejectsNegativeTorque) {
     EXPECT_EQ(validate(p), ParamError::kTorqueCurveNegative);
 }
 
+// Full fuel starts a droop below the governor's target: at rated speed at
+// full throttle, rising with the throttle.
+TEST(Engine, FullFuelSpeedFollowsTheThrottle) {
+    const Params params = reference_params();
+    const double droop_rad_s = params.high_idle_omega_rad_s - params.rated_omega_rad_s;
+    EXPECT_NEAR(full_fuel_omega_rad_s(params, 1.0), params.rated_omega_rad_s, 1e-9);
+    EXPECT_NEAR(full_fuel_omega_rad_s(params, 0.0), params.idle_omega_rad_s - droop_rad_s, 1e-9);
+    EXPECT_LT(full_fuel_omega_rad_s(params, 0.3), full_fuel_omega_rad_s(params, 0.6));
+    // Just below it the governor gives full fuel, just above it less.
+    const double at_rad_s = full_fuel_omega_rad_s(params, 0.5);
+    State below = initial_state(params);
+    below.omega_rad_s = at_rad_s - 1.0;
+    EXPECT_EQ(predict(below, params, 0.5, 0.001).output.fuel, 1.0);
+    State above = below;
+    above.omega_rad_s = at_rad_s + 1.0;
+    EXPECT_LT(predict(above, params, 0.5, 0.001).output.fuel, 1.0);
+}
+
 TEST(Engine, StartsRunningAtIdle) {
     const Params params = reference_params();
     const State state = initial_state(params);

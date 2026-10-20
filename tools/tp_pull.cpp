@@ -483,7 +483,7 @@ void report_standings(tp::event::Event& event) {
         std::cout << std::setw(4) << s.place << ".  #" << std::setw(2) << s.puller + 1 << "  "
                   << std::setw(7) << s.distance_m << " m";
         if (s.full_pull || s.disqualified) {
-            std::cout << mark(s.full_pull, s.disqualified);
+            std::cout << (s.disqualified ? " DQ" : " full pull");
         }
         if (s.pull_off_rounds > 0) {
             std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m
@@ -671,6 +671,7 @@ struct Options {
     std::optional<std::string_view> output_path;
     std::optional<std::uint64_t> seed;
     std::optional<std::string_view> easy_path;
+    bool stick_given = false;
     PullOptions pull;
 };
 
@@ -739,6 +740,7 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
         options.seed = parse_number<std::uint64_t>(value);
         return options.seed ? Parsed::kOk : Parsed::kInvalid;
     }
+    options.stick_given = options.stick_given || arg == "--stick";
     return parse_driving_option(arg, value, options.pull);
 }
 
@@ -836,6 +838,10 @@ int run_command(const Options& options) {
     if (!tractor || !sled || !track) {
         return EXIT_FAILURE;
     }
+    if (options.stick_given && !options.easy_path) {
+        std::cerr << "--stick is the easy layout's steering: it needs --easy\n";
+        return EXIT_FAILURE;
+    }
     PullOptions pull = options.pull;
     if (options.easy_path) {
         pull.easy = load_or_report(tp::data::load_easy_controls(*options.easy_path));
@@ -915,6 +921,10 @@ int main(int argc, char** argv) {
     const std::size_t files = options->positional.size();
     for (const Command& command : kCommands) {
         if (command.name == name && files >= command.min_files && files <= command.max_files) {
+            // Only a run drives with the easy layout.
+            if (name != "run" && (options->easy_path || options->stick_given)) {
+                return usage();
+            }
             return command.run(*options);
         }
     }

@@ -81,8 +81,10 @@ brake pedals. **Easy** has the throttle, the gear and one steering control:
 its first stretch (60 %) turns the front wheels to full lock, the rest
 brakes the rear wheels on the inside of the turn. There is no clutch pedal:
 the clutch assist lets the clutch in while the engine holds its speed and
-lets it slip when the load pulls the engine below a guard speed near peak
-torque, so the engine never stalls; it presses the clutch when the driver
+lets it slip when the load pulls the engine below a guard speed (near peak
+torque at full throttle; at part throttle where the governor reaches full
+fuel, so a touch of throttle creeps the tractor away), so the engine never
+stalls; it presses the clutch when the driver
 lifts off or changes gear. The layout is data (`data/controls/easy.toml`).
 At full throttle the assist pulls about as far as a driver slipping the
 clutch in by hand, but the sled stops with the engine running:

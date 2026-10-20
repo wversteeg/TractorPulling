@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tp/core/driveline/driveline.hpp"
+#include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include <cstdint>
@@ -35,7 +36,9 @@ struct EasyInput {
 /// Works the clutch for the easy layout. It lets the clutch in at a steady
 /// rate while the engine holds its speed, and lets it slip again when the
 /// engine is pulled down below the guard speed, faster the further below:
-/// the engine keeps working near its peak torque and never stalls. It
+/// the engine keeps working near its peak torque and never stalls. At part
+/// throttle the guard is lower: where the governor reaches full fuel for
+/// that throttle, so the tractor creeps at a touch of throttle too. It
 /// presses the clutch when the driver lifts off the throttle, and before a
 /// gear change.
 struct ClutchAssist {
@@ -43,8 +46,11 @@ struct ClutchAssist {
     double engage_time_s = 0.0;
     /// From fully in to fully out at the fastest [s].
     double release_time_s = 0.0;
-    /// The guard speed, as a share of the engine's rated speed: near the
-    /// speed of peak torque, below which the engine cannot pull itself back.
+    /// The guard speed at full throttle, as a share of the engine's rated
+    /// speed: near the speed of peak torque, below which the engine cannot
+    /// pull itself back. At part throttle the guard is at most the speed
+    /// where the governor gives full fuel, and at least a band above the
+    /// stall speed.
     double guard_speed_share = 0.0;
     /// How far below the guard (a share of the rated speed) the clutch goes
     /// out at the fastest.
@@ -77,13 +83,20 @@ struct AssistState {
     double engagement = 0.0;
 };
 
+/// Adds the assist's state to a replay hash: a front end replaying an easy
+/// session hashes it along with the simulation's state.
+constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept {
+    hash.add(state.engagement);
+}
+
 /// The vehicle's input for the pro layout.
 [[nodiscard]] vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexcept;
 
 /// The vehicle's input for the easy layout, before this step of the
 /// vehicle: reads the tractor's state (engine speed, gear in) and advances
 /// the assist by `dt_s`. A requested gear goes in once the assist has the
-/// clutch out; until then the gear in stays.
+/// clutch out; until then the gear in stays. A gear outside the gearbox is
+/// held to its range.
 [[nodiscard]] vehicle::Input easy(const EasyInput& input, const EasyParams& params,
                                   AssistState& assist, const vehicle::Params& tractor,
                                   const vehicle::State& state, double dt_s) noexcept;

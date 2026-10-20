@@ -138,10 +138,13 @@ for the big features; they are repeated at the end for completeness.
 - **Clutch heat.** The easy-mode assist may slip the clutch for seconds at
   full engine torque to keep the engine from stalling. A real clutch
   would overheat and fade; the clutch model has no temperature.
-- **A smarter assist.** The assist's guard speed is one share of the rated
-  speed for every engine, and it does not know the gear or the sled.
-  It could take the guard from the engine's torque curve (its peak), or
-  ease the clutch in more gently in low gears to keep the front down.
+- **A smarter assist.** The assist's full-throttle guard speed is one share
+  of the rated speed for every engine, and it does not know the gear or the
+  sled. It could take the guard from the engine's torque curve (its peak),
+  or ease the clutch in more gently in low gears to keep the front down. At
+  a touch of throttle in a high gear against a heavy sled it hunts slowly
+  around the guard (about 4 reversals a second); a little hysteresis would
+  settle it if that shows on screen.
 - **Steering speed and touch input.** Both layouts take the steering
   control's position as given; a touch slider or tilt will want a rate
   limit and a dead zone, set with the Godot front end.

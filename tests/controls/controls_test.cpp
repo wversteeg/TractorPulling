@@ -63,16 +63,16 @@ struct EasyRun {
 };
 
 // Runs with the easy layout; `watch` sees each step's input after it.
-EasyRun drive(
-    const pull::Model& model, const Script& script,
-    const std::function<void(double, const vehicle::Input&, const EasyRun&)>& watch = {}) {
+EasyRun drive(const pull::Model& model, const Script& script,
+              const std::function<void(double, const vehicle::Input&, const EasyRun&)>& watch = {},
+              const run::Rules& rules = kRules) {
     EasyRun r{.state = run::start(model), .result = {}, .assist = {}};
     const vehicle::Params& tractor = model.tractor().params();
     for (int i = 0; !r.state.result; ++i) {
         const double t_s = i * kDt_s;
         const vehicle::Input in =
             easy(script(t_s), kEasy, r.assist, tractor, r.state.pull.tractor, kDt_s);
-        const pull::Output out = run::step(r.state, model, kRules, in, kDt_s);
+        const pull::Output out = run::step(r.state, model, rules, in, kDt_s);
         r.shift_refused = r.shift_refused || out.tractor.shift_refused;
         if (t_s > 2.0) {
             r.lowest_running_omega_rad_s =
@@ -252,6 +252,47 @@ TEST(ClutchAssist, PressesTheClutchToChangeGear) {
     EXPECT_GT(r.assist.engagement, 0.0);
 }
 
+// A touch of throttle creeps the tractor away too: at part throttle the
+// guard sits where the governor reaches full fuel for that throttle, so the
+// assist lets the clutch in although the engine runs far below its full
+// throttle guard.
+TEST(ClutchAssist, EngagesAtPartThrottle) {
+    const pull::Model model = model_with(light_sled());
+    run::Rules short_run = kRules;
+    short_run.max_duration_s = 30.0;
+    for (const double throttle : {0.1, 0.2, 0.35, 0.6}) {
+        double most_engaged = 0.0;
+        const EasyRun r = drive(
+            model,
+            [throttle](double t_s) {
+                EasyInput in = launch(t_s, 2);
+                in.throttle *= throttle;
+                return in;
+            },
+            [&](double, const vehicle::Input&, const EasyRun& now) {
+                most_engaged = std::max(most_engaged, now.assist.engagement);
+            },
+            short_run);
+        EXPECT_EQ(most_engaged, 1.0) << "throttle " << throttle;
+        EXPECT_GT(r.result.distance_m, 5.0) << "throttle " << throttle;
+        EXPECT_TRUE(r.state.pull.tractor.engine.running) << "throttle " << throttle;
+    }
+}
+
+// A gear the gearbox does not have is held to its range: the top gear goes
+// in and the clutch comes back in.
+TEST(ClutchAssist, HoldsTheGearToTheGearbox) {
+    const pull::Model model = model_with(light_sled());
+    const auto top = static_cast<int>(model.tractor().params().driveline.gear_count);
+    run::Rules short_run = kRules;
+    short_run.max_duration_s = 10.0;
+    const EasyRun r =
+        drive(model, [top](double t_s) { return launch(t_s, top + 3); }, {}, short_run);
+    EXPECT_FALSE(r.shift_refused);
+    EXPECT_EQ(r.state.pull.tractor.driveline.gear, top);
+    EXPECT_GT(r.assist.engagement, 0.0);
+}
+
 std::uint64_t easy_hash(run::Result& result) {
     const pull::Model model = model_with(sled::testing::reference_params());
     hash::Fnv1a hash;
@@ -269,7 +310,7 @@ std::uint64_t easy_hash(run::Result& result) {
         },
         [&](double, const vehicle::Input&, const EasyRun& now) {
             run::hash_append(hash, now.state);
-            hash.add(now.assist.engagement);
+            hash_append(hash, now.assist);
         });
     result = r.result;
     return hash.value();
