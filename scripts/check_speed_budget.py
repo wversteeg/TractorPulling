@@ -38,7 +38,7 @@ def main(argv):
     if argv[1:] == ["--filter"]:
         print(f"^({'|'.join(budget)})$")
         return 0
-    if len(argv) != 3:
+    if len(argv) != 3 or any(arg.startswith("--") for arg in argv[1:]):
         print(__doc__, file=sys.stderr)
         return 2
     results_path, column = argv[1], argv[2]
