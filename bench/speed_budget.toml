@@ -7,7 +7,8 @@
 #              measured when the limit was set, so that a slower change
 #              fails the build while the runner's own noise does not.
 #              Set in October 2026 from the gcc and clang release jobs
-#              (ubuntu-24.04-arm): 618, 577 and 377 ns at the slower.
+#              (ubuntu-24.04-arm): 618, 577, 377 and 538 ns at the
+#              slower.
 #
 # scripts/check_speed_budget.py compares a benchmark run with one column.
 
@@ -24,4 +25,4 @@ ci_arm64_ns = 800
 # The most expensive step: a brake holding its side at rest runs the
 # bracketed hold solve, up to eight more rear solves.
 [BM_VehicleStepBrakeHeld]
-ci_arm64_ns = 1_200
+ci_arm64_ns = 1_100
