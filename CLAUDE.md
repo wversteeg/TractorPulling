@@ -156,13 +156,19 @@ cmake --preset release && cmake --build --preset release
 # May this tractor compete in this class? Exits non-zero if not
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
     data/classes/ntto_standard_3500.toml
+
+# Android (needs ANDROID_NDK_HOME; CI pins NDK 29.0.14206865, Godot's): build
+# for phones or the emulator, then run the tests on a device over adb
+cmake --preset android-arm64 && cmake --build --preset android-arm64
+cmake --preset android-x86_64 && cmake --build --preset android-x86_64
+scripts/android_test.sh build/android-x86_64
 ```
 
-Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; update this section when presets change.
+Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`. Keep the commands above working; update this section when presets change.
 
 ## Code standards
 
-- **C++20.** Raise the standard only when asked. Avoid library features missing from the Android NDK's libc++.
+- **C++20.** Raise the standard only when asked. Avoid library features missing from the Android NDK's libc++ (e.g. `std::from_chars` for floating point; use `std::strtod`). CI's Android build catches them.
 - Warnings are errors, locally and in CI (`TP_WARNINGS_AS_ERRORS`, on by default): `-Wall -Wextra -Wpedantic -Wconversion -Wshadow` and similar for clang and gcc.
 - `core/` builds with `-fno-exceptions -fno-rtti -ffp-contract=off`. Tests, tools and benchmarks may use exceptions.
 - Namespace `tp`. Code is grouped by topic: headers in `core/include/tp/core/<topic>/`, sources in `core/src/<topic>/`, tests in `tests/<topic>/`, benchmarks in `bench/<topic>/`.
@@ -186,7 +192,7 @@ Presets: `debug`, `release`, `asan-ubsan`. Keep the commands above working; upda
 
 - Plan first for non-trivial work, and wait for approval before large changes.
 - Small, logical commits with clear messages. One feature per branch and PR.
-- CI (GitHub Actions) must be green: clang and gcc on Linux, sanitizers, clang-tidy, format check. Keep CI config minimal and portable.
+- CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
 - Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++.
 

@@ -155,6 +155,18 @@ for the big features; they are repeated at the end for completeness.
   control's position as given; a touch slider or tilt will want a rate
   limit and a dead zone, set with the Godot front end.
 
+## Platforms
+
+- **Android ARM tests on a device.** CI builds for arm64-v8a but runs the
+  tests on an x86_64 emulator: GitHub's runners cannot emulate an ARM phone
+  quickly. Determinism on ARM is covered by the Linux arm64 jobs and
+  Android's runtime by the emulator; `scripts/android_test.sh` runs the arm64
+  build on a real phone by hand.
+- **The C++ runtime for the Godot extension.** The Android presets link
+  libc++ statically, which suits standalone test binaries. A GDExtension
+  shares a process with Godot, which may want `c++_shared`; decide with the
+  binding layer.
+
 ## Performance
 
 - **Derived chassis constants at setup.** The pitch step recomputes a few
