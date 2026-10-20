@@ -6,15 +6,17 @@
 # ci_arm64_ns  the regression limit on CI's ARM runner: about twice what it
 #              measured when the limit was set, so that a slower change
 #              fails the build while the runner's own noise does not.
+#              Set in October 2026 from the gcc and clang release jobs
+#              (ubuntu-24.04-arm): 618, 577 and 377 ns at the slower.
 #
 # scripts/check_speed_budget.py compares a benchmark run with one column.
 
 [BM_GameStep]
 phone_ns = 50_000
-ci_arm64_ns = 4_000
+ci_arm64_ns = 1_250
 
 [BM_PullStep]
-ci_arm64_ns = 4_000
+ci_arm64_ns = 1_200
 
 [BM_VehicleStep]
-ci_arm64_ns = 2_500
+ci_arm64_ns = 800
