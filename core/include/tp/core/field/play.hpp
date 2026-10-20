@@ -19,6 +19,8 @@ struct LogEntry {
     /// A pull; unused for a decision.
     event::Pull pull;
     double reached_m = 0.0;
+    /// A tractor tire touched a chalk line: the pull counts 0 m.
+    bool disqualified = false;
     event::Outcome outcome;
     /// The gear pulled in.
     int gear = 0;

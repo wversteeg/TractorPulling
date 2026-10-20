@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 
 namespace tp::clutch {
 
@@ -48,6 +49,26 @@ std::optional<ParamError> validate(const Params& params) noexcept {
 double capacity_nm(const Params& params, double pedal) noexcept {
     pedal = std::clamp(pedal, kPedalReleased, kPedalPressed);
     return params.engagement.evaluate(pedal) * params.static_torque_capacity_nm;
+}
+
+double pedal_for(const Params& params, double share) noexcept {
+    if (share <= 0.0) {
+        return kPedalPressed;
+    }
+    // The engagement never increases with pedal travel: the first segment
+    // that reaches down to `share` holds it.
+    const auto points = params.engagement.points();
+    for (std::size_t i = 1; i < points.size(); ++i) {
+        const math::CurvePoint& lo = points[i - 1];
+        const math::CurvePoint& hi = points[i];
+        if (lo.y <= share) {
+            return lo.x;
+        }
+        if (hi.y <= share) {
+            return lo.x + (lo.y - share) / (lo.y - hi.y) * (hi.x - lo.x);
+        }
+    }
+    return kPedalPressed;
 }
 
 double resolve(State& state, const Params& params, double capacity_nm,

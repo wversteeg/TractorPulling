@@ -20,7 +20,7 @@ Right-handed, body fixed to the tractor chassis:
 
 - **Pitch** θ is rotation about the lateral axis, positive nose-up. A wheelie is positive pitch. Note that with y to the left, nose-up is a *negative* right-handed rotation about y; the simulation works in the x–z plane and uses nose-up positive throughout.
 - **Heading** (yaw) is the body's x from the track's direction, positive turned left (counter-clockwise seen from above); the **yaw rate** is positive turning left. Headings are kept within ±π.
-- **Steering**: the front wheel angle is positive to the left.
+- **Steering**: the front wheel angle is positive to the left. A steering control (`tp::controls`) runs from -1 (full right) to 1 (full left).
 - **Differential**: half the right rear wheels' speed minus the left's; the left wheels turn at the axle speed minus it, the right at the axle speed plus it. Brake pedals run from 0 to 1; a brake torque is positive against forward rotation and negative against backward rotation: a brake only ever resists its side's rotation or holds it at rest. The axle (the sides' mean) never turns backwards, there being no reverse gear, but one side may while the tractor turns on the spot.
 - **Side forces and sideways speeds** are positive to the left, in the body frame (in the steered wheel's frame for a front tire).
 - **Longitudinal velocity** is positive when moving forward.

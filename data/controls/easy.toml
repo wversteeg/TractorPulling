@@ -1,0 +1,16 @@
+# The easy control layout: throttle, gear and one steering control, with the
+# clutch assist working the clutch. Shares are of the control's travel or of
+# the engine's rated speed, so one file suits every tractor.
+
+[easy]
+# The first 60 % of the steering travel turns the front wheels to full
+# lock; the rest brakes the rear wheels on the inside of the turn, up to
+# full pedal at the end of the travel.
+steer_share = 0.6
+
+[easy.clutch_assist]
+engage_time_s = 2.0       # fully out to fully in while the engine holds speed
+release_time_s = 0.3      # fully in to fully out at the fastest
+guard_speed_share = 0.6   # slip the clutch below 60 % of rated speed (near peak torque)
+guard_band_share = 0.1    # out at the fastest 10 % of rated speed below that
+min_throttle = 0.05       # below this the driver has lifted off: clutch out

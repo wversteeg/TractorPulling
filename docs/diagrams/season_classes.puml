@@ -40,6 +40,7 @@ note bottom of Championship
   the same field at every event (tp_pull season):
   per event a new running order, gears guessed for the track,
   field::play_event, then add(event standings);
+  a disqualified pull scores nothing and wins nothing;
   most points first, more wins break a tie, equal pullers share a place
 end note
 Play ..> EventStanding

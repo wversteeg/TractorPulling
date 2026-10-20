@@ -168,7 +168,7 @@ std::optional<Field> generate(const Puller& reference, const Variation& variatio
 
 namespace tp::field {
 
-std::optional<double> pull_distance(const Puller& puller, const sled::Params& sled,
+std::optional<run::Result> run_pull(const Puller& puller, const sled::Params& sled,
                                     const track::Params& track, const run::Rules& rules) noexcept {
     constexpr double kDt_s =
         static_cast<double>(kSimulationStepNs) / static_cast<double>(kNanosecondsPerSecond);
@@ -182,7 +182,7 @@ std::optional<double> pull_distance(const Puller& puller, const sled::Params& sl
         const double t_s = static_cast<double>(state.steps) * kDt_s;
         run::step(state, *model, rules, driver::input(puller.driver, t_s), kDt_s);
     }
-    return state.result->distance_m;
+    return state.result;
 }
 
 }  // namespace tp::field
@@ -197,13 +197,13 @@ std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
     for (int gear = lowest; gear <= highest; ++gear) {
         Puller trying = puller;
         trying.driver.gear = gear;
-        const std::optional<double> reached = pull_distance(trying, sled, track, rules);
-        if (!reached) {
+        const std::optional<run::Result> result = run_pull(trying, sled, track, rules);
+        if (!result) {
             return std::nullopt;
         }
         // On a tie the higher gear: it gets there quicker.
-        if (*reached >= best_m) {
-            best_m = *reached;
+        if (result->distance_m >= best_m) {
+            best_m = result->distance_m;
             best = gear;
         }
     }

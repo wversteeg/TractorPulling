@@ -100,6 +100,9 @@ struct Standing {
     int place = 0;
     double distance_m = 0.0;
     bool full_pull = false;
+    /// A tractor tire touched a chalk line in the counting pull: 0 m,
+    /// behind every pull that counts.
+    bool disqualified = false;
     /// Pull-off rounds pulled, and the official distance in the last one.
     int pull_off_rounds = 0;
     double pull_off_distance_m = 0.0;
@@ -111,7 +114,8 @@ struct Standing {
 ///
 /// A front end (or the tools' scripted pullers) asks next() who pulls, runs
 /// that pull on sled() until the sled stops or reaches max_distance_m, and
-/// hands record() where it stopped. When a test puller's decision is due,
+/// hands record() where it stopped, or record_disqualified() when a tractor
+/// tire touched a chalk line. When a test puller's decision is due,
 /// next() waits for decide(). Plain data; no allocation.
 class Event {
 public:
@@ -134,6 +138,11 @@ public:
     /// Records where the sled stopped in the pull next() named, and what the
     /// operator does about it if it was a test pull.
     Outcome record(double reached_m) noexcept;
+    /// Records the pull next() named as disqualified: it counts 0 m. A
+    /// disqualified test pull says nothing about the sled, so the operator
+    /// leaves it and the next puller tests it; the test puller keeps the
+    /// 0 m (no keep-or-re-pull).
+    Outcome record_disqualified() noexcept;
 
     /// The test puller whose keep-or-re-pull decision is due.
     [[nodiscard]] std::optional<int> decision_due() const noexcept;
@@ -152,6 +161,7 @@ private:
     struct Entry {
         bool pulled = false;
         double reached_m = 0.0;
+        bool disqualified = false;
         int pull_off_rounds = 0;
         double pull_off_reached_m = 0.0;
         bool tested = false;
@@ -168,7 +178,11 @@ private:
 
     void insert(std::size_t position, const Pull& pull) noexcept;
     void schedule_repull(int puller) noexcept;
+    Outcome record_pull(double reached_m, bool disqualified) noexcept;
     Outcome judge_test(int puller, double reached_m) noexcept;
+    /// After a change to the sled, or a test pull that showed nothing: the
+    /// next pull tests the sled.
+    void retest_next() noexcept;
     /// What the last change did, seen in this test pull.
     void learn(double reached_m) noexcept;
     [[nodiscard]] int steps_for(double distance_m) const noexcept;

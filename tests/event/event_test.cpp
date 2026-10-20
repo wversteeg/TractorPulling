@@ -135,6 +135,55 @@ TEST(Event, FirstPullIsATestPull) {
     EXPECT_EQ(event.standings()[0].distance_m, 95.0);
 }
 
+// A disqualified test pull says nothing about the sled: it stays, the next
+// puller tests it, and the test puller keeps 0 m without a decision.
+TEST(Event, DisqualifiedTestPullLeavesTheSled) {
+    Event event = make(6);
+    const int before = knives(event);
+    ASSERT_EQ(next_of(event).kind, PullKind::kTest);
+    const Outcome outcome = event.record_disqualified();
+    EXPECT_EQ(outcome.change, SledChange::kNone);
+    EXPECT_EQ(knives(event), before);
+    const Pull second = next_of(event);
+    EXPECT_EQ(second.puller, 1);
+    EXPECT_EQ(second.kind, PullKind::kTest);
+    // 70 m makes the sled lighter, unaffected by the disqualified pull.
+    EXPECT_EQ(event.record(70.0).change, SledChange::kLighter);
+    run(event, [](const Pull&) { return 95.0; });
+    const std::span<const Standing> standings = event.standings();
+    const Standing& last = standings.back();
+    EXPECT_EQ(last.puller, 0);
+    EXPECT_TRUE(last.disqualified);
+    EXPECT_EQ(last.distance_m, 0.0);
+}
+
+// A disqualified pull counts 0 m and ranks behind every pull that counts,
+// even one that went nowhere.
+TEST(Event, DisqualifiedPullRanksLast) {
+    Event event = make(4);
+    std::vector<Pull> pulls;
+    while (!event.finished()) {
+        if (event.decision_due()) {
+            event.decide(event.suggested_keep());
+            continue;
+        }
+        const Pull pull = next_of(event);
+        pulls.push_back(pull);
+        if (pull.puller == 2 && pull.kind != PullKind::kPullOff) {
+            event.record_disqualified();
+        } else {
+            event.record(pull.puller == 1 ? 0.0 : 95.0);
+        }
+    }
+    const std::span<const Standing> standings = event.standings();
+    ASSERT_EQ(standings.size(), 4U);
+    EXPECT_EQ(standings[2].puller, 1);
+    EXPECT_FALSE(standings[2].disqualified);
+    EXPECT_EQ(standings[3].puller, 2);
+    EXPECT_TRUE(standings[3].disqualified);
+    EXPECT_EQ(standings[3].place, 4);
+}
+
 // Later test pulls count for the decision too: a test pull beaten by the
 // next test pullers is better re-pulled.
 TEST(Event, TestPullBeatenByLaterTestPullsIsRepulled) {

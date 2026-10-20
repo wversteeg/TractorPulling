@@ -4,7 +4,8 @@
 //   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
 //                [--steer-deg A] [--brake-left P] [--brake-right P] [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
-//               [--steer-deg A] [--brake-left P] [--brake-right P] [-o <out.csv>]
+//               [--steer-deg A] [--brake-left P] [--brake-right P]
+//               [--easy <easy.toml> [--stick S]] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump]
 //   tp_pull event <event.toml> [--seed N]
@@ -24,6 +25,9 @@
 // run drives the same way against a sled on its chain, by the track's rules:
 // the run ends at the sled's first stop or with a full pull, and every full
 // pull is followed by a pull-off on a heavier sled. It prints each result.
+// With --easy the driver uses the easy layout instead: the gear and full
+// throttle, the steering control held at --stick (-1 right to 1 left) from
+// the launch, and the clutch assist working the clutch.
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility.
@@ -43,6 +47,7 @@
 // check compares a tractor with a pulling class's rules and exits non-zero
 // if it may not compete.
 
+#include "tp/core/controls/controls.hpp"
 #include "tp/core/driveline/driveline.hpp"
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/event/event.hpp"
@@ -57,6 +62,7 @@
 #include "tp/core/soil/soil.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
+#include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/engine/engine_loader.hpp"
 #include "tp/data/event/event_loader.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
@@ -172,6 +178,10 @@ struct PullOptions {
     double steering_rad = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
+    /// The easy layout instead of the pedals above, and its steering
+    /// control's position.
+    std::optional<tp::controls::EasyParams> easy;
+    double stick = 0.0;
 };
 
 tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
@@ -188,6 +198,17 @@ tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
         input.brake_right = options.brake_right;
     }
     return input;
+}
+
+// The easy driver: the gear and full throttle at once, the steering
+// control from the launch; the assist does the rest.
+tp::controls::EasyInput easy_script(double t_s, const PullOptions& options) {
+    if (t_s < kPullSelectGear_s) {
+        return {};
+    }
+    return {.throttle = 1.0,
+            .gear = options.gear,
+            .steering = t_s >= kPullRevUpEnd_s ? options.stick : 0.0};
 }
 
 int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostream& csv) {
@@ -299,9 +320,14 @@ std::string_view describe(tp::run::Ending ending) {
 std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::run::Rules& rules,
                                        const PullOptions& options, int round, std::ostream& csv) {
     tp::run::State state = tp::run::start(model);
+    tp::controls::AssistState assist;
+    const tp::vehicle::Params& tractor = model.tractor().params();
     for (int i = 0; !state.result; ++i) {
         const double t_s = i * kDt_s;
-        const tp::vehicle::Input input = pull_input(t_s, options);
+        const tp::vehicle::Input input =
+            options.easy ? tp::controls::easy(easy_script(t_s, options), *options.easy, assist,
+                                              tractor, state.pull.tractor, kDt_s)
+                         : pull_input(t_s, options);
         const tp::pull::Output out = tp::run::step(state, model, rules, input, kDt_s);
         if (out.tractor.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
@@ -443,11 +469,22 @@ void report_change(const tp::field::LogEntry& entry) {
     }
 }
 
+// The mark after a distance: a full pull, a disqualified pull, or nothing.
+std::string_view mark(bool full_pull, bool disqualified) {
+    if (disqualified) {
+        return " DQ       ";
+    }
+    return full_pull ? " full pull" : "          ";
+}
+
 void report_standings(tp::event::Event& event) {
     std::cout << "\nstandings\n";
     for (const tp::event::Standing& s : event.standings()) {
         std::cout << std::setw(4) << s.place << ".  #" << std::setw(2) << s.puller + 1 << "  "
-                  << std::setw(7) << s.distance_m << " m" << (s.full_pull ? " full pull" : "");
+                  << std::setw(7) << s.distance_m << " m";
+        if (s.full_pull || s.disqualified) {
+            std::cout << (s.disqualified ? " DQ" : " full pull");
+        }
         if (s.pull_off_rounds > 0) {
             std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m
                       << " m";
@@ -492,7 +529,7 @@ int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
         const tp::event::Pull& pull = entry.pull;
         std::cout << std::setw(4) << ++pull_number << ".  #" << std::setw(2) << pull.puller + 1
                   << "  gear " << entry.gear << "  " << std::setw(7) << entry.reached_m << " m"
-                  << (entry.reached_m >= entry.full_pull_m ? " full pull" : "          ") << "  "
+                  << mark(entry.reached_m >= entry.full_pull_m, entry.disqualified) << "  "
                   << describe(pull.kind);
         if (pull.kind == tp::event::PullKind::kPullOff) {
             std::cout << ' ' << pull.pull_off_round << " (" << entry.knives << " knives)";
@@ -553,7 +590,8 @@ void report_round(int number, const tp::data::SeasonRound& round,
         if (s.pull_off_rounds > 0) {
             std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m << " m";
         }
-        std::cout << "  " << tp::season::points_for(points, s.place) << " pts\n";
+        std::cout << "  " << (s.disqualified ? 0 : tp::season::points_for(points, s.place))
+                  << " pts\n";
     }
 }
 
@@ -632,6 +670,8 @@ struct Options {
     std::vector<std::string_view> positional;
     std::optional<std::string_view> output_path;
     std::optional<std::uint64_t> seed;
+    std::optional<std::string_view> easy_path;
+    bool stick_given = false;
     PullOptions pull;
 };
 
@@ -647,20 +687,16 @@ std::optional<T> parse_number(std::string_view text) {
 
 enum class Parsed : std::uint8_t { kUnknown, kOk, kInvalid };
 
-// An option that takes a value: `-o`, `--gear` and so on.
-Parsed parse_valued_option(std::string_view arg, std::string_view value, Options& options) {
-    if (arg == "-o") {
-        options.output_path = value;
-        return Parsed::kOk;
-    }
+// A driving option that takes a value: `--gear`, `--steer-deg` and so on.
+Parsed parse_driving_option(std::string_view arg, std::string_view value, PullOptions& pull) {
     if (arg == "--gear") {
         const auto gear = parse_number<int>(value);
-        options.pull.gear = gear.value_or(options.pull.gear);
+        pull.gear = gear.value_or(pull.gear);
         return gear ? Parsed::kOk : Parsed::kInvalid;
     }
     if (arg == "--steer-deg") {
         const auto degrees = parse_number<double>(value);
-        options.pull.steering_rad = deg_to_rad(degrees.value_or(0.0));
+        pull.steering_rad = deg_to_rad(degrees.value_or(0.0));
         return degrees ? Parsed::kOk : Parsed::kInvalid;
     }
     if (arg == "--brake-left" || arg == "--brake-right") {
@@ -668,22 +704,44 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
         if (!pedal || *pedal < 0.0 || *pedal > 1.0) {
             return Parsed::kInvalid;
         }
-        (arg == "--brake-left" ? options.pull.brake_left : options.pull.brake_right) = *pedal;
+        (arg == "--brake-left" ? pull.brake_left : pull.brake_right) = *pedal;
         return Parsed::kOk;
     }
-    if (arg == "--seed") {
-        options.seed = parse_number<std::uint64_t>(value);
-        return options.seed ? Parsed::kOk : Parsed::kInvalid;
+    if (arg == "--stick") {
+        const auto stick = parse_number<double>(value);
+        if (!stick || *stick < -1.0 || *stick > 1.0) {
+            return Parsed::kInvalid;
+        }
+        pull.stick = *stick;
+        return Parsed::kOk;
     }
     if (arg == "--resistance-kn") {
         const auto kilonewtons = parse_number<double>(value);
         if (!kilonewtons || *kilonewtons < 0.0) {
             return Parsed::kInvalid;
         }
-        options.pull.resistance_n = *kilonewtons * kNewtonsPerKilonewton;
+        pull.resistance_n = *kilonewtons * kNewtonsPerKilonewton;
         return Parsed::kOk;
     }
     return Parsed::kUnknown;
+}
+
+// An option that takes a value: `-o`, `--seed`, `--easy`, or a driving one.
+Parsed parse_valued_option(std::string_view arg, std::string_view value, Options& options) {
+    if (arg == "-o") {
+        options.output_path = value;
+        return Parsed::kOk;
+    }
+    if (arg == "--easy") {
+        options.easy_path = value;
+        return Parsed::kOk;
+    }
+    if (arg == "--seed") {
+        options.seed = parse_number<std::uint64_t>(value);
+        return options.seed ? Parsed::kOk : Parsed::kInvalid;
+    }
+    options.stick_given = options.stick_given || arg == "--stick";
+    return parse_driving_option(arg, value, options.pull);
 }
 
 std::optional<Options> parse_options(std::span<char* const> args) {
@@ -719,7 +777,7 @@ int usage() {
                  "                    [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
-                 "                   [-o <out.csv>]\n"
+                 "                   [--easy <easy.toml> [--stick S]] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump]\n"
                  "       tp_pull event <event.toml> [--seed N]\n"
@@ -780,9 +838,19 @@ int run_command(const Options& options) {
     if (!tractor || !sled || !track) {
         return EXIT_FAILURE;
     }
-    return with_output(options, [&](std::ostream& csv) {
-        return run(*tractor, *sled, *track, options.pull, csv);
-    });
+    if (options.stick_given && !options.easy_path) {
+        std::cerr << "--stick is the easy layout's steering: it needs --easy\n";
+        return EXIT_FAILURE;
+    }
+    PullOptions pull = options.pull;
+    if (options.easy_path) {
+        pull.easy = load_or_report(tp::data::load_easy_controls(*options.easy_path));
+        if (!pull.easy) {
+            return EXIT_FAILURE;
+        }
+    }
+    return with_output(options,
+                       [&](std::ostream& csv) { return run(*tractor, *sled, *track, pull, csv); });
 }
 
 int compare_tracks_command(const Options& options) {
@@ -853,6 +921,10 @@ int main(int argc, char** argv) {
     const std::size_t files = options->positional.size();
     for (const Command& command : kCommands) {
         if (command.name == name && files >= command.min_files && files <= command.max_files) {
+            // Only a run drives with the easy layout.
+            if (name != "run" && (options->easy_path || options->stick_given)) {
+                return usage();
+            }
             return command.run(*options);
         }
     }

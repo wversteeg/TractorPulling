@@ -1,0 +1,67 @@
+@startuml controls_classes
+title Controls (tp::controls): the easy and pro layouts and the clutch assist
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "vehicle::Params / State / Input" as Vehicle
+  class "clutch::pedal_for()" as PedalFor
+  class "engine::Params\n+ full_fuel_omega_rad_s()" as Engine
+}
+
+package "tp::controls" {
+  class ProInput <<struct>> {
+    +throttle : double
+    +clutch_pedal : double
+    +gear : int
+    +steering : double, -1 right .. 1 left
+    +brake_left, brake_right : double
+  }
+  class EasyInput <<struct>> {
+    +throttle : double
+    +gear : int
+    +steering : double, -1 right .. 1 left
+  }
+  class ClutchAssist <<struct>> {
+    +engage_time_s : double
+    +release_time_s : double
+    +guard_speed_share : double
+    +guard_band_share : double
+    +min_throttle : double
+  }
+  class EasyParams <<struct>> {
+    +steer_share : double
+    +clutch_assist : ClutchAssist
+  }
+  class AssistState <<struct>> {
+    +engagement : double, share of capacity
+  }
+  enum ParamError
+  class "controls functions" as ControlsFns <<free functions>> {
+    +validate(const EasyParams&) : optional<ParamError>
+    +pro(const ProInput&, const vehicle::Params&) : vehicle::Input
+    +easy(const EasyInput&, const EasyParams&, AssistState&,\n      const vehicle::Params&, const vehicle::State&, dt_s) : vehicle::Input
+    +hash_append(Fnv1a&, const AssistState&)
+  }
+  EasyParams *-- ClutchAssist
+  ControlsFns ..> ProInput
+  ControlsFns ..> EasyInput
+  ControlsFns ..> EasyParams
+  ControlsFns ..> AssistState
+  ControlsFns ..> ParamError
+}
+ControlsFns ..> Vehicle : reads engine speed and gear,\nreturns the input
+ControlsFns ..> PedalFor : engagement to pedal
+ControlsFns ..> Engine : guard speed
+note bottom of ControlsFns
+  pro: steering x max angle; pedals pass through (held to 0..1)
+  easy: |steering| <= steer_share turns the wheels to full lock;
+  beyond it, full lock and the inner rear brake from 0 to full pedal
+  guard = max(min(guard_share x rated, full-fuel speed at this throttle), stall + band)
+  assist: in at 1/engage_time while the engine is at or above the guard speed;
+  below it, out at up to 1/release_time (full rate a band below);
+  out at full rate when lifting off, in neutral or before a gear change;
+  the new gear (held to the gearbox) goes in once the clutch is out
+end note
+@enduml

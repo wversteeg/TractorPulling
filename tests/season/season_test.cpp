@@ -96,6 +96,28 @@ TEST(Championship, WinsBreakATieAndEqualsShare) {
     EXPECT_EQ(level.standings()[1].place, 1);
 }
 
+// A disqualified pull scores nothing, and wins nothing, whatever its place.
+TEST(Championship, DisqualifiedScoresNothing) {
+    Championship championship = make(3);
+    std::vector<event::Standing> standings = result({{0, 1}, {1, 2}, {2, 3}});
+    standings[2].disqualified = true;
+    championship.add(standings);
+    // Everyone disqualified: the shared first place is no win.
+    std::vector<event::Standing> all_out = result({{0, 1}, {1, 1}, {2, 1}});
+    for (event::Standing& s : all_out) {
+        s.disqualified = true;
+    }
+    championship.add(all_out);
+    const std::span<const Standing> totals = championship.standings();
+    ASSERT_EQ(totals.size(), 3U);
+    EXPECT_EQ(totals[0].puller, 0);
+    EXPECT_EQ(totals[0].points, 20);
+    EXPECT_EQ(totals[0].wins, 1);
+    EXPECT_EQ(totals[2].puller, 2);
+    EXPECT_EQ(totals[2].points, 0);
+    EXPECT_EQ(totals[2].event_points[0], 0);
+}
+
 TEST(Championship, RejectsStrangersAndAFullSeason) {
     Championship championship = make(2);
     EXPECT_FALSE(championship.add(result({{0, 1}, {5, 2}})));

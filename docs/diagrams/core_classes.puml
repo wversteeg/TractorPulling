@@ -95,6 +95,7 @@ skinparam classAttributeIconSize 0
       +validate(const Params&) : optional<ParamError>
       +initial_state(const Params&) : State
       +max_net_power_w(const Params&) : double
+      +full_fuel_omega_rad_s(const Params&, throttle) : double
       +predict(const State&, const Params&, throttle, dt_s) : Prediction
       +shaft_prediction(const Prediction&) : ShaftPrediction
       +advance(State&, const Params&, const Prediction&, load_torque_nm)

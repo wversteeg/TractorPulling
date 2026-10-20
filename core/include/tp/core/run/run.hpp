@@ -53,7 +53,8 @@ enum class Ending : std::uint8_t {
 
 struct Result {
     Ending ending = Ending::kTimedOut;
-    /// How far the sled travelled from the start line [m].
+    /// How far down the track the sled pulled from the start line; 0 out
+    /// of bounds [m].
     double distance_m = 0.0;
     double time_s = 0.0;
     double top_speed_m_s = 0.0;

@@ -130,11 +130,11 @@ TEST(Driver, BestGearPullsFurthest) {
     ASSERT_TRUE(best.has_value());
     Puller in_best = puller;
     in_best.driver.gear = best.value_or(0);
-    const double best_m = pull_distance(in_best, sled, track, kRules).value_or(0.0);
+    const double best_m = run_pull(in_best, sled, track, kRules).value_or(run::Result{}).distance_m;
     for (int gear = 4; gear <= 6; ++gear) {
         Puller other = puller;
         other.driver.gear = gear;
-        EXPECT_LE(pull_distance(other, sled, track, kRules).value_or(0.0), best_m)
+        EXPECT_LE(run_pull(other, sled, track, kRules).value_or(run::Result{}).distance_m, best_m)
             << "gear " << gear;
     }
 }

@@ -70,6 +70,12 @@ struct Output {
 /// the clutch is fully disengaged, e.g. so gears may be changed.
 [[nodiscard]] double capacity_nm(const Params& params, double pedal) noexcept;
 
+/// The pedal position that gives `share` of the static capacity (clamped to
+/// [0, 1]): the engagement curve read backwards, so that an assist can work
+/// in torque rather than in pedal travel. 0 presses the pedal fully, 1
+/// releases it fully; inside the free play the lightest pedal is taken.
+[[nodiscard]] double pedal_for(const Params& params, double share) noexcept;
+
 /// The friction decision on its own, for solvers that compute the locking
 /// torque themselves (e.g. with the clutch inside a chain of couplings).
 /// Given the torque that would lock the clutch this step, returns the torque

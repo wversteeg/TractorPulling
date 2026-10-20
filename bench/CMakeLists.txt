@@ -8,6 +8,7 @@ if(TP_BUILD_DATA_IO)
     target_sources(core_bench PRIVATE
         chassis/chassis_bench.cpp
         clutch/clutch_bench.cpp
+        controls/controls_bench.cpp
         driveline/driveline_bench.cpp
         engine/engine_bench.cpp
         pull/pull_bench.cpp
