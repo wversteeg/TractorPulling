@@ -74,8 +74,12 @@ Result<clutch::Params> parse_clutch(std::string_view toml_text, std::string_view
     return detail::parse_with<clutch::Params>(toml_text, source_name, &read_clutch);
 }
 
+Result<clutch::Params> load_clutch(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<clutch::Params>(path, read, &read_clutch);
+}
+
 Result<clutch::Params> load_clutch(const std::filesystem::path& path) {
-    return detail::load_file_with<clutch::Params>(path, &read_clutch);
+    return load_clutch(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

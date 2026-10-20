@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tp/core/driveline/driveline.hpp"
+#include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
 
 #include <filesystem>
@@ -10,6 +11,9 @@ namespace tp::data {
 
 /// Loads and validates a driveline definition (see data/drivelines/).
 [[nodiscard]] Result<driveline::Params> load_driveline(const std::filesystem::path& path);
+
+/// As load_driveline, reading through `read` (see files.hpp).
+[[nodiscard]] Result<driveline::Params> load_driveline(std::string_view path, const ReadFile& read);
 
 /// As load_driveline, from TOML text. `source_name` prefixes error messages.
 [[nodiscard]] Result<driveline::Params> parse_driveline(std::string_view toml_text,

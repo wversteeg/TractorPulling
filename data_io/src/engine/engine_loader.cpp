@@ -103,8 +103,12 @@ Result<engine::Params> parse_engine(std::string_view toml_text, std::string_view
     return detail::parse_with<engine::Params>(toml_text, source_name, &read_engine);
 }
 
+Result<engine::Params> load_engine(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<engine::Params>(path, read, &read_engine);
+}
+
 Result<engine::Params> load_engine(const std::filesystem::path& path) {
-    return detail::load_file_with<engine::Params>(path, &read_engine);
+    return load_engine(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

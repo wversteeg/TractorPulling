@@ -50,6 +50,7 @@ if(TP_BUILD_DATA_IO)
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp
         data/event_loader_test.cpp
+        data/files_test.cpp
         data/season_loader_test.cpp
         data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp

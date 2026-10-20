@@ -86,7 +86,7 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
 }
 
 Result<EventDefinition> read_event(const toml::table& root, std::string_view source,
-                                   const std::filesystem::path& base) {
+                                   std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
     const std::string class_path = reader.text("event.class");
     const std::string tractor_path = reader.text("event.tractor");
@@ -151,10 +151,10 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
 
     std::optional<LoadError> error;
-    const auto class_rules = component(load_class_rules(base / class_path), error);
-    const auto tractor = component(load_tractor(base / tractor_path), error);
-    const auto sled = component(load_sled(base / sled_path), error);
-    const auto track = component(load_track(base / track_path), error);
+    const auto class_rules = component(load_class_rules(resolve(base, class_path), read), error);
+    const auto tractor = component(load_tractor(resolve(base, tractor_path), read), error);
+    const auto sled = component(load_sled(resolve(base, sled_path), read), error);
+    const auto track = component(load_track(resolve(base, track_path), read), error);
     if (error) {
         return *error;
     }
@@ -185,21 +185,31 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
 }  // namespace
 
 Result<EventDefinition> parse_event(std::string_view toml_text, std::string_view source_name,
-                                    const std::filesystem::path& base_directory) {
+                                    std::string_view base_directory, const ReadFile& read) {
     try {
         const toml::table root = toml::parse(toml_text, source_name);
-        return read_event(root, source_name, base_directory);
+        return read_event(root, source_name, base_directory, read);
     } catch (const toml::parse_error& e) {
         return LoadError{detail::describe(e, source_name)};
     }
 }
 
-Result<EventDefinition> load_event(const std::filesystem::path& path) {
-    const std::optional<std::string> text = detail::read_text(path);
+Result<EventDefinition> parse_event(std::string_view toml_text, std::string_view source_name,
+                                    const std::filesystem::path& base_directory) {
+    return parse_event(toml_text, source_name, base_directory.generic_string(), read_from_disk);
+}
+
+Result<EventDefinition> load_event(std::string_view path, const ReadFile& read) {
+    const std::string name{path};
+    const std::optional<std::string> text = read(name);
     if (!text) {
-        return LoadError{path.string() + ": cannot open file"};
+        return LoadError{name + ": cannot open file"};
     }
-    return parse_event(*text, path.string(), path.parent_path());
+    return parse_event(*text, name, directory_of(name), read);
+}
+
+Result<EventDefinition> load_event(const std::filesystem::path& path) {
+    return load_event(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

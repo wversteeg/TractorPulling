@@ -134,8 +134,12 @@ Result<Track> parse_track(std::string_view toml_text, std::string_view source_na
     return detail::parse_with<Track>(toml_text, source_name, &read_track);
 }
 
+Result<Track> load_track(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<Track>(path, read, &read_track);
+}
+
 Result<Track> load_track(const std::filesystem::path& path) {
-    return detail::load_file_with<Track>(path, &read_track);
+    return load_track(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

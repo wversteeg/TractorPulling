@@ -43,8 +43,12 @@ Result<tire::Params> parse_tire(std::string_view toml_text, std::string_view sou
     return detail::parse_with<tire::Params>(toml_text, source_name, &read_tire);
 }
 
+Result<tire::Params> load_tire(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<tire::Params>(path, read, &read_tire);
+}
+
 Result<tire::Params> load_tire(const std::filesystem::path& path) {
-    return detail::load_file_with<tire::Params>(path, &read_tire);
+    return load_tire(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

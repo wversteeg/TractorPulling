@@ -15,18 +15,28 @@ package "tp::data" {
     +value() : const T&
     +error() : const LoadError&
   }
+  class "files" as Files <<free functions>> {
+    +ReadFile = function<optional<string>(const string& path)>
+    +read_from_disk(path) : optional<string>
+    +directory_of(path) : string
+    +resolve(base_directory, relative) : string
+    --
+    '/'-separated paths; a front end supplies its own ReadFile
+    (Godot's res://); ".." folded by name, a root or scheme kept
+  }
   class "component loaders" as Loaders <<free functions>> {
-    +load_engine(path) / parse_engine(text, source) : Result<engine::Params>
-    +load_clutch(path) / parse_clutch(text, source) : Result<clutch::Params>
-    +load_easy_controls(path) / parse_easy_controls(text, source) : Result<controls::EasyParams>
-    +load_driveline(path) / parse_driveline(text, source) : Result<driveline::Params>
-    +load_tire(path) / parse_tire(text, source) : Result<tire::Params>
-    +load_class_rules(path) / parse_class_rules(text, source) : Result<rules::ClassRules>
-    +load_sled(path) / parse_sled(text, source) : Result<sled::Params>
-    +load_track(path) / parse_track(text, source) : Result<Track>
+    +load_engine(path, read) / parse_engine(text, source) : Result<engine::Params>
+    +load_clutch(path, read) / parse_clutch(text, source) : Result<clutch::Params>
+    +load_easy_controls(path, read) / parse_easy_controls(text, source) : Result<controls::EasyParams>
+    +load_driveline(path, read) / parse_driveline(text, source) : Result<driveline::Params>
+    +load_tire(path, read) / parse_tire(text, source) : Result<tire::Params>
+    +load_class_rules(path, read) / parse_class_rules(text, source) : Result<rules::ClassRules>
+    +load_sled(path, read) / parse_sled(text, source) : Result<sled::Params>
+    +load_track(path, read) / parse_track(text, source) : Result<Track>
     --
     each: read fields, convert to SI, build Params,
-    <component>::validate(), name the field on error
+    <component>::validate(), name the field on error;
+    each load_x(filesystem::path) is load_x(path, read_from_disk)
   }
   class Track <<struct>> {
     +rules : run::Rules
@@ -45,8 +55,8 @@ package "tp::data" {
     +track : Track
   }
   class "event_loader" as EventLoader <<free functions>> {
-    +load_event(path) : Result<EventDefinition>
-    +parse_event(text, source, base_directory) : Result<EventDefinition>
+    +load_event(path, read) : Result<EventDefinition>
+    +parse_event(text, source, base_directory, read) : Result<EventDefinition>
     --
     loads the class, tractor, sled and track it names
     relative to the event file, then validates the rules and field
@@ -58,12 +68,12 @@ package "tp::data" {
     +seed : uint64
   }
   class "season_loader" as SeasonLoader <<free functions>> {
-    +load_season(path) : Result<SeasonDefinition>
-    +parse_season(text, source, base_directory) : Result<SeasonDefinition>
+    +load_season(path, read) : Result<SeasonDefinition>
+    +parse_season(text, source, base_directory, read) : Result<SeasonDefinition>
   }
   class "tractor_loader" as TractorLoader <<free functions>> {
-    +load_tractor(path) : Result<vehicle::Params>
-    +parse_tractor(text, source, base_directory) : Result<vehicle::Params>
+    +load_tractor(path, read) : Result<vehicle::Params>
+    +parse_tractor(text, source, base_directory, read) : Result<vehicle::Params>
     --
     reads the chassis, front tire size, PTO efficiency and the component paths,
     loads each component relative to the tractor file,
@@ -80,6 +90,10 @@ package "tp::data" {
   SeasonLoader ..> EventLoader
   SeasonDefinition *-- EventDefinition
   TractorLoader ..> Loaders : components
+  Loaders ..> Files : read
+  TractorLoader ..> Files : resolve, read
+  EventLoader ..> Files : resolve, read
+  SeasonLoader ..> Files : resolve, read
   TractorLoader ..> Result : returns
 }
 
@@ -94,7 +108,7 @@ package "tp::data::detail (internal)" {
   }
   class "toml_reader" as TomlFns <<free functions>> {
     +parse_with<T>(text, source, loader) : Result<T>
-    +load_file_with<T>(path, loader) : Result<T>
+    +load_file_with<T>(path, read, loader) : Result<T>
     +make_error(source, field, reason) : LoadError
   }
 }
