@@ -50,8 +50,8 @@ Median CPU time per call, release builds.
 | Where | `BM_GameStep` | `BM_SessionFrame` | `BM_PullStep` | `BM_VehicleStep` | `BM_VehicleStepBrakeHeld` |
 |---|---|---|---|---|---|
 | x86-64 desktop (gcc 13) | 0.82 µs | 13.9 µs | 0.79 µs | 0.52 µs | 0.67 µs |
-| CI ARM runner (`ubuntu-24.04-arm`, 2 GHz; gcc / clang) | 0.62 / 0.61 µs | | 0.58 / 0.57 µs | 0.36 / 0.38 µs | 0.51 / 0.54 µs |
-| Android x86_64 emulator on CI (a server core, not a phone) | 0.65 µs | | 0.61 µs | 0.38 µs | 0.57 µs |
+| CI ARM runner (`ubuntu-24.04-arm`, 2 GHz; gcc / clang) | 0.62 / 0.61 µs | 10.5 / 10.3 µs | 0.58 / 0.57 µs | 0.36 / 0.38 µs | 0.51 / 0.54 µs |
+| Android x86_64 emulator on CI (a server core, not a phone) | 0.65 µs | 11.5 µs | 0.61 µs | 0.38 µs | 0.57 µs |
 | A mid-range phone | not measured yet | | | | |
 
 A frame is 16⅔ steps: `BM_SessionFrame` over 16.67 is the session's cost
@@ -59,7 +59,7 @@ per step, a few percent above `BM_GameStep` (the frame's two snapshots and
 their blend).
 
 The runner repeats within 0.1 % from run to run, so its limits
-(1.25, 1.2, 0.8 and 1.1 µs) sit about twice above the slower compiler. Against
+(1.25, 22, 1.2, 0.8 and 1.1 µs) sit about twice above the slower compiler. Against
 the phone budget the ARM runner leaves a factor of about 80. A
 mid-range phone's cores are slower than a desktop's (the efficient cores
 many times so), so expect a factor of 5 to 10 there; the budget is there to

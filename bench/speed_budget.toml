@@ -8,7 +8,7 @@
 #              fails the build while the runner's own noise does not.
 #              Set in October 2026 from the gcc and clang release jobs
 #              (ubuntu-24.04-arm): 618, 577, 377 and 538 ns at the
-#              slower.
+#              slower; BM_SessionFrame 10,492 ns.
 #
 # scripts/check_speed_budget.py compares a benchmark run with one column.
 
