@@ -50,7 +50,9 @@ void release(void* memory) noexcept {
 }  // namespace
 
 // Every unaligned new and delete, the nothrow forms too, so that all of them
-// go through the same allocator (the sanitizers check the pairs match).
+// go through the same allocator (the sanitizers check the pairs match). The
+// aligned forms (std::align_val_t) are left alone, so an over-aligned
+// allocation would not be counted; core/ has no over-aligned types.
 void* operator new(std::size_t size) {
     return allocate_or_throw(size);
 }

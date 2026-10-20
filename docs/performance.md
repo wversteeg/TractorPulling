@@ -20,9 +20,12 @@ in [`bench/speed_budget.toml`](../bench/speed_budget.toml).
 
 ## How it is checked
 
-- **On CI's ARM runner**, the release jobs run `BM_GameStep`, `BM_PullStep`
-  and `BM_VehicleStep` five times and compare the medians with the
-  `ci_arm64_ns` limits (`scripts/check_speed_budget.py`). Each limit is about
+- **On CI's ARM runner**, the release jobs run the budgeted benchmarks
+  (`BM_GameStep`, `BM_PullStep`, `BM_VehicleStep` and the most expensive
+  step, `BM_VehicleStepBrakeHeld`, where a brake holds its side at rest) five
+  times and compare the median CPU times with the `ci_arm64_ns` limits
+  (`scripts/check_speed_budget.py`). The limits only mean something on that
+  runner: elsewhere the check shows the numbers. Each limit is about
   twice what the runner measured when it was set: a change that makes a step
   much slower fails the build, the runner's own noise does not. A slowdown
   made on purpose raises the limit in the same PR, saying why.
@@ -39,12 +42,12 @@ in [`bench/speed_budget.toml`](../bench/speed_budget.toml).
 
 Median time per call, release builds.
 
-| Where | `BM_GameStep` | `BM_PullStep` | `BM_VehicleStep` |
-|---|---|---|---|
-| x86-64 desktop (gcc 13) | 0.82 µs | 0.79 µs | 0.52 µs |
-| CI ARM runner (`ubuntu-24.04-arm`, 2 GHz; gcc / clang) | 0.62 / 0.61 µs | 0.58 / 0.57 µs | 0.36 / 0.38 µs |
-| Android x86_64 emulator on CI (a server core, not a phone) | 0.40 µs | 0.38 µs | 0.25 µs |
-| A mid-range phone | not measured yet | | |
+| Where | `BM_GameStep` | `BM_PullStep` | `BM_VehicleStep` | `BM_VehicleStepBrakeHeld` |
+|---|---|---|---|---|
+| x86-64 desktop (gcc 13) | 0.82 µs | 0.79 µs | 0.52 µs | 0.67 µs |
+| CI ARM runner (`ubuntu-24.04-arm`, 2 GHz; gcc / clang) | 0.62 / 0.61 µs | 0.58 / 0.57 µs | 0.36 / 0.38 µs | (from this PR's CI) |
+| Android x86_64 emulator on CI (a server core, not a phone) | 0.40 µs | 0.38 µs | 0.25 µs | |
+| A mid-range phone | not measured yet | | | |
 
 The runner repeats within 0.1 % from run to run, so its limits
 (1.25, 1.2 and 0.8 µs) sit about twice above the slower compiler. Against

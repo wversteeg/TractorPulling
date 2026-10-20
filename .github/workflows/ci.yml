@@ -68,7 +68,7 @@ jobs:
         if: matrix.arch == 'arm64'
         run: |
           ./build/${{ matrix.preset }}/bench/core_bench \
-            --benchmark_filter='^(BM_GameStep|BM_PullStep|BM_VehicleStep)$' \
+            --benchmark_filter="$(scripts/check_speed_budget.py --filter)" \
             --benchmark_repetitions=5 --benchmark_report_aggregates_only=true \
             --benchmark_out=bench.json --benchmark_out_format=json
           scripts/check_speed_budget.py bench.json ci_arm64

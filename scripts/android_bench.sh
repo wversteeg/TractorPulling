@@ -20,9 +20,10 @@ readonly root
 # shellcheck source=scripts/android_device.sh
 source "${root}/scripts/android_device.sh"
 
+filter="$("${root}/scripts/check_speed_budget.py" --filter)"
 push_to_device "${build}" bench/core_bench
 adb shell getprop ro.product.model || true
-run_on_device "./core_bench --benchmark_filter='^(BM_GameStep|BM_PullStep|BM_VehicleStep)\$' \
+run_on_device "./core_bench --benchmark_filter='${filter}' \
 --benchmark_repetitions=5 --benchmark_report_aggregates_only=true \
 --benchmark_out=bench.json --benchmark_out_format=json"
 

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared by the android_*.sh scripts: talking to a device or emulator over
 # adb. Source it; it expects `root` (the repository) to be set.
 

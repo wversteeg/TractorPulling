@@ -163,12 +163,14 @@ cmake --preset android-arm64 && cmake --build --preset android-arm64
 cmake --preset android-x86_64 && cmake --build --preset android-x86_64
 scripts/android_test.sh build/android-x86_64
 
-# The speed budget (docs/performance.md): benchmarks against
-# bench/speed_budget.toml, on the host or on a phone
-./build/release/bench/core_bench --benchmark_filter='^(BM_GameStep|BM_PullStep|BM_VehicleStep)$' \
+# The speed budget (docs/performance.md, bench/speed_budget.toml). The
+# ci_arm64 limits are set on CI's ARM runner (ubuntu-24.04-arm): on any other
+# machine the check only shows the numbers, and may fail without a regression
+./build/release/bench/core_bench --benchmark_filter="$(scripts/check_speed_budget.py --filter)" \
     --benchmark_repetitions=5 --benchmark_report_aggregates_only=true \
     --benchmark_out=bench.json --benchmark_out_format=json
 scripts/check_speed_budget.py bench.json ci_arm64
+# The phone budget, on a phone over adb
 scripts/android_bench.sh build/android-arm64
 ```
 

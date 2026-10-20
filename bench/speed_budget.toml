@@ -20,3 +20,8 @@ ci_arm64_ns = 1_200
 
 [BM_VehicleStep]
 ci_arm64_ns = 800
+
+# The most expensive step: a brake holding its side at rest runs the
+# bracketed hold solve, up to eight more rear solves.
+[BM_VehicleStepBrakeHeld]
+ci_arm64_ns = 1_200
