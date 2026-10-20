@@ -11,7 +11,7 @@ A tractor pulling game. Goals, in priority order:
 3. **Code quality.** Clean, idiomatic, well-tested modern C++. The owner is an experienced C++ engineer.
 4. **Portability.** Android first; desktop, iOS and others later.
 
-Current focus: **game mechanics only**. Graphics come later. Do not add rendering, engine or UI code until asked.
+Current focus: **the Godot front end** (milestone 5). The simulation stays in `core/`; the game draws it and feeds it the player's input.
 
 ## Architecture
 
@@ -22,7 +22,8 @@ data/        Tractor, engine, tire, sled, track, class, event and season definit
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
 bench/       Google Benchmark micro-benchmarks.
-app/godot/   (MILESTONE 5) Godot 4 front end. Not created yet: its first step adds it.
+app/godot/   Godot 4.7 project: GDScript scenes, input and UI.
+  extension/ The C++ binding (GDExtension): tp::session and the loaders for GDScript.
 ```
 
 ### Rules for `core/`
@@ -30,9 +31,17 @@ app/godot/   (MILESTONE 5) Godot 4 front end. Not created yet: its first step ad
 - No dependency on any engine, platform API, rendering library or OS-specific header.
 - No exceptions or RTTI in hot paths. Use `std::optional`, error enums or result types.
 - No heap allocation inside the simulation step. Allocate and size everything at setup.
-- Public headers are small and stable. They will later be consumed by a Godot binding layer, so keep them free of exotic language/library features.
+- Public headers are small and stable. The Godot binding (`app/godot/extension/`) consumes them, so keep them free of exotic language/library features.
 - All simulation state is plain data, easy to copy, hash and serialize.
 - Input goes in (throttle, clutch, steering, brakes, gear), state comes out. The core never reads devices or the clock.
+
+### Rules for `app/godot/`
+
+- The binding in `extension/` is the only code that includes Godot headers. It wraps `tp::session` and the loaders and holds no simulation or game rules: those live in `core/`.
+- Scenes, input, UI and the run flow are GDScript, with static types (`:=`, typed parameters and returns). Physics and pulling rules never go in GDScript.
+- The game hands `advance()` each frame's real time; the session alone decides how many 1 ms steps that is.
+- The game reads `data/` as `res://data`, a copy the build makes; edit `data/` only.
+- CI plays a scripted run through the extension headless (`scripts/godot_test.sh`); it must end in the same state hash as `tp_pull run --hash`.
 
 ### Determinism
 
@@ -139,7 +148,7 @@ cmake --preset release && cmake --build --preset release
 # or a full pull (then pull-offs on a heavier sled); prints each result
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] \
-    [--steer-deg 1] -o run.csv
+    [--steer-deg 1] [--hash] -o run.csv
 
 # The same run with the easy control layout: the clutch assist works the
 # clutch; --stick holds the steering control (-1 right to 1 left)
@@ -178,9 +187,17 @@ scripts/android_test.sh build/android-x86_64
 scripts/check_speed_budget.py bench.json ci_arm64
 # The phone budget, on a phone over adb
 scripts/android_bench.sh build/android-arm64
+
+# The Godot extension (fetches godot-cpp) into app/godot/bin, data/ copied to
+# app/godot/data, and tp_pull; then open app/godot in Godot 4.7, or play the
+# scripted run headless and compare its state hash with tp_pull's
+cmake --preset godot && cmake --build --preset godot
+scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
+# The extension for Android (needs ANDROID_NDK_HOME)
+cmake --preset godot-android-arm64 && cmake --build --preset godot-android-arm64
 ```
 
-Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`. Keep the commands above working; update this section when presets change.
+Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `godot`, `godot-android-arm64`, `godot-android-x86_64`. Keep the commands above working; update this section when presets change.
 
 ## Code standards
 
@@ -210,8 +227,8 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`. Ke
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
-- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++. In CI: `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
+- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the headless test, downloaded from Godot's releases at a pinned version and checked against its SHA-512; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
 
 ## Dependencies
 
-Fetched with CMake `FetchContent` at pinned release tags (`cmake/Dependencies.cmake`). `FIND_PACKAGE_ARGS` lets an installed package be used instead. Chosen over vcpkg because there are only three dependencies, there is no bootstrap step, and the same setup works unchanged with the Android NDK toolchain. Revisit vcpkg if the dependency count grows.
+Fetched with CMake `FetchContent` at pinned release tags (`cmake/Dependencies.cmake`). `FIND_PACKAGE_ARGS` lets an installed package be used instead. Chosen over vcpkg because there are only four dependencies, there is no bootstrap step, and the same setup works unchanged with the Android NDK toolchain. Revisit vcpkg if the dependency count grows.

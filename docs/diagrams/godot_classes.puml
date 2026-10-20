@@ -1,0 +1,57 @@
+@startuml godot_classes
+title Godot binding (app/godot/extension): tp::session for GDScript
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Godot 4.7 (godot-cpp 10)" {
+  class RefCounted
+  class FileAccess <<engine>> {
+    +{static} file_exists(path) : bool
+    +{static} get_file_as_bytes(path) : PackedByteArray
+  }
+}
+
+package "tp::godot_binding" {
+  class TractorPullRun {
+    -session_ : optional<session::Session>
+    -controls_ : session::Controls
+    +setup(tractor_path, sled_path, track_path, easy_controls_path) : String
+    +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
+    +advance(elapsed_ns) : int
+    +get_snapshot() : Dictionary
+    +is_finished() : bool
+    +get_result() : Dictionary
+    +get_state_hash() : String
+  }
+  class "godot_files" as Files <<free functions>> {
+    +read_godot_file(path) : optional<string>
+  }
+  class "register_types" as Register <<entry point>> {
+    +tractor_pulling_init(...) : GDExtensionBool
+  }
+}
+
+package "core and data_io (see their class diagrams)" {
+  class "session::Session / Setup /\nControls / Snapshot / blend()" as Session
+  class "data::load_tractor / load_sled /\nload_track / load_easy_controls\n(path, ReadFile)" as Loaders
+  class "sled::with_conditions()" as Sled
+}
+
+package "GDScript (app/godot)" {
+  class "scenes, UI, tests/run_test.gd" as Scripts
+}
+
+RefCounted <|-- TractorPullRun
+Register ..> TractorPullRun : registers
+TractorPullRun *-- Session
+TractorPullRun ..> Loaders : setup
+TractorPullRun ..> Sled
+TractorPullRun ..> Files : the ReadFile
+Files ..> FileAccess : res://, user://
+Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot
+note bottom of TractorPullRun
+  holds no game rules: everything goes through tp::session;
+  values in and out are SI, on the track (docs/conventions.md)
+end note
+@enduml

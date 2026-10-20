@@ -18,11 +18,21 @@ option(TP_BUILD_TESTS "Build the unit tests" ${PROJECT_IS_TOP_LEVEL})
 option(TP_BUILD_BENCHMARKS "Build the micro-benchmarks" ${PROJECT_IS_TOP_LEVEL})
 option(TP_BUILD_TOOLS "Build the command line tools" ${PROJECT_IS_TOP_LEVEL})
 option(TP_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(TP_BUILD_GODOT "Build the Godot extension (app/godot/extension, needs godot-cpp)" OFF)
 # Where the tests and benchmarks read data/ when they run: the source tree,
 # or for a cross build (Android) the directory the files are copied to on
 # the device.
 set(TP_DATA_DIR "${PROJECT_SOURCE_DIR}/data" CACHE PATH
     "Where tests and benchmarks find the data/ files at run time")
+
+# The Godot extension is a shared library: the static libraries it links
+# must be position independent.
+if(TP_BUILD_GODOT)
+    if(NOT TP_BUILD_DATA_IO)
+        message(FATAL_ERROR "TP_BUILD_GODOT needs TP_BUILD_DATA_IO")
+    endif()
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(CompilerOptions)
@@ -32,6 +42,10 @@ add_subdirectory(core)
 
 if(TP_BUILD_DATA_IO)
     add_subdirectory(data_io)
+endif()
+
+if(TP_BUILD_GODOT)
+    add_subdirectory(app/godot/extension)
 endif()
 
 if(TP_BUILD_TOOLS)

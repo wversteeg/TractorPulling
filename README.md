@@ -180,13 +180,37 @@ const auto tractor = tp::data::load_tractor("res://data/tractors/farm_stock_ligh
                                             read_with_godot);
 ```
 
+### The Godot front end
+
+`app/godot/` is the game: a Godot 4.7 project whose scenes and UI are
+GDScript, and a small C++ extension (`app/godot/extension/`) that hands
+GDScript a `TractorPullRun`, the session above with the data read from
+`res://data`:
+
+```gdscript
+var run := TractorPullRun.new()
+var error := run.setup("res://data/tractors/farm_stock_light.toml",
+        "res://data/sleds/light_class.toml", "res://data/tracks/ideal_clay_sand.toml",
+        "res://data/controls/easy.toml")  # "" for the pro layout
+run.set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
+run.advance(int(delta * 1e9))             # each frame
+var snapshot := run.get_snapshot()        # what to draw, SI units, on the track
+```
+
+Build the extension with `cmake --preset godot && cmake --build --preset godot`
+(it fetches godot-cpp and copies `data/` into the project), then open
+`app/godot` in Godot 4.7. `scripts/godot_test.sh <godot binary>` plays a
+scripted run headless and checks it ends in the same state as `tp_pull`'s.
+There is no scene yet: that is the next step of milestone 5.
+
 ## Requirements
 
 - CMake 3.25+ and Ninja
 - GCC 12+ or Clang 16+
 - clang-format and clang-tidy (for development)
 
-GoogleTest, Google Benchmark and toml++ are fetched automatically on first configure.
+GoogleTest, Google Benchmark and toml++ are fetched automatically on first
+configure; godot-cpp too with the `godot` presets. The game needs Godot 4.7.
 
 ## Build and test
 

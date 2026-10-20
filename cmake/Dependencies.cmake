@@ -38,3 +38,16 @@ if(TP_BUILD_DATA_IO)
         FIND_PACKAGE_ARGS 3.4.0)
     FetchContent_MakeAvailable(tomlplusplus)
 endif()
+
+if(TP_BUILD_GODOT)
+    # The Godot extension's C++ bindings, against Godot 4.7's API (the
+    # engine version the project and CI pin). Its headers are SYSTEM so our
+    # warnings stay on our code.
+    set(GODOTCPP_API_VERSION "4.7" CACHE STRING "" FORCE)
+    set(GODOTCPP_SYSTEM_HEADERS ON CACHE BOOL "" FORCE)
+    FetchContent_Declare(godot-cpp
+        GIT_REPOSITORY https://github.com/godotengine/godot-cpp.git
+        GIT_TAG 507ed9d840c01a3c5b2a39af8bb4000bfac30bf5 # 10.0.0-stable
+        SYSTEM)
+    FetchContent_MakeAvailable(godot-cpp)
+endif()

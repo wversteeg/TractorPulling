@@ -1,0 +1,16 @@
+; The C++ extension (extension/): tp::session for GDScript. Build it with the
+; godot presets (see the README); the libraries land in bin/.
+
+[configuration]
+
+entry_symbol = "tractor_pulling_init"
+compatibility_minimum = "4.7"
+
+[libraries]
+
+linux.debug.x86_64 = "res://bin/libtp_godot.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://bin/libtp_godot.linux.template_release.x86_64.so"
+android.debug.arm64 = "res://bin/libtp_godot.android.template_debug.arm64.so"
+android.release.arm64 = "res://bin/libtp_godot.android.template_release.arm64.so"
+android.debug.x86_64 = "res://bin/libtp_godot.android.template_debug.x86_64.so"
+android.release.x86_64 = "res://bin/libtp_godot.android.template_release.x86_64.so"

@@ -170,6 +170,15 @@ compete. Competition rules, not physics: they are data, checked at setup.
 
 ![Class rules](diagrams/svg/rules_classes.svg)
 
+### Godot binding (`app/godot/extension`)
+
+The C++ GDExtension that hands GDScript a `TractorPullRun`: `tp::session`
+behind Godot types, with the data read through Godot's `FileAccess` (so
+`res://` works). It is the only code that includes Godot headers, and holds
+no game rules of its own.
+
+![Godot binding classes](diagrams/svg/godot_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
@@ -245,3 +254,11 @@ How a front end drives the fixed-step simulation from a variable frame rate,
 through the session.
 
 ![Frame loop](diagrams/svg/frame_loop_sequence.svg)
+
+### A run in Godot
+
+Setup loads the data through `res://`; then every rendered frame the scene
+sets the controls, advances the run by the frame's time and draws the
+blended snapshot.
+
+![Godot frame](diagrams/svg/godot_frame_sequence.svg)

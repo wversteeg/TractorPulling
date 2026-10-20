@@ -1,0 +1,5 @@
+# Godot's import cache and editor state.
+.godot/
+# Built by the godot presets: the extension's libraries and a copy of data/.
+bin/
+data/
