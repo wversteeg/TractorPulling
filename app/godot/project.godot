@@ -5,6 +5,7 @@ config_version=5
 [application]
 
 config/name="Tractor Pulling"
+run/main_scene="res://scenes/pull.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 
 [rendering]

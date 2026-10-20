@@ -2,7 +2,7 @@
 
 A tractor pulling game with believable, deterministic semi-sim physics. Android first, other platforms later.
 
-The simulation is a pure C++20 library (`core/`) with no engine or platform dependencies. A Godot 4 front end follows later.
+The simulation is a pure C++20 library (`core/`) with no engine or platform dependencies. The Godot 4 front end is in `app/godot/`.
 
 ## Status
 
@@ -204,10 +204,25 @@ their range or at rest.
 
 Build the extension with `cmake --preset godot && cmake --build --preset godot`
 (it fetches godot-cpp and copies `data/` into the project), then open
-`app/godot` in Godot 4.7. `scripts/godot_test.sh <godot binary>` plays two
-scripted runs (with a renderer, under Xvfb if there is no display) and
-checks they end in the same state as `tp_pull`'s.
-There is no scene yet: that is the next step of milestone 5.
+`app/godot` in Godot 4.7 and play it. The pull scene (`scenes/pull.tscn`)
+draws the run in graybox, built from the run's sizes (`get_dimensions()`):
+the lane with its chalk lines and the full-pull line, the tractor with
+wheels that turn and steer, the sled with its weight box moving forward,
+and the chain, darker as it pulls. Until the touch controls come, drive
+with the keyboard: W throttle, A and D steer, 1 to 8 select a gear (0
+neutral), C switches between the chase, side and overhead cameras, R pulls
+again. The easy layout works the clutch.
+
+`scripts/godot_test.sh <godot binary>` plays the scene with a scripted
+driver and checks the views follow the run, then plays two scripted runs
+and checks they end in the same state as `tp_pull`'s (with a renderer,
+under Xvfb if there is no display). To look at the scene without a display:
+
+```bash
+xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
+    --rendering-method gl_compatibility --resolution 1280x720 --path app/godot \
+    --script res://tests/screenshots.gd -- /tmp/shots   # view_0..2.png
+```
 
 ## Requirements
 

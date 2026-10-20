@@ -15,6 +15,9 @@ Load --> Run : Params, or LoadError naming file and field
 Run -> Load : run_setup(tractor, class sled, track):\nthe sled with the track's conditions, its ground and rules
 Run -> Session : create(Setup)
 Run --> Script : "" or the error
+Script -> Run : get_dimensions()
+Run --> Script : the tractor's, sled's and track's sizes
+Script -> Script : build the track, tractor, sled and chain
 
 loop every rendered frame
   Script -> Run : set_controls(throttle, clutch, gear, steering, brakes)
@@ -24,7 +27,7 @@ loop every rendered frame
   Script -> Run : get_snapshot()
   Run -> Session : blend(previous(), current(), alpha())
   Run --> Script : Dictionary (SI, on the track)
-  Script -> Script : place the tractor, wheels and sled
+  Script -> Script : place the tractor, wheels, sled and chain;\nthe cameras follow the tractor
   opt is_finished()
     Script -> Run : get_result()
   end

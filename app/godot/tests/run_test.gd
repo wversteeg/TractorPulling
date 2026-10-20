@@ -1,4 +1,4 @@
-# The extension, headless (scripts/godot_test.sh runs it in CI).
+# The extension, without a scene (scripts/godot_test.sh runs it in CI).
 #
 # First the edges: before setup, a missing file, the pro layout, frames of
 # 60 fps and a hitch. Then two scripted runs whose state hashes it prints,
@@ -8,7 +8,7 @@
 # script passes the gear, S and B as user arguments, so the two must print
 # the same hashes. Exits non-zero if any check fails.
 #
-#   godot --headless --path app/godot --script res://tests/run_test.gd \
+#   godot --path app/godot --script res://tests/run_test.gd \
 #       -- --gear=6 --stick=0.002 --brake-right=0.05
 extends SceneTree
 
@@ -66,6 +66,7 @@ func _check_before_setup() -> void:
 	var run := TractorPullRun.new()
 	_expect(run.advance(STEP_NS) == 0, "no steps before setup")
 	_expect(run.get_snapshot().is_empty(), "no snapshot before setup")
+	_expect(run.get_dimensions().is_empty(), "no dimensions before setup")
 	_expect(run.get_state_hash().is_empty(), "no hash before setup")
 	_expect(not run.is_finished(), "not finished before setup")
 	_expect(run.get_result().is_empty(), "no result before setup")
@@ -77,6 +78,7 @@ func _check_a_missing_file() -> void:
 	_expect(error == "res://data/tractors/nope.toml: cannot open file",
 			"a missing file is named: " + error)
 	_expect(run.advance(STEP_NS) == 0, "no run after a failed setup")
+	_expect(run.get_dimensions().is_empty(), "no dimensions after a failed setup")
 
 
 # The pro layout (no easy controls file): 60 fps frames run 16 or 17 steps,
@@ -95,6 +97,12 @@ func _check_frames() -> void:
 	var snapshot := run.get_snapshot()
 	_expect(snapshot.has("tractor_x_m") and snapshot.has("chain_tension_n"), "the snapshot's keys")
 	_expect(snapshot.gear == 0 and snapshot.engine_running, "idling in neutral")
+	var dimensions := run.get_dimensions()
+	_expect(dimensions.get("wheelbase_m", 0.0) > 0.0 and dimensions.get("chain_length_m", 0.0) > 0.0,
+			"the tractor's and sled's dimensions")
+	_expect(dimensions.get("lane_width_m", 0.0) > 0.0
+			and dimensions.get("full_pull_line_m", 0.0) <= dimensions.get("track_length_m", 0.0),
+			"the track's dimensions")
 
 
 # A scripted run, as tp_pull drives it: in neutral until SELECT_GEAR_S,

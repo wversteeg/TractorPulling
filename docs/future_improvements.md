@@ -174,25 +174,42 @@ for the big features; they are repeated at the end for completeness.
   libc++ statically, which suits standalone test binaries. A GDExtension
   shares a process with Godot, which may want `c++_shared`; decide with the
   binding layer.
-
 - **The extension on a phone.** CI builds the Godot extension for Android
-  (arm64 and x86_64) but loads it only in the desktop Godot, headless. It
+  (arm64 and x86_64) but loads it only in the desktop Godot (under Xvfb in CI). It
   runs on Android once the game is exported (milestone 5, step 5); its
   libc++ is static, see "The C++ runtime for the Godot extension".
 - **Godot's crash on discovering the extension.** Godot 4.7.2 crashes as it
   quits when its editor found a GDExtension while scanning the project
   (any registered class). The build therefore lists the extension in
-  `.godot/extension_list.cfg` so it loads at startup, and the headless test
-  skips the editor import. Drop the workaround once Godot fixes it.
+  `.godot/extension_list.cfg` so it loads at startup, before
+  `scripts/godot_test.sh` runs the import. Drop the workaround once Godot fixes it.
 - **Release libraries of the extension.** The presets build godot-cpp's
   `template_debug` libraries only, which the editor and debug exports
   load, and `tractor_pulling.gdextension` lists only those. Release
   (`template_release`) presets and entries come with the Android export
   (milestone 5, step 5).
-- **GDScript checks.** The GDScript runs in CI (the headless test) but has
-  no linter or formatter there; gdtoolkit's `gdlint` and `gdformat` would
-  add a Python dependency, worth it once there is more GDScript than the
-  test.
+- **GDScript checks.** The GDScript runs in CI (the scene and run tests)
+  but has no linter or formatter there; gdtoolkit's `gdlint` and `gdformat`
+  would add a Python dependency, worth it as the scene and UI grow.
+- **The graybox look.** The pull scene is boxes and cylinders in flat
+  colours on a flat ground: no models, textures, tire tracks, thrown soil,
+  berm, smoke or sound. The hull is one box over the wheelbase; the sled
+  one frame, its weight box and wheels, without a pan or knives drawn. Art
+  replaces the views' meshes; the views' interfaces (`build` from the
+  dimensions, `show_snapshot`) stay.
+- **The chain as a bar.** `ChainView` draws a straight bar from hitch to
+  hook, darker as the tension rises, even when the chain is slack and
+  should sag.
+- **Development input.** The scene reads the keyboard (W, A and D, the gear
+  keys, C and R) with the clutch and brakes left at rest, so it drives
+  only the easy layout. The touch controls (milestone 5, step 3) replace
+  it, with a gamepad for development.
+- **Screenshots out of CI.** `tests/screenshots.gd` saves a PNG per camera
+  for reviewing the look by hand; CI does not run it or compare images,
+  since software rendering differs between Mesa versions.
+- **Cameras.** Three fixed offsets (chase, side, overhead) follow the
+  tractor with exponential smoothing; no free camera, zoom, sled camera or
+  replay cuts.
 - **The snapshot as a Dictionary.** `TractorPullRun.get_snapshot()` builds a
   Dictionary every frame: an allocation on Godot's heap, outside the
   simulation step and well under a frame's budget. If it shows in a frame
