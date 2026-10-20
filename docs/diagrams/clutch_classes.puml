@@ -40,6 +40,7 @@ package "tp::hash (see core_classes)" {
     class "clutch functions" as ClutchFns <<free functions>> {
       +validate(const Params&) : optional<ParamError>
       +capacity_nm(const Params&, pedal) : double
+      +pedal_for(const Params&, share) : double
       +resolve(State&, const Params&, capacity, lock_torque) : double
       +step(State&, const Params&, const Input&,
             engine_side, driveline_side : ShaftPrediction) : Output

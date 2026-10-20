@@ -18,6 +18,7 @@ package "tp::data" {
   class "component loaders" as Loaders <<free functions>> {
     +load_engine(path) / parse_engine(text, source) : Result<engine::Params>
     +load_clutch(path) / parse_clutch(text, source) : Result<clutch::Params>
+    +load_easy_controls(path) / parse_easy_controls(text, source) : Result<controls::EasyParams>
     +load_driveline(path) / parse_driveline(text, source) : Result<driveline::Params>
     +load_tire(path) / parse_tire(text, source) : Result<tire::Params>
     +load_class_rules(path) / parse_class_rules(text, source) : Result<rules::ClassRules>

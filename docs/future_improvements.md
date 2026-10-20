@@ -18,6 +18,11 @@ for the big features; they are repeated at the end for completeness.
   that persists between runs.
 - **Lane-to-lane differences.** Lanes are prepared and worn differently;
   one lane per track for now.
+- **Left and right differences, weaker patches.** The two halves of a lane
+  can grip differently (a wetter side, a softer edge), which makes a
+  tractor drift on its own; a weaker patch does the same for a moment.
+  Equal sides stay the default. Deferred to be built together with more
+  track changes; the track is one surface across its width for now.
 - **Automatic test pull.** The sled operator sets the push-down from a test
   pull on the day's track. A reference tractor could run that test pull and
   choose the push-down for a target distance.
@@ -115,15 +120,31 @@ for the big features; they are repeated at the end for completeness.
   and push-down. Scripted pullers keep a test pull only when no one has
   beaten it.
 
-- **A disqualified pull reaches the event as 0 m.** `field::pull_distance`
-  turns out of bounds into 0 m, so `event::Event` cannot tell it from a
-  pull that went nowhere: a disqualified test pull would make the operator
-  lighten the sled. Scripted pullers drive straight, so it cannot happen
-  yet; pass the `run::Ending` on once pullers steer (milestone 3, step 4).
+- **Scripted pullers that keep the lane.** Event and season pullers drive
+  straight: on a track the same across its width nothing pushes them off
+  line, so no one is disqualified. Pullers that steer and brake to stay in
+  the lane come with the left and right track differences.
+- **Disqualification in a pull-off.** A pull-off pull out of bounds counts
+  0 m in that round, with no mark of its own in the standings.
+- **The rules on a disqualified test pull.** A disqualified test pull
+  counts 0 m for its puller (no keep-or-re-pull), the sled stays and the
+  next puller tests it; a disqualified pull scores no season points. These
+  are reasonable readings, not checked against the NTTO rule book.
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
-- **Easy-mode clutch assist.** The lowest classes get an assist around the
-  same clutch model (see CLAUDE.md).
+
+## Controls
+
+- **Clutch heat.** The easy-mode assist may slip the clutch for seconds at
+  full engine torque to keep the engine from stalling. A real clutch
+  would overheat and fade; the clutch model has no temperature.
+- **A smarter assist.** The assist's guard speed is one share of the rated
+  speed for every engine, and it does not know the gear or the sled.
+  It could take the guard from the engine's torque curve (its peak), or
+  ease the clutch in more gently in low gears to keep the front down.
+- **Steering speed and touch input.** Both layouts take the steering
+  control's position as given; a touch slider or tilt will want a rate
+  limit and a dead zone, set with the Godot front end.
 
 ## Performance
 
@@ -147,6 +168,7 @@ for the big features; they are repeated at the end for completeness.
 
 ## Roadmap features (from CLAUDE.md "Later")
 
-- Steering plus two independent brakes, with a "pro" input mapping.
+- Track changes: left and right differences, weaker patches; pullers that
+  keep the lane.
 - Touch-only input (sliders and tilt).
 - Godot 4 GDExtension front end: 3D scene, cameras, interpolated rendering.

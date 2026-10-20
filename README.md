@@ -68,6 +68,35 @@ wanders out of its lane:
 # run: 0.00 m, out of bounds: a tire touched the chalk line (22.6 s, top 11.9 km/h)
 ```
 
+A pull is measured down the track. In the run CSV, `sled_distance_m` is how
+far down the track the sled is, and `sled_travel_m` its path along its own
+heading, a little longer once it has turned. On a disqualified run the CSV
+still shows where the sled got to; the result is 0 m.
+
+### Easy and pro controls
+
+The same physics under two control layouts (`tp::controls`). **Pro** has
+every control on its own: throttle, clutch pedal, gear, steering and two
+brake pedals. **Easy** has the throttle, the gear and one steering control:
+its first stretch (60 %) turns the front wheels to full lock, the rest
+brakes the rear wheels on the inside of the turn. There is no clutch pedal:
+the clutch assist lets the clutch in while the engine holds its speed and
+lets it slip when the load pulls the engine below a guard speed near peak
+torque, so the engine never stalls; it presses the clutch when the driver
+lifts off or changes gear. The layout is data (`data/controls/easy.toml`).
+At full throttle the assist pulls about as far as a driver slipping the
+clutch in by hand, but the sled stops with the engine running:
+
+```bash
+./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 \
+    --easy data/controls/easy.toml
+# run: 88.70 m, wheels spun out (33.5 s, top 11.9 km/h)
+```
+
+`--stick S` holds the steering control at S (-1 right to 1 left) from the
+launch; 0.05 is already 3° of wheel angle, and leaves the lane in 10 s.
+
 ### Track conditions
 
 Every event's track is different. A track file gives its soil (clay
@@ -105,7 +134,10 @@ their pull unless the sled got heavier, deciding after the 3rd pull and
 re-pulling after the 6th. Every full pull, filled up to four with the best
 runs from 90 m, goes to the pull-off on a heavier sled. Each driver picks a
 gear for the day's track, the best one as often as they read the track
-right, and no two pulls are quite the same.
+right, and no two pulls are quite the same. A disqualified pull (a tire on
+the chalk) counts 0 m and ranks behind every pull that counts; a
+disqualified test pull leaves the sled as it is, and the next puller tests
+it.
 
 ```bash
 ./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
@@ -115,7 +147,8 @@ right, and no two pulls are quite the same.
 
 A season file names the class's event, the points per place and the events,
 each on its own track. The same pullers pull every event; each event draws a
-new running order, and every driver guesses a gear for the day's track.
+new running order, and every driver guesses a gear for the day's track. A
+disqualified pull scores no points.
 
 ```bash
 ./build/release/tools/tp_pull season data/seasons/club_season.toml [--seed N]

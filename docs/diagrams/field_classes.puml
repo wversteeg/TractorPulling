@@ -44,6 +44,7 @@ package "tp::field" {
   class LogEntry <<struct>> {
     +pull : event::Pull
     +reached_m : double
+    +disqualified : bool
     +outcome : event::Outcome
     +gear : int
     +full_pull_m, knives, pushdown_start_m
@@ -73,7 +74,7 @@ package "tp::field" {
   class "field functions" as FieldFns <<free functions>> {
     +validate(reference, variation, rules, count) : optional<ParamError>
     +generate(reference, variation, rules, count, seed) : optional<Field>
-    +pull_distance(const Puller&, const sled::Params&, const track::Params&,\n      const run::Rules&) : optional<double>
+    +run_pull(const Puller&, const sled::Params&, const track::Params&,\n      const run::Rules&) : optional<run::Result>
     +best_gear(const Puller&, sled, track, lowest, highest, const run::Rules&) : optional<int>
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
     +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
@@ -93,7 +94,7 @@ Puller *-- Vehicle
 DriverFns ..> Vehicle
 FieldFns ..> Rules : every puller\nmay compete
 FieldFns ..> Random
-FieldFns ..> Run : pull_distance runs\na whole pull
+FieldFns ..> Run : run_pull runs\na whole pull
 note bottom of FieldFns
   each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
   torque tuned down to the class's PTO limit (bisection), mass capped at its limit;

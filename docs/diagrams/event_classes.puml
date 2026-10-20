@@ -47,6 +47,7 @@ package "tp::event" {
     +puller, place : int
     +distance_m : double
     +full_pull : bool
+    +disqualified : bool
     +pull_off_rounds : int
     +pull_off_distance_m : double
   }
@@ -63,6 +64,7 @@ package "tp::event" {
     +full_pull_m() : double
     +step_estimate_m() : double
     +record(reached_m) : Outcome
+    +record_disqualified() : Outcome
     +decision_due() : optional<int>
     +suggested_keep() : bool
     +decide(keep : bool)
@@ -92,6 +94,8 @@ note bottom of Event
   test puller may keep an unchanged or lighter sled's pull: decides after pull +2,
   re-pulls after pull +5 (the 6th);
   pull-off: full pulls, filled to 4 from 90 m; sled heavier so the strongest stops
-  at the line; again among those who full-pull again
+  at the line; again among those who full-pull again;
+  disqualified (a tire on the chalk): 0 m, behind every pull that counts;
+  a disqualified test pull leaves the sled, and the next puller tests it
 end note
 @enduml

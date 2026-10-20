@@ -1,0 +1,24 @@
+@startuml easy_controls_sequence
+title Easy controls: one step with the clutch assist
+autonumber
+participant "Front end\n(tool, test; later Godot)" as Frontend
+participant "controls::easy" as Easy
+participant "clutch::pedal_for" as PedalFor
+participant "run::step" as Run
+
+Frontend -> Easy : easy({throttle, gear, steering}, params, assist,\ntractor, state.pull.tractor, dt)
+alt lifted off, neutral in, or another gear asked for
+  Easy -> Easy : engagement -= dt / release_time
+else engine at or above the guard speed
+  Easy -> Easy : engagement += dt / engage_time
+else engine below the guard speed
+  Easy -> Easy : engagement -= dt / release_time\n  x min(1, (guard - omega) / band)
+end
+Easy -> PedalFor : pedal_for(clutch, engagement)
+PedalFor --> Easy : pedal (the engagement curve read backwards)
+Easy -> Easy : steering: wheels up to full lock,\nthen the inner rear brake
+Easy -> Easy : gear: the asked one once the clutch is out,\nelse the one in
+Easy --> Frontend : vehicle::Input
+Frontend -> Run : step(state, model, rules, input, dt)
+Run --> Frontend : pull::Output
+@enduml

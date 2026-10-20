@@ -14,10 +14,15 @@ loop until finished()
   else next() is a pull
     Caller -> Event : next(), sled(), full_pull_m()
     Caller -> Run : run the puller (a little different each pull)\non sled() until the sled stops or reaches max_distance_m
-    Run --> Caller : where it stopped
-    Caller -> Event : record(reached_m)
-    opt test pull
-      Event -> Event : operator: line to 110 m, lighter or heavier;\nafter a change the next puller tests
+    Run --> Caller : where it stopped, and how it ended
+    alt a tractor tire touched a chalk line
+      Caller -> Event : record_disqualified()
+      Event -> Event : 0 m, behind every pull that counts;\na test pull: the sled stays, the next puller tests
+    else
+      Caller -> Event : record(reached_m)
+      opt test pull
+        Event -> Event : operator: line to 110 m, lighter or heavier;\nafter a change the next puller tests
+      end
     end
     opt round over
       Event -> Event : qualifiers; pull-off sled heavier\nby the strongest full pull

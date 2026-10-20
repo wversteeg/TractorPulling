@@ -84,17 +84,19 @@ berm, track profiles), a class at an event by the NTTO rules (test pulls,
 the sled operator, keep-or-re-pull, the 100/110 m line, pull-offs) and a
 season with points per place.
 
+## Milestone 3: steering and the lane (done)
+
+Steering and side grip, an open differential with two independent brakes,
+the sled sideways on its chain (the dog-tail), the lane (12 m between the
+chalk lines by default, set per track; a tractor tire on a chalk line
+before the full-pull line disqualifies the pull, 0 m; the sled may cross),
+disqualification through the event and season, and the "easy" and "pro"
+control layouts with the easy-mode clutch assist (`tp::controls`).
+
 ## Next milestones
 
 First get something working, then give it more possibilities. In order:
 
-3. **Steering and the lane:** lane width, steering, two independent brakes,
-   the sled's sideways drag (leaving the lane ends the run), "easy" and
-   "pro" input mappings, the easy-mode clutch assist. The lane is 12 m
-   between the chalk lines by default (the NTTO's minimum prepared width),
-   set per track. A tractor tire touching a chalk line before the full-pull
-   line disqualifies the pull (0 m); past that line it may. The sled may
-   cross the line (dog-tail).
 4. **Phone readiness:** an Android NDK build in CI, a speed budget measured
    on ARM, a small stable interface for the binding layer.
 5. **Godot front end:** 3D scene, cameras, interpolated rendering, touch
@@ -104,7 +106,7 @@ First get something working, then give it more possibilities. In order:
 
 ## Later (do not build yet)
 
-- Steering plus two independent brakes. The first steering range turns the wheels; beyond a threshold it applies progressive brake on that side. A "pro" mode splits this into steering and two brake inputs. Same physics, different input mapping.
+- Track changes: left and right halves of a lane that grip differently (equal by default), weaker patches and more along-track variation; scripted pullers that steer and brake to stay in the lane once the track can push them off line.
 - Touch-only input (sliders and tilt). Gamepad and keyboard are only for development.
 - Godot 4 GDExtension front end: 3D scene, multiple cameras, interpolated rendering of core state.
 
@@ -132,6 +134,12 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] \
     [--steer-deg 1] -o run.csv
+
+# The same run with the easy control layout: the clutch assist works the
+# clutch; --stick holds the steering control (-1 right to 1 left)
+./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
+    --easy data/controls/easy.toml [--stick 0.02] -o run.csv
 
 # The same tractor, sled and driving on several tracks: one line per track
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \

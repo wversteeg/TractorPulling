@@ -120,6 +120,16 @@ ranges and kept within the class's rules.
 
 ![Field classes](diagrams/svg/field_classes.svg)
 
+### Controls (`tp::controls`)
+
+How a front end's controls become the vehicle's input. The pro layout has
+every control on its own. The easy layout has one steering control that
+brakes the inner rear wheels past full lock, and a clutch assist that works
+the clutch: it slips it to keep the engine near peak torque instead of
+stalling. The assist's state is plain data, like the simulation's.
+
+![Controls classes](diagrams/svg/controls_classes.svg)
+
 ### Event (`tp::event`)
 
 One class at an event, pull by pull: a seeded running order, the test pull
@@ -196,6 +206,14 @@ end of the step, limited by its capacity. This keeps the stiff friction
 contact stable and free of chatter at 1 kHz.
 
 ![Clutch coupling](diagrams/svg/clutch_coupling_sequence.svg)
+
+### Easy controls
+
+One step with the easy layout: the assist reads the engine speed and the
+gear in, moves the clutch's engagement, and turns it into a pedal through
+the clutch's own curve.
+
+![Easy controls](diagrams/svg/easy_controls_sequence.svg)
 
 ### Changing gear
 
