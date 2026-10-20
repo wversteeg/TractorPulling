@@ -71,15 +71,17 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         }
         const Puller puller = on_this_pull(today.pullers[static_cast<std::size_t>(pull->puller)],
                                            pull_to_pull, pulls);
-        const std::optional<double> reached = pull_distance(
-            puller, ev.sled(), venue.track, run_rules(rules, venue, ev.full_pull_m()));
-        if (!reached) {
+        const std::optional<run::Result> result =
+            run_pull(puller, ev.sled(), venue.track, run_rules(rules, venue, ev.full_pull_m()));
+        if (!result) {
             return std::nullopt;
         }
         entry.pull = *pull;
-        entry.reached_m = *reached;
+        entry.reached_m = result->distance_m;
+        entry.disqualified = result->ending == run::Ending::kOutOfBounds;
         entry.gear = puller.driver.gear;
-        entry.outcome = ev.record(*reached);
+        entry.outcome =
+            entry.disqualified ? ev.record_disqualified() : ev.record(result->distance_m);
         entry.full_pull_m = ev.full_pull_m();
         entry.knives = ev.sled().knives.count;
         entry.pushdown_start_m = ev.sled().pushdown_start_m;

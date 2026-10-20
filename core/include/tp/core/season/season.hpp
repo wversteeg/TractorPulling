@@ -39,8 +39,9 @@ struct Standing {
     std::array<int, kMaxEvents> event_points{};
 };
 
-/// A season's championship: each event's standings score points by place;
-/// the most points win, and more event wins break a tie.
+/// A season's championship: each event's standings score points by place,
+/// a disqualified pull none; the most points win, and more event wins break
+/// a tie.
 class Championship {
 public:
     [[nodiscard]] static std::optional<Championship> create(const Points& points,

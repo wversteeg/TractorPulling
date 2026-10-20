@@ -47,10 +47,11 @@ bool Championship::add(std::span<const event::Standing> event_standings) noexcep
     }
     for (const event::Standing& s : event_standings) {
         Standing& total = totals_[static_cast<std::size_t>(s.puller)];
-        const int scored = points_for(points_, s.place);
+        // A disqualified pull scores nothing, whatever place it ends in.
+        const int scored = s.disqualified ? 0 : points_for(points_, s.place);
         total.points += scored;
         total.event_points[static_cast<std::size_t>(events_)] = scored;
-        total.wins += s.place == 1 ? 1 : 0;
+        total.wins += s.place == 1 && !s.disqualified ? 1 : 0;
     }
     ++events_;
     return true;

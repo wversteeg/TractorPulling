@@ -81,11 +81,11 @@ struct Field {
 
 /// Where the sled stops when `puller` pulls it on `track`: the scripted
 /// driver keeps pulling past the line until the sled stops, at the rules'
-/// track length at the latest (or after their max duration); 0 if a
-/// tractor tire touched a chalk line before the full-pull line. Nothing if
-/// the puller, sled, track or rules are invalid. Runs a whole pull: for
-/// setup and scripted events, not inside a frame.
-[[nodiscard]] std::optional<double> pull_distance(const Puller& puller, const sled::Params& sled,
+/// track length at the latest (or after their max duration). A tractor
+/// tire touching a chalk line before the full-pull line ends it out of
+/// bounds at 0 m. Nothing if the puller, sled, track or rules are invalid.
+/// Runs a whole pull: for setup and scripted events, not inside a frame.
+[[nodiscard]] std::optional<run::Result> run_pull(const Puller& puller, const sled::Params& sled,
                                                   const track::Params& track,
                                                   const run::Rules& rules) noexcept;
 

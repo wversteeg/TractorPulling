@@ -443,11 +443,22 @@ void report_change(const tp::field::LogEntry& entry) {
     }
 }
 
+// The mark after a distance: a full pull, a disqualified pull, or nothing.
+std::string_view mark(bool full_pull, bool disqualified) {
+    if (disqualified) {
+        return " DQ       ";
+    }
+    return full_pull ? " full pull" : "          ";
+}
+
 void report_standings(tp::event::Event& event) {
     std::cout << "\nstandings\n";
     for (const tp::event::Standing& s : event.standings()) {
         std::cout << std::setw(4) << s.place << ".  #" << std::setw(2) << s.puller + 1 << "  "
-                  << std::setw(7) << s.distance_m << " m" << (s.full_pull ? " full pull" : "");
+                  << std::setw(7) << s.distance_m << " m";
+        if (s.full_pull || s.disqualified) {
+            std::cout << mark(s.full_pull, s.disqualified);
+        }
         if (s.pull_off_rounds > 0) {
             std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m
                       << " m";
@@ -492,7 +503,7 @@ int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
         const tp::event::Pull& pull = entry.pull;
         std::cout << std::setw(4) << ++pull_number << ".  #" << std::setw(2) << pull.puller + 1
                   << "  gear " << entry.gear << "  " << std::setw(7) << entry.reached_m << " m"
-                  << (entry.reached_m >= entry.full_pull_m ? " full pull" : "          ") << "  "
+                  << mark(entry.reached_m >= entry.full_pull_m, entry.disqualified) << "  "
                   << describe(pull.kind);
         if (pull.kind == tp::event::PullKind::kPullOff) {
             std::cout << ' ' << pull.pull_off_round << " (" << entry.knives << " knives)";
@@ -553,7 +564,8 @@ void report_round(int number, const tp::data::SeasonRound& round,
         if (s.pull_off_rounds > 0) {
             std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m << " m";
         }
-        std::cout << "  " << tp::season::points_for(points, s.place) << " pts\n";
+        std::cout << "  " << (s.disqualified ? 0 : tp::season::points_for(points, s.place))
+                  << " pts\n";
     }
 }
 

@@ -183,14 +183,25 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     }
     last_test_m_ = reached_m;
     last_change_steps_ = outcome.change == SledChange::kHeavier ? outcome.steps : -outcome.steps;
-    // After every change the next puller tests the sled again.
-    if (head_ < queue_size_ && queue_[head_].kind == PullKind::kCompetition) {
-        queue_[head_].kind = PullKind::kTest;
-    }
+    retest_next();
     return outcome;
 }
 
+void Event::retest_next() noexcept {
+    if (head_ < queue_size_ && queue_[head_].kind == PullKind::kCompetition) {
+        queue_[head_].kind = PullKind::kTest;
+    }
+}
+
 Outcome Event::record(double reached_m) noexcept {
+    return record_pull(reached_m, false);
+}
+
+Outcome Event::record_disqualified() noexcept {
+    return record_pull(0.0, true);
+}
+
+Outcome Event::record_pull(double reached_m, bool disqualified) noexcept {
     const std::optional<Pull> pull = next();
     if (!pull) {
         return {};
@@ -202,6 +213,13 @@ Outcome Event::record(double reached_m) noexcept {
     Outcome outcome;
     switch (pull->kind) {
         case PullKind::kTest:
+            if (disqualified) {
+                entry.pulled = true;
+                entry.reached_m = 0.0;
+                entry.disqualified = true;
+                retest_next();
+                break;
+            }
             entry.tested = true;
             entry.test_reached_m = reached;
             entry.test_pull_number = completed_;
@@ -211,6 +229,7 @@ Outcome Event::record(double reached_m) noexcept {
         case PullKind::kRepull:
             entry.pulled = true;
             entry.reached_m = reached;
+            entry.disqualified = disqualified;
             break;
         case PullKind::kPullOff:
             entry.pull_off_rounds = pull->pull_off_round;
@@ -288,6 +307,7 @@ void Event::decide(bool keep) noexcept {
     if (keep) {
         entry.pulled = true;
         entry.reached_m = entry.test_reached_m;
+        entry.disqualified = false;
     } else {
         schedule_repull(puller);
     }
@@ -369,6 +389,7 @@ std::span<const Standing> Event::standings() noexcept {
                               .place = 0,
                               .distance_m = official(e.reached_m),
                               .full_pull = e.reached_m >= line_m_,
+                              .disqualified = e.disqualified,
                               .pull_off_rounds = e.pull_off_rounds,
                               .pull_off_distance_m = official(e.pull_off_reached_m)};
     }
@@ -378,6 +399,9 @@ std::span<const Standing> Event::standings() noexcept {
         }
         if (a.pull_off_distance_m != b.pull_off_distance_m) {
             return a.pull_off_distance_m > b.pull_off_distance_m;
+        }
+        if (a.disqualified != b.disqualified) {
+            return b.disqualified;
         }
         return a.distance_m > b.distance_m;
     };
