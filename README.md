@@ -17,6 +17,11 @@ criterion is covered by a test:
 | Too much load stalls the engine | `Vehicle.LightClassPullsOnTorqueInItsPullingGears`, `Run.PullingGearEndsWithAStall` |
 | Identical inputs give an identical state hash on x86-64 and ARM | every `*RegressionHash` test and `Run.ReplayMatchesRegression`, run in CI on x86-64 and arm64 |
 
+Milestones 2 to 4 are complete too: track conditions and competition (an
+event by the NTTO rules and a season), steering and the lane, and phone
+readiness (the Android build, the speed budget and `tp::session`, the
+interface the Godot front end will use). They are described below.
+
 Try a run:
 
 ```bash
