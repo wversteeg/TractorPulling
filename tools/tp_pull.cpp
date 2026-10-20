@@ -58,6 +58,7 @@
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/season/season.hpp"
+#include "tp/core/session/inspect.hpp"
 #include "tp/core/session/session.hpp"
 #include "tp/core/sled/sled.hpp"
 #include "tp/core/soil/soil.hpp"
@@ -363,17 +364,18 @@ std::optional<tp::run::Result> one_run(const tp::session::Setup& setup, const Pu
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         session->advance(run_controls(t_s, options, setup.tractor), tp::kSimulationStepNs);
-        const tp::pull::Output& out = session->last_output();
+        const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
         if (out.tractor.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
             return std::nullopt;
         }
         if (i % kStepsPerRow == 0) {
-            const tp::pull::State& pull = session->run_state().pull;
-            const double start_line_m = session->model().start_line_m();
+            const tp::pull::State& pull = tp::session::Inspector::run_state(*session).pull;
+            const double start_line_m = tp::session::Inspector::model(*session).start_line_m();
             // Output only: atan2 may differ in the last bit between platforms.
             const double chain_angle_rad = std::atan2(out.chain.direction_z, out.chain.direction_x);
-            csv << round << ',' << t_s << ',' << session->last_input().clutch_pedal << ','
+            csv << round << ',' << t_s << ','
+                << tp::session::Inspector::last_input(*session).clutch_pedal << ','
                 << pull.tractor.driveline.gear << ','
                 << rad_s_to_rpm(pull.tractor.engine.omega_rad_s) << ','
                 << pull.sled.velocity_m_s * kMetersPerSecondToKmh << ','

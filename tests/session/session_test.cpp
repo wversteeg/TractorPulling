@@ -1,9 +1,12 @@
 #include "tp/core/session/session.hpp"
 
 #include "tp/core/hash/fnv1a.hpp"
+#include "tp/core/math/random.hpp"
+#include "tp/core/session/inspect.hpp"
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstdlib>
@@ -100,15 +103,15 @@ TEST(Session, ChecksTheEasyLayoutOnlyWhenItIsPlayed) {
 // state after every step, bit for bit.
 TEST(Session, IsTheRunSteppedByHand) {
     Session session = make(reference_setup(Layout::kPro));
-    run::State by_hand = run::start(session.model());
-    const vehicle::Params& tractor = session.model().tractor().params();
+    run::State by_hand = run::start(Inspector::model(session));
+    const vehicle::Params& tractor = Inspector::model(session).tractor().params();
     for (int i = 0; !by_hand.result; ++i) {
         const Controls controls = pro_script(i * kDt_s);
         const controls::ProInput pro{.throttle = controls.throttle,
                                      .clutch_pedal = controls.clutch_pedal,
                                      .gear = controls.gear,
                                      .steering = controls.steering};
-        run::step(by_hand, session.model(), kRules, controls::pro(pro, tractor), kDt_s);
+        run::step(by_hand, Inspector::model(session), kRules, controls::pro(pro, tractor), kDt_s);
         session.advance(controls, kStep_ns);
 
         hash::Fnv1a expected;
@@ -129,14 +132,14 @@ TEST(Session, IsTheRunSteppedByHand) {
 TEST(Session, RunsTheClutchAssistOfTheEasyLayout) {
     const session::Setup setup = reference_setup(Layout::kEasy);
     Session session = make(setup);
-    run::State by_hand = run::start(session.model());
+    run::State by_hand = run::start(Inspector::model(session));
     controls::AssistState assist;
-    const vehicle::Params& tractor = session.model().tractor().params();
+    const vehicle::Params& tractor = Inspector::model(session).tractor().params();
     const Controls pulling{.throttle = 1.0, .gear = 6};
     while (!by_hand.result) {
         const vehicle::Input input = controls::easy({.throttle = 1.0, .gear = 6}, setup.easy,
                                                     assist, tractor, by_hand.pull.tractor, kDt_s);
-        run::step(by_hand, session.model(), kRules, input, kDt_s);
+        run::step(by_hand, Inspector::model(session), kRules, input, kDt_s);
         session.advance(pulling, kStep_ns);
     }
     hash::Fnv1a expected;
@@ -270,6 +273,24 @@ TEST(Blend, GoesFromOneSnapshotToTheNext) {
     EXPECT_DOUBLE_EQ(half.time_s, 1.0005);
     // A gear is in or it is not.
     EXPECT_EQ(half.gear, 6);
+}
+
+// At its ends the blend is the snapshot itself, exactly, for any values,
+// and in between it never leaves the span between them.
+TEST(Blend, LandsExactlyOnBothEnds) {
+    constexpr int kPairs = 1000;
+    constexpr double kFar_m = 50.0;
+    constexpr std::uint64_t kSeed = 19;
+    math::SplitMix64 random{kSeed};
+    for (int i = 0; i < kPairs; ++i) {
+        const Snapshot from{.tractor_x_m = random.uniform(-kFar_m, kFar_m)};
+        const Snapshot to{.tractor_x_m = random.uniform(-kFar_m, kFar_m)};
+        ASSERT_EQ(blend(from, to, 0.0).tractor_x_m, from.tractor_x_m) << i;
+        ASSERT_EQ(blend(from, to, 1.0).tractor_x_m, to.tractor_x_m) << i;
+        const double middle_m = blend(from, to, 0.5).tractor_x_m;
+        ASSERT_GE(middle_m, std::min(from.tractor_x_m, to.tractor_x_m)) << i;
+        ASSERT_LE(middle_m, std::max(from.tractor_x_m, to.tractor_x_m)) << i;
+    }
 }
 
 }  // namespace

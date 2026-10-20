@@ -73,8 +73,14 @@ package "tp::session" {
     +alpha() : double
     +result() : const optional<run::Result>&
     +hash() : uint64
-    +model() / run_state() / last_output() / last_input()
   }
+  class Inspector <<tools and tests>> {
+    +{static} model(const Session&) : const pull::Model&
+    +{static} run_state(const Session&) : const run::State&
+    +{static} last_output(const Session&) : const pull::Output&
+    +{static} last_input(const Session&) : const vehicle::Input&
+  }
+  Inspector ..> Session : friend, reads\n(inspect.hpp, not for the binding)
   class "session functions" as SessionFns <<free functions>> {
     +validate(const Setup&) : optional<SetupError>
     +blend(const Snapshot&, const Snapshot&, alpha) : Snapshot

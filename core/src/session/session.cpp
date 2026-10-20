@@ -2,6 +2,8 @@
 
 #include "tp/core/hash/fnv1a.hpp"
 
+#include <cmath>
+
 namespace tp::session {
 
 namespace {
@@ -11,8 +13,10 @@ std::optional<FixedStepClock> make_clock(const Setup& setup) noexcept {
         {.step_ns = kSimulationStepNs, .max_steps_per_advance = setup.max_steps_per_frame});
 }
 
+// std::lerp: exactly `to` at alpha 1 and monotonic in alpha, where
+// from + alpha * (to - from) can miss `to` by a few ulp.
 double lerp(double from, double to, double alpha) noexcept {
-    return from + alpha * (to - from);
+    return std::lerp(from, to, alpha);
 }
 
 }  // namespace

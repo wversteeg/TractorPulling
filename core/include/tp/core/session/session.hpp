@@ -34,7 +34,7 @@ struct Setup {
     controls::EasyParams easy;
     /// The most steps one frame may run; a longer frame drops the rest of
     /// its time instead of catching up (see FixedStepClock).
-    std::uint32_t max_steps_per_frame = 100;
+    std::uint32_t max_steps_per_frame = FixedStepClock::Config{}.max_steps_per_advance;
 };
 
 enum class SetupError : std::uint8_t {
@@ -151,18 +151,18 @@ public:
 
     /// The run's result, once it has ended.
     [[nodiscard]] const std::optional<run::Result>& result() const noexcept { return run_.result; }
-    /// The replay hash: the run's state and the clutch assist's.
+    /// The replay hash: the run's state and the clutch assist's. It leaves
+    /// out the frame time not yet stepped, so two sessions with the same
+    /// hash may run a different number of steps on their next frame: compare
+    /// it at the same step (a replay's end), not to detect a desync mid-run
+    /// or to save and restore a session.
     [[nodiscard]] std::uint64_t hash() const noexcept;
 
-    /// The whole simulation, for tools and tests; a front end reads the
-    /// snapshots.
-    [[nodiscard]] const pull::Model& model() const noexcept { return model_; }
-    [[nodiscard]] const run::State& run_state() const noexcept { return run_; }
-    /// The last step's output and the vehicle input it was given.
-    [[nodiscard]] const pull::Output& last_output() const noexcept { return output_; }
-    [[nodiscard]] const vehicle::Input& last_input() const noexcept { return input_; }
-
 private:
+    // Tools and tests look at the whole simulation through it (inspect.hpp);
+    // the binding reads the snapshots only.
+    friend class Inspector;
+
     Session(const pull::Model& model, const Setup& setup, const FixedStepClock& clock) noexcept;
 
     void step(const Controls& controls) noexcept;

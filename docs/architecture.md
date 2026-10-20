@@ -137,7 +137,9 @@ a setup given once, the player's controls and the frame's real time in,
 snapshots to draw out. The frame time decides only how many 1 ms steps run,
 never their length, so the same controls on the same steps give the same run
 however the time is split into frames. It wraps the run, the controls and
-the fixed-step clock; `tp_pull run` plays through it too.
+the fixed-step clock; `tp_pull run` plays through it too. Tools and tests
+look at the whole simulation inside it through `session::Inspector`
+(`inspect.hpp`), which the binding does not use.
 
 ![Session classes](diagrams/svg/session_classes.svg)
 
