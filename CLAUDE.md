@@ -22,7 +22,7 @@ data/        Tractor, engine, tire, sled, track, class, event and season definit
 tools/       Headless CLI: runs a scripted pull, writes CSV.
 tests/       GoogleTest unit and integration tests.
 bench/       Google Benchmark micro-benchmarks.
-app/godot/   (LATER) Godot 4 GDExtension front end. Do not create yet.
+app/godot/   (MILESTONE 5) Godot 4 front end. Not created yet: its first step adds it.
 ```
 
 ### Rules for `core/`
@@ -95,27 +95,26 @@ control layouts with the easy-mode clutch assist (`tp::controls`).
 
 ## Milestone 4: phone readiness (done)
 
-The Android NDK build in CI with the tests on an emulator (API 24, Godot's
-minimum), the speed budget (50 µs per step on a phone; regression limits on
-CI's ARM runner; `docs/performance.md`) with a test that the step never
-allocates, and `tp::session`: one run as the game plays it, the small
-interface for the binding layer, with the data loaded through a function
-the front end supplies (`tp::data::ReadFile`).
+The Android NDK build in CI with the tests on an emulator (API 24, the
+minimum SDK of Godot 4's Android export: `min_sdk` in its export docs), the
+speed budget (50 µs per step on a phone, set but not yet measured on one;
+regression limits on CI's ARM runner; `docs/performance.md`) with a test
+that the step never allocates, and `tp::session`: one run as the game plays
+it, the small interface for the binding layer, with the data loaded through
+a function the front end supplies (`tp::data::ReadFile`).
 
 ## Next milestones
 
 First get something working, then give it more possibilities. In order:
 
 5. **Godot front end:** 3D scene, cameras, interpolated rendering, touch
-   input (sliders and tilt).
+   input (sliders and tilt; gamepad and keyboard only for development).
 6. **Career:** heavier classes (where wheelspin matters more), tuning and
    upgrades as parameter changes, a season mode in the game.
 
 ## Later (do not build yet)
 
 - Track changes: left and right halves of a lane that grip differently (equal by default), weaker patches and more along-track variation; scripted pullers that steer and brake to stay in the lane once the track can push them off line.
-- Touch-only input (sliders and tilt). Gamepad and keyboard are only for development.
-- Godot 4 GDExtension front end: 3D scene, multiple cameras, interpolated rendering of core state.
 
 ## Build and test
 

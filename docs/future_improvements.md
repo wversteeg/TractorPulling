@@ -215,5 +215,3 @@ for the big features; they are repeated at the end for completeness.
 
 - Track changes: left and right differences, weaker patches; pullers that
   keep the lane.
-- Touch-only input (sliders and tilt).
-- Godot 4 GDExtension front end: 3D scene, cameras, interpolated rendering.
