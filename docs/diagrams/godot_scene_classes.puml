@@ -1,0 +1,87 @@
+@startuml godot_scene_classes
+title The pull scene (app/godot/scenes/pull.tscn): a run drawn in graybox
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Godot 4.7" {
+  class Node3D
+  class SceneTree
+}
+
+package "GDScript (app/godot/scripts)" {
+  class "pull.gd" as Pull {
+    +autoplay : bool
+    +run : TractorPullRun
+    +start()
+    -_process(delta)
+    -_read_controls()
+    -_show(delta)
+  }
+  class TrackView {
+    +build(dimensions)
+  }
+  class TractorView {
+    +build(dimensions)
+    +show_snapshot(snapshot, delta)
+    +hitch_position() : Vector3
+  }
+  class SledView {
+    +build(dimensions)
+    +show_snapshot(snapshot)
+    +hook_position() : Vector3
+  }
+  class ChainView {
+    +show_between(hitch, hook, tension_n)
+  }
+  class CameraRig {
+    +view : View {CHASE, SIDE, OVERHEAD}
+    +next()
+    +current_camera() : Camera3D
+    +follow(target, delta, smooth)
+  }
+  class TrackSpace <<static>> {
+    +{static} point(x_m, y_m, z_m) : Vector3
+  }
+  class Graybox <<static>> {
+    +{static} box(size, colour) : MeshInstance3D
+    +{static} wheel(radius_m, width_m, colour) : MeshInstance3D
+  }
+}
+
+package "tests (scripts/godot_test.sh)" {
+  class "scene_test.gd" as SceneTest
+  class "screenshots.gd" as Shots
+}
+
+class "TractorPullRun\n(see godot_classes)" as Run
+
+Node3D <|-- Pull
+Node3D <|-- TrackView
+Node3D <|-- TractorView
+Node3D <|-- SledView
+Node3D <|-- ChainView
+Node3D <|-- CameraRig
+Pull *-- Run
+Pull *-- TrackView
+Pull *-- TractorView
+Pull *-- SledView
+Pull *-- ChainView
+Pull *-- CameraRig
+TrackView ..> TrackSpace
+TractorView ..> TrackSpace
+SledView ..> TrackSpace
+TrackView ..> Graybox
+TractorView ..> Graybox
+SledView ..> Graybox
+ChainView ..> Graybox
+SceneTree <|-- SceneTest
+SceneTree <|-- Shots
+SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot
+Shots ..> Pull : autoplay, a PNG per camera
+note bottom of Pull
+  draws the blended snapshot and hands the run the controls;
+  no physics or rules: TrackSpace only turns track
+  coordinates (x down the track, y left, z up) into Godot's
+end note
+@enduml

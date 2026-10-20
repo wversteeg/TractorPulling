@@ -179,6 +179,16 @@ no game rules of its own.
 
 ![Godot binding classes](diagrams/svg/godot_classes.svg)
 
+### The pull scene (`app/godot/scenes`, `app/godot/scripts`)
+
+GDScript that draws a run: the root script owns the `TractorPullRun`,
+builds a view of the track, tractor, sled and chain from its dimensions,
+and each frame advances it by the frame's time and places the views from
+the blended snapshot; the cameras follow the tractor. `TrackSpace` turns
+the track's coordinates into Godot's. No physics or rules live here.
+
+![Pull scene classes](diagrams/svg/godot_scene_classes.svg)
+
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
@@ -257,8 +267,8 @@ through the session.
 
 ### A run in Godot
 
-Setup loads the data through `res://`; then every rendered frame the scene
-sets the controls, advances the run by the frame's time and draws the
-blended snapshot.
+Setup loads the data through `res://` and the scene builds itself from the
+run's dimensions; then every rendered frame the scene sets the controls,
+advances the run by the frame's time and draws the blended snapshot.
 
 ![Godot frame](diagrams/svg/godot_frame_sequence.svg)

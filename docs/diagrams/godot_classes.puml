@@ -15,6 +15,7 @@ package "Godot 4.7 (godot-cpp 10)" {
 package "tp::godot_binding" {
   class TractorPullRun {
     -session_ : optional<session::Session>
+    -setup_ : optional<session::Setup>
     -controls_ : session::Controls
     -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, easy_controls_path) : String
@@ -22,6 +23,7 @@ package "tp::godot_binding" {
     +advance(elapsed_ns) : int
     +get_dropped_ns() : int
     +get_snapshot() : Dictionary
+    +get_dimensions() : Dictionary
     +is_finished() : bool
     +get_result() : Dictionary
     +get_state_hash() : String
@@ -41,7 +43,7 @@ package "core and data_io (see their class diagrams)" {
 }
 
 package "GDScript (app/godot)" {
-  class "scenes, UI, tests/run_test.gd" as Scripts
+  class "scenes/pull.tscn and its views\n(see godot_scene_classes), tests" as Scripts
 }
 
 RefCounted <|-- TractorPullRun
@@ -51,7 +53,7 @@ TractorPullRun ..> Loaders : setup
 TractorPullRun ..> RunSetup : the run's Setup
 TractorPullRun ..> Files : the ReadFile
 Files ..> FileAccess : res://, user://
-Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot
+Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot,\nget_dimensions at setup
 note bottom of TractorPullRun
   holds no game rules: everything goes through tp::session;
   values in and out are SI, on the track (docs/conventions.md)
