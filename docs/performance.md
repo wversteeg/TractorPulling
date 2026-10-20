@@ -1,0 +1,63 @@
+# Performance
+
+The simulation must run comfortably on mid-range Android phones (CLAUDE.md).
+This page sets what "comfortably" means, says how it is checked, and keeps
+the measurements.
+
+## The budget
+
+**One simulated millisecond may take at most 50 µs on a mid-range phone**:
+5 % of one core at the 1 kHz step rate. A 60 fps frame (16.7 ms) runs about
+17 steps, so the simulation takes under 1 ms of it; the rest of the frame,
+and the other cores, belong to the front end (rendering, input, sound).
+
+The budget is set on `BM_GameStep` (`bench/run/run_bench.cpp`): one step as
+the game runs it, on the shipped tractor, sled and track. It covers the easy
+layout with its clutch assist, the pull (engine, clutch, driveline, both
+rear sides, the chassis in pitch and in the plane, the chain and the sled
+with its sideways motion) and the run's lane and end checks. The limits live
+in [`bench/speed_budget.toml`](../bench/speed_budget.toml).
+
+## How it is checked
+
+- **On CI's ARM runner**, the release jobs run `BM_GameStep`, `BM_PullStep`
+  and `BM_VehicleStep` five times and compare the medians with the
+  `ci_arm64_ns` limits (`scripts/check_speed_budget.py`). Each limit is about
+  twice what the runner measured when it was set: a change that makes a step
+  much slower fails the build, the runner's own noise does not. A slowdown
+  made on purpose raises the limit in the same PR, saying why.
+- **No allocation in the step**: `tp_alloc_tests` replaces the global
+  `operator new` with a counter and runs whole pulls, easy and pro, through
+  the step functions; any allocation fails it. It runs on every CI job and
+  on the Android emulator.
+- **On a phone**, `scripts/android_bench.sh build/android-arm64` runs the same
+  benchmarks over adb and checks `BM_GameStep` against the 50 µs phone
+  budget. CI runs the script on the x86_64 emulator to keep it working; the
+  emulator's numbers say nothing about a phone.
+
+## Measurements
+
+Median time per call, release builds.
+
+| Where | `BM_GameStep` | `BM_PullStep` | `BM_VehicleStep` |
+|---|---|---|---|
+| x86-64 desktop (gcc 13) | 0.82 µs | 0.79 µs | 0.52 µs |
+| CI ARM runner (`ubuntu-24.04-arm`) | (set from the first CI run) | | |
+| A mid-range phone | not measured yet | | |
+
+Against the phone budget the desktop leaves a factor of about 60. A
+mid-range phone's cores are slower than a desktop's (the efficient cores
+many times so), so expect a factor of 5 to 10 there; the budget is there to
+catch regressions long before they matter.
+
+## Measuring on a phone
+
+1. Turn on USB debugging on the phone (Developer options) and connect it;
+   `adb devices` should list it.
+2. Build for phones: `cmake --preset android-arm64 && cmake --build --preset android-arm64`
+   (needs `ANDROID_NDK_HOME`, see the README).
+3. Run `scripts/android_bench.sh build/android-arm64`. It prints the phone
+   model, the benchmark table and the check against the budget.
+
+The kernel may move the benchmark between fast and efficient cores; running
+it a few times shows the spread. Record the result in the table above.

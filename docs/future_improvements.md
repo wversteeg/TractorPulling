@@ -166,6 +166,10 @@ for the big features; they are repeated at the end for completeness.
   (its sine, cosine and exponential are its own, in `tp::math`). Calling
   libm's transcendental functions from `core/` would reopen it: Android's
   libm on ARM could then differ from glibc's.
+- **The speed budget on a real phone.** The phone budget (50 µs per step,
+  `docs/performance.md`) is checked by hand with `scripts/android_bench.sh`;
+  CI's ARM runner is a server core, so its limits catch regressions rather
+  than prove the phone budget. A device farm could check it in CI.
 - **The C++ runtime for the Godot extension.** The Android presets link
   libc++ statically, which suits standalone test binaries. A GDExtension
   shares a process with Godot, which may want `c++_shared`; decide with the

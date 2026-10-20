@@ -1,0 +1,20 @@
+# The speed budget: the most a benchmark may take, as the median time per
+# call in nanoseconds over the repetitions (see docs/performance.md).
+#
+# phone_ns     what the game can afford on a mid-range phone: one simulated
+#              millisecond in at most 5 % of one core, so 50 µs per step.
+# ci_arm64_ns  the regression limit on CI's ARM runner: about twice what it
+#              measured when the limit was set, so that a slower change
+#              fails the build while the runner's own noise does not.
+#
+# scripts/check_speed_budget.py compares a benchmark run with one column.
+
+[BM_GameStep]
+phone_ns = 50_000
+ci_arm64_ns = 4_000
+
+[BM_PullStep]
+ci_arm64_ns = 4_000
+
+[BM_VehicleStep]
+ci_arm64_ns = 2_500
