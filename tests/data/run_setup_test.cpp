@@ -69,8 +69,10 @@ TEST(RunSetup, MakesTheSledHeavierForEachPullOff) {
     EXPECT_EQ(second.knives.count, expected.knives.count);
     EXPECT_EQ(second.knives.depth_m, expected.knives.depth_m);
     EXPECT_EQ(second.pushdown_start_m, expected.pushdown_start_m);
-    EXPECT_GT(sled::total_mass_kg(second) + second.knives.count,
-              sled::total_mass_kg(today) + today.knives.count);
+    // Heavier: more weight in the box or more knives, never less of either.
+    EXPECT_GE(second.box_mass_kg, today.box_mass_kg);
+    EXPECT_GE(second.knives.count, today.knives.count);
+    EXPECT_TRUE(second.box_mass_kg > today.box_mass_kg || second.knives.count > today.knives.count);
 }
 
 }  // namespace

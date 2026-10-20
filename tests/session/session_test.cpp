@@ -263,16 +263,16 @@ TEST(Session, StandsStillOnceTheRunHasEnded) {
     EXPECT_EQ(session.previous().sled_x_m, session.current().sled_x_m);
 }
 
-// Controls that are not finite (a NaN from GDScript maths) never reach the
-// simulation: the run goes on exactly as with the controls at rest.
-TEST(Session, ReadsNonFiniteControlsAsAtRest) {
+// Controls that are not a number (a NaN from GDScript maths) never reach
+// the simulation: the run goes on exactly as with the controls at rest.
+TEST(Session, ReadsNotANumberAsAtRest) {
     const double nan = std::nan("");
     const Controls bad{.throttle = nan,
                        .clutch_pedal = nan,
                        .gear = driveline::kNeutral,
                        .steering = nan,
-                       .brake_left = HUGE_VAL,
-                       .brake_right = -HUGE_VAL};
+                       .brake_left = nan,
+                       .brake_right = nan};
     const Controls at_rest{.throttle = 0.0,
                            .clutch_pedal = 1.0,
                            .gear = driveline::kNeutral,

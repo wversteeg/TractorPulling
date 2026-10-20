@@ -28,7 +28,10 @@ cd "${root}"
 # are tp_pull's kPullSelectGear_s and kPullRevUpEnd_s.
 readonly gear=6
 readonly stick=0.002        # the easy run's steering control
-readonly brake_right=0.05   # the pro run's right brake, with a dumped clutch
+# The pro run's right brake, with a dumped clutch. It pulls the tractor
+# onto the chalk line at 25.9 s on purpose, so the run also ends in a
+# disqualification: "pro result: out_of_bounds 0.0 m" is the expected end.
+readonly brake_right=0.05
 readonly tractor=data/tractors/farm_stock_light.toml
 readonly sled=data/sleds/light_class.toml
 readonly track=data/tracks/ideal_clay_sand.toml

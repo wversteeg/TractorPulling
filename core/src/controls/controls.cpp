@@ -10,16 +10,17 @@ namespace tp::controls {
 
 namespace {
 
-// A control held to its travel, 0 to 1. A value that is not finite (a 0/0
-// in a front end's slider or tilt maths) reads as the control at `rest`:
-// std::clamp would pass a NaN on, and it would ruin the run for good.
+// A control held to its travel, 0 to 1 (an infinity too, as any value out
+// of range). Not a number (a 0/0 in a front end's slider or tilt maths)
+// reads as the control at `rest`: std::clamp would pass a NaN on, and it
+// would ruin the run for good.
 double unit(double value, double rest) noexcept {
-    return std::isfinite(value) ? std::clamp(value, 0.0, 1.0) : rest;
+    return std::isnan(value) ? rest : std::clamp(value, 0.0, 1.0);
 }
 
-// A steering control, -1 to 1; not finite reads as straight ahead.
+// A steering control, -1 to 1; not a number reads as straight ahead.
 double signed_unit(double value) noexcept {
-    return std::isfinite(value) ? std::clamp(value, -1.0, 1.0) : 0.0;
+    return std::isnan(value) ? 0.0 : std::clamp(value, -1.0, 1.0);
 }
 
 // Where each control rests: throttle closed, clutch pressed, brakes off.

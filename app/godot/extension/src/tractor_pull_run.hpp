@@ -30,7 +30,7 @@ public:
                         const godot::String& track_path, const godot::String& easy_controls_path);
 
     /// The controls held from now on (see session::Controls: held to their
-    /// range, and a value that is not finite reads as the control at rest).
+    /// range, and a value that is not a number reads as the control at rest).
     void set_controls(double throttle, double clutch_pedal, std::int64_t gear, double steering,
                       double brake_left, double brake_right);
 

@@ -136,27 +136,43 @@ TEST(Pro, MapsEachControlOnItsOwn) {
     EXPECT_DOUBLE_EQ(pro({.steering = 3.0}, tractor).steering_rad, max_rad);
 }
 
-// A control that is not finite (a NaN from a front end's maths) reads as
-// the control at rest, so it never reaches the simulation.
-TEST(Pro, ReadsANonFiniteControlAsAtRest) {
+// A control that is not a number (a NaN from a front end's maths) reads as
+// the control at rest, so it never reaches the simulation; an infinity is
+// held to the control's range, as any value beyond it.
+TEST(Pro, ReadsNotANumberAsAtRest) {
     const vehicle::Params tractor = vehicle::testing::reference_params();
-    for (const double bad : {std::nan(""), HUGE_VAL, -HUGE_VAL}) {
-        const vehicle::Input in = pro({.throttle = bad,
-                                       .clutch_pedal = bad,
-                                       .gear = 3,
-                                       .steering = bad,
-                                       .brake_left = bad,
-                                       .brake_right = bad},
-                                      tractor);
-        EXPECT_EQ(in.throttle, 0.0) << bad;
-        EXPECT_EQ(in.clutch_pedal, 1.0) << bad;
-        EXPECT_EQ(in.steering_rad, 0.0) << bad;
-        EXPECT_EQ(in.brake_left, 0.0) << bad;
-        EXPECT_EQ(in.brake_right, 0.0) << bad;
-    }
+    const double nan = std::nan("");
+    const vehicle::Input in = pro({.throttle = nan,
+                                   .clutch_pedal = nan,
+                                   .gear = 3,
+                                   .steering = nan,
+                                   .brake_left = nan,
+                                   .brake_right = nan},
+                                  tractor);
+    EXPECT_EQ(in.throttle, 0.0);
+    EXPECT_EQ(in.clutch_pedal, 1.0);
+    EXPECT_EQ(in.steering_rad, 0.0);
+    EXPECT_EQ(in.brake_left, 0.0);
+    EXPECT_EQ(in.brake_right, 0.0);
 }
 
-TEST(Easy, ReadsANonFiniteControlAsAtRest) {
+TEST(Pro, HoldsAnInfinityToTheRange) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    const vehicle::Input in = pro({.throttle = HUGE_VAL,
+                                   .clutch_pedal = -HUGE_VAL,
+                                   .gear = 3,
+                                   .steering = HUGE_VAL,
+                                   .brake_left = HUGE_VAL,
+                                   .brake_right = -HUGE_VAL},
+                                  tractor);
+    EXPECT_EQ(in.throttle, 1.0);
+    EXPECT_EQ(in.clutch_pedal, 0.0);
+    EXPECT_EQ(in.steering_rad, tractor.steering.max_angle_rad);
+    EXPECT_EQ(in.brake_left, 1.0);
+    EXPECT_EQ(in.brake_right, 0.0);
+}
+
+TEST(Easy, ReadsNotANumberAsAtRest) {
     const vehicle::Params tractor = vehicle::testing::reference_params();
     const std::optional<vehicle::Model> model = vehicle::Model::create(tractor);
     if (!model) {
@@ -164,17 +180,15 @@ TEST(Easy, ReadsANonFiniteControlAsAtRest) {
         return;
     }
     const vehicle::State state = vehicle::initial_state(*model);
-    for (const double bad : {std::nan(""), HUGE_VAL, -HUGE_VAL}) {
-        AssistState assist;
-        const vehicle::Input in =
-            easy({.throttle = bad, .gear = driveline::kNeutral, .steering = bad}, kEasy, assist,
-                 tractor, state, kDt_s);
-        EXPECT_EQ(in.throttle, 0.0) << bad;
-        EXPECT_EQ(in.steering_rad, 0.0) << bad;
-        EXPECT_EQ(in.brake_left, 0.0) << bad;
-        EXPECT_EQ(in.brake_right, 0.0) << bad;
-        EXPECT_TRUE(std::isfinite(assist.engagement)) << bad;
-    }
+    const double nan = std::nan("");
+    AssistState assist;
+    const vehicle::Input in = easy({.throttle = nan, .gear = driveline::kNeutral, .steering = nan},
+                                   kEasy, assist, tractor, state, kDt_s);
+    EXPECT_EQ(in.throttle, 0.0);
+    EXPECT_EQ(in.steering_rad, 0.0);
+    EXPECT_EQ(in.brake_left, 0.0);
+    EXPECT_EQ(in.brake_right, 0.0);
+    EXPECT_TRUE(std::isfinite(assist.engagement));
 }
 
 // Easy: the first stretch of the steering control turns the wheels; past
