@@ -1,7 +1,6 @@
 #include "toml_reader.hpp"
 
 #include <cstddef>
-#include <fstream>
 #include <sstream>
 #include <string>
 
@@ -31,16 +30,6 @@ std::string join(std::string_view table, std::string_view key) {
 }
 
 }  // namespace
-
-std::optional<std::string> read_text(const std::filesystem::path& path) {
-    const std::ifstream file{path, std::ios::binary};
-    if (!file) {
-        return std::nullopt;
-    }
-    std::ostringstream text;
-    text << file.rdbuf();
-    return text.str();
-}
 
 std::string describe(const toml::parse_error& error, std::string_view source) {
     std::ostringstream message;

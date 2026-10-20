@@ -38,8 +38,12 @@ Result<rules::ClassRules> parse_class_rules(std::string_view toml_text,
     return detail::parse_with<rules::ClassRules>(toml_text, source_name, &read_class_rules);
 }
 
+Result<rules::ClassRules> load_class_rules(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<rules::ClassRules>(path, read, &read_class_rules);
+}
+
 Result<rules::ClassRules> load_class_rules(const std::filesystem::path& path) {
-    return detail::load_file_with<rules::ClassRules>(path, &read_class_rules);
+    return load_class_rules(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

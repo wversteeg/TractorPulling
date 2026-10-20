@@ -13,6 +13,7 @@ if(TP_BUILD_DATA_IO)
         engine/engine_bench.cpp
         pull/pull_bench.cpp
         run/run_bench.cpp
+        session/session_bench.cpp
         tire/tire_bench.cpp
         vehicle/vehicle_bench.cpp)
     target_link_libraries(core_bench PRIVATE tp::data)

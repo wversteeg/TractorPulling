@@ -1,21 +1,33 @@
 @startuml frame_loop_sequence
-title Frame loop: variable frame rate driving the fixed 1 kHz simulation
+title Frame loop: a variable frame rate driving the fixed 1 kHz simulation through the session
 autonumber
-participant "Front end" as Frontend
+participant "Front end\n(later the Godot binding)" as Frontend
+participant "session::Session" as Session
 participant "FixedStepClock" as Clock
-participant "simulation step\n(today: engine::step)" as Sim
+participant "controls::pro / easy" as Controls
+participant "run::step" as Run
 
-note over Frontend : The front end (later the Godot GDExtension)\nowns the clock and the device input.\nThe core never reads time or devices.
+note over Frontend : The front end owns the device input and measures\nthe frame time. The core never reads time or devices.
+
+Frontend -> Session : create(Setup)
+Session --> Frontend : optional<Session>
 
 loop every rendered frame
-  Frontend -> Clock : advance(elapsed_ns)
-  Clock --> Frontend : Advance {steps, dropped_ns}\n(steps <= max_steps_per_advance)
-  loop steps times
-    Frontend -> Sim : step(state, params, input, step_s = 0.001)
-    Sim --> Frontend : output
+  Frontend -> Session : advance(Controls, elapsed_ns)
+  Session -> Clock : advance(elapsed_ns)
+  Clock --> Session : Advance {steps, dropped_ns}\n(steps <= max_steps_per_frame)
+  loop steps times (until the run has a result)
+    Session -> Controls : the layout's input from Controls\n(easy: the assist reads the engine and gear)
+    Controls --> Session : vehicle::Input
+    Session -> Run : step(state, model, rules, input, dt_s = 0.001)
+    Run --> Session : pull::Output
+    note right of Session : snapshots are taken before\nand after the last step only
   end
-  Frontend -> Clock : alpha()
-  Clock --> Frontend : 0 <= alpha < 1
-  Frontend -> Frontend : render interpolate(previous_state, state, alpha)
+  Session --> Frontend : Frame {steps, dropped_ns}
+  Frontend -> Session : previous(), current(), alpha()
+  Frontend -> Frontend : draw blend(previous, current, alpha)
+  opt result()
+    Frontend -> Frontend : show the result; after a full pull,\na new Session on sled::heavier()
+  end
 end
 @enduml

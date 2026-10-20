@@ -150,8 +150,12 @@ Result<sled::Params> parse_sled(std::string_view toml_text, std::string_view sou
     return detail::parse_with<sled::Params>(toml_text, source_name, &read_sled);
 }
 
+Result<sled::Params> load_sled(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<sled::Params>(path, read, &read_sled);
+}
+
 Result<sled::Params> load_sled(const std::filesystem::path& path) {
-    return detail::load_file_with<sled::Params>(path, &read_sled);
+    return load_sled(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

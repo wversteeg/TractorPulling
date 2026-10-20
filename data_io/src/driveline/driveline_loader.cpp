@@ -81,8 +81,12 @@ Result<driveline::Params> parse_driveline(std::string_view toml_text,
     return detail::parse_with<driveline::Params>(toml_text, source_name, &read_driveline);
 }
 
+Result<driveline::Params> load_driveline(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<driveline::Params>(path, read, &read_driveline);
+}
+
 Result<driveline::Params> load_driveline(const std::filesystem::path& path) {
-    return detail::load_file_with<driveline::Params>(path, &read_driveline);
+    return load_driveline(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

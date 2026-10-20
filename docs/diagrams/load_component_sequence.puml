@@ -4,14 +4,17 @@ autonumber
 participant "tp_pull\n(or a front end)" as App
 participant "data::load_<component>" as Load
 participant "detail::load_file_with /\nparse_with" as Parse
+participant "ReadFile\n(the front end's,\nor read_from_disk)" as Read
 participant "toml++" as Toml
 participant "detail::Reader" as Reader
 participant "math::Curve" as Curve
 participant "<component>::validate" as Validate
 
-App -> Load : load_engine("data/engines/x.toml")
-Load -> Parse : load_file_with(path, read_<component>)
-Parse -> Parse : read file
+App -> Load : load_engine("res://data/engines/x.toml", read)
+note right of App : a tractor, event or season loads the files it names\nthe same way: resolve(directory_of(its path), name)
+Load -> Parse : load_file_with(path, read, read_<component>)
+Parse -> Read : read(path)
+Read --> Parse : optional<string>
 alt cannot open
   Parse --> App : LoadError "path: cannot open file"
 end

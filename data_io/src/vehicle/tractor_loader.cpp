@@ -87,7 +87,7 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
 }
 
 Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view source,
-                                     const std::filesystem::path& base) {
+                                     std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
     const std::string engine_path = reader.text("tractor.engine");
     const std::string clutch_path = reader.text("tractor.clutch");
@@ -169,10 +169,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     }
 
     std::optional<LoadError> error;
-    const auto engine = component(load_engine(base / engine_path), error);
-    const auto clutch = component(load_clutch(base / clutch_path), error);
-    const auto driveline = component(load_driveline(base / driveline_path), error);
-    const auto rear_tire = component(load_tire(base / tire_path), error);
+    const auto engine = component(load_engine(resolve(base, engine_path), read), error);
+    const auto clutch = component(load_clutch(resolve(base, clutch_path), read), error);
+    const auto driveline = component(load_driveline(resolve(base, driveline_path), read), error);
+    const auto rear_tire = component(load_tire(resolve(base, tire_path), read), error);
     if (error) {
         return *error;
     }
@@ -212,21 +212,31 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
 }  // namespace
 
 Result<vehicle::Params> parse_tractor(std::string_view toml_text, std::string_view source_name,
-                                      const std::filesystem::path& base_directory) {
+                                      std::string_view base_directory, const ReadFile& read) {
     try {
         const toml::table root = toml::parse(toml_text, source_name);
-        return read_tractor(root, source_name, base_directory);
+        return read_tractor(root, source_name, base_directory, read);
     } catch (const toml::parse_error& e) {
         return LoadError{detail::describe(e, source_name)};
     }
 }
 
-Result<vehicle::Params> load_tractor(const std::filesystem::path& path) {
-    const std::optional<std::string> text = detail::read_text(path);
+Result<vehicle::Params> parse_tractor(std::string_view toml_text, std::string_view source_name,
+                                      const std::filesystem::path& base_directory) {
+    return parse_tractor(toml_text, source_name, base_directory.generic_string(), read_from_disk);
+}
+
+Result<vehicle::Params> load_tractor(std::string_view path, const ReadFile& read) {
+    const std::string name{path};
+    const std::optional<std::string> text = read(name);
     if (!text) {
-        return LoadError{path.string() + ": cannot open file"};
+        return LoadError{name + ": cannot open file"};
     }
-    return parse_tractor(*text, path.string(), path.parent_path());
+    return parse_tractor(*text, name, directory_of(name), read);
+}
+
+Result<vehicle::Params> load_tractor(const std::filesystem::path& path) {
+    return load_tractor(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

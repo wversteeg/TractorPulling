@@ -21,6 +21,7 @@ add_executable(tp_core_tests
     rules/class_rules_test.cpp
     run/run_test.cpp
     season/season_test.cpp
+    session/session_test.cpp
     sled/sled_test.cpp
     soil/soil_test.cpp
     tire/tire_test.cpp
@@ -50,6 +51,7 @@ if(TP_BUILD_DATA_IO)
         data/driveline_loader_test.cpp
         data/engine_loader_test.cpp
         data/event_loader_test.cpp
+        data/files_test.cpp
         data/season_loader_test.cpp
         data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp

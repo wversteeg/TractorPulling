@@ -4,6 +4,7 @@
 #include "tp/core/field/field.hpp"
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/sled/sled.hpp"
+#include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
 #include "tp/data/track/track_loader.hpp"
 
@@ -33,9 +34,20 @@ struct EventDefinition {
 /// to the event file.
 [[nodiscard]] Result<EventDefinition> load_event(const std::filesystem::path& path);
 
+/// As load_event, reading this file and the files it names through `read`
+/// (see files.hpp).
+[[nodiscard]] Result<EventDefinition> load_event(std::string_view path, const ReadFile& read);
+
 /// As load_event, from TOML text.
 [[nodiscard]] Result<EventDefinition> parse_event(std::string_view toml_text,
                                                   std::string_view source_name,
                                                   const std::filesystem::path& base_directory);
+
+/// As parse_event, reading the files it names through `read`, relative to
+/// `base_directory` ('/'-separated, see files.hpp).
+[[nodiscard]] Result<EventDefinition> parse_event(std::string_view toml_text,
+                                                  std::string_view source_name,
+                                                  std::string_view base_directory,
+                                                  const ReadFile& read);
 
 }  // namespace tp::data

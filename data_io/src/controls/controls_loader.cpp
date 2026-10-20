@@ -61,8 +61,12 @@ Result<controls::EasyParams> parse_easy_controls(std::string_view toml_text,
     return detail::parse_with<controls::EasyParams>(toml_text, source_name, &read_easy);
 }
 
+Result<controls::EasyParams> load_easy_controls(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<controls::EasyParams>(path, read, &read_easy);
+}
+
 Result<controls::EasyParams> load_easy_controls(const std::filesystem::path& path) {
-    return detail::load_file_with<controls::EasyParams>(path, &read_easy);
+    return load_easy_controls(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data

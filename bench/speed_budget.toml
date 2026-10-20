@@ -8,13 +8,19 @@
 #              fails the build while the runner's own noise does not.
 #              Set in October 2026 from the gcc and clang release jobs
 #              (ubuntu-24.04-arm): 618, 577, 377 and 538 ns at the
-#              slower.
+#              slower; BM_SessionFrame 10,492 ns.
 #
 # scripts/check_speed_budget.py compares a benchmark run with one column.
 
 [BM_GameStep]
 phone_ns = 50_000
 ci_arm64_ns = 1_250
+
+# One 60 fps frame through the game's session: 16 or 17 game steps and the
+# two snapshots drawn between. On the phone, the same 50 µs per step.
+[BM_SessionFrame]
+phone_ns = 833_000
+ci_arm64_ns = 22_000
 
 [BM_PullStep]
 ci_arm64_ns = 1_200

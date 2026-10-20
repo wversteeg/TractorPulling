@@ -4,12 +4,12 @@
 // collection, curve tables, and file/text parsing with uniform messages.
 
 #include "tp/core/math/curve.hpp"
+#include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
 
 #include <toml++/toml.hpp>
 
 #include <cstdint>
-#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -50,7 +50,6 @@ private:
     std::optional<LoadError> error_;
 };
 
-[[nodiscard]] std::optional<std::string> read_text(const std::filesystem::path& path);
 [[nodiscard]] std::string describe(const toml::parse_error& error, std::string_view source);
 
 template <typename T>
@@ -69,12 +68,13 @@ Result<T> parse_with(std::string_view toml_text, std::string_view source, TableL
 }
 
 template <typename T>
-Result<T> load_file_with(const std::filesystem::path& path, TableLoader<T> load) {
-    const std::optional<std::string> text = read_text(path);
+Result<T> load_file_with(std::string_view path, const ReadFile& read, TableLoader<T> load) {
+    const std::string name{path};
+    const std::optional<std::string> text = read(name);
     if (!text) {
-        return LoadError{path.string() + ": cannot open file"};
+        return LoadError{name + ": cannot open file"};
     }
-    return parse_with<T>(*text, path.string(), load);
+    return parse_with<T>(*text, name, load);
 }
 
 }  // namespace tp::data::detail

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tp/core/sled/sled.hpp"
+#include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
 
 #include <filesystem>
@@ -11,6 +12,9 @@ namespace tp::data {
 /// Loads and validates a sled set-up (see data/sleds/): the sled, its
 /// weight box, push-down and chain.
 [[nodiscard]] Result<sled::Params> load_sled(const std::filesystem::path& path);
+
+/// As load_sled, reading through `read` (see files.hpp).
+[[nodiscard]] Result<sled::Params> load_sled(std::string_view path, const ReadFile& read);
 
 /// As load_sled, from TOML text. `source_name` prefixes error messages.
 [[nodiscard]] Result<sled::Params> parse_sled(std::string_view toml_text,

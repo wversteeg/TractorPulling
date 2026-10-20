@@ -1,0 +1,108 @@
+@startuml session_classes
+title Session (tp::session): one run as the game plays it, the binding layer's interface
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "pull::Model / Output" as Pull
+  class "run::Rules / State / Result" as Run
+  class "controls::pro / easy\nEasyParams, AssistState" as Controls
+  class "FixedStepClock" as Clock
+  class "vehicle::Params / Input" as Vehicle
+  class "sled::Params\n+ with_conditions()\n+ heavier()" as Sled
+  class "track::Params" as Track
+}
+
+package "tp::session" {
+  enum Layout {
+    kPro
+    kEasy
+  }
+  class Setup <<struct>> {
+    +tractor : vehicle::Params
+    +sled : sled::Params
+    +ground : track::Params
+    +rules : run::Rules
+    +layout : Layout
+    +easy : controls::EasyParams
+    +max_steps_per_frame : uint32
+  }
+  enum SetupError
+  class Controls <<struct>> {
+    +throttle : double
+    +clutch_pedal : double
+    +gear : int
+    +steering : double
+    +brake_left : double
+    +brake_right : double
+  }
+  class Snapshot <<struct>> {
+    +time_s : double
+    +tractor_x_m, tractor_y_m : double
+    +tractor_heading_rad, tractor_pitch_rad : double
+    +tractor_speed_m_s, steering_rad : double
+    +rear_left_omega_rad_s, rear_right_omega_rad_s : double
+    +slip_ratio : double
+    +engine_omega_rad_s : double
+    +engine_running : bool
+    +gear : int
+    +throttle, clutch_pedal : double
+    +sled_x_m, sled_y_m, sled_heading_rad : double
+    +sled_speed_m_s : double
+    +box_ahead_of_wheels_m, chain_tension_n : double
+  }
+  class Frame <<struct>> {
+    +steps : uint32
+    +dropped_ns : int64
+  }
+  class Session {
+    -model_ : pull::Model
+    -rules_ : run::Rules
+    -layout_ : Layout
+    -easy_ : controls::EasyParams
+    -clock_ : FixedStepClock
+    -run_ : run::State
+    -assist_ : controls::AssistState
+    -input_ : vehicle::Input
+    -output_ : pull::Output
+    -previous_, current_ : Snapshot
+    +{static} create(const Setup&) : optional<Session>
+    +advance(const Controls&, elapsed_ns) : Frame
+    +previous() / current() : const Snapshot&
+    +alpha() : double
+    +result() : const optional<run::Result>&
+    +hash() : uint64
+  }
+  class Inspector <<tools and tests>> {
+    +{static} model(const Session&) : const pull::Model&
+    +{static} run_state(const Session&) : const run::State&
+    +{static} last_output(const Session&) : const pull::Output&
+    +{static} last_input(const Session&) : const vehicle::Input&
+  }
+  Inspector ..> Session : friend, reads\n(inspect.hpp, not for the binding)
+  class "session functions" as SessionFns <<free functions>> {
+    +validate(const Setup&) : optional<SetupError>
+    +blend(const Snapshot&, const Snapshot&, alpha) : Snapshot
+  }
+  Setup *-- Layout
+  Session ..> Setup : create
+  Session ..> Controls : advance
+  Session ..> Frame : returns
+  Session *-- Snapshot : previous, current
+  SessionFns ..> Setup
+  SessionFns ..> SetupError
+  SessionFns ..> Snapshot
+}
+Setup *-- Vehicle
+Setup *-- Sled
+Setup *-- Track
+Session *-- Pull
+Session *-- Run
+Session *-- Clock : frame time to steps
+Session ..> Controls : layout to vehicle::Input
+note bottom of Session
+  the frame time decides only how many 1 ms steps run, never their length;
+  no heap after create(); a pull-off is a new session on sled::heavier()
+end note
+@enduml

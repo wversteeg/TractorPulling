@@ -14,7 +14,7 @@ namespace tp::data {
 namespace {
 
 Result<SeasonDefinition> read_season(const toml::table& root, std::string_view source,
-                                     const std::filesystem::path& base) {
+                                     std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
     const std::string event_path = reader.text("season.event");
     const std::int64_t seed = reader.integer("season.seed");
@@ -47,7 +47,7 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
         events->size() > static_cast<std::size_t>(season::kMaxEvents)) {
         return detail::make_error(source, "season.events", "must list 1 to 24 events");
     }
-    auto event = load_event(base / event_path);
+    auto event = load_event(resolve(base, event_path), read);
     if (!event) {
         return event.error();
     }
@@ -65,7 +65,7 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
             return detail::make_error(source, "season.events",
                                       "every event needs a name and a track");
         }
-        auto track = load_track(base / *track_path);
+        auto track = load_track(resolve(base, *track_path), read);
         if (!track) {
             return track.error();
         }
@@ -77,21 +77,31 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
 }  // namespace
 
 Result<SeasonDefinition> parse_season(std::string_view toml_text, std::string_view source_name,
-                                      const std::filesystem::path& base_directory) {
+                                      std::string_view base_directory, const ReadFile& read) {
     try {
         const toml::table root = toml::parse(toml_text, source_name);
-        return read_season(root, source_name, base_directory);
+        return read_season(root, source_name, base_directory, read);
     } catch (const toml::parse_error& e) {
         return LoadError{detail::describe(e, source_name)};
     }
 }
 
-Result<SeasonDefinition> load_season(const std::filesystem::path& path) {
-    const std::optional<std::string> text = detail::read_text(path);
+Result<SeasonDefinition> parse_season(std::string_view toml_text, std::string_view source_name,
+                                      const std::filesystem::path& base_directory) {
+    return parse_season(toml_text, source_name, base_directory.generic_string(), read_from_disk);
+}
+
+Result<SeasonDefinition> load_season(std::string_view path, const ReadFile& read) {
+    const std::string name{path};
+    const std::optional<std::string> text = read(name);
     if (!text) {
-        return LoadError{path.string() + ": cannot open file"};
+        return LoadError{name + ": cannot open file"};
     }
-    return parse_season(*text, path.string(), path.parent_path());
+    return parse_season(*text, name, directory_of(name), read);
+}
+
+Result<SeasonDefinition> load_season(const std::filesystem::path& path) {
+    return load_season(path.generic_string(), read_from_disk);
 }
 
 }  // namespace tp::data
