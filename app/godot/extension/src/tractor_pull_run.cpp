@@ -81,6 +81,7 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
                                     const godot::String& sled_path, const godot::String& track_path,
                                     const godot::String& easy_controls_path) {
     session_.reset();
+    setup_.reset();
     dropped_ns_ = 0;
     const data::ReadFile read = read_godot_file;
     const auto tractor = data::load_tractor(to_std(tractor_path), read);
@@ -108,6 +109,9 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
         return describe(*error);
     }
     session_ = session::Session::create(setup);
+    if (session_) {
+        setup_ = setup;
+    }
     return session_ ? godot::String{} : godot::String{"inconsistent tractor, sled or track"};
 }
 
@@ -165,6 +169,38 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     return out;
 }
 
+godot::Dictionary TractorPullRun::get_dimensions() const {
+    godot::Dictionary out;
+    if (!setup_) {
+        return out;
+    }
+    const vehicle::Params& tractor = setup_->tractor;
+    const chassis::Params& chassis = tractor.chassis;
+    out["wheelbase_m"] = chassis.wheelbase_m;
+    out["rear_axle_height_m"] = chassis.rear_axle_height_m;
+    out["rear_track_m"] = chassis.rear_track_m;
+    out["front_track_m"] = chassis.front_track_m;
+    out["rear_tire_radius_m"] = tractor.rear_tire.size.radius_m;
+    out["rear_tire_width_m"] = tractor.rear_tire.size.section_width_m;
+    out["front_tire_radius_m"] = tractor.front_tire.radius_m;
+    out["front_tire_width_m"] = tractor.front_tire.section_width_m;
+    out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
+    out["hitch_height_m"] = chassis.hitch_height_m;
+    const sled::Params& sled = setup_->sled;
+    out["sled_wheel_radius_m"] = sled.wheel.radius_m;
+    out["hook_ahead_of_wheels_m"] = sled.hook_ahead_of_wheels_m;
+    out["hook_height_m"] = sled.hook_height_m;
+    out["pan_ahead_of_wheels_m"] = sled.pan_ahead_of_wheels_m;
+    out["box_start_ahead_of_wheels_m"] = sled.box_start_ahead_of_wheels_m;
+    out["box_end_ahead_of_wheels_m"] = sled.box_end_ahead_of_wheels_m;
+    out["chain_length_m"] = sled.chain.length_m;
+    const run::Rules& rules = setup_->rules;
+    out["track_length_m"] = rules.track_length_m;
+    out["lane_width_m"] = rules.lane_width_m;
+    out["full_pull_line_m"] = rules.full_pull_line_m;
+    return out;
+}
+
 bool TractorPullRun::is_finished() const {
     return session_ && session_->result().has_value();
 }
@@ -215,6 +251,7 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("advance", "elapsed_ns"), &TractorPullRun::advance);
     ClassDB::bind_method(D_METHOD("get_dropped_ns"), &TractorPullRun::get_dropped_ns);
     ClassDB::bind_method(D_METHOD("get_snapshot"), &TractorPullRun::get_snapshot);
+    ClassDB::bind_method(D_METHOD("get_dimensions"), &TractorPullRun::get_dimensions);
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
