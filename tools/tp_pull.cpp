@@ -88,7 +88,10 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <type_traits>
 #include <vector>
+
+#include "parse_number.hpp"
 
 namespace {
 
@@ -675,15 +678,7 @@ struct Options {
     PullOptions pull;
 };
 
-template <typename T>
-std::optional<T> parse_number(std::string_view text) {
-    T value{};
-    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (error != std::errc{} || end != text.data() + text.size()) {
-        return std::nullopt;
-    }
-    return value;
-}
+using tp::tools::parse_number;
 
 enum class Parsed : std::uint8_t { kUnknown, kOk, kInvalid };
 

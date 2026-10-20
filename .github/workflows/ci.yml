@@ -105,6 +105,66 @@ jobs:
             done
           done
 
+  # The Android NDK build: the same code with the NDK's clang, libc++ and
+  # bionic. Both ABIs build; the x86_64 build runs its tests on an emulator
+  # at the oldest Android we support (API 24), so the regression hashes are
+  # checked on Android's own runtime. (Determinism on ARM is checked by the
+  # Linux arm64 jobs: GitHub's runners cannot emulate an ARM phone quickly.)
+  android:
+    name: android ${{ matrix.abi }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64, x86_64]
+    env:
+      # The NDK the latest Godot builds its Android export with.
+      NDK_VERSION: 29.0.14206865
+      API_LEVEL: 24
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja and the NDK
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            --install "ndk;${NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: cmake --preset android-${{ matrix.abi }}
+
+      - name: Build
+        run: cmake --build --preset android-${{ matrix.abi }}
+
+      # The same event on the host, for the emulator's output to match.
+      - name: Run the club event on the host
+        if: matrix.abi == 'x86_64'
+        run: |
+          cmake --preset release -DTP_BUILD_TESTS=OFF -DTP_BUILD_BENCHMARKS=OFF
+          cmake --build --preset release --target tp_pull
+          ./build/release/tools/tp_pull event data/events/club_pull.toml > build/host_event.txt
+
+      - name: Enable KVM for the emulator
+        if: matrix.abi == 'x86_64'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Test on an emulator
+        if: matrix.abi == 'x86_64'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          script: scripts/android_test.sh build/android-x86_64 build/host_event.txt
+
   clang-tidy:
     runs-on: ubuntu-24.04
     steps:

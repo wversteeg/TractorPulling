@@ -25,11 +25,14 @@ add_executable(tp_core_tests
     soil/soil_test.cpp
     tire/tire_test.cpp
     time/fixed_step_clock_test.cpp
+    tools/parse_number_test.cpp
     track/track_test.cpp
     units/conversions_test.cpp
     vehicle/chain_solver_test.cpp
     vehicle/vehicle_test.cpp)
 target_link_libraries(tp_core_tests PRIVATE tp::core GTest::gtest_main)
+# The tool's command-line parsing is header-only and tested here.
+target_include_directories(tp_core_tests PRIVATE ${PROJECT_SOURCE_DIR}/tools)
 tp_configure_target(tp_core_tests)
 gtest_discover_tests(tp_core_tests DISCOVERY_MODE PRE_TEST)
 
@@ -49,7 +52,7 @@ if(TP_BUILD_DATA_IO)
         data/tractor_loader_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE
-        TP_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
+        TP_DATA_DIR="${TP_DATA_DIR}")
     tp_configure_target(tp_data_tests)
     gtest_discover_tests(tp_data_tests DISCOVERY_MODE PRE_TEST)
 endif()

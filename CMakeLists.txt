@@ -18,6 +18,11 @@ option(TP_BUILD_TESTS "Build the unit tests" ${PROJECT_IS_TOP_LEVEL})
 option(TP_BUILD_BENCHMARKS "Build the micro-benchmarks" ${PROJECT_IS_TOP_LEVEL})
 option(TP_BUILD_TOOLS "Build the command line tools" ${PROJECT_IS_TOP_LEVEL})
 option(TP_ENABLE_SANITIZERS "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+# Where the tests and benchmarks read data/ when they run: the source tree,
+# or for a cross build (Android) the directory the files are copied to on
+# the device.
+set(TP_DATA_DIR "${PROJECT_SOURCE_DIR}/data" CACHE PATH
+    "Where tests and benchmarks find the data/ files at run time")
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(CompilerOptions)

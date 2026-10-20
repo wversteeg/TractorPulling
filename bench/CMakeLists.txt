@@ -15,7 +15,7 @@ if(TP_BUILD_DATA_IO)
         tire/tire_bench.cpp
         vehicle/vehicle_bench.cpp)
     target_link_libraries(core_bench PRIVATE tp::data)
-    target_compile_definitions(core_bench PRIVATE TP_DATA_DIR="${PROJECT_SOURCE_DIR}/data")
+    target_compile_definitions(core_bench PRIVATE TP_DATA_DIR="${TP_DATA_DIR}")
 endif()
 
 tp_configure_target(core_bench)
