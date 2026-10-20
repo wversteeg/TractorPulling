@@ -40,6 +40,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
         "TP_BUILD_TESTS": "OFF",
         "TP_BUILD_BENCHMARKS": "OFF"
       }
@@ -74,6 +75,7 @@
       "inherits": "android-base",
       "cacheVariables": {
         "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
         "TP_BUILD_TESTS": "OFF",
         "TP_BUILD_BENCHMARKS": "OFF",
         "TP_BUILD_TOOLS": "OFF"

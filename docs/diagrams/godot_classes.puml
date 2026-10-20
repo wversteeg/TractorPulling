@@ -16,9 +16,11 @@ package "tp::godot_binding" {
   class TractorPullRun {
     -session_ : optional<session::Session>
     -controls_ : session::Controls
+    -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, easy_controls_path) : String
     +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
     +advance(elapsed_ns) : int
+    +get_dropped_ns() : int
     +get_snapshot() : Dictionary
     +is_finished() : bool
     +get_result() : Dictionary
@@ -35,7 +37,7 @@ package "tp::godot_binding" {
 package "core and data_io (see their class diagrams)" {
   class "session::Session / Setup /\nControls / Snapshot / blend()" as Session
   class "data::load_tractor / load_sled /\nload_track / load_easy_controls\n(path, ReadFile)" as Loaders
-  class "sled::with_conditions()" as Sled
+  class "data::run_setup(tractor, class_sled,\ntrack, pull_offs) : session::Setup" as RunSetup
 }
 
 package "GDScript (app/godot)" {
@@ -46,7 +48,7 @@ RefCounted <|-- TractorPullRun
 Register ..> TractorPullRun : registers
 TractorPullRun *-- Session
 TractorPullRun ..> Loaders : setup
-TractorPullRun ..> Sled
+TractorPullRun ..> RunSetup : the run's Setup
 TractorPullRun ..> Files : the ReadFile
 Files ..> FileAccess : res://, user://
 Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot

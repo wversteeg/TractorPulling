@@ -1,14 +1,17 @@
 #include "tractor_pull_run.hpp"
 
-#include "tp/core/sled/sled.hpp"
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
+#include "tp/data/session/run_setup.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
 #include <array>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <string>
 
 #include "godot_files.hpp"
@@ -70,6 +73,7 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
                                     const godot::String& sled_path, const godot::String& track_path,
                                     const godot::String& easy_controls_path) {
     session_.reset();
+    dropped_ns_ = 0;
     const data::ReadFile read = read_godot_file;
     const auto tractor = data::load_tractor(to_std(tractor_path), read);
     if (!tractor) {
@@ -83,12 +87,7 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
     if (!track) {
         return to_godot(track.error().message);
     }
-    session::Setup setup{.tractor = tractor.value(),
-                         .sled = sled::with_conditions(sled.value(), track.value().sled),
-                         .ground = track.value().ground,
-                         .rules = track.value().rules,
-                         .layout = session::Layout::kPro,
-                         .easy = {}};
+    session::Setup setup = data::run_setup(tractor.value(), sled.value(), track.value());
     if (!easy_controls_path.is_empty()) {
         const auto easy = data::load_easy_controls(to_std(easy_controls_path), read);
         if (!easy) {
@@ -104,7 +103,7 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
     return session_ ? godot::String{} : godot::String{"inconsistent tractor, sled or track"};
 }
 
-void TractorPullRun::set_controls(double throttle, double clutch_pedal, int64_t gear,
+void TractorPullRun::set_controls(double throttle, double clutch_pedal, std::int64_t gear,
                                   double steering, double brake_left, double brake_right) {
     controls_ = {.throttle = throttle,
                  .clutch_pedal = clutch_pedal,
@@ -114,11 +113,17 @@ void TractorPullRun::set_controls(double throttle, double clutch_pedal, int64_t 
                  .brake_right = brake_right};
 }
 
-int64_t TractorPullRun::advance(int64_t elapsed_ns) {
+std::int64_t TractorPullRun::advance(std::int64_t elapsed_ns) {
     if (!session_) {
         return 0;
     }
-    return session_->advance(controls_, elapsed_ns).steps;
+    const session::Frame frame = session_->advance(controls_, elapsed_ns);
+    dropped_ns_ = frame.dropped_ns;
+    return frame.steps;
+}
+
+std::int64_t TractorPullRun::get_dropped_ns() const {
+    return dropped_ns_;
 }
 
 godot::Dictionary TractorPullRun::get_snapshot() const {
@@ -200,6 +205,7 @@ void TractorPullRun::_bind_methods() {
                                   "brake_left", "brake_right"),
                          &TractorPullRun::set_controls);
     ClassDB::bind_method(D_METHOD("advance", "elapsed_ns"), &TractorPullRun::advance);
+    ClassDB::bind_method(D_METHOD("get_dropped_ns"), &TractorPullRun::get_dropped_ns);
     ClassDB::bind_method(D_METHOD("get_snapshot"), &TractorPullRun::get_snapshot);
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);

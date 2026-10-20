@@ -71,6 +71,14 @@ package "tp::data" {
     +load_season(path, read) : Result<SeasonDefinition>
     +parse_season(text, source, base_directory, read) : Result<SeasonDefinition>
   }
+  class "run_setup" as RunSetup <<free functions>> {
+    +run_setup(tractor, class_sled, track, pull_offs = 0) : session::Setup
+    --
+    the class sled with the track's conditions, made heavier one step
+    per pull-off; the track's ground and rules; the pro layout.
+    tp_pull and the Godot binding both start their runs from it
+  }
+  RunSetup ..> Track
   class "tractor_loader" as TractorLoader <<free functions>> {
     +load_tractor(path, read) : Result<vehicle::Params>
     +parse_tractor(text, source, base_directory, read) : Result<vehicle::Params>

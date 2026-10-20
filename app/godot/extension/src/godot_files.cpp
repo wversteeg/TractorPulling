@@ -1,6 +1,7 @@
 #include "godot_files.hpp"
 
 #include <cstddef>
+#include <cstring>
 
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/error_macros.hpp>
@@ -21,8 +22,8 @@ std::optional<std::string> read_godot_file(const std::string& path) {
         return std::nullopt;
     }
     std::string text(static_cast<std::size_t>(bytes.size()), '\0');
-    for (std::size_t i = 0; i < text.size(); ++i) {
-        text[i] = static_cast<char>(bytes[static_cast<int64_t>(i)]);
+    if (!text.empty()) {
+        std::memcpy(text.data(), bytes.ptr(), text.size());
     }
     return text;
 }

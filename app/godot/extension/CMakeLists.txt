@@ -30,7 +30,10 @@ set_target_properties(tp_godot PROPERTIES
 # file up to date itself afterwards.
 set(TP_GODOT_EXTENSION_LIST "${CMAKE_CURRENT_BINARY_DIR}/extension_list.cfg")
 file(WRITE "${TP_GODOT_EXTENSION_LIST}" "res://tractor_pulling.gdextension\n")
+# The copy starts afresh, so a file removed or renamed in data/ leaves
+# nothing stale behind for res:// to load.
 add_custom_target(tp_godot_data ALL
+    COMMAND ${CMAKE_COMMAND} -E rm -rf "${TP_GODOT_PROJECT_DIR}/data"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/data"
             "${TP_GODOT_PROJECT_DIR}/data"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${TP_GODOT_PROJECT_DIR}/.godot"

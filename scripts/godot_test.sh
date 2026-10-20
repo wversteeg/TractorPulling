@@ -32,8 +32,22 @@ if [[ ! -f "${project}/.godot/extension_list.cfg" ]]; then
     echo "${project}/.godot/extension_list.cfg is missing: build the godot preset first" >&2
     exit 1
 fi
-output="$("${godot}" --headless --path "${project}" --script res://tests/run_test.gd 2>&1)"
+# A script error leaves Godot running instead of quitting: the timeout fails
+# the test then (its exit status is non-zero).
+readonly timeout_s=300
+output="$(timeout "${timeout_s}" "${godot}" --headless --path "${project}" \
+    --script res://tests/run_test.gd 2>&1)" || {
+    echo "${output:-}"
+    echo "Godot failed or did not quit within ${timeout_s} s" >&2
+    exit 1
+}
 echo "${output}"
+# A script error does not stop the script: GDScript abandons the function
+# and carries on, so the error has to be looked for.
+if grep -q 'SCRIPT ERROR' <<<"${output}"; then
+    echo "the Godot test script hit an error" >&2
+    exit 1
+fi
 actual="$(grep -m1 'state hash' <<<"${output}" || true)"
 
 if [[ -z "${actual}" ]]; then

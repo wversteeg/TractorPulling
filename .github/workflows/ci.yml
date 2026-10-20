@@ -191,6 +191,8 @@ jobs:
   godot:
     name: godot
     runs-on: ubuntu-24.04
+    # A hung Godot fails the job instead of holding a runner for hours.
+    timeout-minutes: 20
     env:
       GODOT_VERSION: 4.7.2-stable
       # From the release's SHA512-SUMS.txt, for Godot_v4.7.2-stable_linux.x86_64.zip.

@@ -21,19 +21,22 @@ class TractorPullRun : public godot::RefCounted {
 
 public:
     /// Loads the tractor, the class's sled and the track (res:// paths
-    /// work) and starts a run on the sled with the track's conditions, in
+    /// work) and starts a run on them (data::run_setup), in
     /// the easy layout if `easy_controls_path` names its file, else the pro
     /// layout. Returns "" or what is wrong, naming the file and field.
     godot::String setup(const godot::String& tractor_path, const godot::String& sled_path,
                         const godot::String& track_path, const godot::String& easy_controls_path);
 
     /// The controls held from now on (see session::Controls).
-    void set_controls(double throttle, double clutch_pedal, int64_t gear, double steering,
+    void set_controls(double throttle, double clutch_pedal, std::int64_t gear, double steering,
                       double brake_left, double brake_right);
 
     /// Runs the whole 1 ms steps `elapsed_ns` of real time makes up; returns
     /// how many. Nothing before setup().
-    int64_t advance(int64_t elapsed_ns);
+    std::int64_t advance(std::int64_t elapsed_ns);
+    /// The real time the last advance() dropped beyond the steps one frame
+    /// may run (a hitch): the run fell that far behind the clock [ns].
+    [[nodiscard]] std::int64_t get_dropped_ns() const;
 
     /// The state to draw now: the last two steps blended (session::blend).
     [[nodiscard]] godot::Dictionary get_snapshot() const;
@@ -51,6 +54,7 @@ protected:
 private:
     std::optional<session::Session> session_;
     session::Controls controls_;
+    std::int64_t dropped_ns_ = 0;
 };
 
 }  // namespace tp::godot_binding

@@ -12,7 +12,8 @@ Run -> Load : load_tractor(path, read_godot_file), ...
 Load -> Files : read(path), and the files it names\n(resolve(directory_of(path), name))
 Files --> Load : text
 Load --> Run : Params, or LoadError naming file and field
-Run -> Session : create(Setup: sled with the track's conditions)
+Run -> Load : run_setup(tractor, class sled, track):\nthe sled with the track's conditions, its ground and rules
+Run -> Session : create(Setup)
 Run --> Script : "" or the error
 
 loop every rendered frame

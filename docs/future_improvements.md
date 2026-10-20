@@ -184,6 +184,11 @@ for the big features; they are repeated at the end for completeness.
   (any registered class). The build therefore lists the extension in
   `.godot/extension_list.cfg` so it loads at startup, and the headless test
   skips the editor import. Drop the workaround once Godot fixes it.
+- **Release libraries of the extension.** The presets build godot-cpp's
+  `template_debug` libraries only, which the editor and debug exports
+  load, and `tractor_pulling.gdextension` lists only those. Release
+  (`template_release`) presets and entries come with the Android export
+  (milestone 5, step 5).
 - **GDScript checks.** The GDScript runs in CI (the headless test) but has
   no linter or formatter there; gdtoolkit's `gdlint` and `gdformat` would
   add a Python dependency, worth it once there is more GDScript than the
