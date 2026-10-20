@@ -194,7 +194,7 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`. Ke
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
-- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++.
+- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++. In CI: `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
 
 ## Dependencies
 

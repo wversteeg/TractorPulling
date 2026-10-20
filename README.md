@@ -185,12 +185,14 @@ export ANDROID_NDK_HOME=~/Android/Sdk/ndk/29.0.14206865
 cmake --preset android-arm64 && cmake --build --preset android-arm64    # phones
 cmake --preset android-x86_64 && cmake --build --preset android-x86_64  # emulator
 
-# Run the tests (and a whole event) on a phone or emulator connected over adb
-scripts/android_test.sh build/android-arm64
+# Run the tests (and a whole event) on a phone or emulator connected over adb;
+# with the event's output from another platform, check it matches line for line
+scripts/android_test.sh build/android-arm64 [expected_event.txt]
 ```
 
 CI builds both and runs the x86_64 tests on an API 24 emulator, so the
-regression hashes are checked on Android's own C and C++ libraries too.
+regression hashes are checked on Android's own C and C++ libraries too, and
+the club event must print exactly what it prints on Linux.
 
 See [CLAUDE.md](CLAUDE.md) for architecture, conventions and the roadmap, [docs/architecture.md](docs/architecture.md) for class and sequence diagrams, [docs/conventions.md](docs/conventions.md) for units and sign conventions, and [docs/future_improvements.md](docs/future_improvements.md) for what is deliberately left for later.
 

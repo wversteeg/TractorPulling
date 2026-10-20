@@ -129,7 +129,7 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build
           yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
-            --install "ndk;${NDK_VERSION}" > /dev/null
+            --install "ndk;${NDK_VERSION}"
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
 
       - name: Configure
@@ -137,6 +137,14 @@ jobs:
 
       - name: Build
         run: cmake --build --preset android-${{ matrix.abi }}
+
+      # The same event on the host, for the emulator's output to match.
+      - name: Run the club event on the host
+        if: matrix.abi == 'x86_64'
+        run: |
+          cmake --preset release -DTP_BUILD_TESTS=OFF -DTP_BUILD_BENCHMARKS=OFF
+          cmake --build --preset release --target tp_pull
+          ./build/release/tools/tp_pull event data/events/club_pull.toml > build/host_event.txt
 
       - name: Enable KVM for the emulator
         if: matrix.abi == 'x86_64'
@@ -148,14 +156,14 @@ jobs:
 
       - name: Test on an emulator
         if: matrix.abi == 'x86_64'
-        uses: reactivecircus/android-emulator-runner@v2
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: ${{ env.API_LEVEL }}
           arch: x86_64
           target: default
           disable-animations: true
           emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
-          script: scripts/android_test.sh build/android-x86_64
+          script: scripts/android_test.sh build/android-x86_64 build/host_event.txt
 
   clang-tidy:
     runs-on: ubuntu-24.04

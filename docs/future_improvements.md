@@ -161,7 +161,11 @@ for the big features; they are repeated at the end for completeness.
   tests on an x86_64 emulator: GitHub's runners cannot emulate an ARM phone
   quickly. Determinism on ARM is covered by the Linux arm64 jobs and
   Android's runtime by the emulator; `scripts/android_test.sh` runs the arm64
-  build on a real phone by hand.
+  build on a real phone by hand. That split holds because `core/` takes
+  nothing from libm but `std::sqrt`, which is correctly rounded everywhere
+  (its sine, cosine and exponential are its own, in `tp::math`). Calling
+  libm's transcendental functions from `core/` would reopen it: Android's
+  libm on ARM could then differ from glibc's.
 - **The C++ runtime for the Godot extension.** The Android presets link
   libc++ statically, which suits standalone test binaries. A GDExtension
   shares a process with Godot, which may want `c++_shared`; decide with the
