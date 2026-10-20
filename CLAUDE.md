@@ -162,6 +162,16 @@ cmake --preset release && cmake --build --preset release
 cmake --preset android-arm64 && cmake --build --preset android-arm64
 cmake --preset android-x86_64 && cmake --build --preset android-x86_64
 scripts/android_test.sh build/android-x86_64
+
+# The speed budget (docs/performance.md, bench/speed_budget.toml). The
+# ci_arm64 limits are set on CI's ARM runner (ubuntu-24.04-arm): on any other
+# machine the check only shows the numbers, and may fail without a regression
+./build/release/bench/core_bench --benchmark_filter="$(scripts/check_speed_budget.py --filter)" \
+    --benchmark_repetitions=5 --benchmark_report_aggregates_only=true \
+    --benchmark_out=bench.json --benchmark_out_format=json
+scripts/check_speed_budget.py bench.json ci_arm64
+# The phone budget, on a phone over adb
+scripts/android_bench.sh build/android-arm64
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`. Keep the commands above working; update this section when presets change.
@@ -177,7 +187,7 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`. Ke
 - Prefer value semantics, `constexpr`, `std::span`, and strong types for physical quantities where it adds safety without cost.
 - Small, focused functions and classes. No premature abstraction, no inheritance hierarchies in hot paths.
 - Every behavior has a test. Physics tests assert physical properties (energy, monotonicity, limits), not just snapshots.
-- Performance-sensitive changes include or update a benchmark.
+- Performance-sensitive changes include or update a benchmark. The speed budget (`docs/performance.md`, `bench/speed_budget.toml`) is checked in CI on ARM; a deliberate slowdown raises its limit in the same PR, saying why. `tp_alloc_tests` fails on any heap allocation in the step.
 - Comments explain *why* and the physical model, not *what* the code does.
 
 ## Documentation and diagrams

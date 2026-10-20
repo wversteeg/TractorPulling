@@ -21,26 +21,13 @@ readonly build="$1"
 readonly expected="${2:-}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly root
-readonly device_dir=/data/local/tmp/tp
+# shellcheck source=scripts/android_device.sh
+source "${root}/scripts/android_device.sh"
 
-# adb shell's own exit status is unreliable on older adb and devices, so each
-# command prints its status and the script reads it back.
-run_on_device() {
-    local output
-    output="$(adb shell "cd ${device_dir} && $1; echo \"tp-exit:\$?\"")"
-    printf '%s\n' "${output}" | grep -v '^tp-exit:'
-    [[ "$(printf '%s\n' "${output}" | grep '^tp-exit:' | tail -1 | tr -d '\r')" == "tp-exit:0" ]]
-}
-
-adb wait-for-device
-adb shell "rm -rf ${device_dir} && mkdir -p ${device_dir}"
-adb push "${root}/data" "${device_dir}/" >/dev/null
-for binary in tests/tp_core_tests tests/tp_data_tests tools/tp_pull; do
-    adb push "${build}/${binary}" "${device_dir}/" >/dev/null
-done
+push_to_device "${build}" tests/tp_core_tests tests/tp_data_tests tests/tp_alloc_tests tools/tp_pull
 
 status=0
-for suite in tp_core_tests tp_data_tests; do
+for suite in tp_core_tests tp_data_tests tp_alloc_tests; do
     echo "== ${suite}"
     run_on_device "./${suite} --gtest_brief=1" || status=1
 done

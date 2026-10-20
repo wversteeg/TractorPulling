@@ -188,13 +188,16 @@ cmake --preset android-x86_64 && cmake --build --preset android-x86_64  # emulat
 # Run the tests (and a whole event) on a phone or emulator connected over adb;
 # with the event's output from another platform, check it matches line for line
 scripts/android_test.sh build/android-arm64 [expected_event.txt]
+
+# Run the benchmarks on a phone and check them against the speed budget
+scripts/android_bench.sh build/android-arm64
 ```
 
 CI builds both and runs the x86_64 tests on an API 24 emulator, so the
 regression hashes are checked on Android's own C and C++ libraries too, and
 the club event must print exactly what it prints on Linux.
 
-See [CLAUDE.md](CLAUDE.md) for architecture, conventions and the roadmap, [docs/architecture.md](docs/architecture.md) for class and sequence diagrams, [docs/conventions.md](docs/conventions.md) for units and sign conventions, and [docs/future_improvements.md](docs/future_improvements.md) for what is deliberately left for later.
+See [CLAUDE.md](CLAUDE.md) for architecture, conventions and the roadmap, [docs/architecture.md](docs/architecture.md) for class and sequence diagrams, [docs/conventions.md](docs/conventions.md) for units and sign conventions, [docs/performance.md](docs/performance.md) for the speed budget, and [docs/future_improvements.md](docs/future_improvements.md) for what is deliberately left for later.
 
 ## License
 

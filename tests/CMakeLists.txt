@@ -36,6 +36,12 @@ target_include_directories(tp_core_tests PRIVATE ${PROJECT_SOURCE_DIR}/tools)
 tp_configure_target(tp_core_tests)
 gtest_discover_tests(tp_core_tests DISCOVERY_MODE PRE_TEST)
 
+# Its own program: it replaces the global operator new to count allocations.
+add_executable(tp_alloc_tests alloc/no_allocation_test.cpp)
+target_link_libraries(tp_alloc_tests PRIVATE tp::core GTest::gtest_main)
+tp_configure_target(tp_alloc_tests)
+gtest_discover_tests(tp_alloc_tests DISCOVERY_MODE PRE_TEST)
+
 if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
         data/class_rules_loader_test.cpp
