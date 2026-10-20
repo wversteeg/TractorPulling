@@ -3,7 +3,8 @@
 # dumped clutch and a brake) through tp_pull and through the Godot
 # extension, and checks they end in the same state hashes: the
 # binding passes the controls and the time to tp::session unchanged. The
-# GDScript also checks the binding's edges (run_test.gd).
+# GDScript also checks the binding's edges (run_test.gd), and the pull
+# scene draws the run where it is (scene_test.gd).
 #
 #   scripts/godot_test.sh <godot binary> [build directory, default build/godot]
 #
@@ -47,12 +48,19 @@ expected_pro="$("${build}/tools/tp_pull" run "${tractor}" "${sled}" "${track}" \
 echo "tp_pull, easy: ${expected_easy}"
 echo "tp_pull, pro:  ${expected_pro}"
 
-# No editor import: the build lists the extension in .godot/extension_list.cfg,
-# so Godot loads it at startup (see app/godot/extension/CMakeLists.txt).
+# The build lists the extension in .godot/extension_list.cfg, so Godot
+# loads it at startup (see app/godot/extension/CMakeLists.txt): the editor
+# import, which builds the cache of the scripts' class names, is then safe.
 if [[ ! -f "${project}/.godot/extension_list.cfg" ]]; then
     echo "${project}/.godot/extension_list.cfg is missing: build the godot preset first" >&2
     exit 1
 fi
+readonly timeout_s=300
+timeout "${timeout_s}" "${godot}" --headless --path "${project}" --import >/dev/null 2>&1 || {
+    echo "the Godot import failed" >&2
+    exit 1
+}
+
 # Godot runs with a renderer where it can, as on a desktop: a GPU driver
 # loads libraries of its own (Mesa's brings the system's libstdc++), which a
 # headless run never sees. Under Xvfb when there is no display; headless,
@@ -66,23 +74,27 @@ else
     runner=("${godot}" --headless)
 fi
 
-# A script error leaves Godot running instead of quitting: the timeout fails
-# the test then (its exit status is non-zero).
-readonly timeout_s=300
-output="$(timeout "${timeout_s}" "${runner[@]}" --path "${project}" \
-    --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
-    --brake-right="${brake_right}" 2>&1)" || {
-    echo "${output:-}"
-    echo "Godot failed or did not quit within ${timeout_s} s" >&2
-    exit 1
+# Runs a test script in Godot and sets `output`. A script error leaves Godot
+# running instead of quitting, so a timeout fails it; and GDScript abandons
+# a function that hits an error and carries on, so the error is looked for.
+play() {
+    output="$(timeout "${timeout_s}" "${runner[@]}" --path "${project}" "$@" 2>&1)" || {
+        echo "${output:-}"
+        echo "Godot failed or did not quit within ${timeout_s} s: $*" >&2
+        exit 1
+    }
+    echo "${output}"
+    if grep -q 'SCRIPT ERROR' <<<"${output}"; then
+        echo "the Godot test script hit an error: $*" >&2
+        exit 1
+    fi
 }
-echo "${output}"
-# A script error does not stop the script: GDScript abandons the function
-# and carries on, so the error has to be looked for.
-if grep -q 'SCRIPT ERROR' <<<"${output}"; then
-    echo "the Godot test script hit an error" >&2
-    exit 1
-fi
+
+# The pull scene: drawn where the run has it, at a fixed 60 fps.
+play --fixed-fps 60 --script res://tests/scene_test.gd
+
+play --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
+    --brake-right="${brake_right}"
 actual_easy="$(grep -m1 'easy state hash' <<<"${output}" | sed 's/^easy //' || true)"
 actual_pro="$(grep -m1 'pro state hash' <<<"${output}" | sed 's/^pro //' || true)"
 
