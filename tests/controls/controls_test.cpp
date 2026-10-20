@@ -136,6 +136,47 @@ TEST(Pro, MapsEachControlOnItsOwn) {
     EXPECT_DOUBLE_EQ(pro({.steering = 3.0}, tractor).steering_rad, max_rad);
 }
 
+// A control that is not finite (a NaN from a front end's maths) reads as
+// the control at rest, so it never reaches the simulation.
+TEST(Pro, ReadsANonFiniteControlAsAtRest) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    for (const double bad : {std::nan(""), HUGE_VAL, -HUGE_VAL}) {
+        const vehicle::Input in = pro({.throttle = bad,
+                                       .clutch_pedal = bad,
+                                       .gear = 3,
+                                       .steering = bad,
+                                       .brake_left = bad,
+                                       .brake_right = bad},
+                                      tractor);
+        EXPECT_EQ(in.throttle, 0.0) << bad;
+        EXPECT_EQ(in.clutch_pedal, 1.0) << bad;
+        EXPECT_EQ(in.steering_rad, 0.0) << bad;
+        EXPECT_EQ(in.brake_left, 0.0) << bad;
+        EXPECT_EQ(in.brake_right, 0.0) << bad;
+    }
+}
+
+TEST(Easy, ReadsANonFiniteControlAsAtRest) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    const std::optional<vehicle::Model> model = vehicle::Model::create(tractor);
+    if (!model) {
+        ADD_FAILURE() << "invalid reference tractor";
+        return;
+    }
+    const vehicle::State state = vehicle::initial_state(*model);
+    for (const double bad : {std::nan(""), HUGE_VAL, -HUGE_VAL}) {
+        AssistState assist;
+        const vehicle::Input in =
+            easy({.throttle = bad, .gear = driveline::kNeutral, .steering = bad}, kEasy, assist,
+                 tractor, state, kDt_s);
+        EXPECT_EQ(in.throttle, 0.0) << bad;
+        EXPECT_EQ(in.steering_rad, 0.0) << bad;
+        EXPECT_EQ(in.brake_left, 0.0) << bad;
+        EXPECT_EQ(in.brake_right, 0.0) << bad;
+        EXPECT_TRUE(std::isfinite(assist.engagement)) << bad;
+    }
+}
+
 // Easy: the first stretch of the steering control turns the wheels; past
 // it they stay at full lock and the inner rear brake comes on, to full
 // pedal at the end. Left and right mirror each other.

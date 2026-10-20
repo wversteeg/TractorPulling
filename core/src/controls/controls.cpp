@@ -10,13 +10,22 @@ namespace tp::controls {
 
 namespace {
 
-double unit(double value) noexcept {
-    return std::clamp(value, 0.0, 1.0);
+// A control held to its travel, 0 to 1. A value that is not finite (a 0/0
+// in a front end's slider or tilt maths) reads as the control at `rest`:
+// std::clamp would pass a NaN on, and it would ruin the run for good.
+double unit(double value, double rest) noexcept {
+    return std::isfinite(value) ? std::clamp(value, 0.0, 1.0) : rest;
 }
 
+// A steering control, -1 to 1; not finite reads as straight ahead.
 double signed_unit(double value) noexcept {
-    return std::clamp(value, -1.0, 1.0);
+    return std::isfinite(value) ? std::clamp(value, -1.0, 1.0) : 0.0;
 }
+
+// Where each control rests: throttle closed, clutch pressed, brakes off.
+constexpr double kThrottleRest = 0.0;
+constexpr double kClutchPedalRest = 1.0;
+constexpr double kBrakeRest = 0.0;
 
 // The guard speed at `throttle`: near peak torque at full throttle, and at
 // part throttle where the governor reaches full fuel (below it the engine
@@ -75,18 +84,18 @@ std::optional<ParamError> validate(const EasyParams& params) noexcept {
 }
 
 vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexcept {
-    return {.throttle = unit(input.throttle),
-            .clutch_pedal = unit(input.clutch_pedal),
+    return {.throttle = unit(input.throttle, kThrottleRest),
+            .clutch_pedal = unit(input.clutch_pedal, kClutchPedalRest),
             .gear = input.gear,
             .steering_rad = signed_unit(input.steering) * tractor.steering.max_angle_rad,
-            .brake_left = unit(input.brake_left),
-            .brake_right = unit(input.brake_right)};
+            .brake_left = unit(input.brake_left, kBrakeRest),
+            .brake_right = unit(input.brake_right, kBrakeRest)};
 }
 
 vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistState& assist,
                     const vehicle::Params& tractor, const vehicle::State& state,
                     double dt_s) noexcept {
-    const double throttle = unit(input.throttle);
+    const double throttle = unit(input.throttle, kThrottleRest);
     const int gear_in = state.driveline.gear;
     // A gear the gearbox does not have is held to its range: otherwise the
     // assist would keep the clutch out for a shift that never comes.

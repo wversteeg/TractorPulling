@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <optional>
@@ -260,6 +261,33 @@ TEST(Session, StandsStillOnceTheRunHasEnded) {
     EXPECT_EQ(session.current().sled_x_m, last.sled_x_m);
     EXPECT_EQ(session.current().chain_tension_n, last.chain_tension_n);
     EXPECT_EQ(session.previous().sled_x_m, session.current().sled_x_m);
+}
+
+// Controls that are not finite (a NaN from GDScript maths) never reach the
+// simulation: the run goes on exactly as with the controls at rest.
+TEST(Session, ReadsNonFiniteControlsAsAtRest) {
+    const double nan = std::nan("");
+    const Controls bad{.throttle = nan,
+                       .clutch_pedal = nan,
+                       .gear = driveline::kNeutral,
+                       .steering = nan,
+                       .brake_left = HUGE_VAL,
+                       .brake_right = -HUGE_VAL};
+    const Controls at_rest{.throttle = 0.0,
+                           .clutch_pedal = 1.0,
+                           .gear = driveline::kNeutral,
+                           .steering = 0.0,
+                           .brake_left = 0.0,
+                           .brake_right = 0.0};
+    for (const Layout layout : {Layout::kPro, Layout::kEasy}) {
+        Session with_bad = make(reference_setup(layout));
+        Session with_rest = make(reference_setup(layout));
+        with_bad.advance(bad, kNanosecondsPerSecond / 10);
+        with_rest.advance(at_rest, kNanosecondsPerSecond / 10);
+        EXPECT_EQ(with_bad.hash(), with_rest.hash());
+        EXPECT_TRUE(std::isfinite(with_bad.current().engine_omega_rad_s));
+        EXPECT_EQ(with_bad.current().throttle, 0.0);
+    }
 }
 
 TEST(Blend, GoesFromOneSnapshotToTheNext) {

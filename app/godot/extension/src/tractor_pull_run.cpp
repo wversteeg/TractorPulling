@@ -8,9 +8,11 @@
 #include "tp/data/track/track_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
 
@@ -30,6 +32,12 @@ std::string to_std(const godot::String& text) {
 godot::String to_godot(const std::string& text) {
     return godot::String::utf8(text.c_str());
 }
+
+// GDScript's integers are 64-bit: held to the int range before they narrow,
+// so an out-of-range gear is held to the gearbox by the session, not wrapped
+// into another gear.
+constexpr std::int64_t kMinGear = std::numeric_limits<int>::min();
+constexpr std::int64_t kMaxGear = std::numeric_limits<int>::max();
 
 const char* ending_name(run::Ending ending) {
     switch (ending) {
@@ -107,7 +115,7 @@ void TractorPullRun::set_controls(double throttle, double clutch_pedal, std::int
                                   double steering, double brake_left, double brake_right) {
     controls_ = {.throttle = throttle,
                  .clutch_pedal = clutch_pedal,
-                 .gear = static_cast<int>(gear),
+                 .gear = static_cast<int>(std::clamp<std::int64_t>(gear, kMinGear, kMaxGear)),
                  .steering = steering,
                  .brake_left = brake_left,
                  .brake_right = brake_right};

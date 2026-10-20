@@ -23,11 +23,14 @@ public:
     /// Loads the tractor, the class's sled and the track (res:// paths
     /// work) and starts a run on them (data::run_setup), in
     /// the easy layout if `easy_controls_path` names its file, else the pro
-    /// layout. Returns "" or what is wrong, naming the file and field.
+    /// layout. Returns "" or what is wrong, naming the file and field. A
+    /// setup ends the run before it, even one that fails: there is then no
+    /// run until a setup succeeds.
     godot::String setup(const godot::String& tractor_path, const godot::String& sled_path,
                         const godot::String& track_path, const godot::String& easy_controls_path);
 
-    /// The controls held from now on (see session::Controls).
+    /// The controls held from now on (see session::Controls: held to their
+    /// range, and a value that is not finite reads as the control at rest).
     void set_controls(double throttle, double clutch_pedal, std::int64_t gear, double steering,
                       double brake_left, double brake_right);
 

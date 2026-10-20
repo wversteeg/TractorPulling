@@ -149,10 +149,14 @@ jobs:
       - name: Build
         run: cmake --build --preset android-${{ matrix.abi }}
 
+      # The library must have the name tractor_pulling.gdextension lists.
       - name: Build the Godot extension
         run: |
           cmake --preset godot-android-${{ matrix.abi }}
           cmake --build --preset godot-android-${{ matrix.abi }}
+          library="libtp_godot.android.template_debug.${{ matrix.abi }}.so"
+          test -f "app/godot/bin/${library}"
+          grep -q "res://bin/${library}" app/godot/tractor_pulling.gdextension
 
       # The same event on the host, for the emulator's output to match.
       - name: Run the club event on the host
@@ -218,7 +222,7 @@ jobs:
           echo "${GODOT_SHA512}  godot.zip" | sha512sum --check
           unzip -q godot.zip
 
-      - name: Play a run through the extension, headless
+      - name: Play runs through the extension, headless
         run: scripts/godot_test.sh "./Godot_v${GODOT_VERSION}_linux.x86_64"
 
   clang-tidy:

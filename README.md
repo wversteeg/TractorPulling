@@ -193,9 +193,14 @@ var error := run.setup("res://data/tractors/farm_stock_light.toml",
         "res://data/sleds/light_class.toml", "res://data/tracks/ideal_clay_sand.toml",
         "res://data/controls/easy.toml")  # "" for the pro layout
 run.set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
-run.advance(int(delta * 1e9))             # each frame
+run.advance(int(delta * 1e9))             # each frame, _process's delta
 var snapshot := run.get_snapshot()        # what to draw, SI units, on the track
 ```
+
+The scene passes `_process`'s `delta`, the frame's time (slowed or stopped
+with `Engine.time_scale` for slow motion or a pause); the session alone turns
+it into 1 ms steps. Controls held out of range, or not finite, read as held to
+their range or at rest.
 
 Build the extension with `cmake --preset godot && cmake --build --preset godot`
 (it fetches godot-cpp and copies `data/` into the project), then open
