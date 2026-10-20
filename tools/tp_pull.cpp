@@ -58,8 +58,10 @@
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/season/season.hpp"
+#include "tp/core/session/session.hpp"
 #include "tp/core/sled/sled.hpp"
 #include "tp/core/soil/soil.hpp"
+#include "tp/core/time/fixed_step_clock.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/controls/controls_loader.hpp"
@@ -319,33 +321,64 @@ std::string_view describe(tp::run::Ending ending) {
     return "?";
 }
 
-// One run on `model`, writing CSV rows tagged with the pull-off `round`.
-std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::run::Rules& rules,
-                                       const PullOptions& options, int round, std::ostream& csv) {
-    tp::run::State state = tp::run::start(model);
-    tp::controls::AssistState assist;
-    const tp::vehicle::Params& tractor = model.tractor().params();
-    for (int i = 0; !state.result; ++i) {
+// The run's driver as the game's controls: the scripted pedals, or the easy
+// layout's script. The front wheel angle becomes a share of the steering's
+// range.
+tp::session::Controls run_controls(double t_s, const PullOptions& options,
+                                   const tp::vehicle::Params& tractor) {
+    if (options.easy) {
+        const tp::controls::EasyInput easy = easy_script(t_s, options);
+        return {.throttle = easy.throttle, .gear = easy.gear, .steering = easy.steering};
+    }
+    const tp::vehicle::Input input = pull_input(t_s, options);
+    return {.throttle = input.throttle,
+            .clutch_pedal = input.clutch_pedal,
+            .gear = input.gear,
+            .steering = input.steering_rad / tractor.steering.max_angle_rad,
+            .brake_left = input.brake_left,
+            .brake_right = input.brake_right};
+}
+
+// A run of `tractor` on `sled` (as pulled today) and `track`, driven as
+// `options` say.
+tp::session::Setup run_setup(const tp::vehicle::Params& tractor, const tp::sled::Params& sled,
+                             const tp::data::Track& track, const PullOptions& options) {
+    return {.tractor = tractor,
+            .sled = sled,
+            .ground = track.ground,
+            .rules = track.rules,
+            .layout = options.easy ? tp::session::Layout::kEasy : tp::session::Layout::kPro,
+            .easy = options.easy.value_or(tp::controls::EasyParams{})};
+}
+
+// One run of `setup` through the game's session, a step at a time, writing
+// CSV rows tagged with the pull-off `round`.
+std::optional<tp::run::Result> one_run(const tp::session::Setup& setup, const PullOptions& options,
+                                       int round, std::ostream& csv) {
+    std::optional<tp::session::Session> session = tp::session::Session::create(setup);
+    if (!session) {
+        std::cerr << "inconsistent tractor, sled or track\n";
+        return std::nullopt;
+    }
+    for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
-        const tp::vehicle::Input input =
-            options.easy ? tp::controls::easy(easy_script(t_s, options), *options.easy, assist,
-                                              tractor, state.pull.tractor, kDt_s)
-                         : pull_input(t_s, options);
-        const tp::pull::Output out = tp::run::step(state, model, rules, input, kDt_s);
+        session->advance(run_controls(t_s, options, setup.tractor), tp::kSimulationStepNs);
+        const tp::pull::Output& out = session->last_output();
         if (out.tractor.shift_refused) {
             std::cerr << "cannot select gear " << options.gear << '\n';
             return std::nullopt;
         }
         if (i % kStepsPerRow == 0) {
-            const tp::pull::State& pull = state.pull;
+            const tp::pull::State& pull = session->run_state().pull;
+            const double start_line_m = session->model().start_line_m();
             // Output only: atan2 may differ in the last bit between platforms.
             const double chain_angle_rad = std::atan2(out.chain.direction_z, out.chain.direction_x);
-            csv << round << ',' << t_s << ',' << input.clutch_pedal << ','
+            csv << round << ',' << t_s << ',' << session->last_input().clutch_pedal << ','
                 << pull.tractor.driveline.gear << ','
                 << rad_s_to_rpm(pull.tractor.engine.omega_rad_s) << ','
                 << pull.sled.velocity_m_s * kMetersPerSecondToKmh << ','
-                << pull.sled.position_m - model.start_line_m() << ',' << out.tractor.slip_ratio
-                << ',' << out.tractor.axle_loads.rear_n / kNewtonsPerKilonewton << ','
+                << pull.sled.position_m - start_line_m << ',' << out.tractor.slip_ratio << ','
+                << out.tractor.axle_loads.rear_n / kNewtonsPerKilonewton << ','
                 << out.tractor.axle_loads.front_n / kNewtonsPerKilonewton << ','
                 << rad_to_deg(pull.tractor.chassis.pitch_rad) << ','
                 << out.chain.tension_n / kNewtonsPerKilonewton << ',' << rad_to_deg(chain_angle_rad)
@@ -359,7 +392,7 @@ std::optional<tp::run::Result> one_run(const tp::pull::Model& model, const tp::r
                 << pull.sled.distance_m << '\n';
         }
     }
-    return state.result;
+    return session->result();
 }
 
 // A run, and after every full pull a pull-off on a heavier sled.
@@ -372,13 +405,7 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
     // The class's sled with the day's push-down.
     tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
-        const auto model =
-            tp::pull::Model::create({.tractor = tractor, .sled = sled, .track = track.ground});
-        if (!model) {
-            std::cerr << "inconsistent tractor, sled or track\n";
-            return EXIT_FAILURE;
-        }
-        const auto result = one_run(*model, track.rules, options, round, csv);
+        const auto result = one_run(run_setup(tractor, sled, track, options), options, round, csv);
         if (!result) {
             return EXIT_FAILURE;
         }
@@ -419,7 +446,8 @@ int compare_tracks(const tp::vehicle::Params& tractor, const tp::sled::Params& c
             std::cerr << path << ": inconsistent tractor, sled or track\n";
             return EXIT_FAILURE;
         }
-        const auto result = one_run(*model, track.value().rules, options, 0, discard);
+        const auto result =
+            one_run(run_setup(tractor, sled, track.value(), options), options, 0, discard);
         if (!result) {
             return EXIT_FAILURE;
         }

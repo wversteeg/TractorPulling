@@ -16,6 +16,12 @@
 phone_ns = 50_000
 ci_arm64_ns = 1_250
 
+# One 60 fps frame through the game's session: 16 or 17 game steps and the
+# two snapshots drawn between. On the phone, the same 50 µs per step.
+[BM_SessionFrame]
+phone_ns = 833_000
+ci_arm64_ns = 22_000
+
 [BM_PullStep]
 ci_arm64_ns = 1_200
 

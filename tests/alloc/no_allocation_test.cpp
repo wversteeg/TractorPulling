@@ -6,10 +6,12 @@
 #include "tp/core/controls/controls.hpp"
 #include "tp/core/pull/pull.hpp"
 #include "tp/core/run/run.hpp"
+#include "tp/core/session/session.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <new>
 #include <optional>
@@ -166,6 +168,34 @@ TEST(NoAllocation, AProRunThatSteersAndBrakes) {
     });
     EXPECT_EQ(counted, 0U);
     EXPECT_TRUE(state.result.has_value());
+}
+
+// The game's own loop: a whole run through the session, frame by frame at
+// 60 fps, snapshots and their blending included.
+TEST(NoAllocation, AWholeSessionInFrames) {
+    std::optional<session::Session> game =
+        session::Session::create({.tractor = vehicle::testing::reference_params(),
+                                  .sled = sled::testing::reference_params(),
+                                  .ground = track::testing::reference_params(),
+                                  .rules = kRules,
+                                  .layout = session::Layout::kEasy,
+                                  .easy = controls::testing::kReferenceEasy});
+    if (!game) {
+        ADD_FAILURE() << "invalid reference session";
+        return;
+    }
+    constexpr std::int64_t kFrame_ns = 16'666'667;
+    constexpr int kMaxFrames = 20'000;
+    double drawn_x_m = 0.0;
+    const std::size_t counted = allocations_in([&] {
+        for (int frame = 0; !game->result() && frame < kMaxFrames; ++frame) {
+            game->advance({.throttle = 1.0, .gear = 6}, kFrame_ns);
+            drawn_x_m = session::blend(game->previous(), game->current(), game->alpha()).sled_x_m;
+        }
+    });
+    EXPECT_EQ(counted, 0U);
+    EXPECT_TRUE(game->result().has_value());
+    EXPECT_GT(drawn_x_m, 0.0);
 }
 
 }  // namespace
