@@ -115,7 +115,7 @@ double max_net_power_w(const Params& params) noexcept {
 }
 
 double full_fuel_omega_rad_s(const Params& params, double throttle) noexcept {
-    return governor_target_rad_s(params, throttle) - droop_rad_s(params);
+    return governor_target_rad_s(params, std::clamp(throttle, 0.0, 1.0)) - droop_rad_s(params);
 }
 
 Prediction predict(const State& state, const Params& params, double throttle,

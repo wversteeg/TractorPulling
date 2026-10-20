@@ -88,6 +88,9 @@ TEST(Engine, FullFuelSpeedFollowsTheThrottle) {
     EXPECT_NEAR(full_fuel_omega_rad_s(params, 1.0), params.rated_omega_rad_s, 1e-9);
     EXPECT_NEAR(full_fuel_omega_rad_s(params, 0.0), params.idle_omega_rad_s - droop_rad_s, 1e-9);
     EXPECT_LT(full_fuel_omega_rad_s(params, 0.3), full_fuel_omega_rad_s(params, 0.6));
+    // The throttle is held to its travel.
+    EXPECT_EQ(full_fuel_omega_rad_s(params, 1.5), full_fuel_omega_rad_s(params, 1.0));
+    EXPECT_EQ(full_fuel_omega_rad_s(params, -0.5), full_fuel_omega_rad_s(params, 0.0));
     // Just below it the governor gives full fuel, just above it less.
     const double at_rad_s = full_fuel_omega_rad_s(params, 0.5);
     State below = initial_state(params);

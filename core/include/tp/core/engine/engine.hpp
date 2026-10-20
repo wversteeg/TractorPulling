@@ -122,9 +122,9 @@ struct Prediction {
 /// class checks, not for the simulation step.
 [[nodiscard]] double max_net_power_w(const Params& params) noexcept;
 
-/// The speed below which the governor gives full fuel at `throttle`: its
-/// target less the droop. Under more load the engine lugs down its torque
-/// curve [rad/s].
+/// The speed below which the governor gives full fuel at `throttle`
+/// (clamped to [0, 1], as in predict()): its target less the droop. Under more load the engine lugs
+/// down its torque curve [rad/s].
 [[nodiscard]] double full_fuel_omega_rad_s(const Params& params, double throttle) noexcept;
 
 /// Computes fuel, boost and torques for a step of `dt_s` seconds. Pure.

@@ -145,6 +145,12 @@ for the big features; they are repeated at the end for completeness.
   a touch of throttle in a high gear against a heavy sled it hunts slowly
   around the guard (about 4 reversals a second); a little hysteresis would
   settle it if that shows on screen.
+- **A launch that never gets going.** In top gear with a touch of throttle
+  the engine cannot move the sled: the assist slips, the sled creeps a
+  centimetre and stops, and that first stop ends the run at 0.01 m. Right
+  physically, but a beginner may read it as the game failing them. The
+  easy front end could not count a stop before the sled has really moved,
+  or hint at a lower gear.
 - **Steering speed and touch input.** Both layouts take the steering
   control's position as given; a touch slider or tilt will want a rate
   limit and a dead zone, set with the Godot front end.
