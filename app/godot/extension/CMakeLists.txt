@@ -22,8 +22,19 @@ set_target_properties(tp_godot PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${TP_GODOT_PROJECT_DIR}/bin")
 
 # The game reads the same data/ files as the tools, as res://data.
+#
+# The extension is also listed in Godot's .godot/extension_list.cfg, so
+# Godot loads it at startup. Otherwise the editor finds it while scanning
+# the project and loads it then, and Godot 4.7.2 then crashes as it quits
+# (any registered class; an import run, headless or not). Godot keeps the
+# file up to date itself afterwards.
+set(TP_GODOT_EXTENSION_LIST "${CMAKE_CURRENT_BINARY_DIR}/extension_list.cfg")
+file(WRITE "${TP_GODOT_EXTENSION_LIST}" "res://tractor_pulling.gdextension\n")
 add_custom_target(tp_godot_data ALL
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${PROJECT_SOURCE_DIR}/data"
             "${TP_GODOT_PROJECT_DIR}/data"
-    COMMENT "Copying data/ into the Godot project")
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${TP_GODOT_PROJECT_DIR}/.godot"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${TP_GODOT_EXTENSION_LIST}"
+            "${TP_GODOT_PROJECT_DIR}/.godot/extension_list.cfg"
+    COMMENT "Copying data/ into the Godot project and listing the extension")
 add_dependencies(tp_godot tp_godot_data)

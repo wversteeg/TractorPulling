@@ -26,8 +26,12 @@ expected="$("${build}/tools/tp_pull" run data/tractors/farm_stock_light.toml \
     grep -m1 'state hash' | sed 's/^ *//')"
 echo "tp_pull: ${expected}"
 
-# The first run imports the project, which registers the extension.
-"${godot}" --headless --path "${project}" --import >/dev/null 2>&1
+# No editor import: the build lists the extension in .godot/extension_list.cfg,
+# so Godot loads it at startup (see app/godot/extension/CMakeLists.txt).
+if [[ ! -f "${project}/.godot/extension_list.cfg" ]]; then
+    echo "${project}/.godot/extension_list.cfg is missing: build the godot preset first" >&2
+    exit 1
+fi
 output="$("${godot}" --headless --path "${project}" --script res://tests/run_test.gd 2>&1)"
 echo "${output}"
 actual="$(grep -m1 'state hash' <<<"${output}" || true)"

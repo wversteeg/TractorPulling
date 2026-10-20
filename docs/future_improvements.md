@@ -179,6 +179,11 @@ for the big features; they are repeated at the end for completeness.
   (arm64 and x86_64) but loads it only in the desktop Godot, headless. It
   runs on Android once the game is exported (milestone 5, step 5); its
   libc++ is static, see "The C++ runtime for the Godot extension".
+- **Godot's crash on discovering the extension.** Godot 4.7.2 crashes as it
+  quits when its editor found a GDExtension while scanning the project
+  (any registered class). The build therefore lists the extension in
+  `.godot/extension_list.cfg` so it loads at startup, and the headless test
+  skips the editor import. Drop the workaround once Godot fixes it.
 - **GDScript checks.** The GDScript runs in CI (the headless test) but has
   no linter or formatter there; gdtoolkit's `gdlint` and `gdformat` would
   add a Python dependency, worth it once there is more GDScript than the
