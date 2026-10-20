@@ -11,7 +11,9 @@ namespace tp::controls {
 
 /// The pro layout: every control on its own. Steering is the share of the
 /// steering's range, -1 (full right) to 1 (full left); the pedals run 0 to
-/// 1. Values outside their range are held to it.
+/// 1. Values outside their range, infinities too, are held to it; a value
+/// that is not a number reads as the control at rest (throttle closed,
+/// clutch pressed, steering straight, brakes off).
 struct ProInput {
     double throttle = 0.0;
     /// 0 released (engaged), 1 pressed.
@@ -25,7 +27,8 @@ struct ProInput {
 /// The easy layout: the throttle, the gear and one steering control whose
 /// last stretch brakes the inner rear wheels, as a driver steers a tight
 /// turn with the brake. There is no clutch pedal: the clutch assist works
-/// the clutch.
+/// the clutch. As in the pro layout, values are held to their range and a
+/// value that is not a number reads as the control at rest.
 struct EasyInput {
     double throttle = 0.0;
     int gear = driveline::kNeutral;

@@ -175,6 +175,28 @@ for the big features; they are repeated at the end for completeness.
   shares a process with Godot, which may want `c++_shared`; decide with the
   binding layer.
 
+- **The extension on a phone.** CI builds the Godot extension for Android
+  (arm64 and x86_64) but loads it only in the desktop Godot, headless. It
+  runs on Android once the game is exported (milestone 5, step 5); its
+  libc++ is static, see "The C++ runtime for the Godot extension".
+- **Godot's crash on discovering the extension.** Godot 4.7.2 crashes as it
+  quits when its editor found a GDExtension while scanning the project
+  (any registered class). The build therefore lists the extension in
+  `.godot/extension_list.cfg` so it loads at startup, and the headless test
+  skips the editor import. Drop the workaround once Godot fixes it.
+- **Release libraries of the extension.** The presets build godot-cpp's
+  `template_debug` libraries only, which the editor and debug exports
+  load, and `tractor_pulling.gdextension` lists only those. Release
+  (`template_release`) presets and entries come with the Android export
+  (milestone 5, step 5).
+- **GDScript checks.** The GDScript runs in CI (the headless test) but has
+  no linter or formatter there; gdtoolkit's `gdlint` and `gdformat` would
+  add a Python dependency, worth it once there is more GDScript than the
+  test.
+- **The snapshot as a Dictionary.** `TractorPullRun.get_snapshot()` builds a
+  Dictionary every frame: an allocation on Godot's heap, outside the
+  simulation step and well under a frame's budget. If it shows in a frame
+  profile, typed properties or a packed array instead.
 - **What the session shows.** A snapshot (`tp::session`) holds what a
   first 3D scene needs: the tractor's and sled's place, heading and pitch,
   the rear wheels' speeds, the engine and the chain. The front wheels' speed,

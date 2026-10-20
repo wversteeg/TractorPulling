@@ -149,6 +149,15 @@ jobs:
       - name: Build
         run: cmake --build --preset android-${{ matrix.abi }}
 
+      # The library must have the name tractor_pulling.gdextension lists.
+      - name: Build the Godot extension
+        run: |
+          cmake --preset godot-android-${{ matrix.abi }}
+          cmake --build --preset godot-android-${{ matrix.abi }}
+          library="libtp_godot.android.template_debug.${{ matrix.abi }}.so"
+          test -f "app/godot/bin/${library}"
+          grep -q "res://bin/${library}" app/godot/tractor_pulling.gdextension
+
       # The same event on the host, for the emulator's output to match.
       - name: Run the club event on the host
         if: matrix.abi == 'x86_64'
@@ -180,6 +189,44 @@ jobs:
             scripts/android_test.sh build/android-x86_64 build/host_event.txt
             scripts/android_bench.sh build/android-x86_64
 
+  # The Godot extension (app/godot/extension) on the desktop: built against
+  # godot-cpp and played in the pinned Godot, with a software renderer. The scripted run must
+  # end in the same state hash as tp_pull's (scripts/godot_test.sh).
+  godot:
+    name: godot
+    runs-on: ubuntu-24.04
+    # A hung Godot fails the job instead of holding a runner for hours.
+    timeout-minutes: 20
+    env:
+      GODOT_VERSION: 4.7.2-stable
+      # From the release's SHA512-SUMS.txt, for Godot_v4.7.2-stable_linux.x86_64.zip.
+      GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+    steps:
+      - uses: actions/checkout@v4
+
+      # Xvfb and Mesa: Godot runs the test with a real (software) renderer,
+      # whose driver brings libraries a headless run never loads.
+      - name: Install Ninja, Xvfb and Mesa
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build xvfb libgl1-mesa-dri
+
+      - name: Configure
+        run: cmake --preset godot
+
+      - name: Build
+        run: cmake --build --preset godot
+
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  godot.zip" | sha512sum --check
+          unzip -q godot.zip
+
+      - name: Play runs through the extension
+        run: scripts/godot_test.sh "./Godot_v${GODOT_VERSION}_linux.x86_64"
+
   clang-tidy:
     runs-on: ubuntu-24.04
     steps:
@@ -200,6 +247,21 @@ jobs:
           run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug
           -clang-tidy-binary clang-tidy-${LLVM_VERSION}
           "$PWD/(core|data_io|tests|tools|bench)/"
+
+      # The Godot extension needs godot-cpp's generated headers, so it gets
+      # its own build tree.
+      - name: Configure the Godot extension
+        env:
+          CXX: clang++-${{ env.LLVM_VERSION }}
+        run: |
+          cmake --preset godot
+          cmake --build --preset godot --target generate_bindings
+
+      - name: Run clang-tidy on the Godot extension
+        run: >
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/godot
+          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
+          "$PWD/app/godot/extension/"
 
   format:
     runs-on: ubuntu-24.04

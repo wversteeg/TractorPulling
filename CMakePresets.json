@@ -34,6 +34,18 @@
       }
     },
     {
+      "name": "godot",
+      "displayName": "Godot extension for the desktop editor, and tp_pull",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF"
+      }
+    },
+    {
       "name": "android-base",
       "hidden": true,
       "inherits": "base",
@@ -56,6 +68,30 @@
       "displayName": "Android x86_64 (emulator), release",
       "inherits": "android-base",
       "cacheVariables": { "ANDROID_ABI": "x86_64" }
+    },
+    {
+      "name": "godot-android-base",
+      "hidden": true,
+      "inherits": "android-base",
+      "cacheVariables": {
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF",
+        "TP_BUILD_TOOLS": "OFF"
+      }
+    },
+    {
+      "name": "godot-android-arm64",
+      "displayName": "Godot extension for Android arm64-v8a (phones)",
+      "inherits": "godot-android-base",
+      "cacheVariables": { "ANDROID_ABI": "arm64-v8a" }
+    },
+    {
+      "name": "godot-android-x86_64",
+      "displayName": "Godot extension for Android x86_64 (emulator)",
+      "inherits": "godot-android-base",
+      "cacheVariables": { "ANDROID_ABI": "x86_64" }
     }
   ],
   "buildPresets": [
@@ -63,7 +99,10 @@
     { "name": "release", "configurePreset": "release" },
     { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
     { "name": "android-arm64", "configurePreset": "android-arm64" },
-    { "name": "android-x86_64", "configurePreset": "android-x86_64" }
+    { "name": "android-x86_64", "configurePreset": "android-x86_64" },
+    { "name": "godot", "configurePreset": "godot" },
+    { "name": "godot-android-arm64", "configurePreset": "godot-android-arm64" },
+    { "name": "godot-android-x86_64", "configurePreset": "godot-android-x86_64" }
   ],
   "testPresets": [
     {

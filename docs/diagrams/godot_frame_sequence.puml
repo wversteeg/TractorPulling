@@ -1,0 +1,32 @@
+@startuml godot_frame_sequence
+title A run in Godot: setup through res://, then one rendered frame
+autonumber
+participant "GDScript\n(scene or test)" as Script
+participant "TractorPullRun" as Run
+participant "data loaders" as Load
+participant "read_godot_file\n(FileAccess)" as Files
+participant "session::Session" as Session
+
+Script -> Run : setup("res://data/tractors/...", sled, track, easy)
+Run -> Load : load_tractor(path, read_godot_file), ...
+Load -> Files : read(path), and the files it names\n(resolve(directory_of(path), name))
+Files --> Load : text
+Load --> Run : Params, or LoadError naming file and field
+Run -> Load : run_setup(tractor, class sled, track):\nthe sled with the track's conditions, its ground and rules
+Run -> Session : create(Setup)
+Run --> Script : "" or the error
+
+loop every rendered frame
+  Script -> Run : set_controls(throttle, clutch, gear, steering, brakes)
+  Script -> Run : advance(elapsed_ns)
+  Run -> Session : advance(controls, elapsed_ns)\n(whole 1 ms steps, see the frame loop)
+  Session --> Run : Frame {steps, dropped_ns}
+  Script -> Run : get_snapshot()
+  Run -> Session : blend(previous(), current(), alpha())
+  Run --> Script : Dictionary (SI, on the track)
+  Script -> Script : place the tractor, wheels and sled
+  opt is_finished()
+    Script -> Run : get_result()
+  end
+end
+@enduml

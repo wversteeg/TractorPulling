@@ -52,7 +52,9 @@ enum class SetupError : std::uint8_t {
 /// The player's controls, held for a whole frame. Both layouts read the
 /// throttle, the gear and the steering; the pro layout also reads the
 /// clutch and the brakes, which the easy layout works itself. Values
-/// outside their range are held to it.
+/// outside their range, infinities too, are held to it; a value that is not
+/// a number (a NaN from a front end's maths) reads as the control at rest:
+/// throttle closed, clutch pressed, steering straight, brakes off.
 struct Controls {
     /// 0 to 1.
     double throttle = 0.0;

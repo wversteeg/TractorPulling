@@ -5,7 +5,7 @@
 //                [--steer-deg A] [--brake-left P] [--brake-right P] [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
-//               [--easy <easy.toml> [--stick S]] [-o <out.csv>]
+//               [--easy <easy.toml> [--stick S]] [--hash] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump]
 //   tp_pull event <event.toml> [--seed N]
@@ -28,6 +28,9 @@
 // With --easy the driver uses the easy layout instead: the gear and full
 // throttle, the steering control held at --stick (-1 right to 1 left) from
 // the launch, and the clutch assist working the clutch.
+//
+// --hash prints each run's state hash at its end, to compare with another
+// front end playing the same inputs (the Godot extension's headless test).
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility.
@@ -70,6 +73,7 @@
 #include "tp/data/event/event_loader.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/season/season_loader.hpp"
+#include "tp/data/session/run_setup.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
@@ -188,6 +192,9 @@ struct PullOptions {
     /// control's position.
     std::optional<tp::controls::EasyParams> easy;
     double stick = 0.0;
+    /// Print each run's state hash, to compare with another front end
+    /// (the Godot extension's test).
+    bool print_hash = false;
 };
 
 tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
@@ -301,6 +308,9 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
 
 // --- run --------------------------------------------------------------------
 
+// A 64-bit hash in hex.
+constexpr int kHashHexDigits = 16;
+
 // Pull-offs after full pulls before the tool gives up making the sled heavier.
 constexpr int kMaxPullOffs = 10;
 
@@ -340,22 +350,29 @@ tp::session::Controls run_controls(double t_s, const PullOptions& options,
             .brake_right = input.brake_right};
 }
 
-// A run of `tractor` on `sled` (as pulled today) and `track`, driven as
-// `options` say.
-tp::session::Setup run_setup(const tp::vehicle::Params& tractor, const tp::sled::Params& sled,
-                             const tp::data::Track& track, const PullOptions& options) {
-    return {.tractor = tractor,
-            .sled = sled,
-            .ground = track.ground,
-            .rules = track.rules,
-            .layout = options.easy ? tp::session::Layout::kEasy : tp::session::Layout::kPro,
-            .easy = options.easy.value_or(tp::controls::EasyParams{})};
+// A run of `tractor` on the class's sled at `track` (data::run_setup), after
+// `pull_offs` pull-offs, driven as `options` say.
+tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
+                                const tp::sled::Params& class_sled, const tp::data::Track& track,
+                                const PullOptions& options, int pull_offs) {
+    tp::session::Setup setup = tp::data::run_setup(tractor, class_sled, track, pull_offs);
+    if (options.easy) {
+        setup.layout = tp::session::Layout::kEasy;
+        setup.easy = *options.easy;
+    }
+    return setup;
 }
+
+// How a run ended, and the session's state hash at its end.
+struct RunOutcome {
+    tp::run::Result result;
+    std::uint64_t hash = 0;
+};
 
 // One run of `setup` through the game's session, a step at a time, writing
 // CSV rows tagged with the pull-off `round`.
-std::optional<tp::run::Result> one_run(const tp::session::Setup& setup, const PullOptions& options,
-                                       int round, std::ostream& csv) {
+std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOptions& options,
+                                  int round, std::ostream& csv) {
     std::optional<tp::session::Session> session = tp::session::Session::create(setup);
     if (!session) {
         std::cerr << "inconsistent tractor, sled or track\n";
@@ -394,7 +411,11 @@ std::optional<tp::run::Result> one_run(const tp::session::Setup& setup, const Pu
                 << pull.sled.distance_m << '\n';
         }
     }
-    return session->result();
+    const std::optional<tp::run::Result>& result = session->result();
+    if (!result) {
+        return std::nullopt;
+    }
+    return RunOutcome{.result = *result, .hash = session->hash()};
 }
 
 // A run, and after every full pull a pull-off on a heavier sled.
@@ -404,22 +425,26 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
            "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg,"
            "sled_lateral_m,sled_heading_deg,sled_travel_m\n";
-    // The class's sled with the day's push-down.
-    tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.sled);
     for (int round = 0; round <= kMaxPullOffs; ++round) {
-        const auto result = one_run(run_setup(tractor, sled, track, options), options, round, csv);
-        if (!result) {
+        const auto outcome =
+            one_run(driven_setup(tractor, class_sled, track, options, round), options, round, csv);
+        if (!outcome) {
             return EXIT_FAILURE;
         }
+        const tp::run::Result& result = outcome->result;
         std::cout << (round == 0 ? std::string{"run"} : "pull-off " + std::to_string(round)) << ": "
-                  << std::fixed << std::setprecision(2) << result->distance_m << " m, "
-                  << describe(result->ending) << " (" << std::setprecision(1) << result->time_s
-                  << " s, top " << result->top_speed_m_s * kMetersPerSecondToKmh << " km/h)\n";
+                  << std::fixed << std::setprecision(2) << result.distance_m << " m, "
+                  << describe(result.ending) << " (" << std::setprecision(1) << result.time_s
+                  << " s, top " << result.top_speed_m_s * kMetersPerSecondToKmh << " km/h)\n";
         std::cout.unsetf(std::ios::fixed);
-        if (result->ending != tp::run::Ending::kFullPull) {
+        if (options.print_hash) {
+            std::cout << "  state hash " << std::hex << std::setw(kHashHexDigits)
+                      << std::setfill('0') << outcome->hash << std::dec << std::setfill(' ')
+                      << '\n';
+        }
+        if (result.ending != tp::run::Ending::kFullPull) {
             return EXIT_SUCCESS;
         }
-        sled = tp::sled::heavier(sled);
     }
     std::cerr << "still full pulls after " << kMaxPullOffs << " pull-offs\n";
     return EXIT_SUCCESS;
@@ -441,27 +466,28 @@ int compare_tracks(const tp::vehicle::Params& tractor, const tp::sled::Params& c
             std::cerr << track.error().message << '\n';
             return EXIT_FAILURE;
         }
-        const tp::sled::Params sled = tp::sled::with_conditions(class_sled, track.value().sled);
+        const tp::session::Setup setup =
+            driven_setup(tractor, class_sled, track.value(), options, 0);
         const auto model = tp::pull::Model::create(
-            {.tractor = tractor, .sled = sled, .track = track.value().ground});
+            {.tractor = tractor, .sled = setup.sled, .track = setup.ground});
         if (!model) {
             std::cerr << path << ": inconsistent tractor, sled or track\n";
             return EXIT_FAILURE;
         }
-        const auto result =
-            one_run(run_setup(tractor, sled, track.value(), options), options, 0, discard);
-        if (!result) {
+        const auto outcome = one_run(setup, options, 0, discard);
+        if (!outcome) {
             return EXIT_FAILURE;
         }
+        const tp::run::Result& result = outcome->result;
         const tp::soil::Surface start = model->track().surface_at(0.0);
         const std::string name = std::filesystem::path{path}.stem().string();
         std::cout << std::left << std::setw(28) << name << std::right << std::fixed
                   << std::setprecision(0) << std::setw(9)
                   << start.cone_index_pa / kPascalsPerKilopascal << " kPa" << std::setprecision(2)
                   << std::setw(7) << start.grip_factor << std::setw(10) << start.spin_fall_off
-                  << std::setprecision(1) << std::setw(9) << sled.pushdown_start_m << " m  "
-                  << std::setprecision(2) << result->distance_m << " m, "
-                  << describe(result->ending) << '\n';
+                  << std::setprecision(1) << std::setw(9) << setup.sled.pushdown_start_m << " m  "
+                  << std::setprecision(2) << result.distance_m << " m, " << describe(result.ending)
+                  << '\n';
         std::cout.unsetf(std::ios::fixed);
     }
     return EXIT_SUCCESS;
@@ -777,6 +803,10 @@ std::optional<Options> parse_options(std::span<char* const> args) {
             options.pull.dump = true;
             continue;
         }
+        if (arg == "--hash") {
+            options.pull.print_hash = true;
+            continue;
+        }
         if (i + 1 < args.size()) {
             const Parsed parsed = parse_valued_option(arg, args[i + 1], options);
             if (parsed == Parsed::kInvalid) {
@@ -802,7 +832,7 @@ int usage() {
                  "                    [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
-                 "                   [--easy <easy.toml> [--stick S]] [-o <out.csv>]\n"
+                 "                   [--easy <easy.toml> [--stick S]] [--hash] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump]\n"
                  "       tp_pull event <event.toml> [--seed N]\n"
