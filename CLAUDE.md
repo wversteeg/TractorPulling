@@ -93,12 +93,19 @@ before the full-pull line disqualifies the pull, 0 m; the sled may cross),
 disqualification through the event and season, and the "easy" and "pro"
 control layouts with the easy-mode clutch assist (`tp::controls`).
 
+## Milestone 4: phone readiness (done)
+
+The Android NDK build in CI with the tests on an emulator (API 24, Godot's
+minimum), the speed budget (50 µs per step on a phone; regression limits on
+CI's ARM runner; `docs/performance.md`) with a test that the step never
+allocates, and `tp::session`: one run as the game plays it, the small
+interface for the binding layer, with the data loaded through a function
+the front end supplies (`tp::data::ReadFile`).
+
 ## Next milestones
 
 First get something working, then give it more possibilities. In order:
 
-4. **Phone readiness:** an Android NDK build in CI, a speed budget measured
-   on ARM, a small stable interface for the binding layer.
 5. **Godot front end:** 3D scene, cameras, interpolated rendering, touch
    input (sliders and tilt).
 6. **Career:** heavier classes (where wheelspin matters more), tuning and
