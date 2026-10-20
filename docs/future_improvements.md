@@ -175,6 +175,16 @@ for the big features; they are repeated at the end for completeness.
   shares a process with Godot, which may want `c++_shared`; decide with the
   binding layer.
 
+- **What the session shows.** A snapshot (`tp::session`) holds what a
+  first 3D scene needs: the tractor's and sled's place, heading and pitch,
+  the rear wheels' speeds, the engine and the chain. The front wheels' speed,
+  the tires' sinkage, the berm and the thrown soil are left out until the
+  scene draws them. Headings blend as plain numbers, which is wrong only
+  across ±π, far outside a lane.
+- **One run per session.** The session plays one run; a pull-off is a new
+  session on the heavier sled. Events and seasons with the player among
+  scripted pullers come with the career mode.
+
 ## Performance
 
 - **Derived chassis constants at setup.** The pitch step recomputes a few

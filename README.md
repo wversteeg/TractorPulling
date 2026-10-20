@@ -156,6 +156,25 @@ disqualified pull scores no points.
 ./build/release/tools/tp_pull season data/seasons/club_season.toml [--seed N]
 ```
 
+### Playing a run from a game
+
+A game drives a run through `tp::session`: it creates a session once from a
+`Setup` (the tractor, the sled as pulled today, the ground, the rules and the
+control layout), then each frame calls `advance(controls, elapsed_ns)` with
+the player's controls and the frame's real time, and draws
+`blend(previous(), current(), alpha())`. The frame time decides only how many
+1 ms steps run, so a run is the same at any frame rate; nothing allocates
+after setup. `tp_pull run` plays its runs this way.
+
+The loaders read their files through a function the game supplies
+(`tp::data::ReadFile`), so the data can live wherever the game keeps it,
+such as Godot's `res://`:
+
+```cpp
+const auto tractor = tp::data::load_tractor("res://data/tractors/farm_stock_light.toml",
+                                            read_with_godot);
+```
+
 ## Requirements
 
 - CMake 3.25+ and Ninja

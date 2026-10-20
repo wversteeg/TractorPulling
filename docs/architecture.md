@@ -130,6 +130,17 @@ stalling. The assist's state is plain data, like the simulation's.
 
 ![Controls classes](diagrams/svg/controls_classes.svg)
 
+### Session (`tp::session`)
+
+One run as the game plays it, and the interface the Godot binding will use:
+a setup given once, the player's controls and the frame's real time in,
+snapshots to draw out. The frame time decides only how many 1 ms steps run,
+never their length, so the same controls on the same steps give the same run
+however the time is split into frames. It wraps the run, the controls and
+the fixed-step clock; `tp_pull run` plays through it too.
+
+![Session classes](diagrams/svg/session_classes.svg)
+
 ### Event (`tp::event`)
 
 One class at an event, pull by pull: a seeded running order, the test pull
@@ -160,7 +171,10 @@ compete. Competition rules, not physics: they are data, checked at setup.
 ### Data loading (`tp::data`)
 
 Parses TOML from `data/`, converts to SI units and reuses the core's
-validation rules. Never used inside the simulation step.
+validation rules. Never used inside the simulation step. Files are read
+through a `ReadFile` function the front end supplies (Godot's `res://` lives
+inside the app package, out of `std::filesystem`'s reach); the loaders that
+take a `std::filesystem::path` read from the disk.
 
 ![Data loading classes](diagrams/svg/data_io_classes.svg)
 
@@ -225,6 +239,7 @@ the clutch's own curve.
 
 ### Frame loop
 
-How a front end drives the fixed-step simulation from a variable frame rate.
+How a front end drives the fixed-step simulation from a variable frame rate,
+through the session.
 
 ![Frame loop](diagrams/svg/frame_loop_sequence.svg)
