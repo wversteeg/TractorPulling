@@ -88,6 +88,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -675,14 +676,28 @@ struct Options {
     PullOptions pull;
 };
 
+// Whole numbers through std::from_chars; decimals through std::strtod,
+// because libc++ (the Android NDK's C++ library) has long lacked
+// std::from_chars for floating point. The tool never sets a locale, so
+// strtod reads the decimal point as a dot.
 template <typename T>
 std::optional<T> parse_number(std::string_view text) {
-    T value{};
-    const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (error != std::errc{} || end != text.data() + text.size()) {
-        return std::nullopt;
+    if constexpr (std::is_floating_point_v<T>) {
+        const std::string copy{text};
+        char* end = nullptr;
+        const double value = std::strtod(copy.c_str(), &end);
+        if (copy.empty() || *end != '\0' || !std::isfinite(value)) {
+            return std::nullopt;
+        }
+        return static_cast<T>(value);
+    } else {
+        T value{};
+        const auto [end, error] = std::from_chars(text.data(), text.data() + text.size(), value);
+        if (error != std::errc{} || end != text.data() + text.size()) {
+            return std::nullopt;
+        }
+        return value;
     }
-    return value;
 }
 
 enum class Parsed : std::uint8_t { kUnknown, kOk, kInvalid };
