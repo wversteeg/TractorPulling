@@ -80,6 +80,23 @@ TEST(Clutch, CapacityNeverIncreasesWithPedalTravel) {
     EXPECT_DOUBLE_EQ(previous_nm, 0.0);
 }
 
+// The pedal for a share of capacity gives that share back; none needs the
+// pedal fully down, all of it fully up.
+TEST(Clutch, PedalForAShareGivesThatShare) {
+    const Params params = reference_params();
+    for (const double share : {0.05, 0.15, 0.3, 0.6, 0.8, 0.99}) {
+        const double pedal = pedal_for(params, share);
+        EXPECT_NEAR(capacity_nm(params, pedal), share * params.static_torque_capacity_nm, 1e-9)
+            << "share " << share;
+    }
+    EXPECT_EQ(pedal_for(params, 0.0), 1.0);
+    EXPECT_EQ(capacity_nm(params, pedal_for(params, -1.0)), 0.0);
+    EXPECT_EQ(pedal_for(params, 1.0), 0.0);
+    EXPECT_EQ(pedal_for(params, 2.0), 0.0);
+    // More share, less pedal.
+    EXPECT_GT(pedal_for(params, 0.2), pedal_for(params, 0.4));
+}
+
 TEST(Clutch, CapacityHelperMatchesStep) {
     const Params params = reference_params();
     State state;
