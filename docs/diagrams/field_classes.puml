@@ -82,6 +82,7 @@ package "tp::field" {
     +pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
     +kPullStream : uint64
     +event_seed(season_seed, number) : uint64
+    +log_hash(span<const LogEntry>) : uint64
   }
   enum "LiveEvent::Turn" as Turn {
     kRivals

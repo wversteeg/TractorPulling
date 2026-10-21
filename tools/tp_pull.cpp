@@ -9,7 +9,7 @@
 //               [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump]
-//   tp_pull event <event.toml> [--seed N]
+//   tp_pull event <event.toml> [--seed N] [--hash]
 //   tp_pull season <season.toml> [--seed N]
 //   tp_pull check <tractor.toml> <class.toml>
 //
@@ -46,7 +46,8 @@
 //
 // event runs one class at an event: a seeded field and running order, test
 // pulls and the sled operator's changes, test pullers keeping or re-pulling,
-// qualifying and pull-offs. It prints every pull and the standings.
+// qualifying and pull-offs. It prints every pull and the standings, and with
+// --hash a hash over the exact bits of every pull (field::log_hash).
 //
 // season plays a season: the same field at every event, each on its own
 // track, with points per place. It prints each event's top four and the
@@ -572,7 +573,7 @@ void report_standings(tp::event::Event& event) {
     }
 }
 
-int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
+int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed, bool print_hash) {
     const auto field = tp::field::generate(definition.reference, definition.variation,
                                            definition.class_rules, definition.pullers, seed);
     // Separate draws for the field, the running order and the day.
@@ -615,6 +616,11 @@ int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
     tp::event::Event event = played->event;
     report_standings(event);
     std::cout.unsetf(std::ios::fixed);
+    if (print_hash) {
+        std::cout << "event hash " << std::hex << std::setw(kHashHexDigits) << std::setfill('0')
+                  << tp::field::log_hash(played->entries()) << std::dec << std::setfill(' ')
+                  << '\n';
+    }
     return EXIT_SUCCESS;
 }
 
@@ -856,7 +862,7 @@ int usage() {
                  "                   [--hash] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump]\n"
-                 "       tp_pull event <event.toml> [--seed N]\n"
+                 "       tp_pull event <event.toml> [--seed N] [--hash]\n"
                  "       tp_pull season <season.toml> [--seed N]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
@@ -965,7 +971,7 @@ int event_command(const Options& options) {
     if (!definition) {
         return EXIT_FAILURE;
     }
-    return run_event(*definition, options.seed.value_or(definition->seed));
+    return run_event(*definition, options.seed.value_or(definition->seed), options.pull.print_hash);
 }
 
 int season_command(const Options& options) {

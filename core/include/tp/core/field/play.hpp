@@ -35,6 +35,11 @@ struct LogEntry {
 
 inline constexpr std::size_t kMaxLog = 160;
 
+/// A hash over the exact bits of every entry: two events agree only if
+/// every pull, verdict and decision is bit-identical (as session::hash for
+/// a run), so it compares an event across platforms.
+[[nodiscard]] std::uint64_t log_hash(std::span<const LogEntry> log) noexcept;
+
 /// Where a class's event is pulled.
 struct Venue {
     track::Params track;

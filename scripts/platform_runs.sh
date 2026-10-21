@@ -18,13 +18,18 @@ readonly tp_pull="$1"
 readonly tractor=data/tractors/farm_stock_light.toml
 readonly sled=data/sleds/light_class.toml
 readonly track=data/tracks/ideal_clay_sand.toml
+# The runs' CSVs, which are not compared.
+scratch="$(mktemp -d)"
+readonly scratch
+trap 'rm -rf "${scratch}"' EXIT
 
-# The run's last lines (result and state hash), not its CSV.
+# Each run's result and its state hash: the exact bits of its end state.
 "${tp_pull}" run "${tractor}" "${sled}" "${track}" --gear 6 \
-    --easy data/controls/easy.toml --stick 0.032 --hash -o run_easy.csv
+    --easy data/controls/easy.toml --stick 0.032 --hash -o "${scratch}/run_easy.csv"
 "${tp_pull}" run "${tractor}" "${sled}" "${track}" --gear 6 \
-    --pro data/controls/pro.toml --stick 0.032 --dump --brake-right 0.05 --hash -o run_pro.csv
-rm -f run_easy.csv run_pro.csv
+    --pro data/controls/pro.toml --stick 0.032 --dump --brake-right 0.05 --hash \
+    -o "${scratch}/run_pro.csv"
 # A whole event: the field drawn from the data (text parsed into doubles),
-# every pull and the standings.
-"${tp_pull}" event data/events/club_pull.toml
+# every pull and the standings, and its hash over the exact bits of every
+# pull (the printout rounds to 0.01 m).
+"${tp_pull}" event data/events/club_pull.toml --hash

@@ -1,9 +1,14 @@
 #include "tp/core/field/field.hpp"
 
+#include "tp/core/field/play.hpp"
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <set>
+#include <span>
 
 #include "../rules/reference_class.hpp"
 #include "../sled/reference_sled.hpp"
@@ -175,6 +180,27 @@ TEST(Driver, EveryPullDiffersALittle) {
     EXPECT_GT(grips.size(), 40U);
     const Puller same = on_this_pull(puller, {}, random);
     EXPECT_EQ(same.tractor.rear_tire.traction.limit, puller.tractor.rear_tire.traction.limit);
+}
+
+// The event's hash is the exact bits of every entry: a pull one ulp
+// further, another decision or one entry fewer is another hash.
+TEST(LogHash, IsTheExactBitsOfEveryEntry) {
+    std::array<LogEntry, 2> log{};
+    log[0].pull = {.puller = 4, .kind = event::PullKind::kTest, .pull_off_round = 0};
+    log[0].reached_m = 92.5;
+    log[0].full_pull_m = 100.0;
+    log[1].deciding = 4;
+    log[1].keep = true;
+    const std::uint64_t base = log_hash(log);
+    EXPECT_EQ(base, log_hash(log));
+
+    std::array<LogEntry, 2> further = log;
+    further[0].reached_m = std::nextafter(92.5, 100.0);
+    EXPECT_NE(log_hash(further), base);
+    std::array<LogEntry, 2> repull = log;
+    repull[1].keep = false;
+    EXPECT_NE(log_hash(repull), base);
+    EXPECT_NE(log_hash(std::span{log}.first(1)), base);
 }
 
 }  // namespace

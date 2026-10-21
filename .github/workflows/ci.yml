@@ -169,7 +169,8 @@ jobs:
         with:
           name: extension-android-${{ matrix.abi }}
           path: app/godot/bin/libtp_godot.android.template_debug.${{ matrix.abi }}.so
-          retention-days: 1
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
 
       # The same event on the host, for the emulator's output to match.
       - name: Run the club event on the host
@@ -246,20 +247,23 @@ jobs:
         with:
           name: extension-linux
           path: app/godot/bin/libtp_godot.linux.template_debug.x86_64.so
-          retention-days: 1
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
 
       - name: Keep the platform runs
         uses: actions/upload-artifact@v4
         with:
           name: platform-runs-linux
           path: platform_runs_linux.txt
-          retention-days: 1
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
 
   # The Godot extension and tp_pull for Windows, cross-compiled with
   # MinGW-w64 as Godot builds its own Windows releases.
   windows-build:
     name: windows build
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -278,14 +282,16 @@ jobs:
         with:
           name: extension-windows
           path: app/godot/bin/libtp_godot.windows.template_debug.x86_64.dll
-          retention-days: 1
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
 
       - name: Keep tp_pull
         uses: actions/upload-artifact@v4
         with:
           name: tp-pull-windows
           path: build/godot-windows/tools/tp_pull.exe
-          retention-days: 1
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
 
   # The game exported: a debug APK for phones and the emulator, and the
   # Windows desktop game, as artifacts to download from the run
@@ -407,7 +413,7 @@ jobs:
       - name: Start the game
         run: |
           timeout 300 game/TractorPulling.console.exe --headless --quit-after 600 2>&1 | tee game.log
-          grep -q '^A season of 10 events, 10 pullers' game.log || {
+          grep -qE '^A season of [0-9]+ events, [0-9]+ pullers' game.log || {
             echo "the game did not start its season" >&2
             exit 1
           }

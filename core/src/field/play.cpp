@@ -1,5 +1,6 @@
 #include "tp/core/field/play.hpp"
 
+#include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/math/random.hpp"
 
 namespace tp::field {
@@ -9,6 +10,31 @@ run::Rules pull_rules(const event::Rules& rules, const Venue& venue, double full
             .max_duration_s = venue.max_duration_s,
             .lane_width_m = venue.lane_width_m,
             .full_pull_line_m = full_pull_m};
+}
+
+std::uint64_t log_hash(std::span<const LogEntry> log) noexcept {
+    // Integers as their 64-bit two's complement, so -1 hashes the same
+    // everywhere.
+    const auto add_int = [](hash::Fnv1a& hash, std::int64_t value) {
+        hash.add(static_cast<std::uint64_t>(value));
+    };
+    hash::Fnv1a hash;
+    for (const LogEntry& entry : log) {
+        add_int(hash, entry.pull.puller);
+        add_int(hash, static_cast<std::int64_t>(entry.pull.kind));
+        add_int(hash, entry.pull.pull_off_round);
+        hash.add(entry.reached_m);
+        hash.add(entry.disqualified);
+        add_int(hash, static_cast<std::int64_t>(entry.outcome.change));
+        add_int(hash, entry.outcome.steps);
+        add_int(hash, entry.gear);
+        hash.add(entry.full_pull_m);
+        add_int(hash, entry.knives);
+        hash.add(entry.pushdown_start_m);
+        add_int(hash, entry.deciding);
+        hash.add(entry.keep);
+    }
+    return hash.value();
 }
 
 std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& venue,

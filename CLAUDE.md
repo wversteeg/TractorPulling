@@ -164,7 +164,8 @@ cmake --preset release && cmake --build --preset release
 
 # A class at an event: a seeded field, test pulls and the sled operator,
 # keep-or-re-pull, qualifying and pull-offs; prints every pull and the standings
-./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
+# (with --hash, a hash over the exact bits of every pull)
+./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N] [--hash]
 
 # A season: the same field at every event, each on its own track; prints each
 # event's top four and the championship
