@@ -3,9 +3,9 @@
 # blended snapshot. The game rules all live in the run; this only shows it
 # and hands it the controls.
 #
-# Development controls (the touch controls come next): W throttle, A and D
-# steer, 0 to 8 select the gear, C switches the camera, R starts again.
-# With `autoplay` the driver is scripted instead: in gear, full throttle.
+# The player drives with the touch controls (DriveControls; the keyboard
+# and a gamepad for development). With `autoplay` the driver is scripted
+# instead: in gear, full throttle.
 extends Node3D
 
 @export var tractor_path := "res://data/tractors/farm_stock_light.toml"
@@ -15,12 +15,13 @@ extends Node3D
 @export var autoplay := false
 @export var autoplay_gear := 6
 
-# The development keys' steering: half the travel, the wheels at half lock.
-const KEY_STEERING := 0.3
 const SELECT_GEAR_S := 0.5
 const NS_PER_S := 1_000_000_000.0
 const RPM_PER_RAD_S := 60.0 / TAU
 const KMH_PER_M_S := 3.6
+const HUD_MARGIN := 24.0
+const HUD_FONT_SIZE := 30
+const HUD_OUTLINE := 6
 
 var run := TractorPullRun.new()
 var track_view := TrackView.new()
@@ -28,8 +29,8 @@ var tractor_view := TractorView.new()
 var sled_view := SledView.new()
 var chain_view := ChainView.new()
 var cameras := CameraRig.new()
+var controls := DriveControls.new()
 var _hud := Label.new()
-var _gear := 0
 var _time_s := 0.0
 
 
@@ -41,9 +42,15 @@ func _ready() -> void:
 	add_child(chain_view)
 	add_child(cameras)
 	var hud_layer := CanvasLayer.new()
-	_hud.position = Vector2(16, 16)
+	_hud.position = Vector2(HUD_MARGIN, HUD_MARGIN)
+	_hud.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
+	_hud.add_theme_color_override("font_outline_color", Color.BLACK)
+	_hud.add_theme_constant_override("outline_size", HUD_OUTLINE)
 	hud_layer.add_child(_hud)
+	hud_layer.add_child(controls)
 	add_child(hud_layer)
+	controls.camera_requested.connect(cameras.next)
+	controls.restart_requested.connect(start)
 	start()
 
 
@@ -61,7 +68,8 @@ func start() -> void:
 	if tractor_view.get_child_count() == 0:
 		tractor_view.build(dimensions)
 		sled_view.build(dimensions)
-	_gear = 0
+	controls.gear_count = dimensions["gear_count"]
+	controls.reset()
 	_time_s = 0.0
 	_show(0.0)
 	cameras.follow(tractor_view.global_position, 0.0, false)
@@ -76,30 +84,13 @@ func _process(delta: float) -> void:
 	cameras.follow(tractor_view.global_position, delta)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	var key := event as InputEventKey
-	if key == null or not key.pressed or key.echo:
-		return
-	if key.keycode == KEY_C:
-		cameras.next()
-	elif key.keycode == KEY_R:
-		start()
-	elif key.keycode >= KEY_0 and key.keycode <= KEY_8:
-		_gear = key.keycode - KEY_0
-
-
 func _read_controls() -> void:
 	if autoplay:
 		var go := _time_s >= SELECT_GEAR_S
 		run.set_controls(1.0 if go else 0.0, 1.0, autoplay_gear if go else 0, 0.0, 0.0, 0.0)
 		return
-	var throttle := 1.0 if Input.is_physical_key_pressed(KEY_W) else 0.0
-	var steering := 0.0
-	if Input.is_physical_key_pressed(KEY_A):
-		steering += KEY_STEERING
-	if Input.is_physical_key_pressed(KEY_D):
-		steering -= KEY_STEERING
-	run.set_controls(throttle, 1.0, _gear, steering, 0.0, 0.0)
+	# The easy layout: the clutch and the brakes are the assist's.
+	run.set_controls(controls.throttle(), 1.0, controls.gear, controls.steering(), 0.0, 0.0)
 
 
 func _show(delta: float) -> void:
@@ -119,7 +110,7 @@ func _hud_text(s: Dictionary) -> String:
 			float(s["tractor_speed_m_s"]) * KMH_PER_M_S, s["sled_x_m"]]
 	if run.is_finished():
 		var result := run.get_result()
-		text += "\n%s at %.2f m (R to pull again)" % [result["ending"], result["distance_m"]]
+		text += "\n%s at %.2f m" % [result["ending"], result["distance_m"]]
 	return text
 
 

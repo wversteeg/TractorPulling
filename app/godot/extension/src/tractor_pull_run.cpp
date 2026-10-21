@@ -186,6 +186,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["front_tire_width_m"] = tractor.front_tire.section_width_m;
     out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
     out["hitch_height_m"] = chassis.hitch_height_m;
+    out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;
     out["hook_ahead_of_wheels_m"] = sled.hook_ahead_of_wheels_m;

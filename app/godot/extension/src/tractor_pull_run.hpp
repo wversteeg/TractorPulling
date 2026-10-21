@@ -47,11 +47,12 @@ public:
     /// The run's fixed sizes, to build the scene from (SI): the tractor's
     /// (wheelbase_m, rear_axle_height_m, rear_track_m, front_track_m,
     /// rear_tire_radius_m, rear_tire_width_m, front_tire_radius_m,
-    /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m), the
-    /// sled's (sled_wheel_radius_m, hook_ahead_of_wheels_m, hook_height_m,
-    /// pan_ahead_of_wheels_m, box_start_ahead_of_wheels_m,
-    /// box_end_ahead_of_wheels_m, chain_length_m) and the track's
-    /// (track_length_m, lane_width_m, full_pull_line_m). {} before setup().
+    /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m, and
+    /// gear_count, its forward gears), the sled's (sled_wheel_radius_m,
+    /// hook_ahead_of_wheels_m, hook_height_m, pan_ahead_of_wheels_m,
+    /// box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m,
+    /// chain_length_m) and the track's (track_length_m, lane_width_m,
+    /// full_pull_line_m). {} before setup().
     [[nodiscard]] godot::Dictionary get_dimensions() const;
 
     [[nodiscard]] bool is_finished() const;

@@ -4,7 +4,8 @@
 # extension, and checks they end in the same state hashes: the
 # binding passes the controls and the time to tp::session unchanged. The
 # GDScript also checks the binding's edges (run_test.gd), and the pull
-# scene draws the run where it is (scene_test.gd).
+# scene draws the run where it is (scene_test.gd) and takes the touch
+# controls (touch_test.gd).
 #
 #   scripts/godot_test.sh <godot binary> [build directory, default build/godot]
 #
@@ -28,7 +29,7 @@ cd "${root}"
 # as user arguments. The timings (neutral until 0.5 s, the launch at 3 s)
 # are tp_pull's kPullSelectGear_s and kPullRevUpEnd_s.
 readonly gear=6
-readonly stick=0.002        # the easy run's steering control
+readonly stick=0.032        # the easy run's steering control, just past its dead zone
 # The pro run's right brake, with a dumped clutch. It pulls the tractor
 # onto the chalk line at 25.9 s on purpose, so the run also ends in a
 # disqualification: "pro result: out_of_bounds 0.0 m" is the expected end.
@@ -92,6 +93,8 @@ play() {
 
 # The pull scene: drawn where the run has it, at a fixed 60 fps.
 play --fixed-fps 60 --script res://tests/scene_test.gd
+# The touch controls: simulated fingers drive the scene.
+play --fixed-fps 60 --script res://tests/touch_test.gd
 
 play --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
     --brake-right="${brake_right}"
