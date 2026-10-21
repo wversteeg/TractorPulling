@@ -32,10 +32,13 @@ package "tp::controls" {
   }
   class EasyParams <<struct>> {
     +steer_share : double
+    +steer_dead_zone : double
+    +steer_rate_per_s : double
     +clutch_assist : ClutchAssist
   }
   class AssistState <<struct>> {
     +engagement : double, share of capacity
+    +steering : double, -1 right .. 1 left
   }
   enum ParamError
   class "controls functions" as ControlsFns <<free functions>> {
@@ -56,7 +59,9 @@ ControlsFns ..> PedalFor : engagement to pedal
 ControlsFns ..> Engine : guard speed
 note bottom of ControlsFns
   pro: steering x max angle; pedals pass through (held to 0..1)
-  easy: |steering| <= steer_share turns the wheels to full lock;
+  easy: the control past steer_dead_zone, stretched to -1..1, followed
+  at up to steer_rate_per_s (AssistState::steering);
+  |steering| <= steer_share turns the wheels to full lock;
   beyond it, full lock and the inner rear brake from 0 to full pedal
   guard = max(min(guard_share x rated, full-fuel speed at this throttle), stall + band)
   assist: in at 1/engage_time while the engine is at or above the guard speed;

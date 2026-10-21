@@ -21,6 +21,10 @@ FieldError describe(controls::ParamError error) {
             return {"easy", "all values must be finite"};
         case ParamError::kSteerShareOutOfRange:
             return {"easy.steer_share", "must be in (0, 1]"};
+        case ParamError::kSteerDeadZoneOutOfRange:
+            return {"easy.steer_dead_zone", "must be in [0, steer_share)"};
+        case ParamError::kSteerRateNotPositive:
+            return {"easy.steer_rate_per_s", "must be > 0"};
         case ParamError::kAssistTimeNotPositive:
             return {"easy.clutch_assist", "engage_time_s and release_time_s must be > 0"};
         case ParamError::kGuardOutOfRange:
@@ -37,6 +41,8 @@ Result<controls::EasyParams> read_easy(const toml::table& root, std::string_view
     detail::Reader reader{root, source};
     const controls::EasyParams params{
         .steer_share = reader.number("easy.steer_share"),
+        .steer_dead_zone = reader.number("easy.steer_dead_zone"),
+        .steer_rate_per_s = reader.number("easy.steer_rate_per_s"),
         .clutch_assist = {
             .engage_time_s = reader.number("easy.clutch_assist.engage_time_s"),
             .release_time_s = reader.number("easy.clutch_assist.release_time_s"),

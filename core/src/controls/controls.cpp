@@ -58,11 +58,26 @@ double engagement_after(const ClutchAssist& assist, double engagement, bool clut
     return std::max(engagement - urgency * out_rate_per_s * dt_s, 0.0);
 }
 
+// The steering after this step: the control past the dead zone, stretched
+// to the whole range, and followed at the steering rate.
+double steering_after(const EasyParams& params, double steering, double control,
+                      double dt_s) noexcept {
+    const double travel = std::abs(control);
+    const double past_dead_zone =
+        travel > params.steer_dead_zone
+            ? std::copysign((travel - params.steer_dead_zone) / (1.0 - params.steer_dead_zone),
+                            control)
+            : 0.0;
+    const double max_change = params.steer_rate_per_s * dt_s;
+    return std::clamp(past_dead_zone, steering - max_change, steering + max_change);
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const EasyParams& params) noexcept {
     const ClutchAssist& assist = params.clutch_assist;
-    const std::array values = {params.steer_share,      assist.engage_time_s,
+    const std::array values = {params.steer_share,      params.steer_dead_zone,
+                               params.steer_rate_per_s, assist.engage_time_s,
                                assist.release_time_s,   assist.guard_speed_share,
                                assist.guard_band_share, assist.min_throttle};
     if (!std::ranges::all_of(values, [](double v) { return std::isfinite(v); })) {
@@ -70,6 +85,12 @@ std::optional<ParamError> validate(const EasyParams& params) noexcept {
     }
     if (params.steer_share <= 0.0 || params.steer_share > 1.0) {
         return ParamError::kSteerShareOutOfRange;
+    }
+    if (params.steer_dead_zone < 0.0 || params.steer_dead_zone >= params.steer_share) {
+        return ParamError::kSteerDeadZoneOutOfRange;
+    }
+    if (params.steer_rate_per_s <= 0.0) {
+        return ParamError::kSteerRateNotPositive;
     }
     if (assist.engage_time_s <= 0.0 || assist.release_time_s <= 0.0) {
         return ParamError::kAssistTimeNotPositive;
@@ -110,7 +131,8 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
 
     // The first stretch of travel turns the wheels; the rest brakes the
     // rear wheels on the inside of the turn.
-    const double steering = signed_unit(input.steering);
+    assist.steering = steering_after(params, assist.steering, signed_unit(input.steering), dt_s);
+    const double steering = assist.steering;
     const double travel = std::abs(steering);
     const double wheels = std::min(travel / params.steer_share, 1.0);
     const double brake = travel > params.steer_share
