@@ -184,14 +184,20 @@ no game rules of its own.
 
 ### The pull scene (`app/godot/scenes`, `app/godot/scripts`)
 
-GDScript that draws a run: the root script owns the `TractorPullRun`,
-builds a view of the track, tractor, sled and chain from its dimensions,
-and each frame hands it the controls, advances it by the frame's time and
-places the views from the blended snapshot; the cameras follow the tractor.
+GDScript that plays a season's events, one pull at a time: the start
+screen, the pull and the result screen. The root script owns the
+`TractorPullRun` and starts each pull with `setup_event()`; it builds a
+view of the track, tractor, sled and chain from the run's dimensions, and
+each frame hands it the controls, advances it by the frame's time and
+places the views from the blended snapshot; the cameras follow the tractor
+and the `Hud` shows the engine and the distance. Which pull comes next (a
+pull-off after a full pull) is the run's answer (`get_next_round()`, from
+`event::solo_next_round`).
 `DriveControls` is the easy layout on a touch screen: a steering slider, a
 hand throttle and gear buttons, each following its own finger so both
-thumbs drive at once; the keyboard and a gamepad work it in development. `TrackSpace` turns
-the track's coordinates into Godot's. No physics or rules live here.
+thumbs drive at once; the keyboard and a gamepad work it in development.
+`TrackSpace` turns the track's coordinates into Godot's. No physics or rules
+live here.
 
 ![Pull scene classes](diagrams/svg/godot_scene_classes.svg)
 
@@ -279,3 +285,11 @@ run's dimensions; then every rendered frame the scene sets the controls,
 advances the run by the frame's time and draws the blended snapshot.
 
 ![Godot frame](diagrams/svg/godot_frame_sequence.svg)
+
+### The game's flow
+
+An event of the season, from the start screen: the qualifying pull, the
+result, the pull-off the rules give after a full pull, and on to the next
+event and its track.
+
+![Game flow](diagrams/svg/godot_run_flow_sequence.svg)

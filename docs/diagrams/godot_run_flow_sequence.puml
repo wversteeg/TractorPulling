@@ -1,0 +1,36 @@
+@startuml godot_run_flow_sequence
+title The game's flow: an event of the season, a qualifying pull and the pull-off
+autonumber
+actor Player
+participant "pull.gd" as Pull
+participant "StartScreen /\nResultScreen" as Screens
+participant "TractorPullRun" as Run
+participant "data::load_season /\nrun_setup" as Data
+participant "event::solo_next_round" as Solo
+
+Pull -> Run : setup_event(season, event_index, controls, round 0)
+Run -> Data : load the season: class tractor and sled,\nthe event's track; run_setup(..., pull_offs = round)
+Run --> Pull : "" or the error
+Pull -> Screens : start screen: get_event() (name, n of count), layout
+Player -> Screens : easy or pro (set up again), Next
+loop every frame while pulling
+  Pull -> Run : set_controls(...), advance(frame time)
+  Pull -> Pull : draw the snapshot, HUD
+end
+Run --> Pull : is_finished()
+Pull -> Pull : the stopped sled in view for 2 s
+Pull -> Run : get_result(), get_next_round()
+Run -> Solo : (rules, round, full pull?)
+Solo --> Run : round + 1 after a full pull, up to\nsolo_pull_offs; else none (-1)
+Pull -> Screens : result screen: distance, ending, top speed
+alt a pull-off to pull
+  Player -> Screens : Pull-off
+  Pull -> Run : setup_event(season, event_index, controls, round 1)\n(the sled one step heavier)
+  note right of Pull : and pull again, as above
+else done at this event
+  Player -> Screens : Next
+  Pull -> Pull : event_index + 1 (round the season), round 0
+  Pull -> Run : setup_event(season, next event, controls, 0)
+  Pull -> Screens : start screen for the next event and its track
+end
+@enduml

@@ -200,9 +200,16 @@ for the big features; they are repeated at the end for completeness.
 - **The chain as a bar.** `ChainView` draws a straight bar from hitch to
   hook, darker as the tension rises, even when the chain is slack and
   should sag.
-- **The layout as a button.** The "easy"/"pro" button switches the layout
-  and starts the pull again; a menu to pick it before a pull comes with the
-  run flow (milestone 5, step 4). The gamepad has no brakes yet.
+- **The game's flow, pulling alone.** The game plays the season's events in
+  turn, alone: one qualifying pull and the pull-offs its rules give
+  (`solo_pull_offs`), with no field of scripted rivals, standings, points,
+  test pulls or sled operator in the game (the core has them: `tp::event`,
+  `tp::season`; they come with the career, milestone 6). The pull-off sled
+  is one step heavier, where the event's operator judges the step. "again"
+  re-pulls the same pull as often as the player likes, which a strict mode
+  would not allow; the season starts from the first event at every launch,
+  with nothing saved; and the tractor is the class's reference, with no
+  choice. The gamepad has no brakes yet.
 - **The pedals' feel.** The clutch slider moves the pedal, not the clutch's
   engagement; its bite point sits where the clutch's own curve puts it
   (`clutch.toml`), with no mark on screen. The brakes act at once.

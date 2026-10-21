@@ -16,17 +16,28 @@ package "tp::godot_binding" {
   class TractorPullRun {
     -session_ : optional<session::Session>
     -setup_ : optional<session::Setup>
+    -event_ : optional<EventPull>
     -controls_ : session::Controls
     -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, controls_path) : String
+    +setup_event(season_path, event_index, controls_path, round) : String
+    +get_event() : Dictionary
+    +get_next_round() : int
     +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
     +advance(elapsed_ns) : int
     +get_dropped_ns() : int
     +get_snapshot() : Dictionary
     +get_dimensions() : Dictionary
+    +get_layout() : String
     +is_finished() : bool
     +get_result() : Dictionary
     +get_state_hash() : String
+  }
+  class EventPull <<struct>> {
+    +name : string
+    +index, count : int64
+    +round : int
+    +rules : event::Rules
   }
   class "godot_files" as Files <<free functions>> {
     +read_godot_file(path) : optional<string>
@@ -38,7 +49,7 @@ package "tp::godot_binding" {
 
 package "core and data_io (see their class diagrams)" {
   class "session::Session / Setup /\nControls / Snapshot / blend()" as Session
-  class "data::load_tractor / load_sled /\nload_track / load_control_layout\n(path, ReadFile)" as Loaders
+  class "data::load_tractor / load_sled /\nload_track / load_control_layout /\nload_season (path, ReadFile)" as Loaders
   class "data::run_setup(tractor, class_sled,\ntrack, pull_offs) : session::Setup" as RunSetup
 }
 
@@ -51,6 +62,9 @@ Register ..> TractorPullRun : registers
 TractorPullRun *-- Session
 TractorPullRun ..> Loaders : setup
 TractorPullRun ..> RunSetup : the run's Setup
+TractorPullRun *-- EventPull : setup_event
+class "event::solo_next_round()" as Solo
+TractorPullRun ..> Solo : get_next_round
 TractorPullRun ..> Files : the ReadFile
 Files ..> FileAccess : res://, user://
 Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot,\nget_dimensions at setup

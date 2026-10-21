@@ -1,5 +1,5 @@
 @startuml godot_scene_classes
-title The pull scene (app/godot/scenes/pull.tscn): a run drawn in graybox
+title The pull scene (app/godot/scenes/pull.tscn): a season's events, one pull at a time, in graybox
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -12,10 +12,16 @@ package "Godot 4.7" {
 
 package "GDScript (app/godot/scripts)" {
   class "pull.gd" as Pull {
+    +season_path : String
     +autoplay : bool
     +pro : bool
     +run : TractorPullRun
-    +start()
+    +screen : Screen {START, PULLING, RESULT}
+    +event_index, round : int
+    +show_start()
+    -_prepare() : String
+    -_pull_again()
+    -_set_screen(screen)
     -_process(delta)
     -_read_controls()
     -_show(delta)
@@ -47,9 +53,32 @@ package "GDScript (app/godot/scripts)" {
     +set_layout(pro)
     +set_gear(gear)
     +reset()
+    +reset_fingers()
     ..signals..
     camera_requested, restart_requested,
-    layout_requested
+    menu_requested
+  }
+  class Hud {
+    +build(dimensions)
+    +show_snapshot(snapshot, event, pro)
+  }
+  class MenuPanel {
+    +add_line(font_size) : Label
+    +add_button_row() : HBoxContainer
+    +add_button(row, text) : TouchButton
+    +release_buttons()
+  }
+  class StartScreen {
+    +easy_button, pro_button, next_button : TouchButton
+    +show_event(event, pro, error)
+    ..signals..
+    layout_picked(pro), start_requested
+  }
+  class ResultScreen {
+    +pull_off_button, next_button : TouchButton
+    +show_result(event, result, next_round)
+    ..signals..
+    pull_off_requested, next_requested
   }
   class TouchSlider {
     +vertical, springs_back, relative : bool
@@ -61,6 +90,7 @@ package "GDScript (app/godot/scripts)" {
   class TouchButton {
     +text : String
     +fires_on_release : bool
+    +selected : bool
     +release()
     ..signals..
     tapped
@@ -84,6 +114,7 @@ package "tests (scripts/godot_test.sh)" {
   class "scene_test.gd" as SceneTest
   class "screenshots.gd" as Shots
   class "touch_test.gd" as TouchTest
+  class "flow_test.gd" as FlowTest
 }
 
 class "TractorPullRun\n(see godot_classes)" as Run
@@ -102,7 +133,15 @@ Pull *-- ChainView
 Pull *-- CameraRig
 Pull *-- DriveControls : the easy or pro layout's controls
 DriveControls *-- "5" TouchSlider : steering, hand throttle;\npro: clutch, two brakes
-DriveControls *-- "6" TouchButton : gear +/-, N, camera,\nagain, layout
+DriveControls *-- "6" TouchButton : gear +/-, N, camera,\nagain, menu
+Pull *-- Hud
+Pull *-- StartScreen
+Pull *-- ResultScreen
+MenuPanel <|-- StartScreen
+MenuPanel <|-- ResultScreen
+Control <|-- MenuPanel
+Control <|-- Hud
+MenuPanel ..> TouchButton
 Control <|-- DriveControls
 Control <|-- TouchSlider
 Control <|-- TouchButton
@@ -119,8 +158,11 @@ SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot
 Shots ..> Pull : autoplay, a PNG per camera
 SceneTree <|-- TouchTest
 TouchTest ..> DriveControls : simulated fingers\n(push_input)
+SceneTree <|-- FlowTest
+FlowTest ..> Pull : a practice season (tests/data):\nstart, qualifying, pull-off, next event
 note bottom of Pull
   draws the blended snapshot and hands the run the controls;
+  which pull comes next is the run's (get_next_round);
   no physics or rules: TrackSpace only turns track
   coordinates (x down the track, y left, z up) into Godot's
 end note
