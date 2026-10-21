@@ -110,7 +110,9 @@ wheel angle, and leaves the lane 10 s after the launch.
 The pro layout's steering has the same dead zone and rate when the game
 plays it, from `data/controls/pro.toml`; `--pro data/controls/pro.toml`
 gives a scripted pro run the same, where without it the steering is taken
-as it is.
+as it is. With `--pro`, `--steer-deg` is the angle the steering control asks
+for, before the dead zone (1.2° on the reference tractor, so a smaller angle
+steers straight, and the tool warns); `--stick S` holds the control itself.
 
 ### Track conditions
 

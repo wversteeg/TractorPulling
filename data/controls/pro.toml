@@ -8,5 +8,6 @@
 # the middle 3 % of the travel either side reads as centred.
 steer_dead_zone = 0.03
 # The steering follows the control at most this share of its travel per
-# second, as a driver turns the wheel: lock to lock in 1.3 s.
+# second, as a driver turns the wheel: lock to lock in 1.3 s. Without it
+# the steering follows the control at once.
 steer_rate_per_s = 1.5

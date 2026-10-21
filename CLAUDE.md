@@ -153,6 +153,7 @@ cmake --preset release && cmake --build --preset release
 # The same run with the easy control layout: the clutch assist works the
 # clutch; --stick holds the steering control (-1 right to 1 left). Or with
 # --pro data/controls/pro.toml: the pro layout's steering dead zone and rate
+# (--stick then holds the pro steering control)
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
     --easy data/controls/easy.toml [--stick 0.05] -o run.csv

@@ -4,8 +4,9 @@
 # 60 fps and a hitch. Then two scripted runs whose state hashes it prints,
 # driven as tp_pull drives them, a step at a time: the easy layout (`tp_pull
 # run ... --easy data/controls/easy.toml --stick S --hash`) and the pro one
-# with a dumped clutch and a brake (`--pro data/controls/pro.toml --dump
-# --brake-right B --hash`). The
+# with a dumped clutch and a brake (`--pro data/controls/pro.toml --stick S
+# --dump --brake-right B --hash`): both steer at S, past the dead zone, so
+# the hashes differ if a side drops the layout's steering. The
 # script passes the gear, S and B as user arguments, so the two must print
 # the same hashes. Exits non-zero if any check fails.
 #
@@ -45,7 +46,7 @@ func _init() -> void:
 	else:
 		var gear := int(args["gear"])
 		_play("easy", EASY, gear, float(args["stick"]), 0.0)
-		_play("pro", PRO, gear, 0.0, float(args["brake-right"]))
+		_play("pro", PRO, gear, float(args["stick"]), float(args["brake-right"]))
 	quit(1 if _failures > 0 else 0)
 
 
@@ -123,8 +124,9 @@ func _check_layouts() -> void:
 
 # A scripted run, as tp_pull drives it: in neutral until SELECT_GEAR_S,
 # then full throttle in `gear` with the clutch pressed; from LAUNCH_S the
-# easy layout steers at `stick` and its assist lets the clutch in, while the
-# pro layout dumps the clutch and holds the right brake at `brake_right`.
+# steering control goes to `stick`; the easy layout's assist lets the clutch
+# in, while the pro layout dumps the clutch and holds the right brake at
+# `brake_right`.
 func _play(layout: String, controls: String, gear: int, stick: float,
 		brake_right: float) -> void:
 	var run := TractorPullRun.new()

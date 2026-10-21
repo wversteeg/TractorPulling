@@ -118,7 +118,17 @@ TEST(ControlsLoader, RejectsProNonsenseNamingTheField) {
     EXPECT_NE(error("[pro]\nsteer_dead_zone = 0.0\nsteer_rate_per_s = 0.0\n")
                   .find("pro.steer_rate_per_s"),
               std::string::npos);
-    EXPECT_NE(error("[pro]\nsteer_dead_zone = 0.0\n").find("steer_rate_per_s"), std::string::npos);
+    EXPECT_NE(error("[pro]\nsteer_dead_zone = 0.0\nsteer_rate_per_s = \"fast\"\n")
+                  .find("steer_rate_per_s"),
+              std::string::npos);
+}
+
+// Without a rate the steering follows the control at once.
+TEST(ControlsLoader, ProRateIsOptional) {
+    const auto result = parse_pro_controls("[pro]\nsteer_dead_zone = 0.02\n", "pro.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().steer_dead_zone, 0.02);
+    EXPECT_FALSE(result.value().steer_rate_per_s.has_value());
 }
 
 // A game's controls file names its layout by its table.

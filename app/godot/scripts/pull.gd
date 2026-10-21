@@ -123,7 +123,7 @@ func _hud_text(s: Dictionary) -> String:
 	var text := "gear %d   %4.0f rpm   %4.1f km/h   %6.2f m" % [
 			s["gear"], float(s["engine_omega_rad_s"]) * RPM_PER_RAD_S,
 			float(s["tractor_speed_m_s"]) * KMH_PER_M_S, s["sled_x_m"]]
-	if pro:
+	if controls.pro:
 		# The clutch as the run has it: 0 pressed, 100 % in.
 		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)
 	if run.is_finished():
