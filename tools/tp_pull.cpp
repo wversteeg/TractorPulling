@@ -2,13 +2,14 @@
 //
 //   tp_pull engine-dyno <engine.toml> [-o <out.csv>]
 //   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
-//                [--steer-deg A] [--brake-left P] [--brake-right P] [-o <out.csv>]
+//                [--steer-deg A] [--brake-left P] [--brake-right P]
+//                [--ballast B] [--pressure BAR] [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
-//               [-o <out.csv>]
+//               [--ballast B] [--pressure BAR] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
-//                          [--gear N] [--dump]
+//                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
 //   tp_pull event <event.toml> [--seed N] [--hash]
 //   tp_pull season <season.toml> [--seed N]
 //   tp_pull check <tractor.toml> <class.toml>
@@ -36,6 +37,9 @@
 //
 // --hash prints each run's state hash at its end, to compare with another
 // front end playing the same inputs (the Godot extension's headless test).
+//
+// --ballast and --pressure tune the tractor first (vehicle::Tuning): its
+// ballast moved to B (0 rearmost, 1 foremost) and its rear tires at BAR.
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility.
@@ -74,6 +78,7 @@
 #include "tp/core/soil/soil.hpp"
 #include "tp/core/time/fixed_step_clock.hpp"
 #include "tp/core/units/conversions.hpp"
+#include "tp/core/vehicle/tuning.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/engine/engine_loader.hpp"
@@ -207,7 +212,40 @@ struct PullOptions {
     /// Print each run's state hash, to compare with another front end
     /// (the Godot extension's test).
     bool print_hash = false;
+    /// The tractor's tuning (vehicle::Tuning) where given: the ballast's
+    /// position (0 rearmost, 1 foremost) and the rear tires' pressure [bar].
+    std::optional<double> ballast_position;
+    std::optional<double> rear_pressure_bar;
 };
+
+// The tractor as --ballast and --pressure tune it; nothing (with a message)
+// for a setting outside its range or one the tractor does not have.
+std::optional<tp::vehicle::Params> tune(const tp::vehicle::Params& tractor,
+                                        const PullOptions& options) {
+    tp::vehicle::Tuning tuning = tp::vehicle::as_built(tractor);
+    if (options.ballast_position) {
+        if (tractor.chassis.ballast.mass_kg <= 0.0) {
+            std::cerr << "--ballast: this tractor has no ballast to move\n";
+            return std::nullopt;
+        }
+        tuning.ballast_position = *options.ballast_position;
+    }
+    if (options.rear_pressure_bar) {
+        const tp::tire::Pressure& pressure = tractor.rear_tire.pressure;
+        if (pressure.reference_bar <= 0.0) {
+            std::cerr << "--pressure: this tractor's rear tires have no pressure to set\n";
+            return std::nullopt;
+        }
+        if (*options.rear_pressure_bar < pressure.min_bar ||
+            *options.rear_pressure_bar > pressure.max_bar) {
+            std::cerr << "--pressure: must be " << pressure.min_bar << " to " << pressure.max_bar
+                      << " bar for these tires\n";
+            return std::nullopt;
+        }
+        tuning.rear_tire_pressure_bar = *options.rear_pressure_bar;
+    }
+    return tp::vehicle::tuned(tractor, tuning);
+}
 
 tp::vehicle::Input pull_input(double t_s, const PullOptions& options) {
     tp::vehicle::Input input{.throttle = 1.0, .clutch_pedal = 1.0, .gear = options.gear};
@@ -797,8 +835,30 @@ Parsed parse_driving_option(std::string_view arg, std::string_view value, PullOp
     return Parsed::kUnknown;
 }
 
+// A tuning option: `--ballast` (0 to 1) or `--pressure` [bar]; the tire's
+// own range is checked once the tractor is loaded.
+Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOptions& pull) {
+    if (arg == "--ballast") {
+        const auto position = parse_number<double>(value);
+        if (!position || *position < 0.0 || *position > 1.0) {
+            return Parsed::kInvalid;
+        }
+        pull.ballast_position = position;
+        return Parsed::kOk;
+    }
+    if (arg == "--pressure") {
+        const auto bar = parse_number<double>(value);
+        if (!bar || *bar <= 0.0) {
+            return Parsed::kInvalid;
+        }
+        pull.rear_pressure_bar = bar;
+        return Parsed::kOk;
+    }
+    return Parsed::kUnknown;
+}
+
 // An option that takes a value: `-o`, `--seed`, `--easy`, `--pro`, or a
-// driving one.
+// driving or tuning one.
 Parsed parse_valued_option(std::string_view arg, std::string_view value, Options& options) {
     if (arg == "-o") {
         options.output_path = value;
@@ -818,6 +878,10 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
     }
     options.stick_given = options.stick_given || arg == "--stick";
     options.steer_deg_given = options.steer_deg_given || arg == "--steer-deg";
+    if (const Parsed tuning = parse_tuning_option(arg, value, options.pull);
+        tuning != Parsed::kUnknown) {
+        return tuning;
+    }
     return parse_driving_option(arg, value, options.pull);
 }
 
@@ -855,13 +919,14 @@ int usage() {
     std::cerr << "usage: tp_pull engine-dyno <engine.toml> [-o <out.csv>]\n"
                  "       tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]\n"
                  "                    [--steer-deg A] [--brake-left P] [--brake-right P]\n"
-                 "                    [-o <out.csv>]\n"
+                 "                    [--ballast B] [--pressure BAR] [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
-                 "                   [--hash] [-o <out.csv>]\n"
+                 "                   [--hash] [--ballast B] [--pressure BAR] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
-                 "                              [--gear N] [--dump]\n"
+                 "                              [--gear N] [--dump] [--ballast B]\n"
+                 "                              [--pressure BAR]\n"
                  "       tp_pull event <event.toml> [--seed N] [--hash]\n"
                  "       tp_pull season <season.toml> [--seed N]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
@@ -901,7 +966,8 @@ int engine_dyno_command(const Options& options) {
 }
 
 int pull_command(const Options& options) {
-    const auto params = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto loaded = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto params = loaded ? tune(*loaded, options.pull) : std::nullopt;
     if (!params) {
         return EXIT_FAILURE;
     }
@@ -914,7 +980,8 @@ int pull_command(const Options& options) {
 }
 
 int run_command(const Options& options) {
-    const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto loaded = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto tractor = loaded ? tune(*loaded, options.pull) : std::nullopt;
     const auto sled = load_or_report(tp::data::load_sled(options.positional[1]));
     const auto track = load_or_report(tp::data::load_track(options.positional[2]));
     if (!tractor || !sled || !track) {
@@ -958,7 +1025,8 @@ int run_command(const Options& options) {
 }
 
 int compare_tracks_command(const Options& options) {
-    const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto loaded = load_or_report(tp::data::load_tractor(options.positional[0]));
+    const auto tractor = loaded ? tune(*loaded, options.pull) : std::nullopt;
     const auto sled = load_or_report(tp::data::load_sled(options.positional[1]));
     if (!tractor || !sled) {
         return EXIT_FAILURE;

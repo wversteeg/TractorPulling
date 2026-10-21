@@ -20,6 +20,7 @@ inline Params reference_params() {
                       .relaxation_length_m = 0.8},
         .wheel_inertia_kg_m2 = 30.0,
         .min_reference_speed_m_s = 0.5,
+        .pressure = {.reference_bar = 1.0, .min_bar = 0.5, .max_bar = 1.6, .lug_squirm = 0.5},
     };
 }
 

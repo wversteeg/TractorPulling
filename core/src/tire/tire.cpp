@@ -61,6 +61,35 @@ std::optional<ParamError> validate(const Cornering& cornering) noexcept {
     return std::nullopt;
 }
 
+namespace {
+
+// A pressure range around the reference, a squirm under 1, and a tire that
+// keeps some sidewall and a valid limit across the range.
+bool pressure_valid(const Params& params) noexcept {
+    const Pressure& pressure = params.pressure;
+    const std::array scalars = {pressure.reference_bar, pressure.min_bar, pressure.max_bar,
+                                pressure.lug_squirm};
+    if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
+        return false;
+    }
+    if (pressure.reference_bar == 0.0) {
+        return true;
+    }
+    if (pressure.min_bar <= 0.0 || pressure.min_bar > pressure.reference_bar ||
+        pressure.reference_bar > pressure.max_bar || pressure.lug_squirm < 0.0 ||
+        pressure.lug_squirm >= 1.0) {
+        return false;
+    }
+    return std::ranges::all_of(
+        std::array{pressure.min_bar, pressure.max_bar}, [&params](double bar) {
+            const Params set = at_pressure(params, bar);
+            return set.size.deflection_m < set.size.section_height_m && set.traction.limit > 0.0 &&
+                   set.traction.limit <= kMaxTractionLimit;
+        });
+}
+
+}  // namespace
+
 std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto error = validate(params.size)) {
         return error;
@@ -86,7 +115,28 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.min_reference_speed_m_s <= 0.0) {
         return ParamError::kMinReferenceSpeedNotPositive;
     }
+    if (!pressure_valid(params)) {
+        return ParamError::kPressureOutOfRange;
+    }
     return std::nullopt;
+}
+
+Params at_pressure(const Params& params, double pressure_bar) noexcept {
+    const Pressure& pressure = params.pressure;
+    if (pressure.reference_bar <= 0.0) {
+        return params;
+    }
+    const double bar = std::clamp(pressure_bar, pressure.min_bar, pressure.max_bar);
+    if (bar == pressure.reference_bar) {
+        return params;
+    }
+    Params out = params;
+    const double deflection_m = params.size.deflection_m * pressure.reference_bar / bar;
+    out.size.deflection_m = deflection_m;
+    out.traction.limit = params.traction.limit *
+                         (1.0 - pressure.lug_squirm * (deflection_m - params.size.deflection_m) /
+                                    params.size.section_height_m);
+    return out;
 }
 
 double mobility_number(const Size& size, double load_n, const soil::Surface& surface) noexcept {

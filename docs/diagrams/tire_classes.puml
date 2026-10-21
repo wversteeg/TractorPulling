@@ -45,6 +45,15 @@ package "tp::tire" {
     +cornering : Cornering
     +wheel_inertia_kg_m2 : double
     +min_reference_speed_m_s : double
+    +pressure : Pressure
+  }
+  class Pressure <<struct>> {
+    +reference_bar : double
+    +min_bar, max_bar : double
+    +lug_squirm : double
+    --
+    δ = δ_ref p_ref / p; limit loses
+    lug_squirm (δ - δ_ref) / h
   }
   class Traction <<struct>> {
     +force_n : double
@@ -57,6 +66,7 @@ package "tp::tire" {
     +validate(const Size&) : optional<ParamError>
     +validate(const Cornering&) : optional<ParamError>
     +validate(const Params&) : optional<ParamError>
+    +at_pressure(const Params&, pressure_bar) : Params
     +mobility_number(const Size&, load_n, const Surface&) : double
     +slip_ratio(const Params&, wheel_m_s, ground_m_s) : double
     +traction(const Params&, wheel_m_s, ground_m_s, load_n, const Surface&) : Traction
@@ -74,6 +84,7 @@ package "tp::tire" {
   Params *-- Size
   Params *-- TractionCurve
   Params *-- Cornering
+  Params *-- Pressure
   TireFns ..> SideGrip
   TireFns ..> Footing
   TireFns ..> Params

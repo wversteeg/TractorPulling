@@ -25,6 +25,20 @@ struct FieldError {
     std::string_view reason;
 };
 
+// The optional [tractor.chassis.ballast] table: without it, no weights to
+// move.
+chassis::Ballast read_ballast(detail::Reader& reader) {
+    if (!reader.has("tractor.chassis.ballast")) {
+        return {};
+    }
+    return {.mass_kg = reader.number("tractor.chassis.ballast.mass_kg"),
+            .rear_ahead_of_rear_axle_m =
+                reader.number("tractor.chassis.ballast.rear_ahead_of_rear_axle_m"),
+            .front_ahead_of_rear_axle_m =
+                reader.number("tractor.chassis.ballast.front_ahead_of_rear_axle_m"),
+            .position = reader.number("tractor.chassis.ballast.position")};
+}
+
 FieldError describe(chassis::ParamError error) {
     using chassis::ParamError;
     switch (error) {
@@ -70,6 +84,10 @@ FieldError describe(chassis::ParamError error) {
         case ParamError::kWheelieBarRollingResistanceOutOfRange:
             return {"tractor.chassis.wheelie_bar.rolling_resistance_coefficient",
                     "must be in [0, 1)"};
+        case ParamError::kBallastOutOfRange:
+            return {"tractor.chassis.ballast",
+                    "need mass_kg in [0, the tractor's mass), rear before front, position in "
+                    "[0, 1], and the centre of gravity between the axles at either end"};
     }
     return {"tractor.chassis", "invalid"};
 }
@@ -137,6 +155,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
                 .rolling_resistance_coefficient =
                     reader.number("tractor.chassis.wheelie_bar.rolling_resistance_coefficient"),
             },
+        .ballast = read_ballast(reader),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

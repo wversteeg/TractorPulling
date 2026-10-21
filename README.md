@@ -140,6 +140,37 @@ differ by a few metres for the same tractor: the moist heavy clay is the
 shortest, and the sled operator evens out the rest with the push-down and
 the knives on the day.
 
+### Tuning before a pull
+
+The puller sets two things on the tractor before a pull
+(`vehicle::Tuning`; parameters only, the simulation is the same):
+
+- **The ballast.** 400 kg of weights moved between the rear wheels and the
+  front weight bracket (`[tractor.chassis.ballast]`), so the rear axle
+  carries 68 % to 52 % of the weight at rest. More on the rear grips harder
+  and pulls further, but in the pull the nose goes light: with all of it
+  at the rear the front tires lift and the tractor cannot steer.
+- **The rear tires' pressure.** 0.5 to 1.6 bar (`[tire.pressure]`): lower
+  deflects the tire more, for a bigger footprint that sinks less and pulls
+  better on soft ground, but lets the lugs squirm, which costs grip on firm
+  ground. The best pressure depends on the track:
+
+```bash
+for bar in 0.5 1.0 1.6; do
+  ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
+      data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
+      data/tracks/dry_hard_clay.toml --gear 6 --pressure $bar
+done
+# 0.5 bar: covered heavy clay 87.33 m, dry hard clay 84.71 m
+# 1.0 bar: covered heavy clay 86.58 m, dry hard clay 88.60 m
+# 1.6 bar: covered heavy clay 85.73 m, dry hard clay 88.48 m
+```
+
+`--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the
+tractor in `pull`, `run` and `compare-tracks`. As built (the ballast
+halfway, 1.0 bar) the tractor is unchanged, and the scripted rivals pull
+it that way.
+
 ### A class at an event
 
 An event file names the class, the sled and the track, and how a field of
