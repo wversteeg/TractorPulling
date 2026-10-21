@@ -252,12 +252,15 @@ The game plays a season (`data/seasons/club_season.toml`, the club class on
 ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
 `[event.game]`. Every launch is a new season; nothing is saved. You pull
 the class's reference tractor. The start screen shows the next event and
-its track, and the layout to pull in. "Practice" is a free pull on the
-track; "Event" goes to the event's board, where the rivals' pulls and the
+its track. "Practice" is a free pull on the track; "Event" goes to the
+event's board, where the rivals' pulls and the
 sled operator's verdicts fill in as they are simulated (the rivals try
 their gears from the start screen on). When you are due, you pull: a test
 pull, a pull, a re-pull or a pull-off, each on the sled as the operator has
-set it, counted by the NTTO rules as for everyone. After a test pull on a
+set it, counted by the NTTO rules as for everyone. Before every pull the
+setup screen sets the tractor (see "Tuning before a pull": the weights,
+shown as the rear axle's share, and the rear tires' pressure, both kept for
+the season) and the control layout, easy or pro. After a test pull on a
 changed sled you keep it or pull again. Then the event's top ten and the
 season's (points per place), and the next event. During a pull the HUD
 shows the rev counter (stall and rated speeds marked), gear, speed,
@@ -274,10 +277,13 @@ when let go; a hand throttle under the right, moved by sliding it like a
 lever (a touch alone does not move it) and staying where it is left, as a
 tractor's does; and gear buttons (+, - and N) beside it. Both thumbs work at
 once. In the easy layout the clutch assist works the clutch. The pro layout
-adds a clutch slider beside the throttle, pressed at the top and in at the
-bottom, which starts pressed and stays where it is left, so you slip it in
-and leave it; a gear goes in only with the clutch pressed. Above the
-steering are a brake slider for each rear side, off again when let go.
+adds, on the left above the steering, a clutch slider, pressed at the top
+and in at the bottom, which starts pressed and stays where it is left, so
+you slip it in and leave it (a gear goes in only with the clutch pressed),
+and the left brake beside it; the right brake is on the right beside the
+throttle, so each side's brake is under its own thumb. The brakes are off
+again when let go. Every control has its own colour and label: GAS green,
+CLUTCH blue, BRAKE L and R red, STEER white.
 "cam" switches between the chase, side and overhead cameras; in a practice
 pull "again" (on lifting the finger on it) starts the same pull again, and
 "menu" goes back to the start screen (an event's pull counts: neither is

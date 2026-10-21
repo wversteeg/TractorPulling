@@ -9,12 +9,13 @@ participant "TractorPullRun" as Run
 
 Pull -> Event : start_season(season, seed: new each launch)
 Pull -> Event : start_event()
-Pull -> Screens : start screen: get_event() (name, n of count), layout
+Pull -> Screens : start screen: get_event() (name, n of count)
 loop each frame on the start screen and the board
   Pull -> Event : advance(slices of steps, ~6 ms a frame)\nwhile the turn is the rivals'
 end
 opt Practice
   Player -> Screens : Practice
+  Pull -> Screens : the setup screen (as below), Pull
   Pull -> Run : setup_practice(event, controls)
   note right of Pull : a free pull; again and menu work
 end
@@ -23,7 +24,12 @@ loop until get_event().turn is "finished"
   Pull -> Screens : the board: get_log() rows,\nwhat is up next
   alt turn "player_pull"
     Player -> Screens : Pull
-    Pull -> Run : setup_event_pull(event, controls)\n(the sled as the operator has set it)
+    Pull -> Screens : the setup screen: get_tuning()
+    loop while the player slides the weights or the pressure
+      Pull -> Event : set_tuning(ballast_position, pressure_bar)
+    end
+    Player -> Screens : easy or pro, Pull
+    Pull -> Run : setup_event_pull(event, controls)\n(the tuned tractor)\n(the sled as the operator has set it)
     loop every frame while pulling
       Pull -> Run : set_controls(...), advance(frame time)
     end

@@ -1,8 +1,10 @@
 # The game's flow, played with simulated fingers on a practice season
 # (tests/data: a light sled, so the reference tractor makes full pulls, and
-# three rivals): the start screen with the first event, a practice pull and
-# back, then the event's board filling in with the rivals' pulls, the
-# player's pulls when they are due (no "again" there) and their decisions,
+# three rivals): the start screen with the first event, the setup screen
+# (the weights and the tire pressure slid by a finger, kept for the season),
+# a practice pull and back, then the event's board filling in with the
+# rivals' pulls, the player's pulls when they are due, each after the setup
+# screen (no "again" there), and their decisions,
 # the event's top ten, the season's, and the start screen with the next
 # event. Exits non-zero if a check fails (scripts/godot_test.sh runs it).
 # With a directory after `--` it also saves a screenshot of each screen
@@ -78,6 +80,14 @@ func _shot(name: String) -> void:
 	print("saved ", path)
 
 
+# A finger slides `slider` from its middle to past its start end.
+func _slide_to_start(slider: TouchSlider) -> void:
+	var rect := slider.get_global_rect()
+	_touch(TAP_FINGER, rect.get_center(), true)
+	_drag(TAP_FINGER, Vector2(rect.position.x - 20.0, rect.get_center().y))
+	_touch(TAP_FINGER, Vector2(rect.position.x - 20.0, rect.get_center().y), false)
+
+
 func _frames(count: int) -> void:
 	for i in count:
 		await process_frame
@@ -110,6 +120,7 @@ func _play() -> void:
 	var board: BoardScreen = _pull.get("board")
 	var result: ResultScreen = _pull.get("result_screen")
 	var hud: Hud = _pull.get("hud")
+	var setup: SetupScreen = _pull.get("setup_screen")
 
 	# How a pull reads: against the line before it, not the one after.
 	_expect(EventTexts.reach({"disqualified": false, "full_pull": true, "reached_m": 104.0,
@@ -132,8 +143,33 @@ func _play() -> void:
 	await _frames(2)
 	_expect(start.visible and not controls.visible, "R on the start screen does nothing")
 
+	# The setup screen first: the tractor as built, then the weights slid to
+	# the rear and the tires softened, which the season keeps. "Back"
+	# returns to the start screen.
+	_tap(start.practice_button)
+	await _frames(2)
+	var built := event.get_tuning()
+	_expect(setup.visible and setup.ballast_slider.visible and setup.pressure_slider.visible
+			and is_equal_approx(float(built["ballast_position"]), 0.5)
+			and is_equal_approx(float(built["pressure_bar"]), 1.0), "set up as built: %s" % built)
+	_slide_to_start(setup.ballast_slider)
+	_slide_to_start(setup.pressure_slider)
+	await _frames(2)
+	var tuned := event.get_tuning()
+	_expect(float(tuned["ballast_position"]) == 0.0
+			and float(tuned["rear_share"]) > float(built["rear_share"])
+			and is_equal_approx(float(tuned["pressure_bar"]), float(tuned["min_bar"])),
+			"the weights to the rear, the tires soft: %s" % tuned)
+	await _shot("1b_setup")
+	_tap(setup.back_button)
+	await _frames(2)
+	_expect(start.visible and not setup.visible, "back to the start screen")
+
 	# A practice pull, with "again" and "menu", and back to the start.
 	_tap(start.practice_button)
+	await _frames(2)
+	_expect(setup.visible and setup.ballast_slider.value == 0.0, "the setting kept")
+	_tap(setup.pull_button)
 	await _frames(2)
 	_expect(controls.visible and controls.restart_button.visible and controls.menu_button.visible,
 			"practice, with again and menu")
@@ -157,6 +193,9 @@ func _play() -> void:
 					"the player's turn")
 			await _shot("2_board_%d" % my_pulls)
 			_tap(board.first_button)
+			await _frames(2)
+			_expect(setup.visible and setup.pull_button.visible, "the setup before the pull")
+			_tap(setup.pull_button)
 			await _frames(2)
 			_expect(controls.visible and not controls.restart_button.visible
 					and not controls.menu_button.visible, "an event's pull: no again or menu")

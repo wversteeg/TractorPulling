@@ -111,6 +111,10 @@ for the big features; they are repeated at the end for completeness.
   weights sit higher and further out, which changes the centre of
   gravity's height and the pitch inertia more. Wheel weights are not a
   separate setting.
+- **The setup screen.** The layout is picked there only, before a pull;
+  the weights and the pressure are kept for the season, not per track, and
+  the screen shows the rear axle's share at rest, not what it becomes in
+  the pull. No tilt steering yet.
 - **Rivals don't tune.** The scripted pullers pull as built; a driver who
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
@@ -227,10 +231,10 @@ for the big features; they are repeated at the end for completeness.
   should sag.
 - **The game's season.** Every launch is a new season, from the first
   event, with nothing saved. The player pulls the class's reference
-  tractor, with no choice or tuning (career, milestone 6). An event's pull
+  tractor, with no other tractor or upgrades to choose (career, milestone
+  6); it tunes the weights and the tire pressure only. An event's pull
   counts as it is: no pulling again outside the rules; practice pulls are
-  free, on the event's sled as it is. The layout is picked on the start
-  screen only. The board shows the last ten lines; the rivals have names
+  free, on the event's sled as it is. The board shows the last ten lines; the rivals have names
   but no tractors or faces of their own. The gamepad has no brakes yet.
 - **The pedals' feel.** The clutch slider moves the pedal, not the clutch's
   engagement; its bite point sits where the clutch's own curve puts it
