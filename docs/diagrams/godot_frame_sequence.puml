@@ -7,7 +7,7 @@ participant "data loaders" as Load
 participant "read_godot_file\n(FileAccess)" as Files
 participant "session::Session" as Session
 
-Script -> Run : setup("res://data/tractors/...", sled, track, easy)
+Script -> Run : setup("res://data/tractors/...", sled, track, controls)
 Run -> Load : load_tractor(path, read_godot_file), ...
 Load -> Files : read(path), and the files it names\n(resolve(directory_of(path), name))
 Files --> Load : text

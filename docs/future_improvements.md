@@ -151,10 +151,6 @@ for the big features; they are repeated at the end for completeness.
   physically, but a beginner may read it as the game failing them. The
   easy front end could not count a stop before the sled has really moved,
   or hint at a lower gear.
-- **The pro layout's steering.** The easy layout's steering has a dead zone
-  and a rate (`easy.toml`); the pro layout takes the steering control's
-  position as given. Give it the same with its touch controls (milestone 5,
-  step 3, the pro layout).
 - **Steering back to centre.** The steering returns to straight ahead at
   the same rate it turns. A real tractor's wheels self-centre faster under
   way (caster); a separate return rate could follow.
@@ -204,9 +200,12 @@ for the big features; they are repeated at the end for completeness.
 - **The chain as a bar.** `ChainView` draws a straight bar from hitch to
   hook, darker as the tension rises, even when the chain is slack and
   should sag.
-- **Touch controls for the pro layout.** The scene drives only the easy
-  layout: no clutch pedal or brake sliders yet. They come in the pro
-  layout's own step.
+- **The layout as a button.** The "easy"/"pro" button switches the layout
+  and starts the pull again; a menu to pick it before a pull comes with the
+  run flow (milestone 5, step 4). The gamepad has no brakes yet.
+- **The pedals' feel.** The clutch slider moves the pedal, not the clutch's
+  engagement; its bite point sits where the clutch's own curve puts it
+  (`clutch.toml`), with no mark on screen. The brakes act at once.
 - **Tilt steering.** Steering is an on-screen slider only; steering by
   tilting the phone (the accelerometer) could come as an option, with a
   setting to calibrate the centre.
