@@ -82,9 +82,7 @@ Result<controls::ProParams> read_pro(const toml::table& root, std::string_view s
     // Without a rate the steering follows the control at once.
     const controls::ProParams params{
         .steer_dead_zone = reader.number("pro.steer_dead_zone"),
-        .steer_rate_per_s = reader.has("pro.steer_rate_per_s")
-                                ? std::optional{reader.number("pro.steer_rate_per_s")}
-                                : std::nullopt,
+        .steer_rate_per_s = reader.optional_number("pro.steer_rate_per_s"),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

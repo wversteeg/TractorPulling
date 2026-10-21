@@ -751,6 +751,7 @@ struct Options {
     std::optional<std::string_view> easy_path;
     std::optional<std::string_view> pro_path;
     bool stick_given = false;
+    bool steer_deg_given = false;
     PullOptions pull;
 };
 
@@ -817,6 +818,7 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
         return options.seed ? Parsed::kOk : Parsed::kInvalid;
     }
     options.stick_given = options.stick_given || arg == "--stick";
+    options.steer_deg_given = options.steer_deg_given || arg == "--steer-deg";
     return parse_driving_option(arg, value, options.pull);
 }
 
@@ -921,6 +923,10 @@ int run_command(const Options& options) {
     }
     if (options.stick_given && !options.easy_path && !options.pro_path) {
         std::cerr << "--stick is a layout's steering control: it needs --easy or --pro\n";
+        return EXIT_FAILURE;
+    }
+    if (options.stick_given && options.steer_deg_given) {
+        std::cerr << "--stick and --steer-deg both set the steering: pick one\n";
         return EXIT_FAILURE;
     }
     if (options.easy_path && options.pro_path) {
