@@ -1,5 +1,5 @@
 @startuml godot_scene_classes
-title The pull scene (app/godot/scenes/pull.tscn): a season's events, one pull at a time, in graybox
+title The pull scene (app/godot/scenes/pull.tscn): a season's events against the rivals, in graybox
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -13,16 +13,23 @@ package "Godot 4.7" {
 package "GDScript (app/godot/scripts)" {
   class "pull.gd" as Pull {
     +season_path : String
+    +season_seed : int
     +autoplay : bool
     +pro : bool
+    +practice : bool
     +run : TractorPullRun
-    +screen : Screen {START, PULLING, RESULT}
-    +event_index, round : int
-    +show_start()
-    -_prepare() : String
-    -_pull_again()
+    +event : TractorPullEvent
+    +screen : Screen {START, EVENT, PULLING,\n  RESULT, EVENT_END, SEASON}
+    +show_start(error)
+    -_new_season()
+    -_start_practice()
+    -_start_event_pull()
+    -_build(error) : bool
     -_set_screen(screen)
     -_process(delta)
+    -_advance_rivals()
+    -_show_result()
+    -_show_event(), _show_event_end(), _show_season()
     -_read_controls()
     -_show(delta)
   }
@@ -60,25 +67,49 @@ package "GDScript (app/godot/scripts)" {
   }
   class Hud {
     +build(dimensions)
-    +show_snapshot(snapshot, event, pro)
+    +show_snapshot(snapshot, title, pro)
   }
   class MenuPanel {
+    +panel_size : Vector2
     +add_line(font_size) : Label
+    +add_item(control)
     +add_button_row() : HBoxContainer
     +add_button(row, text) : TouchButton
     +release_buttons()
   }
   class StartScreen {
-    +easy_button, pro_button, next_button : TouchButton
+    +easy_button, pro_button : TouchButton
+    +practice_button, event_button : TouchButton
     +show_event(event, pro, error)
     ..signals..
-    layout_picked(pro), start_requested
+    layout_picked(pro), practice_requested,
+    event_requested
   }
   class ResultScreen {
-    +pull_off_button, next_button : TouchButton
-    +show_result(event, result, next_round)
+    +again_button, menu_button : TouchButton
+    +continue_button : TouchButton
+    +show_result(title, result, full_pull_m, entry)
     ..signals..
-    pull_off_requested, next_requested
+    again_requested, menu_requested,
+    continue_requested
+  }
+  class BoardScreen {
+    +first_button, second_button : TouchButton
+    +set_title(text)
+    +set_rows(rows, highlights)
+    +row_count() : int
+    +set_status(text)
+    +set_buttons(first, second)
+    ..signals..
+    first_tapped, second_tapped
+  }
+  class EventTexts <<static>> {
+    +{static} pull_name(kind, pull_off_round) : String
+    +{static} reach(entry) : String
+    +{static} verdict(entry) : String
+    +{static} log_row(entry) : PackedStringArray
+    +{static} standing_row(line) : PackedStringArray
+    +{static} season_row(line) : PackedStringArray
   }
   class TouchSlider {
     +vertical, springs_back, relative : bool
@@ -118,6 +149,7 @@ package "tests (scripts/godot_test.sh)" {
 }
 
 class "TractorPullRun\n(see godot_classes)" as Run
+class "TractorPullEvent\n(see godot_classes)" as Event
 
 Node3D <|-- Pull
 Node3D <|-- TrackView
@@ -126,6 +158,7 @@ Node3D <|-- SledView
 Node3D <|-- ChainView
 Node3D <|-- CameraRig
 Pull *-- Run
+Pull *-- Event
 Pull *-- TrackView
 Pull *-- TractorView
 Pull *-- SledView
@@ -137,8 +170,12 @@ DriveControls *-- "6" TouchButton : gear +/-, N, camera,\nagain, menu
 Pull *-- Hud
 Pull *-- StartScreen
 Pull *-- ResultScreen
+Pull *-- BoardScreen : the event, its top ten,\nthe season's
+Pull ..> EventTexts
+ResultScreen ..> EventTexts : the operator's verdict
 MenuPanel <|-- StartScreen
 MenuPanel <|-- ResultScreen
+MenuPanel <|-- BoardScreen
 Control <|-- MenuPanel
 Control <|-- Hud
 MenuPanel ..> TouchButton
@@ -159,10 +196,10 @@ Shots ..> Pull : autoplay, a PNG per camera
 SceneTree <|-- TouchTest
 TouchTest ..> DriveControls : simulated fingers\n(push_input)
 SceneTree <|-- FlowTest
-FlowTest ..> Pull : a practice season (tests/data):\nstart, qualifying, pull-off, next event
+FlowTest ..> Pull : a practice season (tests/data):\nstart, practice, the event with its rivals,\nthe top tens, next event
 note bottom of Pull
   draws the blended snapshot and hands the run the controls;
-  which pull comes next is the run's (get_next_round);
+  who pulls next and the standings are the event's (TractorPullEvent);
   no physics or rules: TrackSpace only turns track
   coordinates (x down the track, y left, z up) into Godot's
 end note

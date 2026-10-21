@@ -3,7 +3,8 @@
 # button let go when the app loses focus, a thumb steering while the other
 # holds the throttle, the steering springing back when the thumb lifts, and
 # "again" only on a release over it; then the pro layout, picked on the
-# start screen. Checks that the run gets the controls and the tractor pulls
+# start screen. All in practice pulls, where "again" and "menu" work.
+# Checks that the run gets the controls and the tractor pulls
 # and steers. Exits non-zero if a check fails (scripts/godot_test.sh runs
 # it).
 #
@@ -65,11 +66,11 @@ func _play() -> void:
 	var controls: DriveControls = _pull.get("controls")
 	var run: TractorPullRun = _pull.get("run")
 	var start: StartScreen = _pull.get("start_screen")
-	# The start screen, in the easy layout: "Next" starts the pull.
+	# The start screen, in the easy layout: "Practice" starts a pull.
 	_expect(start.visible and not controls.visible, "the start screen first")
-	_tap(start.next_button)
+	_tap(start.practice_button)
 	await _frames(2)
-	_expect(controls.visible and not start.visible, "the pull's controls after Next")
+	_expect(controls.visible and not start.visible, "the pull's controls after Practice")
 	var throttle := controls.throttle_slider.get_global_rect()
 	var steering := controls.steering_slider.get_global_rect()
 
@@ -212,7 +213,7 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(start.visible and not controls.visible, "menu: back to the start screen")
 	_tap(start.pro_button)
 	_expect(start.pro_button.selected and not start.easy_button.selected, "pro picked")
-	_tap(start.next_button)
+	_tap(start.practice_button)
 	await _frames(2)
 	_expect(run.get_layout() == "pro" and controls.pro, "the pro layout")
 	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.clutch_slider,
@@ -249,6 +250,6 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_tap(controls.menu_button)
 	await _frames(2)
 	_tap(start.easy_button)
-	_tap(start.next_button)
+	_tap(start.practice_button)
 	await _frames(2)
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible, "back to easy")

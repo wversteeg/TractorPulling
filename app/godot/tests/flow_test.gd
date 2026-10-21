@@ -1,30 +1,42 @@
 # The game's flow, played with simulated fingers on a practice season
-# (tests/data: a light sled, so the reference tractor makes full pulls):
-# the start screen with the first event, a qualifying pull, its result with
-# the pull-off the full pull earns, the pull-off on the heavier sled, its
-# result with no further pull, and the start screen with the next event.
-# Exits non-zero if a check fails (scripts/godot_test.sh runs it).
+# (tests/data: a light sled, so the reference tractor makes full pulls, and
+# three rivals): the start screen with the first event, a practice pull and
+# back, then the event's board filling in with the rivals' pulls, the
+# player's pulls when they are due (no "again" there) and their decisions,
+# the event's top ten, the season's, and the start screen with the next
+# event. Exits non-zero if a check fails (scripts/godot_test.sh runs it).
+# With a directory after `--` it also saves a screenshot of each screen
+# there (that needs a display, or Xvfb, and a renderer).
 #
-#   godot --fixed-fps 60 --path app/godot --script res://tests/flow_test.gd
+#   godot --fixed-fps 60 --path app/godot --script res://tests/flow_test.gd [-- /tmp/shots]
 extends SceneTree
 
 const SEASON := "res://tests/data/practice_season.toml"
+const SEED := 2026
+const PULLERS := 4
 const TAP_FINGER := 1
 const THROTTLE_FINGER := 0
 # The pulls run at this many times real time, to keep the test short; the
 # session still steps at 1 ms (up to 100 steps a frame).
 const TIME_SCALE := 4.0
-# Long enough for a pull and the pause before the result, at TIME_SCALE.
-const MAX_PULL_FRAMES := 1200
+# Long enough for a pull past the line and the pause before the result, at
+# TIME_SCALE; and for a whole event.
+const MAX_PULL_FRAMES := 2400
+const MAX_EVENT_FRAMES := 20_000
 
 var _pull: Node
 var _failures := 0
+var _shots := ""
 
 
 func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
 	_pull.set("season_path", SEASON)
+	_pull.set("season_seed", SEED)
+	var args := OS.get_cmdline_user_args()
+	if not args.is_empty():
+		_shots = args[0]
 	root.add_child(_pull)
 	_play.call_deferred()
 
@@ -56,6 +68,16 @@ func _tap(control: Control) -> void:
 	_touch(TAP_FINGER, at, false)
 
 
+# A screenshot named `name`, when asked for.
+func _shot(name: String) -> void:
+	if _shots.is_empty():
+		return
+	await _frames(3)
+	var path := "%s/%s.png" % [_shots, name]
+	root.get_texture().get_image().save_png(path)
+	print("saved ", path)
+
+
 func _frames(count: int) -> void:
 	for i in count:
 		await process_frame
@@ -82,17 +104,26 @@ func _play() -> void:
 	Engine.time_scale = TIME_SCALE
 	await _frames(2)
 	var run: TractorPullRun = _pull.get("run")
+	var event: TractorPullEvent = _pull.get("event")
 	var controls: DriveControls = _pull.get("controls")
 	var start: StartScreen = _pull.get("start_screen")
+	var board: BoardScreen = _pull.get("board")
 	var result: ResultScreen = _pull.get("result_screen")
 	var hud: Hud = _pull.get("hud")
 
-	# The start screen: the season's first event, its run set up behind it.
-	var event := run.get_event()
+	# How a pull reads: against the line before it, not the one after.
+	_expect(EventTexts.reach({"disqualified": false, "full_pull": true, "reached_m": 104.0,
+			"full_pull_m": 110.0}) == "FULL PULL", "a full pull that moved the line")
+	_expect(EventTexts.reach({"disqualified": false, "full_pull": false, "reached_m": 95.5,
+			"full_pull_m": 100.0}) == "95.50 m", "a pull short of the line")
+
+	# The start screen: the season's first event, started behind it.
+	var info := event.get_event()
 	_expect(start.visible and not hud.visible and not controls.visible, "the start screen")
-	_expect(event.get("index", -1) == 0 and event.get("count", 0) == 2
-			and event.get("round", -1) == 0, "the first event's qualifying: %s" % event)
-	_expect(event.get("name", "") == "Practice, watered start", "its name: %s" % event)
+	_expect(info.get("index", -1) == 0 and info.get("count", 0) == 2
+			and info.get("pullers", 0) == PULLERS, "the first event: %s" % info)
+	_expect(info.get("name", "") == "Practice, watered start", "its name: %s" % info)
+	await _shot("1_start")
 	# The development keys belong to a pull: R (pull again) does nothing here.
 	var r := InputEventKey.new()
 	r.keycode = KEY_R
@@ -101,33 +132,90 @@ func _play() -> void:
 	await _frames(2)
 	_expect(start.visible and not controls.visible, "R on the start screen does nothing")
 
-	# Qualifying: a full pull, then the result screen offers the pull-off.
-	_tap(start.next_button)
+	# A practice pull, with "again" and "menu", and back to the start.
+	_tap(start.practice_button)
 	await _frames(2)
-	_expect(controls.visible and hud.visible and not start.visible, "pulling")
-	_expect(await _drive_to_result(controls, result), "the qualifying pull ends in a result")
-	_expect(run.get_result().get("ending", "") == "full_pull", "a full pull: %s" % run.get_result())
-	_expect(result.pull_off_button.visible and not result.next_button.visible,
-			"the full pull earns the pull-off")
-	_expect(not controls.visible, "no controls on the result screen")
+	_expect(controls.visible and controls.restart_button.visible and controls.menu_button.visible,
+			"practice, with again and menu")
+	_tap(controls.menu_button)
+	await _frames(2)
+	_expect(start.visible and event.get_event().get("index", -1) == 0,
+			"back to the start, the same event")
 
-	# The pull-off: round 1 on the heavier sled; after it the rules give no
-	# more pulls, full pull or not.
-	_tap(result.pull_off_button)
+	# The event: the board fills in, the player pulls and decides when due.
+	_tap(start.event_button)
 	await _frames(2)
-	_expect(run.get_event().get("round", -1) == 1 and controls.visible, "the pull-off")
-	_expect(controls.gear == 0 and controls.throttle() == 0.0, "the controls reset for it")
-	_expect(await _drive_to_result(controls, result), "the pull-off ends in a result")
-	_expect(result.next_button.visible and not result.pull_off_button.visible,
-			"one pull-off, then on to the next event")
+	_expect(board.visible and not start.visible, "the event's board")
+	var my_pulls := 0
+	var frames := 0
+	while frames < MAX_EVENT_FRAMES:
+		var turn: String = event.get_event()["turn"]
+		if turn == "finished" or turn == "failed":
+			break
+		if turn == "player_pull":
+			_expect(board.first_button.visible and board.first_button.text == "Pull",
+					"the player's turn")
+			await _shot("2_board_%d" % my_pulls)
+			_tap(board.first_button)
+			await _frames(2)
+			_expect(controls.visible and not controls.restart_button.visible
+					and not controls.menu_button.visible, "an event's pull: no again or menu")
+			_expect(await _drive_to_result(controls, result), "the pull ends in a result")
+			_expect(result.continue_button.visible and not result.again_button.visible,
+					"after an event's pull: continue")
+			await _shot("3_result_%d" % my_pulls)
+			my_pulls += 1
+			_tap(result.continue_button)
+			await _frames(2)
+			_expect(board.visible, "back to the board")
+		elif turn == "player_decision":
+			_expect(board.second_button.visible, "keep or pull again")
+			await _shot("4_decision")
+			_tap(board.first_button)
+			await _frames(2)
+		else:
+			await process_frame
+			frames += 1
+	_expect(event.get_event()["turn"] == "finished", "the event finished: %s" % event.get_event())
+	_expect(my_pulls >= 1, "the player pulled: %d" % my_pulls)
+	for entry: Dictionary in event.get_log(0):
+		print("  ", " | ".join(EventTexts.log_row(entry)))
+	var pullers := {}
+	for entry: Dictionary in event.get_log(0):
+		pullers[entry.get("puller", entry.get("deciding", -1))] = true
+		# A test pull that moves the line to 110 m passed the line before it.
+		if entry.get("change", "") == "line_extended":
+			_expect(entry["full_pull"] and EventTexts.reach(entry) == "FULL PULL",
+					"a test pull past 100 m is a full pull: %s" % entry)
+	_expect(pullers.size() == PULLERS, "every puller pulled: %s" % pullers)
+	await _frames(2)
+	_expect(board.first_button.text == "Results", "the event is over")
+
+	# The event's top ten (here four), then the season's.
+	_tap(board.first_button)
+	await _frames(2)
+	_expect(board.visible and board.row_count() == PULLERS, "the event's standings")
+	await _shot("5_event_top")
+	_expect(board.first_button.text == "Season", "on to the season")
+	_tap(board.first_button)
+	await _frames(2)
+	var season := event.get_season()
+	_expect(season.get("scored", 0) == 1 and not season.get("over", true),
+			"the event is scored: %s" % season)
+	var points := 0
+	for line: Dictionary in event.get_season_standings():
+		points += int(line["points"])
+	_expect(points > 0 and board.row_count() == PULLERS, "the season's standings")
+	_expect(board.first_button.text == "Next event", "on to the next event")
+	await _shot("6_season_top")
 
 	# Next: the start screen with the season's second event.
-	_tap(result.next_button)
+	_tap(board.first_button)
 	await _frames(2)
-	event = run.get_event()
-	_expect(start.visible and not result.visible, "back to the start screen")
-	_expect(event.get("index", -1) == 1 and event.get("round", -1) == 0
-			and event.get("name", "") == "Practice, firm loam", "the next event: %s" % event)
+	info = event.get_event()
+	_expect(start.visible and not board.visible, "back to the start screen")
+	_expect(info.get("index", -1) == 1 and info.get("name", "") == "Practice, firm loam",
+			"the next event: %s" % info)
 
 	print("flow test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)

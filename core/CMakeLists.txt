@@ -9,6 +9,7 @@ add_library(tp_core STATIC
     src/field/field.cpp
     src/field/play.cpp
     src/field/live.cpp
+    src/field/live_season.cpp
     src/math/curve.cpp
     src/math/exp.cpp
     src/pull/pull.cpp

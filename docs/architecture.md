@@ -118,6 +118,11 @@ The competitors: a scripted driver's plan (gear and clutch technique) and a
 seeded field of pullers, each the reference tractor and driver varied within
 ranges and kept within the class's rules.
 
+`field::LiveSeason` is a season as the game plays it: the player is puller
+0, on the class's reference tractor, among a field drawn for the season;
+each event is a `LiveEvent` with the draws the tools' season gives it
+(`event_seed`), scored in the championship once finished.
+
 `field::LiveEvent` is the event as the game plays it: `play_event` with one
 puller the player. It makes the same draws, so with the player pulling as a
 scripted puller would it is `play_event`, line for line (a test checks it).
@@ -188,7 +193,9 @@ compete. Competition rules, not physics: they are data, checked at setup.
 ### Godot binding (`app/godot/extension`)
 
 The C++ GDExtension that hands GDScript a `TractorPullRun`: `tp::session`
-behind Godot types, with the data read through Godot's `FileAccess` (so
+behind Godot types, and a `TractorPullEvent`: `field::LiveSeason` (the
+player and the named rivals, each event's board and standings, the
+championship), with the data read through Godot's `FileAccess` (so
 `res://` works). It is the only code that includes Godot headers, and holds
 no game rules of its own.
 
@@ -196,15 +203,17 @@ no game rules of its own.
 
 ### The pull scene (`app/godot/scenes`, `app/godot/scripts`)
 
-GDScript that plays a season's events, one pull at a time: the start
-screen, the pull and the result screen. The root script owns the
-`TractorPullRun` and starts each pull with `setup_event()`; it builds a
-view of the track, tractor, sled and chain from the run's dimensions, and
-each frame hands it the controls, advances it by the frame's time and
-places the views from the blended snapshot; the cameras follow the tractor
-and the `Hud` shows the engine and the distance. Which pull comes next (a
-pull-off after a full pull) is the run's answer (`get_next_round()`, from
-`event::solo_next_round`).
+GDScript that plays a season's events against the rivals: the start
+screen, the event's board (`BoardScreen`, filled in by `EventTexts`), the
+player's pulls and the result screen, then the event's top ten and the
+season's. The root script owns the `TractorPullEvent`, advancing the
+rivals' work a few milliseconds each frame, and the `TractorPullRun`,
+which it sets up for each of the player's pulls (`setup_event_pull()`) or
+a practice pull; it builds a view of the track, tractor, sled and chain
+from the run's dimensions, and each frame hands it the controls, advances
+it by the frame's time and places the views from the blended snapshot; the
+cameras follow the tractor and the `Hud` shows the engine and the
+distance. Who pulls next, and the standings, are the event's answer.
 `DriveControls` is the easy layout on a touch screen: a steering slider, a
 hand throttle and gear buttons, each following its own finger so both
 thumbs drive at once; the keyboard and a gamepad work it in development.
@@ -300,8 +309,8 @@ advances the run by the frame's time and draws the blended snapshot.
 
 ### The game's flow
 
-An event of the season, from the start screen: the qualifying pull, the
-result, the pull-off the rules give after a full pull, and on to the next
-event and its track.
+An event of the season, from the start screen: the board filling in with
+the rivals' pulls, the player's pulls and decisions when they are due, the
+event's top ten, the season's, and on to the next event and its track.
 
 ![Game flow](diagrams/svg/godot_run_flow_sequence.svg)

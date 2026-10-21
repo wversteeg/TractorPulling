@@ -27,8 +27,9 @@ namespace tp::field {
 /// the player's pull on sled() by pull_rules() and hands the result to
 /// record_player(), or their decision to decide_player().
 ///
-/// Plain data, no allocation; large (every puller and a pull in progress),
-/// so keep it on the heap.
+/// Plain data, no allocation. Large (about 70 KB: every puller and a pull
+/// in progress): create() returns it on the stack, so keep the long-lived
+/// copy on the heap.
 class LiveEvent {
 public:
     enum class Turn : std::uint8_t {
@@ -66,6 +67,8 @@ public:
     /// The sled and run rules for the next pull: the event's sled as it is
     /// now, and a run that goes on past the line until the sled stops.
     [[nodiscard]] const sled::Params& sled() const noexcept { return event_.sled(); }
+    /// Where the event is pulled: the track's ground for the player's run.
+    [[nodiscard]] const Venue& venue() const noexcept { return venue_; }
     [[nodiscard]] run::Rules pull_rules() const noexcept;
 
     /// Records the player's pull (`gear` the gear they pulled in): out of

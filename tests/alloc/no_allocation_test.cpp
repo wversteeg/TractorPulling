@@ -228,8 +228,7 @@ TEST(NoAllocation, AnEventWithAPlayer) {
                              .repull_after_pulls = 2,
                              .sled_target_m = 94.0,
                              .step_m = 5.0,
-                             .max_steps_per_change = 4,
-                             .solo_pull_offs = 1};
+                             .max_steps_per_change = 4};
     const field::Venue venue{.track = track::testing::reference_params(),
                              .sled = sled::testing::reference_params(),
                              .max_duration_s = 120.0,

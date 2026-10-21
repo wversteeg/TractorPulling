@@ -21,7 +21,6 @@ package "tp::event" {
     +sled_target_m : double, 90
     +step_m : double, 5 (the rule of thumb)
     +max_steps_per_change : int, 4
-    +solo_pull_offs : int, 1 (the game: pulling alone)
   }
   class Pull <<struct>> {
     +puller : int
@@ -75,7 +74,6 @@ package "tp::event" {
   class "event functions" as EventFns <<free functions>> {
     +validate(const Rules&) : optional<ParamError>
     +running_order(count, seed) : array<int, 32>
-    +solo_next_round(const Rules&, round, full_pull) : optional<int>
   }
   Event *-- Rules
   Event ..> Pull

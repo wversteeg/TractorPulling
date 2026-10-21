@@ -37,7 +37,7 @@ app/godot/   Godot 4.7 project: GDScript scenes, input and UI.
 
 ### Rules for `app/godot/`
 
-- The binding in `extension/` is the only code that includes Godot headers. It wraps `tp::session` and the loaders and holds no simulation or game rules: those live in `core/`.
+- The binding in `extension/` is the only code that includes Godot headers. It wraps `tp::session`, `field::LiveSeason` and the loaders and holds no simulation or game rules: those live in `core/`.
 - Scenes, input, UI and the run flow are GDScript, with static types (`:=`, typed parameters and returns). Physics and pulling rules never go in GDScript.
 - The game hands `advance()` each frame's real time; the session alone decides how many 1 ms steps that is.
 - The game reads `data/` as `res://data`, a copy the build makes; edit `data/` only.
