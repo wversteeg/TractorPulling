@@ -25,6 +25,16 @@ var _rear_right_angle := 0.0
 var _front_angle := 0.0
 
 
+# The parts join the tree in build(), for the first pull; the game can quit
+# before one (on the start screen), so the parts never added are freed here.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for part: Node in [_body, _hitch, _rear_left, _rear_right, _front_left_steer,
+				_front_right_steer, _front_left, _front_right]:
+			if part.get_parent() == null:
+				part.free()
+
+
 func build(d: Dictionary) -> void:
 	var wheelbase_m: float = d["wheelbase_m"]
 	var axle_height_m: float = d["rear_axle_height_m"]

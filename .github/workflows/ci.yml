@@ -14,6 +14,11 @@ concurrency:
 
 env:
   LLVM_VERSION: 18
+  # The pinned Godot, for the extension's test and the exports. The SHA-512s
+  # are from the release's SHA512-SUMS.txt.
+  GODOT_VERSION: 4.7.2-stable
+  GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+  TEMPLATES_SHA512: ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079
 
 jobs:
   build-test:
@@ -158,6 +163,15 @@ jobs:
           test -f "app/godot/bin/${library}"
           grep -q "res://bin/${library}" app/godot/tractor_pulling.gdextension
 
+      # For the export job.
+      - name: Keep the Godot extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-android-${{ matrix.abi }}
+          path: app/godot/bin/libtp_godot.android.template_debug.${{ matrix.abi }}.so
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
       # The same event on the host, for the emulator's output to match.
       - name: Run the club event on the host
         if: matrix.abi == 'x86_64'
@@ -197,10 +211,6 @@ jobs:
     runs-on: ubuntu-24.04
     # A hung Godot fails the job instead of holding a runner for hours.
     timeout-minutes: 20
-    env:
-      GODOT_VERSION: 4.7.2-stable
-      # From the release's SHA512-SUMS.txt, for Godot_v4.7.2-stable_linux.x86_64.zip.
-      GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
     steps:
       - uses: actions/checkout@v4
 
@@ -226,6 +236,197 @@ jobs:
 
       - name: Play runs through the extension
         run: scripts/godot_test.sh "./Godot_v${GODOT_VERSION}_linux.x86_64"
+
+      # Linux's results, for the Windows build to match (windows-game).
+      - name: Run tp_pull's platform runs
+        run: scripts/platform_runs.sh build/godot/tools/tp_pull > platform_runs_linux.txt
+
+      # For the export and windows-game jobs.
+      - name: Keep the extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-linux
+          path: app/godot/bin/libtp_godot.linux.template_debug.x86_64.so
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+      - name: Keep the platform runs
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-runs-linux
+          path: platform_runs_linux.txt
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+  # The Godot extension and tp_pull for Windows, cross-compiled with
+  # MinGW-w64 as Godot builds its own Windows releases.
+  windows-build:
+    name: windows build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja and MinGW-w64
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build g++-mingw-w64-x86-64-posix
+
+      - name: Build
+        run: |
+          cmake --preset godot-windows
+          cmake --build --preset godot-windows
+
+      - name: Keep the extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-windows
+          path: app/godot/bin/libtp_godot.windows.template_debug.x86_64.dll
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+      - name: Keep tp_pull
+        uses: actions/upload-artifact@v4
+        with:
+          name: tp-pull-windows
+          path: build/godot-windows/tools/tp_pull.exe
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+  # The game exported: a debug APK for phones and the emulator, and the
+  # Windows desktop game, as artifacts to download from the run
+  # (scripts/godot_export.sh), from the extension the godot, android and
+  # windows-build jobs built.
+  export:
+    name: export
+    needs: [godot, android, windows-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build
+
+      # The project as the godot preset's build leaves it, but for the
+      # libraries: data/ copied in and the extension listed.
+      - name: Prepare the project
+        run: |
+          cmake --preset godot
+          cmake --build --preset godot --target tp_godot_data
+
+      # One library per artifact: Linux (the editor loads it to export),
+      # Android arm64 and x86_64, and Windows.
+      - name: Collect the extension
+        uses: actions/download-artifact@v4
+        with:
+          pattern: extension-*
+          path: app/godot/bin
+          merge-multiple: true
+
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  godot.zip" | sha512sum --check
+          unzip -q godot.zip
+
+      # Godot looks for templates in a directory named after its version
+      # (4.7.2-stable: 4.7.2.stable).
+      - name: Find the templates directory
+        run: echo "TEMPLATES_DIR=${HOME}/.local/share/godot/export_templates/${GODOT_VERSION/-/.}" >> "$GITHUB_ENV"
+
+      # The templates come in one 1.3 GB archive; only the four files the
+      # exports use are kept, cached by Godot's version and the file list
+      # (bump the suffix when the list changes).
+      - name: Cache the export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TEMPLATES_DIR }}
+          key: godot-export-templates-${{ env.GODOT_VERSION }}-v1
+
+      - name: Download the export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o templates.tpz \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          echo "${TEMPLATES_SHA512}  templates.tpz" | sha512sum --check
+          unzip -q templates.tpz templates/version.txt templates/android_debug.apk \
+            templates/windows_debug_x86_64.exe templates/windows_debug_x86_64_console.exe
+          mkdir -p "${TEMPLATES_DIR}"
+          mv templates/* "${TEMPLATES_DIR}/"
+          rm templates.tpz
+
+      - name: Export
+        run: |
+          export ANDROID_HOME="${ANDROID_SDK_ROOT}"
+          export JAVA_HOME="${JAVA_HOME_17_X64}"
+          scripts/godot_export.sh "./Godot_v${GODOT_VERSION}_linux.x86_64" build/export
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-android
+          path: build/export/tractor_pulling.apk
+          retention-days: 30
+
+      - name: Upload the Windows game
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-windows
+          path: build/export/windows/
+          retention-days: 30
+
+  # On Windows: the exported game starts (its season loaded through the
+  # extension, a few hundred frames without a display, no errors), and the
+  # Windows tp_pull gives Linux's results, line for line: the scripted runs'
+  # state hashes and a whole event.
+  windows-game:
+    name: windows game
+    needs: [export, godot]
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tractor-pulling-windows
+          path: game
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tp-pull-windows
+          path: tp_pull
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-runs-linux
+          path: linux
+
+      - name: Start the game
+        run: |
+          timeout 300 game/TractorPulling.console.exe --headless --quit-after 600 2>&1 | tee game.log
+          grep -qE '^A season of [0-9]+ events, [0-9]+ pullers' game.log || {
+            echo "the game did not start its season" >&2
+            exit 1
+          }
+          if grep -q 'ERROR' game.log; then
+            echo "the game hit an error" >&2
+            exit 1
+          fi
+
+      - name: Match Linux's results
+        run: |
+          scripts/platform_runs.sh tp_pull/tp_pull.exe > platform_runs_windows.txt
+          diff --strip-trailing-cr linux/platform_runs_linux.txt platform_runs_windows.txt
+          echo "the same results on Windows as on Linux"
 
   clang-tidy:
     runs-on: ubuntu-24.04

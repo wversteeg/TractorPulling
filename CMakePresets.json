@@ -92,6 +92,19 @@
       "displayName": "Godot extension for Android x86_64 (emulator)",
       "inherits": "godot-android-base",
       "cacheVariables": { "ANDROID_ABI": "x86_64" }
+    },
+    {
+      "name": "godot-windows",
+      "displayName": "Godot extension and tp_pull for Windows x86-64 (MinGW-w64, from Linux)",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/mingw-w64-x86_64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -102,7 +115,8 @@
     { "name": "android-x86_64", "configurePreset": "android-x86_64" },
     { "name": "godot", "configurePreset": "godot" },
     { "name": "godot-android-arm64", "configurePreset": "godot-android-arm64" },
-    { "name": "godot-android-x86_64", "configurePreset": "godot-android-x86_64" }
+    { "name": "godot-android-x86_64", "configurePreset": "godot-android-x86_64" },
+    { "name": "godot-windows", "configurePreset": "godot-windows" }
   ],
   "testPresets": [
     {

@@ -269,6 +269,34 @@ xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
     --script res://tests/screenshots.gd -- /tmp/shots [pro]   # view_0..2.png
 ```
 
+### Playing it on a phone or on Windows
+
+Every CI run exports the game (the `export` job) and keeps it for 30 days:
+open the run on GitHub's Actions tab and download, under Artifacts,
+`tractor-pulling-android` (a debug APK for phones and the emulator) or
+`tractor-pulling-windows` (unzip it and run `TractorPulling.exe`). On a
+phone, allow your browser or file manager to install unknown apps, then
+open the APK; on the emulator, drag the APK onto its window. Every APK is
+signed with the same debug key, so a new one installs over the last.
+
+To export locally (Linux), build the extension for each platform, install
+Godot's export templates for its version, and run the export script:
+
+```bash
+for preset in godot godot-android-arm64 godot-android-x86_64 godot-windows; do
+    cmake --preset "$preset" && cmake --build --preset "$preset"
+done
+ANDROID_HOME=~/Android/Sdk JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
+    scripts/godot_export.sh /path/to/godot   # build/export: the APK and windows/
+```
+
+The Windows extension is cross-compiled with MinGW-w64
+(`g++-mingw-w64-x86-64-posix` on Debian and Ubuntu), as Godot builds its
+own Windows releases; the preset builds `tp_pull.exe` too. CI runs it on
+Windows and checks it gives Linux's results (`scripts/platform_runs.sh`:
+the scripted runs' state hashes and a whole event), and starts the
+exported game there.
+
 ## Requirements
 
 - CMake 3.25+ and Ninja

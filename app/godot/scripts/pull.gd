@@ -120,6 +120,12 @@ func _new_season() -> void:
 	_event_ready = false
 	if not error.is_empty():
 		push_error("cannot start the season: " + error)
+	else:
+		# One line on the console, which CI's Windows check looks for: the
+		# extension and the data loaded.
+		var season := event.get_season()
+		print("A season of %d events, %d pullers, seed %d" % [season["events"],
+				PackedStringArray(season["names"]).size(), seed])
 	show_start(error)
 
 

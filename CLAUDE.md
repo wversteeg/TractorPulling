@@ -164,7 +164,8 @@ cmake --preset release && cmake --build --preset release
 
 # A class at an event: a seeded field, test pulls and the sled operator,
 # keep-or-re-pull, qualifying and pull-offs; prints every pull and the standings
-./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]
+# (with --hash, a hash over the exact bits of every pull)
+./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N] [--hash]
 
 # A season: the same field at every event, each on its own track; prints each
 # event's top four and the championship
@@ -202,11 +203,21 @@ scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
 xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
     --rendering-method gl_compatibility --resolution 1280x720 --path app/godot \
     --script res://tests/screenshots.gd -- /tmp/shots
-# The extension for Android (needs ANDROID_NDK_HOME)
+# The extension for Android (needs ANDROID_NDK_HOME), and the extension and
+# tp_pull.exe for Windows (MinGW-w64 from Linux: g++-mingw-w64-x86-64-posix)
 cmake --preset godot-android-arm64 && cmake --build --preset godot-android-arm64
+cmake --preset godot-windows && cmake --build --preset godot-windows
+# What a tp_pull build makes of the scripted runs and an event, for comparing
+# platforms (CI compares Windows with Linux)
+scripts/platform_runs.sh build/godot/tools/tp_pull
+# The game exported (after the godot, godot-android-* and godot-windows
+# builds; needs Godot's export templates, ANDROID_HOME and JAVA_HOME): a
+# debug APK and the Windows game in build/export. CI's export job does the
+# same and keeps them as artifacts
+scripts/godot_export.sh /path/to/godot
 ```
 
-Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `godot`, `godot-android-arm64`, `godot-android-x86_64`. Keep the commands above working; update this section when presets change.
+Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `godot`, `godot-android-arm64`, `godot-android-x86_64`, `godot-windows`. Keep the commands above working; update this section when presets change.
 
 ## Code standards
 
@@ -236,7 +247,7 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `g
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
-- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, downloaded from Godot's releases at a pinned version and checked against its SHA-512; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
+- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, and Godot's export templates for the exports, downloaded from Godot's releases at a pinned version and checked against their SHA-512; MinGW-w64 from Ubuntu for the Windows extension; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
 
 ## Dependencies
 
