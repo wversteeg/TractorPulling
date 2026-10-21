@@ -19,14 +19,14 @@ static func pull_name(kind: String, pull_off_round: int) -> String:
 	return text.left(1).to_upper() + text.substr(1)
 
 
-# Where a pull got: past the line it is a full pull.
+# Where a pull got: past the line in force before it, a full pull (the
+# event judges it: a test pull that moves the line to 110 m is one too).
 static func reach(entry: Dictionary) -> String:
 	if entry["disqualified"]:
 		return "out of bounds"
-	var reached_m: float = entry["reached_m"]
-	if reached_m >= float(entry["full_pull_m"]):
+	if entry["full_pull"]:
 		return "FULL PULL"
-	return "%.2f m" % reached_m
+	return "%.2f m" % float(entry["reached_m"])
 
 
 # What the sled operator did after a test pull; "" for nothing.

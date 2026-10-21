@@ -112,25 +112,98 @@ TEST(LiveSeason, PlaysTheEventsInTurn) {
     EXPECT_EQ(season->standings().size(), static_cast<std::size_t>(kPullers));
 }
 
-// Each event draws as the tools' season does: the running order from the
-// event's seed.
-TEST(LiveSeason, EachEventHasTheToolsDraws) {
-    const data::SeasonDefinition d = club_season();
-    const std::unique_ptr<LiveSeason> season = start(d);
-    ASSERT_TRUE(season->start_event(data::venue(d.event.sled, d.rounds.front().track)));
-    LiveEvent* event = season->event();
-    ASSERT_NE(event, nullptr);
-    while (event->turn() == LiveEvent::Turn::kRivals) {
-        event->advance(kSlice);
+// Plays the event being pulled with the player pulling and deciding as
+// play_event's scripted puller did in `played`.
+void replay(LiveEvent& event, const PlayedEvent& played) {
+    std::size_t next = 0;
+    const auto players_line = [&](bool decision) -> const LogEntry* {
+        for (; next < played.log_size; ++next) {
+            const LogEntry& entry = played.log[next];
+            const bool is_decision = entry.deciding >= 0;
+            const int who = is_decision ? entry.deciding : entry.pull.puller;
+            if (who == LiveSeason::kPlayer && is_decision == decision) {
+                return &played.log[next++];
+            }
+        }
+        return nullptr;
+    };
+    for (int guard = 0; guard < 100'000; ++guard) {
+        switch (event.turn()) {
+            case LiveEvent::Turn::kRivals:
+                event.advance(kSlice);
+                break;
+            case LiveEvent::Turn::kPlayerPull: {
+                const LogEntry* line = players_line(false);
+                if (line == nullptr) {
+                    ADD_FAILURE() << "the scripted event has no such pull";
+                    return;
+                }
+                event.record_player({.ending = line->disqualified ? run::Ending::kOutOfBounds
+                                                                  : run::Ending::kStalled,
+                                     .distance_m = line->reached_m},
+                                    line->gear);
+                break;
+            }
+            case LiveEvent::Turn::kPlayerDecision: {
+                const LogEntry* line = players_line(true);
+                if (line == nullptr) {
+                    ADD_FAILURE() << "the scripted event has no such decision";
+                    return;
+                }
+                event.decide_player(line->keep);
+                break;
+            }
+            case LiveEvent::Turn::kFinished:
+            case LiveEvent::Turn::kFailed:
+                return;
+        }
     }
-    // The test puller is the first in the running order.
-    const auto order = event::running_order(kPullers, event_seed(kSeed, 0));
-    if (order[0] == LiveSeason::kPlayer) {
-        EXPECT_EQ(event->turn(), LiveEvent::Turn::kPlayerPull);
-        EXPECT_TRUE(event->log().empty());
-    } else {
-        ASSERT_FALSE(event->log().empty());
-        EXPECT_EQ(event->log().front().pull.puller, order[0]);
+}
+
+// Each event is the tools' season's (tp_pull season: play_event on the
+// season's field, the running order from event_seed and the pulls from one
+// more), line for line, with the player pulling as its scripted puller 0
+// did; for the first event and a later one.
+TEST(LiveSeason, EachEventIsTheToolsEvent) {
+    const data::SeasonDefinition d = club_season();
+    const data::EventDefinition& e = d.event;
+    const std::unique_ptr<LiveSeason> season = start(d);
+    const std::optional<Field> generated =
+        generate(e.reference, e.variation, e.class_rules, kPullers, kSeed);
+    if (!generated.has_value()) {
+        FAIL() << "the field was refused";
+    }
+    Field field = *generated;
+    field.pullers[static_cast<std::size_t>(LiveSeason::kPlayer)] = e.reference;
+    for (int n = 0; n < kEvents; ++n) {
+        const Venue venue = data::venue(e.sled, d.rounds[static_cast<std::size_t>(n)].track);
+        const std::uint64_t seed = event_seed(kSeed, n);
+        const auto order = event::running_order(kPullers, seed);
+        const std::optional<PlayedEvent> scripted =
+            play_event(e.rules, venue, field, e.variation, e.pull_to_pull,
+                       std::span{order.data(), static_cast<std::size_t>(kPullers)}, seed + 1);
+        if (!scripted.has_value()) {
+            FAIL() << "play_event refused event " << n;
+        }
+        const auto played = std::make_unique<PlayedEvent>(*scripted);
+        ASSERT_TRUE(season->start_event(venue));
+        LiveEvent* event = season->event();
+        ASSERT_NE(event, nullptr);
+        replay(*event, *played);
+        ASSERT_EQ(event->turn(), LiveEvent::Turn::kFinished) << "event " << n;
+        ASSERT_EQ(event->log().size(), played->log_size) << "event " << n;
+        for (std::size_t i = 0; i < played->log_size; ++i) {
+            const LogEntry& a = played->log[i];
+            const LogEntry& b = event->log()[i];
+            EXPECT_EQ(a.deciding, b.deciding) << n << ' ' << i;
+            EXPECT_EQ(a.keep, b.keep) << n << ' ' << i;
+            EXPECT_EQ(a.pull.puller, b.pull.puller) << n << ' ' << i;
+            EXPECT_EQ(a.pull.kind, b.pull.kind) << n << ' ' << i;
+            EXPECT_EQ(a.reached_m, b.reached_m) << n << ' ' << i;
+            EXPECT_EQ(a.outcome.change, b.outcome.change) << n << ' ' << i;
+            EXPECT_EQ(a.full_pull_m, b.full_pull_m) << n << ' ' << i;
+        }
+        ASSERT_TRUE(season->score_event());
     }
 }
 

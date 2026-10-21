@@ -23,8 +23,9 @@ namespace tp::field {
 /// driver, the events in turn as LiveEvents (each with its own draws, as
 /// the tools' season has them), and the championship.
 ///
-/// Plain data, no allocation; large (a LiveEvent inside), so keep it on
-/// the heap.
+/// Plain data, no allocation. Large (about 120 KB, a LiveEvent inside):
+/// create() returns it on the stack, so keep the long-lived copy on the
+/// heap.
 class LiveSeason {
 public:
     static constexpr int kPlayer = 0;

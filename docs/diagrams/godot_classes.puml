@@ -16,7 +16,7 @@ package "tp::godot_binding" {
   class TractorPullRun {
     -session_ : optional<session::Session>
     -setup_ : optional<session::Setup>
-    -event_pull_ : int64
+    -event_pull_ : optional<PullKey>
     -controls_ : session::Controls
     -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, controls_path) : String
@@ -33,7 +33,7 @@ package "tp::godot_binding" {
     +get_state_hash() : String
     ..C++ only..
     +session() : const session::Session*
-    +event_pull() : int64
+    +event_pull() : optional<PullKey>
   }
   class TractorPullEvent {
     -definition_ : optional<data::SeasonDefinition>
@@ -55,7 +55,14 @@ package "tp::godot_binding" {
     ..C++ only..
     +player_setup() : optional<session::Setup>
     +practice_setup() : optional<session::Setup>
+    +pull_key() : PullKey
   }
+  class PullKey <<struct>> {
+    +season_id : uint64
+    +event : int
+    +log_size : int64
+  }
+  TractorPullRun *-- PullKey : the pull a run\nwas set up for
   class "godot_files" as Files <<free functions>> {
     +read_godot_file(path) : optional<string>
   }

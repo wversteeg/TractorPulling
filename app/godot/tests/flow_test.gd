@@ -111,6 +111,12 @@ func _play() -> void:
 	var result: ResultScreen = _pull.get("result_screen")
 	var hud: Hud = _pull.get("hud")
 
+	# How a pull reads: against the line before it, not the one after.
+	_expect(EventTexts.reach({"disqualified": false, "full_pull": true, "reached_m": 104.0,
+			"full_pull_m": 110.0}) == "FULL PULL", "a full pull that moved the line")
+	_expect(EventTexts.reach({"disqualified": false, "full_pull": false, "reached_m": 95.5,
+			"full_pull_m": 100.0}) == "95.50 m", "a pull short of the line")
+
 	# The start screen: the season's first event, started behind it.
 	var info := event.get_event()
 	_expect(start.visible and not hud.visible and not controls.visible, "the start screen")
@@ -177,6 +183,10 @@ func _play() -> void:
 	var pullers := {}
 	for entry: Dictionary in event.get_log(0):
 		pullers[entry.get("puller", entry.get("deciding", -1))] = true
+		# A test pull that moves the line to 110 m passed the line before it.
+		if entry.get("change", "") == "line_extended":
+			_expect(entry["full_pull"] and EventTexts.reach(entry) == "FULL PULL",
+					"a test pull past 100 m is a full pull: %s" % entry)
 	_expect(pullers.size() == PULLERS, "every puller pulled: %s" % pullers)
 	await _frames(2)
 	_expect(board.first_button.text == "Results", "the event is over")

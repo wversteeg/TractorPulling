@@ -113,7 +113,7 @@ godot::String TractorPullRun::setup_event_pull(const godot::Ref<TractorPullEvent
     }
     godot::String error = start(*setup, controls_path, read_godot_file);
     if (error.is_empty()) {
-        event_pull_ = event->get_log_size();
+        event_pull_ = event->pull_key();
     }
     return error;
 }
@@ -134,7 +134,7 @@ godot::String TractorPullRun::setup_practice(const godot::Ref<TractorPullEvent>&
 void TractorPullRun::reset() {
     session_.reset();
     setup_.reset();
-    event_pull_ = -1;
+    event_pull_.reset();
     dropped_ns_ = 0;
 }
 

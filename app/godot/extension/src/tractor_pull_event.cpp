@@ -165,7 +165,17 @@ godot::String TractorPullEvent::name_of(int puller) const {
     return to_godot(names_[static_cast<std::size_t>(puller)]);
 }
 
-godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e) const {
+double TractorPullEvent::first_line_m() const {
+    return definition_ ? definition_->event.rules.full_pull_m : 0.0;
+}
+
+PullKey TractorPullEvent::pull_key() const {
+    return {.season_id = get_instance_id(),
+            .event = season_ ? season_->events_started() : 0,
+            .log_size = get_log_size()};
+}
+
+godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e, double line_before_m) const {
     godot::Dictionary out;
     if (e.deciding >= 0) {
         out["deciding"] = e.deciding;
@@ -179,6 +189,7 @@ godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e) const {
     out["pull_off_round"] = e.pull.pull_off_round;
     out["reached_m"] = e.reached_m;
     out["disqualified"] = e.disqualified;
+    out["full_pull"] = !e.disqualified && e.reached_m >= line_before_m;
     out["gear"] = e.gear;
     out["change"] = change_name(e.outcome.change);
     out["steps"] = e.outcome.steps;
@@ -191,9 +202,16 @@ godot::Array TractorPullEvent::get_log(std::int64_t from) const {
     if (!season_ || season_->event() == nullptr) {
         return out;
     }
+    // The line before each pull is the line after the one before it.
+    double line_m = first_line_m();
     const auto log = season_->event()->log();
-    for (std::size_t i = from < 0 ? 0 : static_cast<std::size_t>(from); i < log.size(); ++i) {
-        out.push_back(entry(log[i]));
+    for (std::size_t i = 0; i < log.size(); ++i) {
+        if (static_cast<std::int64_t>(i) >= from) {
+            out.push_back(entry(log[i], line_m));
+        }
+        if (log[i].deciding < 0) {
+            line_m = log[i].full_pull_m;
+        }
     }
     return out;
 }
@@ -247,15 +265,16 @@ godot::Dictionary TractorPullEvent::record_pull(const godot::Ref<TractorPullRun>
     field::LiveEvent& event = *season_->event();
     const session::Session* session = run->session();
     if (event.turn() != field::LiveEvent::Turn::kPlayerPull || session == nullptr ||
-        run->event_pull() != get_log_size()) {
+        run->event_pull() != std::optional<PullKey>{pull_key()}) {
         return {};
     }
     const std::optional<run::Result>& result = session->result();
     if (!result.has_value()) {
         return {};
     }
+    const double line_before_m = event.full_pull_m();
     event.record_player(*result, session->current().gear);
-    return entry(event.log().back());
+    return entry(event.log().back(), line_before_m);
 }
 
 bool TractorPullEvent::get_suggested_keep() const {

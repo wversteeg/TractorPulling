@@ -20,6 +20,17 @@ namespace tp::godot_binding {
 
 class TractorPullRun;
 
+/// Which of the player's pulls a run was set up for: the season object,
+/// the event in it and the log's size then. A run is recorded only for the
+/// pull it was set up for.
+struct PullKey {
+    std::uint64_t season_id = 0;
+    int event = 0;
+    std::int64_t log_size = 0;
+
+    bool operator==(const PullKey&) const = default;
+};
+
 /// A season as the game plays it, for GDScript: field::LiveSeason behind
 /// Godot types. The player (puller 0, "You") and the season's named rivals
 /// pull its events in turn. The scene advances the rivals' work in slices,
@@ -52,10 +63,13 @@ public:
     std::int64_t advance(std::int64_t max_steps);
 
     /// The event's pulls and decisions from `from` on, oldest first, each
-    /// {puller, name, kind, pull_off_round, reached_m, disqualified, gear,
-    /// change, steps, full_pull_m} for a pull (`change` the sled operator's:
-    /// "none", "line_extended", "lighter", "heavier"; `steps` how many), or
-    /// {deciding, name, keep} for a test puller's keep-or-re-pull.
+    /// {puller, name, kind, pull_off_round, reached_m, disqualified,
+    /// full_pull, gear, change, steps, full_pull_m} for a pull (`full_pull`
+    /// judged against the line in force before the pull, `full_pull_m` the
+    /// line after it: a test pull past 100 m that moves it to 110 m is a full
+    /// pull; `change` the sled operator's: "none", "line_extended",
+    /// "lighter", "heavier"; `steps` how many), or {deciding, name, keep}
+    /// for a test puller's keep-or-re-pull.
     [[nodiscard]] godot::Array get_log(std::int64_t from) const;
     [[nodiscard]] std::int64_t get_log_size() const;
     /// The event's standings so far, best first: {place, puller, name,
@@ -86,13 +100,18 @@ public:
     /// A practice pull at the event: the player's tractor on the event's
     /// sled as it is now; nothing before an event.
     [[nodiscard]] std::optional<session::Setup> practice_setup() const;
+    /// The player's pull due now, for setup_event_pull() to remember.
+    [[nodiscard]] PullKey pull_key() const;
 
 protected:
     static void _bind_methods();
 
 private:
     [[nodiscard]] godot::String name_of(int puller) const;
-    [[nodiscard]] godot::Dictionary entry(const field::LogEntry& entry) const;
+    /// `line_before_m`: the full-pull line in force before the pull.
+    [[nodiscard]] godot::Dictionary entry(const field::LogEntry& entry, double line_before_m) const;
+    /// The full-pull line each event starts with.
+    [[nodiscard]] double first_line_m() const;
 
     std::optional<data::SeasonDefinition> definition_;
     std::vector<std::string> names_;

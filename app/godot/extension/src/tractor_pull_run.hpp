@@ -7,14 +7,13 @@
 #include <optional>
 #include <string>
 
+#include "tractor_pull_event.hpp"
 #include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 namespace tp::godot_binding {
-
-class TractorPullEvent;
 
 /// One run, for GDScript: tp::session behind Godot types. The scene sets
 /// the player's controls and advances it by each frame's time, then draws
@@ -86,12 +85,12 @@ public:
     [[nodiscard]] godot::String get_state_hash() const;
 
     /// For TractorPullEvent: the session, if any, and for a run
-    /// setup_event_pull() started, the event's log size then (else -1), so
-    /// the event knows the result is of its pending pull.
+    /// setup_event_pull() started, the pull it was set up for (else none),
+    /// so the event knows the result is of its pending pull.
     [[nodiscard]] const session::Session* session() const {
         return session_ ? &*session_ : nullptr;
     }
-    [[nodiscard]] std::int64_t event_pull() const { return event_pull_; }
+    [[nodiscard]] const std::optional<PullKey>& event_pull() const { return event_pull_; }
 
 protected:
     static void _bind_methods();
@@ -103,7 +102,7 @@ private:
     void reset();
 
     std::optional<session::Session> session_;
-    std::int64_t event_pull_ = -1;
+    std::optional<PullKey> event_pull_;
     /// The setup the session was created from, for get_dimensions().
     std::optional<session::Setup> setup_;
     session::Controls controls_;

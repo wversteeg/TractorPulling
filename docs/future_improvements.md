@@ -130,6 +130,11 @@ for the big features; they are repeated at the end for completeness.
   counts 0 m for its puller (no keep-or-re-pull), the sled stays and the
   next puller tests it; a disqualified pull scores no season points. These
   are reasonable readings, not checked against the NTTO rule book.
+- **Seeds of consecutive seasons.** An event's seed is SplitMix64 of the
+  season's seed plus the event's number (`field::event_seed`, as in
+  `tp_pull season`), so season seed s + 1's first event draws as season
+  s's second. Harmless while each launch picks a random seed; a career
+  that numbers its seasons should mix the season's seed first.
 - **The rivals' gear trials.** The rivals choose their gear by trying
   each one (three gears of about 35 s each): a few seconds of simulation
   for nine rivals on a phone, spread over the frames of the start screen

@@ -39,8 +39,10 @@ const NS_PER_S := 1_000_000_000.0
 # How long the stopped sled stays in view before the result screen.
 const RESULT_DELAY_S := 2.0
 # The rivals' work each frame: slices of steps until this much time is
-# spent, so the board keeps the frame rate on a phone.
-const RIVALS_SLICE_STEPS := 2000
+# spent, so the board keeps the frame rate on a phone. A slice is the least
+# a frame runs: 500 steps are 25 ms even at the phone's speed budget (50 µs
+# a step, docs/performance.md).
+const RIVALS_SLICE_STEPS := 500
 const RIVALS_BUDGET_US := 6000
 const TOP := 10
 
@@ -219,8 +221,9 @@ func _process(delta: float) -> void:
 # The rivals' work, a slice at a time until the frame's budget is spent.
 func _advance_rivals() -> void:
 	var begun := Time.get_ticks_usec()
-	while event.get_event().get("turn", "") == "rivals":
-		event.advance(RIVALS_SLICE_STEPS)
+	# advance() runs a whole slice unless the player is due or the event
+	# is over.
+	while event.advance(RIVALS_SLICE_STEPS) == RIVALS_SLICE_STEPS:
 		if Time.get_ticks_usec() - begun >= RIVALS_BUDGET_US:
 			return
 

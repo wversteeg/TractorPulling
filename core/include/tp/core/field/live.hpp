@@ -27,8 +27,9 @@ namespace tp::field {
 /// the player's pull on sled() by pull_rules() and hands the result to
 /// record_player(), or their decision to decide_player().
 ///
-/// Plain data, no allocation; large (every puller and a pull in progress),
-/// so keep it on the heap.
+/// Plain data, no allocation. Large (about 70 KB: every puller and a pull
+/// in progress): create() returns it on the stack, so keep the long-lived
+/// copy on the heap.
 class LiveEvent {
 public:
     enum class Turn : std::uint8_t {
