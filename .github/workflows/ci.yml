@@ -227,6 +227,112 @@ jobs:
       - name: Play runs through the extension
         run: scripts/godot_test.sh "./Godot_v${GODOT_VERSION}_linux.x86_64"
 
+  # The game exported: a debug APK for phones and the emulator, and the
+  # Windows desktop game, as artifacts to download from the run
+  # (scripts/godot_export.sh). The extension is built for each platform:
+  # Android with the NDK, Windows with MinGW-w64 from Linux.
+  export:
+    name: export
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: 4.7.2-stable
+      GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+      # From the release's SHA512-SUMS.txt, for Godot_v4.7.2-stable_export_templates.tpz.
+      TEMPLATES_SHA512: ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079
+      TEMPLATES_DIR: ~/.local/share/godot/export_templates/4.7.2.stable
+      NDK_VERSION: 29.0.14206865
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja, MinGW-w64 and the NDK
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build g++-mingw-w64-x86-64-posix
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            --install "ndk;${NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Build the extension for the desktop, Android and Windows
+        run: |
+          for preset in godot godot-android-arm64 godot-android-x86_64 godot-windows; do
+            cmake --preset "${preset}"
+            cmake --build --preset "${preset}"
+          done
+
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  godot.zip" | sha512sum --check
+          unzip -q godot.zip
+
+      # The templates come in one 1.3 GB archive; only the three the exports
+      # use are kept, cached by Godot's version.
+      - name: Cache the export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TEMPLATES_DIR }}
+          key: godot-export-templates-${{ env.GODOT_VERSION }}
+
+      - name: Download the export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o templates.tpz \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          echo "${TEMPLATES_SHA512}  templates.tpz" | sha512sum --check
+          unzip -q templates.tpz templates/version.txt templates/android_debug.apk \
+            templates/windows_debug_x86_64.exe templates/windows_debug_x86_64_console.exe
+          dir="${TEMPLATES_DIR/#\~/$HOME}"
+          mkdir -p "${dir}"
+          mv templates/* "${dir}/"
+          rm templates.tpz
+
+      - name: Export
+        run: |
+          export ANDROID_HOME="${ANDROID_SDK_ROOT}"
+          export JAVA_HOME="${JAVA_HOME_17_X64}"
+          scripts/godot_export.sh "./Godot_v${GODOT_VERSION}_linux.x86_64" build/export
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-android
+          path: build/export/tractor_pulling.apk
+          retention-days: 30
+
+      - name: Upload the Windows game
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-windows
+          path: build/export/windows/
+          retention-days: 30
+
+  # The exported Windows game starts on Windows: a few hundred frames
+  # without a display, failing on any error (the extension not loading, a
+  # data file missing from the export).
+  windows-game:
+    name: windows game
+    needs: export
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tractor-pulling-windows
+          path: game
+
+      - name: Start the game
+        shell: bash
+        run: |
+          output="$(timeout 300 game/TractorPulling.console.exe --headless --quit-after 600 2>&1)"
+          echo "${output}"
+          if grep -qE 'ERROR|SCRIPT ERROR' <<<"${output}"; then
+            echo "the game hit an error" >&2
+            exit 1
+          fi
+
   clang-tidy:
     runs-on: ubuntu-24.04
     steps:

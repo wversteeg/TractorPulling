@@ -27,7 +27,9 @@ set_target_properties(tp_godot PROPERTIES
     PREFIX "lib"
     OUTPUT_NAME "tp_godot${TP_GODOT_SUFFIX}"
     CXX_VISIBILITY_PRESET hidden
-    LIBRARY_OUTPUT_DIRECTORY "${TP_GODOT_PROJECT_DIR}/bin")
+    LIBRARY_OUTPUT_DIRECTORY "${TP_GODOT_PROJECT_DIR}/bin"
+    # A Windows DLL is a runtime output, not a library one.
+    RUNTIME_OUTPUT_DIRECTORY "${TP_GODOT_PROJECT_DIR}/bin")
 
 # The game reads the same data/ files as the tools, as res://data.
 #

@@ -251,6 +251,18 @@ for the big features; they are repeated at the end for completeness.
 - **One run per session.** The session plays one run; each of the
   player's pulls at an event is a new session on the sled as it is then.
 
+- **Debug exports only.** The APK and the Windows game are debug exports
+  with the extension's debug libraries, the APK signed with a committed
+  debug key. Publishing needs release libraries (godot-cpp's
+  template_release), a release key kept as a CI secret, an app bundle for
+  Google Play, and the Windows game signed. No icon of its own yet
+  (`application/modify_resources` is off: it needs rcedit).
+- **The Windows game is only started in CI.** The windows-game job starts
+  the export headless and looks for errors; nothing plays a run on Windows
+  or checks its state hashes there (MinGW's gcc builds the same code as
+  Linux's, with the same floating-point flags). Wine 9 cannot run Godot
+  4.7, so it is no help locally.
+
 ## Performance
 
 - **Derived chassis constants at setup.** The pitch step recomputes a few
