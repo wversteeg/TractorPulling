@@ -5,12 +5,13 @@
 # clutch slider beside the throttle (it stays where it is left too, so a
 # thumb can slip the clutch in and leave it) and a brake slider for each
 # rear side above the steering (they spring back to off). Camera, restart
-# and layout buttons sit in the top corner. All of them are multi-touch, so
+# (the same pull again) and menu (back to the start screen) buttons sit in
+# the top corner. All of them are multi-touch, so
 # both thumbs drive at once.
 #
 # For development the keyboard (W throttle, A and D steer, the digits for a
 # gear, held to the gearbox, Space presses the clutch, Q and E brake left
-# and right, C camera, R restart, L layout) and a gamepad (right trigger
+# and right, C camera, R restart, M menu) and a gamepad (right trigger
 # throttle, left trigger clutch, left stick steer, shoulder buttons gear,
 # X neutral, Y camera, Back restart) drive the same controls. The run turns
 # them into the tractor's input: the steering's dead zone and rate are the
@@ -20,7 +21,7 @@ extends Control
 
 signal camera_requested
 signal restart_requested
-signal layout_requested
+signal menu_requested
 
 # Sizes and margins in the 1280×720 base layout; the window stretches it.
 const MARGIN := 48.0
@@ -52,7 +53,7 @@ var gear_down := TouchButton.new()
 var neutral := TouchButton.new()
 var camera_button := TouchButton.new()
 var restart_button := TouchButton.new()
-var layout_button := TouchButton.new()
+var menu_button := TouchButton.new()
 
 
 func _ready() -> void:
@@ -97,15 +98,16 @@ func _ready() -> void:
 	restart_button.text = "again"
 	restart_button.fires_on_release = true
 	_place(restart_button, Vector2(1.0, 0.0), _top_row(1))
-	layout_button.fires_on_release = true
-	_place(layout_button, Vector2(1.0, 0.0), _top_row(2))
+	menu_button.text = "menu"
+	menu_button.fires_on_release = true
+	_place(menu_button, Vector2(1.0, 0.0), _top_row(2))
 
 	gear_up.tapped.connect(func() -> void: set_gear(gear + 1))
 	gear_down.tapped.connect(func() -> void: set_gear(gear - 1))
 	neutral.tapped.connect(func() -> void: set_gear(0))
 	camera_button.tapped.connect(func() -> void: camera_requested.emit())
 	restart_button.tapped.connect(func() -> void: restart_requested.emit())
-	layout_button.tapped.connect(func() -> void: layout_requested.emit())
+	menu_button.tapped.connect(func() -> void: menu_requested.emit())
 	set_layout(pro)
 
 
@@ -116,7 +118,6 @@ func set_layout(is_pro: bool) -> void:
 	for slider: TouchSlider in [clutch_slider, brake_left_slider, brake_right_slider]:
 		slider.visible = pro
 		slider.release()
-	layout_button.text = "pro" if pro else "easy"
 	var column := 2 if pro else 1
 	_anchor(gear_down, Vector2(1.0, 1.0), _right_column(column, BUTTON_SIZE, BUTTON_SIZE))
 	_anchor(gear_up, Vector2(1.0, 1.0),
@@ -134,11 +135,17 @@ func reset() -> void:
 	gear = 0
 	throttle_slider.value = 0.0
 	clutch_slider.value = clutch_slider.rest_value
+	reset_fingers()
+
+
+# Lets go of every finger, as when the controls are hidden: the springing
+# sliders go back to rest, the others stay where they are.
+func reset_fingers() -> void:
 	for slider: TouchSlider in [steering_slider, throttle_slider, clutch_slider,
 			brake_left_slider, brake_right_slider]:
 		slider.release()
 	for button: TouchButton in [gear_up, gear_down, neutral, camera_button, restart_button,
-			layout_button]:
+			menu_button]:
 		button.release()
 
 
@@ -190,8 +197,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			camera_requested.emit()
 		elif key.keycode == KEY_R:
 			restart_requested.emit()
-		elif key.keycode == KEY_L:
-			layout_requested.emit()
+		elif key.keycode == KEY_M:
+			menu_requested.emit()
 		elif key.keycode >= KEY_0 and key.keycode <= KEY_9:
 			set_gear(key.keycode - KEY_0)
 		return

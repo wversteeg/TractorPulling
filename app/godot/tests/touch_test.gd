@@ -2,9 +2,10 @@
 # hand throttle slid open like a lever and left there, the gear tapped up, a
 # button let go when the app loses focus, a thumb steering while the other
 # holds the throttle, the steering springing back when the thumb lifts, and
-# "again" only on a release over it. Checks that the run gets the controls
-# and the tractor pulls and steers. Exits non-zero if a check fails (scripts/godot_test.sh
-# runs it).
+# "again" only on a release over it; then the pro layout, picked on the
+# start screen. Checks that the run gets the controls and the tractor pulls
+# and steers. Exits non-zero if a check fails (scripts/godot_test.sh runs
+# it).
 #
 #   godot --fixed-fps 60 --path app/godot --script res://tests/touch_test.gd
 extends SceneTree
@@ -63,13 +64,19 @@ func _play() -> void:
 	await _frames(2)
 	var controls: DriveControls = _pull.get("controls")
 	var run: TractorPullRun = _pull.get("run")
+	var start: StartScreen = _pull.get("start_screen")
+	# The start screen, in the easy layout: "Next" starts the pull.
+	_expect(start.visible and not controls.visible, "the start screen first")
+	_tap(start.next_button)
+	await _frames(2)
+	_expect(controls.visible and not start.visible, "the pull's controls after Next")
 	var throttle := controls.throttle_slider.get_global_rect()
 	var steering := controls.steering_slider.get_global_rect()
 
 	# Every control is on the screen, where a thumb can reach it.
 	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.gear_up,
 			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
-			controls.layout_button])
+			controls.menu_button])
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible
 			and not controls.brake_left_slider.visible, "the easy layout, without clutch or brakes")
 
@@ -199,13 +206,19 @@ func _slide(finger: int, slider: TouchSlider, up: bool) -> void:
 # The pro layout: the layout button switches and starts again; the clutch
 # starts pressed and is slipped in with a slide; the brakes brake while held.
 func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
-	_tap(controls.layout_button)
+	var start: StartScreen = _pull.get("start_screen")
+	_tap(controls.menu_button)
+	await _frames(2)
+	_expect(start.visible and not controls.visible, "menu: back to the start screen")
+	_tap(start.pro_button)
+	_expect(start.pro_button.selected and not start.easy_button.selected, "pro picked")
+	_tap(start.next_button)
 	await _frames(2)
 	_expect(run.get_layout() == "pro" and controls.pro, "the pro layout")
 	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.clutch_slider,
 			controls.brake_left_slider, controls.brake_right_slider, controls.gear_up,
 			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
-			controls.layout_button])
+			controls.menu_button])
 	_expect(controls.clutch() == 1.0, "the clutch starts pressed")
 
 	for i in 6:
@@ -233,6 +246,9 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(controls.brake_left() == 0.0, "the left brake off when let go")
 
 	# Back to easy.
-	_tap(controls.layout_button)
+	_tap(controls.menu_button)
+	await _frames(2)
+	_tap(start.easy_button)
+	_tap(start.next_button)
 	await _frames(2)
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible, "back to easy")

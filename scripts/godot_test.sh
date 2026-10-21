@@ -4,8 +4,8 @@
 # extension, and checks they end in the same state hashes: the
 # binding passes the controls and the time to tp::session unchanged. The
 # GDScript also checks the binding's edges (run_test.gd), and the pull
-# scene draws the run where it is (scene_test.gd) and takes the touch
-# controls (touch_test.gd).
+# scene draws the run where it is (scene_test.gd), takes the touch controls
+# (touch_test.gd) and plays an event's flow (flow_test.gd).
 #
 #   scripts/godot_test.sh <godot binary> [build directory, default build/godot]
 #
@@ -97,6 +97,8 @@ play() {
 play --fixed-fps 60 --script res://tests/scene_test.gd
 # The touch controls: simulated fingers drive the scene.
 play --fixed-fps 60 --script res://tests/touch_test.gd
+# The game's flow: start screen, qualifying, pull-off, the next event.
+play --fixed-fps 60 --script res://tests/flow_test.gd
 
 play --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
     --brake-right="${brake_right}"

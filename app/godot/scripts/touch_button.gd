@@ -9,11 +9,17 @@ signal tapped
 
 const COLOUR := Color(0.1, 0.1, 0.1, 0.45)
 const HELD_COLOUR := Color(1.0, 0.8, 0.2, 0.8)
+const SELECTED_COLOUR := Color(0.2, 0.45, 0.8, 0.85)
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const FONT_SIZE := 36
 
 @export var text := ""
 @export var fires_on_release := false
+# Shown picked, as one of a set of choices (the layout on the start screen).
+@export var selected := false:
+	set(value):
+		selected = value
+		queue_redraw()
 
 var _finger := -1
 
@@ -54,7 +60,12 @@ func _notification(what: int) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), HELD_COLOUR if _finger >= 0 else COLOUR)
+	var colour := COLOUR
+	if _finger >= 0:
+		colour = HELD_COLOUR
+	elif selected:
+		colour = SELECTED_COLOUR
+	draw_rect(Rect2(Vector2.ZERO, size), colour)
 	var font := get_theme_default_font()
 	var line := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 	var at := Vector2((size.x - line.x) / 2.0, (size.y + font.get_ascent(FONT_SIZE)

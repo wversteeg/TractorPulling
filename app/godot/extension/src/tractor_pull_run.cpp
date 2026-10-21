@@ -3,6 +3,7 @@
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
+#include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
@@ -82,9 +83,7 @@ const char* describe(session::SetupError error) {
 godot::String TractorPullRun::setup(const godot::String& tractor_path,
                                     const godot::String& sled_path, const godot::String& track_path,
                                     const godot::String& controls_path) {
-    session_.reset();
-    setup_.reset();
-    dropped_ns_ = 0;
+    reset();
     const data::ReadFile read = read_godot_file;
     const auto tractor = data::load_tractor(to_std(tractor_path), read);
     if (!tractor) {
@@ -98,7 +97,77 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
     if (!track) {
         return to_godot(track.error().message);
     }
-    session::Setup setup = data::run_setup(tractor.value(), sled.value(), track.value());
+    return start(data::run_setup(tractor.value(), sled.value(), track.value()), controls_path,
+                 read);
+}
+
+godot::String TractorPullRun::setup_event(const godot::String& season_path,
+                                          std::int64_t event_index,
+                                          const godot::String& controls_path, std::int64_t round) {
+    reset();
+    const data::ReadFile read = read_godot_file;
+    const auto season = data::load_season(to_std(season_path), read);
+    if (!season) {
+        return to_godot(season.error().message);
+    }
+    const data::SeasonDefinition& definition = season.value();
+    const auto count = static_cast<std::int64_t>(definition.rounds.size());
+    if (event_index < 0 || event_index >= count) {
+        return godot::vformat("no event %d in the season (0 to %d)", event_index, count - 1);
+    }
+    const event::Rules& rules = definition.event.rules;
+    if (round < 0 || round > rules.solo_pull_offs) {
+        return godot::vformat("no round %d at the event (0 to %d)", round, rules.solo_pull_offs);
+    }
+    const data::SeasonRound& at = definition.rounds[static_cast<std::size_t>(event_index)];
+    const int pull_offs = static_cast<int>(round);
+    godot::String error = start(data::run_setup(definition.event.reference.tractor,
+                                                definition.event.sled, at.track, pull_offs),
+                                controls_path, read);
+    if (error.is_empty()) {
+        event_ = EventPull{.name = at.name,
+                           .index = event_index,
+                           .count = count,
+                           .round = pull_offs,
+                           .rules = rules};
+    }
+    return error;
+}
+
+godot::Dictionary TractorPullRun::get_event() const {
+    godot::Dictionary out;
+    if (!event_) {
+        return out;
+    }
+    out["name"] = to_godot(event_->name);
+    out["index"] = event_->index;
+    out["count"] = event_->count;
+    out["round"] = event_->round;
+    out["pull_offs"] = event_->rules.solo_pull_offs;
+    return out;
+}
+
+std::int64_t TractorPullRun::get_next_round() const {
+    if (!event_ || !session_) {
+        return -1;
+    }
+    const std::optional<run::Result>& result = session_->result();
+    if (!result) {
+        return -1;
+    }
+    const bool full_pull = result->ending == run::Ending::kFullPull;
+    return event::solo_next_round(event_->rules, event_->round, full_pull).value_or(-1);
+}
+
+void TractorPullRun::reset() {
+    session_.reset();
+    setup_.reset();
+    event_.reset();
+    dropped_ns_ = 0;
+}
+
+godot::String TractorPullRun::start(session::Setup setup, const godot::String& controls_path,
+                                    const data::ReadFile& read) {
     if (!controls_path.is_empty()) {
         const auto controls = data::load_control_layout(to_std(controls_path), read);
         if (!controls) {
@@ -202,6 +271,10 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;
     out["full_pull_line_m"] = rules.full_pull_line_m;
+    const engine::Params& engine = tractor.engine;
+    out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
+    out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
+    out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
     return out;
 }
 
@@ -256,6 +329,11 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(
         D_METHOD("setup", "tractor_path", "sled_path", "track_path", "controls_path"),
         &TractorPullRun::setup);
+    ClassDB::bind_method(
+        D_METHOD("setup_event", "season_path", "event_index", "controls_path", "round"),
+        &TractorPullRun::setup_event);
+    ClassDB::bind_method(D_METHOD("get_event"), &TractorPullRun::get_event);
+    ClassDB::bind_method(D_METHOD("get_next_round"), &TractorPullRun::get_next_round);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
                                   "brake_left", "brake_right"),
                          &TractorPullRun::set_controls);

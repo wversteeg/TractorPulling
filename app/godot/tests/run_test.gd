@@ -19,6 +19,7 @@ const SLED := "res://data/sleds/light_class.toml"
 const TRACK := "res://data/tracks/ideal_clay_sand.toml"
 const EASY := "res://data/controls/easy.toml"
 const PRO := "res://data/controls/pro.toml"
+const SEASON := "res://data/seasons/club_season.toml"
 
 const STEP_NS := 1_000_000
 const STEP_S := 0.001
@@ -40,6 +41,7 @@ func _init() -> void:
 	_check_a_missing_file()
 	_check_frames()
 	_check_layouts()
+	_check_event()
 	if not args.has_all(["gear", "stick", "brake-right"]):
 		printerr("needs --gear=N --stick=S --brake-right=B after --")
 		_failures += 1
@@ -120,6 +122,39 @@ func _check_layouts() -> void:
 				"%s plays the %s layout: %s" % [case[0], case[1], error])
 	var error := run.setup(TRACTOR, SLED, TRACK, TRACK)
 	_expect(error.contains("easy, pro"), "a track is no controls file: " + error)
+
+
+# A season's event: its name, place and round, the engine's speeds for
+# the rev counter, the rounds the rules allow, and no next round before the
+# pull ends or after one short of a full pull.
+func _check_event() -> void:
+	var run := TractorPullRun.new()
+	_expect(run.get_event().is_empty() and run.get_next_round() == -1, "no event before setup")
+	var error := run.setup_event(SEASON, 0, EASY, 0)
+	_expect(error.is_empty(), "the season's first event: " + error)
+	var event := run.get_event()
+	_expect(event.get("name", "") == "Spring opener, watered start" and event.get("index", -1) == 0
+			and event.get("count", 0) == 10 and event.get("round", -1) == 0
+			and event.get("pull_offs", -1) == 1, "the event: %s" % event)
+	var dimensions := run.get_dimensions()
+	_expect(dimensions.get("stall_omega_rad_s", 0.0) > 0.0
+			and dimensions.get("rated_omega_rad_s", 0.0) < dimensions.get("high_idle_omega_rad_s", 0.0),
+			"the engine's speeds: %s" % dimensions)
+	_expect(run.get_next_round() == -1, "no next round before the pull ends")
+	# Full left from the start: out of the lane, no pull-off.
+	run.set_controls(1.0, 1.0, 6, 1.0, 0.0, 0.0)
+	var steps := 0
+	while not run.is_finished() and steps < MAX_STEPS:
+		run.advance(STEP_NS)
+		steps += 1
+	_expect(run.is_finished() and run.get_next_round() == -1, "no pull-off after a short pull")
+	_expect(run.setup_event(SEASON, 0, PRO, 1).is_empty() and run.get_event()["round"] == 1,
+			"the pull-off round")
+	_expect(run.setup_event(SEASON, 10, EASY, 0).contains("no event 10"), "past the last event")
+	_expect(run.setup_event(SEASON, 0, EASY, 2).contains("no round 2"), "past the last pull-off")
+	_expect(run.get_event().is_empty(), "no event after a failed setup")
+	run.setup(TRACTOR, SLED, TRACK, EASY)
+	_expect(run.get_event().is_empty(), "a plain setup is no event's pull")
 
 
 # A scripted run, as tp_pull drives it: in neutral until SELECT_GEAR_S,

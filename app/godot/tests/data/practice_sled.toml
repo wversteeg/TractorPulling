@@ -1,0 +1,75 @@
+# A practice sled for the flow test: the light class sled with a 500 kg
+# weight box instead of 1500 kg, so the reference tractor pulls the full
+# 100 m in qualifying and in the pull-off. Otherwise as
+# data/sleds/light_class.toml.
+
+[sled]
+frame_mass_kg = 3200.0
+frame_cg_ahead_of_wheels_m = 0.75
+frame_yaw_inertia_kg_m2 = 5000.0     # about the frame's own centre of gravity; m L² / 12, L ≈ 4.3 m
+pan_ahead_of_wheels_m = 3.0          # centre of the pan's contact
+pan_friction_coefficient = 0.46      # steel sliding on a firm track
+pan_area_m2 = 1.8                    # the pan's contact with the track
+pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
+
+# The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
+[sled.wheels]
+count = 2
+radius_m = 0.55
+section_width_m = 0.43
+section_height_m = 0.35
+deflection_m = 0.04
+
+# The wheels' side grip (see tp::tire::Cornering): they keep the sled's
+# tail in line; the pan, sliding forward, resists sideways far less, so a
+# sled swings behind a tractor that wanders (the dog-tail). Starting values
+# to tune, as for the tractor's tires.
+[sled.wheels.cornering]
+stiffness_per_rad = 4.0
+limit = 0.8
+mobility_rate = 0.1
+relaxation_length_m = 0.55           # about the wheel's radius
+
+[sled.hook]
+ahead_of_wheels_m = 3.3
+height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
+
+[sled.weight_box]
+mass_kg = 500.0
+start_ahead_of_wheels_m = 0.0        # over the rear wheels
+end_ahead_of_wheels_m = 3.0          # over the pan
+travel_distance_m = 100.0            # sled travel to move it from start to end
+
+# Engages at a set distance on the track, chosen per event from the test
+# pull and the track's state (for example 60 or 80 m).
+[sled.pushdown]
+start_m = 60.0
+ramp_m = 30.0                        # travel until the wheels are fully off
+
+[sled.chain]
+length_m = 1.15                      # 1.1 to 1.2 m
+stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
+damping_n_s_per_m = 15000.0
+
+# Knives under the pan cut grooves in the track; the sled operator sets
+# how many and how deep.
+[sled.knives]
+count = 4
+depth_m = 0.04
+width_m = 0.05
+
+# Soil the tractor's tires throw back piles up in front of the pan and has
+# to be pushed along; it spills off to the sides as the sled moves.
+[sled.berm]
+collected_share = 0.15               # of what the rear tires throw back
+spill_distance_m = 40.0              # the berm spills its own size over this travel
+friction_coefficient = 0.6           # soil sliding on soil
+
+# After the full pulls, the qualifiers pull off on a heavier sled: as many
+# of these steps as the sled operator judges they need. One step costs the
+# reference tractor about 5 m.
+[sled.pull_off_step]
+box_mass_kg = 0.0
+knives = 1
+knife_depth_m = 0.0
+pushdown_earlier_m = 0.0

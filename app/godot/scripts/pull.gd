@@ -1,33 +1,37 @@
-# One pull, drawn: the run (TractorPullRun, the C++ extension) stepped by
-# each frame's time, and the track, tractor, sled and chain placed from its
-# blended snapshot. The game rules all live in the run; this only shows it
-# and hands it the controls.
+# The game: a season's events in turn, one pull at a time. The start screen
+# shows the next event (each on its own track) and the control layout; a
+# pull runs until the run ends; the result screen shows how far the sled
+# went, and offers the pull-off the rules give after a full pull, or the
+# next event. The run (TractorPullRun, the C++ extension) holds the rules
+# and the physics, and is stepped by each frame's time; this scene draws
+# its blended snapshot and hands it the controls.
 #
 # The player drives with the touch controls (DriveControls; the keyboard
-# and a gamepad for development), in the easy or the pro layout: the layout
-# button switches and starts the pull again. With `autoplay` the driver is
-# scripted instead: in gear at full throttle, then the clutch dropped.
+# and a gamepad for development), in the easy or the pro layout. With
+# `autoplay` there are no screens: one pull of the tractor, sled and track
+# below, the driver scripted, in gear at full throttle, then the clutch
+# dropped.
 extends Node3D
 
-@export var tractor_path := "res://data/tractors/farm_stock_light.toml"
-@export var sled_path := "res://data/sleds/light_class.toml"
-@export var track_path := "res://data/tracks/ideal_clay_sand.toml"
+enum Screen { START, PULLING, RESULT }
+
+@export var season_path := "res://data/seasons/club_season.toml"
 @export var easy_controls_path := "res://data/controls/easy.toml"
 @export var pro_controls_path := "res://data/controls/pro.toml"
 @export var pro := false
 @export var autoplay := false
 @export var autoplay_gear := 6
+@export var tractor_path := "res://data/tractors/farm_stock_light.toml"
+@export var sled_path := "res://data/sleds/light_class.toml"
+@export var track_path := "res://data/tracks/ideal_clay_sand.toml"
 
 const SELECT_GEAR_S := 0.5
 # The scripted driver drops the clutch a moment after selecting the gear:
 # a gear goes in only with the clutch pressed.
 const DROP_CLUTCH_S := 1.0
 const NS_PER_S := 1_000_000_000.0
-const RPM_PER_RAD_S := 60.0 / TAU
-const KMH_PER_M_S := 3.6
-const HUD_MARGIN := 24.0
-const HUD_FONT_SIZE := 30
-const HUD_OUTLINE := 6
+# How long the stopped sled stays in view before the result screen.
+const RESULT_DELAY_S := 2.0
 
 var run := TractorPullRun.new()
 var track_view := TrackView.new()
@@ -36,41 +40,75 @@ var sled_view := SledView.new()
 var chain_view := ChainView.new()
 var cameras := CameraRig.new()
 var controls := DriveControls.new()
-var _hud := Label.new()
+var hud := Hud.new()
+var start_screen := StartScreen.new()
+var result_screen := ResultScreen.new()
+var screen := Screen.START
+# The season's event to pull, and the round there (0 qualifying, then the
+# pull-offs).
+var event_index := 0
+var round := 0
 var _time_s := 0.0
+# Since the run ended, while the pull's last moments stay in view.
+var _ended_s := 0.0
 
 
 func _ready() -> void:
 	_add_world()
-	add_child(track_view)
-	add_child(tractor_view)
-	add_child(sled_view)
-	add_child(chain_view)
-	add_child(cameras)
-	var hud_layer := CanvasLayer.new()
-	_hud.position = Vector2(HUD_MARGIN, HUD_MARGIN)
-	_hud.add_theme_font_size_override("font_size", HUD_FONT_SIZE)
-	_hud.add_theme_color_override("font_outline_color", Color.BLACK)
-	_hud.add_theme_constant_override("outline_size", HUD_OUTLINE)
-	hud_layer.add_child(_hud)
-	hud_layer.add_child(controls)
-	add_child(hud_layer)
+	for node: Node in [track_view, tractor_view, sled_view, chain_view, cameras]:
+		add_child(node)
+	var layer := CanvasLayer.new()
+	for node: Node in [hud, controls, start_screen, result_screen]:
+		layer.add_child(node)
+	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
-	controls.restart_requested.connect(start)
-	controls.layout_requested.connect(func() -> void:
-		pro = not pro
-		start())
-	start()
+	controls.restart_requested.connect(_pull_again)
+	controls.menu_requested.connect(func() -> void:
+		round = 0
+		show_start())
+	start_screen.layout_picked.connect(func(is_pro: bool) -> void:
+		pro = is_pro
+		show_start())
+	start_screen.start_requested.connect(func() -> void: _set_screen(Screen.PULLING))
+	result_screen.pull_off_requested.connect(func() -> void:
+		round = run.get_next_round()
+		_pull_again())
+	result_screen.next_requested.connect(func() -> void:
+		event_index = (event_index + 1) % maxi(int(run.get_event().get("count", 1)), 1)
+		round = 0
+		show_start())
+	if autoplay:
+		_prepare()
+		_set_screen(Screen.PULLING)
+	else:
+		show_start()
 
 
-# A new run from the start line.
-func start() -> void:
+# The start screen, with the run for the next pull set up behind it.
+func show_start() -> void:
+	var error := _prepare()
+	start_screen.show_event(run.get_event(), pro, error)
+	_set_screen(Screen.START)
+
+
+# The pull, from the start line again: the same round, or the pull-off.
+func _pull_again() -> void:
+	if _prepare().is_empty():
+		_set_screen(Screen.PULLING)
+
+
+# Sets up the run for the pull to come and builds the views from it; ""
+# or what went wrong.
+func _prepare() -> String:
 	var controls_path := pro_controls_path if pro else easy_controls_path
-	var error := run.setup(tractor_path, sled_path, track_path, controls_path)
+	var error: String
+	if autoplay:
+		error = run.setup(tractor_path, sled_path, track_path, controls_path)
+	else:
+		error = run.setup_event(season_path, event_index, controls_path, round)
 	if not error.is_empty():
-		push_error("cannot start the run: " + error)
-		_hud.text = error
-		return
+		push_error("cannot set up the pull: " + error)
+		return error
 	var dimensions := run.get_dimensions()
 	for child in track_view.get_children():
 		child.queue_free()
@@ -78,19 +116,39 @@ func start() -> void:
 	if tractor_view.get_child_count() == 0:
 		tractor_view.build(dimensions)
 		sled_view.build(dimensions)
+	hud.build(dimensions)
 	controls.gear_count = dimensions["gear_count"]
 	controls.set_layout(run.get_layout() == "pro")
 	controls.reset()
 	_time_s = 0.0
 	_show(0.0)
 	cameras.follow(tractor_view.global_position, 0.0, false)
+	return ""
+
+
+func _set_screen(next: Screen) -> void:
+	screen = next
+	start_screen.visible = screen == Screen.START
+	result_screen.visible = screen == Screen.RESULT
+	controls.visible = screen == Screen.PULLING
+	hud.visible = screen != Screen.START
+	start_screen.release_buttons()
+	result_screen.release_buttons()
+	controls.reset_fingers()
+	_ended_s = 0.0
 
 
 func _process(delta: float) -> void:
-	_time_s += delta
-	_read_controls()
-	# The run alone turns the frame's time into its 1 ms steps.
-	run.advance(int(delta * NS_PER_S))
+	if screen == Screen.PULLING:
+		_time_s += delta
+		_read_controls()
+		# The run alone turns the frame's time into its 1 ms steps.
+		run.advance(int(delta * NS_PER_S))
+		if run.is_finished() and not autoplay:
+			_ended_s += delta
+			if _ended_s >= RESULT_DELAY_S:
+				result_screen.show_result(run.get_event(), run.get_result(), run.get_next_round())
+				_set_screen(Screen.RESULT)
 	_show(delta)
 	cameras.follow(tractor_view.global_position, delta)
 
@@ -116,20 +174,7 @@ func _show(delta: float) -> void:
 	sled_view.show_snapshot(s)
 	chain_view.show_between(tractor_view.hitch_position(), sled_view.hook_position(),
 			s["chain_tension_n"])
-	_hud.text = _hud_text(s)
-
-
-func _hud_text(s: Dictionary) -> String:
-	var text := "gear %d   %4.0f rpm   %4.1f km/h   %6.2f m" % [
-			s["gear"], float(s["engine_omega_rad_s"]) * RPM_PER_RAD_S,
-			float(s["tractor_speed_m_s"]) * KMH_PER_M_S, s["sled_x_m"]]
-	if controls.pro:
-		# The clutch as the run has it: 0 pressed, 100 % in.
-		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)
-	if run.is_finished():
-		var result := run.get_result()
-		text += "\n%s at %.2f m" % [result["ending"], result["distance_m"]]
-	return text
+	hud.show_snapshot(s, run.get_event(), controls.pro)
 
 
 func _add_world() -> void:
