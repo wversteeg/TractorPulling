@@ -71,7 +71,17 @@ std::optional<ParamError> validate(const Rules& rules) noexcept {
     if (rules.max_steps_per_change < 1) {
         return ParamError::kMaxStepsNotPositive;
     }
+    if (rules.solo_pull_offs < 0 || rules.solo_pull_offs > kMaxPullOffRounds) {
+        return ParamError::kSoloPullOffsOutOfRange;
+    }
     return std::nullopt;
+}
+
+std::optional<int> solo_next_round(const Rules& rules, int round, bool full_pull) noexcept {
+    if (!full_pull || round < 0 || round >= rules.solo_pull_offs) {
+        return std::nullopt;
+    }
+    return round + 1;
 }
 
 std::optional<Event> Event::create(const Rules& rules, const sled::Params& class_sled,

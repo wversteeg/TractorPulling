@@ -44,3 +44,6 @@ repull_after_pulls = 5           # and re-pulls after the 6th
 sled_target_m = 94.0             # a shorter test pull: the sled goes lighter, so a couple of the best make full pulls
 step_m = 5.0                     # rule of thumb: a sled step is worth about 5 m (learnt better on the day)
 max_steps_per_change = 4         # at most this many steps at once
+# Pulling alone in the game: one qualifying pull, and after a full pull
+# this many pull-offs, each on a heavier sled.
+solo_pull_offs = 1
