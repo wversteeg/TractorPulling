@@ -60,6 +60,7 @@
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/event/event.hpp"
 #include "tp/core/field/field.hpp"
+#include "tp/core/field/live_season.hpp"
 #include "tp/core/field/play.hpp"
 #include "tp/core/math/random.hpp"
 #include "tp/core/pull/pull.hpp"
@@ -577,11 +578,7 @@ int run_event(const tp::data::EventDefinition& definition, std::uint64_t seed) {
     // Separate draws for the field, the running order and the day.
     const auto order = tp::event::running_order(definition.pullers, seed + 1);
     const std::span<const int> running{order.data(), static_cast<std::size_t>(definition.pullers)};
-    const tp::field::Venue venue{
-        .track = definition.track.ground,
-        .sled = tp::sled::with_conditions(definition.sled, definition.track.sled),
-        .max_duration_s = definition.track.rules.max_duration_s,
-        .lane_width_m = definition.track.rules.lane_width_m};
+    const tp::field::Venue venue = tp::data::venue(definition.sled, definition.track);
     const auto played =
         field ? tp::field::play_event(definition.rules, venue, *field, definition.variation,
                                       definition.pull_to_pull, running, seed + 2)
@@ -687,13 +684,9 @@ int run_season(const tp::data::SeasonDefinition& definition, std::uint64_t seed)
     int number = 0;
     for (const tp::data::SeasonRound& round : definition.rounds) {
         // Every event its own draws: running order, gears and pulls.
-        const std::uint64_t event_seed =
-            tp::math::SplitMix64{seed + static_cast<std::uint64_t>(number)}.next();
+        const std::uint64_t event_seed = tp::field::event_seed(seed, number);
         const auto order = tp::event::running_order(base.pullers, event_seed);
-        const tp::field::Venue venue{.track = round.track.ground,
-                                     .sled = tp::sled::with_conditions(base.sled, round.track.sled),
-                                     .max_duration_s = round.track.rules.max_duration_s,
-                                     .lane_width_m = round.track.rules.lane_width_m};
+        const tp::field::Venue venue = tp::data::venue(base.sled, round.track);
         const auto played = tp::field::play_event(
             base.rules, venue, *field, base.variation, base.pull_to_pull,
             std::span{order.data(), static_cast<std::size_t>(base.pullers)}, event_seed + 1);

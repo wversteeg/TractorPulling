@@ -1,36 +1,50 @@
 @startuml godot_run_flow_sequence
-title The game's flow: an event of the season, a qualifying pull and the pull-off
+title The game's flow: a season's event against the rivals, then the top tens
 autonumber
 actor Player
 participant "pull.gd" as Pull
-participant "StartScreen /\nResultScreen" as Screens
+participant "StartScreen / BoardScreen /\nResultScreen" as Screens
+participant "TractorPullEvent" as Event
 participant "TractorPullRun" as Run
-participant "data::load_season /\nrun_setup" as Data
-participant "event::solo_next_round" as Solo
 
-Pull -> Run : setup_event(season, event_index, controls, round 0)
-Run -> Data : load the season: class tractor and sled,\nthe event's track; run_setup(..., pull_offs = round)
-Run --> Pull : "" or the error
+Pull -> Event : start_season(season, seed: new each launch)
+Pull -> Event : start_event()
 Pull -> Screens : start screen: get_event() (name, n of count), layout
-Player -> Screens : easy or pro (set up again), Next
-loop every frame while pulling
-  Pull -> Run : set_controls(...), advance(frame time)
-  Pull -> Pull : draw the snapshot, HUD
+loop each frame on the start screen and the board
+  Pull -> Event : advance(slices of steps, ~6 ms a frame)\nwhile the turn is the rivals'
 end
-Run --> Pull : is_finished()
-Pull -> Pull : the stopped sled in view for 2 s
-Pull -> Run : get_result(), get_next_round()
-Run -> Solo : (rules, round, full pull?)
-Solo --> Run : round + 1 after a full pull, up to\nsolo_pull_offs; else none (-1)
-Pull -> Screens : result screen: distance, ending, top speed
-alt a pull-off to pull
-  Player -> Screens : Pull-off
-  Pull -> Run : setup_event(season, event_index, controls, round 1)\n(the sled one step heavier)
-  note right of Pull : and pull again, as above
-else done at this event
-  Player -> Screens : Next
-  Pull -> Pull : event_index + 1 (round the season), round 0
-  Pull -> Run : setup_event(season, next event, controls, 0)
-  Pull -> Screens : start screen for the next event and its track
+opt Practice
+  Player -> Screens : Practice
+  Pull -> Run : setup_practice(event, controls)
+  note right of Pull : a free pull; again and menu work
+end
+Player -> Screens : Event
+loop until get_event().turn is "finished"
+  Pull -> Screens : the board: get_log() rows,\nwhat is up next
+  alt turn "player_pull"
+    Player -> Screens : Pull
+    Pull -> Run : setup_event_pull(event, controls)\n(the sled as the operator has set it)
+    loop every frame while pulling
+      Pull -> Run : set_controls(...), advance(frame time)
+    end
+    Pull -> Event : record_pull(run)
+    Event --> Pull : the log entry: the operator's verdict
+    Pull -> Screens : result screen; Continue
+  else turn "player_decision"
+    Player -> Screens : Keep or Pull again
+    Pull -> Event : decide(keep)
+  end
+end
+Player -> Screens : Results
+Pull -> Screens : the event's top ten: get_standings()
+Player -> Screens : Season
+Pull -> Event : score_event()
+Pull -> Screens : the season's top ten: get_season_standings()
+alt more events
+  Player -> Screens : Next event
+  Pull -> Event : start_event()
+else the season is over
+  Player -> Screens : New season
+  Pull -> Event : start_season(season, new seed)
 end
 @enduml

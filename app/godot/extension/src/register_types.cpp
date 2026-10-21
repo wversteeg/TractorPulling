@@ -2,6 +2,7 @@
 // tractor_pulling.gdextension) when it loads the library, and the classes are
 // registered with the scene level.
 
+#include "tractor_pull_event.hpp"
 #include "tractor_pull_run.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
@@ -14,6 +15,7 @@ void initialize(godot::ModuleInitializationLevel level) {
         return;
     }
     GDREGISTER_CLASS(tp::godot_binding::TractorPullRun);
+    GDREGISTER_CLASS(tp::godot_binding::TractorPullEvent);
 }
 
 void uninitialize(godot::ModuleInitializationLevel /*level*/) {}

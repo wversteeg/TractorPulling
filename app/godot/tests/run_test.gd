@@ -124,37 +124,66 @@ func _check_layouts() -> void:
 	_expect(error.contains("easy, pro"), "a track is no controls file: " + error)
 
 
-# A season's event: its name, place and round, the engine's speeds for
-# the rev counter, the rounds the rules allow, and no next round before the
-# pull ends or after one short of a full pull.
+# A season's event (TractorPullEvent): the player and the named rivals,
+# the rivals' work in slices until the player is due, the player's pull on
+# the event's sled, recorded once, and practice pulls at any time.
 func _check_event() -> void:
+	var event := TractorPullEvent.new()
+	_expect(event.get_season().is_empty() and event.get_event().is_empty(), "no season yet")
+	_expect(event.start_event() == "no season", "no event without a season")
+	var error := event.start_season(SEASON, 7)
+	_expect(error.is_empty(), "the season: " + error)
+	var season := event.get_season()
+	var names: PackedStringArray = season.get("names", PackedStringArray())
+	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 10
+			and names[0] == "You" and names[1] == "Henk", "the season: %s" % season)
+	error = event.start_event()
+	_expect(error.is_empty(), "the first event: " + error)
+	var info := event.get_event()
+	_expect(info.get("name", "") == "Spring opener, watered start" and info.get("index", -1) == 0
+			and info.get("pullers", 0) == 10 and info.get("full_pull_m", 0.0) == 100.0,
+			"the event: %s" % info)
+
 	var run := TractorPullRun.new()
-	_expect(run.get_event().is_empty() and run.get_next_round() == -1, "no event before setup")
-	var error := run.setup_event(SEASON, 0, EASY, 0)
-	_expect(error.is_empty(), "the season's first event: " + error)
-	var event := run.get_event()
-	_expect(event.get("name", "") == "Spring opener, watered start" and event.get("index", -1) == 0
-			and event.get("count", 0) == 10 and event.get("round", -1) == 0
-			and event.get("pull_offs", -1) == 1, "the event: %s" % event)
+	_expect(run.setup_practice(event, EASY).is_empty(), "a practice pull at the event")
+	_expect(event.record_pull(run).is_empty(), "a practice pull is not the event's")
 	var dimensions := run.get_dimensions()
 	_expect(dimensions.get("stall_omega_rad_s", 0.0) > 0.0
 			and dimensions.get("rated_omega_rad_s", 0.0) < dimensions.get("high_idle_omega_rad_s", 0.0),
 			"the engine's speeds: %s" % dimensions)
-	_expect(run.get_next_round() == -1, "no next round before the pull ends")
-	# Full left from the start: out of the lane, no pull-off.
-	run.set_controls(1.0, 1.0, 6, 1.0, 0.0, 0.0)
+	_expect(dimensions.get("track_length_m", 0.0) == 130.0
+			and dimensions.get("full_pull_line_m", 0.0) == 100.0,
+			"a run past the line until the sled stops: %s" % dimensions)
+
+	var slices := 0
+	while event.get_event()["turn"] == "rivals" and slices < 10_000:
+		var steps := event.advance(5000)
+		_expect(steps <= 5000, "a slice runs at most its steps")
+		slices += 1
+	info = event.get_event()
+	_expect(info["turn"] == "player_pull", "the player's turn: %s" % info)
+	_expect(event.advance(5000) == 0, "the rivals wait for the player")
+	_expect(not run.setup_event_pull(null, EASY).is_empty(), "no event")
+	error = run.setup_event_pull(event, EASY)
+	_expect(error.is_empty(), "the player's pull: " + error)
+	_expect(event.record_pull(run).is_empty(), "not before the run ends")
+	run.set_controls(1.0, 1.0, 6, 0.0, 0.0, 0.0)
 	var steps := 0
 	while not run.is_finished() and steps < MAX_STEPS:
 		run.advance(STEP_NS)
 		steps += 1
-	_expect(run.is_finished() and run.get_next_round() == -1, "no pull-off after a short pull")
-	_expect(run.setup_event(SEASON, 0, PRO, 1).is_empty() and run.get_event()["round"] == 1,
-			"the pull-off round")
-	_expect(run.setup_event(SEASON, 10, EASY, 0).contains("no event 10"), "past the last event")
-	_expect(run.setup_event(SEASON, 0, EASY, 2).contains("no round 2"), "past the last pull-off")
-	_expect(run.get_event().is_empty(), "no event after a failed setup")
-	run.setup(TRACTOR, SLED, TRACK, EASY)
-	_expect(run.get_event().is_empty(), "a plain setup is no event's pull")
+	var size := event.get_log_size()
+	var entry := event.record_pull(run)
+	_expect(entry.get("puller", -1) == 0 and entry.get("name", "") == "You"
+			and entry.get("kind", "") == info["pull_kind"]
+			and entry.get("reached_m", -1.0) == run.get_result()["distance_m"],
+			"the player's pull: %s" % entry)
+	_expect(event.get_log_size() == size + 1, "in the log")
+	_expect(event.record_pull(run).is_empty(), "recorded once")
+	if event.get_event()["turn"] != "player_pull":
+		_expect(run.setup_event_pull(event, EASY).contains("no pull"),
+				"no pull of the player's due")
+	_expect(not event.score_event(), "an unfinished event is not scored")
 
 
 # A scripted run, as tp_pull drives it: in neutral until SELECT_GEAR_S,

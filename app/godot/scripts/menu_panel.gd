@@ -1,5 +1,5 @@
-# A centred panel of lines and touch buttons, the base of the start and
-# result screens: the screens fill in the text and say which buttons show.
+# A centred panel of lines and touch buttons, the base of the game's
+# screens: the screens fill in the text and say which buttons show.
 class_name MenuPanel
 extends Control
 
@@ -10,6 +10,8 @@ const BUTTON_SIZE := Vector2(200.0, 90.0)
 const GAP := 24.0
 const OUTLINE := 4
 
+# Set before the panel enters the tree.
+var panel_size := PANEL_SIZE
 var _box := VBoxContainer.new()
 
 
@@ -20,10 +22,10 @@ func _ready() -> void:
 	panel.color = PANEL_COLOUR
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.offset_left = -PANEL_SIZE.x / 2.0
-	panel.offset_right = PANEL_SIZE.x / 2.0
-	panel.offset_top = -PANEL_SIZE.y / 2.0
-	panel.offset_bottom = PANEL_SIZE.y / 2.0
+	panel.offset_left = -panel_size.x / 2.0
+	panel.offset_right = panel_size.x / 2.0
+	panel.offset_top = -panel_size.y / 2.0
+	panel.offset_bottom = panel_size.y / 2.0
 	add_child(panel)
 	_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE,
 			int(PADDING))
@@ -41,6 +43,11 @@ func add_line(font_size: int) -> Label:
 	label.add_theme_constant_override("outline_size", OUTLINE)
 	_box.add_child(label)
 	return label
+
+
+# Any control, in the panel's column.
+func add_item(item: Control) -> void:
+	_box.add_child(item)
 
 
 # A row of buttons; add_button() fills the last one.

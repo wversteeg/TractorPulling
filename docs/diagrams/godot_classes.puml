@@ -1,5 +1,5 @@
 @startuml godot_classes
-title Godot binding (app/godot/extension): tp::session for GDScript
+title Godot binding (app/godot/extension): tp::session and the live season for GDScript
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -16,13 +16,12 @@ package "tp::godot_binding" {
   class TractorPullRun {
     -session_ : optional<session::Session>
     -setup_ : optional<session::Setup>
-    -event_ : optional<EventPull>
+    -event_pull_ : int64
     -controls_ : session::Controls
     -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, controls_path) : String
-    +setup_event(season_path, event_index, controls_path, round) : String
-    +get_event() : Dictionary
-    +get_next_round() : int
+    +setup_event_pull(event : TractorPullEvent, controls_path) : String
+    +setup_practice(event : TractorPullEvent, controls_path) : String
     +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
     +advance(elapsed_ns) : int
     +get_dropped_ns() : int
@@ -32,12 +31,30 @@ package "tp::godot_binding" {
     +is_finished() : bool
     +get_result() : Dictionary
     +get_state_hash() : String
+    ..C++ only..
+    +session() : const session::Session*
+    +event_pull() : int64
   }
-  class EventPull <<struct>> {
-    +name : string
-    +index, count : int64
-    +round : int
-    +rules : event::Rules
+  class TractorPullEvent {
+    -definition_ : optional<data::SeasonDefinition>
+    -names_ : vector<string>
+    -season_ : unique_ptr<field::LiveSeason>
+    +start_season(season_path, seed) : String
+    +get_season() : Dictionary
+    +start_event() : String
+    +get_event() : Dictionary
+    +advance(max_steps) : int
+    +get_log(from) : Array
+    +get_log_size() : int
+    +get_standings() : Array
+    +record_pull(run : TractorPullRun) : Dictionary
+    +get_suggested_keep() : bool
+    +decide(keep)
+    +score_event() : bool
+    +get_season_standings() : Array
+    ..C++ only..
+    +player_setup() : optional<session::Setup>
+    +practice_setup() : optional<session::Setup>
   }
   class "godot_files" as Files <<free functions>> {
     +read_godot_file(path) : optional<string>
@@ -50,7 +67,8 @@ package "tp::godot_binding" {
 package "core and data_io (see their class diagrams)" {
   class "session::Session / Setup /\nControls / Snapshot / blend()" as Session
   class "data::load_tractor / load_sled /\nload_track / load_control_layout /\nload_season (path, ReadFile)" as Loaders
-  class "data::run_setup(tractor, class_sled,\ntrack, pull_offs) : session::Setup" as RunSetup
+  class "data::run_setup(tractor, class_sled, track)\ndata::run_setup(tractor, LiveEvent)\ndata::venue(class_sled, track)" as RunSetup
+  class "field::LiveSeason / LiveEvent" as Live
 }
 
 package "GDScript (app/godot)" {
@@ -58,18 +76,24 @@ package "GDScript (app/godot)" {
 }
 
 RefCounted <|-- TractorPullRun
+RefCounted <|-- TractorPullEvent
 Register ..> TractorPullRun : registers
+Register ..> TractorPullEvent : registers
+TractorPullEvent *-- Live
+TractorPullEvent ..> Loaders : load_season
+TractorPullEvent ..> RunSetup : venues, the player's Setup
+TractorPullRun ..> TractorPullEvent : setup_event_pull,\nsetup_practice
+TractorPullEvent ..> TractorPullRun : record_pull reads\nthe result
 TractorPullRun *-- Session
 TractorPullRun ..> Loaders : setup
 TractorPullRun ..> RunSetup : the run's Setup
-TractorPullRun *-- EventPull : setup_event
-class "event::solo_next_round()" as Solo
-TractorPullRun ..> Solo : get_next_round
 TractorPullRun ..> Files : the ReadFile
 Files ..> FileAccess : res://, user://
 Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot,\nget_dimensions at setup
+Scripts ..> TractorPullEvent : a season at launch,\nthe rivals in slices per frame,\nthe boards
 note bottom of TractorPullRun
-  holds no game rules: everything goes through tp::session;
+  holds no game rules: everything goes through tp::session
+  and field::LiveSeason (the player is puller 0, "You");
   values in and out are SI, on the track (docs/conventions.md)
 end note
 @enduml

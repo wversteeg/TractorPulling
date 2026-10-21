@@ -8,6 +8,7 @@ set(TP_GODOT_PROJECT_DIR "${PROJECT_SOURCE_DIR}/app/godot")
 add_library(tp_godot SHARED
     src/godot_files.cpp
     src/register_types.cpp
+    src/tractor_pull_event.cpp
     src/tractor_pull_run.cpp)
 target_link_libraries(tp_godot PRIVATE tp::core tp::data godot::cpp)
 tp_configure_target(tp_godot)

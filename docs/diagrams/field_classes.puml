@@ -81,6 +81,7 @@ package "tp::field" {
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
     +pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
     +kPullStream : uint64
+    +event_seed(season_seed, number) : uint64
   }
   enum "LiveEvent::Turn" as Turn {
     kRivals
@@ -109,6 +110,24 @@ package "tp::field" {
     -job_ : optional<Job{model, state, plan, rules}>
     -log_ : array<LogEntry, 160>
   }
+  class LiveSeason {
+    +{static} kPlayer = 0
+    +{static} create(rules, reference, variation, class_rules, pull_to_pull,\n      points, pullers, events, seed) : optional<LiveSeason>
+    +start_event(const Venue&) : bool
+    +event() : LiveEvent*
+    +score_event() : bool
+    +events_scored(), event_count(), events_started() : int
+    +over() : bool
+    +puller_count() : int
+    +player() : const Puller&
+    +standings() : span<const season::Standing>
+    --
+    -field_ : Field (the player the reference)
+    -championship_ : season::Championship
+    -event_ : optional<LiveEvent>
+  }
+  LiveSeason *-- LiveEvent
+  LiveSeason ..> FieldFns : generate, event_seed
   LiveEvent ..> Turn
   LiveEvent *-- Field
   LiveEvent *-- LogEntry

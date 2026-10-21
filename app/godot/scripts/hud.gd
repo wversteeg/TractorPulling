@@ -61,15 +61,9 @@ func build(dimensions: Dictionary) -> void:
 	_bar_m = _line_m * TRACK_HEADROOM
 
 
-# `event` is TractorPullRun.get_event() ({} outside an event), `pro` whether
-# to show the clutch.
-func show_snapshot(s: Dictionary, event: Dictionary, pro: bool) -> void:
-	if event.is_empty():
-		_pull.text = ""
-	else:
-		var pull_off_round: int = event["round"]
-		var which := "Qualifying" if pull_off_round == 0 else "Pull-off %d" % pull_off_round
-		_pull.text = "%s  ·  %s" % [which, event["name"]]
+# `title` names the pull ("" none), `pro` whether to show the clutch.
+func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
+	_pull.text = title
 	_omega_rad_s = s["engine_omega_rad_s"]
 	_sled_m = s["sled_x_m"]
 	var gear: int = s["gear"]

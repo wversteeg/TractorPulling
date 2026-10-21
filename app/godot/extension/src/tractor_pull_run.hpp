@@ -1,6 +1,5 @@
 #pragma once
 
-#include "tp/core/event/event.hpp"
 #include "tp/core/session/session.hpp"
 #include "tp/data/files.hpp"
 
@@ -8,11 +7,14 @@
 #include <optional>
 #include <string>
 
+#include <godot_cpp/classes/ref.hpp>
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 namespace tp::godot_binding {
+
+class TractorPullEvent;
 
 /// One run, for GDScript: tp::session behind Godot types. The scene sets
 /// the player's controls and advances it by each frame's time, then draws
@@ -32,21 +34,18 @@ public:
     godot::String setup(const godot::String& tractor_path, const godot::String& sled_path,
                         const godot::String& track_path, const godot::String& controls_path);
 
-    /// Starts a pull at an event of a season (res:// paths work): the
-    /// season's class tractor and sled on the track of event `event_index`
-    /// (0 to get_event().count - 1), in pull-off round `round` (0 the
-    /// qualifying pull; data::run_setup makes the sled one step heavier
-    /// per round), in the layout `controls_path` names, as setup(). Returns
-    /// "" or what is wrong.
-    godot::String setup_event(const godot::String& season_path, std::int64_t event_index,
-                              const godot::String& controls_path, std::int64_t round);
-    /// {name, index, count, round, pull_offs} of the event setup_event()
-    /// started (`pull_offs` the most a puller alone may pull), else {}.
-    [[nodiscard]] godot::Dictionary get_event() const;
-    /// Once an event's pull is finished, the round the puller pulls next
-    /// (event::solo_next_round: a pull-off after a full pull), or -1 when
-    /// they are done, the run is not finished, or it is no event's pull.
-    [[nodiscard]] std::int64_t get_next_round() const;
+    /// Starts the player's next pull at `event`'s event (TractorPullEvent):
+    /// the reference tractor on the event's sled as the operator has set
+    /// it, the run going on past the full-pull line until the sled stops,
+    /// in the layout `controls_path` names, as setup(). Returns "" or what is
+    /// wrong (no pull of the player's is due). Hand the finished run to
+    /// event.record_pull().
+    godot::String setup_event_pull(const godot::Ref<TractorPullEvent>& event,
+                                   const godot::String& controls_path);
+    /// A practice pull at `event`'s event, as setup_event_pull() but at any
+    /// time and not for the event: the sled as the event has it now.
+    godot::String setup_practice(const godot::Ref<TractorPullEvent>& event,
+                                 const godot::String& controls_path);
 
     /// The controls held from now on (see session::Controls: held to their
     /// range, and a value that is not a number reads as the control at rest).
@@ -86,26 +85,25 @@ public:
     /// `tp_pull run --hash` prints it.
     [[nodiscard]] godot::String get_state_hash() const;
 
+    /// For TractorPullEvent: the session, if any, and for a run
+    /// setup_event_pull() started, the event's log size then (else -1), so
+    /// the event knows the result is of its pending pull.
+    [[nodiscard]] const session::Session* session() const {
+        return session_ ? &*session_ : nullptr;
+    }
+    [[nodiscard]] std::int64_t event_pull() const { return event_pull_; }
+
 protected:
     static void _bind_methods();
 
 private:
-    /// An event's pull, as setup_event() started it.
-    struct EventPull {
-        std::string name;
-        std::int64_t index = 0;
-        std::int64_t count = 0;
-        int round = 0;
-        event::Rules rules;
-    };
-
     /// Applies the controls file and starts the session; "" or the error.
     godot::String start(session::Setup setup, const godot::String& controls_path,
                         const data::ReadFile& read);
     void reset();
 
     std::optional<session::Session> session_;
-    std::optional<EventPull> event_;
+    std::int64_t event_pull_ = -1;
     /// The setup the session was created from, for get_dimensions().
     std::optional<session::Setup> setup_;
     session::Controls controls_;

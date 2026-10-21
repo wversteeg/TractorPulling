@@ -66,6 +66,8 @@ public:
     /// The sled and run rules for the next pull: the event's sled as it is
     /// now, and a run that goes on past the line until the sled stops.
     [[nodiscard]] const sled::Params& sled() const noexcept { return event_.sled(); }
+    /// Where the event is pulled: the track's ground for the player's run.
+    [[nodiscard]] const Venue& venue() const noexcept { return venue_; }
     [[nodiscard]] run::Rules pull_rules() const noexcept;
 
     /// Records the player's pull (`gear` the gear they pulled in): out of

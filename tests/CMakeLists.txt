@@ -55,6 +55,7 @@ if(TP_BUILD_DATA_IO)
         data/run_setup_test.cpp
         data/season_loader_test.cpp
         data/live_event_test.cpp
+        data/live_season_test.cpp
         data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp
         data/tire_loader_test.cpp

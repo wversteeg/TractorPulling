@@ -84,10 +84,14 @@ package "tp::data" {
   }
   class "run_setup" as RunSetup <<free functions>> {
     +run_setup(tractor, class_sled, track, pull_offs = 0) : session::Setup
+    +run_setup(tractor, const field::LiveEvent&) : session::Setup
+    +venue(class_sled, track) : field::Venue
     --
     the class sled with the track's conditions, made heavier one step
     per pull-off; the track's ground and rules; the pro layout.
-    tp_pull and the Godot binding both start their runs from it
+    tp_pull and the Godot binding both start their runs from it.
+    At a live event: the event's sled as the operator has set it,
+    a run past the line until the sled stops
   }
   RunSetup ..> Track
   class ControlLayout <<struct>> {
