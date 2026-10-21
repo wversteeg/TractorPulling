@@ -128,21 +128,38 @@ TEST(Session, IsTheRunSteppedByHand) {
     EXPECT_EQ(result->ending, by_hand.result->ending);
 }
 
-// The easy layout: the session runs the clutch assist exactly as
-// controls::easy does before each step.
+// The easy layout: the session runs the clutch assist and the steering
+// exactly as controls::easy does before each step. A steering correction
+// past the dead zone on the way carries the steering's state too, and the
+// tractor stays in its lane.
 TEST(Session, RunsTheClutchAssistOfTheEasyLayout) {
     const session::Setup setup = reference_setup(Layout::kEasy);
     Session session = make(setup);
     run::State by_hand = run::start(Inspector::model(session));
     controls::AssistState assist;
     const vehicle::Params& tractor = Inspector::model(session).tractor().params();
-    const Controls pulling{.throttle = 1.0, .gear = 6};
-    while (!by_hand.result) {
-        const vehicle::Input input = controls::easy({.throttle = 1.0, .gear = 6}, setup.easy,
-                                                    assist, tractor, by_hand.pull.tractor, kDt_s);
+    // A correction to the left, then back to the right, past the dead zone.
+    const auto steering_at = [](std::uint64_t step) {
+        constexpr std::uint64_t kLeftFrom = 5000;
+        constexpr std::uint64_t kRightFrom = 5500;
+        constexpr std::uint64_t kStraightFrom = 6000;
+        constexpr double kCorrection = 0.1;
+        if (step >= kLeftFrom && step < kRightFrom) {
+            return kCorrection;
+        }
+        return step >= kRightFrom && step < kStraightFrom ? -kCorrection : 0.0;
+    };
+    double most_steering = 0.0;
+    for (std::uint64_t step = 0; !by_hand.result; ++step) {
+        const double steering = steering_at(step);
+        const vehicle::Input input =
+            controls::easy({.throttle = 1.0, .gear = 6, .steering = steering}, setup.easy, assist,
+                           tractor, by_hand.pull.tractor, kDt_s);
         run::step(by_hand, Inspector::model(session), kRules, input, kDt_s);
-        session.advance(pulling, kStep_ns);
+        session.advance({.throttle = 1.0, .gear = 6, .steering = steering}, kStep_ns);
+        most_steering = std::max(most_steering, assist.steering);
     }
+    EXPECT_GT(most_steering, 0.0);
     hash::Fnv1a expected;
     run::hash_append(expected, by_hand);
     controls::hash_append(expected, assist);
@@ -158,7 +175,8 @@ TEST(Session, RunsTheClutchAssistOfTheEasyLayout) {
 // at 60 fps, 30 fps, faster than the step and exactly one step all give
 // the same run.
 TEST(Session, GivesTheSameRunHoweverTheTimeIsSplitIntoFrames) {
-    const Controls pulling{.throttle = 1.0, .gear = 6, .steering = 0.01};
+    // Steering past the dead zone, so the steering's state is carried too.
+    const Controls pulling{.throttle = 1.0, .gear = 6, .steering = 0.1};
     constexpr std::array<std::int64_t, 4> kFrames_ns = {16'666'667, 33'333'333, 400'000, kStep_ns};
     std::optional<std::uint64_t> first_hash;
     std::optional<double> first_distance_m;

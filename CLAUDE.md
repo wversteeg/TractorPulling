@@ -154,7 +154,7 @@ cmake --preset release && cmake --build --preset release
 # clutch; --stick holds the steering control (-1 right to 1 left)
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
-    --easy data/controls/easy.toml [--stick 0.02] -o run.csv
+    --easy data/controls/easy.toml [--stick 0.05] -o run.csv
 
 # The same tractor, sled and driving on several tracks: one line per track
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \

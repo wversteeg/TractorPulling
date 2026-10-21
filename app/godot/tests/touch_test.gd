@@ -1,8 +1,9 @@
 # The touch controls, played on the pull scene with simulated fingers: the
-# hand throttle opened and left there, the gear tapped up, a thumb steering
-# while the other holds the throttle, and the steering springing back when
-# the thumb lifts. Checks that the run gets the controls and the tractor
-# pulls and steers. Exits non-zero if a check fails (scripts/godot_test.sh
+# hand throttle slid open like a lever and left there, the gear tapped up, a
+# button let go when the app loses focus, a thumb steering while the other
+# holds the throttle, the steering springing back when the thumb lifts, and
+# "again" only on a release over it. Checks that the run gets the controls
+# and the tractor pulls and steers. Exits non-zero if a check fails (scripts/godot_test.sh
 # runs it).
 #
 #   godot --fixed-fps 60 --path app/godot --script res://tests/touch_test.gd
@@ -11,6 +12,7 @@ extends SceneTree
 const THROTTLE_FINGER := 0
 const TAP_FINGER := 1
 const STEERING_FINGER := 2
+const STUCK_FINGER := 3
 const PULL_FRAMES := 300
 const STEER_FRAMES := 60
 
@@ -88,9 +90,27 @@ func _play() -> void:
 		_tap(controls.gear_up)
 	_expect(controls.gear == 6, "six taps up: 6th gear")
 
-	# The hand throttle: opened at the top, it stays open when the finger lifts.
-	var top := Vector2(throttle.get_center().x, throttle.position.y - 10.0)
+	# A gear button pressed when the app loses focus lets go, so the next
+	# finger still works it.
+	_touch(STUCK_FINGER, controls.gear_up.get_global_rect().get_center(), true)
+	controls.gear_up.notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	_tap(controls.gear_down)
+	_tap(controls.gear_down)
+	_expect(controls.gear == 5, "the button works after focus loss: %d" % controls.gear)
+	_tap(controls.gear_up)
+
+	# The hand throttle is moved like a lever: a touch in its middle does not
+	# open it; sliding from the bottom past the top does, and it stays open
+	# when the finger lifts.
 	_touch(THROTTLE_FINGER, throttle.get_center(), true)
+	_touch(THROTTLE_FINGER, throttle.get_center(), false)
+	_expect(controls.throttle() == 0.0, "a touch alone leaves the throttle: %s" % controls.throttle())
+	var low := Vector2(throttle.get_center().x, throttle.end.y - 1.0)
+	var top := Vector2(throttle.get_center().x, throttle.position.y - 10.0)
+	_touch(THROTTLE_FINGER, low, true)
+	_drag(THROTTLE_FINGER, throttle.get_center())
+	_expect(absf(controls.throttle() - 0.5) < 0.01, "half the slide, half open: %s"
+			% controls.throttle())
 	_drag(THROTTLE_FINGER, top)
 	_touch(THROTTLE_FINGER, top, false)
 	_expect(controls.throttle() == 1.0, "the throttle open: %s" % controls.throttle())
@@ -126,6 +146,17 @@ func _play() -> void:
 	_drag(THROTTLE_FINGER, bottom)
 	_touch(THROTTLE_FINGER, bottom, false)
 	_expect(controls.throttle() == 0.0, "the throttle closed: %s" % controls.throttle())
+
+	# Again fires only when the finger lifts on it: a touch that slides off
+	# leaves the run going.
+	var time_s := float(run.get_snapshot()["time_s"])
+	var again := controls.restart_button.get_global_rect()
+	_touch(TAP_FINGER, again.get_center(), true)
+	_touch(TAP_FINGER, again.get_center() + Vector2(0.0, again.size.y), false)
+	await _frames(2)
+	# The run may have ended (off the lane), but it was not started again.
+	_expect(time_s > 1.0 and float(run.get_snapshot()["time_s"]) >= time_s,
+			"a touch slid off again does nothing")
 
 	# Again: back to the start, in neutral with the throttle closed.
 	_tap(controls.restart_button)

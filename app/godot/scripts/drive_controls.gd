@@ -4,10 +4,10 @@
 # it. Camera and restart buttons sit in the top corner. All of them are
 # multi-touch, so both thumbs drive at once.
 #
-# For development the keyboard (W throttle, A and D steer, 0 to 8 gear,
-# C camera, R restart) and a gamepad (right trigger throttle, left stick
-# steer, shoulder buttons gear, X neutral, Y camera, Back restart) drive the
-# same controls. The run turns them into the tractor's input: the dead zone
+# For development the keyboard (W throttle, A and D steer, the digits for a
+# gear, held to the gearbox, C camera, R restart) and a gamepad (right
+# trigger throttle, left stick steer, shoulder buttons gear, X neutral,
+# Y camera, Back restart) drive the same controls. The run turns them into the tractor's input: the dead zone
 # and the steering rate are the core's (data/controls/easy.toml).
 class_name DriveControls
 extends Control
@@ -23,7 +23,8 @@ const STEERING_LENGTH := 480.0
 const THROTTLE_LENGTH := 440.0
 const BUTTON_SIZE := 130.0
 const SMALL_BUTTON := Vector2(120.0, 80.0)
-# The keyboard's steering: half the travel, the wheels at most of lock.
+# The keyboard's steering: about half lock (past the core's dead zone, and
+# under the share of the travel that turns the wheels).
 const KEY_STEERING := 0.3
 const GAMEPAD := 0
 
@@ -52,6 +53,7 @@ func _ready() -> void:
 			Rect2(MARGIN, -MARGIN - SLIDER_THICKNESS, STEERING_LENGTH, SLIDER_THICKNESS))
 
 	throttle_slider.vertical = true
+	throttle_slider.relative = true
 	var throttle_left := -MARGIN - SLIDER_THICKNESS
 	_place(throttle_slider, Vector2(1.0, 1.0),
 			Rect2(throttle_left, -MARGIN - THROTTLE_LENGTH, SLIDER_THICKNESS, THROTTLE_LENGTH))
@@ -71,6 +73,7 @@ func _ready() -> void:
 	_place(camera_button, Vector2(1.0, 0.0),
 			Rect2(-MARGIN - SMALL_BUTTON.x, GAP, SMALL_BUTTON.x, SMALL_BUTTON.y))
 	restart_button.text = "again"
+	restart_button.fires_on_release = true
 	_place(restart_button, Vector2(1.0, 0.0), Rect2(-MARGIN - 2.0 * SMALL_BUTTON.x - GAP, GAP,
 			SMALL_BUTTON.x, SMALL_BUTTON.y))
 
@@ -91,6 +94,8 @@ func reset() -> void:
 	throttle_slider.value = 0.0
 	throttle_slider.release()
 	steering_slider.release()
+	for button: TouchButton in [gear_up, gear_down, neutral, camera_button, restart_button]:
+		button.release()
 
 
 # 0 to 1: the hand throttle, or the W key or the gamepad's trigger if

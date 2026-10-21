@@ -215,12 +215,13 @@ and the chain, darker as it pulls.
 
 You drive with the easy layout on the touch screen: a steering slider under
 the left thumb, which springs back to straight ahead when let go; a hand
-throttle under the right, which stays where it is left, as a tractor's
-does; and gear buttons (+, - and N) beside it. Both thumbs work at once.
+throttle under the right, moved by sliding it like a lever (a touch alone
+does not move it) and staying where it is left, as a tractor's does; and
+gear buttons (+, - and N) beside it. Both thumbs work at once.
 The clutch assist works the clutch. "cam" switches between the chase, side
-and overhead cameras, "again" pulls again. On a desktop the mouse works the
+and overhead cameras, "again" (on lifting the finger on it) pulls again. On a desktop the mouse works the
 same controls, and for development the keyboard (W throttle, A and D steer,
-0 to 8 gear, C camera, R again) and a gamepad (right trigger, left stick,
+digits for a gear, C camera, R again) and a gamepad (right trigger, left stick,
 shoulder buttons for the gear, X neutral, Y camera, Back again) do too.
 
 `scripts/godot_test.sh <godot binary>` plays the scene with a scripted

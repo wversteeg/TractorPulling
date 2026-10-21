@@ -1,5 +1,7 @@
-# A button for one finger of a multi-touch screen: it fires as a finger
-# lands on it, so a thumb can tap it while the other holds a slider.
+# A button for one finger of a multi-touch screen, so a thumb can tap it
+# while the other holds a slider. It fires as the finger lands, for a quick
+# gear change, or with `fires_on_release` only when the finger lifts on
+# it, so a stray touch that slides off does nothing (restarting a pull).
 class_name TouchButton
 extends Control
 
@@ -11,6 +13,7 @@ const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const FONT_SIZE := 36
 
 @export var text := ""
+@export var fires_on_release := false
 
 var _finger := -1
 
@@ -27,11 +30,25 @@ func _input(event: InputEvent) -> void:
 		_finger = touch.index
 		queue_redraw()
 		get_viewport().set_input_as_handled()
-		tapped.emit()
+		if not fires_on_release:
+			tapped.emit()
 	elif not touch.pressed and touch.index == _finger:
-		_finger = -1
-		queue_redraw()
+		release()
 		get_viewport().set_input_as_handled()
+		if fires_on_release and get_global_rect().has_point(touch.position):
+			tapped.emit()
+
+
+# Lets go of a held finger without a release, as when the app loses focus:
+# otherwise the button would wait for that finger and ignore new ones.
+func release() -> void:
+	_finger = -1
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		release()
 
 
 func _draw() -> void:

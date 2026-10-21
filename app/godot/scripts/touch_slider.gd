@@ -6,7 +6,10 @@
 # `value` runs from `start_value` at the left (or bottom) end to
 # `end_value` at the right (or top). With `springs_back` it returns to
 # `rest_value` when the finger lifts, like a steering wheel let go;
-# without, it stays where it was left, like a hand throttle.
+# without, it stays where it was left, like a hand throttle. A `relative`
+# slider is grabbed where its thumb is: a touch does not move it, only the
+# finger's slide does, as a lever is moved, so a tap to nudge the throttle
+# does not throw it open. Otherwise it jumps to where the finger lands.
 class_name TouchSlider
 extends Control
 
@@ -20,10 +23,15 @@ const THUMB_SHARE := 0.22  # of the slider's length
 @export var end_value := 1.0
 @export var rest_value := 0.0
 @export var springs_back := false
+@export var relative := false
 
 var value := 0.0
 # The finger holding the slider, -1 for none.
 var _finger := -1
+# Where the finger landed along the slider (0 to 1) and the value then, for
+# a relative slide.
+var _grab_share := 0.0
+var _grab_value := 0.0
 
 
 func _ready() -> void:
@@ -42,13 +50,14 @@ func _input(event: InputEvent) -> void:
 	if touch != null:
 		if touch.pressed and _finger < 0 and get_global_rect().has_point(touch.position):
 			_finger = touch.index
-			_slide_to(touch.position)
+			_grab_share = _share_at(touch.position)
+			_grab_value = value
+			if not relative:
+				_slide_to(touch.position)
+			queue_redraw()
 			get_viewport().set_input_as_handled()
 		elif not touch.pressed and touch.index == _finger:
-			_finger = -1
-			if springs_back:
-				value = rest_value
-			queue_redraw()
+			release()
 			get_viewport().set_input_as_handled()
 		return
 	var drag := event as InputEventScreenDrag
@@ -70,13 +79,19 @@ func _notification(what: int) -> void:
 		release()
 
 
-func _slide_to(global_point: Vector2) -> void:
+# How far along the slider a point is: 0 at the start end, 1 at the other,
+# beyond them off the ends.
+func _share_at(global_point: Vector2) -> float:
 	var local := global_point - global_position
-	var share: float
 	if vertical:
-		share = 1.0 - local.y / size.y
-	else:
-		share = local.x / size.x
+		return 1.0 - local.y / size.y
+	return local.x / size.x
+
+
+func _slide_to(global_point: Vector2) -> void:
+	var share := _share_at(global_point)
+	if relative:
+		share += inverse_lerp(start_value, end_value, _grab_value) - _grab_share
 	value = lerpf(start_value, end_value, clampf(share, 0.0, 1.0))
 	queue_redraw()
 

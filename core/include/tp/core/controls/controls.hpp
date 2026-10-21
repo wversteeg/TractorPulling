@@ -113,9 +113,9 @@ constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept
 
 /// The vehicle's input for the easy layout, before this step of the
 /// vehicle: reads the tractor's state (engine speed, gear in) and advances
-/// the assist and the steering by `dt_s`. A requested gear goes in once the assist has the
-/// clutch out; until then the gear in stays. A gear outside the gearbox is
-/// held to its range.
+/// the assist and the steering by `dt_s`. A requested gear goes in once the
+/// assist has the clutch out; until then the gear in stays. A gear outside
+/// the gearbox is held to its range.
 [[nodiscard]] vehicle::Input easy(const EasyInput& input, const EasyParams& params,
                                   AssistState& assist, const vehicle::Params& tractor,
                                   const vehicle::State& state, double dt_s) noexcept;
