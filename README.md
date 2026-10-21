@@ -107,6 +107,13 @@ touch slider steers straight, and the steering follows the control at a
 rate, as a driver turns a wheel (both in `easy.toml`): 0.05 is 1.2° of
 wheel angle, and leaves the lane 10 s after the launch.
 
+The pro layout's steering has the same dead zone and rate when the game
+plays it, from `data/controls/pro.toml`; `--pro data/controls/pro.toml`
+gives a scripted pro run the same, where without it the steering is taken
+as it is. With `--pro`, `--steer-deg` is the angle the steering control asks
+for, before the dead zone (1.2° on the reference tractor, so a smaller angle
+steers straight, and the tool warns); `--stick S` holds the control itself.
+
 ### Track conditions
 
 Every event's track is different. A track file gives its soil (clay
@@ -194,7 +201,7 @@ GDScript a `TractorPullRun`, the session above with the data read from
 var run := TractorPullRun.new()
 var error := run.setup("res://data/tractors/farm_stock_light.toml",
         "res://data/sleds/light_class.toml", "res://data/tracks/ideal_clay_sand.toml",
-        "res://data/controls/easy.toml")  # "" for the pro layout
+        "res://data/controls/easy.toml")  # or pro.toml; "" pro, steering as given
 run.set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
 run.advance(int(delta * 1e9))             # each frame, _process's delta
 var snapshot := run.get_snapshot()        # what to draw, SI units, on the track
@@ -213,16 +220,23 @@ the lane with its chalk lines and the full-pull line, the tractor with
 wheels that turn and steer, the sled with its weight box moving forward,
 and the chain, darker as it pulls.
 
-You drive with the easy layout on the touch screen: a steering slider under
-the left thumb, which springs back to straight ahead when let go; a hand
-throttle under the right, moved by sliding it like a lever (a touch alone
-does not move it) and staying where it is left, as a tractor's does; and
-gear buttons (+, - and N) beside it. Both thumbs work at once.
-The clutch assist works the clutch. "cam" switches between the chase, side
-and overhead cameras, "again" (on lifting the finger on it) pulls again. On a desktop the mouse works the
-same controls, and for development the keyboard (W throttle, A and D steer,
-digits for a gear, C camera, R again) and a gamepad (right trigger, left stick,
-shoulder buttons for the gear, X neutral, Y camera, Back again) do too.
+You drive on the touch screen, in the easy or the pro layout. Both have a
+steering slider under the left thumb, which springs back to straight ahead
+when let go; a hand throttle under the right, moved by sliding it like a
+lever (a touch alone does not move it) and staying where it is left, as a
+tractor's does; and gear buttons (+, - and N) beside it. Both thumbs work at
+once. In the easy layout the clutch assist works the clutch. The pro layout
+adds a clutch slider beside the throttle, pressed at the top and in at the
+bottom, which starts pressed and stays where it is left, so you slip it in
+and leave it; a gear goes in only with the clutch pressed. Above the
+steering are a brake slider for each rear side, off again when let go.
+"easy"/"pro" switches the layout and pulls again, "cam" switches between the
+chase, side and overhead cameras, and "again" (on lifting the finger on it)
+pulls again. On a desktop the mouse works the same controls, and for
+development the keyboard (W throttle, A and D steer, digits for a gear,
+Space clutch, Q and E brakes, C camera, R again, L layout) and a gamepad
+(right trigger, left trigger for the clutch, left stick, shoulder buttons
+for the gear, X neutral, Y camera, Back again) do too.
 
 `scripts/godot_test.sh <godot binary>` plays the scene with a scripted
 driver and checks the views follow the run, drives it with simulated
@@ -233,7 +247,7 @@ under Xvfb if there is no display). To look at the scene without a display:
 ```bash
 xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
     --rendering-method gl_compatibility --resolution 1280x720 --path app/godot \
-    --script res://tests/screenshots.gd -- /tmp/shots   # view_0..2.png
+    --script res://tests/screenshots.gd -- /tmp/shots [pro]   # view_0..2.png
 ```
 
 ## Requirements

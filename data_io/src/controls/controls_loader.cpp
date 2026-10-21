@@ -37,6 +37,23 @@ FieldError describe(controls::ParamError error) {
     return {"easy", "invalid"};
 }
 
+FieldError describe_pro(controls::ParamError error) {
+    using controls::ParamError;
+    switch (error) {
+        case ParamError::kSteerDeadZoneOutOfRange:
+            return {"pro.steer_dead_zone", "must be in [0, 1)"};
+        case ParamError::kSteerRateNotPositive:
+            return {"pro.steer_rate_per_s", "must be > 0"};
+        case ParamError::kNotFinite:
+        case ParamError::kSteerShareOutOfRange:
+        case ParamError::kAssistTimeNotPositive:
+        case ParamError::kGuardOutOfRange:
+        case ParamError::kMinThrottleOutOfRange:
+            break;
+    }
+    return {"pro", "all values must be finite"};
+}
+
 Result<controls::EasyParams> read_easy(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
     const controls::EasyParams params{
@@ -60,7 +77,71 @@ Result<controls::EasyParams> read_easy(const toml::table& root, std::string_view
     return params;
 }
 
+Result<controls::ProParams> read_pro(const toml::table& root, std::string_view source) {
+    detail::Reader reader{root, source};
+    // Without a rate the steering follows the control at once.
+    const controls::ProParams params{
+        .steer_dead_zone = reader.number("pro.steer_dead_zone"),
+        .steer_rate_per_s = reader.optional_number("pro.steer_rate_per_s"),
+    };
+    if (const std::optional<LoadError>& error = reader.error()) {
+        return *error;
+    }
+    if (const auto error = controls::validate(params)) {
+        const FieldError field_error = describe_pro(*error);
+        return detail::make_error(source, field_error.field, field_error.reason);
+    }
+    return params;
+}
+
+Result<ControlLayout> read_layout(const toml::table& root, std::string_view source) {
+    const bool easy = root.contains("easy");
+    const bool pro = root.contains("pro");
+    if (easy == pro) {
+        return detail::make_error(source, "easy, pro", "needs exactly one of the two tables");
+    }
+    ControlLayout out;
+    if (easy) {
+        const Result<controls::EasyParams> params = read_easy(root, source);
+        if (!params) {
+            return params.error();
+        }
+        out.layout = session::Layout::kEasy;
+        out.easy = params.value();
+        return out;
+    }
+    const Result<controls::ProParams> params = read_pro(root, source);
+    if (!params) {
+        return params.error();
+    }
+    out.layout = session::Layout::kPro;
+    out.pro = params.value();
+    return out;
+}
+
 }  // namespace
+
+Result<controls::ProParams> parse_pro_controls(std::string_view toml_text,
+                                               std::string_view source_name) {
+    return detail::parse_with<controls::ProParams>(toml_text, source_name, &read_pro);
+}
+
+Result<controls::ProParams> load_pro_controls(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<controls::ProParams>(path, read, &read_pro);
+}
+
+Result<controls::ProParams> load_pro_controls(const std::filesystem::path& path) {
+    return load_pro_controls(path.generic_string(), read_from_disk);
+}
+
+Result<ControlLayout> parse_control_layout(std::string_view toml_text,
+                                           std::string_view source_name) {
+    return detail::parse_with<ControlLayout>(toml_text, source_name, &read_layout);
+}
+
+Result<ControlLayout> load_control_layout(std::string_view path, const ReadFile& read) {
+    return detail::load_file_with<ControlLayout>(path, read, &read_layout);
+}
 
 Result<controls::EasyParams> parse_easy_controls(std::string_view toml_text,
                                                  std::string_view source_name) {

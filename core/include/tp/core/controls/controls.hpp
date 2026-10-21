@@ -79,6 +79,17 @@ struct EasyParams {
     ClutchAssist clutch_assist;
 };
 
+/// The pro layout's steering, shaped as the easy layout's: a dead zone in
+/// the middle of the control's travel, and a rate the steering follows it
+/// at. The default steers as the control is, as a scripted driver wants.
+struct ProParams {
+    /// The share of the travel either side of the centre that reads as
+    /// straight ahead; the rest is stretched to the whole range. 0 to below 1.
+    double steer_dead_zone = 0.0;
+    /// Shares of the travel per second; none follows the control at once.
+    std::optional<double> steer_rate_per_s;
+};
+
 enum class ParamError : std::uint8_t {
     kNotFinite,
     kSteerShareOutOfRange,
@@ -90,14 +101,16 @@ enum class ParamError : std::uint8_t {
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const EasyParams& params) noexcept;
+[[nodiscard]] std::optional<ParamError> validate(const ProParams& params) noexcept;
 
-/// The easy layout's own state, plain data like the simulation's.
+/// The layouts' own state, plain data like the simulation's: what the
+/// assists between the controls and the vehicle carry from step to step.
 struct AssistState {
-    /// How far the clutch is in, as a share of its capacity (0 out, 1 fully
-    /// in).
+    /// How far the easy layout's clutch assist has the clutch in, as a share
+    /// of its capacity (0 out, 1 fully in).
     double engagement = 0.0;
     /// Where the steering is, following the control at the steering rate:
-    /// -1 (full right) to 1 (full left), past the dead zone.
+    /// -1 (full right) to 1 (full left), past the dead zone. Both layouts.
     double steering = 0.0;
 };
 
@@ -108,8 +121,14 @@ constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept
     hash.add(state.steering);
 }
 
-/// The vehicle's input for the pro layout.
+/// The vehicle's input for the pro layout, the steering as the control is.
 [[nodiscard]] vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexcept;
+
+/// The vehicle's input for the pro layout with its steering shaped by
+/// `params` (dead zone and rate), advancing the steering in `state` by
+/// `dt_s`. With the default ProParams it is pro(input, tractor).
+[[nodiscard]] vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& state,
+                                 const vehicle::Params& tractor, double dt_s) noexcept;
 
 /// The vehicle's input for the easy layout, before this step of the
 /// vehicle: reads the tractor's state (engine speed, gear in) and advances

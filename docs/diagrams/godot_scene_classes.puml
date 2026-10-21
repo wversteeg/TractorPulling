@@ -13,6 +13,7 @@ package "Godot 4.7" {
 package "GDScript (app/godot/scripts)" {
   class "pull.gd" as Pull {
     +autoplay : bool
+    +pro : bool
     +run : TractorPullRun
     +start()
     -_process(delta)
@@ -38,15 +39,20 @@ package "GDScript (app/godot/scripts)" {
   class DriveControls {
     +gear : int
     +gear_count : int
+    +pro : bool
     +throttle() : float
+    +clutch() : float
+    +brake_left(), brake_right() : float
     +steering() : float
+    +set_layout(pro)
     +set_gear(gear)
     +reset()
     ..signals..
-    camera_requested, restart_requested
+    camera_requested, restart_requested,
+    layout_requested
   }
   class TouchSlider {
-    +vertical, springs_back : bool
+    +vertical, springs_back, relative : bool
     +start_value, end_value, rest_value : float
     +value : float
     +is_held() : bool
@@ -54,6 +60,8 @@ package "GDScript (app/godot/scripts)" {
   }
   class TouchButton {
     +text : String
+    +fires_on_release : bool
+    +release()
     ..signals..
     tapped
   }
@@ -92,9 +100,9 @@ Pull *-- TractorView
 Pull *-- SledView
 Pull *-- ChainView
 Pull *-- CameraRig
-Pull *-- DriveControls : the easy layout's controls
-DriveControls *-- "2" TouchSlider : steering, hand throttle
-DriveControls *-- "5" TouchButton : gear +/-, N, camera, again
+Pull *-- DriveControls : the easy or pro layout's controls
+DriveControls *-- "5" TouchSlider : steering, hand throttle;\npro: clutch, two brakes
+DriveControls *-- "6" TouchButton : gear +/-, N, camera,\nagain, layout
 Control <|-- DriveControls
 Control <|-- TouchSlider
 Control <|-- TouchButton

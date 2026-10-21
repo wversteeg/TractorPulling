@@ -151,7 +151,9 @@ cmake --preset release && cmake --build --preset release
     [--steer-deg 1] [--hash] -o run.csv
 
 # The same run with the easy control layout: the clutch assist works the
-# clutch; --stick holds the steering control (-1 right to 1 left)
+# clutch; --stick holds the steering control (-1 right to 1 left). Or with
+# --pro data/controls/pro.toml: the pro layout's steering dead zone and rate
+# (--stick then holds the pro steering control)
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
     --easy data/controls/easy.toml [--stick 0.05] -o run.csv
@@ -195,7 +197,8 @@ scripts/android_bench.sh build/android-arm64
 # hashes with tp_pull's
 cmake --preset godot && cmake --build --preset godot
 scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
-# Screenshots of the pull scene, one per camera, without a display
+# Screenshots of the pull scene, one per camera, without a display (add `pro`
+# after the directory for the pro layout)
 xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
     --rendering-method gl_compatibility --resolution 1280x720 --path app/godot \
     --script res://tests/screenshots.gd -- /tmp/shots

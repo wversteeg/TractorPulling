@@ -29,7 +29,7 @@ cd "${root}"
 # as user arguments. The timings (neutral until 0.5 s, the launch at 3 s)
 # are tp_pull's kPullSelectGear_s and kPullRevUpEnd_s.
 readonly gear=6
-readonly stick=0.032        # the easy run's steering control, just past its dead zone
+readonly stick=0.032        # both runs' steering control, just past the layouts' dead zone
 # The pro run's right brake, with a dumped clutch. It pulls the tractor
 # onto the chalk line at 25.9 s on purpose, so the run also ends in a
 # disqualification: "pro result: out_of_bounds 0.0 m" is the expected end.
@@ -45,7 +45,9 @@ expected_easy="$("${build}/tools/tp_pull" run "${tractor}" "${sled}" "${track}" 
     --gear "${gear}" --easy data/controls/easy.toml --stick "${stick}" --hash -o /dev/null |
     first_hash)"
 expected_pro="$("${build}/tools/tp_pull" run "${tractor}" "${sled}" "${track}" \
-    --gear "${gear}" --dump --brake-right "${brake_right}" --hash -o /dev/null | first_hash)"
+    --gear "${gear}" --pro data/controls/pro.toml --stick "${stick}" --dump \
+    --brake-right "${brake_right}" \
+    --hash -o /dev/null | first_hash)"
 echo "tp_pull, easy: ${expected_easy}"
 echo "tp_pull, pro:  ${expected_pro}"
 

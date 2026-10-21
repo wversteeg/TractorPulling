@@ -7,7 +7,7 @@ skinparam classAttributeIconSize 0
 package "components (see their class diagrams)" {
   class "pull::Model / Output" as Pull
   class "run::Rules / State / Result" as Run
-  class "controls::pro / easy\nEasyParams, AssistState" as Controls
+  class "controls::pro / easy\nEasyParams, ProParams, AssistState" as Controls
   class "FixedStepClock" as Clock
   class "vehicle::Params / Input" as Vehicle
   class "sled::Params\n+ with_conditions()\n+ heavier()" as Sled
@@ -26,6 +26,7 @@ package "tp::session" {
     +rules : run::Rules
     +layout : Layout
     +easy : controls::EasyParams
+    +pro : controls::ProParams
     +max_steps_per_frame : uint32
   }
   enum SetupError
@@ -61,6 +62,7 @@ package "tp::session" {
     -rules_ : run::Rules
     -layout_ : Layout
     -easy_ : controls::EasyParams
+    -pro_ : controls::ProParams
     -clock_ : FixedStepClock
     -run_ : run::State
     -assist_ : controls::AssistState

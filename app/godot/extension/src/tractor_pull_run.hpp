@@ -21,13 +21,13 @@ class TractorPullRun : public godot::RefCounted {
 
 public:
     /// Loads the tractor, the class's sled and the track (res:// paths
-    /// work) and starts a run on them (data::run_setup), in
-    /// the easy layout if `easy_controls_path` names its file, else the pro
-    /// layout. Returns "" or what is wrong, naming the file and field. A
-    /// setup ends the run before it, even one that fails: there is then no
-    /// run until a setup succeeds.
+    /// work) and starts a run on them (data::run_setup), in the layout
+    /// `controls_path` names (easy.toml, pro.toml: data::load_control_layout),
+    /// or with "" the pro layout steering as the control is. Returns "" or
+    /// what is wrong, naming the file and field. A setup ends the run before
+    /// it, even one that fails: there is then no run until a setup succeeds.
     godot::String setup(const godot::String& tractor_path, const godot::String& sled_path,
-                        const godot::String& track_path, const godot::String& easy_controls_path);
+                        const godot::String& track_path, const godot::String& controls_path);
 
     /// The controls held from now on (see session::Controls: held to their
     /// range, and a value that is not a number reads as the control at rest).
@@ -54,6 +54,9 @@ public:
     /// chain_length_m) and the track's (track_length_m, lane_width_m,
     /// full_pull_line_m). {} before setup().
     [[nodiscard]] godot::Dictionary get_dimensions() const;
+
+    /// "easy" or "pro", the layout the run is played in; "" before setup().
+    [[nodiscard]] godot::String get_layout() const;
 
     [[nodiscard]] bool is_finished() const;
     /// {ending, distance_m, time_s, top_speed_m_s} once finished, else {}.

@@ -28,6 +28,8 @@ package "tp::data" {
     +load_engine(path, read) / parse_engine(text, source) : Result<engine::Params>
     +load_clutch(path, read) / parse_clutch(text, source) : Result<clutch::Params>
     +load_easy_controls(path, read) / parse_easy_controls(text, source) : Result<controls::EasyParams>
+    +load_pro_controls(path, read) / parse_pro_controls(text, source) : Result<controls::ProParams>
+    +load_control_layout(path, read) / parse_control_layout(text, source) : Result<ControlLayout>
     +load_driveline(path, read) / parse_driveline(text, source) : Result<driveline::Params>
     +load_tire(path, read) / parse_tire(text, source) : Result<tire::Params>
     +load_class_rules(path, read) / parse_class_rules(text, source) : Result<rules::ClassRules>
@@ -79,6 +81,14 @@ package "tp::data" {
     tp_pull and the Godot binding both start their runs from it
   }
   RunSetup ..> Track
+  class ControlLayout <<struct>> {
+    +layout : session::Layout
+    +easy : controls::EasyParams
+    +pro : controls::ProParams
+    --
+    a controls file's [easy] or [pro] table
+  }
+  Loaders ..> ControlLayout
   class "tractor_loader" as TractorLoader <<free functions>> {
     +load_tractor(path, read) : Result<vehicle::Params>
     +parse_tractor(text, source, base_directory, read) : Result<vehicle::Params>

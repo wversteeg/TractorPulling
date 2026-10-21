@@ -179,7 +179,8 @@ TEST(NoAllocation, AWholeSessionInFrames) {
                                   .ground = track::testing::reference_params(),
                                   .rules = kRules,
                                   .layout = session::Layout::kEasy,
-                                  .easy = controls::testing::kReferenceEasy});
+                                  .easy = controls::testing::kReferenceEasy,
+                                  .pro = controls::testing::kReferencePro});
     if (!game) {
         ADD_FAILURE() << "invalid reference session";
         return;

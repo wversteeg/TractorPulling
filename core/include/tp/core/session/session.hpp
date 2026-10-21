@@ -32,6 +32,8 @@ struct Setup {
     Layout layout = Layout::kPro;
     /// Used with the easy layout only.
     controls::EasyParams easy;
+    /// Used with the pro layout only; the default steers as the control is.
+    controls::ProParams pro;
     /// The most steps one frame may run; a longer frame drops the rest of
     /// its time instead of catching up (see FixedStepClock).
     std::uint32_t max_steps_per_frame = FixedStepClock::Config{}.max_steps_per_advance;
@@ -43,6 +45,7 @@ enum class SetupError : std::uint8_t {
     kTrack,
     kRules,
     kEasyControls,
+    kProControls,
     kMaxStepsPerFrame,
 };
 
@@ -153,7 +156,7 @@ public:
 
     /// The run's result, once it has ended.
     [[nodiscard]] const std::optional<run::Result>& result() const noexcept { return run_.result; }
-    /// The replay hash: the run's state and the easy layout's (the clutch
+    /// The replay hash: the run's state and the layout's (the clutch
     /// assist's and the steering's, controls::AssistState). It leaves
     /// out the frame time not yet stepped, so two sessions with the same
     /// hash may run a different number of steps on their next frame: compare
@@ -175,6 +178,7 @@ private:
     run::Rules rules_;
     Layout layout_;
     controls::EasyParams easy_;
+    controls::ProParams pro_;
     FixedStepClock clock_;
     run::State run_;
     controls::AssistState assist_;

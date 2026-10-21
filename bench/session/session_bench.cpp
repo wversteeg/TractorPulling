@@ -44,7 +44,8 @@ void BM_SessionFrame(benchmark::State& state) {
                              .ground = track.value().ground,
                              .rules = track.value().rules,
                              .layout = tp::session::Layout::kEasy,
-                             .easy = easy.value()};
+                             .easy = easy.value(),
+                             .pro = {}};
     setup.sled.pushdown_start_m = kOutOfReach_m;
     setup.sled.box_travel_distance_m = kOutOfReach_m;
     setup.rules.track_length_m = kOutOfReach_m;

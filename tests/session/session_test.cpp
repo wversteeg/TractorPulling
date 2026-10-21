@@ -36,7 +36,8 @@ Setup reference_setup(Layout layout) {
             .ground = track::testing::reference_params(),
             .rules = kRules,
             .layout = layout,
-            .easy = controls::testing::kReferenceEasy};
+            .easy = controls::testing::kReferenceEasy,
+            .pro = controls::testing::kReferencePro};
 }
 
 Session make(const Setup& setup) {
@@ -57,7 +58,8 @@ void run_to_the_end(Session& session, const Controls& controls, std::int64_t fra
 }
 
 // The pro driver: rev up in neutral, select 6th, slip the clutch in over
-// 3 s, pull at full throttle with a touch of left steering on the way.
+// 3 s, pull at full throttle with a steering correction on the way, left
+// then right, past the dead zone.
 Controls pro_script(double t_s) {
     Controls controls{.throttle = t_s < 0.5 ? 0.0 : 1.0,
                       .clutch_pedal = 1.0,
@@ -65,7 +67,12 @@ Controls pro_script(double t_s) {
     if (t_s >= 3.0) {
         controls.clutch_pedal = t_s < 6.0 ? 1.0 - (t_s - 3.0) / 3.0 : 0.0;
     }
-    controls.steering = t_s > 7.0 && t_s < 8.0 ? 0.01 : 0.0;
+    constexpr double kCorrection = 0.1;
+    if (t_s > 7.0 && t_s < 7.5) {
+        controls.steering = kCorrection;
+    } else if (t_s >= 7.5 && t_s < 8.0) {
+        controls.steering = -kCorrection;
+    }
     return controls;
 }
 
@@ -100,11 +107,23 @@ TEST(Session, ChecksTheEasyLayoutOnlyWhenItIsPlayed) {
     EXPECT_FALSE(validate(setup));
 }
 
+// And the pro layout's only when it is played.
+TEST(Session, ChecksTheProLayoutOnlyWhenItIsPlayed) {
+    session::Setup setup = reference_setup(Layout::kPro);
+    setup.pro.steer_rate_per_s = 0.0;
+    EXPECT_EQ(validate(setup), SetupError::kProControls);
+    setup.layout = Layout::kEasy;
+    EXPECT_FALSE(validate(setup));
+}
+
 // The session is the run, stepped as a front end would by hand: the same
-// state after every step, bit for bit.
+// state after every step, bit for bit, the pro layout's steering included.
 TEST(Session, IsTheRunSteppedByHand) {
-    Session session = make(reference_setup(Layout::kPro));
+    const session::Setup setup = reference_setup(Layout::kPro);
+    Session session = make(setup);
     run::State by_hand = run::start(Inspector::model(session));
+    controls::AssistState steering;
+    double most_steering = 0.0;
     const vehicle::Params& tractor = Inspector::model(session).tractor().params();
     for (int i = 0; !by_hand.result; ++i) {
         const Controls controls = pro_script(i * kDt_s);
@@ -112,14 +131,17 @@ TEST(Session, IsTheRunSteppedByHand) {
                                      .clutch_pedal = controls.clutch_pedal,
                                      .gear = controls.gear,
                                      .steering = controls.steering};
-        run::step(by_hand, Inspector::model(session), kRules, controls::pro(pro, tractor), kDt_s);
+        run::step(by_hand, Inspector::model(session), kRules,
+                  controls::pro(pro, setup.pro, steering, tractor, kDt_s), kDt_s);
         session.advance(controls, kStep_ns);
+        most_steering = std::max(most_steering, steering.steering);
 
         hash::Fnv1a expected;
         run::hash_append(expected, by_hand);
-        controls::hash_append(expected, controls::AssistState{});
+        controls::hash_append(expected, steering);
         ASSERT_EQ(session.hash(), expected.value()) << "step " << i;
     }
+    EXPECT_GT(most_steering, 0.0);
     const std::optional<run::Result>& result = session.result();
     if (!result || !by_hand.result) {
         FAIL() << "the run did not end";

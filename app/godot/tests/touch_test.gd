@@ -67,11 +67,11 @@ func _play() -> void:
 	var steering := controls.steering_slider.get_global_rect()
 
 	# Every control is on the screen, where a thumb can reach it.
-	var screen := root.get_visible_rect()
-	for control: Control in [controls.steering_slider, controls.throttle_slider, controls.gear_up,
-			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button]:
-		var rect := control.get_global_rect()
-		_expect(rect.has_area() and screen.encloses(rect), "on the screen: %s" % rect)
+	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.gear_up,
+			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
+			controls.layout_button])
+	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible
+			and not controls.brake_left_slider.visible, "the easy layout, without clutch or brakes")
 
 	# A touch on no control changes nothing.
 	_touch(TAP_FINGER, Vector2(640.0, 300.0), true)
@@ -165,5 +165,74 @@ func _play() -> void:
 	_expect(float(s["time_s"]) < 0.1, "a new run: %s s" % s["time_s"])
 	_expect(controls.gear == 0 and controls.throttle() == 0.0, "the controls are reset")
 
+	await _play_pro(controls, run)
+
 	print("touch test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# Every control in `list` is on the screen, where a thumb can reach it, and
+# no two overlap.
+func _expect_on_screen(list: Array) -> void:
+	var screen := root.get_visible_rect()
+	for i in list.size():
+		var rect: Rect2 = (list[i] as Control).get_global_rect()
+		_expect(rect.has_area() and screen.encloses(rect), "on the screen: %s" % rect)
+		for j in range(i + 1, list.size()):
+			_expect(not rect.intersects((list[j] as Control).get_global_rect()),
+					"controls %d and %d overlap" % [i, j])
+
+
+# Slides `slider` from just inside one end to past the other: 0 to 1
+# (`up`) or 1 to 0.
+func _slide(finger: int, slider: TouchSlider, up: bool) -> void:
+	var rect := slider.get_global_rect()
+	var x := rect.get_center().x
+	var low := Vector2(x, rect.end.y - 1.0)
+	var high := Vector2(x, rect.position.y + 1.0)
+	var past := Vector2(x, rect.position.y - 10.0) if up else Vector2(x, rect.end.y + 10.0)
+	_touch(finger, low if up else high, true)
+	_drag(finger, past)
+	_touch(finger, past, false)
+
+
+# The pro layout: the layout button switches and starts again; the clutch
+# starts pressed and is slipped in with a slide; the brakes brake while held.
+func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
+	_tap(controls.layout_button)
+	await _frames(2)
+	_expect(run.get_layout() == "pro" and controls.pro, "the pro layout")
+	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.clutch_slider,
+			controls.brake_left_slider, controls.brake_right_slider, controls.gear_up,
+			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
+			controls.layout_button])
+	_expect(controls.clutch() == 1.0, "the clutch starts pressed")
+
+	for i in 6:
+		_tap(controls.gear_up)
+	_slide(THROTTLE_FINGER, controls.throttle_slider, true)
+	await _frames(PULL_FRAMES / 3)
+	var s := run.get_snapshot()
+	_expect(s["gear"] == 6 and float(s["clutch_pedal"]) == 1.0, "in 6th, the clutch pressed")
+	_expect(float(s["tractor_speed_m_s"]) < 0.01, "standing on the pressed clutch")
+
+	# The clutch slid in: down from pressed to released, and left there.
+	_slide(TAP_FINGER, controls.clutch_slider, false)
+	_expect(controls.clutch() == 0.0, "the clutch released: %s" % controls.clutch())
+	await _frames(PULL_FRAMES)
+	s = run.get_snapshot()
+	_expect(float(s["clutch_pedal"]) == 0.0, "the run has the clutch in")
+	_expect(float(s["tractor_speed_m_s"]) > 0.5, "the tractor pulls: %s m/s" % s["tractor_speed_m_s"])
+
+	# A brake brakes while held and comes off when let go.
+	var brake := controls.brake_left_slider.get_global_rect()
+	_touch(STEERING_FINGER, Vector2(brake.get_center().x, brake.end.y - 1.0), true)
+	_drag(STEERING_FINGER, Vector2(brake.get_center().x, brake.position.y - 10.0))
+	_expect(controls.brake_left() == 1.0 and controls.brake_right() == 0.0, "the left brake on")
+	_touch(STEERING_FINGER, brake.position, false)
+	_expect(controls.brake_left() == 0.0, "the left brake off when let go")
+
+	# Back to easy.
+	_tap(controls.layout_button)
+	await _frames(2)
+	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible, "back to easy")

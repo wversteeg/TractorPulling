@@ -4,7 +4,9 @@
 # 60 fps and a hitch. Then two scripted runs whose state hashes it prints,
 # driven as tp_pull drives them, a step at a time: the easy layout (`tp_pull
 # run ... --easy data/controls/easy.toml --stick S --hash`) and the pro one
-# with a dumped clutch and a brake (`--dump --brake-right B --hash`). The
+# with a dumped clutch and a brake (`--pro data/controls/pro.toml --stick S
+# --dump --brake-right B --hash`): both steer at S, past the dead zone, so
+# the hashes differ if a side drops the layout's steering. The
 # script passes the gear, S and B as user arguments, so the two must print
 # the same hashes. Exits non-zero if any check fails.
 #
@@ -16,6 +18,7 @@ const TRACTOR := "res://data/tractors/farm_stock_light.toml"
 const SLED := "res://data/sleds/light_class.toml"
 const TRACK := "res://data/tracks/ideal_clay_sand.toml"
 const EASY := "res://data/controls/easy.toml"
+const PRO := "res://data/controls/pro.toml"
 
 const STEP_NS := 1_000_000
 const STEP_S := 0.001
@@ -36,13 +39,14 @@ func _init() -> void:
 	_check_before_setup()
 	_check_a_missing_file()
 	_check_frames()
+	_check_layouts()
 	if not args.has_all(["gear", "stick", "brake-right"]):
 		printerr("needs --gear=N --stick=S --brake-right=B after --")
 		_failures += 1
 	else:
 		var gear := int(args["gear"])
 		_play("easy", EASY, gear, float(args["stick"]), 0.0)
-		_play("pro", "", gear, 0.0, float(args["brake-right"]))
+		_play("pro", PRO, gear, float(args["stick"]), float(args["brake-right"]))
 	quit(1 if _failures > 0 else 0)
 
 
@@ -67,6 +71,7 @@ func _check_before_setup() -> void:
 	_expect(run.advance(STEP_NS) == 0, "no steps before setup")
 	_expect(run.get_snapshot().is_empty(), "no snapshot before setup")
 	_expect(run.get_dimensions().is_empty(), "no dimensions before setup")
+	_expect(run.get_layout().is_empty(), "no layout before setup")
 	_expect(run.get_state_hash().is_empty(), "no hash before setup")
 	_expect(not run.is_finished(), "not finished before setup")
 	_expect(run.get_result().is_empty(), "no result before setup")
@@ -81,7 +86,7 @@ func _check_a_missing_file() -> void:
 	_expect(run.get_dimensions().is_empty(), "no dimensions after a failed setup")
 
 
-# The pro layout (no easy controls file): 60 fps frames run 16 or 17 steps,
+# The pro layout (no controls file): 60 fps frames run 16 or 17 steps,
 # and a 10 s hitch runs at most 100 and reports the time it dropped.
 func _check_frames() -> void:
 	var run := TractorPullRun.new()
@@ -106,14 +111,26 @@ func _check_frames() -> void:
 			"the track's dimensions")
 
 
+# The controls file picks the layout; a file of neither is named.
+func _check_layouts() -> void:
+	var run := TractorPullRun.new()
+	for case: Array in [[EASY, "easy"], [PRO, "pro"], ["", "pro"]]:
+		var error := run.setup(TRACTOR, SLED, TRACK, case[0])
+		_expect(error.is_empty() and run.get_layout() == case[1],
+				"%s plays the %s layout: %s" % [case[0], case[1], error])
+	var error := run.setup(TRACTOR, SLED, TRACK, TRACK)
+	_expect(error.contains("easy, pro"), "a track is no controls file: " + error)
+
+
 # A scripted run, as tp_pull drives it: in neutral until SELECT_GEAR_S,
 # then full throttle in `gear` with the clutch pressed; from LAUNCH_S the
-# easy layout steers at `stick` and its assist lets the clutch in, while the
-# pro layout dumps the clutch and holds the right brake at `brake_right`.
-func _play(layout: String, easy_controls: String, gear: int, stick: float,
+# steering control goes to `stick`; the easy layout's assist lets the clutch
+# in, while the pro layout dumps the clutch and holds the right brake at
+# `brake_right`.
+func _play(layout: String, controls: String, gear: int, stick: float,
 		brake_right: float) -> void:
 	var run := TractorPullRun.new()
-	var error := run.setup(TRACTOR, SLED, TRACK, easy_controls)
+	var error := run.setup(TRACTOR, SLED, TRACK, controls)
 	if not error.is_empty():
 		printerr(layout, " setup: ", error)
 		_failures += 1
