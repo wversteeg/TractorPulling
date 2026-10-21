@@ -190,8 +190,9 @@ scripts/android_bench.sh build/android-arm64
 
 # The Godot extension (fetches godot-cpp) into app/godot/bin, data/ copied to
 # app/godot/data, and tp_pull; then open app/godot in Godot 4.7, or play the
-# pull scene with a scripted driver and the scripted runs (under Xvfb if there
-# is no display) and compare the runs' state hashes with tp_pull's
+# pull scene with a scripted driver and simulated fingers, and the scripted
+# runs (under Xvfb if there is no display), and compare the runs' state
+# hashes with tp_pull's
 cmake --preset godot && cmake --build --preset godot
 scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
 # Screenshots of the pull scene, one per camera, without a display

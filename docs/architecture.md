@@ -124,9 +124,11 @@ ranges and kept within the class's rules.
 
 How a front end's controls become the vehicle's input. The pro layout has
 every control on its own. The easy layout has one steering control that
-brakes the inner rear wheels past full lock, and a clutch assist that works
-the clutch: it slips it to keep the engine near peak torque instead of
-stalling. The assist's state is plain data, like the simulation's.
+brakes the inner rear wheels past full lock, with a dead zone in the middle
+and a steering rate (a touch slider can jump), and a clutch assist that
+works the clutch: it slips it to keep the engine near peak torque instead of
+stalling. The assist's state, the steering's too, is plain data, like the
+simulation's.
 
 ![Controls classes](diagrams/svg/controls_classes.svg)
 
@@ -183,8 +185,11 @@ no game rules of its own.
 
 GDScript that draws a run: the root script owns the `TractorPullRun`,
 builds a view of the track, tractor, sled and chain from its dimensions,
-and each frame advances it by the frame's time and places the views from
-the blended snapshot; the cameras follow the tractor. `TrackSpace` turns
+and each frame hands it the controls, advances it by the frame's time and
+places the views from the blended snapshot; the cameras follow the tractor.
+`DriveControls` is the easy layout on a touch screen: a steering slider, a
+hand throttle and gear buttons, each following its own finger so both
+thumbs drive at once; the keyboard and a gamepad work it in development. `TrackSpace` turns
 the track's coordinates into Godot's. No physics or rules live here.
 
 ![Pull scene classes](diagrams/svg/godot_scene_classes.svg)
@@ -246,7 +251,8 @@ contact stable and free of chatter at 1 kHz.
 
 One step with the easy layout: the assist reads the engine speed and the
 gear in, moves the clutch's engagement, and turns it into a pedal through
-the clutch's own curve.
+the clutch's own curve; the steering follows the control past its dead zone
+at the steering rate.
 
 ![Easy controls](diagrams/svg/easy_controls_sequence.svg)
 

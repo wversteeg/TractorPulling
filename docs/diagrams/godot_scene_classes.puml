@@ -7,6 +7,7 @@ skinparam classAttributeIconSize 0
 package "Godot 4.7" {
   class Node3D
   class SceneTree
+  class Control
 }
 
 package "GDScript (app/godot/scripts)" {
@@ -34,6 +35,28 @@ package "GDScript (app/godot/scripts)" {
   class ChainView {
     +show_between(hitch, hook, tension_n)
   }
+  class DriveControls {
+    +gear : int
+    +gear_count : int
+    +throttle() : float
+    +steering() : float
+    +set_gear(gear)
+    +reset()
+    ..signals..
+    camera_requested, restart_requested
+  }
+  class TouchSlider {
+    +vertical, springs_back : bool
+    +start_value, end_value, rest_value : float
+    +value : float
+    +is_held() : bool
+    +release()
+  }
+  class TouchButton {
+    +text : String
+    ..signals..
+    tapped
+  }
   class CameraRig {
     +view : View {CHASE, SIDE, OVERHEAD}
     +next()
@@ -52,6 +75,7 @@ package "GDScript (app/godot/scripts)" {
 package "tests (scripts/godot_test.sh)" {
   class "scene_test.gd" as SceneTest
   class "screenshots.gd" as Shots
+  class "touch_test.gd" as TouchTest
 }
 
 class "TractorPullRun\n(see godot_classes)" as Run
@@ -68,6 +92,12 @@ Pull *-- TractorView
 Pull *-- SledView
 Pull *-- ChainView
 Pull *-- CameraRig
+Pull *-- DriveControls : the easy layout's controls
+DriveControls *-- "2" TouchSlider : steering, hand throttle
+DriveControls *-- "5" TouchButton : gear +/-, N, camera, again
+Control <|-- DriveControls
+Control <|-- TouchSlider
+Control <|-- TouchButton
 TrackView ..> TrackSpace
 TractorView ..> TrackSpace
 SledView ..> TrackSpace
@@ -79,6 +109,8 @@ SceneTree <|-- SceneTest
 SceneTree <|-- Shots
 SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot
 Shots ..> Pull : autoplay, a PNG per camera
+SceneTree <|-- TouchTest
+TouchTest ..> DriveControls : simulated fingers\n(push_input)
 note bottom of Pull
   draws the blended snapshot and hands the run the controls;
   no physics or rules: TrackSpace only turns track
