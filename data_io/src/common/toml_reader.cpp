@@ -102,6 +102,25 @@ std::vector<double> Reader::numbers(std::string_view path) {
     return values;
 }
 
+std::vector<std::string> Reader::texts(std::string_view path) {
+    const toml::array* array = root_->at_path(path).as_array();
+    if (array == nullptr) {
+        fail(path, "missing or not an array");
+        return {};
+    }
+    std::vector<std::string> values;
+    values.reserve(array->size());
+    for (const toml::node& node : *array) {
+        const std::optional<std::string> value = node.value<std::string>();
+        if (!value) {
+            fail(path, "must contain only strings");
+            return {};
+        }
+        values.push_back(*value);
+    }
+    return values;
+}
+
 std::optional<math::Curve> Reader::curve(std::string_view table, std::string_view x_key,
                                          std::string_view y_key, double x_to_si) {
     const std::vector<double> xs = numbers(join(table, x_key));

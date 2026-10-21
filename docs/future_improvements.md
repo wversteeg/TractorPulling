@@ -130,6 +130,12 @@ for the big features; they are repeated at the end for completeness.
   counts 0 m for its puller (no keep-or-re-pull), the sled stays and the
   next puller tests it; a disqualified pull scores no season points. These
   are reasonable readings, not checked against the NTTO rule book.
+- **The player's tractor in a live event.** The player pulls the field's
+  tractor at their place in the order, a variation of the reference; there
+  is no own tractor or tuning yet (career, milestone 6). The rivals choose
+  their gear by trying each one (three gears of about 35 s each): a few
+  seconds of simulation for nine rivals on a phone, spread over frames
+  before the first pull.
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
 
@@ -204,18 +210,18 @@ for the big features; they are repeated at the end for completeness.
   conditions is too heavy for a full pull (the reference tractor stops at
   84 to 91 m on every season track): at a real event the sled operator
   lightens it after the field's test pulls, so as shipped the pull-off is
-  never reached; only the flow test's practice sled gets there. Next step:
-  a field of nine scripted pullers and the event's program (test pulls, the
-  operator, pull-offs), with the event's and the season's top ten. The game
-  plays the season's events in turn, alone: one qualifying pull and the pull-offs its rules give
-  (`solo_pull_offs`), with no field of scripted rivals, standings, points,
-  test pulls or sled operator in the game (the core has them: `tp::event`,
-  `tp::season`; they come with the career, milestone 6). The pull-off sled
-  is one step heavier, where the event's operator judges the step. "again"
-  re-pulls the same pull as often as the player likes, which a strict mode
-  would not allow; the season starts from the first event at every launch,
-  with nothing saved; and the tractor is the class's reference, with no
-  choice. The gamepad has no brakes yet.
+  never reached; only the flow test's practice sled gets there. The game
+  plays the season's events in turn, alone: one qualifying pull and the
+  pull-offs its rules give (`solo_pull_offs`), with no scripted rivals,
+  standings, points, test pulls or sled operator. The next step brings
+  them: the core's `field::LiveEvent` (nine scripted rivals and the
+  event's whole program) in the game, with the event's and the season's
+  top ten. The pull-off sled is one step heavier, where the event's
+  operator judges the step. "again" re-pulls the same pull as often as
+  the player likes, which a strict mode would not allow; the season starts
+  from the first event at every launch, with nothing saved; and the
+  tractor is the class's reference, with no choice. The gamepad has no
+  brakes yet.
 - **The pedals' feel.** The clutch slider moves the pedal, not the clutch's
   engagement; its bite point sits where the clutch's own curve puts it
   (`clutch.toml`), with no mark on screen. The brakes act at once.

@@ -105,6 +105,9 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.rules.extended_full_pull_m, 110.0);
     EXPECT_EQ(definition.rules.pull_off_places, 4);
     EXPECT_EQ(definition.rules.solo_pull_offs, 1);
+    EXPECT_EQ(definition.game.pullers, 10);
+    ASSERT_EQ(definition.game.rival_names.size(), 9U);
+    EXPECT_EQ(definition.game.rival_names.front(), "Henk");
     EXPECT_EQ(definition.reference.driver.gear, 6);
     EXPECT_EQ(definition.variation.lowest_gear, 4);
     EXPECT_EQ(definition.variation.highest_gear, 6);
@@ -136,6 +139,11 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("solo_pull_offs = 1", "solo_pull_offs = 6"))
                   .find("event.rules.solo_pull_offs"),
               std::string::npos);
+    EXPECT_NE(error_of(with("pullers = 10", "pullers = 1")).find("event.game.pullers"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("\"Wim\"]", "\"\"]")).find("event.game.rival_names"),
+              std::string::npos);
+    EXPECT_NE(error_of(with(", \"Wim\"]", "]")).find("event.game.rival_names"), std::string::npos);
     EXPECT_NE(error_of(with("seed = 2026", "seed = -1")).find("event.seed: must not be negative"),
               std::string::npos);
     EXPECT_NE(error_of(with("../sleds/light_class.toml", "../sleds/missing.toml"))

@@ -55,7 +55,16 @@ package "tp::data" {
     +seed : uint64
     +sled : sled::Params
     +track : Track
+    +game : GameField
   }
+  class GameField <<struct>> {
+    +pullers : int
+    +rival_names : vector<string>
+    --
+    the event in the game: the player
+    and the named scripted rivals
+  }
+  EventDefinition *-- GameField
   class "event_loader" as EventLoader <<free functions>> {
     +load_event(path, read) : Result<EventDefinition>
     +parse_event(text, source, base_directory, read) : Result<EventDefinition>

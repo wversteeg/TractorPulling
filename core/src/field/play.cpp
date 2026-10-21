@@ -4,26 +4,12 @@
 
 namespace tp::field {
 
-namespace {
-
-// Separate draws for the gear guesses and the pulls, so that one does not
-// shift the other.
-constexpr std::uint64_t kPullStream = 0x9e3779b97f4a7c15ULL;
-
-}  // namespace
-
-namespace {
-
-// A pull at the event runs until the sled stops (the floating finish, up to
-// the rules' maximum); the chalk lines count up to today's full-pull line.
-run::Rules run_rules(const event::Rules& rules, const Venue& venue, double full_pull_m) noexcept {
+run::Rules pull_rules(const event::Rules& rules, const Venue& venue, double full_pull_m) noexcept {
     return {.track_length_m = rules.max_distance_m,
             .max_duration_s = venue.max_duration_s,
             .lane_width_m = venue.lane_width_m,
             .full_pull_line_m = full_pull_m};
 }
-
-}  // namespace
 
 std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& venue,
                                       const Field& field, const Variation& variation,
@@ -46,7 +32,7 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         Puller& puller = today.pullers[static_cast<std::size_t>(i)];
         const std::optional<int> best =
             best_gear(puller, venue.sled, venue.track, variation.lowest_gear,
-                      variation.highest_gear, run_rules(rules, venue, rules.full_pull_m));
+                      variation.highest_gear, pull_rules(rules, venue, rules.full_pull_m));
         if (!best) {
             return std::nullopt;
         }
@@ -72,7 +58,7 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         const Puller puller = on_this_pull(today.pullers[static_cast<std::size_t>(pull->puller)],
                                            pull_to_pull, pulls);
         const std::optional<run::Result> result =
-            run_pull(puller, ev.sled(), venue.track, run_rules(rules, venue, ev.full_pull_m()));
+            run_pull(puller, ev.sled(), venue.track, pull_rules(rules, venue, ev.full_pull_m()));
         if (!result) {
             return std::nullopt;
         }

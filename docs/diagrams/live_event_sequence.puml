@@ -1,0 +1,36 @@
+@startuml live_event_sequence
+title A live event: scripted rivals in slices, the player's pulls and decisions
+autonumber
+participant "Game\n(each frame)" as Game
+participant "field::LiveEvent" as Live
+participant "event::Event" as Event
+participant "pull + run\n(a job, stepped)" as Run
+
+Game -> Live : create(rules, venue, field, ..., running_order, player, seed)
+loop until turn() is kFinished
+  alt turn() == kRivals
+    Game -> Live : advance(max_steps)
+    loop at most max_steps steps, while the rivals are due
+      alt choosing gears
+        Live -> Run : a rival tries each gear (as best_gear);\nthe player only draws the guess
+        Live -> Live : guess_gear: the rival's gear for the day
+      else a rival's pull
+        Live -> Live : on_this_pull (the same draw as play_event)
+        Live -> Run : step the pull on sled() until it stops\n(may be cut across advance calls)
+        Live -> Event : record(reached_m) or record_disqualified()
+        Live -> Event : decide(suggested_keep()) for a rival's decision
+      end
+    end
+    Live --> Game : steps run
+  else turn() == kPlayerPull
+    Game -> Live : pending_pull(), sled(), pull_rules()
+    Game -> Game : the player's run on that sled, frame by frame
+    Game -> Live : record_player(result, gear)
+    Live -> Event : record (the player's on_this_pull draw is taken)
+  else turn() == kPlayerDecision
+    Game -> Live : suggested_keep()
+    Game -> Live : decide_player(keep)
+  end
+end
+Game -> Live : standings(), log()
+@enduml

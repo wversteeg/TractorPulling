@@ -33,6 +33,7 @@ public:
     std::int64_t integer(std::string_view path);
     std::string text(std::string_view path);
     std::vector<double> numbers(std::string_view path);
+    std::vector<std::string> texts(std::string_view path);
 
     // A curve stored as two parallel arrays, `<table>.<x_key>` and
     // `<table>.<y_key>`. x values are multiplied by `x_to_si` (e.g. rpm to

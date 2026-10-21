@@ -4,10 +4,12 @@
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "../common/toml_reader.hpp"
@@ -99,6 +101,8 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     const std::int64_t seed = reader.integer("event.seed");
     const std::int64_t gear = reader.integer("event.driver.gear");
     const std::vector<double> gears = reader.numbers("event.field.gears");
+    const std::int64_t game_pullers = reader.integer("event.game.pullers");
+    std::vector<std::string> rival_names = reader.texts("event.game.rival_names");
     const event::Rules rules{
         .full_pull_m = reader.number("event.rules.full_pull_m"),
         .extended_full_pull_m = reader.number("event.rules.extended_full_pull_m"),
@@ -153,6 +157,15 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     if (pullers < 1 || pullers > event::kMaxPullers) {
         return detail::make_error(source, "event.pullers", "must be 1 to 32");
     }
+    if (game_pullers < 2 || game_pullers > event::kMaxPullers) {
+        return detail::make_error(source, "event.game.pullers", "must be 2 to 32");
+    }
+    const bool named =
+        std::ranges::none_of(rival_names, [](const std::string& name) { return name.empty(); });
+    if (std::cmp_not_equal(rival_names.size(), game_pullers - 1) || !named) {
+        return detail::make_error(source, "event.game.rival_names",
+                                  "one name, not empty, for every puller but the player");
+    }
 
     std::optional<LoadError> error;
     const auto class_rules = component(load_class_rules(resolve(base, class_path), read), error);
@@ -175,15 +188,17 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         const FieldError described = describe(*field_error);
         return detail::make_error(source, described.field, described.reason);
     }
-    return EventDefinition{.class_rules = *class_rules,
-                           .rules = rules,
-                           .reference = reference,
-                           .variation = variation,
-                           .pull_to_pull = pull_to_pull,
-                           .pullers = count,
-                           .seed = static_cast<std::uint64_t>(seed),
-                           .sled = *sled,
-                           .track = *track};
+    return EventDefinition{
+        .class_rules = *class_rules,
+        .rules = rules,
+        .reference = reference,
+        .variation = variation,
+        .pull_to_pull = pull_to_pull,
+        .pullers = count,
+        .seed = static_cast<std::uint64_t>(seed),
+        .sled = *sled,
+        .track = *track,
+        .game = {.pullers = static_cast<int>(game_pullers), .rival_names = std::move(rival_names)}};
 }
 
 }  // namespace
