@@ -46,6 +46,8 @@ func is_held() -> bool:
 # Touches come in through _input, not _gui_input: each finger is followed
 # by its index, whichever control it is over now.
 func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
 	var touch := event as InputEventScreenTouch
 	if touch != null:
 		if touch.pressed and _finger < 0 and get_global_rect().has_point(touch.position):

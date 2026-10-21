@@ -1,9 +1,10 @@
 # Screenshots of the pull scene from each camera, for reviewing the look:
 # the scripted driver pulls for a while, then each camera saves a PNG to
-# the directory given after `--`. Needs a display (or Xvfb) and a renderer:
+# the directory given after `--`, in the easy layout or, with `pro` after
+# it, the pro layout. Needs a display (or Xvfb) and a renderer:
 #
 #   godot --fixed-fps 60 --rendering-method gl_compatibility --path app/godot \
-#       --script res://tests/screenshots.gd -- /tmp/shots
+#       --script res://tests/screenshots.gd -- /tmp/shots [pro]
 extends SceneTree
 
 const FRAMES_BEFORE := 900
@@ -21,6 +22,7 @@ func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
 	_pull.set("autoplay", true)
+	_pull.set("pro", args.has("pro"))
 	root.add_child(_pull)
 
 

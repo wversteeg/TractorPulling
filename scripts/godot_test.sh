@@ -45,7 +45,8 @@ expected_easy="$("${build}/tools/tp_pull" run "${tractor}" "${sled}" "${track}" 
     --gear "${gear}" --easy data/controls/easy.toml --stick "${stick}" --hash -o /dev/null |
     first_hash)"
 expected_pro="$("${build}/tools/tp_pull" run "${tractor}" "${sled}" "${track}" \
-    --gear "${gear}" --dump --brake-right "${brake_right}" --hash -o /dev/null | first_hash)"
+    --gear "${gear}" --pro data/controls/pro.toml --dump --brake-right "${brake_right}" \
+    --hash -o /dev/null | first_hash)"
 echo "tp_pull, easy: ${expected_easy}"
 echo "tp_pull, pro:  ${expected_pro}"
 

@@ -4,18 +4,24 @@
 # and hands it the controls.
 #
 # The player drives with the touch controls (DriveControls; the keyboard
-# and a gamepad for development). With `autoplay` the driver is scripted
-# instead: in gear, full throttle.
+# and a gamepad for development), in the easy or the pro layout: the layout
+# button switches and starts the pull again. With `autoplay` the driver is
+# scripted instead: in gear at full throttle, then the clutch dropped.
 extends Node3D
 
 @export var tractor_path := "res://data/tractors/farm_stock_light.toml"
 @export var sled_path := "res://data/sleds/light_class.toml"
 @export var track_path := "res://data/tracks/ideal_clay_sand.toml"
 @export var easy_controls_path := "res://data/controls/easy.toml"
+@export var pro_controls_path := "res://data/controls/pro.toml"
+@export var pro := false
 @export var autoplay := false
 @export var autoplay_gear := 6
 
 const SELECT_GEAR_S := 0.5
+# The scripted driver drops the clutch a moment after selecting the gear:
+# a gear goes in only with the clutch pressed.
+const DROP_CLUTCH_S := 1.0
 const NS_PER_S := 1_000_000_000.0
 const RPM_PER_RAD_S := 60.0 / TAU
 const KMH_PER_M_S := 3.6
@@ -51,12 +57,16 @@ func _ready() -> void:
 	add_child(hud_layer)
 	controls.camera_requested.connect(cameras.next)
 	controls.restart_requested.connect(start)
+	controls.layout_requested.connect(func() -> void:
+		pro = not pro
+		start())
 	start()
 
 
 # A new run from the start line.
 func start() -> void:
-	var error := run.setup(tractor_path, sled_path, track_path, easy_controls_path)
+	var controls_path := pro_controls_path if pro else easy_controls_path
+	var error := run.setup(tractor_path, sled_path, track_path, controls_path)
 	if not error.is_empty():
 		push_error("cannot start the run: " + error)
 		_hud.text = error
@@ -69,6 +79,7 @@ func start() -> void:
 		tractor_view.build(dimensions)
 		sled_view.build(dimensions)
 	controls.gear_count = dimensions["gear_count"]
+	controls.set_layout(run.get_layout() == "pro")
 	controls.reset()
 	_time_s = 0.0
 	_show(0.0)
@@ -87,10 +98,14 @@ func _process(delta: float) -> void:
 func _read_controls() -> void:
 	if autoplay:
 		var go := _time_s >= SELECT_GEAR_S
-		run.set_controls(1.0 if go else 0.0, 1.0, autoplay_gear if go else 0, 0.0, 0.0, 0.0)
+		# The easy layout's assist ignores the clutch.
+		var clutch := 0.0 if _time_s >= DROP_CLUTCH_S else 1.0
+		run.set_controls(1.0 if go else 0.0, clutch, autoplay_gear if go else 0, 0.0, 0.0, 0.0)
 		return
-	# The easy layout: the clutch and the brakes are the assist's.
-	run.set_controls(controls.throttle(), 1.0, controls.gear, controls.steering(), 0.0, 0.0)
+	# The easy layout's run ignores the clutch and the brakes: its assist
+	# works them.
+	run.set_controls(controls.throttle(), controls.clutch(), controls.gear, controls.steering(),
+			controls.brake_left(), controls.brake_right())
 
 
 func _show(delta: float) -> void:
@@ -108,6 +123,9 @@ func _hud_text(s: Dictionary) -> String:
 	var text := "gear %d   %4.0f rpm   %4.1f km/h   %6.2f m" % [
 			s["gear"], float(s["engine_omega_rad_s"]) * RPM_PER_RAD_S,
 			float(s["tractor_speed_m_s"]) * KMH_PER_M_S, s["sled_x_m"]]
+	if pro:
+		# The clutch as the run has it: 0 pressed, 100 % in.
+		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)
 	if run.is_finished():
 		var result := run.get_result()
 		text += "\n%s at %.2f m" % [result["ending"], result["distance_m"]]

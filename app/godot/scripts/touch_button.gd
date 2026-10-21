@@ -23,6 +23,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
 	var touch := event as InputEventScreenTouch
 	if touch == null:
 		return

@@ -69,6 +69,8 @@ const char* describe(session::SetupError error) {
             return "invalid run rules";
         case session::SetupError::kEasyControls:
             return "invalid easy controls";
+        case session::SetupError::kProControls:
+            return "invalid pro controls";
         case session::SetupError::kMaxStepsPerFrame:
             return "invalid steps per frame";
     }
@@ -79,7 +81,7 @@ const char* describe(session::SetupError error) {
 
 godot::String TractorPullRun::setup(const godot::String& tractor_path,
                                     const godot::String& sled_path, const godot::String& track_path,
-                                    const godot::String& easy_controls_path) {
+                                    const godot::String& controls_path) {
     session_.reset();
     setup_.reset();
     dropped_ns_ = 0;
@@ -97,13 +99,14 @@ godot::String TractorPullRun::setup(const godot::String& tractor_path,
         return to_godot(track.error().message);
     }
     session::Setup setup = data::run_setup(tractor.value(), sled.value(), track.value());
-    if (!easy_controls_path.is_empty()) {
-        const auto easy = data::load_easy_controls(to_std(easy_controls_path), read);
-        if (!easy) {
-            return to_godot(easy.error().message);
+    if (!controls_path.is_empty()) {
+        const auto controls = data::load_control_layout(to_std(controls_path), read);
+        if (!controls) {
+            return to_godot(controls.error().message);
         }
-        setup.layout = session::Layout::kEasy;
-        setup.easy = easy.value();
+        setup.layout = controls.value().layout;
+        setup.easy = controls.value().easy;
+        setup.pro = controls.value().pro;
     }
     if (const auto error = session::validate(setup)) {
         return describe(*error);
@@ -202,6 +205,13 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     return out;
 }
 
+godot::String TractorPullRun::get_layout() const {
+    if (!setup_) {
+        return {};
+    }
+    return setup_->layout == session::Layout::kEasy ? "easy" : "pro";
+}
+
 bool TractorPullRun::is_finished() const {
     return session_ && session_->result().has_value();
 }
@@ -244,7 +254,7 @@ void TractorPullRun::_bind_methods() {
     using godot::ClassDB;
     using godot::D_METHOD;
     ClassDB::bind_method(
-        D_METHOD("setup", "tractor_path", "sled_path", "track_path", "easy_controls_path"),
+        D_METHOD("setup", "tractor_path", "sled_path", "track_path", "controls_path"),
         &TractorPullRun::setup);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
                                   "brake_left", "brake_right"),
@@ -253,6 +263,7 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_dropped_ns"), &TractorPullRun::get_dropped_ns);
     ClassDB::bind_method(D_METHOD("get_snapshot"), &TractorPullRun::get_snapshot);
     ClassDB::bind_method(D_METHOD("get_dimensions"), &TractorPullRun::get_dimensions);
+    ClassDB::bind_method(D_METHOD("get_layout"), &TractorPullRun::get_layout);
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
