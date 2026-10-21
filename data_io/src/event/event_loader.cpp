@@ -39,7 +39,8 @@ FieldError describe(event::ParamError error) {
         case ParamError::kMaxStepsNotPositive:
             return {"event.rules.max_steps_per_change", "must be >= 1"};
         case ParamError::kSoloPullOffsOutOfRange:
-            return {"event.rules.solo_pull_offs", "must be in [0, 5]"};
+            static_assert(event::kMaxPullOffRounds == 5, "the message names the limit");
+            return {"event.rules.solo_pull_offs", "must be 0 to 5"};
         case ParamError::kSled:
             return {"event.sled", "invalid"};
         case ParamError::kRunningOrder:

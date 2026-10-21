@@ -44,8 +44,8 @@ func _ready() -> void:
 # `event` and `result` are the run's (get_event(), get_result()); `next_round`
 # its get_next_round(): a pull-off to pull, or -1 for the next event.
 func show_result(event: Dictionary, result: Dictionary, next_round: int) -> void:
-	var round: int = event.get("round", 0)
-	var which := "Qualifying" if round == 0 else "Pull-off %d" % round
+	var pull_off_round: int = event.get("round", 0)
+	var which := "Qualifying" if pull_off_round == 0 else "Pull-off %d" % pull_off_round
 	_pull.text = "%s  ·  %s" % [which, event.get("name", "")]
 	_distance.text = "%.2f m" % float(result["distance_m"])
 	_ending.text = ENDINGS.get(result["ending"], str(result["ending"]))

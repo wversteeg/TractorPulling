@@ -200,8 +200,14 @@ for the big features; they are repeated at the end for completeness.
 - **The chain as a bar.** `ChainView` draws a straight bar from hitch to
   hook, darker as the tension rises, even when the chain is slack and
   should sag.
-- **The game's flow, pulling alone.** The game plays the season's events in
-  turn, alone: one qualifying pull and the pull-offs its rules give
+- **The game's flow, pulling alone.** The class sled with only the track's
+  conditions is too heavy for a full pull (the reference tractor stops at
+  84 to 91 m on every season track): at a real event the sled operator
+  lightens it after the field's test pulls, so as shipped the pull-off is
+  never reached; only the flow test's practice sled gets there. Next step:
+  a field of nine scripted pullers and the event's program (test pulls, the
+  operator, pull-offs), with the event's and the season's top ten. The game
+  plays the season's events in turn, alone: one qualifying pull and the pull-offs its rules give
   (`solo_pull_offs`), with no field of scripted rivals, standings, points,
   test pulls or sled operator in the game (the core has them: `tp::event`,
   `tp::season`; they come with the career, milestone 6). The pull-off sled

@@ -93,6 +93,13 @@ func _play() -> void:
 	_expect(event.get("index", -1) == 0 and event.get("count", 0) == 2
 			and event.get("round", -1) == 0, "the first event's qualifying: %s" % event)
 	_expect(event.get("name", "") == "Practice, watered start", "its name: %s" % event)
+	# The development keys belong to a pull: R (pull again) does nothing here.
+	var r := InputEventKey.new()
+	r.keycode = KEY_R
+	r.pressed = true
+	root.push_input(r, true)
+	await _frames(2)
+	_expect(start.visible and not controls.visible, "R on the start screen does nothing")
 
 	# Qualifying: a full pull, then the result screen offers the pull-off.
 	_tap(start.next_button)

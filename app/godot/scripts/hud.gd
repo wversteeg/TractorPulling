@@ -67,8 +67,8 @@ func show_snapshot(s: Dictionary, event: Dictionary, pro: bool) -> void:
 	if event.is_empty():
 		_pull.text = ""
 	else:
-		var round: int = event["round"]
-		var which := "Qualifying" if round == 0 else "Pull-off %d" % round
+		var pull_off_round: int = event["round"]
+		var which := "Qualifying" if pull_off_round == 0 else "Pull-off %d" % pull_off_round
 		_pull.text = "%s  ·  %s" % [which, event["name"]]
 	_omega_rad_s = s["engine_omega_rad_s"]
 	_sled_m = s["sled_x_m"]

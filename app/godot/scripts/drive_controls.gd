@@ -191,6 +191,9 @@ func steering() -> float:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Hidden on the start and result screens: the keys belong to a pull.
+	if not is_visible_in_tree():
+		return
 	var key := event as InputEventKey
 	if key != null and key.pressed and not key.echo:
 		if key.keycode == KEY_C:

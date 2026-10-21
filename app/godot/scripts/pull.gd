@@ -47,7 +47,7 @@ var screen := Screen.START
 # The season's event to pull, and the round there (0 qualifying, then the
 # pull-offs).
 var event_index := 0
-var round := 0
+var pull_off_round := 0
 var _time_s := 0.0
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
@@ -64,18 +64,18 @@ func _ready() -> void:
 	controls.camera_requested.connect(cameras.next)
 	controls.restart_requested.connect(_pull_again)
 	controls.menu_requested.connect(func() -> void:
-		round = 0
+		pull_off_round = 0
 		show_start())
 	start_screen.layout_picked.connect(func(is_pro: bool) -> void:
 		pro = is_pro
 		show_start())
 	start_screen.start_requested.connect(func() -> void: _set_screen(Screen.PULLING))
 	result_screen.pull_off_requested.connect(func() -> void:
-		round = run.get_next_round()
+		pull_off_round = run.get_next_round()
 		_pull_again())
 	result_screen.next_requested.connect(func() -> void:
 		event_index = (event_index + 1) % maxi(int(run.get_event().get("count", 1)), 1)
-		round = 0
+		pull_off_round = 0
 		show_start())
 	if autoplay:
 		_prepare()
@@ -105,7 +105,7 @@ func _prepare() -> String:
 	if autoplay:
 		error = run.setup(tractor_path, sled_path, track_path, controls_path)
 	else:
-		error = run.setup_event(season_path, event_index, controls_path, round)
+		error = run.setup_event(season_path, event_index, controls_path, pull_off_round)
 	if not error.is_empty():
 		push_error("cannot set up the pull: " + error)
 		return error
