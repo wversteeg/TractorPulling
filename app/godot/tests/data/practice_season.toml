@@ -1,0 +1,15 @@
+# Two events on the practice sled, for the flow test: the reference tractor
+# makes full pulls, so the test reaches the pull-off and the next event.
+
+[season]
+event = "practice_event.toml"
+seed = 2026
+points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+
+[[season.events]]
+name = "Practice, watered start"
+track = "../../data/tracks/watered_start.toml"
+
+[[season.events]]
+name = "Practice, firm loam"
+track = "../../data/tracks/firm_loam.toml"

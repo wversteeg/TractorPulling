@@ -214,8 +214,20 @@ their range or at rest.
 
 Build the extension with `cmake --preset godot && cmake --build --preset godot`
 (it fetches godot-cpp and copies `data/` into the project), then open
-`app/godot` in Godot 4.7 and play it. The pull scene (`scenes/pull.tscn`)
-draws the run in graybox, built from the run's sizes (`get_dimensions()`):
+`app/godot` in Godot 4.7 and play it.
+
+The game plays a season's events in turn (`data/seasons/club_season.toml`,
+the club class on ten tracks). The start screen shows the next event and
+its track, and the layout to pull in; "Next" starts the qualifying pull.
+After it the result screen shows how far the sled went and how the pull
+ended. A full pull earns a pull-off on a sled one step heavier (the event's
+rules: `solo_pull_offs = 1` in `club_pull.toml`, and the run, not the scene,
+decides it); otherwise, and after the pull-off, "Next" goes on to the next
+event and its track. During a pull the HUD shows the rev counter (stall and
+rated speeds marked), gear, speed, distance and a bar down the track to the
+full-pull line.
+
+The pull scene (`scenes/pull.tscn`) draws the run in graybox, built from the run's sizes (`get_dimensions()`):
 the lane with its chalk lines and the full-pull line, the tractor with
 wheels that turn and steer, the sled with its weight box moving forward,
 and the chain, darker as it pulls.
@@ -230,17 +242,18 @@ adds a clutch slider beside the throttle, pressed at the top and in at the
 bottom, which starts pressed and stays where it is left, so you slip it in
 and leave it; a gear goes in only with the clutch pressed. Above the
 steering are a brake slider for each rear side, off again when let go.
-"easy"/"pro" switches the layout and pulls again, "cam" switches between the
-chase, side and overhead cameras, and "again" (on lifting the finger on it)
-pulls again. On a desktop the mouse works the same controls, and for
+"cam" switches between the chase, side and overhead cameras, "again" (on
+lifting the finger on it) starts the same pull again, and "menu" goes back to
+the start screen. On a desktop the mouse works the same controls, and for
 development the keyboard (W throttle, A and D steer, digits for a gear,
-Space clutch, Q and E brakes, C camera, R again, L layout) and a gamepad
+Space clutch, Q and E brakes, C camera, R again, M menu) and a gamepad
 (right trigger, left trigger for the clutch, left stick, shoulder buttons
 for the gear, X neutral, Y camera, Back again) do too.
 
 `scripts/godot_test.sh <godot binary>` plays the scene with a scripted
 driver and checks the views follow the run, drives it with simulated
-fingers on the touch controls, then plays two scripted runs
+fingers on the touch controls, plays an event's flow (start, qualifying,
+pull-off, next event) on a practice season, then plays two scripted runs
 and checks they end in the same state as `tp_pull`'s (with a renderer,
 under Xvfb if there is no display). To look at the scene without a display:
 

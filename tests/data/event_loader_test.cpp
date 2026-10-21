@@ -104,6 +104,7 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.rules.full_pull_m, 100.0);
     EXPECT_EQ(definition.rules.extended_full_pull_m, 110.0);
     EXPECT_EQ(definition.rules.pull_off_places, 4);
+    EXPECT_EQ(definition.rules.solo_pull_offs, 1);
     EXPECT_EQ(definition.reference.driver.gear, 6);
     EXPECT_EQ(definition.variation.lowest_gear, 4);
     EXPECT_EQ(definition.variation.highest_gear, 6);
@@ -131,6 +132,9 @@ TEST(EventLoader, RejectsNonsense) {
               std::string::npos);
     EXPECT_NE(error_of(with("track_reading = [0.5, 0.95]", "track_reading = [0.5, 1.5]"))
                   .find("track_reading within [0, 1]"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("solo_pull_offs = 1", "solo_pull_offs = 6"))
+                  .find("event.rules.solo_pull_offs"),
               std::string::npos);
     EXPECT_NE(error_of(with("seed = 2026", "seed = -1")).find("event.seed: must not be negative"),
               std::string::npos);

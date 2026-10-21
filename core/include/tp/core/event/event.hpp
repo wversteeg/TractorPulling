@@ -42,6 +42,10 @@ struct Rules {
     /// Most steps the operator changes the sled by at once, after a test
     /// pull or for a pull-off.
     int max_steps_per_change = 0;
+    /// A puller pulling alone, as the game plays an event: after a full
+    /// pull in qualifying, this many pull-offs at most, each on a heavier
+    /// sled (see solo_next_round). 0 to kMaxPullOffRounds.
+    int solo_pull_offs = 0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -51,6 +55,7 @@ enum class ParamError : std::uint8_t {
     kTurnsOutOfOrder,
     kStepNotPositive,
     kMaxStepsNotPositive,
+    kSoloPullOffsOutOfRange,
     kSled,
     kRunningOrder,
 };
@@ -211,6 +216,14 @@ private:
     double last_test_m_ = 0.0;
     std::array<Standing, kMaxPullers> standings_{};
 };
+
+/// A puller alone at an event, as the game plays it: the qualifying pull
+/// is round 0, and every full pull earns the next round, a pull-off on a
+/// heavier sled, up to `rules.solo_pull_offs` of them. The round after
+/// `round` ended (with a full pull or not), or nothing when the puller is
+/// done.
+[[nodiscard]] std::optional<int> solo_next_round(const Rules& rules, int round,
+                                                 bool full_pull) noexcept;
 
 /// The field's pullers in a random order for `seed`.
 [[nodiscard]] std::array<int, kMaxPullers> running_order(int count, std::uint64_t seed) noexcept;

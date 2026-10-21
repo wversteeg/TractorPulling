@@ -24,7 +24,8 @@ constexpr Rules kRules{.full_pull_m = 100.0,
                        .repull_after_pulls = 5,
                        .sled_target_m = 90.0,
                        .step_m = 5.0,
-                       .max_steps_per_change = 4};
+                       .max_steps_per_change = 4,
+                       .solo_pull_offs = 1};
 
 std::vector<int> in_order(int count) {
     std::vector<int> order(static_cast<std::size_t>(count));
@@ -91,6 +92,9 @@ TEST(EventRules, RejectsNonsense) {
     EXPECT_EQ(with([](Rules& r) { r.repull_after_pulls = 2; }), ParamError::kTurnsOutOfOrder);
     EXPECT_EQ(with([](Rules& r) { r.step_m = 0.0; }), ParamError::kStepNotPositive);
     EXPECT_EQ(with([](Rules& r) { r.max_steps_per_change = 0; }), ParamError::kMaxStepsNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.solo_pull_offs = -1; }), ParamError::kSoloPullOffsOutOfRange);
+    EXPECT_EQ(with([](Rules& r) { r.solo_pull_offs = kMaxPullOffRounds + 1; }),
+              ParamError::kSoloPullOffsOutOfRange);
 }
 
 TEST(Event, RejectsABadRunningOrder) {
@@ -366,6 +370,29 @@ TEST(Event, EqualResultsShareAPlace) {
     EXPECT_EQ(standings[1].place, 1);
     EXPECT_EQ(standings[2].place, 1);
     EXPECT_EQ(standings[3].place, 4);
+}
+
+// Alone at an event: a full pull in qualifying earns a pull-off, and each
+// full pull one more, up to the rules' count; anything short of a full pull
+// ends the puller's day.
+TEST(Solo, AFullPullEarnsThePullOffs) {
+    Rules one = kRules;
+    one.solo_pull_offs = 1;
+    EXPECT_EQ(solo_next_round(one, 0, true), 1);
+    EXPECT_EQ(solo_next_round(one, 0, false), std::nullopt);
+    EXPECT_EQ(solo_next_round(one, 1, true), std::nullopt);
+
+    Rules three = kRules;
+    three.solo_pull_offs = 3;
+    EXPECT_EQ(solo_next_round(three, 1, true), 2);
+    EXPECT_EQ(solo_next_round(three, 2, true), 3);
+    EXPECT_EQ(solo_next_round(three, 3, true), std::nullopt);
+    EXPECT_EQ(solo_next_round(three, 2, false), std::nullopt);
+
+    Rules none = kRules;
+    none.solo_pull_offs = 0;
+    EXPECT_EQ(solo_next_round(none, 0, true), std::nullopt);
+    EXPECT_EQ(solo_next_round(one, -1, true), std::nullopt);
 }
 
 }  // namespace
