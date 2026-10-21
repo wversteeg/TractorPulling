@@ -258,10 +258,11 @@ for the big features; they are repeated at the end for completeness.
   Google Play, and the Windows game signed. No icon of its own yet
   (`application/modify_resources` is off: it needs rcedit).
 - **The Windows game is only started in CI.** The windows-game job starts
-  the export headless and looks for errors; nothing plays a run on Windows
-  or checks its state hashes there (MinGW's gcc builds the same code as
-  Linux's, with the same floating-point flags). Wine 9 cannot run Godot
-  4.7, so it is no help locally.
+  the export headless (its season loaded, no errors) and checks that the
+  Windows tp_pull gives Linux's results (scripts/platform_runs.sh: the
+  scripted runs' hashes and a whole event); no scripted run is played
+  through the extension in the Windows game itself. Wine 9 cannot run
+  Godot 4.7 (it runs tp_pull.exe, with Linux's results).
 
 ## Performance
 

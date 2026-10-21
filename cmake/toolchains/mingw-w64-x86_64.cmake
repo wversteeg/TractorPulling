@@ -10,6 +10,10 @@ set(CMAKE_C_COMPILER ${TP_MINGW_PREFIX}-gcc-posix)
 set(CMAKE_CXX_COMPILER ${TP_MINGW_PREFIX}-g++-posix)
 set(CMAKE_RC_COMPILER ${TP_MINGW_PREFIX}-windres)
 
+# Programs (tp_pull) linked statically, so they run without MinGW's DLLs.
+# The extension needs no flag: godot-cpp links the C++ runtime in itself.
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-static")
+
 set(CMAKE_FIND_ROOT_PATH /usr/${TP_MINGW_PREFIX})
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)

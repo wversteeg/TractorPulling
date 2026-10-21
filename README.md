@@ -292,7 +292,10 @@ ANDROID_HOME=~/Android/Sdk JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
 
 The Windows extension is cross-compiled with MinGW-w64
 (`g++-mingw-w64-x86-64-posix` on Debian and Ubuntu), as Godot builds its
-own Windows releases.
+own Windows releases; the preset builds `tp_pull.exe` too. CI runs it on
+Windows and checks it gives Linux's results (`scripts/platform_runs.sh`:
+the scripted runs' state hashes and a whole event), and starts the
+exported game there.
 
 ## Requirements
 

@@ -16,6 +16,14 @@ var _hook := Marker3D.new()
 var _wheel_height_m := 0.5
 
 
+# As TractorView's: parts never added to the tree are freed here.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for part: Node in [_box, _hook]:
+			if part.get_parent() == null:
+				part.free()
+
+
 func build(d: Dictionary) -> void:
 	var hook_ahead_m: float = d["hook_ahead_of_wheels_m"]
 	_wheel_height_m = d["sled_wheel_radius_m"]

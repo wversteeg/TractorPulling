@@ -95,7 +95,7 @@
     },
     {
       "name": "godot-windows",
-      "displayName": "Godot extension for Windows x86-64 (MinGW-w64, from Linux)",
+      "displayName": "Godot extension and tp_pull for Windows x86-64 (MinGW-w64, from Linux)",
       "inherits": "base",
       "toolchainFile": "${sourceDir}/cmake/toolchains/mingw-w64-x86_64.cmake",
       "cacheVariables": {
@@ -103,8 +103,7 @@
         "TP_BUILD_GODOT": "ON",
         "GODOTCPP_TARGET": "template_debug",
         "TP_BUILD_TESTS": "OFF",
-        "TP_BUILD_BENCHMARKS": "OFF",
-        "TP_BUILD_TOOLS": "OFF"
+        "TP_BUILD_BENCHMARKS": "OFF"
       }
     }
   ],

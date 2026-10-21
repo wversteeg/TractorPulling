@@ -92,6 +92,22 @@ export_preset() {
 }
 
 export_preset Android "${output}/tractor_pulling.apk"
+# A half-made export can still be a file: the APK must carry the extension
+# for both ABIs and every data file.
+apk_files="$(unzip -l "${output}/tractor_pulling.apk")"
+for library in lib/arm64-v8a/libtp_godot.android.template_debug.arm64.so \
+    lib/x86_64/libtp_godot.android.template_debug.x86_64.so; do
+    if ! grep -q " ${library}\$" <<<"${apk_files}"; then
+        echo "the APK has no ${library}" >&2
+        exit 1
+    fi
+done
+data_files="$(cd "${project}" && find data -name '*.toml' | wc -l)"
+apk_data_files="$(grep -cE ' assets/data/.*\.toml$' <<<"${apk_files}" || true)"
+if [[ "${apk_data_files}" -ne "${data_files}" ]]; then
+    echo "the APK has ${apk_data_files} of the ${data_files} data files" >&2
+    exit 1
+fi
 export_preset "Windows Desktop" "${output}/windows/TractorPulling.exe"
 if [[ ! -f "${output}/windows/libtp_godot.windows.template_debug.x86_64.dll" ]]; then
     echo "the Windows export has no extension DLL next to it" >&2
