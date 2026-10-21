@@ -5,7 +5,8 @@
 //                [--steer-deg A] [--brake-left P] [--brake-right P] [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
-//               [--easy <easy.toml> [--stick S]] [--hash] [-o <out.csv>]
+//               [--easy <easy.toml> [--stick S] | --pro <pro.toml>] [--hash]
+//               [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump]
 //   tp_pull event <event.toml> [--seed N]
@@ -27,7 +28,9 @@
 // pull is followed by a pull-off on a heavier sled. It prints each result.
 // With --easy the driver uses the easy layout instead: the gear and full
 // throttle, the steering control held at --stick (-1 right to 1 left) from
-// the launch, and the clutch assist working the clutch.
+// the launch, and the clutch assist working the clutch. With --pro the
+// pedals are as above, but the steering goes through the pro layout's dead
+// zone and rate, as the game's pro layout steers.
 //
 // --hash prints each run's state hash at its end, to compare with another
 // front end playing the same inputs (the Godot extension's headless test).
@@ -192,6 +195,9 @@ struct PullOptions {
     /// control's position.
     std::optional<tp::controls::EasyParams> easy;
     double stick = 0.0;
+    /// The pro layout's steering shaping; without it the steering is taken
+    /// as it is.
+    std::optional<tp::controls::ProParams> pro;
     /// Print each run's state hash, to compare with another front end
     /// (the Godot extension's test).
     bool print_hash = false;
@@ -359,6 +365,9 @@ tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
     if (options.easy) {
         setup.layout = tp::session::Layout::kEasy;
         setup.easy = *options.easy;
+    }
+    if (options.pro) {
+        setup.pro = *options.pro;
     }
     return setup;
 }
@@ -730,6 +739,7 @@ struct Options {
     std::optional<std::string_view> output_path;
     std::optional<std::uint64_t> seed;
     std::optional<std::string_view> easy_path;
+    std::optional<std::string_view> pro_path;
     bool stick_given = false;
     PullOptions pull;
 };
@@ -777,7 +787,8 @@ Parsed parse_driving_option(std::string_view arg, std::string_view value, PullOp
     return Parsed::kUnknown;
 }
 
-// An option that takes a value: `-o`, `--seed`, `--easy`, or a driving one.
+// An option that takes a value: `-o`, `--seed`, `--easy`, `--pro`, or a
+// driving one.
 Parsed parse_valued_option(std::string_view arg, std::string_view value, Options& options) {
     if (arg == "-o") {
         options.output_path = value;
@@ -785,6 +796,10 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
     }
     if (arg == "--easy") {
         options.easy_path = value;
+        return Parsed::kOk;
+    }
+    if (arg == "--pro") {
+        options.pro_path = value;
         return Parsed::kOk;
     }
     if (arg == "--seed") {
@@ -832,7 +847,8 @@ int usage() {
                  "                    [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
-                 "                   [--easy <easy.toml> [--stick S]] [--hash] [-o <out.csv>]\n"
+                 "                   [--easy <easy.toml> [--stick S] | --pro <pro.toml>]\n"
+                 "                   [--hash] [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump]\n"
                  "       tp_pull event <event.toml> [--seed N]\n"
@@ -897,7 +913,17 @@ int run_command(const Options& options) {
         std::cerr << "--stick is the easy layout's steering: it needs --easy\n";
         return EXIT_FAILURE;
     }
+    if (options.easy_path && options.pro_path) {
+        std::cerr << "--easy and --pro are two layouts: pick one\n";
+        return EXIT_FAILURE;
+    }
     PullOptions pull = options.pull;
+    if (options.pro_path) {
+        pull.pro = load_or_report(tp::data::load_pro_controls(*options.pro_path));
+        if (!pull.pro) {
+            return EXIT_FAILURE;
+        }
+    }
     if (options.easy_path) {
         pull.easy = load_or_report(tp::data::load_easy_controls(*options.easy_path));
         if (!pull.easy) {
@@ -976,8 +1002,9 @@ int main(int argc, char** argv) {
     const std::size_t files = options->positional.size();
     for (const Command& command : kCommands) {
         if (command.name == name && files >= command.min_files && files <= command.max_files) {
-            // Only a run drives with the easy layout.
-            if (name != "run" && (options->easy_path || options->stick_given)) {
+            // Only a run drives with a layout's controls file.
+            if (name != "run" &&
+                (options->easy_path || options->pro_path || options->stick_given)) {
                 return usage();
             }
             return command.run(*options);

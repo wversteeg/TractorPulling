@@ -15,7 +15,8 @@ session::Setup run_setup(const vehicle::Params& tractor, const sled::Params& cla
             .ground = track.ground,
             .rules = track.rules,
             .layout = session::Layout::kPro,
-            .easy = {}};
+            .easy = {},
+            .pro = {}};
 }
 
 }  // namespace tp::data

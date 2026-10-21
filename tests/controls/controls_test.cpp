@@ -122,6 +122,71 @@ TEST(ControlsParams, RejectsNonsense) {
               ParamError::kNotFinite);
 }
 
+TEST(ControlsParams, ProReferenceAndDefaultAreValid) {
+    EXPECT_EQ(validate(testing::kReferencePro), std::nullopt);
+    EXPECT_EQ(validate(ProParams{}), std::nullopt);
+}
+
+TEST(ControlsParams, RejectsProNonsense) {
+    const auto with = [](auto mutate) {
+        ProParams p = testing::kReferencePro;
+        mutate(p);
+        return validate(p);
+    };
+    EXPECT_EQ(with([](ProParams& p) { p.steer_dead_zone = -0.01; }),
+              ParamError::kSteerDeadZoneOutOfRange);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_dead_zone = 1.0; }),
+              ParamError::kSteerDeadZoneOutOfRange);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_rate_per_s = 0.0; }),
+              ParamError::kSteerRateNotPositive);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_rate_per_s = HUGE_VAL; }), ParamError::kNotFinite);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_dead_zone = std::nan(""); }), ParamError::kNotFinite);
+}
+
+// Pro with its default parameters steers as the control is: the same input
+// as the plain mapping, and the steering's state follows the control.
+TEST(Pro, DefaultParamsSteerAsTheControlIs) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    for (const double steering : {0.0, 0.02, -0.3, 1.0, 5.0}) {
+        AssistState state;
+        const ProInput in{.throttle = 0.5, .clutch_pedal = 0.25, .gear = 3, .steering = steering};
+        const vehicle::Input shaped = pro(in, ProParams{}, state, tractor, kDt_s);
+        const vehicle::Input plain = pro(in, tractor);
+        EXPECT_EQ(shaped.steering_rad, plain.steering_rad) << steering;
+        EXPECT_EQ(shaped.throttle, plain.throttle);
+        EXPECT_EQ(shaped.clutch_pedal, plain.clutch_pedal);
+        EXPECT_EQ(state.steering, std::clamp(steering, -1.0, 1.0));
+    }
+}
+
+// Pro with a dead zone and a rate: a thumb resting in the middle steers
+// straight, and the wheels follow a jump of the control at the rate; the
+// pedals pass at once.
+TEST(Pro, ShapesTheSteeringLikeTheEasyLayout) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    const ProParams params = testing::kReferencePro;
+    const double max_rad = tractor.steering.max_angle_rad;
+    const auto hold = [&](double steering, double held_s) {
+        AssistState state;
+        vehicle::Input in;
+        for (int i = 0; i < static_cast<int>(std::lround(held_s / kDt_s)); ++i) {
+            in = pro({.throttle = 1.0, .clutch_pedal = 0.0, .steering = steering}, params, state,
+                     tractor, kDt_s);
+        }
+        return in;
+    };
+    EXPECT_EQ(hold(params.steer_dead_zone, 2.0).steering_rad, 0.0);
+    const double per_step = params.steer_rate_per_s.value_or(0.0) * kDt_s;
+    ASSERT_GT(per_step, 0.0);
+    const vehicle::Input first = hold(1.0, kDt_s);
+    EXPECT_DOUBLE_EQ(first.steering_rad, per_step * max_rad);
+    EXPECT_EQ(first.throttle, 1.0);
+    EXPECT_EQ(first.clutch_pedal, 0.0);
+    EXPECT_EQ(hold(-1.0, 2.0).steering_rad, -max_rad);
+    const double half = params.steer_dead_zone + 0.5 * (1.0 - params.steer_dead_zone);
+    EXPECT_DOUBLE_EQ(hold(half, 2.0).steering_rad, 0.5 * max_rad);
+}
+
 // Pro: the steering control spans the steering's range; the pedals pass
 // through, held to their travel.
 TEST(Pro, MapsEachControlOnItsOwn) {

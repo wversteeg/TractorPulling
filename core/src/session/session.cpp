@@ -37,6 +37,9 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     if (setup.layout == Layout::kEasy && controls::validate(setup.easy)) {
         return SetupError::kEasyControls;
     }
+    if (setup.layout == Layout::kPro && controls::validate(setup.pro)) {
+        return SetupError::kProControls;
+    }
     if (!make_clock(setup)) {
         return SetupError::kMaxStepsPerFrame;
     }
@@ -88,6 +91,7 @@ Session::Session(const pull::Model& model, const Setup& setup, const FixedStepCl
       rules_(setup.rules),
       layout_(setup.layout),
       easy_(setup.easy),
+      pro_(setup.pro),
       clock_(clock),
       run_(run::start(model)),
       assist_(),
@@ -132,7 +136,7 @@ void Session::step(const Controls& controls) noexcept {
                                      .steering = controls.steering,
                                      .brake_left = controls.brake_left,
                                      .brake_right = controls.brake_right};
-        input_ = controls::pro(pro, tractor);
+        input_ = controls::pro(pro, pro_, assist_, tractor, dt_s);
     }
     output_ = run::step(run_, model_, rules_, input_, dt_s);
 }

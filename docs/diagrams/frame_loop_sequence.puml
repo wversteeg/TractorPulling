@@ -17,7 +17,7 @@ loop every rendered frame
   Session -> Clock : advance(elapsed_ns)
   Clock --> Session : Advance {steps, dropped_ns}\n(steps <= max_steps_per_frame)
   loop steps times (until the run has a result)
-    Session -> Controls : the layout's input from Controls\n(easy: the assist reads the engine and gear)
+    Session -> Controls : the layout's input from Controls\n(easy: the assist reads the engine and gear;\nboth: the steering past its dead zone, at its rate)
     Controls --> Session : vehicle::Input
     Session -> Run : step(state, model, rules, input, dt_s = 0.001)
     Run --> Session : pull::Output

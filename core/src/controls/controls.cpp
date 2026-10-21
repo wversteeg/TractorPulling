@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <optional>
 
 namespace tp::controls {
 
@@ -59,16 +60,17 @@ double engagement_after(const ClutchAssist& assist, double engagement, bool clut
 }
 
 // The steering after this step: the control past the dead zone, stretched
-// to the whole range, and followed at the steering rate.
-double steering_after(const EasyParams& params, double steering, double control,
-                      double dt_s) noexcept {
+// to the whole range, and followed at the steering rate (at once without
+// one).
+double steering_after(double dead_zone, std::optional<double> rate_per_s, double steering,
+                      double control, double dt_s) noexcept {
     const double travel = std::abs(control);
     const double past_dead_zone =
-        travel > params.steer_dead_zone
-            ? std::copysign((travel - params.steer_dead_zone) / (1.0 - params.steer_dead_zone),
-                            control)
-            : 0.0;
-    const double max_change = params.steer_rate_per_s * dt_s;
+        travel > dead_zone ? std::copysign((travel - dead_zone) / (1.0 - dead_zone), control) : 0.0;
+    if (!rate_per_s) {
+        return past_dead_zone;
+    }
+    const double max_change = *rate_per_s * dt_s;
     return std::clamp(past_dead_zone, steering - max_change, steering + max_change);
 }
 
@@ -105,6 +107,29 @@ std::optional<ParamError> validate(const EasyParams& params) noexcept {
     return std::nullopt;
 }
 
+std::optional<ParamError> validate(const ProParams& params) noexcept {
+    const double rate_per_s = params.steer_rate_per_s.value_or(1.0);
+    if (!std::isfinite(params.steer_dead_zone) || !std::isfinite(rate_per_s)) {
+        return ParamError::kNotFinite;
+    }
+    if (params.steer_dead_zone < 0.0 || params.steer_dead_zone >= 1.0) {
+        return ParamError::kSteerDeadZoneOutOfRange;
+    }
+    if (rate_per_s <= 0.0) {
+        return ParamError::kSteerRateNotPositive;
+    }
+    return std::nullopt;
+}
+
+vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& state,
+                   const vehicle::Params& tractor, double dt_s) noexcept {
+    state.steering = steering_after(params.steer_dead_zone, params.steer_rate_per_s, state.steering,
+                                    signed_unit(input.steering), dt_s);
+    ProInput shaped = input;
+    shaped.steering = state.steering;
+    return pro(shaped, tractor);
+}
+
 vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexcept {
     return {.throttle = unit(input.throttle, kThrottleRest),
             .clutch_pedal = unit(input.clutch_pedal, kClutchPedalRest),
@@ -131,7 +156,8 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
 
     // The first stretch of travel turns the wheels; the rest brakes the
     // rear wheels on the inside of the turn.
-    assist.steering = steering_after(params, assist.steering, signed_unit(input.steering), dt_s);
+    assist.steering = steering_after(params.steer_dead_zone, params.steer_rate_per_s,
+                                     assist.steering, signed_unit(input.steering), dt_s);
     const double steering = assist.steering;
     const double travel = std::abs(steering);
     const double wheels = std::min(travel / params.steer_share, 1.0);

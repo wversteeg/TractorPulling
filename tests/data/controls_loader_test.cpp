@@ -85,5 +85,63 @@ TEST(ControlsLoader, RejectsNonsenseNamingTheField) {
     EXPECT_NE(error_of(with("engage_time_s = 1.5\n", "")).find("engage_time_s"), std::string::npos);
 }
 
+constexpr std::string_view kValidPro = R"(
+[pro]
+steer_dead_zone = 0.05
+steer_rate_per_s = 2.0
+)";
+
+TEST(ControlsLoader, ShippedProFileMatchesTestReference) {
+    const auto result = load_pro_controls(std::string{TP_DATA_DIR} + "/controls/pro.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const controls::ProParams& reference = controls::testing::kReferencePro;
+    EXPECT_EQ(result.value().steer_dead_zone, reference.steer_dead_zone);
+    EXPECT_EQ(result.value().steer_rate_per_s, reference.steer_rate_per_s);
+}
+
+TEST(ControlsLoader, ParsesTheProLayout) {
+    const auto result = parse_pro_controls(kValidPro, "pro.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().steer_dead_zone, 0.05);
+    EXPECT_EQ(result.value().steer_rate_per_s, 2.0);
+}
+
+TEST(ControlsLoader, RejectsProNonsenseNamingTheField) {
+    const auto error = [](std::string_view text) {
+        const auto result = parse_pro_controls(text, "pro.toml");
+        EXPECT_FALSE(result.ok());
+        return result.ok() ? std::string{} : result.error().message;
+    };
+    EXPECT_NE(
+        error("[pro]\nsteer_dead_zone = 1.0\nsteer_rate_per_s = 2.0\n").find("pro.steer_dead_zone"),
+        std::string::npos);
+    EXPECT_NE(error("[pro]\nsteer_dead_zone = 0.0\nsteer_rate_per_s = 0.0\n")
+                  .find("pro.steer_rate_per_s"),
+              std::string::npos);
+    EXPECT_NE(error("[pro]\nsteer_dead_zone = 0.0\n").find("steer_rate_per_s"), std::string::npos);
+}
+
+// A game's controls file names its layout by its table.
+TEST(ControlsLoader, ReadsEitherLayout) {
+    const auto easy = parse_control_layout(kValidEasy, "easy.toml");
+    ASSERT_TRUE(easy.ok()) << easy.error().message;
+    EXPECT_EQ(easy.value().layout, session::Layout::kEasy);
+    EXPECT_EQ(easy.value().easy.steer_share, 0.5);
+
+    const auto pro = parse_control_layout(kValidPro, "pro.toml");
+    ASSERT_TRUE(pro.ok()) << pro.error().message;
+    EXPECT_EQ(pro.value().layout, session::Layout::kPro);
+    EXPECT_EQ(pro.value().pro.steer_rate_per_s, 2.0);
+
+    const std::string both = std::string{kValidEasy} + std::string{kValidPro};
+    const auto ambiguous = parse_control_layout(both, "both.toml");
+    ASSERT_FALSE(ambiguous.ok());
+    EXPECT_NE(ambiguous.error().message.find("easy, pro"), std::string::npos);
+    EXPECT_FALSE(parse_control_layout("[other]\nx = 1\n", "none.toml").ok());
+    EXPECT_FALSE(
+        parse_control_layout("[pro]\nsteer_dead_zone = 2.0\nsteer_rate_per_s = 1.0\n", "bad.toml")
+            .ok());
+}
+
 }  // namespace
 }  // namespace tp::data

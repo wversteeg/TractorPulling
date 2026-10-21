@@ -1,0 +1,12 @@
+# The pro layout: every control on its own (throttle, clutch pedal, gear,
+# steering and two brakes). The steering is shaped as the easy layout's, so
+# a touch slider steers like a wheel; the pedals pass as they are. Shares
+# are of the control's travel, so one file suits every tractor.
+
+[pro]
+# A thumb resting near the middle of the steering slider steers straight:
+# the middle 3 % of the travel either side reads as centred.
+steer_dead_zone = 0.03
+# The steering follows the control at most this share of its travel per
+# second, as a driver turns the wheel: lock to lock in 1.3 s.
+steer_rate_per_s = 1.5
