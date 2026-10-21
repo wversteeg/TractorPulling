@@ -67,6 +67,12 @@ tip_height_m = 0.15
 stiffness_n_per_m = 2.0e6
 damping_n_s_per_m = 50000.0
 rolling_resistance_coefficient = 0.05
+
+[tractor.chassis.ballast]
+mass_kg = 400.0
+rear_ahead_of_rear_axle_m = -0.35
+front_ahead_of_rear_axle_m = 3.1
+position = 0.5
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -254,6 +260,43 @@ TEST(TractorLoader, RejectsNonsenseChassisValues) {
               std::string::npos);
     EXPECT_NE(error_of(with(R"(engine = "engines/farm_stock_light.toml")", "engine = 3"))
                   .find("tractor.engine: missing or not a string"),
+              std::string::npos);
+}
+
+TEST(TractorLoader, ReadsTheBallast) {
+    const auto result = load_tractor(std::string{TP_DATA_DIR} + "/tractors/farm_stock_light.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const chassis::Ballast& ballast = result.value().chassis.ballast;
+    const chassis::Ballast reference = vehicle::testing::reference_params().chassis.ballast;
+    EXPECT_EQ(ballast.mass_kg, reference.mass_kg);
+    EXPECT_EQ(ballast.rear_ahead_of_rear_axle_m, reference.rear_ahead_of_rear_axle_m);
+    EXPECT_EQ(ballast.front_ahead_of_rear_axle_m, reference.front_ahead_of_rear_axle_m);
+    EXPECT_EQ(ballast.position, reference.position);
+}
+
+// A tractor without the table has no weights to move.
+TEST(TractorLoader, TheBallastIsOptional) {
+    std::string text{kTractor};
+    text.erase(text.find("[tractor.chassis.ballast]"));
+    const auto result = parse_tractor(text, "test.toml", kDataDir);
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().chassis.ballast.mass_kg, 0.0);
+}
+
+TEST(TractorLoader, RejectsANonsenseBallast) {
+    for (const auto& [from, to] : {
+             std::pair{"mass_kg = 400.0", "mass_kg = 4000.0"},
+             std::pair{"position = 0.5", "position = 1.5"},
+             std::pair{"front_ahead_of_rear_axle_m = 3.1", "front_ahead_of_rear_axle_m = -1.0"},
+             // Far enough forward to take the centre of gravity past the front axle.
+             std::pair{"front_ahead_of_rear_axle_m = 3.1", "front_ahead_of_rear_axle_m = 9.0"},
+         }) {
+        EXPECT_NE(error_of(with(from, to)).find("tractor.chassis.ballast: need mass_kg"),
+                  std::string::npos)
+            << to;
+    }
+    EXPECT_NE(error_of(with("position = 0.5", ""))
+                  .find("tractor.chassis.ballast.position: missing or not a number"),
               std::string::npos);
 }
 

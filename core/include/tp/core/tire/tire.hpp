@@ -57,6 +57,29 @@ struct Cornering {
     double relaxation_length_m = 0.0;
 };
 
+/// What the inflation pressure does to a tire, which the puller sets before
+/// a pull. A tire carries its load on its air: at a lower pressure it
+/// deflects more, δ = δ_ref p_ref / p, so its footprint grows and the
+/// mobility number with it, which grips better on soft ground. But a soft
+/// carcass lets the lugs fold and squirm instead of biting, which costs
+/// grip on firm ground where the footprint barely helps:
+///
+///   limit = limit_ref (1 - lug_squirm (δ - δ_ref) / h)
+///
+/// so the best pressure depends on the track. Left out: the rolling radius
+/// shrinking with the deflection (it would move the axle and the gearing).
+struct Pressure {
+    /// The pressure the tire's deflection and traction limit are given at;
+    /// 0 for a tire whose pressure is not set [bar].
+    double reference_bar = 0.0;
+    /// The range a puller may set it to [bar].
+    double min_bar = 0.0;
+    double max_bar = 0.0;
+    /// Traction limit lost per unit of extra deflection over the section
+    /// height.
+    double lug_squirm = 0.0;
+};
+
 /// A driven tire on soil, after Brixius (1987, ASAE D497): soil strength
 /// (cone index) and the tire's size and load combine into a mobility number
 ///
@@ -82,6 +105,7 @@ struct Params {
     double wheel_inertia_kg_m2 = 0.0;
     /// Smallest reference speed for the slip ratio [m/s].
     double min_reference_speed_m_s = 0.0;
+    Pressure pressure;
 };
 
 enum class ParamError : std::uint8_t {
@@ -95,11 +119,20 @@ enum class ParamError : std::uint8_t {
     kMinReferenceSpeedNotPositive,
     kCorneringNotPositive,
     kCorneringLimitOutOfRange,
+    /// The range not 0 < min <= reference <= max, the squirm outside
+    /// [0, 1), or the deflection at the lowest pressure not less than the
+    /// section height.
+    kPressureOutOfRange,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Size& size) noexcept;
 [[nodiscard]] std::optional<ParamError> validate(const Cornering& cornering) noexcept;
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
+
+/// The tire at `pressure_bar` (held to its range): its deflection and
+/// traction limit (see Pressure). A tire whose pressure is not set, or the
+/// reference pressure, gives `params` unchanged, bit for bit.
+[[nodiscard]] Params at_pressure(const Params& params, double pressure_bar) noexcept;
 
 /// Brixius' mobility number for one tire under `load_n` [-]; very large
 /// when the tire carries (almost) nothing.

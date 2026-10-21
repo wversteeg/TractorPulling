@@ -54,7 +54,9 @@ sensitivity and motion resistance. The force is linearized over a step so
 the stiff contact can be solved implicitly. Side grip follows the same
 mobility number: the contact patch deflects sideways like a spring and
 relaxes as the tire rolls (relaxation length), so it works from a standstill
-up, and a driven tire's traction and wheelspin use up its side grip.
+up, and a driven tire's traction and wheelspin use up its side grip. Its
+inflation pressure (`at_pressure`) sets its deflection, and with it the
+footprint, and how much its lugs squirm.
 
 ![Tire classes](diagrams/svg/tire_classes.svg)
 
@@ -64,7 +66,8 @@ The body moving along the track and pitching about the rear axle, and in the
 ground plane moving sideways and turning (yaw) under the front tires', rear
 tires' and drawbar's side forces. The front tires and the wheelie bar are
 one-sided spring-damper contacts; the rear tires carry the rest of the
-weight.
+weight. The ballast moves along the tractor before a pull
+(`with_ballast_at`), shifting the centre of gravity and the inertias.
 
 ![Chassis classes](diagrams/svg/chassis_classes.svg)
 
@@ -78,6 +81,10 @@ side with its own brake: the sides' common motion goes through the chain
 solve, their difference is solved alongside it, and a brake that would carry
 its side through rest holds it there instead (Coulomb friction, like the
 clutch).
+
+`vehicle::Tuning` is what the puller sets before a pull: the ballast's
+position and the rear tires' pressure, applied to the parameters once
+(`tuned`); as built they leave the tractor unchanged, bit for bit.
 
 ![Vehicle classes](diagrams/svg/vehicle_classes.svg)
 

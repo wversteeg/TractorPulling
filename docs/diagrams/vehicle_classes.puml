@@ -85,6 +85,21 @@ package "tp::vehicle" {
     +clutch_torque_nm : double
     +tire_force_n : double
   }
+  class Tuning <<struct>> {
+    +ballast_position : double
+    +rear_tire_pressure_bar : double
+    --
+    set by the puller before a pull
+  }
+  class "tuning functions" as TuningFns <<free functions>> {
+    +as_built(const Params&) : Tuning
+    +tuned(const Params&, const Tuning&) : Params
+    --
+    chassis::with_ballast_at and
+    tire::at_pressure on the rear tires
+  }
+  TuningFns ..> Tuning
+  TuningFns ..> Params
   class "vehicle functions" as VehicleFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +initial_state(const Model&) : State

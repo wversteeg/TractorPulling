@@ -475,5 +475,82 @@ TEST(ChassisPlane, RejectsNoYawInertia) {
     EXPECT_EQ(validate(params), ParamError::kYawInertiaNotPositive);
 }
 
+// The ballast where it was built in leaves the tractor as it is, bit for
+// bit, so an untuned tractor pulls exactly as before.
+TEST(Ballast, AsBuiltIsTheTractor) {
+    const Params params = reference_params();
+    const Params same = with_ballast_at(params, params.ballast.position);
+    EXPECT_EQ(same.cg_ahead_of_rear_axle_m, params.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(same.pitch_inertia_kg_m2, params.pitch_inertia_kg_m2);
+    EXPECT_EQ(same.yaw_inertia_kg_m2, params.yaw_inertia_kg_m2);
+}
+
+// Moving the weights forward moves the centre of gravity forward by their
+// share of the mass and the distance, and takes load off the rear axle;
+// the mass stays.
+TEST(Ballast, MovesTheCentreOfGravity) {
+    const Params params = reference_params();
+    const Ballast& ballast = params.ballast;
+    const Params rear = with_ballast_at(params, 0.0);
+    const Params front = with_ballast_at(params, 1.0);
+    const double span_m = ballast.front_ahead_of_rear_axle_m - ballast.rear_ahead_of_rear_axle_m;
+    EXPECT_NEAR(front.cg_ahead_of_rear_axle_m - rear.cg_ahead_of_rear_axle_m,
+                ballast.mass_kg * span_m / params.mass_kg, 1e-12);
+    EXPECT_EQ(front.mass_kg, params.mass_kg);
+    EXPECT_GT(rear_axle_share(rear), rear_axle_share(params));
+    EXPECT_LT(rear_axle_share(front), rear_axle_share(params));
+    // The shipped range: about 68 % to 52 % on the rear axle.
+    EXPECT_NEAR(rear_axle_share(rear), 0.68, 0.01);
+    EXPECT_NEAR(rear_axle_share(front), 0.52, 0.01);
+    // Held to its range.
+    EXPECT_EQ(with_ballast_at(params, 2.0).cg_ahead_of_rear_axle_m, front.cg_ahead_of_rear_axle_m);
+}
+
+// The inertias follow the parallel axis theorem: the same weights moved by
+// the same amount either way from the middle of the rest of the tractor
+// change them the same, and moving weights away from the centre of
+// gravity adds inertia.
+TEST(Ballast, TheInertiasFollow) {
+    Params params = reference_params();
+    // Built in at the centre of gravity, the ballast can move as far either
+    // way from it.
+    const double cg_m = params.cg_ahead_of_rear_axle_m;
+    params.ballast.rear_ahead_of_rear_axle_m = cg_m - 1.0;
+    params.ballast.front_ahead_of_rear_axle_m = cg_m + 1.0;
+    params.ballast.position = 0.5;
+    ASSERT_EQ(validate(params), std::nullopt);
+    const Params rear = with_ballast_at(params, 0.0);
+    const Params front = with_ballast_at(params, 1.0);
+    EXPECT_NEAR(rear.pitch_inertia_kg_m2, front.pitch_inertia_kg_m2, 1e-9);
+    EXPECT_GT(front.pitch_inertia_kg_m2, params.pitch_inertia_kg_m2);
+    EXPECT_GT(front.yaw_inertia_kg_m2, params.yaw_inertia_kg_m2);
+    // Moved there and back: the tractor as built.
+    Params there = front;
+    there.ballast.position = 1.0;
+    const Params back = with_ballast_at(there, 0.5);
+    EXPECT_NEAR(back.cg_ahead_of_rear_axle_m, params.cg_ahead_of_rear_axle_m, 1e-12);
+    EXPECT_NEAR(back.pitch_inertia_kg_m2, params.pitch_inertia_kg_m2, 1e-9);
+}
+
+TEST(Ballast, RejectsNonsense) {
+    const auto with = [](auto change) {
+        Params params = reference_params();
+        change(params.ballast);
+        return validate(params);
+    };
+    EXPECT_EQ(with([](Ballast&) {}), std::nullopt);
+    EXPECT_EQ(with([](Ballast& b) { b = {}; }), std::nullopt) << "no ballast";
+    EXPECT_EQ(with([](Ballast& b) { b.mass_kg = -1.0; }), ParamError::kBallastOutOfRange);
+    EXPECT_EQ(with([](Ballast& b) { b.mass_kg = 3500.0; }), ParamError::kBallastOutOfRange);
+    EXPECT_EQ(with([](Ballast& b) { b.position = -0.1; }), ParamError::kBallastOutOfRange);
+    EXPECT_EQ(with([](Ballast& b) { b.front_ahead_of_rear_axle_m = -1.0; }),
+              ParamError::kBallastOutOfRange);
+    // Far enough forward to take the centre of gravity past the front axle.
+    EXPECT_EQ(with([](Ballast& b) { b.front_ahead_of_rear_axle_m = 9.0; }),
+              ParamError::kBallastOutOfRange);
+    EXPECT_EQ(with([](Ballast& b) { b.position = std::numeric_limits<double>::quiet_NaN(); }),
+              ParamError::kNotFinite);
+}
+
 }  // namespace
 }  // namespace tp::chassis

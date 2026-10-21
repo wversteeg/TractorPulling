@@ -24,6 +24,10 @@ inline Params reference_params() {
                         .tip_height_m = 0.15,
                         .contact = {.stiffness_n_per_m = 2.0e6, .damping_n_s_per_m = 50000.0},
                         .rolling_resistance_coefficient = 0.05},
+        .ballast = {.mass_kg = 400.0,
+                    .rear_ahead_of_rear_axle_m = -0.35,
+                    .front_ahead_of_rear_axle_m = 3.1,
+                    .position = 0.5},
     };
 }
 

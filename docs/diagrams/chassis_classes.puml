@@ -19,6 +19,16 @@ package "tp::chassis" {
     +hitch_behind_rear_axle_m : double
     +front_tires : Contact
     +wheelie_bar : WheelieBar
+    +ballast : Ballast
+  }
+  class Ballast <<struct>> {
+    +mass_kg : double
+    +rear_ahead_of_rear_axle_m : double
+    +front_ahead_of_rear_axle_m : double
+    +position : double
+    --
+    weights moved before a pull,
+    part of the mass; 0 rearmost, 1 foremost
   }
   class Contact <<struct>> {
     +stiffness_n_per_m : double
@@ -71,6 +81,8 @@ package "tp::chassis" {
   class "chassis functions" as ChassisFns <<free functions>> {
     +{static} kMaxWheelieBarContactPitch_rad = 30°
     +validate(const Params&) : optional<ParamError>
+    +with_ballast_at(const Params&, position) : Params
+    +rear_axle_share(const Params&) : double
     +hitch(const Params&, const State&) : Hitch
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
@@ -82,6 +94,7 @@ package "tp::chassis" {
   }
   Params *-- Contact : front_tires
   Params *-- WheelieBar
+  Params *-- Ballast
   WheelieBar *-- Contact
   ChassisFns ..> Params
   ChassisFns ..> State

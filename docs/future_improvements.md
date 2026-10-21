@@ -99,6 +99,22 @@ for the big features; they are repeated at the end for completeness.
 - **Heavier classes.** Each class needs its own tractor, tire and sled data;
   in stronger classes wheelspin matters more than engine torque.
 
+## Tuning
+
+- **Tire pressure and the rolling radius.** A softer tire rolls on a
+  slightly smaller radius, which lowers the gearing and the rear axle; the
+  pressure only changes the deflection and the traction limit
+  (tire::Pressure). Only the rear tires' pressure is set; the front tires
+  and the pressure's effect on side grip stay as built.
+- **The ballast as a point.** The weights move only along the tractor, at
+  the centre of gravity's height and on its centre line; real front
+  weights sit higher and further out, which changes the centre of
+  gravity's height and the pitch inertia more. Wheel weights are not a
+  separate setting.
+- **Rivals don't tune.** The scripted pullers pull as built; a driver who
+  reads the track could set the pressure and the weights for it, as they
+  pick a gear.
+
 ## Competition
 
 - **Pull-off modes.** A pull-off is run on a heavier sled, again among
