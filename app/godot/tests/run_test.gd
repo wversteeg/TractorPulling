@@ -9,7 +9,7 @@
 # the same hashes. Exits non-zero if any check fails.
 #
 #   godot --path app/godot --script res://tests/run_test.gd \
-#       -- --gear=6 --stick=0.002 --brake-right=0.05
+#       -- --gear=6 --stick=0.032 --brake-right=0.05
 extends SceneTree
 
 const TRACTOR := "res://data/tractors/farm_stock_light.toml"
@@ -100,6 +100,7 @@ func _check_frames() -> void:
 	var dimensions := run.get_dimensions()
 	_expect(dimensions.get("wheelbase_m", 0.0) > 0.0 and dimensions.get("chain_length_m", 0.0) > 0.0,
 			"the tractor's and sled's dimensions")
+	_expect(dimensions.get("gear_count", 0) == 8, "the reference tractor's eight gears")
 	_expect(dimensions.get("lane_width_m", 0.0) > 0.0
 			and dimensions.get("full_pull_line_m", 0.0) <= dimensions.get("track_length_m", 0.0),
 			"the track's dimensions")

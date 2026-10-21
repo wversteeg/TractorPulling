@@ -154,7 +154,7 @@ cmake --preset release && cmake --build --preset release
 # clutch; --stick holds the steering control (-1 right to 1 left)
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
-    --easy data/controls/easy.toml [--stick 0.02] -o run.csv
+    --easy data/controls/easy.toml [--stick 0.05] -o run.csv
 
 # The same tractor, sled and driving on several tracks: one line per track
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
@@ -190,8 +190,9 @@ scripts/android_bench.sh build/android-arm64
 
 # The Godot extension (fetches godot-cpp) into app/godot/bin, data/ copied to
 # app/godot/data, and tp_pull; then open app/godot in Godot 4.7, or play the
-# pull scene with a scripted driver and the scripted runs (under Xvfb if there
-# is no display) and compare the runs' state hashes with tp_pull's
+# pull scene with a scripted driver and simulated fingers, and the scripted
+# runs (under Xvfb if there is no display), and compare the runs' state
+# hashes with tp_pull's
 cmake --preset godot && cmake --build --preset godot
 scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
 # Screenshots of the pull scene, one per camera, without a display

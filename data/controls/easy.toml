@@ -7,6 +7,13 @@
 # lock; the rest brakes the rear wheels on the inside of the turn, up to
 # full pedal at the end of the travel.
 steer_share = 0.6
+# A thumb resting near the middle of the steering slider steers straight:
+# the middle 3 % of the travel either side reads as centred.
+steer_dead_zone = 0.03
+# The steering follows the control at most this share of its travel per
+# second, as a driver turns the wheel: the wheels reach full lock (60 % of
+# the travel) in 0.4 s, and full brake in 0.67 s.
+steer_rate_per_s = 1.5
 
 [easy.clutch_assist]
 engage_time_s = 2.0       # fully out to fully in while the engine holds speed

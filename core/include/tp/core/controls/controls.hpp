@@ -67,12 +67,23 @@ struct EasyParams {
     /// wheels, up to full lock; past it the wheels stay at full lock and the
     /// inner rear brake comes on, up to full pedal at the end of the travel.
     double steer_share = 0.0;
+    /// The share of the travel either side of the centre that reads as
+    /// straight ahead, so a thumb resting on a touch slider does not steer;
+    /// the rest of the travel is stretched to the whole range. 0 to below
+    /// steer_share.
+    double steer_dead_zone = 0.0;
+    /// How fast the steering follows the control, in shares of its travel
+    /// per second, as a driver turns a wheel: a thumb flicking a slider
+    /// across would otherwise throw the wheels from lock to lock in a step.
+    double steer_rate_per_s = 0.0;
     ClutchAssist clutch_assist;
 };
 
 enum class ParamError : std::uint8_t {
     kNotFinite,
     kSteerShareOutOfRange,
+    kSteerDeadZoneOutOfRange,
+    kSteerRateNotPositive,
     kAssistTimeNotPositive,
     kGuardOutOfRange,
     kMinThrottleOutOfRange,
@@ -80,16 +91,21 @@ enum class ParamError : std::uint8_t {
 
 [[nodiscard]] std::optional<ParamError> validate(const EasyParams& params) noexcept;
 
-/// The assist's own state, plain data like the simulation's: how far the
-/// clutch is in, as a share of its capacity (0 out, 1 fully in).
+/// The easy layout's own state, plain data like the simulation's.
 struct AssistState {
+    /// How far the clutch is in, as a share of its capacity (0 out, 1 fully
+    /// in).
     double engagement = 0.0;
+    /// Where the steering is, following the control at the steering rate:
+    /// -1 (full right) to 1 (full left), past the dead zone.
+    double steering = 0.0;
 };
 
 /// Adds the assist's state to a replay hash: a front end replaying an easy
 /// session hashes it along with the simulation's state.
 constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept {
     hash.add(state.engagement);
+    hash.add(state.steering);
 }
 
 /// The vehicle's input for the pro layout.
@@ -97,9 +113,9 @@ constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept
 
 /// The vehicle's input for the easy layout, before this step of the
 /// vehicle: reads the tractor's state (engine speed, gear in) and advances
-/// the assist by `dt_s`. A requested gear goes in once the assist has the
-/// clutch out; until then the gear in stays. A gear outside the gearbox is
-/// held to its range.
+/// the assist and the steering by `dt_s`. A requested gear goes in once the
+/// assist has the clutch out; until then the gear in stays. A gear outside
+/// the gearbox is held to its range.
 [[nodiscard]] vehicle::Input easy(const EasyInput& input, const EasyParams& params,
                                   AssistState& assist, const vehicle::Params& tractor,
                                   const vehicle::State& state, double dt_s) noexcept;

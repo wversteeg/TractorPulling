@@ -1,7 +1,7 @@
 @startuml easy_controls_sequence
 title Easy controls: one step with the clutch assist
 autonumber
-participant "Front end\n(tool, test; later Godot)" as Frontend
+participant "Front end\n(tool, test, session)" as Frontend
 participant "controls::easy" as Easy
 participant "clutch::pedal_for" as PedalFor
 participant "run::step" as Run
@@ -17,7 +17,8 @@ else engine below the guard speed
 end
 Easy -> PedalFor : pedal_for(clutch, engagement)
 PedalFor --> Easy : pedal (the engagement curve read backwards)
-Easy -> Easy : steering: wheels up to full lock,\nthen the inner rear brake
+Easy -> Easy : steering: the control past the dead zone,\nfollowed at up to steer_rate x dt
+Easy -> Easy : wheels up to full lock,\nthen the inner rear brake
 Easy -> Easy : gear: the asked one once the clutch is out,\nelse the one in
 Easy --> Frontend : vehicle::Input
 Frontend -> Run : step(state, model, rules, input, dt)

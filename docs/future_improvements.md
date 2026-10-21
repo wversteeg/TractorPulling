@@ -151,9 +151,13 @@ for the big features; they are repeated at the end for completeness.
   physically, but a beginner may read it as the game failing them. The
   easy front end could not count a stop before the sled has really moved,
   or hint at a lower gear.
-- **Steering speed and touch input.** Both layouts take the steering
-  control's position as given; a touch slider or tilt will want a rate
-  limit and a dead zone, set with the Godot front end.
+- **The pro layout's steering.** The easy layout's steering has a dead zone
+  and a rate (`easy.toml`); the pro layout takes the steering control's
+  position as given. Give it the same with its touch controls (milestone 5,
+  step 3, the pro layout).
+- **Steering back to centre.** The steering returns to straight ahead at
+  the same rate it turns. A real tractor's wheels self-centre faster under
+  way (caster); a separate return rate could follow.
 
 ## Platforms
 
@@ -200,10 +204,16 @@ for the big features; they are repeated at the end for completeness.
 - **The chain as a bar.** `ChainView` draws a straight bar from hitch to
   hook, darker as the tension rises, even when the chain is slack and
   should sag.
-- **Development input.** The scene reads the keyboard (W, A and D, the gear
-  keys, C and R) with the clutch and brakes left at rest, so it drives
-  only the easy layout. The touch controls (milestone 5, step 3) replace
-  it, with a gamepad for development.
+- **Touch controls for the pro layout.** The scene drives only the easy
+  layout: no clutch pedal or brake sliders yet. They come in the pro
+  layout's own step.
+- **Tilt steering.** Steering is an on-screen slider only; steering by
+  tilting the phone (the accelerometer) could come as an option, with a
+  setting to calibrate the centre.
+- **Control layout options.** The touch controls sit at fixed places and
+  sizes in the 1280×720 base layout, stretched to the screen: no
+  left-handed mirror, resizing, haptics or settings menu. A gamepad is
+  read from the first device only.
 - **Screenshots out of CI.** `tests/screenshots.gd` saves a PNG per camera
   for reviewing the look by hand; CI does not run it or compare images,
   since software rendering differs between Mesa versions.

@@ -101,6 +101,13 @@ TEST(ControlsParams, RejectsNonsense) {
     };
     EXPECT_EQ(with([](EasyParams& p) { p.steer_share = 0.0; }), ParamError::kSteerShareOutOfRange);
     EXPECT_EQ(with([](EasyParams& p) { p.steer_share = 1.1; }), ParamError::kSteerShareOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_dead_zone = -0.01; }),
+              ParamError::kSteerDeadZoneOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_dead_zone = p.steer_share; }),
+              ParamError::kSteerDeadZoneOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_rate_per_s = 0.0; }),
+              ParamError::kSteerRateNotPositive);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_rate_per_s = HUGE_VAL; }), ParamError::kNotFinite);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.engage_time_s = 0.0; }),
               ParamError::kAssistTimeNotPositive);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.release_time_s = -1.0; }),
@@ -191,22 +198,38 @@ TEST(Easy, ReadsNotANumberAsAtRest) {
     EXPECT_TRUE(std::isfinite(assist.engagement));
 }
 
-// Easy: the first stretch of the steering control turns the wheels; past
-// it they stay at full lock and the inner rear brake comes on, to full
-// pedal at the end. Left and right mirror each other.
-TEST(Easy, SteersThenBrakesTheInnerWheels) {
+// The easy layout's steering after holding `control` for `held_s` from
+// straight ahead, on the reference tractor standing still.
+struct Steered {
+    vehicle::Input input;
+    AssistState assist;
+};
+
+Steered hold_steering(double control, double held_s, const EasyParams& params = kEasy,
+                      AssistState assist = {}) {
     const vehicle::Params tractor = vehicle::testing::reference_params();
     const std::optional<vehicle::Model> model = vehicle::Model::create(tractor);
     if (!model) {
-        ADD_FAILURE() << "invalid reference tractor";
-        return;
+        std::abort();
     }
     const vehicle::State state = vehicle::initial_state(*model);
-    const double max_rad = tractor.steering.max_angle_rad;
-    const auto with = [&](double steering) {
-        AssistState assist;
-        return easy({.steering = steering}, kEasy, assist, tractor, state, kDt_s);
-    };
+    Steered out{.input = {}, .assist = assist};
+    const auto steps = static_cast<int>(std::lround(held_s / kDt_s));
+    for (int i = 0; i < steps; ++i) {
+        out.input = easy({.steering = control}, params, out.assist, tractor, state, kDt_s);
+    }
+    return out;
+}
+
+// Easy: the first stretch of the steering control turns the wheels; past
+// it they stay at full lock and the inner rear brake comes on, to full
+// pedal at the end. Left and right mirror each other. Without a dead zone,
+// and with the steering settled.
+TEST(Easy, SteersThenBrakesTheInnerWheels) {
+    EasyParams params = kEasy;
+    params.steer_dead_zone = 0.0;
+    const double max_rad = vehicle::testing::reference_params().steering.max_angle_rad;
+    const auto with = [&](double steering) { return hold_steering(steering, 2.0, params).input; };
     const vehicle::Input half = with(0.3);
     EXPECT_DOUBLE_EQ(half.steering_rad, 0.5 * max_rad);
     EXPECT_EQ(half.brake_left, 0.0);
@@ -220,6 +243,44 @@ TEST(Easy, SteersThenBrakesTheInnerWheels) {
     EXPECT_EQ(right.brake_left, 0.0);
     EXPECT_EQ(right.brake_right, 1.0);
     EXPECT_EQ(with(0.0).steering_rad, 0.0);
+}
+
+// A control within the dead zone steers straight; past it, the rest of the
+// travel is stretched to the whole range, so the end still reaches full
+// brake.
+TEST(Easy, DeadZoneReadsAsStraight) {
+    const double dead = kEasy.steer_dead_zone;
+    EXPECT_EQ(hold_steering(dead, 2.0).assist.steering, 0.0);
+    EXPECT_EQ(hold_steering(-0.5 * dead, 2.0).assist.steering, 0.0);
+    EXPECT_DOUBLE_EQ(hold_steering(dead + 0.5 * (1.0 - dead), 2.0).assist.steering, 0.5);
+    EXPECT_DOUBLE_EQ(hold_steering(-dead - 0.5 * (1.0 - dead), 2.0).assist.steering, -0.5);
+    const Steered full = hold_steering(1.0, 2.0);
+    EXPECT_EQ(full.assist.steering, 1.0);
+    EXPECT_EQ(full.input.brake_left, 1.0);
+}
+
+// The steering follows the control at the steering rate, without passing
+// it, whichever way and however far the control jumps; a control that is
+// not a number brings it back to straight ahead at the same rate.
+TEST(Easy, SteeringFollowsAtTheRate) {
+    const double per_step = kEasy.steer_rate_per_s * kDt_s;
+    EXPECT_DOUBLE_EQ(hold_steering(1.0, kDt_s).assist.steering, per_step);
+    EXPECT_NEAR(hold_steering(1.0, 0.2).assist.steering, 0.2 * kEasy.steer_rate_per_s, 1e-9);
+    const double full_s = 1.0 / kEasy.steer_rate_per_s;
+    EXPECT_LT(hold_steering(1.0, full_s - 2.0 * kDt_s).assist.steering, 1.0);
+    EXPECT_EQ(hold_steering(1.0, full_s + 2.0 * kDt_s).assist.steering, 1.0);
+
+    // Lock to lock takes twice as long as centre to lock.
+    const AssistState left{.engagement = 0.0, .steering = 1.0};
+    EXPECT_GT(hold_steering(-1.0, 2.0 * full_s - 2.0 * kDt_s, kEasy, left).assist.steering, -1.0);
+    EXPECT_EQ(hold_steering(-1.0, 2.0 * full_s + 2.0 * kDt_s, kEasy, left).assist.steering, -1.0);
+
+    // Never past the control: a small move is reached and held.
+    const double target = 0.5 * (1.0 - kEasy.steer_dead_zone) + kEasy.steer_dead_zone;
+    EXPECT_DOUBLE_EQ(hold_steering(target, full_s).assist.steering, 0.5);
+
+    const Steered back = hold_steering(std::nan(""), kDt_s, kEasy, left);
+    EXPECT_DOUBLE_EQ(back.assist.steering, 1.0 - per_step);
 }
 
 // A sled the engine can pull: the assist lets the clutch in fully, keeps
@@ -379,9 +440,9 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x31384392584fe305ULL);
-    // 88.663808972753955 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.62a7bd8a13141p+6);
+    EXPECT_EQ(hash, 0x97dad199ae63ab93ULL);
+    // 88.693174910881481 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.62c5cfa4d2932p+6);
     EXPECT_EQ(result.ending, run::Ending::kSpunOut);
 }
 

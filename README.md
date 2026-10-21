@@ -102,7 +102,10 @@ clutch in by hand, but the sled stops with the engine running:
 ```
 
 `--stick S` holds the steering control at S (-1 right to 1 left) from the
-launch; 0.05 is already 3° of wheel angle, and leaves the lane in 10 s.
+launch. The middle 3 % either side is a dead zone, so a thumb resting on a
+touch slider steers straight, and the steering follows the control at a
+rate, as a driver turns a wheel (both in `easy.toml`): 0.05 is 1.2° of
+wheel angle, and leaves the lane 10 s after the launch.
 
 ### Track conditions
 
@@ -208,13 +211,22 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 draws the run in graybox, built from the run's sizes (`get_dimensions()`):
 the lane with its chalk lines and the full-pull line, the tractor with
 wheels that turn and steer, the sled with its weight box moving forward,
-and the chain, darker as it pulls. Until the touch controls come, drive
-with the keyboard: W throttle, A and D steer, 1 to 8 select a gear (0
-neutral), C switches between the chase, side and overhead cameras, R pulls
-again. The easy layout works the clutch.
+and the chain, darker as it pulls.
+
+You drive with the easy layout on the touch screen: a steering slider under
+the left thumb, which springs back to straight ahead when let go; a hand
+throttle under the right, moved by sliding it like a lever (a touch alone
+does not move it) and staying where it is left, as a tractor's does; and
+gear buttons (+, - and N) beside it. Both thumbs work at once.
+The clutch assist works the clutch. "cam" switches between the chase, side
+and overhead cameras, "again" (on lifting the finger on it) pulls again. On a desktop the mouse works the
+same controls, and for development the keyboard (W throttle, A and D steer,
+digits for a gear, C camera, R again) and a gamepad (right trigger, left stick,
+shoulder buttons for the gear, X neutral, Y camera, Back again) do too.
 
 `scripts/godot_test.sh <godot binary>` plays the scene with a scripted
-driver and checks the views follow the run, then plays two scripted runs
+driver and checks the views follow the run, drives it with simulated
+fingers on the touch controls, then plays two scripted runs
 and checks they end in the same state as `tp_pull`'s (with a renderer,
 under Xvfb if there is no display). To look at the scene without a display:
 

@@ -153,7 +153,8 @@ public:
 
     /// The run's result, once it has ended.
     [[nodiscard]] const std::optional<run::Result>& result() const noexcept { return run_.result; }
-    /// The replay hash: the run's state and the clutch assist's. It leaves
+    /// The replay hash: the run's state and the easy layout's (the clutch
+    /// assist's and the steering's, controls::AssistState). It leaves
     /// out the frame time not yet stepped, so two sessions with the same
     /// hash may run a different number of steps on their next frame: compare
     /// it at the same step (a replay's end), not to detect a desync mid-run
