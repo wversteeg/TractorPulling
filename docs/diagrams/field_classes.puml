@@ -79,7 +79,40 @@ package "tp::field" {
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
     +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
+    +pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
+    +kPullStream : uint64
   }
+  enum "LiveEvent::Turn" as Turn {
+    kRivals
+    kPlayerPull
+    kPlayerDecision
+    kFinished
+    kFailed
+  }
+  class LiveEvent {
+    +{static} create(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, player, seed) : optional<LiveEvent>
+    +turn() : Turn
+    +advance(max_steps) : int64
+    +pending_pull() : optional<event::Pull>
+    +sled() : const sled::Params&
+    +pull_rules() : run::Rules
+    +record_player(const run::Result&, gear) : event::Outcome
+    +suggested_keep() : bool
+    +decide_player(keep)
+    +player(), puller_count(), gear(puller) : int
+    +log() : span<const LogEntry>
+    +standings() : span<const event::Standing>
+    +full_pull_m() : double
+    --
+    -event_ : event::Event
+    -guesses_, pulls_ : SplitMix64
+    -job_ : optional<Job{model, state, plan, rules}>
+    -log_ : array<LogEntry, 160>
+  }
+  LiveEvent ..> Turn
+  LiveEvent *-- Field
+  LiveEvent *-- LogEntry
+  LiveEvent ..> FieldFns : the same draws\nas play_event
   Puller *-- Plan
   Variation *-- Range
   Field *-- Puller
@@ -101,5 +134,11 @@ note bottom of FieldFns
   pitch inertia follows the mass; the same seed gives the same field everywhere;
   at each event every driver guesses a gear (the best as often as they read the track),
   and every pull differs a little in grip and clutch timing
+end note
+note right of LiveEvent
+  play_event with one puller the player: the rivals'
+  gear trials and pulls run in slices of at most
+  max_steps 1 ms steps (a game spreads them over its
+  frames) and stop when the player is due; no allocation
 end note
 @enduml

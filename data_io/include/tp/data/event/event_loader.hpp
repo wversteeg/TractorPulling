@@ -10,9 +10,20 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <string>
 #include <string_view>
+#include <vector>
 
 namespace tp::data {
+
+/// The event as the game plays it: the player and scripted rivals.
+struct GameField {
+    /// Pullers, the player among them.
+    int pullers = 0;
+    /// The rivals' names, one for each puller but the player, in the
+    /// field's order with the player left out.
+    std::vector<std::string> rival_names;
+};
 
 /// Everything an event file describes (see data/events/): the class and
 /// its competition rules, the field (a reference tractor and driver, how
@@ -28,6 +39,7 @@ struct EventDefinition {
     /// The class's sled, before the track's conditions.
     sled::Params sled;
     Track track;
+    GameField game;
 };
 
 /// Loads and validates an event definition; component paths are relative

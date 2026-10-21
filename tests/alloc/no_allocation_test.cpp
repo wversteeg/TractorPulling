@@ -4,6 +4,7 @@
 // millisecond. Setup (models, loading) may allocate; the steps may not.
 
 #include "tp/core/controls/controls.hpp"
+#include "tp/core/field/live.hpp"
 #include "tp/core/pull/pull.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/session/session.hpp"
@@ -13,10 +14,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <new>
 #include <optional>
 
 #include "../controls/reference_controls.hpp"
+#include "../rules/reference_class.hpp"
 #include "../sled/reference_sled.hpp"
 #include "../track/reference_track.hpp"
 #include "../vehicle/reference_vehicle.hpp"
@@ -197,6 +200,77 @@ TEST(NoAllocation, AWholeSessionInFrames) {
     EXPECT_EQ(counted, 0U);
     EXPECT_TRUE(game->result().has_value());
     EXPECT_GT(drawn_x_m, 0.0);
+}
+
+// A game's event, frame by frame: the rivals choosing gears and pulling in
+// slices, the operator, the decisions, and the player's pulls and choices
+// handed in. Creating it may allocate; playing it may not.
+TEST(NoAllocation, AnEventWithAPlayer) {
+    constexpr int kPullers = 4;
+    const field::Puller reference{
+        .tractor = vehicle::testing::reference_params(),
+        .driver = {.gear = 6, .select_gear_s = 0.5, .launch_s = 3.0, .clutch_slip_in_s = 3.0}};
+    const field::Variation variation{.torque_scale = {.low = 0.95, .high = 1.03},
+                                     .mass_kg = {.low = 3300.0, .high = 3550.0},
+                                     .traction_limit = {.low = 0.90, .high = 0.95},
+                                     .lowest_gear = 5,
+                                     .highest_gear = 6,
+                                     .clutch_slip_in_s = {.low = 2.0, .high = 4.0},
+                                     .track_reading = {.low = 0.5, .high = 0.95}};
+    const std::optional<field::Field> field =
+        field::generate(reference, variation, rules::testing::ntto_standard_3500(), kPullers, 1);
+    const event::Rules rules{.full_pull_m = 100.0,
+                             .extended_full_pull_m = 110.0,
+                             .max_distance_m = 130.0,
+                             .pull_off_places = 2,
+                             .qualifying_distance_m = 90.0,
+                             .decide_after_pulls = 1,
+                             .repull_after_pulls = 2,
+                             .sled_target_m = 94.0,
+                             .step_m = 5.0,
+                             .max_steps_per_change = 4,
+                             .solo_pull_offs = 1};
+    const field::Venue venue{.track = track::testing::reference_params(),
+                             .sled = sled::testing::reference_params(),
+                             .max_duration_s = 120.0,
+                             .lane_width_m = 12.0};
+    const std::array<int, kPullers> order{2, 0, 3, 1};
+    if (!field) {
+        ADD_FAILURE() << "invalid reference field";
+        return;
+    }
+    std::unique_ptr<field::LiveEvent> live;
+    if (auto created = field::LiveEvent::create(rules, venue, *field, variation, {}, order, 2, 1)) {
+        live = std::make_unique<field::LiveEvent>(*created);
+    } else {
+        ADD_FAILURE() << "invalid reference event";
+        return;
+    }
+    constexpr std::int64_t kSlice = 5000;
+    constexpr int kMaxTurns = 100'000;
+    int player_pulls = 0;
+    const std::size_t counted = allocations_in([&] {
+        for (int i = 0; i < kMaxTurns; ++i) {
+            switch (live->turn()) {
+                case field::LiveEvent::Turn::kRivals:
+                    live->advance(kSlice);
+                    break;
+                case field::LiveEvent::Turn::kPlayerPull:
+                    ++player_pulls;
+                    live->record_player({.ending = run::Ending::kStalled, .distance_m = 92.0}, 6);
+                    break;
+                case field::LiveEvent::Turn::kPlayerDecision:
+                    live->decide_player(live->suggested_keep());
+                    break;
+                case field::LiveEvent::Turn::kFinished:
+                case field::LiveEvent::Turn::kFailed:
+                    return;
+            }
+        }
+    });
+    EXPECT_EQ(counted, 0U);
+    EXPECT_EQ(live->turn(), field::LiveEvent::Turn::kFinished);
+    EXPECT_GT(player_pulls, 0);
 }
 
 }  // namespace

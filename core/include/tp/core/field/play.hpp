@@ -46,6 +46,16 @@ struct Venue {
     double lane_width_m = 0.0;
 };
 
+/// Separate draws for the gear guesses (seeded `seed`) and the pulls
+/// (`seed ^ kPullStream`), so that one does not shift the other.
+inline constexpr std::uint64_t kPullStream = 0x9e3779b97f4a7c15ULL;
+
+/// A pull at the event runs until the sled stops (the floating finish, up to
+/// the rules' maximum distance); the chalk lines count up to today's
+/// full-pull line, `full_pull_m`.
+[[nodiscard]] run::Rules pull_rules(const event::Rules& rules, const Venue& venue,
+                                    double full_pull_m) noexcept;
+
 /// A played event: the event at its end and what happened, in order.
 struct PlayedEvent {
     event::Event event;

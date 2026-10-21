@@ -47,3 +47,9 @@ max_steps_per_change = 4         # at most this many steps at once
 # Pulling alone in the game: one qualifying pull, and after a full pull
 # this many pull-offs, each on a heavier sled.
 solo_pull_offs = 1
+
+# The event in the game: the player and nine scripted rivals, drawn from the
+# field as above.
+[event.game]
+pullers = 10
+rival_names = ["Henk", "Gerrit", "Annemiek", "Bert", "Klaas", "Marieke", "Dirk", "Anouk", "Wim"]

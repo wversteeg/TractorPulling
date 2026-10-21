@@ -130,6 +130,12 @@ for the big features; they are repeated at the end for completeness.
   counts 0 m for its puller (no keep-or-re-pull), the sled stays and the
   next puller tests it; a disqualified pull scores no season points. These
   are reasonable readings, not checked against the NTTO rule book.
+- **The player's tractor in a live event.** The player pulls the field's
+  tractor at their place in the order, a variation of the reference; there
+  is no own tractor or tuning yet (career, milestone 6). The rivals choose
+  their gear by trying each one (three gears of about 35 s each): a few
+  seconds of simulation for nine rivals on a phone, spread over frames
+  before the first pull.
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
 

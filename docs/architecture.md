@@ -118,6 +118,13 @@ The competitors: a scripted driver's plan (gear and clutch technique) and a
 seeded field of pullers, each the reference tractor and driver varied within
 ranges and kept within the class's rules.
 
+`field::LiveEvent` is the event as the game plays it: `play_event` with one
+puller the player. It makes the same draws, so with the player pulling as a
+scripted puller would it is `play_event`, line for line (a test checks it).
+The rivals' gear trials and pulls run in slices of a given number of steps,
+so a game spreads them over its frames, and wait when the player is due. It
+does not allocate.
+
 ![Field classes](diagrams/svg/field_classes.svg)
 
 ### Controls (`tp::controls`)
@@ -157,6 +164,11 @@ the sled stopped.
 ![Event classes](diagrams/svg/event_classes.svg)
 
 ![Event sequence](diagrams/svg/event_sequence.svg)
+
+The same event with a player (`field::LiveEvent`): the rivals in slices of
+steps, the player's pulls and decisions from the game.
+
+![Live event](diagrams/svg/live_event_sequence.svg)
 
 ### Season (`tp::season`)
 
