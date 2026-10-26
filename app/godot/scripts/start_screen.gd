@@ -18,6 +18,8 @@ const LINE_SIZE := 28
 # the 1280×720 base layout.
 const GEAR_SIZE := 96.0
 const GEAR_MARGIN := 24.0
+# Wider than the panel's other buttons: "New season" fits on one line.
+const CHOICE_BUTTON_SIZE := Vector2(280.0, 90.0)
 
 var practice_button: TouchButton
 var event_button: TouchButton
@@ -40,6 +42,8 @@ func _ready() -> void:
 	var choice := add_button_row()
 	new_season_button = add_button(choice, "New season")
 	continue_button = add_button(choice, "Continue")
+	for button: TouchButton in [new_season_button, continue_button]:
+		button.custom_minimum_size = CHOICE_BUTTON_SIZE
 	_error = add_line(LINE_SIZE)
 	practice_button.tapped.connect(func() -> void: practice_requested.emit())
 	event_button.tapped.connect(func() -> void: event_requested.emit())
@@ -83,7 +87,7 @@ func show_event(event: Dictionary, error: String) -> void:
 func show_choice(season: Dictionary) -> void:
 	_event.text = "A season saved after event %d of %d" % [season.get("scored", 0),
 			season.get("events", 0)]
-	_name.text = "Continue it with the next event, or start a new season?"
+	_name.text = "Continue it, or start a new season?"
 	practice_button.visible = false
 	event_button.visible = false
 	continue_button.visible = true
