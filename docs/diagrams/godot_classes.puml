@@ -39,6 +39,7 @@ package "tp::godot_binding" {
     -definition_ : optional<data::SeasonDefinition>
     -names_ : vector<string>
     -season_ : unique_ptr<field::LiveSeason>
+    -tuning_ : vehicle::Tuning
     +start_season(season_path, seed) : String
     +get_season() : Dictionary
     +start_event() : String
@@ -52,6 +53,8 @@ package "tp::godot_binding" {
     +decide(keep)
     +score_event() : bool
     +get_season_standings() : Array
+    +get_tuning() : Dictionary
+    +set_tuning(ballast_position, pressure_bar)
     ..C++ only..
     +player_setup() : optional<session::Setup>
     +practice_setup() : optional<session::Setup>
@@ -76,6 +79,7 @@ package "core and data_io (see their class diagrams)" {
   class "data::load_tractor / load_sled /\nload_track / load_control_layout /\nload_season (path, ReadFile)" as Loaders
   class "data::run_setup(tractor, class_sled, track)\ndata::run_setup(tractor, LiveEvent)\ndata::venue(class_sled, track)" as RunSetup
   class "field::LiveSeason / LiveEvent" as Live
+  class "vehicle::Tuning / tuned()\nchassis::rear_axle_share()" as Tuning
 }
 
 package "GDScript (app/godot)" {
@@ -87,6 +91,7 @@ RefCounted <|-- TractorPullEvent
 Register ..> TractorPullRun : registers
 Register ..> TractorPullEvent : registers
 TractorPullEvent *-- Live
+TractorPullEvent *-- Tuning : the player's,\nfor the season
 TractorPullEvent ..> Loaders : load_season
 TractorPullEvent ..> RunSetup : venues, the player's Setup
 TractorPullRun ..> TractorPullEvent : setup_event_pull,\nsetup_practice

@@ -10,13 +10,25 @@
 # slider is grabbed where its thumb is: a touch does not move it, only the
 # finger's slide does, as a lever is moved, so a tap to nudge the throttle
 # does not throw it open. Otherwise it jumps to where the finger lands.
+#
+# Each control has its own `colour` and `label`, so a thumb finds the
+# throttle, the clutch and the brakes apart at a glance.
 class_name TouchSlider
 extends Control
 
 const TRACK_COLOUR := Color(0.1, 0.1, 0.1, 0.45)
-const THUMB_COLOUR := Color(0.95, 0.95, 0.95, 0.85)
-const HELD_COLOUR := Color(1.0, 0.8, 0.2, 0.95)
+const HELD_COLOUR := Color(1.0, 0.95, 0.75, 0.95)
+const LABEL_COLOUR := Color(0.95, 0.95, 0.95, 0.9)
 const THUMB_SHARE := 0.22  # of the slider's length
+const LABEL_SIZE := 22
+# The track behind the thumb, filled to where it is in the control's colour
+# at this strength, so how far a lever is open shows from afar.
+const FILL_ALPHA := 0.35
+
+@export var colour := Color(0.95, 0.95, 0.95, 0.85)
+@export var label := ""
+# The track filled from the start end up to the thumb (a lever's travel).
+@export var filled := false
 
 @export var vertical := false
 @export var start_value := 0.0
@@ -101,12 +113,33 @@ func _slide_to(global_point: Vector2) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), TRACK_COLOUR)
 	var share := inverse_lerp(start_value, end_value, value)
-	var colour := HELD_COLOUR if is_held() else THUMB_COLOUR
+	var thumb_colour := HELD_COLOUR if is_held() else colour
+	var fill := Color(colour, FILL_ALPHA)
 	if vertical:
 		var thumb := size.y * THUMB_SHARE
 		var y := (1.0 - share) * (size.y - thumb)
-		draw_rect(Rect2(0.0, y, size.x, thumb), colour)
+		if filled:
+			draw_rect(Rect2(0.0, y, size.x, size.y - y), fill)
+		draw_rect(Rect2(0.0, y, size.x, thumb), thumb_colour)
 	else:
 		var thumb := size.x * THUMB_SHARE
 		var x := share * (size.x - thumb)
-		draw_rect(Rect2(x, 0.0, thumb, size.y), colour)
+		if filled:
+			draw_rect(Rect2(0.0, 0.0, x + thumb, size.y), fill)
+		draw_rect(Rect2(x, 0.0, thumb, size.y), thumb_colour)
+	_draw_label()
+
+
+# The label across the track's far end (the top of a vertical slider), in
+# a dark outline so it reads over the thumb too.
+func _draw_label() -> void:
+	if label.is_empty():
+		return
+	var font := get_theme_default_font()
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE)
+	var at := Vector2((size.x - text_size.x) / 2.0, font.get_ascent(LABEL_SIZE) + 6.0)
+	if not vertical:
+		at.y = (size.y + font.get_ascent(LABEL_SIZE) - font.get_descent(LABEL_SIZE)) / 2.0
+	draw_string_outline(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 6,
+			Color.BLACK)
+	draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, LABEL_COLOUR)

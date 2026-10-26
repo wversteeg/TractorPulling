@@ -2,6 +2,7 @@
 
 #include "tp/data/session/run_setup.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -93,6 +94,7 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
         return "the season's field, points or rules are inconsistent";
     }
     season_ = std::make_unique<field::LiveSeason>(*season);
+    tuning_ = vehicle::as_built(season_->player().tractor);
     names_.emplace_back(kPlayerName);
     names_.insert(names_.end(), e.game.rival_names.begin(), e.game.rival_names.end());
     definition_ = std::move(loaded).value();
@@ -167,6 +169,36 @@ godot::String TractorPullEvent::name_of(int puller) const {
 
 double TractorPullEvent::first_line_m() const {
     return definition_ ? definition_->event.rules.full_pull_m : 0.0;
+}
+
+godot::Dictionary TractorPullEvent::get_tuning() const {
+    godot::Dictionary out;
+    if (!season_) {
+        return out;
+    }
+    const vehicle::Params& tractor = season_->player().tractor;
+    const vehicle::Params set = vehicle::tuned(tractor, tuning_);
+    const tire::Pressure& pressure = tractor.rear_tire.pressure;
+    out["ballast"] = tractor.chassis.ballast.mass_kg > 0.0;
+    out["ballast_position"] = set.chassis.ballast.position;
+    out["rear_share"] = chassis::rear_axle_share(set.chassis);
+    out["pressure"] = pressure.reference_bar > 0.0;
+    out["pressure_bar"] = tuning_.rear_tire_pressure_bar;
+    out["min_bar"] = pressure.min_bar;
+    out["max_bar"] = pressure.max_bar;
+    return out;
+}
+
+void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar) {
+    if (!season_) {
+        return;
+    }
+    const tire::Pressure& pressure = season_->player().tractor.rear_tire.pressure;
+    tuning_.ballast_position = std::clamp(ballast_position, 0.0, 1.0);
+    if (pressure.reference_bar > 0.0) {
+        tuning_.rear_tire_pressure_bar =
+            std::clamp(pressure_bar, pressure.min_bar, pressure.max_bar);
+    }
 }
 
 PullKey TractorPullEvent::pull_key() const {
@@ -248,14 +280,14 @@ std::optional<session::Setup> TractorPullEvent::player_setup() const {
         season_->event()->turn() != field::LiveEvent::Turn::kPlayerPull) {
         return std::nullopt;
     }
-    return data::run_setup(season_->player().tractor, *season_->event());
+    return data::run_setup(vehicle::tuned(season_->player().tractor, tuning_), *season_->event());
 }
 
 std::optional<session::Setup> TractorPullEvent::practice_setup() const {
     if (!season_ || season_->event() == nullptr) {
         return std::nullopt;
     }
-    return data::run_setup(season_->player().tractor, *season_->event());
+    return data::run_setup(vehicle::tuned(season_->player().tractor, tuning_), *season_->event());
 }
 
 godot::Dictionary TractorPullEvent::record_pull(const godot::Ref<TractorPullRun>& run) {
@@ -325,6 +357,9 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("decide", "keep"), &TractorPullEvent::decide);
     ClassDB::bind_method(D_METHOD("score_event"), &TractorPullEvent::score_event);
     ClassDB::bind_method(D_METHOD("get_season_standings"), &TractorPullEvent::get_season_standings);
+    ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
+    ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar"),
+                         &TractorPullEvent::set_tuning);
 }
 
 }  // namespace tp::godot_binding

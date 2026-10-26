@@ -144,6 +144,7 @@ func _check_event() -> void:
 			and info.get("pullers", 0) == 10 and info.get("full_pull_m", 0.0) == 100.0,
 			"the event: %s" % info)
 
+	_check_tuning(event)
 	var run := TractorPullRun.new()
 	_expect(run.setup_practice(event, EASY).is_empty(), "a practice pull at the event")
 	_expect(event.record_pull(run).is_empty(), "a practice pull is not the event's")
@@ -184,6 +185,36 @@ func _check_event() -> void:
 		_expect(run.setup_event_pull(event, EASY).contains("no pull"),
 				"no pull of the player's due")
 	_expect(not event.score_event(), "an unfinished event is not scored")
+
+
+# The player's tuning: as built at first, each setting held to its range,
+# and a run set up after it is on the tuned tractor.
+func _check_tuning(event: TractorPullEvent) -> void:
+	var tuning := event.get_tuning()
+	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)
+			and is_equal_approx(float(tuning["ballast_position"]), 0.5)
+			and is_equal_approx(float(tuning["pressure_bar"]), 1.0)
+			and is_equal_approx(float(tuning["min_bar"]), 0.5)
+			and is_equal_approx(float(tuning["max_bar"]), 1.6)
+			and absf(float(tuning["rear_share"]) - 0.6) < 0.01, "as built: %s" % tuning)
+	var built_hash := _practice_hash(event)
+	event.set_tuning(-1.0, 9.0)
+	tuning = event.get_tuning()
+	_expect(float(tuning["ballast_position"]) == 0.0 and float(tuning["pressure_bar"]) == 1.6
+			and float(tuning["rear_share"]) > 0.6, "held to the ranges: %s" % tuning)
+	_expect(_practice_hash(event) != built_hash, "the run is on the tuned tractor")
+	event.set_tuning(0.5, 1.0)
+	_expect(_practice_hash(event) == built_hash, "as built again: the same run")
+
+
+# A practice pull's state hash after a few seconds at full throttle in 6th.
+func _practice_hash(event: TractorPullEvent) -> String:
+	var run := TractorPullRun.new()
+	run.setup_practice(event, PRO)
+	for step in 3000:
+		run.set_controls(1.0, 0.0 if step > 500 else 1.0, 6, 0.0, 0.0, 0.0)
+		run.advance(STEP_NS)
+	return run.get_state_hash()
 
 
 # A scripted run, as tp_pull drives it: in neutral until SELECT_GEAR_S,

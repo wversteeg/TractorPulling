@@ -2,6 +2,7 @@
 
 #include "tp/core/field/live_season.hpp"
 #include "tp/core/session/session.hpp"
+#include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/season/season_loader.hpp"
 
 #include <cstdint>
@@ -94,6 +95,18 @@ public:
     /// wins}.
     [[nodiscard]] godot::Array get_season_standings() const;
 
+    /// The player's tractor as they set it before a pull (vehicle::Tuning),
+    /// kept for the season: {ballast, ballast_position, rear_share,
+    /// pressure, pressure_bar, min_bar, max_bar}. `ballast` and `pressure`
+    /// say whether the tractor has weights to move and rear tires whose
+    /// pressure can be set; `ballast_position` runs from 0 (rearmost) to 1
+    /// (foremost), and `rear_share` is the share of the weight then on the
+    /// rear axle at rest (0 to 1). {} before a season.
+    [[nodiscard]] godot::Dictionary get_tuning() const;
+    /// Sets the player's tuning, each held to its range; their next pulls
+    /// and practice pulls are on the tuned tractor.
+    void set_tuning(double ballast_position, double pressure_bar);
+
     /// The player's next pull, for TractorPullRun: nothing unless one is
     /// due.
     [[nodiscard]] std::optional<session::Setup> player_setup() const;
@@ -115,6 +128,7 @@ private:
 
     std::optional<data::SeasonDefinition> definition_;
     std::vector<std::string> names_;
+    vehicle::Tuning tuning_;
     // Large plain data: on the heap.
     std::unique_ptr<field::LiveSeason> season_;
 };
