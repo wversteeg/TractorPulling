@@ -16,8 +16,6 @@ namespace {
 
 // Rpm per "1000 rpm", for drag given per 1000 rpm in the data files.
 constexpr double kRpmPerKiloRpm = 1000.0;
-// A powershift step without shifts_per_pull: once a pull.
-constexpr int kDefaultLoadShiftsPerPull = 1;
 // More than any pull could use; a larger number in a file means the same.
 constexpr double kMaxLoadShiftsPerPull = 1000.0;
 
@@ -87,7 +85,12 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
         // Held to what an int takes; past the gears, validate() says so.
         params.load_downshift_gears =
             static_cast<int>(std::min(*downshift, static_cast<double>(driveline::kMaxGears)));
-        params.load_shifts_per_pull = kDefaultLoadShiftsPerPull;
+    }
+    // Without the step it would do nothing: a file that sets it alone
+    // meant something else.
+    if (per_pull && !downshift) {
+        return detail::make_error(source, "driveline.powershift.shifts_per_pull",
+                                  "needs load_downshift_gears beside it");
     }
     if (per_pull) {
         if (*per_pull != std::floor(*per_pull) || *per_pull < 0.0) {

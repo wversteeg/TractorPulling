@@ -13,7 +13,8 @@ namespace tp::driver {
 /// watches the rev counter once the clutch is fully in and the engine has
 /// come back from the launch above `downshift_share` of its rated speed;
 /// when the sled then pulls it below that again, they shift a gear down
-/// under load, if the gearbox can (driveline::shifts_under_load). The
+/// under load, if the gearbox can (driveline::shifts_under_load): once, one
+/// gear, whatever more the gearbox allows, and then they stay in it. The
 /// pullers in a field differ in gear, clutch technique and when they shift.
 struct Plan {
     int gear = 0;
