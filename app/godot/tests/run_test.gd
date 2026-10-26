@@ -20,6 +20,8 @@ const TRACK := "res://data/tracks/ideal_clay_sand.toml"
 const EASY := "res://data/controls/easy.toml"
 const PRO := "res://data/controls/pro.toml"
 const SEASON := "res://data/seasons/club_season.toml"
+# The garage's starting tractor's rear axle share at rest, weights halfway.
+const REAR_SHARE := 0.616
 
 const STEP_NS := 1_000_000
 const STEP_S := 0.001
@@ -188,7 +190,9 @@ func _check_event() -> void:
 
 
 # The player's tuning: as built at first, each setting held to its range,
-# and a run set up after it is on the tuned tractor.
+# and a run set up after it is on the tuned tractor. The player starts on
+# the garage's first levels: 100 kg of weights halfway put a little more of
+# the lighter tractor on its rear axle than the reference's 60 %.
 func _check_tuning(event: TractorPullEvent) -> void:
 	var tuning := event.get_tuning()
 	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)
@@ -196,7 +200,7 @@ func _check_tuning(event: TractorPullEvent) -> void:
 			and is_equal_approx(float(tuning["pressure_bar"]), 1.0)
 			and is_equal_approx(float(tuning["min_bar"]), 0.5)
 			and is_equal_approx(float(tuning["max_bar"]), 1.6)
-			and absf(float(tuning["rear_share"]) - 0.6) < 0.01, "as built: %s" % tuning)
+			and absf(float(tuning["rear_share"]) - REAR_SHARE) < 0.005, "as built: %s" % tuning)
 	var built_hash := _practice_hash(event)
 	event.set_tuning(-1.0, 9.0)
 	tuning = event.get_tuning()

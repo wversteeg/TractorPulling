@@ -10,6 +10,7 @@ add_library(tp_core STATIC
     src/field/play.cpp
     src/field/live.cpp
     src/field/live_season.cpp
+    src/garage/garage.cpp
     src/math/curve.cpp
     src/math/exp.cpp
     src/pull/pull.cpp

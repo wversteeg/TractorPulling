@@ -1,0 +1,68 @@
+@startuml garage_classes
+title Garage (tp::garage): upgrades as parameter changes, the career's money
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "vehicle::Params" as Tractor
+  class "rules::ClassRules" as ClassRules
+  class "event::Standing" as EventStanding
+  class "engine::with_torque_scale()" as TorqueScale
+  class "chassis::with_ballast_mass()" as BallastMass
+}
+
+package "tp::garage" {
+  enum Part {
+    kEngineTorque
+    kRearTraction
+    kBallastMass
+    kHitchHeight
+    kLoadDownshift
+  }
+  class Level <<struct>> {
+    +value : double
+    +cost_eur : int64
+  }
+  class Upgrade <<struct>> {
+    +part : Part
+    +levels : array<Level, 6>
+    +level_count : size_t
+  }
+  class Catalogue <<struct>> {
+    +upgrades : array<Upgrade, 8>
+    +count : size_t
+    +start_money_eur : int64
+    +offer() : span<const Upgrade>
+  }
+  class Career <<struct>> {
+    +money_eur : int64
+    +levels : array<int, 8>
+  }
+  class "garage functions" as GarageFns <<free functions>> {
+    +validate(const Catalogue&, const vehicle::Params&, const rules::ClassRules&) : optional<ParamError>
+    +new_career(const Catalogue&) : Career
+    +equipped(const vehicle::Params&, const Catalogue&, const Career&) : optional<vehicle::Params>
+    +fully_upgraded(const Catalogue&, const Career&) : bool
+    +buy(Career&, const Catalogue&, upgrade) : optional<BuyError>
+    +prize_eur(span<const int64> by_place, const event::Standing&) : int64
+  }
+  Catalogue *-- Upgrade
+  Upgrade *-- Level
+  Upgrade --> Part
+  GarageFns ..> Catalogue
+  GarageFns ..> Career
+}
+GarageFns ..> Tractor : sets each part's value
+GarageFns ..> ClassRules : every level within the class
+GarageFns ..> EventStanding : pays by place
+GarageFns ..> TorqueScale
+GarageFns ..> BallastMass
+note bottom of Catalogue
+  level 0 of every upgrade is the tractor the player starts with;
+  each level sets its part's value outright, so parts never interact
+  and validate() checks each level with the others at their top.
+  The top levels reach the class's limits (NTTO standard 3.5 t:
+  85 hp at the PTO, 3500 kg, the hitch at 0.5 m)
+end note
+@enduml

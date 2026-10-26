@@ -5,6 +5,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "../common/toml_reader.hpp"
@@ -13,12 +14,31 @@ namespace tp::data {
 
 namespace {
 
+// The prize money by place: whole euros, 0 or more, never more for a lower
+// place; nothing if not.
+std::optional<std::vector<std::int64_t>> whole_euros(const std::vector<double>& prizes) {
+    // Below 2^53 every whole double is exact; more than this is nonsense.
+    constexpr double kMaxPrize_eur = 1e15;
+    std::vector<std::int64_t> out;
+    for (std::size_t i = 0; i < prizes.size(); ++i) {
+        const bool whole = prizes[i] == std::floor(prizes[i]);
+        const bool falling = i == 0 || prizes[i] <= prizes[i - 1];
+        if (!whole || prizes[i] < 0.0 || prizes[i] > kMaxPrize_eur || !falling) {
+            return std::nullopt;
+        }
+        out.push_back(static_cast<std::int64_t>(prizes[i]));
+    }
+    return out;
+}
+
 Result<SeasonDefinition> read_season(const toml::table& root, std::string_view source,
                                      std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
     const std::string event_path = reader.text("season.event");
     const std::int64_t seed = reader.integer("season.seed");
     const std::vector<double> table = reader.numbers("season.points");
+    const std::vector<double> prizes = reader.numbers("season.prize_money_eur");
+    const std::string garage_path = reader.text("season.garage");
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
@@ -42,6 +62,12 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
                                   "must be >= 0, never more for a lower place");
     }
 
+    const std::optional<std::vector<std::int64_t>> prize_money_eur = whole_euros(prizes);
+    if (!prize_money_eur) {
+        return detail::make_error(source, "season.prize_money_eur",
+                                  "must be whole euros, >= 0, never more for a lower place");
+    }
+
     const toml::array* events = root.at_path("season.events").as_array();
     if (events == nullptr || events->empty() ||
         events->size() > static_cast<std::size_t>(season::kMaxEvents)) {
@@ -51,8 +77,21 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
     if (!event) {
         return event.error();
     }
+    auto garage = load_garage(resolve(base, garage_path), read);
+    if (!garage) {
+        return garage.error();
+    }
+    if (garage::validate(garage.value().catalogue, event.value().reference.tractor,
+                         event.value().class_rules)) {
+        return detail::make_error(source, "season.garage",
+                                  garage_path +
+                                      ": some level gives a tractor that is not valid or that "
+                                      "the class does not allow");
+    }
     SeasonDefinition definition{.event = event.value(),
                                 .points = points,
+                                .prize_money_eur = *prize_money_eur,
+                                .garage = std::move(garage).value(),
                                 .rounds = {},
                                 .seed = static_cast<std::uint64_t>(seed)};
     for (const toml::node& node : *events) {

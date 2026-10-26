@@ -152,6 +152,15 @@ enum class ParamError : std::uint8_t {
 /// gives `params` unchanged, bit for bit.
 [[nodiscard]] Params with_ballast_at(const Params& params, double position) noexcept;
 
+/// The tractor with `mass_kg` of ballast instead of what it has, where its
+/// ballast sits now: the whole mass changes by the difference, the centre
+/// of gravity moves towards the weights (or away), and the pitch and yaw
+/// inertias follow (parallel axes; the weights as a point at the centre of
+/// gravity's height). The ballast it has gives `params` unchanged, bit for
+/// bit; so does a mass that is not finite or below 0. validate() judges
+/// the result (e.g. ballast heavier than the tractor).
+[[nodiscard]] Params with_ballast_mass(const Params& params, double mass_kg) noexcept;
+
 /// The share of the tractor's weight on the rear axle at rest, 0 to 1:
 /// from the centre of gravity alone, as a setup screen shows it (the front
 /// tires' spring and the hitch do not enter).

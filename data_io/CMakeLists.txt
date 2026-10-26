@@ -8,6 +8,7 @@ add_library(tp_data STATIC
     src/engine/engine_loader.cpp
     src/event/event_loader.cpp
     src/files/files.cpp
+    src/garage/garage_loader.cpp
     src/rules/class_rules_loader.cpp
     src/track/track_loader.cpp
     src/season/season_loader.cpp

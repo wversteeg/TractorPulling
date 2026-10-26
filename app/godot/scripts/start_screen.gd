@@ -1,6 +1,7 @@
 # Before an event: the season's event to come (each on its own track), and
-# "Event" to go to it, or "Practice" for a free pull on its track first
-# (the setup screen comes before every pull). The gear in the top right
+# "Event" to go to it, "Practice" for a free pull on its track first (the
+# setup screen comes before every pull), or "Garage" to spend the prize
+# money on the tractor. The gear in the top right
 # corner opens the settings. At launch, with a season saved, it first asks
 # whether to continue it or start a new one (show_choice).
 class_name StartScreen
@@ -8,6 +9,7 @@ extends MenuPanel
 
 signal practice_requested
 signal event_requested
+signal garage_requested
 signal settings_requested
 signal continue_requested
 signal new_season_requested
@@ -23,6 +25,7 @@ const CHOICE_BUTTON_SIZE := Vector2(280.0, 90.0)
 
 var practice_button: TouchButton
 var event_button: TouchButton
+var garage_button: TouchButton
 var continue_button: TouchButton
 var new_season_button: TouchButton
 var settings_button := GearButton.new()
@@ -38,6 +41,7 @@ func _ready() -> void:
 	_name = add_line(LINE_SIZE)
 	var go := add_button_row()
 	practice_button = add_button(go, "Practice")
+	garage_button = add_button(go, "Garage")
 	event_button = add_button(go, "Event")
 	var choice := add_button_row()
 	new_season_button = add_button(choice, "New season")
@@ -47,6 +51,7 @@ func _ready() -> void:
 	_error = add_line(LINE_SIZE)
 	practice_button.tapped.connect(func() -> void: practice_requested.emit())
 	event_button.tapped.connect(func() -> void: event_requested.emit())
+	garage_button.tapped.connect(func() -> void: garage_requested.emit())
 	continue_button.tapped.connect(func() -> void: continue_requested.emit())
 	new_season_button.tapped.connect(func() -> void: new_season_requested.emit())
 	settings_button.fires_on_release = true
@@ -76,6 +81,7 @@ func show_event(event: Dictionary, error: String) -> void:
 		_name.text = event["name"]
 	practice_button.visible = error.is_empty()
 	event_button.visible = error.is_empty()
+	garage_button.visible = error.is_empty()
 	continue_button.visible = false
 	new_season_button.visible = false
 	settings_button.visible = true
@@ -90,6 +96,7 @@ func show_choice(season: Dictionary) -> void:
 	_name.text = "Continue it, or start a new season?"
 	practice_button.visible = false
 	event_button.visible = false
+	garage_button.visible = false
 	continue_button.visible = true
 	new_season_button.visible = true
 	# The settings wait for the choice.

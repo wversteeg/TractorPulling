@@ -16,6 +16,9 @@ SeasonSave example() {
     // Past what a signed 64-bit TOML integer holds.
     save.seed = UINT64_MAX - 1;
     save.tuning = {.ballast_position = 0.35, .rear_tire_pressure_bar = 0.75};
+    save.career = SavedCareer{.money_eur = 1234,
+                              .upgrades = {{.name = "Injection pump", .level = 2},
+                                           {.name = R"(The "big" tires)", .level = 0}}};
     save.events = {
         {{.puller = 2, .place = 1},
          {.puller = 0, .place = 2},
@@ -34,6 +37,14 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
     EXPECT_EQ(back.seed, save.seed);
     EXPECT_EQ(back.tuning.ballast_position, save.tuning.ballast_position);
     EXPECT_EQ(back.tuning.rear_tire_pressure_bar, save.tuning.rear_tire_pressure_bar);
+    ASSERT_TRUE(back.career.has_value());
+    const SavedCareer career = back.career.value_or(SavedCareer{});
+    EXPECT_EQ(career.money_eur, 1234);
+    ASSERT_EQ(career.upgrades.size(), 2U);
+    EXPECT_EQ(career.upgrades[0].name, "Injection pump");
+    EXPECT_EQ(career.upgrades[0].level, 2);
+    EXPECT_EQ(career.upgrades[1].name, R"(The "big" tires)");
+    EXPECT_EQ(career.upgrades[1].level, 0);
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
         ASSERT_EQ(back.events[e].size(), save.events[e].size()) << e;
@@ -82,12 +93,31 @@ ballast_position = 0.5
 rear_tire_pressure_bar = 1.0
 )";
 
+// A save from before the garage reads as a career not yet begun.
+TEST(SeasonSave, ReadsASaveFromBeforeTheGarage) {
+    const Result<SeasonSave> read = parse_season_save(kHead, "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    EXPECT_FALSE(read.value().career.has_value());
+}
+
 TEST(SeasonSave, RefusesNonsense) {
     EXPECT_EQ(error_of(kHead), "");
     std::string other_version = kHead;
-    other_version.replace(0, 11, "version = 2");
-    EXPECT_NE(error_of(other_version).find("season.toml: version: must be 1"), std::string::npos)
+    other_version.replace(0, 11, "version = 3");
+    EXPECT_NE(error_of(other_version).find("season.toml: version: must be 1 or 2"),
+              std::string::npos)
         << error_of(other_version);
+    std::string version_2 = kHead;
+    version_2.replace(0, 11, "version = 2");
+    EXPECT_NE(error_of(version_2).find("career.money_eur"), std::string::npos)
+        << error_of(version_2);
+    for (const char* career :
+         {"[career]\nmoney_eur = -1\n", "[career]\nmoney_eur = 5\nupgrades = [{ name = \"x\" }]\n",
+          "[career]\nmoney_eur = 5\nupgrades = [{ name = \"x\", level = -1 }]\n"}) {
+        EXPECT_NE(error_of(version_2 + career).find("season.toml: career"), std::string::npos)
+            << career << ": " << error_of(version_2 + career);
+    }
+    EXPECT_EQ(error_of(version_2 + "[career]\nmoney_eur = 5\n"), "");
     std::string bad_seed = kHead;
     bad_seed.replace(bad_seed.find("\"7\""), 3, "\"-7\"");
     EXPECT_NE(error_of(bad_seed).find("seed"), std::string::npos) << error_of(bad_seed);

@@ -255,6 +255,29 @@ Params with_ballast_at(const Params& params, double position) noexcept {
     return out;
 }
 
+Params with_ballast_mass(const Params& params, double mass_kg) noexcept {
+    const Ballast& ballast = params.ballast;
+    if (!std::isfinite(mass_kg) || mass_kg < 0.0 || mass_kg == ballast.mass_kg) {
+        return params;
+    }
+    const double added_kg = mass_kg - ballast.mass_kg;
+    const double at_m = ballast_x_m(ballast, ballast.position);
+    const double cg_m = params.cg_ahead_of_rear_axle_m;
+    const double total_kg = params.mass_kg + added_kg;
+    const double new_cg_m = (params.mass_kg * cg_m + added_kg * at_m) / total_kg;
+    // The added weights about the new centre of gravity, and the rest moved
+    // to it (parallel axes); taking weights off is the same with a minus.
+    const double moved = params.mass_kg * (cg_m - new_cg_m) * (cg_m - new_cg_m) +
+                         added_kg * (at_m - new_cg_m) * (at_m - new_cg_m);
+    Params out = params;
+    out.mass_kg = total_kg;
+    out.cg_ahead_of_rear_axle_m = new_cg_m;
+    out.pitch_inertia_kg_m2 = params.pitch_inertia_kg_m2 + moved;
+    out.yaw_inertia_kg_m2 = params.yaw_inertia_kg_m2 + moved;
+    out.ballast.mass_kg = mass_kg;
+    return out;
+}
+
 double rear_axle_share(const Params& params) noexcept {
     return 1.0 - params.cg_ahead_of_rear_axle_m / params.wheelbase_m;
 }

@@ -1,14 +1,16 @@
 # The game's flow, played with simulated fingers on a practice season
 # (tests/data: a light sled, so the reference tractor makes full pulls, and
 # three rivals): the start screen with the first event, the settings from
-# its gear and back, the setup screen
+# its gear and back, the garage (the start money spent, the prize money
+# paid after the event, nothing to buy during it), the setup screen
 # (the weights and the tire pressure slid by a finger, kept for the season),
 # a practice pull and back, then the event's board filling in with the
 # rivals' pulls, the player's pulls when they are due, each after the setup
 # screen (no "again" there), and their decisions,
 # the event's top ten, the season's, and the start screen with the next
 # event; then the game launched again: the saved season continued, at the
-# next event with the same standings and tuning, and a new season. Exits
+# next event with the same standings, tuning and career, and a new season
+# with the career carried over. Exits
 # non-zero if a check fails (scripts/godot_test.sh runs it).
 # With a directory after `--` it also saves a screenshot of each screen
 # there (that needs a display, or Xvfb, and a renderer).
@@ -164,6 +166,28 @@ func _play() -> void:
 	await _frames(2)
 	_expect(start.visible and not settings.visible, "back from the settings")
 
+	# The garage: the start money buys the second powershift level once;
+	# then it is at its top.
+	var garage: GarageScreen = _pull.get("garage_screen")
+	_tap(start.garage_button)
+	await _frames(2)
+	var stock := event.get_garage()
+	_expect(garage.visible and int(stock["money_eur"]) == 1000 and stock["can_buy"]
+			and garage.buy_buttons.size() == 1 and garage.buy_buttons[0].visible,
+			"the garage: %s" % stock)
+	await _shot("1c_garage")
+	_tap(garage.buy_buttons[0])
+	await _frames(2)
+	var bought := event.get_garage()
+	var powershift: Dictionary = bought["upgrades"][0]
+	_expect(int(bought["money_eur"]) == 400 and int(powershift["level"]) == 1
+			and bought["fully_upgraded"] and not garage.buy_buttons[0].visible,
+			"bought the powershift: %s" % bought)
+	_expect(event.buy_upgrade(0) == "top level", "nothing more to buy")
+	_tap(garage.done_button)
+	await _frames(2)
+	_expect(start.visible and not garage.visible, "back from the garage")
+
 	# The setup screen first: the tractor as built, then the weights slid to
 	# the rear and the tires softened, which the season keeps. "Back"
 	# returns to the start screen.
@@ -228,6 +252,7 @@ func _play() -> void:
 			_tap(result.continue_button)
 			await _frames(2)
 			_expect(board.visible, "back to the board")
+			_expect(not event.get_garage()["can_buy"], "no upgrades during the event")
 		elif turn == "player_decision":
 			_expect(board.second_button.visible, "keep or pull again")
 			await _shot("4_decision")
@@ -255,6 +280,9 @@ func _play() -> void:
 	_tap(board.first_button)
 	await _frames(2)
 	_expect(board.visible and board.row_count() == PULLERS, "the event's standings")
+	var prize := event.get_event_prize()
+	_expect(prize >= 0 and (prize == 0 or board.status().contains("won")),
+			"the prize, if any: %d" % prize)
 	await _shot("5_event_top")
 	_expect(board.first_button.text == "Season", "on to the season")
 	_tap(board.first_button)
@@ -267,6 +295,8 @@ func _play() -> void:
 		points += int(line["points"])
 	_expect(points > 0 and board.row_count() == PULLERS, "the season's standings")
 	_expect(board.first_button.text == "Next event", "on to the next event")
+	_expect(int(event.get_garage()["money_eur"]) == 400 + prize and event.get_garage()["can_buy"],
+			"the prize paid: %s" % event.get_garage())
 	await _shot("6_season_top")
 
 	# Next: the start screen with the season's second event.
@@ -277,7 +307,7 @@ func _play() -> void:
 	_expect(info.get("index", -1) == 1 and info.get("name", "") == "Practice, firm loam",
 			"the next event: %s" % info)
 
-	await _relaunch(event.get_season_standings(), event.get_tuning())
+	await _relaunch(event.get_season_standings(), event.get_tuning(), event.get_garage())
 
 	print("flow test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -302,7 +332,7 @@ func _launch() -> Node:
 # season; Continue picks it up at the second event, with the same
 # championship and tuning. Launched once more, New season starts over at
 # the first event, and the save is the new season's.
-func _relaunch(standings: Array, tuning: Dictionary) -> void:
+func _relaunch(standings: Array, tuning: Dictionary, garage: Dictionary) -> void:
 	_expect(FileAccess.file_exists(SAVE_PATH) and not FileAccess.file_exists(SAVE_PATH + ".tmp"),
 			"the season is saved, renamed into place")
 	var pull := await _launch()
@@ -322,6 +352,7 @@ func _relaunch(standings: Array, tuning: Dictionary) -> void:
 	var resumed := event.get_tuning()
 	_expect(resumed["ballast_position"] == tuning["ballast_position"]
 			and resumed["pressure_bar"] == tuning["pressure_bar"], "the same tuning: %s" % resumed)
+	_expect(event.get_garage() == garage, "the same career: %s" % event.get_garage())
 
 	pull = await _launch()
 	start = pull.get("start_screen")
@@ -334,3 +365,6 @@ func _relaunch(standings: Array, tuning: Dictionary) -> void:
 	var saved := FileAccess.get_file_as_string(SAVE_PATH)
 	_expect(not saved.contains("standings") and saved.contains(str(SEED + 1)),
 			"the save is the new season's: %s" % saved)
+	_expect(event.get_garage()["money_eur"] == garage["money_eur"]
+			and event.get_garage()["upgrades"] == garage["upgrades"],
+			"the career carries into the new season: %s" % event.get_garage())
