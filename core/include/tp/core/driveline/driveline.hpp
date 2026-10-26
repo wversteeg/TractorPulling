@@ -25,6 +25,13 @@ inline constexpr int kNeutral = 0;
 /// efficiency × the clutch torque (times G); on overrun the clutch gets only
 /// efficiency × the power the axle feeds back. Churning and bearing drag act
 /// on the input shaft.
+///
+/// Gears change with the clutch pressed, except that some gearboxes shift a
+/// gear or two down under load, the clutch in (a powershift step, worked by
+/// clutch packs inside the gearbox): load_downshift_gears says how many.
+/// The packs' slip is taken as the main clutch's: after the shift the input
+/// shaft turns faster than the engine, and the clutch slips until the
+/// engine has caught up.
 struct Params {
     /// Gearbox ratios, 1st first; strictly decreasing.
     std::array<double, kMaxGears> gear_ratios{};
@@ -41,6 +48,9 @@ struct Params {
     double drag_torque_nm = 0.0;
     /// Speed-proportional drag on the input shaft [N·m per rad/s].
     double viscous_drag_nm_s_rad = 0.0;
+    /// How many gears down the gearbox shifts under load, the clutch in: 0
+    /// for none, below gear_count.
+    int load_downshift_gears = 0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -53,6 +63,7 @@ enum class ParamError : std::uint8_t {
     kEfficiencyOutOfRange,
     kInertiaNotPositive,
     kDragNegative,
+    kLoadDownshiftOutOfRange,
 };
 
 /// Returns the first physically meaningless value in `params`, if any.
@@ -70,8 +81,13 @@ struct State {
     double output_omega_rad_s = 0.0;
 };
 
+/// Whether the gearbox shifts from gear `from` to gear `to` with the clutch
+/// in: down, to a gear (not neutral), at most load_downshift_gears.
+[[nodiscard]] bool shifts_under_load(const Params& params, int from, int to) noexcept;
+
 /// Changes gear. Refused (returns false) for a gear that does not exist, or
-/// while the clutch still transmits torque: gears are chosen with the clutch
+/// while the clutch still transmits torque, unless the gearbox shifts so
+/// under load (shifts_under_load): gears are chosen with the clutch
 /// pressed. Engaging a gear works like a synchronizer, done in one step: the
 /// input shaft and the axle side exchange momentum through the gears until
 /// they turn at the same speed, so momentum is conserved and energy only

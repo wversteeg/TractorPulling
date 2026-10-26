@@ -148,7 +148,10 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     // assist would keep the clutch out for a shift that never comes.
     const int wanted_gear =
         std::clamp(input.gear, driveline::kNeutral, static_cast<int>(tractor.driveline.gear_count));
-    const bool shifting = wanted_gear != gear_in;
+    // A gear down that the gearbox shifts under load goes in at once, the
+    // clutch staying in; every other change waits for the clutch out.
+    const bool load_shift = driveline::shifts_under_load(tractor.driveline, gear_in, wanted_gear);
+    const bool shifting = wanted_gear != gear_in && !load_shift;
     const bool clutch_wanted_out =
         throttle < params.clutch_assist.min_throttle || shifting || gear_in == driveline::kNeutral;
     assist.engagement = engagement_after(params.clutch_assist, assist.engagement, clutch_wanted_out,
@@ -167,7 +170,7 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     const bool left = steering > 0.0;
     return {.throttle = throttle,
             .clutch_pedal = clutch::pedal_for(tractor.clutch, assist.engagement),
-            .gear = shifting && assist.engagement == 0.0 ? wanted_gear : gear_in,
+            .gear = load_shift || (shifting && assist.engagement == 0.0) ? wanted_gear : gear_in,
             .steering_rad = std::copysign(wheels, steering) * tractor.steering.max_angle_rad,
             .brake_left = left ? brake : 0.0,
             .brake_right = left ? 0.0 : brake};

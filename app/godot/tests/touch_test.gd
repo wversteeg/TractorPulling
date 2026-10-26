@@ -293,6 +293,13 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(float(s["clutch_pedal"]) == 0.0, "the run has the clutch in")
 	_expect(float(s["tractor_speed_m_s"]) > 0.5, "the tractor pulls: %s m/s" % s["tractor_speed_m_s"])
 
+	# One gear down with the clutch in: the gearbox's powershift step.
+	_tap(controls.gear_down)
+	await _frames(2)
+	s = run.get_snapshot()
+	_expect(s["gear"] == 5 and float(s["clutch_pedal"]) == 0.0, "5th with the clutch in: %s"
+			% s["gear"])
+
 	# A brake brakes while held and comes off when let go.
 	var brake := controls.brake_left_slider.get_global_rect()
 	_touch(STEERING_FINGER, Vector2(brake.get_center().x, brake.end.y - 1.0), true)

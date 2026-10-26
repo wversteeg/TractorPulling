@@ -49,6 +49,11 @@ TEST(DrivelineParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.output_inertia_kg_m2 = 0.0; }),
               ParamError::kInertiaNotPositive);
     EXPECT_EQ(with([](Params& p) { p.drag_torque_nm = -1.0; }), ParamError::kDragNegative);
+    EXPECT_EQ(with([](Params& p) { p.load_downshift_gears = -1; }),
+              ParamError::kLoadDownshiftOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.load_downshift_gears = 8; }),
+              ParamError::kLoadDownshiftOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.load_downshift_gears = 7; }), std::nullopt);
 }
 
 TEST(Driveline, OverallRatioIsGearTimesFinalDrive) {
@@ -223,7 +228,8 @@ TEST(Driveline, ResistanceHoldsATrainAtRestWithoutReversingIt) {
 }
 
 TEST(Driveline, ShiftsOnlyWithTheClutchDisengaged) {
-    const Params params = reference_params();
+    Params params = reference_params();
+    params.load_downshift_gears = 0;
     State state;
     EXPECT_FALSE(shift(state, params, 3, false));
     EXPECT_EQ(state.gear, kNeutral);
@@ -234,6 +240,35 @@ TEST(Driveline, ShiftsOnlyWithTheClutchDisengaged) {
     EXPECT_FALSE(shift(state, params, 9, true));
     EXPECT_FALSE(shift(state, params, -1, true));
     EXPECT_EQ(state.gear, 3);
+}
+
+// The reference gearbox shifts one gear down under load, the clutch in;
+// never up, never two down, never to neutral.
+TEST(Driveline, ShiftsOneGearDownUnderLoad) {
+    const Params params = reference_params();
+    EXPECT_TRUE(shifts_under_load(params, 6, 5));
+    EXPECT_FALSE(shifts_under_load(params, 6, 4)) << "two down";
+    EXPECT_FALSE(shifts_under_load(params, 5, 6)) << "up";
+    EXPECT_FALSE(shifts_under_load(params, 1, kNeutral)) << "to neutral";
+    EXPECT_FALSE(shifts_under_load(params, 9, 8)) << "from a gear it does not have";
+    State state{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    EXPECT_FALSE(shift(state, params, 4, false));
+    EXPECT_FALSE(shift(state, params, 7, false));
+    EXPECT_EQ(state.gear, 6);
+    ASSERT_TRUE(shift(state, params, 5, false));
+    EXPECT_EQ(state.gear, 5);
+    // In 5th the input shaft turns faster for the same axle speed: the
+    // synchronized speed is the gear's ratio times the axle's.
+    EXPECT_DOUBLE_EQ(state.input_omega_rad_s, state.output_omega_rad_s * overall_ratio(params, 5));
+    EXPECT_GT(state.input_omega_rad_s, 200.0);
+    // Two down needs two shifts.
+    EXPECT_TRUE(shift(state, params, 4, false));
+    EXPECT_EQ(state.gear, 4);
+
+    Params two = params;
+    two.load_downshift_gears = 2;
+    EXPECT_TRUE(shifts_under_load(two, 6, 4));
+    EXPECT_FALSE(shifts_under_load(two, 6, 3));
 }
 
 // Engaging a gear synchronizes the two sides: momentum through the gears is

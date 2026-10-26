@@ -58,6 +58,7 @@ if(TP_BUILD_DATA_IO)
         data/season_save_test.cpp
         data/live_event_test.cpp
         data/live_season_test.cpp
+        data/load_downshift_runs_test.cpp
         data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp
         data/tire_loader_test.cpp

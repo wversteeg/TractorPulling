@@ -409,17 +409,17 @@ TEST(ClutchAssist, LiftingOffPressesTheClutch) {
     EXPECT_TRUE(r.state.pull.tractor.engine.running);
 }
 
-// A gear change on the move: the gear in stays until the assist has the
-// clutch out, then the new one goes in and the clutch comes back in.
+// A gear change on the move (up): the gear in stays until the assist has
+// the clutch out, then the new one goes in and the clutch comes back in.
 TEST(ClutchAssist, PressesTheClutchToChangeGear) {
     const pull::Model model = model_with(light_sled());
     constexpr double kShiftAt_s = 10.0;
     double shifted_at_s = -1.0;
     bool wrong_gear_with_clutch_in = false;
     const EasyRun r = drive(
-        model, [](double t_s) { return launch(t_s, t_s < kShiftAt_s ? 6 : 5); },
+        model, [](double t_s) { return launch(t_s, t_s < kShiftAt_s ? 5 : 6); },
         [&](double t_s, const vehicle::Input& in, const EasyRun& now) {
-            if (t_s >= kShiftAt_s && in.gear == 5 && shifted_at_s < 0.0) {
+            if (t_s >= kShiftAt_s && in.gear == 6 && shifted_at_s < 0.0) {
                 shifted_at_s = t_s;
                 wrong_gear_with_clutch_in = in.clutch_pedal < 1.0;
             }
@@ -429,8 +429,39 @@ TEST(ClutchAssist, PressesTheClutchToChangeGear) {
     EXPECT_LE(shifted_at_s, kShiftAt_s + kEasy.clutch_assist.release_time_s + 2.0 * kDt_s);
     EXPECT_FALSE(wrong_gear_with_clutch_in);
     EXPECT_FALSE(r.shift_refused);
-    EXPECT_EQ(r.state.pull.tractor.driveline.gear, 5);
+    EXPECT_EQ(r.state.pull.tractor.driveline.gear, 6);
     EXPECT_GT(r.assist.engagement, 0.0);
+}
+
+// A gear down that the gearbox shifts under load (the reference's
+// powershift step) goes in at once, the clutch staying fully in; two down
+// still take the clutch out.
+TEST(ClutchAssist, ShiftsDownUnderLoadWithTheClutchIn) {
+    const pull::Model model = model_with(light_sled());
+    constexpr double kShiftAt_s = 10.0;
+    for (const int down : {1, 2}) {
+        double shifted_at_s = -1.0;
+        double least_engaged = 1.0;
+        const EasyRun r = drive(
+            model, [down](double t_s) { return launch(t_s, t_s < kShiftAt_s ? 6 : 6 - down); },
+            [&](double t_s, const vehicle::Input& in, const EasyRun& now) {
+                if (t_s >= kShiftAt_s) {
+                    least_engaged = std::min(least_engaged, now.assist.engagement);
+                    if (in.gear == 6 - down && shifted_at_s < 0.0) {
+                        shifted_at_s = t_s;
+                    }
+                }
+            });
+        EXPECT_FALSE(r.shift_refused) << down;
+        EXPECT_EQ(r.state.pull.tractor.driveline.gear, 6 - down) << down;
+        if (down == 1) {
+            EXPECT_LE(shifted_at_s, kShiftAt_s + kDt_s);
+            EXPECT_EQ(least_engaged, 1.0) << "the clutch stays in";
+        } else {
+            EXPECT_GT(shifted_at_s, kShiftAt_s + kDt_s);
+            EXPECT_EQ(least_engaged, 0.0) << "the clutch out first";
+        }
+    }
 }
 
 // A touch of throttle creeps the tractor away too: at part throttle the

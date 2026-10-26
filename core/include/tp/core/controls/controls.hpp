@@ -43,7 +43,8 @@ struct EasyInput {
 /// throttle the guard is lower: where the governor reaches full fuel for
 /// that throttle, so the tractor creeps at a touch of throttle too. It
 /// presses the clutch when the driver lifts off the throttle, and before a
-/// gear change.
+/// gear change, except a gear down that the gearbox shifts under load
+/// (driveline::shifts_under_load), which goes in with the clutch in.
 struct ClutchAssist {
     /// From fully out to fully in while the engine holds its speed [s].
     double engage_time_s = 0.0;

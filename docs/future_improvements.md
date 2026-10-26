@@ -99,6 +99,18 @@ for the big features; they are repeated at the end for completeness.
 - **Heavier classes.** Each class needs its own tractor, tire and sled data;
   in stronger classes wheelspin matters more than engine torque.
 
+## Gearbox
+
+- **The powershift step's clutch packs.** A gear shifted down under load
+  goes in at once; the packs' slip is taken as the main clutch's (it slips
+  until the engine has caught up). A real step slips its own packs over a
+  set time, with the torque handed from one to the other.
+- **Up under load, and an upgrade.** Only shifts down, a gear or two
+  (`load_downshift_gears`); a powershift that also shifts up under load,
+  and the step as an upgrade to buy (career, milestone 6) are left out.
+- **The rivals never shift.** The scripted drivers pull in one gear; one
+  that watches the rev counter and shifts down late would pull further.
+
 ## Tuning
 
 - **Tire pressure and the rolling radius.** A softer tire rolls on a
