@@ -29,9 +29,7 @@ inline constexpr int kNeutral = 0;
 /// Gears change with the clutch pressed, except that some gearboxes shift a
 /// gear or two down under load, the clutch in (a powershift step, worked by
 /// clutch packs inside the gearbox): load_downshift_gears says how many.
-/// The packs' slip is taken as the main clutch's: after the shift the input
-/// shaft turns faster than the engine, and the clutch slips until the
-/// engine has caught up.
+/// The packs' slip is taken as the main clutch's (see shift_under_load).
 struct Params {
     /// Gearbox ratios, 1st first; strictly decreasing.
     std::array<double, kMaxGears> gear_ratios{};
@@ -85,11 +83,21 @@ struct State {
 /// in: down, to a gear (not neutral), at most load_downshift_gears.
 [[nodiscard]] bool shifts_under_load(const Params& params, int from, int to) noexcept;
 
+/// Shifts down under load, the clutch in (see shifts_under_load; nothing if
+/// it does not). The packs sit between the input shaft and the gears, so the
+/// axle and the wheels keep their speed: only the pack's side jumps to the
+/// new gear's speed, which the input shaft stands in for here. Its change of
+/// momentum comes from the engine, through the clutch that stands in for
+/// the packs: returns that angular impulse [N·m·s], for the engine to give
+/// up. After it the input shaft turns faster than the engine, and the clutch
+/// slips, at most its capacity, until the engine has caught up.
+[[nodiscard]] std::optional<double> shift_under_load(State& state, const Params& params,
+                                                     int gear) noexcept;
+
 /// Changes gear. Refused (returns false) for a gear that does not exist, or
-/// while the clutch still transmits torque, unless the gearbox shifts so
-/// under load (shifts_under_load): gears are chosen with the clutch
-/// pressed. Engaging a gear works like a synchronizer, done in one step: the
-/// input shaft and the axle side exchange momentum through the gears until
+/// while the clutch still transmits torque: gears are chosen with the clutch
+/// pressed (a shift under load is shift_under_load's). Engaging a gear works like a synchronizer,
+/// done in one step: the input shaft and the axle side exchange momentum through the gears until
 /// they turn at the same speed, so momentum is conserved and energy only
 /// lost. The input shaft is light, so the axle side barely changes speed.
 bool shift(State& state, const Params& params, int gear, bool clutch_disengaged) noexcept;

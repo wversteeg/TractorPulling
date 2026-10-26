@@ -72,12 +72,13 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
         return *error;
     }
     if (downshift) {
-        if (*downshift != std::floor(*downshift) || *downshift < 0.0 ||
-            *downshift > static_cast<double>(driveline::kMaxGears)) {
+        if (*downshift != std::floor(*downshift) || *downshift < 0.0) {
             return detail::make_error(source, "driveline.powershift.load_downshift_gears",
                                       "must be a whole number of gears, 0 or more");
         }
-        params.load_downshift_gears = static_cast<int>(*downshift);
+        // Held to what an int takes; past the gears, validate() says so.
+        params.load_downshift_gears =
+            static_cast<int>(std::min(*downshift, static_cast<double>(driveline::kMaxGears)));
     }
     std::copy_n(ratios.begin(), std::min(ratios.size(), driveline::kMaxGears),
                 params.gear_ratios.begin());

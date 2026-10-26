@@ -166,9 +166,11 @@ TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
 // The reference gearbox shifts one gear down under load, the clutch in (a
 // powershift step), which is what it is for: the load grows past what 6th
 // can pull, and the engine is pulled down towards the stall. Left in 6th it
-// stalls; shifted to 5th as it lugs, it pulls on. The shift goes in at
-// once: the input shaft then turns faster than the engine, the clutch slips
-// a moment and locks again. Two gears down with the clutch in are refused.
+// stalls; shifted to 5th as it lugs, it pulls on. The shift goes in at once:
+// the wheels keep their speed (no jolt in the step), the input shaft then
+// turns faster than the engine, so the clutch slips, at most its capacity,
+// and locks again within half a second. Two gears down with the clutch in
+// are refused.
 TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     constexpr double kSteady_n = 16000.0;
     constexpr double kHeavier_n = 22000.0;
@@ -192,6 +194,11 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     Input two_down = input;
     two_down.gear = 4;
     double shifted_at_rad_s = 0.0;
+    double axle_before_rad_s = 0.0;
+    double axle_after_rad_s = 0.0;
+    double least_rear_n = 1e12;
+    int shifted_at = -1;
+    int locked_at = -1;
     bool slipped = false;
     bool refused_two = false;
     for (int i = 0; i < static_cast<int>(kFor_s / kDt_s); ++i) {
@@ -202,17 +209,36 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
                 step(shifted.state, shifted.model, two_down, kGround, {.pull_n = kHeavier_n}, kDt_s)
                     .shift_refused;
             shifted_at_rad_s = engine_rad_s;
+            axle_before_rad_s = shifted.state.driveline.output_omega_rad_s;
+            shifted_at = i;
             input.gear = 5;
         }
         const Output out =
             step(shifted.state, shifted.model, input, kGround, {.pull_n = kHeavier_n}, kDt_s);
         EXPECT_FALSE(out.shift_refused);
         slipped = slipped || (shift_now && !shifted.state.clutch.locked);
+        if (shift_now) {
+            axle_after_rad_s = shifted.state.driveline.output_omega_rad_s;
+        }
+        if (shifted_at >= 0) {
+            least_rear_n = std::min(least_rear_n, out.axle_loads.rear_n);
+            if (locked_at < 0 && shifted.state.clutch.locked) {
+                locked_at = i;
+            }
+        }
     }
     EXPECT_TRUE(refused_two) << "two gears down";
     EXPECT_GT(shifted_at_rad_s, 0.0) << "the engine lugged";
     EXPECT_EQ(shifted.state.driveline.gear, 5);
     EXPECT_TRUE(slipped) << "the clutch slips as the gear goes in";
+    // The clutch brakes the wheels at its capacity, not in one jolt: the
+    // shift's own step slows them by less than a tenth (the input shaft's
+    // jump alone took a quarter), and the rear tires keep a good share of
+    // their load.
+    EXPECT_GT(axle_after_rad_s, 0.9 * axle_before_rad_s);
+    EXPECT_GT(least_rear_n, 0.2 * kHeavier_n) << least_rear_n << " N";
+    EXPECT_GT(locked_at, shifted_at);
+    EXPECT_LT((locked_at - shifted_at) * kDt_s, 0.5) << "locked again within half a second";
     ASSERT_TRUE(shifted.state.engine.running) << "5th pulls on";
     EXPECT_TRUE(shifted.state.clutch.locked);
     EXPECT_GT(shifted.state.engine.omega_rad_s, shifted_at_rad_s);

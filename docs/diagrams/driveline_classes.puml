@@ -47,6 +47,7 @@ package "tp::driveline" {
     +validate(const Params&) : optional<ParamError>
     +overall_ratio(const Params&, gear) : double
     +shifts_under_load(const Params&, from, to) : bool
+    +shift_under_load(State&, const Params&, gear) : optional<double>
     +shift(State&, const Params&, gear, clutch_disengaged) : bool
     +predict(const State&, const Params&, axle_load_torque_nm, dt_s) : Prediction
     +input_shaft(const Prediction&) : ShaftPrediction

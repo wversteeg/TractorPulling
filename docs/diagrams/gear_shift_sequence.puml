@@ -1,13 +1,21 @@
 @startuml gear_shift_sequence
 title Changing gear (between steps)
 autonumber
-participant "Caller\n(tool or test; later the vehicle step)" as Caller
+participant "Caller\n(the vehicle step)" as Caller
 participant "clutch::capacity_nm" as Capacity
+participant "driveline::shift_under_load" as Load
 participant "driveline::shift" as Shift
 
 Caller -> Capacity : capacity_nm(clutch_params, pedal)
 Capacity --> Caller : 0 when the pedal is fully pressed
-Caller -> Shift : shift(state, params, gear, capacity == 0)
+opt clutch in and shifts_under_load(params, gear in, gear) (a powershift step down)
+  Caller -> Load : shift_under_load(state, params, gear)
+  Load -> Load : gear = g; the axle keeps its speed;\nomega_in = G omega_axle (the packs' side)
+  Load --> Caller : the input shaft's change of momentum,\nI_in (omega_in' - omega_in)
+  Caller -> Caller : the engine gives it: omega_engine -= impulse / I_engine
+  note right of Caller : the input shaft now turns faster than the engine:\nthe clutch slips, at most its capacity, until it catches up
+end
+Caller -> Shift : otherwise: shift(state, params, gear, capacity == 0)
 alt same gear
   Shift --> Caller : true (nothing to do)
 else gear does not exist, or clutch still transmits torque

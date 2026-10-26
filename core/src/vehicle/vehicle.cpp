@@ -398,8 +398,18 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
 
     const double clutch_capacity_nm = clutch::capacity_nm(params.clutch, input.clutch_pedal);
     if (input.gear != state.driveline.gear) {
-        out.shift_refused = !driveline::shift(state.driveline, driveline_params, input.gear,
-                                              clutch_capacity_nm == 0.0);
+        const bool clutch_out = clutch_capacity_nm == 0.0;
+        if (!clutch_out &&
+            driveline::shifts_under_load(driveline_params, state.driveline.gear, input.gear)) {
+            // The engine gives the input shaft its new speed's momentum.
+            const double impulse_nm_s =
+                driveline::shift_under_load(state.driveline, driveline_params, input.gear)
+                    .value_or(0.0);
+            state.engine.omega_rad_s -= impulse_nm_s / params.engine.inertia_kg_m2;
+        } else {
+            out.shift_refused =
+                !driveline::shift(state.driveline, driveline_params, input.gear, clutch_out);
+        }
     }
 
     out.axle_loads = chassis::axle_loads(params.chassis, state.chassis, drawbar);

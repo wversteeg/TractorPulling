@@ -102,9 +102,23 @@ for the big features; they are repeated at the end for completeness.
 ## Gearbox
 
 - **The powershift step's clutch packs.** A gear shifted down under load
-  goes in at once; the packs' slip is taken as the main clutch's (it slips
-  until the engine has caught up). A real step slips its own packs over a
-  set time, with the torque handed from one to the other.
+  goes in at once: the axle and the wheels keep their speed, the input
+  shaft stands in for the packs' side and takes the new gear's speed, the
+  engine giving that momentum, and the main clutch's slip stands in for
+  the packs'. Since the input shaft really stays with the engine, that
+  bookkeeping adds a little energy (some 0.2 kJ for 6th to 5th: the input
+  shaft gains about 0.95 kJ, the engine gives up about 0.8 kJ), against the
+  clutch's several kJ of slip. A real step slips its own packs over a
+  set time, with the torque handed from one to the other, at their own
+  capacity rather than the main clutch's.
+- **What a 44 % step does.** 6th to 5th asks the engine to turn 44 %
+  faster; that energy comes from the tractor's motion, through the
+  slipping clutch and the tires, which brake (down to about -0.14 slip).
+  The tractor slows while the sled rolls on: the chain goes slack for
+  about 0.1 s and then snatches (to about 32 kN against 20 kN steady, in
+  the README's run). That is the physics of such a big step, not of the
+  model; a real powershift's smaller steps (15 to 20 %) would lurch less,
+  so a gearbox with a finer step would be worth data of its own.
 - **Up under load, and an upgrade.** Only shifts down, a gear or two
   (`load_downshift_gears`); a powershift that also shifts up under load,
   and the step as an upgrade to buy (career, milestone 6) are left out.

@@ -83,12 +83,22 @@ bool shifts_under_load(const Params& params, int from, int to) noexcept {
            static_cast<std::size_t>(from) <= ratios(params).size();
 }
 
+std::optional<double> shift_under_load(State& state, const Params& params, int gear) noexcept {
+    if (!shifts_under_load(params, state.gear, gear)) {
+        return std::nullopt;
+    }
+    state.gear = gear;
+    const double before_rad_s = state.input_omega_rad_s;
+    state.input_omega_rad_s = state.output_omega_rad_s * overall_ratio(params, gear);
+    return params.input_inertia_kg_m2 * (state.input_omega_rad_s - before_rad_s);
+}
+
 bool shift(State& state, const Params& params, int gear, bool clutch_disengaged) noexcept {
     if (gear == state.gear) {
         return true;
     }
     if (gear < kNeutral || static_cast<std::size_t>(gear) > ratios(params).size() ||
-        (!clutch_disengaged && !shifts_under_load(params, state.gear, gear))) {
+        !clutch_disengaged) {
         return false;
     }
     state.gear = gear;

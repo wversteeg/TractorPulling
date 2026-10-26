@@ -8,7 +8,8 @@ participant "run::step" as Run
 
 Frontend -> Easy : easy({throttle, gear, steering}, params, assist,\ntractor, state.pull.tractor, dt)
 Easy -> Easy : guard = max(min(guard_share x rated,\n  engine::full_fuel_omega_rad_s(throttle)), stall + band)
-alt lifted off, neutral in, or another gear asked for
+Easy -> Easy : load shift: driveline::shifts_under_load(gear in, gear asked)
+alt lifted off, neutral in, or another gear asked for (not a load shift)
   Easy -> Easy : engagement -= dt / release_time
 else engine at or above the guard speed
   Easy -> Easy : engagement += dt / engage_time
@@ -19,7 +20,7 @@ Easy -> PedalFor : pedal_for(clutch, engagement)
 PedalFor --> Easy : pedal (the engagement curve read backwards)
 Easy -> Easy : steering: the control past the dead zone,\nfollowed at up to steer_rate x dt
 Easy -> Easy : wheels up to full lock,\nthen the inner rear brake
-Easy -> Easy : gear: the asked one once the clutch is out,\nelse the one in
+Easy -> Easy : gear: the asked one at once for a load shift,\nelse once the clutch is out, else the one in
 Easy --> Frontend : vehicle::Input
 Frontend -> Run : step(state, model, rules, input, dt)
 Run --> Frontend : pull::Output

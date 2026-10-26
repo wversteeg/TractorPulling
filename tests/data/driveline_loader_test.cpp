@@ -74,12 +74,20 @@ TEST(DrivelineLoader, ThePowershiftStepIsOptional) {
         "test.toml");
     ASSERT_TRUE(two.ok()) << two.error().message;
     EXPECT_EQ(two.value().load_downshift_gears, 2);
-    for (const char* bad : {"1.5", "-1", "3"}) {
+    for (const char* bad : {"1.5", "-1", "3", "1e30"}) {
         const std::string message =
             error_of(std::string{kValidDriveline} +
                      "\n[driveline.powershift]\nload_downshift_gears = " + bad + "\n");
         EXPECT_NE(message.find("driveline.powershift.load_downshift_gears"), std::string::npos)
             << bad << ": " << message;
+    }
+    // A whole number past the gears says so.
+    for (const char* past : {"3", "9", "1e30"}) {
+        const std::string message =
+            error_of(std::string{kValidDriveline} +
+                     "\n[driveline.powershift]\nload_downshift_gears = " + past + "\n");
+        EXPECT_NE(message.find("below the number of gears"), std::string::npos)
+            << past << ": " << message;
     }
 }
 
