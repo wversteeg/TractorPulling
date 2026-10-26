@@ -51,8 +51,9 @@ struct Params {
     /// for none, below gear_count.
     int load_downshift_gears = 0;
     /// How many shifts under load one pull allows: after them every change
-    /// needs the clutch pressed. 0 or more.
-    int load_shifts_per_pull = 0;
+    /// needs the clutch pressed. 0 or more; without a step
+    /// (load_downshift_gears 0) it does nothing.
+    int load_shifts_per_pull = 1;
 };
 
 enum class ParamError : std::uint8_t {
