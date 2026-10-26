@@ -18,7 +18,6 @@ inline Params reference_params() {
         .drag_torque_nm = 2.0,
         .viscous_drag_nm_s_rad = 1.05 / units::rpm_to_rad_s(1000.0),
         .load_downshift_gears = 1,
-        .load_shifts_per_pull = 1,
     };
 }
 

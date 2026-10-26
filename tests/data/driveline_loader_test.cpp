@@ -71,7 +71,7 @@ TEST(DrivelineLoader, ThePowershiftStepIsOptional) {
     const auto plain = parse_driveline(kValidDriveline, "test.toml");
     ASSERT_TRUE(plain.ok()) << plain.error().message;
     EXPECT_EQ(plain.value().load_downshift_gears, 0);
-    EXPECT_EQ(plain.value().load_shifts_per_pull, 0);
+    EXPECT_EQ(plain.value().load_shifts_per_pull, 1) << "the default, which needs a step";
     const auto two = parse_driveline(
         std::string{kValidDriveline} + "\n[driveline.powershift]\nload_downshift_gears = 2\n",
         "test.toml");
@@ -91,6 +91,10 @@ TEST(DrivelineLoader, ThePowershiftStepIsOptional) {
         EXPECT_NE(message.find("driveline.powershift.shifts_per_pull"), std::string::npos)
             << bad << ": " << message;
     }
+    EXPECT_NE(
+        error_of(std::string{kValidDriveline} + "\n[driveline.powershift]\nshifts_per_pull = 2\n")
+            .find("needs load_downshift_gears"),
+        std::string::npos);
     for (const char* bad : {"1.5", "-1", "3", "1e30"}) {
         const std::string message =
             error_of(std::string{kValidDriveline} +

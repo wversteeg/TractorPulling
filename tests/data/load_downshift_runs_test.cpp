@@ -1,4 +1,10 @@
+#include "tp/core/driver/driver.hpp"
+#include "tp/core/field/field.hpp"
+#include "tp/core/field/play.hpp"
+#include "tp/core/pull/pull.hpp"
+#include "tp/core/run/run.hpp"
 #include "tp/core/session/session.hpp"
+#include "tp/data/event/event_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
@@ -80,6 +86,66 @@ TEST(LoadDownshiftRuns, ShiftingDownLatePullsFurther) {
     const double held_m = reach_m(std::nullopt);
     const double shifted_m = reach_m(0.9);
     EXPECT_GT(shifted_m, held_m + 1.0) << "held " << held_m << " m, shifted " << shifted_m << " m";
+}
+
+// A scripted rival of the shipped event, the reference puller in `gear`
+// shifting down at `share` of the rated speed, on its sled and ideal
+// clay-sand, as field::run_pull pulls it: how far, and the shifts under
+// load it made.
+struct RivalPull {
+    double reached_m = 0.0;
+    int load_shifts = 0;
+};
+
+RivalPull rival_pull(int gear, double share) {
+    const data::EventDefinition event = loaded(data::load_event(data("events/club_pull.toml")));
+    const data::Track track = loaded(data::load_track(data("tracks/ideal_clay_sand.toml")));
+    const field::Venue venue = data::venue(event.sled, track);
+    const run::Rules rules = field::pull_rules(event.rules, venue, event.rules.full_pull_m);
+    field::Puller puller = event.reference;
+    puller.driver.gear = gear;
+    puller.driver.downshift_share = share;
+    const std::optional<pull::Model> model =
+        pull::Model::create({.tractor = puller.tractor, .sled = venue.sled, .track = venue.track});
+    if (!model) {
+        throw std::runtime_error("the model was refused");
+    }
+    run::State state = run::start(*model);
+    driver::State driver;
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        run::step(state, *model, rules,
+                  driver::input(puller.driver, driver, t_s, state.pull.tractor,
+                                model->tractor().params()),
+                  kDt_s);
+    }
+    const RivalPull out{.reached_m = state.result.value_or(run::Result{}).distance_m,
+                        .load_shifts = state.pull.tractor.driveline.load_shifts};
+    // The same pull as the field's own.
+    EXPECT_EQ(
+        field::run_pull(puller, venue.sled, venue.track, rules).value_or(run::Result{}).distance_m,
+        out.reached_m);
+    return out;
+}
+
+// As the README says: a rival in 6th watching the rev counter shifts once,
+// as the sled pulls the engine down, and pulls about as far as 5th; in 4th
+// and 5th the tires end the pull before the engine is pulled down, and the
+// rival never shifts.
+TEST(LoadDownshiftRuns, RivalsShiftDownLateIn6th) {
+    const RivalPull held = rival_pull(6, 0.0);
+    const RivalPull shifted = rival_pull(6, 0.9);
+    EXPECT_EQ(held.load_shifts, 0);
+    EXPECT_EQ(shifted.load_shifts, 1);
+    EXPECT_GT(shifted.reached_m, held.reached_m + 1.0)
+        << "held " << held.reached_m << " m, shifted " << shifted.reached_m << " m";
+    const RivalPull fifth = rival_pull(5, 0.0);
+    EXPECT_NEAR(shifted.reached_m, fifth.reached_m, 0.5);
+    for (const int gear : {4, 5}) {
+        const RivalPull watching = rival_pull(gear, 0.9);
+        EXPECT_EQ(watching.load_shifts, 0) << gear;
+        EXPECT_EQ(watching.reached_m, rival_pull(gear, 0.0).reached_m) << gear;
+    }
 }
 
 }  // namespace
