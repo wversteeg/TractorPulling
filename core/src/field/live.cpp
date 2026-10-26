@@ -147,8 +147,11 @@ bool LiveEvent::start_job(const Puller& puller, const sled::Params& sled,
         failed_ = true;
         return false;
     }
-    job_.emplace(
-        Job{.model = *model, .state = run::start(*model), .plan = puller.driver, .rules = rules});
+    job_.emplace(Job{.model = *model,
+                     .state = run::start(*model),
+                     .plan = puller.driver,
+                     .driver = {},
+                     .rules = rules});
     return true;
 }
 
@@ -157,7 +160,10 @@ std::int64_t LiveEvent::step_job(Job& job, std::int64_t max_steps) noexcept {
     std::int64_t steps = 0;
     while (steps < max_steps && !job.state.result) {
         const double t_s = static_cast<double>(job.state.steps) * kDt_s;
-        run::step(job.state, job.model, job.rules, driver::input(job.plan, t_s), kDt_s);
+        run::step(job.state, job.model, job.rules,
+                  driver::input(job.plan, job.driver, t_s, job.state.pull.tractor,
+                                job.model.tractor().params()),
+                  kDt_s);
         ++steps;
     }
     return steps;

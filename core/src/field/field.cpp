@@ -86,6 +86,8 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
         random.uniform(variation.clutch_slip_in_s.low, variation.clutch_slip_in_s.high);
     const double track_reading =
         random.uniform(variation.track_reading.low, variation.track_reading.high);
+    const double downshift_share =
+        random.uniform(variation.downshift_share.low, variation.downshift_share.high);
 
     // An engine within the class's PTO power, and a tractor within its
     // weight. The pitch and yaw inertias go with the mass; the balance stays.
@@ -102,6 +104,7 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     puller.tractor.rear_tire.traction.limit = traction_limit;
     puller.driver.clutch_slip_in_s = slip_in_s;
     puller.track_reading = track_reading;
+    puller.driver.downshift_share = downshift_share;
     if (vehicle::validate(puller.tractor) || !rules::check(class_rules, puller.tractor).ok()) {
         return std::nullopt;
     }
@@ -118,15 +121,17 @@ std::array<Puller, sizeof...(I)> copies(const Puller& puller,
 
 std::optional<ParamError> validate(const Puller& reference, const Variation& variation,
                                    const rules::ClassRules& class_rules, int count) noexcept {
-    const std::array ranges = {variation.torque_scale, variation.mass_kg, variation.traction_limit,
-                               variation.clutch_slip_in_s};
+    const std::array ranges = {variation.torque_scale,   variation.mass_kg,
+                               variation.traction_limit, variation.clutch_slip_in_s,
+                               variation.track_reading,  variation.downshift_share};
     if (!std::ranges::all_of(
             ranges, [](const Range& r) { return std::isfinite(r.low) && std::isfinite(r.high); })) {
         return ParamError::kNotFinite;
     }
     if (!std::ranges::all_of(ranges, range_valid) || variation.torque_scale.low <= 0.0 ||
         variation.mass_kg.low <= 0.0 || variation.clutch_slip_in_s.low < 0.0 ||
-        variation.track_reading.low < 0.0 || variation.track_reading.high > 1.0) {
+        variation.track_reading.low < 0.0 || variation.track_reading.high > 1.0 ||
+        variation.downshift_share.low < 0.0 || variation.downshift_share.high >= 1.0) {
         return ParamError::kRangeOutOfOrder;
     }
     const auto gear_count = static_cast<int>(reference.tractor.driveline.gear_count);
@@ -178,9 +183,13 @@ std::optional<run::Result> run_pull(const Puller& puller, const sled::Params& sl
         return std::nullopt;
     }
     run::State state = run::start(*model);
+    driver::State driver;
     while (!state.result) {
         const double t_s = static_cast<double>(state.steps) * kDt_s;
-        run::step(state, *model, rules, driver::input(puller.driver, t_s), kDt_s);
+        run::step(state, *model, rules,
+                  driver::input(puller.driver, driver, t_s, state.pull.tractor,
+                                model->tractor().params()),
+                  kDt_s);
     }
     return state.result;
 }

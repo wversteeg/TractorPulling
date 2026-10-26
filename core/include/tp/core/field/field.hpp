@@ -43,6 +43,8 @@ struct Variation {
     Range clutch_slip_in_s;
     /// How often a driver picks the best gear for the day's track.
     Range track_reading;
+    /// When a driver shifts down under load (driver::Plan): within [0, 1).
+    Range downshift_share;
 };
 
 /// How one pull differs from the next for the same puller: the spot on the

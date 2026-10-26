@@ -135,6 +135,11 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("track_reading = [0.5, 0.95]", "track_reading = [0.5, 1.5]"))
                   .find("track_reading within [0, 1]"),
               std::string::npos);
+    EXPECT_NE(error_of(with("downshift_share = [0.82, 0.95]", "downshift_share = [0.82, 1.0]"))
+                  .find("downshift_share within [0, 1)"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("downshift_share = 0.9", "downshift_share = 1.2")).find("event.driver"),
+              std::string::npos);
     EXPECT_NE(error_of(with("pullers = 10", "pullers = 1")).find("event.game.pullers"),
               std::string::npos);
     EXPECT_NE(error_of(with("\"Wim\"]", "\"\"]")).find("event.game.rival_names"),
@@ -172,8 +177,8 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog first = run(definition.value());
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
-    EXPECT_EQ(first.pulls, 21);
-    EXPECT_EQ(first.hash, 0x79943504a419470eULL);
+    EXPECT_EQ(first.pulls, 25);
+    EXPECT_EQ(first.hash, 0x66f588d5eab30156ULL);
 }
 
 }  // namespace

@@ -61,6 +61,8 @@ TEST(DrivelineLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.viscous_drag_nm_s_rad, reference.viscous_drag_nm_s_rad);
     EXPECT_EQ(loaded.load_downshift_gears, reference.load_downshift_gears);
     EXPECT_EQ(loaded.load_downshift_gears, 1);
+    EXPECT_EQ(loaded.load_shifts_per_pull, reference.load_shifts_per_pull);
+    EXPECT_EQ(loaded.load_shifts_per_pull, 1);
 }
 
 // Without a [driveline.powershift] table the gears change with the clutch
@@ -69,11 +71,26 @@ TEST(DrivelineLoader, ThePowershiftStepIsOptional) {
     const auto plain = parse_driveline(kValidDriveline, "test.toml");
     ASSERT_TRUE(plain.ok()) << plain.error().message;
     EXPECT_EQ(plain.value().load_downshift_gears, 0);
+    EXPECT_EQ(plain.value().load_shifts_per_pull, 0);
     const auto two = parse_driveline(
         std::string{kValidDriveline} + "\n[driveline.powershift]\nload_downshift_gears = 2\n",
         "test.toml");
     ASSERT_TRUE(two.ok()) << two.error().message;
     EXPECT_EQ(two.value().load_downshift_gears, 2);
+    EXPECT_EQ(two.value().load_shifts_per_pull, 1) << "once a pull unless it says";
+    const auto twice = parse_driveline(std::string{kValidDriveline} +
+                                           "\n[driveline.powershift]\nload_downshift_gears = 1\n"
+                                           "shifts_per_pull = 2\n",
+                                       "test.toml");
+    ASSERT_TRUE(twice.ok()) << twice.error().message;
+    EXPECT_EQ(twice.value().load_shifts_per_pull, 2);
+    for (const char* bad : {"1.5", "-1", "nan"}) {
+        const std::string message = error_of(
+            std::string{kValidDriveline} +
+            "\n[driveline.powershift]\nload_downshift_gears = 1\nshifts_per_pull = " + bad + "\n");
+        EXPECT_NE(message.find("driveline.powershift.shifts_per_pull"), std::string::npos)
+            << bad << ": " << message;
+    }
     for (const char* bad : {"1.5", "-1", "3", "1e30"}) {
         const std::string message =
             error_of(std::string{kValidDriveline} +

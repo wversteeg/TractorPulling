@@ -120,10 +120,13 @@ for the big features; they are repeated at the end for completeness.
   model; a real powershift's smaller steps (15 to 20 %) would lurch less,
   so a gearbox with a finer step would be worth data of its own.
 - **Up under load, and an upgrade.** Only shifts down, a gear or two
-  (`load_downshift_gears`); a powershift that also shifts up under load,
-  and the step as an upgrade to buy (career, milestone 6) are left out.
-- **The rivals never shift.** The scripted drivers pull in one gear; one
-  that watches the rev counter and shifts down late would pull further.
+  (`load_downshift_gears`), once a pull (`shifts_per_pull`); a powershift
+  that also shifts up under load, and the step as an upgrade to buy
+  (career, milestone 6) are left out.
+- **The rivals shift by the rev counter alone.** A scripted driver shifts
+  once the engine falls below their share of its rated speed; one who also
+  reads the sled's distance, the wheelspin or the chain would shift later on
+  a track where the tires spin first (dry hard clay).
 
 ## Tuning
 

@@ -28,7 +28,8 @@ inline constexpr int kNeutral = 0;
 ///
 /// Gears change with the clutch pressed, except that some gearboxes shift a
 /// gear or two down under load, the clutch in (a powershift step, worked by
-/// clutch packs inside the gearbox): load_downshift_gears says how many.
+/// clutch packs inside the gearbox): load_downshift_gears says how many,
+/// and load_shifts_per_pull how often in one pull.
 /// The packs' slip is taken as the main clutch's (see shift_under_load).
 struct Params {
     /// Gearbox ratios, 1st first; strictly decreasing.
@@ -49,6 +50,9 @@ struct Params {
     /// How many gears down the gearbox shifts under load, the clutch in: 0
     /// for none, below gear_count.
     int load_downshift_gears = 0;
+    /// How many shifts under load one pull allows: after them every change
+    /// needs the clutch pressed. 0 or more.
+    int load_shifts_per_pull = 0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -62,6 +66,7 @@ enum class ParamError : std::uint8_t {
     kInertiaNotPositive,
     kDragNegative,
     kLoadDownshiftOutOfRange,
+    kLoadShiftsNegative,
 };
 
 /// Returns the first physically meaningless value in `params`, if any.
@@ -77,11 +82,14 @@ struct State {
     double input_omega_rad_s = 0.0;
     /// Axle speed [rad/s].
     double output_omega_rad_s = 0.0;
+    /// Shifts under load so far in this pull.
+    int load_shifts = 0;
 };
 
-/// Whether the gearbox shifts from gear `from` to gear `to` with the clutch
-/// in: down, to a gear (not neutral), at most load_downshift_gears.
-[[nodiscard]] bool shifts_under_load(const Params& params, int from, int to) noexcept;
+/// Whether the gearbox shifts from its gear now to gear `to` with the
+/// clutch in: down, to a gear (not neutral), at most load_downshift_gears,
+/// while this pull has load shifts left (load_shifts_per_pull).
+[[nodiscard]] bool shifts_under_load(const State& state, const Params& params, int to) noexcept;
 
 /// Shifts down under load, the clutch in (see shifts_under_load; nothing if
 /// it does not). The packs sit between the input shaft and the gears, so the
@@ -154,6 +162,7 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.gear)));
     hash.add(state.input_omega_rad_s);
     hash.add(state.output_omega_rad_s);
+    hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.load_shifts)));
 }
 
 }  // namespace tp::driveline

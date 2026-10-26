@@ -150,7 +150,8 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
         std::clamp(input.gear, driveline::kNeutral, static_cast<int>(tractor.driveline.gear_count));
     // A gear down that the gearbox shifts under load goes in at once, the
     // clutch staying in; every other change waits for the clutch out.
-    const bool load_shift = driveline::shifts_under_load(tractor.driveline, gear_in, wanted_gear);
+    const bool load_shift =
+        driveline::shifts_under_load(state.driveline, tractor.driveline, wanted_gear);
     const bool shifting = wanted_gear != gear_in && !load_shift;
     const bool clutch_wanted_out =
         throttle < params.clutch_assist.min_throttle || shifting || gear_in == driveline::kNeutral;

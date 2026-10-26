@@ -26,11 +26,13 @@ package "tp::driveline" {
     +drag_torque_nm : double
     +viscous_drag_nm_s_rad : double
     +load_downshift_gears : int
+    +load_shifts_per_pull : int
   }
   class State <<struct>> {
     +gear : int, 0 = neutral
     +input_omega_rad_s : double
     +output_omega_rad_s : double
+    +load_shifts : int
   }
   class Prediction <<struct>> {
     +ratio : double
@@ -46,7 +48,7 @@ package "tp::driveline" {
   class "driveline functions" as DrivelineFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +overall_ratio(const Params&, gear) : double
-    +shifts_under_load(const Params&, from, to) : bool
+    +shifts_under_load(const State&, const Params&, to) : bool
     +shift_under_load(State&, const Params&, gear) : optional<double>
     +shift(State&, const Params&, gear, clutch_disengaged) : bool
     +predict(const State&, const Params&, axle_load_torque_nm, dt_s) : Prediction

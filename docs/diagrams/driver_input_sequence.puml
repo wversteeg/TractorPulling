@@ -1,0 +1,24 @@
+@startuml driver_input_sequence
+title A scripted rival's input, each step (driver::input)
+autonumber
+participant "Caller\n(field::run_pull, LiveEvent)" as Caller
+participant "driver::input" as Driver
+participant "driveline::shifts_under_load" as Load
+
+Caller -> Driver : input(plan, driver state, t_s, tractor state, tractor params)
+Driver -> Driver : before select_gear_s: neutral, clutch pressed, idle
+Driver -> Driver : then plan.gear at full throttle; from launch_s the clutch\ncomes up over clutch_slip_in_s
+opt clutch fully in and plan.downshift_share > 0
+  Driver -> Driver : below = engine < downshift_share x rated speed
+  Driver -> Driver : watching |= !below\n(the engine is back from the launch's dip)
+  alt a load shift already this pull
+    Driver -> Driver : gear = the gear in (another needs the clutch)
+  else watching, below, the engine running
+    Driver -> Load : shifts_under_load(driveline state, params, gear in - 1)
+    Load --> Driver : true if the gearbox can
+    Driver -> Driver : gear = gear in - 1
+  end
+end
+Driver --> Caller : vehicle::Input
+Caller -> Caller : run::step(..., input)
+@enduml

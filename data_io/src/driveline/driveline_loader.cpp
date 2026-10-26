@@ -16,6 +16,10 @@ namespace {
 
 // Rpm per "1000 rpm", for drag given per 1000 rpm in the data files.
 constexpr double kRpmPerKiloRpm = 1000.0;
+// A powershift step without shifts_per_pull: once a pull.
+constexpr int kDefaultLoadShiftsPerPull = 1;
+// More than any pull could use; a larger number in a file means the same.
+constexpr double kMaxLoadShiftsPerPull = 1000.0;
 
 struct FieldError {
     std::string_view field;
@@ -46,6 +50,8 @@ FieldError describe(driveline::ParamError error) {
         case ParamError::kLoadDownshiftOutOfRange:
             return {"driveline.powershift.load_downshift_gears",
                     "must be 0 or more and below the number of gears"};
+        case ParamError::kLoadShiftsNegative:
+            return {"driveline.powershift.shifts_per_pull", "must be 0 or more"};
     }
     return {"driveline", "invalid"};
 }
@@ -68,6 +74,8 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
     // Optional: a gearbox without it shifts with the clutch pressed only.
     const std::optional<double> downshift =
         reader.optional_number("driveline.powershift.load_downshift_gears");
+    const std::optional<double> per_pull =
+        reader.optional_number("driveline.powershift.shifts_per_pull");
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
@@ -79,6 +87,14 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
         // Held to what an int takes; past the gears, validate() says so.
         params.load_downshift_gears =
             static_cast<int>(std::min(*downshift, static_cast<double>(driveline::kMaxGears)));
+        params.load_shifts_per_pull = kDefaultLoadShiftsPerPull;
+    }
+    if (per_pull) {
+        if (*per_pull != std::floor(*per_pull) || *per_pull < 0.0) {
+            return detail::make_error(source, "driveline.powershift.shifts_per_pull",
+                                      "must be a whole number, 0 or more");
+        }
+        params.load_shifts_per_pull = static_cast<int>(std::min(*per_pull, kMaxLoadShiftsPerPull));
     }
     std::copy_n(ratios.begin(), std::min(ratios.size(), driveline::kMaxGears),
                 params.gear_ratios.begin());
