@@ -400,7 +400,7 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     if (input.gear != state.driveline.gear) {
         const bool clutch_out = clutch_capacity_nm == 0.0;
         if (!clutch_out &&
-            driveline::shifts_under_load(driveline_params, state.driveline.gear, input.gear)) {
+            driveline::shifts_under_load(state.driveline, driveline_params, input.gear)) {
             // The engine gives the input shaft its new speed's momentum, down
             // to standing still (a stalled engine has none to give).
             const double impulse_nm_s =

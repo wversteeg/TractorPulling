@@ -299,6 +299,11 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	s = run.get_snapshot()
 	_expect(s["gear"] == 5 and float(s["clutch_pedal"]) == 0.0, "5th with the clutch in: %s"
 			% s["gear"])
+	# Once a pull: another gear down now needs the clutch pressed.
+	_tap(controls.gear_down)
+	await _frames(2)
+	s = run.get_snapshot()
+	_expect(s["gear"] == 5, "a second shift under load is refused: %s" % s["gear"])
 
 	# A brake brakes while held and comes off when let go.
 	var brake := controls.brake_left_slider.get_global_rect()

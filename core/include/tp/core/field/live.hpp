@@ -101,6 +101,7 @@ private:
         pull::Model model;
         run::State state;
         driver::Plan plan;
+        driver::State driver;
         run::Rules rules;
     };
 

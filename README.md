@@ -186,7 +186,8 @@ second) and pulls
 the engine up to the lower gear's speed, while the tractor slows through
 its tires. A 44 % step is a big one: the tractor slows while the sled rolls
 on, so the chain goes slack for a moment and then snatches. Two gears
-down, or up, still take the clutch.
+down, or up, still take the clutch, and so does every shift after the
+first: one shift under load a pull (`shifts_per_pull`, 1 if left out).
 
 It is for the end of a pull, when the sled has the engine pulled down
 towards the stall. On the light class in 6th (the clutch slipped in over
@@ -203,6 +204,16 @@ past 40 m:
 On dry hard clay the extra torque spins the wheels: there a later shift,
 at 60 % of rated speed (87.0 m), gets 89.23 m. A test pins the first row
 (`LoadDownshiftRuns`).
+
+The scripted rivals shift too. Once the clutch is fully in, a driver waits
+for the engine to come back from the launch's dip and then watches the rev
+counter: when the sled pulls it below their `downshift_share` of the rated
+speed, they shift one gear down under load (`driver::Plan`). Each rival
+draws their own share (`event.field.downshift_share`, 82 to 95 %), so some
+shift at the right moment and some a little early. On ideal clay-sand it
+takes the reference rival in 6th from 89.20 to 91.11 m (at 90 %), about what
+5th gets without a shift; in 4th and 5th the tires, not the engine, end the
+pull, so the engine is never pulled down and the driver never shifts.
 
 ### A class at an event
 
@@ -334,7 +345,10 @@ With tilt steering (in the settings) the steering slider goes: you steer by
 rolling the phone like a steering wheel, its left side down to steer left;
 25° either way steers fully. However you hold the phone when you tap Pull
 is straight ahead, so it works sitting or lying down. Lying flat, the
-steering holds. A device without a motion sensor keeps the slider.
+steering holds. A device without a motion sensor keeps the slider. Godot
+reads the phone's sensors only when the project asks for them
+(`input_devices/sensors/enable_gravity` and `enable_accelerometer` in
+`project.godot`, off by default since Godot 4.3).
 "cam" switches between the chase, side and overhead cameras; in a practice
 pull "again" (on lifting the finger on it) starts the same pull again, and
 "menu" goes back to the start screen (an event's pull counts: neither is

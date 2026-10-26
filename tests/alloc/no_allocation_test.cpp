@@ -216,7 +216,8 @@ TEST(NoAllocation, AnEventWithAPlayer) {
                                      .lowest_gear = 5,
                                      .highest_gear = 6,
                                      .clutch_slip_in_s = {.low = 2.0, .high = 4.0},
-                                     .track_reading = {.low = 0.5, .high = 0.95}};
+                                     .track_reading = {.low = 0.5, .high = 0.95},
+                                     .downshift_share = {.low = 0.85, .high = 0.95}};
     const std::optional<field::Field> field =
         field::generate(reference, variation, rules::testing::ntto_standard_3500(), kPullers, 1);
     const event::Rules rules{.full_pull_m = 100.0,

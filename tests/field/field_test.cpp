@@ -31,7 +31,8 @@ constexpr Variation kVariation{.torque_scale = {.low = 0.95, .high = 1.03},
                                .lowest_gear = 5,
                                .highest_gear = 6,
                                .clutch_slip_in_s = {.low = 2.0, .high = 4.0},
-                               .track_reading = {.low = 0.5, .high = 0.95}};
+                               .track_reading = {.low = 0.5, .high = 0.95},
+                               .downshift_share = {.low = 0.85, .high = 0.95}};
 
 Field field_of(int count, std::uint64_t seed) {
     const auto field = generate(reference(), kVariation, ntto_standard_3500(), count, seed);

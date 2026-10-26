@@ -243,6 +243,13 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     EXPECT_TRUE(shifted.state.clutch.locked);
     EXPECT_GT(shifted.state.engine.omega_rad_s, shifted_at_rad_s);
     EXPECT_GT(shifted.state.chassis.velocity_m_s, 0.5);
+
+    // Once a pull: 4th now needs the clutch pressed.
+    Input fourth = input;
+    fourth.gear = 4;
+    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                    .shift_refused);
+    EXPECT_EQ(shifted.state.driveline.gear, 5);
 }
 
 // A shift under load with the engine stalled and the tractor still rolling:
@@ -714,7 +721,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xedd67a74dba30656ULL);
+    EXPECT_EQ(pull_hash(), 0x5ab88ff3ca835096ULL);
 }
 
 }  // namespace

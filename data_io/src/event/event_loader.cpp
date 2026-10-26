@@ -56,7 +56,7 @@ FieldError describe(field::ParamError error) {
         case ParamError::kRangeOutOfOrder:
             return {"event.field",
                     "every range is [low, high] with low <= high, low > 0, track_reading within "
-                    "[0, 1]"};
+                    "[0, 1], downshift_share within [0, 1)"};
         case ParamError::kGearsOutOfRange:
             return {"event.field.gears", "must be [lowest, highest] within the gearbox"};
         case ParamError::kCountOutOfRange:
@@ -118,6 +118,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .select_gear_s = reader.number("event.driver.select_gear_s"),
         .launch_s = reader.number("event.driver.launch_s"),
         .clutch_slip_in_s = reader.number("event.driver.clutch_slip_in_s"),
+        .downshift_share = reader.number("event.driver.downshift_share"),
     };
     field::Variation variation{
         .torque_scale = range(reader, "event.field.torque_scale"),
@@ -127,6 +128,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .highest_gear = 0,
         .clutch_slip_in_s = range(reader, "event.field.clutch_slip_in_s"),
         .track_reading = range(reader, "event.field.track_reading"),
+        .downshift_share = range(reader, "event.field.downshift_share"),
     };
     const field::PullToPull pull_to_pull{
         .grip_share = reader.number("event.field.pull_to_pull_grip_share"),

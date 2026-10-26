@@ -67,6 +67,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         static_cast<std::size_t>(params.load_downshift_gears) >= params.gear_count) {
         return ParamError::kLoadDownshiftOutOfRange;
     }
+    if (params.load_shifts_per_pull < 0) {
+        return ParamError::kLoadShiftsNegative;
+    }
     return std::nullopt;
 }
 
@@ -78,16 +81,19 @@ double overall_ratio(const Params& params, int gear) noexcept {
     return gears[static_cast<std::size_t>(gear) - 1] * params.final_drive_ratio;
 }
 
-bool shifts_under_load(const Params& params, int from, int to) noexcept {
+bool shifts_under_load(const State& state, const Params& params, int to) noexcept {
+    const int from = state.gear;
     return to > kNeutral && to < from && from - to <= params.load_downshift_gears &&
-           static_cast<std::size_t>(from) <= ratios(params).size();
+           static_cast<std::size_t>(from) <= ratios(params).size() &&
+           state.load_shifts < params.load_shifts_per_pull;
 }
 
 std::optional<double> shift_under_load(State& state, const Params& params, int gear) noexcept {
-    if (!shifts_under_load(params, state.gear, gear)) {
+    if (!shifts_under_load(state, params, gear)) {
         return std::nullopt;
     }
     state.gear = gear;
+    ++state.load_shifts;
     const double before_rad_s = state.input_omega_rad_s;
     state.input_omega_rad_s = state.output_omega_rad_s * overall_ratio(params, gear);
     return params.input_inertia_kg_m2 * (state.input_omega_rad_s - before_rad_s);

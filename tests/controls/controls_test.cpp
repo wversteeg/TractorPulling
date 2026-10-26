@@ -464,6 +464,39 @@ TEST(ClutchAssist, ShiftsDownUnderLoadWithTheClutchIn) {
     }
 }
 
+// One shift under load a pull: the second gear down waits for the clutch
+// out, as any other change does.
+TEST(ClutchAssist, ShiftsDownUnderLoadOnceAPull) {
+    const pull::Model model = model_with(light_sled());
+    constexpr double kFirst_s = 10.0;
+    constexpr double kSecond_s = 12.0;
+    double least_engaged_first = 1.0;
+    double least_engaged_second = 1.0;
+    const EasyRun r = drive(
+        model,
+        [](double t_s) {
+            // 6th, then 5th under load, then 4th.
+            int gear = 6;
+            if (t_s >= kSecond_s) {
+                gear = 4;
+            } else if (t_s >= kFirst_s) {
+                gear = 5;
+            }
+            return launch(t_s, gear);
+        },
+        [&](double t_s, const vehicle::Input&, const EasyRun& now) {
+            double& least = t_s < kSecond_s ? least_engaged_first : least_engaged_second;
+            if (t_s >= kFirst_s) {
+                least = std::min(least, now.assist.engagement);
+            }
+        });
+    EXPECT_FALSE(r.shift_refused);
+    EXPECT_EQ(r.state.pull.tractor.driveline.gear, 4);
+    EXPECT_EQ(r.state.pull.tractor.driveline.load_shifts, 1);
+    EXPECT_EQ(least_engaged_first, 1.0) << "the first: the clutch stays in";
+    EXPECT_EQ(least_engaged_second, 0.0) << "the second: the clutch out first";
+}
+
 // A touch of throttle creeps the tractor away too: at part throttle the
 // guard sits where the governor reaches full fuel for that throttle, so the
 // assist lets the clutch in although the engine runs far below its full
@@ -536,7 +569,7 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x97dad199ae63ab93ULL);
+    EXPECT_EQ(hash, 0xd453773ac0969493ULL);
     // 88.693174910881481 m, every bit pinned.
     EXPECT_EQ(result.distance_m, 0x1.62c5cfa4d2932p+6);
     EXPECT_EQ(result.ending, run::Ending::kSpunOut);

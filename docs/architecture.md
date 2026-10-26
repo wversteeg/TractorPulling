@@ -293,7 +293,17 @@ at the steering rate.
 
 ### Changing gear
 
+One shift under load a pull goes in with the clutch in; every other change
+needs the clutch pressed.
+
 ![Gear shift](diagrams/svg/gear_shift_sequence.svg)
+
+### A scripted rival's input
+
+The rival lets the clutch in by the clock, then watches the rev counter and
+shifts one gear down under load when the sled pulls the engine down.
+
+![Driver input](diagrams/svg/driver_input_sequence.svg)
 
 ### Loading a component definition
 
