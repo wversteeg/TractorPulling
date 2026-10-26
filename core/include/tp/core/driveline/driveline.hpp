@@ -96,10 +96,11 @@ struct State {
 
 /// Changes gear. Refused (returns false) for a gear that does not exist, or
 /// while the clutch still transmits torque: gears are chosen with the clutch
-/// pressed (a shift under load is shift_under_load's). Engaging a gear works like a synchronizer,
-/// done in one step: the input shaft and the axle side exchange momentum through the gears until
-/// they turn at the same speed, so momentum is conserved and energy only
-/// lost. The input shaft is light, so the axle side barely changes speed.
+/// pressed (a shift under load is shift_under_load's). Engaging a gear works
+/// like a synchronizer, done in one step: the input shaft and the axle side
+/// exchange momentum through the gears until they turn at the same speed,
+/// so momentum is conserved and energy only lost. The input shaft is light,
+/// so the axle side barely changes speed.
 bool shift(State& state, const Params& params, int gear, bool clutch_disengaged) noexcept;
 
 /// First half of a step, under `axle_load_torque_nm` (resistance at the axle,

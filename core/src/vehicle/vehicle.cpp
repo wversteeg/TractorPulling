@@ -401,11 +401,13 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         const bool clutch_out = clutch_capacity_nm == 0.0;
         if (!clutch_out &&
             driveline::shifts_under_load(driveline_params, state.driveline.gear, input.gear)) {
-            // The engine gives the input shaft its new speed's momentum.
+            // The engine gives the input shaft its new speed's momentum, down
+            // to standing still (a stalled engine has none to give).
             const double impulse_nm_s =
                 driveline::shift_under_load(state.driveline, driveline_params, input.gear)
                     .value_or(0.0);
-            state.engine.omega_rad_s -= impulse_nm_s / params.engine.inertia_kg_m2;
+            state.engine.omega_rad_s = std::max(
+                state.engine.omega_rad_s - impulse_nm_s / params.engine.inertia_kg_m2, 0.0);
         } else {
             out.shift_refused =
                 !driveline::shift(state.driveline, driveline_params, input.gear, clutch_out);

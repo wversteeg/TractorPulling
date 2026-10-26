@@ -245,6 +245,23 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     EXPECT_GT(shifted.state.chassis.velocity_m_s, 0.5);
 }
 
+// A shift under load with the engine stalled and the tractor still rolling:
+// the engine has no momentum to give the input shaft and stays at rest,
+// never below it.
+TEST(Vehicle, ShiftsDownUnderLoadWithTheEngineStalled) {
+    Pull pull;
+    pull.run(6, 5000.0, false, 10.0);
+    ASSERT_TRUE(pull.state.engine.running);
+    pull.state.engine.running = false;
+    pull.state.engine.omega_rad_s = 0.0;
+    const Output out =
+        step(pull.state, pull.model, {.throttle = 0.0, .clutch_pedal = 0.0, .gear = 5}, kGround,
+             {.pull_n = 5000.0}, kDt_s);
+    EXPECT_FALSE(out.shift_refused);
+    EXPECT_EQ(pull.state.driveline.gear, 5);
+    EXPECT_GE(pull.state.engine.omega_rad_s, 0.0);
+}
+
 // Pulling steadily, the tires find the slip at which traction balances the
 // drawbar pull and the front tires' rolling resistance; the clutch is locked
 // and road speed is wheel speed less the slip.
