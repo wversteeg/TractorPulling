@@ -427,5 +427,85 @@ TEST(SideGrip, RejectsNonsense) {
     EXPECT_EQ(validate(params), ParamError::kNotFinite);
 }
 
+// The reference pressure leaves the tire as it is, bit for bit.
+TEST(Pressure, TheReferenceIsTheTire) {
+    const Params params = reference_params();
+    const Params same = at_pressure(params, params.pressure.reference_bar);
+    EXPECT_EQ(same.size.deflection_m, params.size.deflection_m);
+    EXPECT_EQ(same.traction.limit, params.traction.limit);
+    // A tire whose pressure is not set has none to change.
+    Params unset = params;
+    unset.pressure = {};
+    EXPECT_EQ(at_pressure(unset, 0.5).size.deflection_m, params.size.deflection_m);
+}
+
+// Lower pressure: more deflection, a bigger mobility number (footprint) and
+// a lower traction limit (squirming lugs). Higher pressure: less of both
+// deflection and footprint, and lugs that bite no better.
+TEST(Pressure, SoftensTheTire) {
+    const Params params = reference_params();
+    const Params soft = at_pressure(params, 0.5);
+    const Params hard = at_pressure(params, 1.6);
+    EXPECT_DOUBLE_EQ(soft.size.deflection_m, 2.0 * params.size.deflection_m);
+    EXPECT_GT(soft.size.deflection_m, params.size.deflection_m);
+    EXPECT_LT(hard.size.deflection_m, params.size.deflection_m);
+    const soil::Surface surface = reference_surface();
+    EXPECT_GT(mobility_number(soft.size, kLoad_n, surface),
+              mobility_number(params.size, kLoad_n, surface));
+    EXPECT_LT(mobility_number(hard.size, kLoad_n, surface),
+              mobility_number(params.size, kLoad_n, surface));
+    EXPECT_LT(soft.traction.limit, params.traction.limit);
+    EXPECT_EQ(hard.traction.limit, params.traction.limit);
+    // Held to the tire's range; not finite leaves it at the reference.
+    EXPECT_EQ(at_pressure(params, 0.1).size.deflection_m, soft.size.deflection_m);
+    EXPECT_EQ(at_pressure(params, 9.0).size.deflection_m, hard.size.deflection_m);
+    EXPECT_EQ(at_pressure(params, std::numeric_limits<double>::quiet_NaN()).size.deflection_m,
+              params.size.deflection_m);
+    EXPECT_EQ(at_pressure(params, -std::numeric_limits<double>::infinity()).size.deflection_m,
+              params.size.deflection_m);
+}
+
+// A rear tire's load in a pull: the tractor's weight shifted back and the
+// chain pulling the hitch down [N].
+constexpr double kPullingLoad_n = 25000.0;
+
+// What a tire has left to pull with at full bite under that load: its grip
+// less its motion resistance, both per unit of load.
+double net_traction(const Params& params, const soil::Surface& surface) {
+    const double mobility = mobility_number(params.size, kPullingLoad_n, surface);
+    return full_bite(params, kPullingLoad_n, surface) -
+           driven_rolling_resistance(
+               Footing{.mobility_number = mobility, .root_mobility = std::sqrt(mobility)}, 0.0);
+}
+
+// The trade-off that makes the setting matter: on soft ground the bigger
+// footprint sinks less at low pressure and pulls better for it; on firm
+// ground, where it barely sinks anyway, the squirming lugs cost more.
+TEST(Pressure, TheBestPressureDependsOnTheGround) {
+    const Params params = reference_params();
+    const Params soft = at_pressure(params, params.pressure.min_bar);
+    const soil::Surface soft_ground{.cone_index_pa = 600'000.0};
+    const soil::Surface firm_ground{.cone_index_pa = 6'000'000.0};
+    EXPECT_GT(net_traction(soft, soft_ground), net_traction(params, soft_ground));
+    EXPECT_LT(net_traction(soft, firm_ground), net_traction(params, firm_ground));
+}
+
+TEST(Pressure, RejectsNonsense) {
+    const auto with = [](auto change) {
+        Params params = reference_params();
+        change(params.pressure);
+        return validate(params);
+    };
+    EXPECT_EQ(with([](Pressure&) {}), std::nullopt);
+    EXPECT_EQ(with([](Pressure& p) { p = {}; }), std::nullopt) << "pressure not set";
+    EXPECT_EQ(with([](Pressure& p) { p.min_bar = 1.2; }), ParamError::kPressureOutOfRange);
+    EXPECT_EQ(with([](Pressure& p) { p.max_bar = 0.9; }), ParamError::kPressureOutOfRange);
+    EXPECT_EQ(with([](Pressure& p) { p.lug_squirm = 1.0; }), ParamError::kPressureOutOfRange);
+    // So soft the tire would deflect past its section height.
+    EXPECT_EQ(with([](Pressure& p) { p.min_bar = 0.1; }), ParamError::kPressureOutOfRange);
+    EXPECT_EQ(with([](Pressure& p) { p.max_bar = std::numeric_limits<double>::infinity(); }),
+              ParamError::kPressureOutOfRange);
+}
+
 }  // namespace
 }  // namespace tp::tire

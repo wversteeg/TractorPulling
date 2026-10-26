@@ -12,6 +12,17 @@ namespace {
 
 constexpr std::string_view kTable = "tire";
 
+// The optional [tire.pressure] table: without it the pressure is not set.
+tire::Pressure read_pressure(detail::Reader& reader) {
+    if (!reader.has("tire.pressure")) {
+        return {};
+    }
+    return {.reference_bar = reader.number("tire.pressure.reference_bar"),
+            .min_bar = reader.number("tire.pressure.min_bar"),
+            .max_bar = reader.number("tire.pressure.max_bar"),
+            .lug_squirm = reader.number("tire.pressure.lug_squirm")};
+}
+
 Result<tire::Params> read_tire(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
     const tire::Params params{
@@ -25,6 +36,7 @@ Result<tire::Params> read_tire(const toml::table& root, std::string_view source)
         .cornering = detail::read_cornering(reader, "tire.cornering"),
         .wheel_inertia_kg_m2 = reader.number("tire.wheel_inertia_kg_m2"),
         .min_reference_speed_m_s = reader.number("tire.min_reference_speed_m_s"),
+        .pressure = read_pressure(reader),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

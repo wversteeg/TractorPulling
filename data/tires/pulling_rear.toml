@@ -20,6 +20,17 @@ limit = 0.93                       # μ on very strong ground at full bite
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 18.0                   # how fast grip builds with slip
 
+# The inflation pressure the puller sets before a pull (see
+# tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
+# that grips better on soft ground, but lets the lugs squirm, which costs
+# grip on firm ground; harder than the reference only shrinks the
+# footprint. deflection_m above is at the reference pressure.
+[tire.pressure]
+reference_bar = 1.0
+min_bar = 0.5
+max_bar = 1.6
+lug_squirm = 0.5                   # traction limit lost per unit of extra deflection / section height
+
 # Side grip (see tp::tire::Cornering). Starting values to tune: a big lugged
 # tire builds side force a little more slowly than the front tires and
 # holds a bit more of its load sideways. Traction uses up side grip, and a

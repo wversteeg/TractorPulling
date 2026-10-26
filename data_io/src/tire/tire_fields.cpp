@@ -44,6 +44,10 @@ TireFieldError describe(tire::ParamError error) {
                     "stiffness_per_rad, mobility_rate and relaxation_length_m must be > 0"};
         case ParamError::kCorneringLimitOutOfRange:
             return {"cornering.limit", "must be in (0, 2]"};
+        case ParamError::kPressureOutOfRange:
+            return {"pressure",
+                    "need 0 < min_bar <= reference_bar <= max_bar, lug_squirm in [0, 1), "
+                    "and the deflection at min_bar under the section height"};
     }
     return {"", "invalid"};
 }

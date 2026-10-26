@@ -30,6 +30,7 @@ add_executable(tp_core_tests
     track/track_test.cpp
     units/conversions_test.cpp
     vehicle/chain_solver_test.cpp
+    vehicle/tuning_test.cpp
     vehicle/vehicle_test.cpp)
 target_link_libraries(tp_core_tests PRIVATE tp::core GTest::gtest_main)
 # The tool's command-line parsing is header-only and tested here.
@@ -60,7 +61,8 @@ if(TP_BUILD_DATA_IO)
         data/sled_loader_test.cpp
         data/tire_loader_test.cpp
         data/track_loader_test.cpp
-        data/tractor_loader_test.cpp)
+        data/tractor_loader_test.cpp
+        data/tuning_runs_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE
         TP_DATA_DIR="${TP_DATA_DIR}")

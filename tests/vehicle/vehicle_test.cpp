@@ -2,12 +2,15 @@
 
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/units/constants.hpp"
+#include "tp/core/vehicle/tuning.hpp"
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <optional>
+#include <stdexcept>
 
 #include "reference_vehicle.hpp"
 
@@ -231,6 +234,37 @@ TEST(Vehicle, SteadyPullUnloadsTheFrontByItsMoments) {
     EXPECT_NEAR(loads.front_n, expected_front_n, 20.0);
     EXPECT_GT(pull.state.chassis.pitch_rad, 0.0) << "squats onto the rear";
     EXPECT_NEAR(loads.rear_n + loads.front_n, weight_n, 1.0);
+}
+
+// A pull on the reference tractor with its ballast at `position`.
+Pull with_ballast(double position) {
+    Tuning tuning = as_built(testing::reference_params());
+    tuning.ballast_position = position;
+    std::optional<Model> model = Model::create(tuned(testing::reference_params(), tuning));
+    if (!model.has_value()) {
+        throw std::runtime_error("the tuned tractor was refused");
+    }
+    Pull pull;
+    pull.model = *model;
+    pull.state = initial_state(pull.model);
+    return pull;
+}
+
+// The weights reach the pull: at the rear they load the rear axle more and
+// the tractor pulls harder for it, but the nose goes light (nothing left to
+// steer with); at the front the nose stays down.
+TEST(VehicleTuning, RearBallastLoadsTheRearAndLightensTheNose) {
+    constexpr double kDrawbar_n = 8000.0;
+    Pull rear = with_ballast(0.0);
+    rear.run(2, kDrawbar_n, true, 15.0);
+    Pull front = with_ballast(1.0);
+    front.run(2, kDrawbar_n, true, 15.0);
+    ASSERT_TRUE(rear.state.engine.running);
+    ASSERT_TRUE(front.state.engine.running);
+    EXPECT_GT(rear.last.axle_loads.rear_n, front.last.axle_loads.rear_n);
+    EXPECT_EQ(rear.min_front_n, 0.0) << "the front tires lift";
+    EXPECT_GT(front.min_front_n, 0.0) << "the front tires stay down";
+    EXPECT_GT(rear.max_pitch_rad, front.max_pitch_rad);
 }
 
 // Dumping the clutch in a low gear throws the front up: the wheels spin up

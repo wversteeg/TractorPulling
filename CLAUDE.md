@@ -158,9 +158,12 @@ cmake --preset release && cmake --build --preset release
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
     --easy data/controls/easy.toml [--stick 0.05] -o run.csv
 
-# The same tractor, sled and driving on several tracks: one line per track
+# The same tractor, sled and driving on several tracks: one line per track.
+# --ballast B (0 rearmost, 1 foremost) and --pressure BAR (rear tires) tune
+# the tractor first, in pull and run too (vehicle::Tuning)
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/*.toml [--gear 6] [--dump]
+    data/sleds/light_class.toml data/tracks/*.toml [--gear 6] [--dump] \
+    [--ballast 0.3] [--pressure 0.7]
 
 # A class at an event: a seeded field, test pulls and the sled operator,
 # keep-or-re-pull, qualifying and pull-offs; prints every pull and the standings

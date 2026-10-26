@@ -25,6 +25,23 @@ struct WheelieBar {
     double rolling_resistance_coefficient = 0.0;
 };
 
+/// Weights the puller moves along the tractor before a pull, from behind
+/// the rear axle to the front weight bracket: more on the rear axle grips
+/// harder but lifts the nose sooner. They are part of the tractor's mass,
+/// and its centre of gravity and inertias are given with them where they
+/// sit as built. Treated as a point mass at the centre of gravity's height
+/// (it moves only along the tractor) and on its centre line.
+struct Ballast {
+    /// 0 for none [kg].
+    double mass_kg = 0.0;
+    /// Where the weights sit at their rearmost (position 0) and foremost
+    /// (position 1), ahead of the rear axle; negative is behind it [m].
+    double rear_ahead_of_rear_axle_m = 0.0;
+    double front_ahead_of_rear_axle_m = 0.0;
+    /// Where they sit as built, 0 (rearmost) to 1 (foremost).
+    double position = 0.0;
+};
+
 /// The tractor body: it moves along the track and pitches about the rear
 /// axle.
 ///
@@ -66,6 +83,7 @@ struct WheelieBar {
 /// not feed back into the longitudinal motion; the body does not roll, so
 /// side forces shift no load between left and right; pitch and yaw do not
 /// couple.
+
 struct Params {
     /// Whole tractor, wheels included [kg].
     double mass_kg = 0.0;
@@ -91,6 +109,7 @@ struct Params {
     /// Both front tires together, acting below the front axle.
     Contact front_tires;
     WheelieBar wheelie_bar;
+    Ballast ballast;
 };
 
 /// The wheelie bar must touch down before the tractor pitches this far
@@ -118,9 +137,25 @@ enum class ParamError : std::uint8_t {
     kWheelieBarStiffnessNotPositive,
     kWheelieBarDampingNegative,
     kWheelieBarRollingResistanceOutOfRange,
+    /// Negative or not less than the tractor's mass, its positions not
+    /// rear to front, its position outside [0, 1], or the centre of gravity
+    /// leaving the wheelbase as the weights move.
+    kBallastOutOfRange,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
+
+/// The tractor with its ballast moved to `position` (held to [0, 1]; a
+/// position that is not finite, NaN or ±inf, leaves it where it was built): the
+/// centre of gravity moves by the ballast's share of the mass, and the
+/// pitch and yaw inertias follow (parallel axes). The ballast as built
+/// gives `params` unchanged, bit for bit.
+[[nodiscard]] Params with_ballast_at(const Params& params, double position) noexcept;
+
+/// The share of the tractor's weight on the rear axle at rest, 0 to 1:
+/// from the centre of gravity alone, as a setup screen shows it (the front
+/// tires' spring and the hitch do not enter).
+[[nodiscard]] double rear_axle_share(const Params& params) noexcept;
 
 /// Positions are in the world: x along the track from where the rear axle
 /// started, y to its left. Speeds are in the body frame.

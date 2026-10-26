@@ -30,6 +30,12 @@ stiffness_per_rad = 4.5
 limit = 0.75
 mobility_rate = 0.2
 relaxation_length_m = 0.6
+
+[tire.pressure]
+reference_bar = 1.0
+min_bar = 0.6
+max_bar = 1.4
+lug_squirm = 0.4
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -67,6 +73,10 @@ TEST(TireLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.cornering.limit, reference.cornering.limit);
     EXPECT_EQ(loaded.cornering.mobility_rate, reference.cornering.mobility_rate);
     EXPECT_EQ(loaded.cornering.relaxation_length_m, reference.cornering.relaxation_length_m);
+    EXPECT_EQ(loaded.pressure.reference_bar, reference.pressure.reference_bar);
+    EXPECT_EQ(loaded.pressure.min_bar, reference.pressure.min_bar);
+    EXPECT_EQ(loaded.pressure.max_bar, reference.pressure.max_bar);
+    EXPECT_EQ(loaded.pressure.lug_squirm, reference.pressure.lug_squirm);
 }
 
 TEST(TireLoader, ParsesValues) {
@@ -86,6 +96,19 @@ TEST(TireLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(tire.cornering.limit, 0.75);
     EXPECT_DOUBLE_EQ(tire.cornering.mobility_rate, 0.2);
     EXPECT_DOUBLE_EQ(tire.cornering.relaxation_length_m, 0.6);
+    EXPECT_DOUBLE_EQ(tire.pressure.reference_bar, 1.0);
+    EXPECT_DOUBLE_EQ(tire.pressure.min_bar, 0.6);
+    EXPECT_DOUBLE_EQ(tire.pressure.max_bar, 1.4);
+    EXPECT_DOUBLE_EQ(tire.pressure.lug_squirm, 0.4);
+}
+
+// A tire without the table has no pressure to set.
+TEST(TireLoader, ThePressureIsOptional) {
+    std::string text{kValidTire};
+    text.erase(text.find("[tire.pressure]"));
+    const auto result = parse_tire(text, "test.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().pressure.reference_bar, 0.0);
 }
 
 TEST(TireLoader, RejectsNonsenseValues) {
@@ -94,7 +117,7 @@ TEST(TireLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 12> cases = {{
+    const std::array<Case, 15> cases = {{
         {"radius_m = 0.7", "", "tire.radius_m: missing or not a number"},
         {"radius_m = 0.7", "radius_m = 0.0", "tire.radius_m: must be > 0"},
         {"section_width_m = 0.42", "section_width_m = 0.0", "tire.section_width_m: section width"},
@@ -112,6 +135,10 @@ TEST(TireLoader, RejectsNonsenseValues) {
          "tire.cornering: stiffness_per_rad, mobility_rate and relaxation_length_m must be > 0"},
         {"stiffness_per_rad = 4.5", "",
          "tire.cornering.stiffness_per_rad: missing or not a number"},
+        {"min_bar = 0.6", "min_bar = 1.2", "tire.pressure: need 0 < min_bar <= reference_bar"},
+        // So soft the tire would deflect past its section height.
+        {"min_bar = 0.6", "min_bar = 0.1", "tire.pressure: need 0 < min_bar <= reference_bar"},
+        {"lug_squirm = 0.4", "", "tire.pressure.lug_squirm: missing or not a number"},
     }};
     for (const Case& c : cases) {
         const std::string message = error_of(with(c.from, c.to));
