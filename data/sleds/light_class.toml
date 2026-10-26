@@ -2,9 +2,11 @@
 # Lengths along the sled are measured forward from the rear wheels' contact.
 # Masses, friction, knives and the push-down are the class's starting
 # setting; on the day the sled operator adjusts it after the test pull. The
-# push-down takes the wheels off gradually over 30 m, so the drag keeps
-# rising down the track and a stronger pull gets measurably further. On the
-# reference track the reference tractor gets about 93 m in gear 6.
+# box rides forward over the first 88 m, so the drag grows steadily; the
+# push-down then takes the wheels off over 10 m, and from 88 m, the box at
+# its stop and the pan carrying the whole sled, the drag is at its most and
+# stays there: a tractor holds it to a full pull or stops a few metres on.
+# On the reference track the reference tractor gets about 93 m in gear 6.
 
 [sled]
 frame_mass_kg = 3200.0
@@ -41,13 +43,13 @@ height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
 mass_kg = 1500.0
 start_ahead_of_wheels_m = 0.0        # over the rear wheels
 end_ahead_of_wheels_m = 3.0          # over the pan
-travel_distance_m = 100.0            # sled travel to move it from start to end
+travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop as the push-down is fully set
 
 # Engages at a set distance on the track, chosen per event from the test
-# pull and the track's state (for example 60 or 80 m).
+# pull and the track's state (for example 70 or 80 m).
 [sled.pushdown]
-start_m = 60.0
-ramp_m = 30.0                        # travel until the wheels are fully off
+start_m = 78.0
+ramp_m = 10.0                         # travel until the wheels are fully off
 
 [sled.chain]
 length_m = 1.15                      # 1.1 to 1.2 m

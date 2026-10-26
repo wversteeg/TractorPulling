@@ -109,8 +109,9 @@ TEST(Sled, StartsWithMostWeightOnTheWheels) {
 TEST(Sled, BoxMovesForwardWithTravel) {
     const Params params = reference_params();
     EXPECT_DOUBLE_EQ(at(params, 0.0).box_ahead_of_wheels_m, params.box_start_ahead_of_wheels_m);
-    EXPECT_NEAR(at(params, 50.0).box_ahead_of_wheels_m, 1.5, 1e-12);
-    EXPECT_DOUBLE_EQ(at(params, 100.0).box_ahead_of_wheels_m, params.box_end_ahead_of_wheels_m);
+    EXPECT_NEAR(at(params, 0.5 * params.box_travel_distance_m).box_ahead_of_wheels_m, 1.5, 1e-12);
+    EXPECT_DOUBLE_EQ(at(params, params.box_travel_distance_m).box_ahead_of_wheels_m,
+                     params.box_end_ahead_of_wheels_m);
     EXPECT_DOUBLE_EQ(at(params, 130.0).box_ahead_of_wheels_m, params.box_end_ahead_of_wheels_m);
 }
 
@@ -125,7 +126,26 @@ TEST(Sled, ResistanceGrowsWithDistance) {
         ASSERT_NEAR(l.pan_n + l.wheels_n, weight_n(params), 1e-6);
         previous_n = l.resistance_n;
     }
-    EXPECT_GT(at(params, 59.0).resistance_n, 1.25 * at(params, 0.0).resistance_n);
+    EXPECT_GT(at(params, params.pushdown_start_m).resistance_n,
+              1.25 * at(params, 0.0).resistance_n);
+}
+
+// The class sled tops out shortly after the push-down is set: the weight
+// box reaches its front stop as the push-down has the wheels fully off, and
+// from there the drag stays at its most (on the track's soil; the berm the
+// tires throw comes on top). Until then the push-down's ramp is the steep
+// part.
+TEST(Sled, TopsOutShortlyAfterThePushdown) {
+    const Params params = reference_params();
+    const double full_m = params.pushdown_start_m + params.pushdown_ramp_m;
+    EXPECT_LE(params.pushdown_ramp_m, 10.0) << "shortly after";
+    EXPECT_LE(params.box_travel_distance_m, full_m) << "the box is at its stop by then";
+    const double most_n = at(params, full_m).resistance_n;
+    for (const double past_m : {1.0, 10.0, 40.0}) {
+        EXPECT_EQ(at(params, full_m + past_m).resistance_n, most_n) << past_m << " m past";
+    }
+    const double before_n = at(params, params.pushdown_start_m).resistance_n;
+    EXPECT_GT(most_n, 1.5 * before_n) << "the push-down's ramp is the steep part";
 }
 
 // The push-down lifts the wheels over its ramp: from then on the pan

@@ -61,15 +61,16 @@ TEST(TuningRuns, RearWeightsPullFurther) {
               reach_m(tuning(1.0, 1.0), "ideal_clay_sand.toml"));
 }
 
-// And the best pressure depends on the track: soft tires pull further on
-// the soft covered heavy clay, the reference pressure on dry hard clay.
-// (Over-inflated tires lose there too, but by only a quarter of a metre,
-// too close to pin against later retuning.)
+// And the best pressure depends on the track: softer tires pull further on
+// the soft covered heavy clay, the reference pressure on dry hard clay,
+// where soft tires' lugs squirm and lose metres.
 TEST(TuningRuns, TheBestPressureDependsOnTheTrack) {
-    EXPECT_GT(reach_m(tuning(0.5, 0.5), "covered_heavy_clay.toml"),
-              reach_m(tuning(0.5, 1.0), "covered_heavy_clay.toml"));
-    EXPECT_GT(reach_m(tuning(0.5, 1.0), "dry_hard_clay.toml"),
-              reach_m(tuning(0.5, 0.5), "dry_hard_clay.toml"));
+    const double soft_clay_m = reach_m(tuning(0.5, 0.7), "covered_heavy_clay.toml");
+    const double clay_m = reach_m(tuning(0.5, 1.0), "covered_heavy_clay.toml");
+    EXPECT_GT(soft_clay_m, clay_m) << soft_clay_m << " m, " << clay_m << " m";
+    const double dry_m = reach_m(tuning(0.5, 1.0), "dry_hard_clay.toml");
+    const double soft_dry_m = reach_m(tuning(0.5, 0.7), "dry_hard_clay.toml");
+    EXPECT_GT(dry_m, soft_dry_m + 1.0) << dry_m << " m, " << soft_dry_m << " m";
 }
 
 }  // namespace
