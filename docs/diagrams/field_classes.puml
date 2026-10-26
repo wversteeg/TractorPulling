@@ -117,6 +117,8 @@ package "tp::field" {
     +start_event(const Venue&) : bool
     +event() : LiveEvent*
     +score_event() : bool
+    +add_pulled_event(standings) : bool
+    +event_standings(number) : span<const event::Standing>
     +events_scored(), event_count(), events_started() : int
     +over() : bool
     +puller_count() : int
@@ -125,6 +127,7 @@ package "tp::field" {
     --
     -field_ : Field (the player the reference)
     -championship_ : season::Championship
+    -results_ : each scored event's standings
     -event_ : optional<LiveEvent>
   }
   LiveSeason *-- LiveEvent

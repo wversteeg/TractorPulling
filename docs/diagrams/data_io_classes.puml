@@ -82,6 +82,20 @@ package "tp::data" {
     +load_season(path, read) : Result<SeasonDefinition>
     +parse_season(text, source, base_directory, read) : Result<SeasonDefinition>
   }
+  class SeasonSave <<struct>> {
+    +season : string
+    +seed : uint64
+    +tuning : vehicle::Tuning
+    +events : vector<vector<event::Standing>>
+  }
+  class "season_save" as SeasonSaveFns <<free functions>> {
+    +kSeasonSaveVersion = 1
+    +write_season_save(const SeasonSave&) : string
+    +parse_season_save(text, source) : Result<SeasonSave>
+    --
+    TOML; per event only the puller, place and
+    disqualification (what the championship scores)
+  }
   class "run_setup" as RunSetup <<free functions>> {
     +run_setup(tractor, class_sled, track, pull_offs = 0) : session::Setup
     +run_setup(tractor, const field::LiveEvent&) : session::Setup
@@ -120,6 +134,8 @@ package "tp::data" {
   SeasonLoader ..> SeasonDefinition
   SeasonLoader ..> EventLoader
   SeasonDefinition *-- EventDefinition
+  SeasonSaveFns ..> SeasonSave
+  SeasonSaveFns ..> Result : returns
   TractorLoader ..> Loaders : components
   Loaders ..> Files : read
   TractorLoader ..> Files : resolve, read

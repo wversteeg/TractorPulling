@@ -7,6 +7,7 @@
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/season/season.hpp"
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -23,7 +24,13 @@ namespace tp::field {
 /// driver, the events in turn as LiveEvents (each with its own draws, as
 /// the tools' season has them), and the championship.
 ///
-/// Plain data, no allocation. Large (about 120 KB, a LiveEvent inside):
+/// A season can be saved between events and picked up again: each scored
+/// event's standings stay (event_standings()), and add_pulled_event() scores
+/// them in a new LiveSeason drawn for the same seed, which then goes on as
+/// the first would have: the field and every event's draws come from the
+/// seed alone.
+///
+/// Plain data, no allocation. Large (about 145 KB, a LiveEvent inside):
 /// create() returns it on the stack, so keep the long-lived copy on the
 /// heap.
 class LiveSeason {
@@ -45,6 +52,18 @@ public:
     /// Scores the event once it is finished, in the championship; false if
     /// there is none to score.
     bool score_event() noexcept;
+    /// Scores the next event as pulled earlier, from its standings (a saved
+    /// season's: each puller once, places 1 to the field's size), without
+    /// pulling it. Only the places and
+    /// disqualifications count, as in score_event(). False while an event is
+    /// unscored, once the season is over, or for standings that are not the
+    /// field's.
+    bool add_pulled_event(std::span<const event::Standing> standings) noexcept;
+    /// The final standings of scored event `number` (0 the first), best
+    /// first; empty for an event not scored. For an event added with
+    /// add_pulled_event() only the puller, place and disqualification are
+    /// set: its distances read 0.
+    [[nodiscard]] std::span<const event::Standing> event_standings(int number) const noexcept;
 
     /// The events scored so far, and in the season.
     [[nodiscard]] int events_scored() const noexcept { return championship_.events(); }
@@ -77,6 +96,8 @@ private:
     /// Events started; the one being pulled is started_ - 1.
     int started_ = 0;
     bool scored_ = true;
+    /// Each scored event's standings, for event_standings().
+    std::array<std::array<event::Standing, event::kMaxPullers>, season::kMaxEvents> results_{};
     std::optional<LiveEvent> event_;
 };
 

@@ -7,7 +7,9 @@
 # rivals' pulls, the player's pulls when they are due, each after the setup
 # screen (no "again" there), and their decisions,
 # the event's top ten, the season's, and the start screen with the next
-# event. Exits non-zero if a check fails (scripts/godot_test.sh runs it).
+# event; then the game launched again: the saved season continued, at the
+# next event with the same standings and tuning, and a new season. Exits
+# non-zero if a check fails (scripts/godot_test.sh runs it).
 # With a directory after `--` it also saves a screenshot of each screen
 # there (that needs a display, or Xvfb, and a renderer).
 #
@@ -28,6 +30,7 @@ const MAX_PULL_FRAMES := 2400
 const MAX_EVENT_FRAMES := 20_000
 # None there: the default settings, whatever this machine keeps.
 const SETTINGS_PATH := "user://flow_test_settings.cfg"
+const SAVE_PATH := "user://flow_test_season.toml"
 
 var _pull: Node
 var _failures := 0
@@ -41,6 +44,8 @@ func _initialize() -> void:
 	_pull.set("season_seed", SEED)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
 	_pull.set("settings_path", SETTINGS_PATH)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+	_pull.set("save_path", SAVE_PATH)
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
 		_shots = args[0]
@@ -272,5 +277,60 @@ func _play() -> void:
 	_expect(info.get("index", -1) == 1 and info.get("name", "") == "Practice, firm loam",
 			"the next event: %s" % info)
 
+	await _relaunch(event.get_season_standings(), event.get_tuning())
+
 	print("flow test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# The pull scene again, as at the next launch, on the same save.
+func _launch() -> Node:
+	_pull.queue_free()
+	await _frames(2)
+	var scene: PackedScene = load("res://scenes/pull.tscn")
+	_pull = scene.instantiate()
+	_pull.set("season_path", SEASON)
+	_pull.set("season_seed", SEED + 1)
+	_pull.set("settings_path", SETTINGS_PATH)
+	_pull.set("save_path", SAVE_PATH)
+	root.add_child(_pull)
+	await _frames(2)
+	return _pull
+
+
+# Launched again after the first event: the start screen offers the saved
+# season; Continue picks it up at the second event, with the same
+# championship and tuning. Launched once more, New season starts over at
+# the first event, and the save is the new season's.
+func _relaunch(standings: Array, tuning: Dictionary) -> void:
+	_expect(FileAccess.file_exists(SAVE_PATH) and not FileAccess.file_exists(SAVE_PATH + ".tmp"),
+			"the season is saved, renamed into place")
+	var pull := await _launch()
+	var start: StartScreen = pull.get("start_screen")
+	var event: TractorPullEvent = pull.get("event")
+	_expect(start.visible and start.continue_button.visible and start.new_season_button.visible
+			and not start.practice_button.visible and not start.settings_button.visible,
+			"continue or a new season")
+	await _shot("7_continue")
+	_tap(start.continue_button)
+	await _frames(2)
+	var info := event.get_event()
+	_expect(start.visible and start.practice_button.visible and info.get("index", -1) == 1,
+			"continued at the second event: %s" % info)
+	_expect(event.get_season_standings() == standings, "the same championship: %s"
+			% [event.get_season_standings()])
+	var resumed := event.get_tuning()
+	_expect(resumed["ballast_position"] == tuning["ballast_position"]
+			and resumed["pressure_bar"] == tuning["pressure_bar"], "the same tuning: %s" % resumed)
+
+	pull = await _launch()
+	start = pull.get("start_screen")
+	event = pull.get("event")
+	_tap(start.new_season_button)
+	await _frames(2)
+	info = event.get_event()
+	_expect(start.visible and info.get("index", -1) == 0
+			and int(event.get_season().get("scored", -1)) == 0, "a new season: %s" % info)
+	var saved := FileAccess.get_file_as_string(SAVE_PATH)
+	_expect(not saved.contains("standings") and saved.contains(str(SEED + 1)),
+			"the save is the new season's: %s" % saved)

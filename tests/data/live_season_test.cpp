@@ -10,7 +10,9 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
+#include <vector>
 
 namespace tp::field {
 namespace {
@@ -205,6 +207,90 @@ TEST(LiveSeason, EachEventIsTheToolsEvent) {
         }
         ASSERT_TRUE(season->score_event());
     }
+}
+
+// A season picked up again (a saved season): a new LiveSeason for the same
+// seed, the first event scored from the first's standings, has the same
+// championship and goes on with the same next event, pull for pull.
+TEST(LiveSeason, ResumesFromTheEventsPulled) {
+    const data::SeasonDefinition d = club_season();
+    const std::unique_ptr<LiveSeason> played = start(d);
+    ASSERT_TRUE(played->start_event(data::venue(d.event.sled, d.rounds[0].track)));
+    play_out(*played->event());
+    ASSERT_TRUE(played->score_event());
+    ASSERT_EQ(played->event_standings(0).size(), static_cast<std::size_t>(kPullers));
+    EXPECT_TRUE(played->event_standings(1).empty()) << "not scored";
+
+    const std::unique_ptr<LiveSeason> resumed = start(d);
+    ASSERT_TRUE(resumed->add_pulled_event(played->event_standings(0)));
+    EXPECT_EQ(resumed->events_scored(), 1);
+    EXPECT_EQ(resumed->events_started(), 1);
+    EXPECT_EQ(resumed->event(), nullptr);
+    const auto a = played->standings();
+    const auto b = resumed->standings();
+    ASSERT_EQ(a.size(), b.size());
+    for (std::size_t i = 0; i < a.size(); ++i) {
+        EXPECT_EQ(a[i].puller, b[i].puller) << i;
+        EXPECT_EQ(a[i].place, b[i].place) << i;
+        EXPECT_EQ(a[i].points, b[i].points) << i;
+        EXPECT_EQ(a[i].wins, b[i].wins) << i;
+    }
+
+    for (LiveSeason* season : {played.get(), resumed.get()}) {
+        ASSERT_TRUE(season->start_event(data::venue(d.event.sled, d.rounds[1].track)));
+        LiveEvent* event = season->event();
+        ASSERT_NE(event, nullptr);
+        play_out(*event);
+        ASSERT_EQ(event->turn(), LiveEvent::Turn::kFinished);
+    }
+    const LiveEvent* event_a = played->event();
+    const LiveEvent* event_b = resumed->event();
+    if (event_a == nullptr || event_b == nullptr) {
+        FAIL() << "no second event";
+    }
+    const auto log_a = event_a->log();
+    const auto log_b = event_b->log();
+    ASSERT_EQ(log_a.size(), log_b.size());
+    for (std::size_t i = 0; i < log_a.size(); ++i) {
+        EXPECT_EQ(log_a[i].pull.puller, log_b[i].pull.puller) << i;
+        EXPECT_EQ(log_a[i].reached_m, log_b[i].reached_m) << i;
+        EXPECT_EQ(log_a[i].deciding, log_b[i].deciding) << i;
+    }
+}
+
+// Standings that are not the field's are refused, as is an event while
+// one is unscored or after the season.
+TEST(LiveSeason, RefusesStandingsThatAreNotTheFields) {
+    const data::SeasonDefinition d = club_season();
+    const std::unique_ptr<LiveSeason> season = start(d);
+    std::vector<event::Standing> standings;
+    standings.reserve(kPullers);
+    for (int p = 0; p < kPullers; ++p) {
+        standings.push_back({.puller = p, .place = p + 1});
+    }
+    EXPECT_FALSE(season->add_pulled_event(std::span{standings}.first(kPullers - 1)))
+        << "a puller missing";
+    std::vector<event::Standing> twice = standings;
+    twice[1].puller = 0;
+    EXPECT_FALSE(season->add_pulled_event(twice)) << "a puller twice";
+    std::vector<event::Standing> outside = standings;
+    outside[1].puller = kPullers;
+    EXPECT_FALSE(season->add_pulled_event(outside)) << "a puller outside the field";
+    std::vector<event::Standing> no_place = standings;
+    no_place[1].place = 0;
+    EXPECT_FALSE(season->add_pulled_event(no_place)) << "no place";
+    std::vector<event::Standing> past_the_field = standings;
+    past_the_field[1].place = kPullers + 1;
+    EXPECT_FALSE(season->add_pulled_event(past_the_field)) << "a place past the field";
+    EXPECT_EQ(season->events_scored(), 0);
+
+    ASSERT_TRUE(season->start_event(data::venue(d.event.sled, d.rounds[0].track)));
+    EXPECT_FALSE(season->add_pulled_event(standings)) << "an event is unscored";
+    play_out(*season->event());
+    ASSERT_TRUE(season->score_event());
+    EXPECT_TRUE(season->add_pulled_event(standings));
+    EXPECT_TRUE(season->over());
+    EXPECT_FALSE(season->add_pulled_event(standings)) << "the season is over";
 }
 
 TEST(LiveSeason, RefusesABadSeason) {

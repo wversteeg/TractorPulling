@@ -37,6 +37,8 @@ func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
 	_pull.set("settings_path", SETTINGS_PATH)
+	# A new season, whatever this machine has saved, and nothing saved.
+	_pull.set("save_path", "")
 	root.add_child(_pull)
 	_play.call_deferred()
 

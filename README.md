@@ -250,7 +250,13 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 
 The game plays a season (`data/seasons/club_season.toml`, the club class on
 ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
-`[event.game]`. Every launch is a new season; nothing is saved. You pull
+`[event.game]`. The season is saved after every event, with your tuning
+(`user://season.toml`, `tp::data::SeasonSave`): at the next launch the
+start screen asks whether to continue it, at the next event, or to start a
+new season. An event left halfway is not saved: continued, it starts again
+from its beginning, and the rivals pull as they did, since the field and
+every event's draws come from the season's seed. A finished season is not
+kept. You pull
 the class's reference tractor. The start screen shows the next event and
 its track. "Practice" is a free pull on the track; "Event" goes to the
 event's board, where the rivals' pulls and the
