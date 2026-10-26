@@ -189,7 +189,7 @@ func _show_setup(for_practice: bool) -> void:
 	var which := "Practice" if practice else EventTexts.pull_name(info.get("pull_kind", ""),
 			info.get("pull_off_round", 0))
 	setup_screen.show_setup("%s  ·  %s" % [which, info.get("name", "")], event.get_tuning(), pro,
-			tilt)
+			tilt and controls.tilt_steering.available())
 	_set_screen(Screen.SETUP)
 
 

@@ -364,6 +364,18 @@ func _play_tilt(controls: DriveControls, run: TractorPullRun) -> void:
 	_gravity = _tilted(-20.0)
 	_expect(controls.steering() == -1.0, "rolled right past full: %s" % controls.steering())
 
+	# Lying flat at Pull, the first angle it is lifted to is straight ahead.
+	_gravity = Vector3(0.0, 0.0, G_M_S2)
+	_tap(controls.restart_button)
+	await _frames(2)
+	_expect(absf(controls.steering()) < 1e-6, "flat at Pull: straight ahead")
+	_gravity = _tilted(20.0)
+	_expect(absf(controls.steering()) < 1e-6, "lifted to 20°: still straight ahead: %s"
+			% controls.steering())
+	_gravity = _tilted(30.0)
+	_expect(absf(controls.steering() - 10.0 / TiltSteering.FULL_TILT_DEG) < 1e-6,
+			"then 10° more steers left: %s" % controls.steering())
+
 	# Back to the slider.
 	_tap(controls.menu_button)
 	await _frames(2)

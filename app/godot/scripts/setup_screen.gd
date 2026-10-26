@@ -58,7 +58,8 @@ func _add_slider(slider: TouchSlider, text: String, colour: Color) -> void:
 
 
 # `title` names the pull to come; `tuning` is TractorPullEvent.get_tuning();
-# `pro` and `tilt` the controls the settings picked.
+# `pro` and `tilt` the controls that will drive (`tilt` only where the
+# phone can steer by tilting).
 func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> void:
 	_title.text = title
 	ballast_slider.visible = tuning.get("ballast", false)
