@@ -2,6 +2,8 @@
 
 #include "tp/core/math/random.hpp"
 
+#include <algorithm>
+
 namespace tp::field {
 
 std::uint64_t event_seed(std::uint64_t season_seed, int number) noexcept {
@@ -62,8 +64,44 @@ bool LiveSeason::score_event() noexcept {
     if (scored_ || !event_.has_value() || event_->turn() != LiveEvent::Turn::kFinished) {
         return false;
     }
-    scored_ = championship_.add(event_->standings());
+    const std::span<const event::Standing> standings = event_->standings();
+    scored_ = championship_.add(standings);
+    if (scored_) {
+        std::ranges::copy(standings,
+                          results_[static_cast<std::size_t>(events_scored() - 1)].begin());
+    }
     return scored_;
+}
+
+bool LiveSeason::add_pulled_event(std::span<const event::Standing> standings) noexcept {
+    if (!scored_ || started_ >= events_ ||
+        standings.size() != static_cast<std::size_t>(field_.count)) {
+        return false;
+    }
+    // Each of the field's pullers once.
+    std::array<bool, event::kMaxPullers> seen{};
+    for (const event::Standing& s : standings) {
+        if (s.puller < 0 || s.puller >= field_.count || s.place < 1 ||
+            seen[static_cast<std::size_t>(s.puller)]) {
+            return false;
+        }
+        seen[static_cast<std::size_t>(s.puller)] = true;
+    }
+    if (!championship_.add(standings)) {
+        return false;
+    }
+    std::ranges::copy(standings, results_[static_cast<std::size_t>(events_scored() - 1)].begin());
+    ++started_;
+    event_.reset();
+    return true;
+}
+
+std::span<const event::Standing> LiveSeason::event_standings(int number) const noexcept {
+    if (number < 0 || number >= events_scored()) {
+        return {};
+    }
+    return {results_[static_cast<std::size_t>(number)].data(),
+            static_cast<std::size_t>(field_.count)};
 }
 
 }  // namespace tp::field

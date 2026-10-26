@@ -10,7 +10,10 @@
 # (a run, TractorPullRun, stepped by each frame's time and drawn from its
 # blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its top ten, then the season's; then the next event, or a new
-# season after the last. Nothing is saved: every launch is a new season.
+# season after the last. The season is saved after every event (and the
+# tuning on every pull): at the next launch the start screen offers to
+# continue it, at the next event (an event left halfway starts again), or
+# to start a new one.
 #
 # The player drives with the touch controls (DriveControls; the keyboard
 # and a gamepad for development), in the easy or the pro layout, steering
@@ -31,6 +34,8 @@ enum Screen { START, SETTINGS, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON 
 # Where the settings are kept; they set `pro` and `tilt` at the start
 # (not with autoplay).
 @export var settings_path := "user://settings.cfg"
+# Where the season is saved (TractorPullEvent.get_save()); "" saves nothing.
+@export var save_path := "user://season.toml"
 @export var pro := false
 @export var tilt := false
 @export var autoplay := false
@@ -109,6 +114,7 @@ func _ready() -> void:
 		event.set_tuning(ballast_position, bar)
 		setup_screen.show_values(event.get_tuning()))
 	setup_screen.pull_requested.connect(func() -> void:
+		_save_season()
 		if practice:
 			_start_practice()
 		else:
@@ -119,6 +125,8 @@ func _ready() -> void:
 		else:
 			_set_screen(Screen.EVENT))
 	start_screen.event_requested.connect(func() -> void: _set_screen(Screen.EVENT))
+	start_screen.continue_requested.connect(show_start)
+	start_screen.new_season_requested.connect(_new_season)
 	board.first_tapped.connect(_on_board_first)
 	board.second_tapped.connect(_on_board_second)
 	result_screen.again_requested.connect(_start_practice)
@@ -130,7 +138,8 @@ func _ready() -> void:
 		var settings := GameSettings.read(settings_path)
 		pro = settings.pro
 		tilt = settings.tilt
-		_new_season()
+		if not _resume_season():
+			_new_season()
 
 
 func _start_autoplay() -> void:
@@ -167,7 +176,42 @@ func _new_season() -> void:
 		var season := event.get_season()
 		print("A season of %d events, %d pullers, seed %d" % [season["events"],
 				PackedStringArray(season["names"]).size(), seed])
+		_save_season()
 	show_start(error)
+
+
+# The season saved at `save_path`, picked up again and offered on the start
+# screen; false if there is none (or it cannot be read, or it is over, or
+# it has no event pulled yet: nothing to lose then).
+func _resume_season() -> bool:
+	if save_path.is_empty() or not FileAccess.file_exists(save_path):
+		return false
+	var error := event.resume_season(season_path, FileAccess.get_file_as_string(save_path))
+	if not error.is_empty():
+		push_warning("cannot continue the saved season: " + error)
+		return false
+	var season := event.get_season()
+	if season.get("over", true) or int(season.get("scored", 0)) == 0:
+		return false
+	_event_ready = false
+	start_screen.show_choice(season)
+	_set_screen(Screen.START)
+	return true
+
+
+# Saves the season so far, for the next launch; a season that is over is
+# not kept.
+func _save_season() -> void:
+	if save_path.is_empty() or autoplay:
+		return
+	if event.get_season().get("over", false):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+		return
+	var file := FileAccess.open(save_path, FileAccess.WRITE)
+	if file == null:
+		push_warning("cannot save the season: %s" % error_string(FileAccess.get_open_error()))
+		return
+	file.store_string(event.get_save())
 
 
 # The start screen, with the season's next event started behind it.
@@ -364,6 +408,7 @@ func _show_event_end() -> void:
 
 func _show_season() -> void:
 	event.score_event()
+	_save_season()
 	_event_ready = false
 	var season := event.get_season()
 	var over: bool = season.get("over", false)

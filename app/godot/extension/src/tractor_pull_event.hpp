@@ -4,6 +4,7 @@
 #include "tp/core/session/session.hpp"
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/season/season_loader.hpp"
+#include "tp/data/season/season_save.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -44,6 +45,18 @@ public:
     /// Loads a season (res:// paths work) and draws its field for `seed`, a
     /// new season. Returns "" or what is wrong, naming the file and field.
     godot::String start_season(const godot::String& season_path, std::int64_t seed);
+    /// The season so far as save text (data::SeasonSave): the season file,
+    /// its seed, the player's tuning and every event scored. An event being
+    /// pulled is not in it: picked up again, it starts from its beginning.
+    /// "" before a season.
+    [[nodiscard]] godot::String get_save() const;
+    /// Picks up a season saved by get_save() for `season_path`: the season
+    /// drawn again for the saved seed, each saved event scored as it was
+    /// (field::LiveSeason::add_pulled_event), and the tuning set; the next
+    /// event is the one after them. Returns "" or what is wrong (a broken
+    /// save, another season's, or events that no longer fit it), leaving no
+    /// season.
+    godot::String resume_season(const godot::String& season_path, const godot::String& save);
     /// {events, scored, index, over, names}: the season's event count, the
     /// events scored, the index of the next event to start, whether all are
     /// scored, and every puller's name (the player's first). {} before a
@@ -127,6 +140,9 @@ private:
     [[nodiscard]] double first_line_m() const;
 
     std::optional<data::SeasonDefinition> definition_;
+    /// The season file and seed start_season() was given, for get_save().
+    std::string season_path_;
+    std::uint64_t seed_ = 0;
     std::vector<std::string> names_;
     vehicle::Tuning tuning_;
     // Large plain data: on the heap.

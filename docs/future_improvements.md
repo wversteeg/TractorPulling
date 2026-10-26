@@ -229,8 +229,12 @@ for the big features; they are repeated at the end for completeness.
 - **The chain as a bar.** `ChainView` draws a straight bar from hitch to
   hook, darker as the tension rises, even when the chain is slack and
   should sag.
-- **The game's season.** Every launch is a new season, from the first
-  event, with nothing saved. The player pulls the class's reference
+- **The game's season.** The season is saved between events only: an
+  event left halfway starts again from its beginning when continued (the
+  rivals pull the same, from the seed, but the player's pulls in it are
+  gone), and a practice pull is never kept. One season is saved at a time;
+  a save of another version or season gives way to a new season. The
+  player pulls the class's reference
   tractor, with no other tractor or upgrades to choose (career, milestone
   6); it tunes the weights and the tire pressure only. An event's pull
   counts as it is: no pulling again outside the rules; practice pulls are

@@ -7,7 +7,9 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
+#include <vector>
 
 #include "godot_files.hpp"
 #include "tractor_pull_run.hpp"
@@ -98,6 +100,47 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
     names_.emplace_back(kPlayerName);
     names_.insert(names_.end(), e.game.rival_names.begin(), e.game.rival_names.end());
     definition_ = std::move(loaded).value();
+    season_path_ = to_std(season_path);
+    seed_ = static_cast<std::uint64_t>(seed);
+    return {};
+}
+
+godot::String TractorPullEvent::get_save() const {
+    if (!season_) {
+        return {};
+    }
+    data::SeasonSave save{.season = season_path_, .seed = seed_, .tuning = tuning_, .events = {}};
+    for (int i = 0; i < season_->events_scored(); ++i) {
+        const std::span<const event::Standing> standings = season_->event_standings(i);
+        save.events.emplace_back(standings.begin(), standings.end());
+    }
+    return to_godot(data::write_season_save(save));
+}
+
+godot::String TractorPullEvent::resume_season(const godot::String& season_path,
+                                              const godot::String& save) {
+    const data::Result<data::SeasonSave> parsed =
+        data::parse_season_save(to_std(save), "the saved season");
+    if (!parsed) {
+        season_.reset();
+        return to_godot(parsed.error().message);
+    }
+    const data::SeasonSave& saved = parsed.value();
+    if (saved.season != to_std(season_path)) {
+        season_.reset();
+        return godot::vformat("the saved season is %s's", to_godot(saved.season));
+    }
+    if (godot::String error = start_season(season_path, static_cast<std::int64_t>(saved.seed));
+        !error.is_empty()) {
+        return error;
+    }
+    for (const std::vector<event::Standing>& standings : saved.events) {
+        if (!season_->add_pulled_event(standings)) {
+            season_.reset();
+            return "the saved events do not fit the season";
+        }
+    }
+    set_tuning(saved.tuning.ballast_position, saved.tuning.rear_tire_pressure_bar);
     return {};
 }
 
@@ -345,6 +388,9 @@ void TractorPullEvent::_bind_methods() {
     using godot::D_METHOD;
     ClassDB::bind_method(D_METHOD("start_season", "season_path", "seed"),
                          &TractorPullEvent::start_season);
+    ClassDB::bind_method(D_METHOD("get_save"), &TractorPullEvent::get_save);
+    ClassDB::bind_method(D_METHOD("resume_season", "season_path", "save"),
+                         &TractorPullEvent::resume_season);
     ClassDB::bind_method(D_METHOD("get_season"), &TractorPullEvent::get_season);
     ClassDB::bind_method(D_METHOD("start_event"), &TractorPullEvent::start_event);
     ClassDB::bind_method(D_METHOD("get_event"), &TractorPullEvent::get_event);

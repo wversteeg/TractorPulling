@@ -11,6 +11,7 @@ add_library(tp_data STATIC
     src/rules/class_rules_loader.cpp
     src/track/track_loader.cpp
     src/season/season_loader.cpp
+    src/season/season_save.cpp
     src/session/run_setup.cpp
     src/sled/sled_loader.cpp
     src/tire/tire_fields.cpp

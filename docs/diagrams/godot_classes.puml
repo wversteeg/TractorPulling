@@ -41,6 +41,8 @@ package "tp::godot_binding" {
     -season_ : unique_ptr<field::LiveSeason>
     -tuning_ : vehicle::Tuning
     +start_season(season_path, seed) : String
+    +get_save() : String
+    +resume_season(season_path, save) : String
     +get_season() : Dictionary
     +start_event() : String
     +get_event() : Dictionary
