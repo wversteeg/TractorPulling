@@ -146,7 +146,7 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
 /// The tractor with its ballast moved to `position` (held to [0, 1]; a
-/// position that is not a number leaves it where it was built): the
+/// position that is not finite, NaN or ±inf, leaves it where it was built): the
 /// centre of gravity moves by the ballast's share of the mass, and the
 /// pitch and yaw inertias follow (parallel axes). The ballast as built
 /// gives `params` unchanged, bit for bit.

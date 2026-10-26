@@ -131,8 +131,8 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] std::optional<ParamError> validate(const Cornering& cornering) noexcept;
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
-/// The tire at `pressure_bar` (held to its range; a pressure that is not a
-/// number leaves it at the reference): its deflection and
+/// The tire at `pressure_bar` (held to its range; a pressure that is not
+/// finite, NaN or ±inf, leaves it at the reference): its deflection and
 /// traction limit (see Pressure). A tire whose pressure is not set, or the
 /// reference pressure, gives `params` unchanged, bit for bit.
 [[nodiscard]] Params at_pressure(const Params& params, double pressure_bar) noexcept;

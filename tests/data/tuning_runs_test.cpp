@@ -11,6 +11,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace tp::field {
 namespace {
@@ -62,13 +63,13 @@ TEST(TuningRuns, RearWeightsPullFurther) {
 
 // And the best pressure depends on the track: soft tires pull further on
 // the soft covered heavy clay, the reference pressure on dry hard clay.
+// (Over-inflated tires lose there too, but by only a quarter of a metre,
+// too close to pin against later retuning.)
 TEST(TuningRuns, TheBestPressureDependsOnTheTrack) {
     EXPECT_GT(reach_m(tuning(0.5, 0.5), "covered_heavy_clay.toml"),
               reach_m(tuning(0.5, 1.0), "covered_heavy_clay.toml"));
     EXPECT_GT(reach_m(tuning(0.5, 1.0), "dry_hard_clay.toml"),
               reach_m(tuning(0.5, 0.5), "dry_hard_clay.toml"));
-    EXPECT_GT(reach_m(tuning(0.5, 1.0), "dry_hard_clay.toml"),
-              reach_m(tuning(0.5, 1.6), "dry_hard_clay.toml"));
 }
 
 }  // namespace

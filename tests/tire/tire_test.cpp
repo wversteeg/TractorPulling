@@ -456,10 +456,12 @@ TEST(Pressure, SoftensTheTire) {
               mobility_number(params.size, kLoad_n, surface));
     EXPECT_LT(soft.traction.limit, params.traction.limit);
     EXPECT_EQ(hard.traction.limit, params.traction.limit);
-    // Held to the tire's range; not a number leaves it at the reference.
+    // Held to the tire's range; not finite leaves it at the reference.
     EXPECT_EQ(at_pressure(params, 0.1).size.deflection_m, soft.size.deflection_m);
     EXPECT_EQ(at_pressure(params, 9.0).size.deflection_m, hard.size.deflection_m);
     EXPECT_EQ(at_pressure(params, std::numeric_limits<double>::quiet_NaN()).size.deflection_m,
+              params.size.deflection_m);
+    EXPECT_EQ(at_pressure(params, -std::numeric_limits<double>::infinity()).size.deflection_m,
               params.size.deflection_m);
 }
 

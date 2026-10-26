@@ -502,10 +502,13 @@ TEST(Ballast, MovesTheCentreOfGravity) {
     // The shipped range: about 68 % to 52 % on the rear axle.
     EXPECT_NEAR(rear_axle_share(rear), 0.68, 0.01);
     EXPECT_NEAR(rear_axle_share(front), 0.52, 0.01);
-    // Held to its range; not a number leaves it where it was built.
+    // Held to its range; not finite leaves it where it was built.
     EXPECT_EQ(with_ballast_at(params, 2.0).cg_ahead_of_rear_axle_m, front.cg_ahead_of_rear_axle_m);
     EXPECT_EQ(
         with_ballast_at(params, std::numeric_limits<double>::quiet_NaN()).cg_ahead_of_rear_axle_m,
+        params.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(
+        with_ballast_at(params, std::numeric_limits<double>::infinity()).cg_ahead_of_rear_axle_m,
         params.cg_ahead_of_rear_axle_m);
 }
 
@@ -579,6 +582,12 @@ TEST(Ballast, RejectsAnInertiaThatTurnsNegativeBetweenTheEnds) {
     EXPECT_EQ(validate(params), ParamError::kBallastOutOfRange);
     params.pitch_inertia_kg_m2 = params.yaw_inertia_kg_m2 = 1100.0;
     EXPECT_EQ(validate(params), std::nullopt);
+    // Either inertia alone is enough to refuse it.
+    params.yaw_inertia_kg_m2 = 900.0;
+    EXPECT_EQ(validate(params), ParamError::kBallastOutOfRange);
+    params.yaw_inertia_kg_m2 = 1100.0;
+    params.pitch_inertia_kg_m2 = 900.0;
+    EXPECT_EQ(validate(params), ParamError::kBallastOutOfRange);
 }
 
 }  // namespace
