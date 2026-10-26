@@ -247,6 +247,9 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
     out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
     out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
+    const clutch::EngagementRange clutch = clutch::engagement_range(tractor.clutch);
+    out["clutch_full_grip_pedal"] = clutch.full_grip_pedal;
+    out["clutch_bite_pedal"] = clutch.bite_pedal;
     return out;
 }
 

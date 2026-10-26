@@ -1,6 +1,7 @@
 # The game's flow, played with simulated fingers on a practice season
 # (tests/data: a light sled, so the reference tractor makes full pulls, and
-# three rivals): the start screen with the first event, the setup screen
+# three rivals): the start screen with the first event, the settings from
+# its gear and back, the setup screen
 # (the weights and the tire pressure slid by a finger, kept for the season),
 # a practice pull and back, then the event's board filling in with the
 # rivals' pulls, the player's pulls when they are due, each after the setup
@@ -25,6 +26,8 @@ const TIME_SCALE := 4.0
 # TIME_SCALE; and for a whole event.
 const MAX_PULL_FRAMES := 2400
 const MAX_EVENT_FRAMES := 20_000
+# None there: the default settings, whatever this machine keeps.
+const SETTINGS_PATH := "user://flow_test_settings.cfg"
 
 var _pull: Node
 var _failures := 0
@@ -36,6 +39,8 @@ func _initialize() -> void:
 	_pull = scene.instantiate()
 	_pull.set("season_path", SEASON)
 	_pull.set("season_seed", SEED)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
+	_pull.set("settings_path", SETTINGS_PATH)
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
 		_shots = args[0]
@@ -142,6 +147,17 @@ func _play() -> void:
 	root.push_input(r, true)
 	await _frames(2)
 	_expect(start.visible and not controls.visible, "R on the start screen does nothing")
+
+	# The settings, from the gear, and back.
+	var settings: SettingsScreen = _pull.get("settings_screen")
+	_tap(start.settings_button)
+	await _frames(2)
+	_expect(settings.visible and settings.easy_button.selected and settings.slider_button.selected,
+			"the settings, as default")
+	await _shot("1a_settings")
+	_tap(settings.done_button)
+	await _frames(2)
+	_expect(start.visible and not settings.visible, "back from the settings")
 
 	# The setup screen first: the tractor as built, then the weights slid to
 	# the rear and the tires softened, which the season keeps. "Back"

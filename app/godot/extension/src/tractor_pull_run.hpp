@@ -70,8 +70,9 @@ public:
     /// box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m,
     /// chain_length_m), the track's (track_length_m, lane_width_m,
     /// full_pull_line_m) and the engine's speeds for a rev counter
-    /// (stall_omega_rad_s, rated_omega_rad_s, high_idle_omega_rad_s). {}
-    /// before setup().
+    /// (stall_omega_rad_s, rated_omega_rad_s, high_idle_omega_rad_s), and
+    /// where the clutch slips along the pedal's travel (clutch_full_grip_pedal,
+    /// clutch_bite_pedal: clutch::engagement_range). {} before setup().
     [[nodiscard]] godot::Dictionary get_dimensions() const;
 
     /// "easy" or "pro", the layout the run is played in; "" before setup().

@@ -7,7 +7,10 @@
 # and on the right beside the throttle the right brake (the brakes spring
 # back to off): each side's brake under its own thumb. Every control has
 # its own colour and label (GAS green, CLUTCH blue, BRAKE red, STEER white),
-# so they are told apart at a glance. Camera, restart
+# so they are told apart at a glance. The clutch slider marks where the
+# clutch slips (set_clutch_range), with a line where it bites. With tilt
+# steering (TiltSteering) the steering slider goes: tilting the phone
+# steers, straight ahead as it is held when the pull begins. Camera, restart
 # (the same pull again) and menu (back to the start screen) buttons sit in
 # the top corner. All of them are multi-touch, so
 # both thumbs drive at once.
@@ -50,6 +53,9 @@ var gear := 0
 var gear_count := 8
 # The pro layout's controls are shown and read; else the easy layout's.
 var pro := false
+# Steering by tilting the phone (when it has the sensor), not the slider.
+var tilt := false
+var tilt_steering := TiltSteering.new()
 
 var steering_slider := TouchSlider.new()
 var throttle_slider := TouchSlider.new()
@@ -148,12 +154,28 @@ func set_layout(is_pro: bool) -> void:
 			_right_column(column, BUTTON_SIZE, BUTTON_SIZE, 2.0 * (BUTTON_SIZE + GAP)))
 
 
+# Steering by tilting (`by_tilt`, if the phone can) or by the slider.
+func set_steering(by_tilt: bool) -> void:
+	tilt = by_tilt and tilt_steering.available()
+	steering_slider.visible = not tilt
+	steering_slider.release()
+
+
+# Marks where the clutch slips on its slider, from the pedal (0 released,
+# 1 pressed) where it grips fully to where it bites (the run's
+# clutch_full_grip_pedal and clutch_bite_pedal).
+func set_clutch_range(full_grip_pedal: float, bite_pedal: float) -> void:
+	clutch_slider.set_band(full_grip_pedal, bite_pedal, bite_pedal)
+
+
 func set_gear(wanted: int) -> void:
 	gear = clampi(wanted, 0, gear_count)
 
 
-# Back to the start: neutral, throttle closed, clutch pressed, nothing held.
+# Back to the start: neutral, throttle closed, clutch pressed, nothing
+# held, and the phone's angle now straight ahead for tilt steering.
 func reset() -> void:
+	tilt_steering.centre()
 	gear = 0
 	throttle_slider.value = 0.0
 	clutch_slider.value = clutch_slider.rest_value
@@ -197,8 +219,8 @@ func brake_right() -> float:
 	return maxf(brake_right_slider.value, 1.0 if Input.is_physical_key_pressed(KEY_E) else 0.0)
 
 
-# -1 (full right) to 1 (full left): the keys while held, else the slider
-# while a thumb holds it, else the gamepad's stick.
+# -1 (full right) to 1 (full left): the keys while held, else the tilt or
+# the slider while a thumb holds it, else the gamepad's stick.
 func steering() -> float:
 	var keys := 0.0
 	if Input.is_physical_key_pressed(KEY_A):
@@ -207,6 +229,8 @@ func steering() -> float:
 		keys -= KEY_STEERING
 	if keys != 0.0:
 		return keys
+	if tilt:
+		return tilt_steering.steering()
 	if steering_slider.is_held():
 		return steering_slider.value
 	return -Input.get_joy_axis(GAMEPAD, JOY_AXIS_LEFT_X)

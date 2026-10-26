@@ -1,17 +1,24 @@
 # Before an event: the season's event to come (each on its own track), and
 # "Event" to go to it, or "Practice" for a free pull on its track first
-# (the setup screen comes before every pull).
+# (the setup screen comes before every pull). The gear in the top right
+# corner opens the settings.
 class_name StartScreen
 extends MenuPanel
 
 signal practice_requested
 signal event_requested
+signal settings_requested
 
 const TITLE_SIZE := 44
 const LINE_SIZE := 28
+# The gear's size and its distance from the screen's top right corner, in
+# the 1280×720 base layout.
+const GEAR_SIZE := 96.0
+const GEAR_MARGIN := 24.0
 
 var practice_button: TouchButton
 var event_button: TouchButton
+var settings_button := GearButton.new()
 var _event: Label
 var _name: Label
 var _error: Label
@@ -28,6 +35,20 @@ func _ready() -> void:
 	_error = add_line(LINE_SIZE)
 	practice_button.tapped.connect(func() -> void: practice_requested.emit())
 	event_button.tapped.connect(func() -> void: event_requested.emit())
+	settings_button.fires_on_release = true
+	settings_button.anchor_left = 1.0
+	settings_button.anchor_right = 1.0
+	settings_button.offset_left = -GEAR_MARGIN - GEAR_SIZE
+	settings_button.offset_right = -GEAR_MARGIN
+	settings_button.offset_top = GEAR_MARGIN
+	settings_button.offset_bottom = GEAR_MARGIN + GEAR_SIZE
+	add_child(settings_button)
+	settings_button.tapped.connect(func() -> void: settings_requested.emit())
+
+
+func release_buttons() -> void:
+	super()
+	settings_button.release()
 
 
 # `event` is TractorPullEvent.get_event() for the event to come; `error`

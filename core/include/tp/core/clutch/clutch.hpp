@@ -76,6 +76,21 @@ struct Output {
 /// releases it fully; inside the free play the lightest pedal is taken.
 [[nodiscard]] double pedal_for(const Params& params, double share) noexcept;
 
+/// Where along the pedal's travel the clutch slips: pressed past
+/// `bite_pedal` it transmits nothing, let out to `full_grip_pedal` it has its
+/// whole static capacity, and between the two its capacity grows as the
+/// pedal comes up. For drawing the pedal's range on a control.
+struct EngagementRange {
+    /// The lightest pedal (0 released, 1 pressed) with the whole capacity:
+    /// the end of the free play.
+    double full_grip_pedal = 0.0;
+    /// The deepest pedal with any capacity: where the plates first touch.
+    double bite_pedal = 1.0;
+};
+
+/// The slipping range of a valid clutch's engagement curve.
+[[nodiscard]] EngagementRange engagement_range(const Params& params) noexcept;
+
 /// The friction decision on its own, for solvers that compute the locking
 /// torque themselves (e.g. with the clutch inside a chain of couplings).
 /// Given the torque that would lock the clutch this step, returns the torque

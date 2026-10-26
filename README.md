@@ -260,7 +260,10 @@ pull, a pull, a re-pull or a pull-off, each on the sled as the operator has
 set it, counted by the NTTO rules as for everyone. Before every pull the
 setup screen sets the tractor (see "Tuning before a pull": the weights,
 shown as the rear axle's share, and the rear tires' pressure, both kept for
-the season) and the control layout, easy or pro. After a test pull on a
+the season); it names the controls the settings picked. The gear in the
+start screen's top right corner opens the settings: the layout, easy or
+pro, and the steering, the slider or tilting the phone, kept on the device
+between launches. After a test pull on a
 changed sled you keep it or pull again. Then the event's top ten and the
 season's (points per place), and the next event. During a pull the HUD
 shows the rev counter (stall and rated speeds marked), gear, speed,
@@ -283,7 +286,16 @@ you slip it in and leave it (a gear goes in only with the clutch pressed),
 and the left brake beside it; the right brake is on the right beside the
 throttle, so each side's brake is under its own thumb. The brakes are off
 again when let go. Every control has its own colour and label: GAS green,
-CLUTCH blue, BRAKE L and R red, STEER white.
+CLUTCH blue, BRAKE L and R red, STEER white. The clutch slider marks the
+stretch of its travel where the clutch slips, lighter, with a line where
+it bites (where the plates first touch); below the stretch it grips fully.
+Both come from the tractor's clutch (`clutch::engagement_range`).
+
+With tilt steering (in the settings) the steering slider goes: you steer by
+rolling the phone like a steering wheel, its left side down to steer left;
+25° either way steers fully. However you hold the phone when you tap Pull
+is straight ahead, so it works sitting or lying down. Lying flat, the
+steering holds. A device without a motion sensor keeps the slider.
 "cam" switches between the chase, side and overhead cameras; in a practice
 pull "again" (on lifting the finger on it) starts the same pull again, and
 "menu" goes back to the start screen (an event's pull counts: neither is
@@ -295,7 +307,8 @@ for the gear, X neutral, Y camera, Back again) do too.
 
 `scripts/godot_test.sh <godot binary>` plays the scene with a scripted
 driver and checks the views follow the run, drives it with simulated
-fingers on the touch controls, plays an event's flow (start, practice, the
+fingers on the touch controls (and tilt steering with a simulated motion
+sensor), plays an event's flow (start, the settings, practice, the
 event with three rivals, its top ten and the season's, the next event) on a
 practice season, then plays two scripted runs
 and checks they end in the same state as `tp_pull`'s (with a renderer,

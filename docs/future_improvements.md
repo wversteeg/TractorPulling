@@ -111,10 +111,10 @@ for the big features; they are repeated at the end for completeness.
   weights sit higher and further out, which changes the centre of
   gravity's height and the pitch inertia more. Wheel weights are not a
   separate setting.
-- **The setup screen.** The layout is picked there only, before a pull;
-  the weights and the pressure are kept for the season, not per track, and
-  the screen shows the rear axle's share at rest, not what it becomes in
-  the pull. No tilt steering yet.
+- **The setup screen.** The weights and the pressure are kept for the
+  season, not per track, and the screen shows the rear axle's share at
+  rest, not what it becomes in the pull. The controls are picked in the
+  settings only.
 - **Rivals don't tune.** The scripted pullers pull as built; a driver who
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
@@ -237,14 +237,19 @@ for the big features; they are repeated at the end for completeness.
   free, on the event's sled as it is. The board shows the last ten lines; the rivals have names
   but no tractors or faces of their own. The gamepad has no brakes yet.
 - **The pedals' feel.** The clutch slider moves the pedal, not the clutch's
-  engagement; its bite point sits where the clutch's own curve puts it
-  (`clutch.toml`), with no mark on screen. The brakes act at once.
-- **Tilt steering.** Steering is an on-screen slider only; steering by
-  tilting the phone (the accelerometer) could come as an option, with a
-  setting to calibrate the centre.
+  engagement; its slipping range is marked, but nothing on screen shows
+  how much it is slipping now (the HUD shows the pedal). The brakes act at
+  once.
+- **Tilt steering.** Its range (25° either way) is fixed, with no
+  sensitivity setting; the centre is taken at Pull only, not mid-pull; and
+  the sensor's readings are not filtered beyond the core's steering rate.
+  Which way Android reports the roll is taken from its sensor convention
+  and checked with a simulated sensor only: a real phone may steer the
+  wrong way round, to fix with one sign. The gamepad's stick is not read
+  while tilting.
 - **Control layout options.** The touch controls sit at fixed places and
   sizes in the 1280×720 base layout, stretched to the screen: no
-  left-handed mirror, resizing, haptics or settings menu. A gamepad is
+  left-handed mirror, resizing or haptics. A gamepad is
   read from the first device only.
 - **Screenshots out of CI.** `tests/screenshots.gd` saves a PNG per camera
   for reviewing the look by hand; CI does not run it or compare images,

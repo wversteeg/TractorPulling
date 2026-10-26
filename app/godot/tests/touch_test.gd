@@ -2,9 +2,11 @@
 # hand throttle slid open like a lever and left there, the gear tapped up, a
 # button let go when the app loses focus, a thumb steering while the other
 # holds the throttle, the steering springing back when the thumb lifts, and
-# "again" only on a release over it; then the pro layout, picked on the
-# setup screen, with its clutch and left brake on the left and the right
-# brake on the right. All in practice pulls, where "again" and "menu" work.
+# "again" only on a release over it; then the pro layout, picked in the
+# settings (the gear on the start screen) and kept in their file, with its
+# clutch and left brake on the left and the right brake on the right and the
+# clutch's slipping range marked; then tilt steering, with a simulated
+# motion sensor. All in practice pulls, where "again" and "menu" work.
 # Checks that the run gets the controls and the tractor pulls
 # and steers. Exits non-zero if a check fails (scripts/godot_test.sh runs
 # it).
@@ -18,14 +20,23 @@ const STEERING_FINGER := 2
 const STUCK_FINGER := 3
 const PULL_FRAMES := 300
 const STEER_FRAMES := 60
+const SETTINGS_PATH := "user://touch_test_settings.cfg"
+# The reference clutch slips between these pedals (data/clutches).
+const CLUTCH_FULL_GRIP := 0.3
+const CLUTCH_BITE := 0.7
+const G_M_S2 := 9.81
 
 var _pull: Node
 var _failures := 0
+# The simulated sensor's gravity, in the screen's plane.
+var _gravity := Vector3.ZERO
 
 
 func _initialize() -> void:
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
+	_pull.set("settings_path", SETTINGS_PATH)
 	root.add_child(_pull)
 	_play.call_deferred()
 
@@ -73,7 +84,7 @@ func _play() -> void:
 	_expect(start.visible and not controls.visible, "the start screen first")
 	_tap(start.practice_button)
 	await _frames(2)
-	_expect(setup.visible and setup.easy_button.selected, "the setup screen, easy")
+	_expect(setup.visible, "the setup screen")
 	_tap(setup.pull_button)
 	await _frames(2)
 	_expect(controls.visible and not setup.visible, "the pull's controls after Pull")
@@ -180,6 +191,7 @@ func _play() -> void:
 	_expect(controls.gear == 0 and controls.throttle() == 0.0, "the controls are reset")
 
 	await _play_pro(controls, run)
+	await _play_tilt(controls, run)
 
 	print("touch test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -215,13 +227,27 @@ func _slide(finger: int, slider: TouchSlider, up: bool) -> void:
 func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	var start: StartScreen = _pull.get("start_screen")
 	var setup: SetupScreen = _pull.get("setup_screen")
+	var settings: SettingsScreen = _pull.get("settings_screen")
 	_tap(controls.menu_button)
 	await _frames(2)
 	_expect(start.visible and not controls.visible, "menu: back to the start screen")
+	# The gear in the top right corner opens the settings.
+	var corner := root.get_visible_rect().end
+	var gear := start.settings_button.get_global_rect()
+	_expect(gear.end.x > corner.x * 0.9 and gear.position.y < corner.y * 0.1,
+			"the gear in the top right: %s" % gear)
+	_tap(start.settings_button)
+	await _frames(2)
+	_expect(settings.visible and not start.visible and settings.easy_button.selected
+			and settings.slider_button.selected, "the settings: easy, the slider")
+	_tap(settings.pro_button)
+	_expect(settings.pro_button.selected and not settings.easy_button.selected, "pro picked")
+	_expect(GameSettings.read(SETTINGS_PATH).pro, "pro kept in the settings file")
+	_tap(settings.done_button)
+	await _frames(2)
+	_expect(start.visible and not settings.visible, "done: back to the start screen")
 	_tap(start.practice_button)
 	await _frames(2)
-	_tap(setup.pro_button)
-	_expect(setup.pro_button.selected and not setup.easy_button.selected, "pro picked")
 	_tap(setup.pull_button)
 	await _frames(2)
 	_expect(run.get_layout() == "pro" and controls.pro, "the pro layout")
@@ -230,6 +256,14 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
 			controls.menu_button])
 	_expect(controls.clutch() == 1.0, "the clutch starts pressed")
+	# The clutch slider marks where the clutch slips, its line at the bite,
+	# where the thumb's middle is for those pedals.
+	var clutch := controls.clutch_slider
+	_expect(clutch.has_band and is_equal_approx(clutch.band_from, CLUTCH_FULL_GRIP)
+			and is_equal_approx(clutch.band_to, CLUTCH_BITE)
+			and is_equal_approx(clutch.mark, CLUTCH_BITE), "the clutch's range marked")
+	_expect(clutch.position_of(CLUTCH_FULL_GRIP) < clutch.position_of(CLUTCH_BITE)
+			and clutch.position_of(CLUTCH_BITE) < clutch.size.y, "the bite above the full grip")
 	# Each side's pedals under its own thumb: the clutch and the left brake
 	# with the steering on the left, the right brake with the throttle.
 	var middle := root.get_visible_rect().get_center().x
@@ -268,9 +302,78 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	# Back to easy.
 	_tap(controls.menu_button)
 	await _frames(2)
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.easy_button)
+	_tap(settings.done_button)
+	await _frames(2)
 	_tap(start.practice_button)
 	await _frames(2)
-	_tap(setup.easy_button)
 	_tap(setup.pull_button)
 	await _frames(2)
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible, "back to easy")
+
+
+# Gravity for a phone rolled `degrees` with its left side down, in the
+# screen's plane as Android reports it (up the screen when held upright).
+func _tilted(degrees: float) -> Vector3:
+	var rad := deg_to_rad(degrees)
+	return Vector3(sin(rad), cos(rad), 0.0) * G_M_S2
+
+
+# Tilt steering, with a simulated sensor: picked in the settings, it hides
+# the slider; the phone's angle at Pull is straight ahead (here held
+# rolled 20° already), and rolling it further to the left steers left.
+func _play_tilt(controls: DriveControls, run: TractorPullRun) -> void:
+	var start: StartScreen = _pull.get("start_screen")
+	var setup: SetupScreen = _pull.get("setup_screen")
+	var settings: SettingsScreen = _pull.get("settings_screen")
+	controls.tilt_steering.gravity = func() -> Vector3: return _gravity
+	_gravity = _tilted(20.0)
+	_tap(controls.menu_button)
+	await _frames(2)
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.tilt_button)
+	_expect(settings.tilt_button.selected and GameSettings.read(SETTINGS_PATH).tilt,
+			"tilt picked and kept")
+	_tap(settings.done_button)
+	await _frames(2)
+	_tap(start.practice_button)
+	await _frames(2)
+	_tap(setup.pull_button)
+	await _frames(2)
+	_expect(controls.tilt and not controls.steering_slider.visible, "tilt: no steering slider")
+	_expect(absf(controls.steering()) < 1e-6, "held as at Pull: straight ahead")
+	for i in 6:
+		_tap(controls.gear_up)
+	_slide(THROTTLE_FINGER, controls.throttle_slider, true)
+	await _frames(PULL_FRAMES)
+	# Rolled 10° more to the left: 10° of the 25° that steer fully.
+	_gravity = _tilted(30.0)
+	_expect(absf(controls.steering() - 10.0 / TiltSteering.FULL_TILT_DEG) < 1e-6,
+			"10° more steers left: %s" % controls.steering())
+	await _frames(STEER_FRAMES)
+	_expect(float(run.get_snapshot()["steering_rad"]) > 0.0, "the front wheels turn left: %s"
+			% run.get_snapshot()["steering_rad"])
+	# Lying flat the roll means nothing: the last steering holds.
+	_gravity = Vector3(0.0, 0.0, G_M_S2)
+	_expect(absf(controls.steering() - 10.0 / TiltSteering.FULL_TILT_DEG) < 1e-6,
+			"flat: the steering holds")
+	# Past the full tilt to the right: full right.
+	_gravity = _tilted(-20.0)
+	_expect(controls.steering() == -1.0, "rolled right past full: %s" % controls.steering())
+
+	# Back to the slider.
+	_tap(controls.menu_button)
+	await _frames(2)
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.slider_button)
+	_tap(settings.done_button)
+	await _frames(2)
+	_tap(start.practice_button)
+	await _frames(2)
+	_tap(setup.pull_button)
+	await _frames(2)
+	_expect(not controls.tilt and controls.steering_slider.visible, "back to the slider")

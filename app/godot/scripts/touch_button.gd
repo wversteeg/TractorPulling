@@ -15,7 +15,7 @@ const FONT_SIZE := 36
 
 @export var text := ""
 @export var fires_on_release := false
-# Shown picked, as one of a set of choices (the layout on the start screen).
+# Shown picked, as one of a set of choices (the layout in the settings).
 @export var selected := false:
 	set(value):
 		selected = value
@@ -45,6 +45,10 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		if fires_on_release and get_global_rect().has_point(touch.position):
 			tapped.emit()
+
+
+func is_held() -> bool:
+	return _finger >= 0
 
 
 # Lets go of a held finger without a release, as when the app loses focus:

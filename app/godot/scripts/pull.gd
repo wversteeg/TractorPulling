@@ -5,20 +5,22 @@
 # pulls and the sled operator's verdicts fill in as they are simulated, a
 # few each frame (from the start screen on). Before every pull the setup
 # screen sets the tractor (the weights and the rear tires' pressure, kept
-# for the season) and the control layout. When the player is due they pull
+# for the season). The gear on the start screen opens the settings: the
+# control layout and the steering (slider or tilt), kept on the device. When the player is due they pull
 # (a run, TractorPullRun, stepped by each frame's time and drawn from its
 # blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its top ten, then the season's; then the next event, or a new
 # season after the last. Nothing is saved: every launch is a new season.
 #
 # The player drives with the touch controls (DriveControls; the keyboard
-# and a gamepad for development), in the easy or the pro layout. With
+# and a gamepad for development), in the easy or the pro layout, steering
+# with the slider or by tilting the phone. With
 # `autoplay` there are no screens: one pull of the tractor, sled and track
 # below, the driver scripted, in gear at full throttle, then the clutch
 # dropped.
 extends Node3D
 
-enum Screen { START, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
+enum Screen { START, SETTINGS, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
 
 @export var season_path := "res://data/seasons/club_season.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
@@ -26,7 +28,11 @@ enum Screen { START, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
 @export var season_seed := -1
 @export var easy_controls_path := "res://data/controls/easy.toml"
 @export var pro_controls_path := "res://data/controls/pro.toml"
+# Where the settings are kept; they set `pro` and `tilt` at the start
+# (not with autoplay).
+@export var settings_path := "user://settings.cfg"
 @export var pro := false
+@export var tilt := false
 @export var autoplay := false
 @export var autoplay_gear := 6
 @export var tractor_path := "res://data/tractors/farm_stock_light.toml"
@@ -60,6 +66,7 @@ var hud := Hud.new()
 var start_screen := StartScreen.new()
 var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
+var settings_screen := SettingsScreen.new()
 var result_screen := ResultScreen.new()
 var screen := Screen.START
 # The pull being pulled is a practice pull (or autoplay's), not the event's.
@@ -79,7 +86,8 @@ func _ready() -> void:
 	for node: Node in [track_view, tractor_view, sled_view, chain_view, cameras]:
 		add_child(node)
 	var layer := CanvasLayer.new()
-	for node: Node in [hud, controls, start_screen, board, setup_screen, result_screen]:
+	for node: Node in [hud, controls, start_screen, settings_screen, board, setup_screen,
+			result_screen]:
 		layer.add_child(node)
 	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
@@ -92,10 +100,11 @@ func _ready() -> void:
 		if practice and not autoplay:
 			show_start())
 	start_screen.practice_requested.connect(func() -> void: _show_setup(true))
-	setup_screen.layout_picked.connect(func(is_pro: bool) -> void:
-		pro = is_pro
-		setup_screen.easy_button.selected = not pro
-		setup_screen.pro_button.selected = pro)
+	start_screen.settings_requested.connect(func() -> void:
+		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available())
+		_set_screen(Screen.SETTINGS))
+	settings_screen.changed.connect(_change_settings)
+	settings_screen.done.connect(show_start)
 	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float) -> void:
 		event.set_tuning(ballast_position, bar)
 		setup_screen.show_values(event.get_tuning()))
@@ -118,6 +127,9 @@ func _ready() -> void:
 	if autoplay:
 		_start_autoplay()
 	else:
+		var settings := GameSettings.read(settings_path)
+		pro = settings.pro
+		tilt = settings.tilt
 		_new_season()
 
 
@@ -125,6 +137,18 @@ func _start_autoplay() -> void:
 	practice = true
 	if _build(run.setup(tractor_path, sled_path, track_path, _controls_path())):
 		_set_screen(Screen.PULLING)
+
+
+# The settings picked, kept on the device for the next launch.
+func _change_settings(is_pro: bool, by_tilt: bool) -> void:
+	pro = is_pro
+	tilt = by_tilt
+	var settings := GameSettings.new()
+	settings.pro = pro
+	settings.tilt = tilt
+	var error := settings.write(settings_path)
+	if error != OK:
+		push_warning("cannot keep the settings: %s" % error_string(error))
 
 
 func _controls_path() -> String:
@@ -157,14 +181,15 @@ func show_start(error: String = "") -> void:
 	_set_screen(Screen.START)
 
 
-# The setup screen before a pull: the tractor's tuning and the layout. For
+# The setup screen before a pull: the tractor's tuning. For
 # a practice pull (`for_practice`) or the event's pull that is due.
 func _show_setup(for_practice: bool) -> void:
 	practice = for_practice
 	var info := event.get_event()
 	var which := "Practice" if practice else EventTexts.pull_name(info.get("pull_kind", ""),
 			info.get("pull_off_round", 0))
-	setup_screen.show_setup("%s  ·  %s" % [which, info.get("name", "")], event.get_tuning(), pro)
+	setup_screen.show_setup("%s  ·  %s" % [which, info.get("name", "")], event.get_tuning(), pro,
+			tilt)
 	_set_screen(Screen.SETUP)
 
 
@@ -199,6 +224,9 @@ func _build(error: String) -> bool:
 	hud.build(dimensions)
 	controls.gear_count = dimensions["gear_count"]
 	controls.set_layout(run.get_layout() == "pro")
+	controls.set_steering(tilt)
+	controls.set_clutch_range(dimensions["clutch_full_grip_pedal"],
+			dimensions["clutch_bite_pedal"])
 	controls.reset()
 	_time_s = 0.0
 	_show(0.0)
@@ -209,6 +237,7 @@ func _build(error: String) -> bool:
 func _set_screen(next: Screen) -> void:
 	screen = next
 	start_screen.visible = screen == Screen.START
+	settings_screen.visible = screen == Screen.SETTINGS
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
 	result_screen.visible = screen == Screen.RESULT
@@ -218,6 +247,7 @@ func _set_screen(next: Screen) -> void:
 	controls.restart_button.visible = practice
 	controls.menu_button.visible = practice and not autoplay
 	start_screen.release_buttons()
+	settings_screen.release_buttons()
 	setup_screen.release_buttons()
 	setup_screen.release_sliders()
 	board.release_buttons()
@@ -245,7 +275,7 @@ func _process(delta: float) -> void:
 			_ended_s += delta
 			if _ended_s >= RESULT_DELAY_S:
 				_show_result()
-	elif screen in [Screen.START, Screen.EVENT, Screen.SETUP]:
+	elif screen in [Screen.START, Screen.SETTINGS, Screen.EVENT, Screen.SETUP]:
 		# The rivals get on with their work (their gears first) while the
 		# player reads the start screen too.
 		_advance_rivals()
