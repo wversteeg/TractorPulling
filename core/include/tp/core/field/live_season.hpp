@@ -53,13 +53,16 @@ public:
     /// there is none to score.
     bool score_event() noexcept;
     /// Scores the next event as pulled earlier, from its standings (a saved
-    /// season's: each puller once), without pulling it. Only the places and
+    /// season's: each puller once, places 1 to the field's size), without
+    /// pulling it. Only the places and
     /// disqualifications count, as in score_event(). False while an event is
     /// unscored, once the season is over, or for standings that are not the
     /// field's.
     bool add_pulled_event(std::span<const event::Standing> standings) noexcept;
     /// The final standings of scored event `number` (0 the first), best
-    /// first; empty for an event not scored.
+    /// first; empty for an event not scored. For an event added with
+    /// add_pulled_event() only the puller, place and disqualification are
+    /// set: its distances read 0.
     [[nodiscard]] std::span<const event::Standing> event_standings(int number) const noexcept;
 
     /// The events scored so far, and in the season.

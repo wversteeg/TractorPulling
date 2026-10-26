@@ -3,6 +3,7 @@
 #include "tp/data/session/run_setup.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -233,7 +234,9 @@ godot::Dictionary TractorPullEvent::get_tuning() const {
 }
 
 void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar) {
-    if (!season_) {
+    // A setting that is not a number (a 0/0 in GDScript) leaves the tuning
+    // as it is: std::clamp would keep it, and the save would refuse it.
+    if (!season_ || !std::isfinite(ballast_position) || !std::isfinite(pressure_bar)) {
         return;
     }
     const tire::Pressure& pressure = season_->player().tractor.rear_tire.pressure;

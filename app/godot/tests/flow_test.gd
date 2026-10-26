@@ -8,7 +8,8 @@
 # screen (no "again" there), and their decisions,
 # the event's top ten, the season's, and the start screen with the next
 # event; then the game launched again: the saved season continued, at the
-# next event with the same standings and tuning, and a new season. Exits non-zero if a check fails (scripts/godot_test.sh runs it).
+# next event with the same standings and tuning, and a new season. Exits
+# non-zero if a check fails (scripts/godot_test.sh runs it).
 # With a directory after `--` it also saves a screenshot of each screen
 # there (that needs a display, or Xvfb, and a renderer).
 #
@@ -302,7 +303,8 @@ func _launch() -> Node:
 # championship and tuning. Launched once more, New season starts over at
 # the first event, and the save is the new season's.
 func _relaunch(standings: Array, tuning: Dictionary) -> void:
-	_expect(FileAccess.file_exists(SAVE_PATH), "the season is saved")
+	_expect(FileAccess.file_exists(SAVE_PATH) and not FileAccess.file_exists(SAVE_PATH + ".tmp"),
+			"the season is saved, renamed into place")
 	var pull := await _launch()
 	var start: StartScreen = pull.get("start_screen")
 	var event: TractorPullEvent = pull.get("event")

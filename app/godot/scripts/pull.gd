@@ -207,11 +207,19 @@ func _save_season() -> void:
 	if event.get_season().get("over", false):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 		return
-	var file := FileAccess.open(save_path, FileAccess.WRITE)
+	# Written beside the save, then renamed over it: an app killed mid-write
+	# (Android does that to apps in the background) leaves the old save whole.
+	var written := save_path + ".tmp"
+	var file := FileAccess.open(written, FileAccess.WRITE)
 	if file == null:
 		push_warning("cannot save the season: %s" % error_string(FileAccess.get_open_error()))
 		return
 	file.store_string(event.get_save())
+	file.close()
+	var error := DirAccess.rename_absolute(ProjectSettings.globalize_path(written),
+			ProjectSettings.globalize_path(save_path))
+	if error != OK:
+		push_warning("cannot save the season: %s" % error_string(error))
 
 
 # The start screen, with the season's next event started behind it.

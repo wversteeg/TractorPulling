@@ -81,7 +81,7 @@ bool LiveSeason::add_pulled_event(std::span<const event::Standing> standings) no
     // Each of the field's pullers once.
     std::array<bool, event::kMaxPullers> seen{};
     for (const event::Standing& s : standings) {
-        if (s.puller < 0 || s.puller >= field_.count || s.place < 1 ||
+        if (s.puller < 0 || s.puller >= field_.count || s.place < 1 || s.place > field_.count ||
             seen[static_cast<std::size_t>(s.puller)]) {
             return false;
         }

@@ -116,8 +116,9 @@ public:
     /// (foremost), and `rear_share` is the share of the weight then on the
     /// rear axle at rest (0 to 1). {} before a season.
     [[nodiscard]] godot::Dictionary get_tuning() const;
-    /// Sets the player's tuning, each held to its range; their next pulls
-    /// and practice pulls are on the tuned tractor.
+    /// Sets the player's tuning, each held to its range (a value that is not
+    /// finite changes nothing); their next pulls and practice pulls are on
+    /// the tuned tractor.
     void set_tuning(double ballast_position, double pressure_bar);
 
     /// The player's next pull, for TractorPullRun: nothing unless one is

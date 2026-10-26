@@ -58,15 +58,8 @@ std::string toml_string(std::string_view text) {
     return out.str();
 }
 
-// A number with every digit it needs to read back as itself; not finite
-// as TOML's nan or inf.
+// A (finite) number with every digit it needs to read back as itself.
 std::string exact(double value) {
-    if (std::isnan(value)) {
-        return "nan";
-    }
-    if (std::isinf(value)) {
-        return value > 0.0 ? "inf" : "-inf";
-    }
     std::ostringstream out;
     out.imbue(std::locale::classic());
     out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
@@ -109,6 +102,17 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     if (version != kSeasonSaveVersion) {
         return detail::make_error(source, "version",
                                   "must be " + std::to_string(kSeasonSaveVersion));
+    }
+    // The tuning is the tractor's to hold to its ranges; a save only needs
+    // to hold numbers that can be tuning at all.
+    if (!std::isfinite(save.tuning.ballast_position) || save.tuning.ballast_position < 0.0 ||
+        save.tuning.ballast_position > 1.0) {
+        return detail::make_error(source, "tuning.ballast_position", "must be from 0 to 1");
+    }
+    if (!std::isfinite(save.tuning.rear_tire_pressure_bar) ||
+        save.tuning.rear_tire_pressure_bar < 0.0) {
+        return detail::make_error(source, "tuning.rear_tire_pressure_bar",
+                                  "must be a finite number of 0 or more");
     }
     const std::optional<std::uint64_t> parsed = parse_seed(seed);
     if (!parsed) {

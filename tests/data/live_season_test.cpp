@@ -279,6 +279,9 @@ TEST(LiveSeason, RefusesStandingsThatAreNotTheFields) {
     std::vector<event::Standing> no_place = standings;
     no_place[1].place = 0;
     EXPECT_FALSE(season->add_pulled_event(no_place)) << "no place";
+    std::vector<event::Standing> past_the_field = standings;
+    past_the_field[1].place = kPullers + 1;
+    EXPECT_FALSE(season->add_pulled_event(past_the_field)) << "a place past the field";
     EXPECT_EQ(season->events_scored(), 0);
 
     ASSERT_TRUE(season->start_event(data::venue(d.event.sled, d.rounds[0].track)));

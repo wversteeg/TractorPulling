@@ -30,12 +30,14 @@ struct SeasonSave {
     std::vector<std::vector<event::Standing>> events;
 };
 
-/// The save as TOML text.
+/// The save as TOML text. The tuning must be finite (as parse_season_save
+/// reads it back).
 [[nodiscard]] std::string write_season_save(const SeasonSave& save);
 
 /// A save from TOML text; `source_name` names it in error messages. Refuses
-/// another version, a missing field, and standings without a puller or a
-/// place.
+/// another version, a missing field, a tuning that is not a number in range
+/// (a ballast position from 0 to 1, a pressure of 0 or more), and standings
+/// without a puller or a place.
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

@@ -3,7 +3,9 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <initializer_list>
 #include <string>
+#include <utility>
 
 namespace tp::data {
 namespace {
@@ -102,6 +104,17 @@ TEST(SeasonSave, RefusesNonsense) {
     EXPECT_NE(error_of(std::string{kHead} + "[[events]]\nstandings = [{ puller = 0 }]\n")
                   .find("events.standings"),
               std::string::npos);
+    for (const auto& [from, to] : std::initializer_list<std::pair<const char*, const char*>>{
+             {"ballast_position = 0.5", "ballast_position = nan"},
+             {"ballast_position = 0.5", "ballast_position = 1.5"},
+             {"ballast_position = 0.5", "ballast_position = -0.1"},
+             {"rear_tire_pressure_bar = 1.0", "rear_tire_pressure_bar = inf"},
+             {"rear_tire_pressure_bar = 1.0", "rear_tire_pressure_bar = -1.0"}}) {
+        std::string text = kHead;
+        text.replace(text.find(from), std::string{from}.size(), to);
+        EXPECT_NE(error_of(text).find("season.toml: tuning."), std::string::npos)
+            << to << ": " << error_of(text);
+    }
     EXPECT_NE(error_of("version = [").find("season.toml:1"), std::string::npos)
         << error_of("version = [");
 }

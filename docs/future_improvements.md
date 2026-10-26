@@ -233,7 +233,9 @@ for the big features; they are repeated at the end for completeness.
   event left halfway starts again from its beginning when continued (the
   rivals pull the same, from the seed, but the player's pulls in it are
   gone), and a practice pull is never kept. One season is saved at a time;
-  a save of another version or season gives way to a new season. The
+  a save of another version or season, or one the shipped data no longer
+  fits, gives way to a new season with only a warning on the console (a
+  line on the start screen would be kinder). The
   player pulls the class's reference
   tractor, with no other tractor or upgrades to choose (career, milestone
   6); it tunes the weights and the tire pressure only. An event's pull
