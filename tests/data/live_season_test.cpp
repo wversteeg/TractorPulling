@@ -238,11 +238,18 @@ TEST(LiveSeason, ResumesFromTheEventsPulled) {
 
     for (LiveSeason* season : {played.get(), resumed.get()}) {
         ASSERT_TRUE(season->start_event(data::venue(d.event.sled, d.rounds[1].track)));
-        play_out(*season->event());
-        ASSERT_EQ(season->event()->turn(), LiveEvent::Turn::kFinished);
+        LiveEvent* event = season->event();
+        ASSERT_NE(event, nullptr);
+        play_out(*event);
+        ASSERT_EQ(event->turn(), LiveEvent::Turn::kFinished);
     }
-    const auto log_a = played->event()->log();
-    const auto log_b = resumed->event()->log();
+    const LiveEvent* event_a = played->event();
+    const LiveEvent* event_b = resumed->event();
+    if (event_a == nullptr || event_b == nullptr) {
+        FAIL() << "no second event";
+    }
+    const auto log_a = event_a->log();
+    const auto log_b = event_b->log();
     ASSERT_EQ(log_a.size(), log_b.size());
     for (std::size_t i = 0; i < log_a.size(); ++i) {
         EXPECT_EQ(log_a[i].pull.puller, log_b[i].pull.puller) << i;
