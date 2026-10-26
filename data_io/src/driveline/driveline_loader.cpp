@@ -3,6 +3,7 @@
 #include "tp/core/units/conversions.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <optional>
 #include <string_view>
 #include <vector>
@@ -42,6 +43,9 @@ FieldError describe(driveline::ParamError error) {
             return {"driveline", "input_inertia_kg_m2 and output_inertia_kg_m2 must be > 0"};
         case ParamError::kDragNegative:
             return {"driveline.drag", "must not be negative"};
+        case ParamError::kLoadDownshiftOutOfRange:
+            return {"driveline.powershift.load_downshift_gears",
+                    "must be 0 or more and below the number of gears"};
     }
     return {"driveline", "invalid"};
 }
@@ -61,8 +65,20 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
         .viscous_drag_nm_s_rad = reader.number("driveline.drag.viscous_nm_per_1000_rpm") /
                                  units::rpm_to_rad_s(kRpmPerKiloRpm),
     };
+    // Optional: a gearbox without it shifts with the clutch pressed only.
+    const std::optional<double> downshift =
+        reader.optional_number("driveline.powershift.load_downshift_gears");
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
+    }
+    if (downshift) {
+        if (*downshift != std::floor(*downshift) || *downshift < 0.0) {
+            return detail::make_error(source, "driveline.powershift.load_downshift_gears",
+                                      "must be a whole number of gears, 0 or more");
+        }
+        // Held to what an int takes; past the gears, validate() says so.
+        params.load_downshift_gears =
+            static_cast<int>(std::min(*downshift, static_cast<double>(driveline::kMaxGears)));
     }
     std::copy_n(ratios.begin(), std::min(ratios.size(), driveline::kMaxGears),
                 params.gear_ratios.begin());

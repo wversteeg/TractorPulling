@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 
 #include "reference_driveline.hpp"
 
@@ -49,6 +50,11 @@ TEST(DrivelineParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.output_inertia_kg_m2 = 0.0; }),
               ParamError::kInertiaNotPositive);
     EXPECT_EQ(with([](Params& p) { p.drag_torque_nm = -1.0; }), ParamError::kDragNegative);
+    EXPECT_EQ(with([](Params& p) { p.load_downshift_gears = -1; }),
+              ParamError::kLoadDownshiftOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.load_downshift_gears = 8; }),
+              ParamError::kLoadDownshiftOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.load_downshift_gears = 7; }), std::nullopt);
 }
 
 TEST(Driveline, OverallRatioIsGearTimesFinalDrive) {
@@ -223,7 +229,8 @@ TEST(Driveline, ResistanceHoldsATrainAtRestWithoutReversingIt) {
 }
 
 TEST(Driveline, ShiftsOnlyWithTheClutchDisengaged) {
-    const Params params = reference_params();
+    Params params = reference_params();
+    params.load_downshift_gears = 0;
     State state;
     EXPECT_FALSE(shift(state, params, 3, false));
     EXPECT_EQ(state.gear, kNeutral);
@@ -234,6 +241,41 @@ TEST(Driveline, ShiftsOnlyWithTheClutchDisengaged) {
     EXPECT_FALSE(shift(state, params, 9, true));
     EXPECT_FALSE(shift(state, params, -1, true));
     EXPECT_EQ(state.gear, 3);
+}
+
+// The reference gearbox shifts one gear down under load, the clutch in;
+// never up, never two down, never to neutral. The axle keeps its speed; the
+// input shaft takes the new gear's, and the momentum that takes is what the
+// engine gives.
+TEST(Driveline, ShiftsOneGearDownUnderLoad) {
+    const Params params = reference_params();
+    EXPECT_TRUE(shifts_under_load(params, 6, 5));
+    EXPECT_FALSE(shifts_under_load(params, 6, 4)) << "two down";
+    EXPECT_FALSE(shifts_under_load(params, 5, 6)) << "up";
+    EXPECT_FALSE(shifts_under_load(params, 1, kNeutral)) << "to neutral";
+    EXPECT_FALSE(shifts_under_load(params, 9, 8)) << "from a gear it does not have";
+    const double axle_rad_s = 200.0 / 55.0;
+    State state{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = axle_rad_s};
+    EXPECT_FALSE(shift_under_load(state, params, 4));
+    EXPECT_FALSE(shift_under_load(state, params, 7));
+    EXPECT_FALSE(shift(state, params, 5, false)) << "shift() wants the clutch out";
+    EXPECT_EQ(state.gear, 6);
+    const std::optional<double> impulse_nm_s = shift_under_load(state, params, 5);
+    ASSERT_TRUE(impulse_nm_s.has_value());
+    EXPECT_EQ(state.gear, 5);
+    EXPECT_EQ(state.output_omega_rad_s, axle_rad_s) << "the axle keeps its speed";
+    EXPECT_DOUBLE_EQ(state.input_omega_rad_s, axle_rad_s * overall_ratio(params, 5));
+    EXPECT_DOUBLE_EQ(impulse_nm_s.value_or(0.0),
+                     params.input_inertia_kg_m2 * (state.input_omega_rad_s - 200.0));
+    EXPECT_GT(impulse_nm_s.value_or(0.0), 0.0);
+    // Two down needs two shifts.
+    EXPECT_TRUE(shift_under_load(state, params, 4).has_value());
+    EXPECT_EQ(state.gear, 4);
+
+    Params two = params;
+    two.load_downshift_gears = 2;
+    EXPECT_TRUE(shifts_under_load(two, 6, 4));
+    EXPECT_FALSE(shifts_under_load(two, 6, 3));
 }
 
 // Engaging a gear synchronizes the two sides: momentum through the gears is

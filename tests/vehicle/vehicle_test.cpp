@@ -163,6 +163,105 @@ TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
     EXPECT_EQ(pull.state.driveline.gear, driveline::kNeutral);
 }
 
+// The reference gearbox shifts one gear down under load, the clutch in (a
+// powershift step), which is what it is for: the load grows past what 6th
+// can pull, and the engine is pulled down towards the stall. Left in 6th it
+// stalls; shifted to 5th as it lugs, it pulls on. The shift goes in at once:
+// the wheels keep their speed (no jolt in the step), the input shaft then
+// turns faster than the engine, so the clutch slips, at most its capacity,
+// and locks again within half a second. Two gears down with the clutch in
+// are refused.
+TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
+    constexpr double kSteady_n = 16000.0;
+    constexpr double kHeavier_n = 22000.0;
+    constexpr double kFor_s = 10.0;
+    Pull held;
+    held.run(6, kSteady_n, false, 10.0);
+    ASSERT_TRUE(held.state.engine.running);
+    Pull shifted = held;
+    const Params& p = held.model.params();
+    // The driver shifts down once the engine is pulled below its peak
+    // torque, about 80 % of the rated speed.
+    const double lugging_rad_s = 0.8 * p.engine.rated_omega_rad_s;
+
+    Input input{.throttle = 1.0, .clutch_pedal = 0.0, .gear = 6};
+    for (int i = 0; i < static_cast<int>(kFor_s / kDt_s) && held.state.engine.running; ++i) {
+        step(held.state, held.model, input, kGround, {.pull_n = kHeavier_n}, kDt_s);
+    }
+    EXPECT_FALSE(held.state.engine.running)
+        << "6th stalls: " << held.state.engine.omega_rad_s << " rad/s";
+
+    Input two_down = input;
+    two_down.gear = 4;
+    double shifted_at_rad_s = 0.0;
+    double axle_before_rad_s = 0.0;
+    double axle_after_rad_s = 0.0;
+    double least_rear_n = 1e12;
+    int shifted_at = -1;
+    int locked_at = -1;
+    bool slipped = false;
+    bool refused_two = false;
+    for (int i = 0; i < static_cast<int>(kFor_s / kDt_s); ++i) {
+        const double engine_rad_s = shifted.state.engine.omega_rad_s;
+        const bool shift_now = input.gear == 6 && engine_rad_s < lugging_rad_s;
+        if (shift_now) {
+            refused_two =
+                step(shifted.state, shifted.model, two_down, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                    .shift_refused;
+            shifted_at_rad_s = engine_rad_s;
+            axle_before_rad_s = shifted.state.driveline.output_omega_rad_s;
+            shifted_at = i;
+            input.gear = 5;
+        }
+        const Output out =
+            step(shifted.state, shifted.model, input, kGround, {.pull_n = kHeavier_n}, kDt_s);
+        EXPECT_FALSE(out.shift_refused);
+        slipped = slipped || (shift_now && !shifted.state.clutch.locked);
+        if (shift_now) {
+            axle_after_rad_s = shifted.state.driveline.output_omega_rad_s;
+        }
+        if (shifted_at >= 0) {
+            least_rear_n = std::min(least_rear_n, out.axle_loads.rear_n);
+            if (locked_at < 0 && shifted.state.clutch.locked) {
+                locked_at = i;
+            }
+        }
+    }
+    EXPECT_TRUE(refused_two) << "two gears down";
+    EXPECT_GT(shifted_at_rad_s, 0.0) << "the engine lugged";
+    EXPECT_EQ(shifted.state.driveline.gear, 5);
+    EXPECT_TRUE(slipped) << "the clutch slips as the gear goes in";
+    // The clutch brakes the wheels at its capacity, not in one jolt: the
+    // shift's own step slows them by less than a tenth (the input shaft's
+    // jump alone took a quarter), and the rear tires keep a good share of
+    // their load.
+    EXPECT_GT(axle_after_rad_s, 0.9 * axle_before_rad_s);
+    EXPECT_GT(least_rear_n, 0.2 * kHeavier_n) << least_rear_n << " N";
+    EXPECT_GT(locked_at, shifted_at);
+    EXPECT_LT((locked_at - shifted_at) * kDt_s, 0.5) << "locked again within half a second";
+    ASSERT_TRUE(shifted.state.engine.running) << "5th pulls on";
+    EXPECT_TRUE(shifted.state.clutch.locked);
+    EXPECT_GT(shifted.state.engine.omega_rad_s, shifted_at_rad_s);
+    EXPECT_GT(shifted.state.chassis.velocity_m_s, 0.5);
+}
+
+// A shift under load with the engine stalled and the tractor still rolling:
+// the engine has no momentum to give the input shaft and stays at rest,
+// never below it.
+TEST(Vehicle, ShiftsDownUnderLoadWithTheEngineStalled) {
+    Pull pull;
+    pull.run(6, 5000.0, false, 10.0);
+    ASSERT_TRUE(pull.state.engine.running);
+    pull.state.engine.running = false;
+    pull.state.engine.omega_rad_s = 0.0;
+    const Output out =
+        step(pull.state, pull.model, {.throttle = 0.0, .clutch_pedal = 0.0, .gear = 5}, kGround,
+             {.pull_n = 5000.0}, kDt_s);
+    EXPECT_FALSE(out.shift_refused);
+    EXPECT_EQ(pull.state.driveline.gear, 5);
+    EXPECT_GE(pull.state.engine.omega_rad_s, 0.0);
+}
+
 // Pulling steadily, the tires find the slip at which traction balances the
 // drawbar pull and the front tires' rolling resistance; the clutch is locked
 // and road speed is wheel speed less the slip.

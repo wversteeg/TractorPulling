@@ -63,6 +63,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.drag_torque_nm < 0.0 || params.viscous_drag_nm_s_rad < 0.0) {
         return ParamError::kDragNegative;
     }
+    if (params.load_downshift_gears < 0 ||
+        static_cast<std::size_t>(params.load_downshift_gears) >= params.gear_count) {
+        return ParamError::kLoadDownshiftOutOfRange;
+    }
     return std::nullopt;
 }
 
@@ -72,6 +76,21 @@ double overall_ratio(const Params& params, int gear) noexcept {
         return 0.0;
     }
     return gears[static_cast<std::size_t>(gear) - 1] * params.final_drive_ratio;
+}
+
+bool shifts_under_load(const Params& params, int from, int to) noexcept {
+    return to > kNeutral && to < from && from - to <= params.load_downshift_gears &&
+           static_cast<std::size_t>(from) <= ratios(params).size();
+}
+
+std::optional<double> shift_under_load(State& state, const Params& params, int gear) noexcept {
+    if (!shifts_under_load(params, state.gear, gear)) {
+        return std::nullopt;
+    }
+    state.gear = gear;
+    const double before_rad_s = state.input_omega_rad_s;
+    state.input_omega_rad_s = state.output_omega_rad_s * overall_ratio(params, gear);
+    return params.input_inertia_kg_m2 * (state.input_omega_rad_s - before_rad_s);
 }
 
 bool shift(State& state, const Params& params, int gear, bool clutch_disengaged) noexcept {

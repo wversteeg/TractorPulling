@@ -59,6 +59,36 @@ TEST(DrivelineLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.output_inertia_kg_m2, reference.output_inertia_kg_m2);
     EXPECT_EQ(loaded.drag_torque_nm, reference.drag_torque_nm);
     EXPECT_EQ(loaded.viscous_drag_nm_s_rad, reference.viscous_drag_nm_s_rad);
+    EXPECT_EQ(loaded.load_downshift_gears, reference.load_downshift_gears);
+    EXPECT_EQ(loaded.load_downshift_gears, 1);
+}
+
+// Without a [driveline.powershift] table the gears change with the clutch
+// pressed only; with one, it says how many gears down shift under load.
+TEST(DrivelineLoader, ThePowershiftStepIsOptional) {
+    const auto plain = parse_driveline(kValidDriveline, "test.toml");
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().load_downshift_gears, 0);
+    const auto two = parse_driveline(
+        std::string{kValidDriveline} + "\n[driveline.powershift]\nload_downshift_gears = 2\n",
+        "test.toml");
+    ASSERT_TRUE(two.ok()) << two.error().message;
+    EXPECT_EQ(two.value().load_downshift_gears, 2);
+    for (const char* bad : {"1.5", "-1", "3", "1e30"}) {
+        const std::string message =
+            error_of(std::string{kValidDriveline} +
+                     "\n[driveline.powershift]\nload_downshift_gears = " + bad + "\n");
+        EXPECT_NE(message.find("driveline.powershift.load_downshift_gears"), std::string::npos)
+            << bad << ": " << message;
+    }
+    // A whole number past the gears says so.
+    for (const char* past : {"3", "9", "1e30"}) {
+        const std::string message =
+            error_of(std::string{kValidDriveline} +
+                     "\n[driveline.powershift]\nload_downshift_gears = " + past + "\n");
+        EXPECT_NE(message.find("below the number of gears"), std::string::npos)
+            << past << ": " << message;
+    }
 }
 
 TEST(DrivelineLoader, ParsesAndConvertsValues) {

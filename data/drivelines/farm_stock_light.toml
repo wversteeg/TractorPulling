@@ -11,6 +11,12 @@ output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tire
 [driveline.gearbox]
 ratios = [15.0, 10.5, 7.4, 5.2, 3.6, 2.5, 1.7, 1.0]   # 1st to 8th
 
+# A powershift step: one gear down under load, the clutch in, when the
+# engine is pulled down near the end of a pull. Without the table the
+# gears change with the clutch pressed only.
+[driveline.powershift]
+load_downshift_gears = 1
+
 [driveline.drag]                # churning and bearings, on the input shaft
 constant_nm = 2.0
 viscous_nm_per_1000_rpm = 1.05  # ~0.01 N·m per rad/s

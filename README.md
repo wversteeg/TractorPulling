@@ -172,6 +172,38 @@ tractor in `pull`, `run` and `compare-tracks`. As built (the ballast
 halfway, 1.0 bar) the tractor is unchanged, and the scripted rivals pull
 it that way.
 
+### Shifting down under load
+
+Some tractors shift a gear or two down under load, the clutch in: a
+powershift step, clutch packs inside the gearbox (`driveline.powershift`,
+`load_downshift_gears`; without it the gears change with the clutch pressed
+only). The shipped tractor shifts one gear down. In the game, "-" (or the
+gamepad's left shoulder) then works with the clutch in; in the easy layout
+the clutch assist keeps the clutch in for it. The gear goes in at once:
+the wheels keep their speed, the input shaft turns faster than the
+engine, and the clutch slips (at most its capacity, for a fraction of a
+second) and pulls
+the engine up to the lower gear's speed, while the tractor slows through
+its tires. A 44 % step is a big one: the tractor slows while the sled rolls
+on, so the chain goes slack for a moment and then snatches. Two gears
+down, or up, still take the clutch.
+
+It is for the end of a pull, when the sled has the engine pulled down
+towards the stall. On the light class in 6th (the clutch slipped in over
+3 s), one shift to 5th once the engine falls below 90 % of its rated speed
+past 40 m:
+
+| track | stays in 6th | shifts to 5th (at) |
+|---|---|---|
+| ideal clay-sand | 89.20 m, stalled | **91.11 m** (76.6 m) |
+| covered heavy clay | 86.58 m, stalled | **87.99 m** (74.7 m) |
+| watered start | 88.51 m, stalled | **90.50 m** (75.8 m) |
+| dry hard clay | **88.60 m**, stalled | 87.06 m, spun out (75.2 m) |
+
+On dry hard clay the extra torque spins the wheels: there a later shift,
+at 60 % of rated speed (87.0 m), gets 89.23 m. A test pins the first row
+(`LoadDownshiftRuns`).
+
 ### A class at an event
 
 An event file names the class, the sled and the track, and how a field of
@@ -288,7 +320,8 @@ tractor's does; and gear buttons (+, - and N) beside it. Both thumbs work at
 once. In the easy layout the clutch assist works the clutch. The pro layout
 adds, on the left above the steering, a clutch slider, pressed at the top
 and in at the bottom, which starts pressed and stays where it is left, so
-you slip it in and leave it (a gear goes in only with the clutch pressed),
+you slip it in and leave it (a gear goes in only with the clutch pressed,
+but one: see "Shifting down under load"),
 and the left brake beside it; the right brake is on the right beside the
 throttle, so each side's brake is under its own thumb. The brakes are off
 again when let go. Every control has its own colour and label: GAS green,
