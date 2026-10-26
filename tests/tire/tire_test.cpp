@@ -440,7 +440,8 @@ TEST(Pressure, TheReferenceIsTheTire) {
 }
 
 // Lower pressure: more deflection, a bigger mobility number (footprint) and
-// a lower traction limit (squirming lugs); higher pressure the other way.
+// a lower traction limit (squirming lugs). Higher pressure: less of both
+// deflection and footprint, and lugs that bite no better.
 TEST(Pressure, SoftensTheTire) {
     const Params params = reference_params();
     const Params soft = at_pressure(params, 0.5);
@@ -451,11 +452,15 @@ TEST(Pressure, SoftensTheTire) {
     const soil::Surface surface = reference_surface();
     EXPECT_GT(mobility_number(soft.size, kLoad_n, surface),
               mobility_number(params.size, kLoad_n, surface));
+    EXPECT_LT(mobility_number(hard.size, kLoad_n, surface),
+              mobility_number(params.size, kLoad_n, surface));
     EXPECT_LT(soft.traction.limit, params.traction.limit);
-    EXPECT_GT(hard.traction.limit, params.traction.limit);
-    // Held to the tire's range.
+    EXPECT_EQ(hard.traction.limit, params.traction.limit);
+    // Held to the tire's range; not a number leaves it at the reference.
     EXPECT_EQ(at_pressure(params, 0.1).size.deflection_m, soft.size.deflection_m);
-    EXPECT_EQ(at_pressure(params, 9.0).traction.limit, hard.traction.limit);
+    EXPECT_EQ(at_pressure(params, 9.0).size.deflection_m, hard.size.deflection_m);
+    EXPECT_EQ(at_pressure(params, std::numeric_limits<double>::quiet_NaN()).size.deflection_m,
+              params.size.deflection_m);
 }
 
 // A rear tire's load in a pull: the tractor's weight shifted back and the

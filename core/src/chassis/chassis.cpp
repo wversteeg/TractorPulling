@@ -102,8 +102,9 @@ double ballast_x_m(const Ballast& ballast, double position) noexcept {
            position * (ballast.front_ahead_of_rear_axle_m - ballast.rear_ahead_of_rear_axle_m);
 }
 
-// Its mass less than the tractor's, its positions rear to front, and the
-// centre of gravity between the axles wherever the weights go.
+// Its mass less than the tractor's, its positions rear to front, the
+// centre of gravity between the axles wherever the weights go, and the
+// inertias positive there too.
 bool ballast_valid(const Params& params) noexcept {
     const Ballast& ballast = params.ballast;
     if (ballast.mass_kg == 0.0) {
@@ -114,12 +115,25 @@ bool ballast_valid(const Params& params) noexcept {
         ballast.position < 0.0 || ballast.position > 1.0) {
         return false;
     }
-    return std::ranges::all_of(std::array{0.0, 1.0}, [&params](double end) {
-        const Params moved = with_ballast_at(params, end);
-        return moved.cg_ahead_of_rear_axle_m > 0.0 &&
-               moved.cg_ahead_of_rear_axle_m < params.wheelbase_m &&
-               moved.pitch_inertia_kg_m2 > 0.0 && moved.yaw_inertia_kg_m2 > 0.0;
+    // The centre of gravity is linear in the weights' position: the ends
+    // bound it.
+    const bool cg_inside = std::ranges::all_of(std::array{0.0, 1.0}, [&params](double end) {
+        const double cg_m = with_ballast_at(params, end).cg_ahead_of_rear_axle_m;
+        return cg_m > 0.0 && cg_m < params.wheelbase_m;
     });
+    // An inertia is I_rest + μ (x - c_rest)² with the weights at x, c_rest
+    // the centre of gravity of the rest of the tractor and μ = m_b (M - m_b)
+    // / M: lowest with the weights at c_rest, which may lie between the
+    // ends. So the rest of the tractor's own inertia must be positive.
+    const double mass_kg = params.mass_kg;
+    const double built_m = ballast_x_m(ballast, ballast.position);
+    const double rest_cg_m =
+        (mass_kg * params.cg_ahead_of_rear_axle_m - ballast.mass_kg * built_m) /
+        (mass_kg - ballast.mass_kg);
+    const double reduced_kg = ballast.mass_kg * (mass_kg - ballast.mass_kg) / mass_kg;
+    const double own_kg_m2 = reduced_kg * (built_m - rest_cg_m) * (built_m - rest_cg_m);
+    return cg_inside && params.pitch_inertia_kg_m2 > own_kg_m2 &&
+           params.yaw_inertia_kg_m2 > own_kg_m2;
 }
 
 }  // namespace
@@ -217,6 +231,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
 
 Params with_ballast_at(const Params& params, double position) noexcept {
     const Ballast& ballast = params.ballast;
+    if (!std::isfinite(position)) {
+        return params;
+    }
     const double moved_m = ballast_x_m(ballast, std::clamp(position, 0.0, 1.0));
     const double built_m = ballast_x_m(ballast, ballast.position);
     if (ballast.mass_kg <= 0.0 || moved_m == built_m) {

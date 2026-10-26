@@ -123,7 +123,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
 
 Params at_pressure(const Params& params, double pressure_bar) noexcept {
     const Pressure& pressure = params.pressure;
-    if (pressure.reference_bar <= 0.0) {
+    if (pressure.reference_bar <= 0.0 || !std::isfinite(pressure_bar)) {
         return params;
     }
     const double bar = std::clamp(pressure_bar, pressure.min_bar, pressure.max_bar);
@@ -133,9 +133,12 @@ Params at_pressure(const Params& params, double pressure_bar) noexcept {
     Params out = params;
     const double deflection_m = params.size.deflection_m * pressure.reference_bar / bar;
     out.size.deflection_m = deflection_m;
+    // Only a softer carcass squirms: harder than the reference, the lugs
+    // gain nothing, and the smaller footprint (a smaller mobility number)
+    // costs grip.
+    const double extra_m = std::max(deflection_m - params.size.deflection_m, 0.0);
     out.traction.limit = params.traction.limit *
-                         (1.0 - pressure.lug_squirm * (deflection_m - params.size.deflection_m) /
-                                    params.size.section_height_m);
+                         (1.0 - pressure.lug_squirm * extra_m / params.size.section_height_m);
     return out;
 }
 

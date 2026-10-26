@@ -153,7 +153,8 @@ The puller sets two things on the tractor before a pull
 - **The rear tires' pressure.** 0.5 to 1.6 bar (`[tire.pressure]`): lower
   deflects the tire more, for a bigger footprint that sinks less and pulls
   better on soft ground, but lets the lugs squirm, which costs grip on firm
-  ground. The best pressure depends on the track:
+  ground; harder than 1.0 bar only shrinks the footprint. The best pressure
+  depends on the track:
 
 ```bash
 for bar in 0.5 1.0 1.6; do
@@ -163,7 +164,7 @@ for bar in 0.5 1.0 1.6; do
 done
 # 0.5 bar: covered heavy clay 87.33 m, dry hard clay 84.71 m
 # 1.0 bar: covered heavy clay 86.58 m, dry hard clay 88.60 m
-# 1.6 bar: covered heavy clay 85.73 m, dry hard clay 88.48 m
+# 1.6 bar: covered heavy clay 85.51 m, dry hard clay 88.34 m
 ```
 
 `--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the

@@ -502,8 +502,11 @@ TEST(Ballast, MovesTheCentreOfGravity) {
     // The shipped range: about 68 % to 52 % on the rear axle.
     EXPECT_NEAR(rear_axle_share(rear), 0.68, 0.01);
     EXPECT_NEAR(rear_axle_share(front), 0.52, 0.01);
-    // Held to its range.
+    // Held to its range; not a number leaves it where it was built.
     EXPECT_EQ(with_ballast_at(params, 2.0).cg_ahead_of_rear_axle_m, front.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(
+        with_ballast_at(params, std::numeric_limits<double>::quiet_NaN()).cg_ahead_of_rear_axle_m,
+        params.cg_ahead_of_rear_axle_m);
 }
 
 // The inertias follow the parallel axis theorem: the same weights moved by
@@ -550,6 +553,32 @@ TEST(Ballast, RejectsNonsense) {
               ParamError::kBallastOutOfRange);
     EXPECT_EQ(with([](Ballast& b) { b.position = std::numeric_limits<double>::quiet_NaN(); }),
               ParamError::kNotFinite);
+}
+
+// A heavy ballast whose ends both give a positive inertia, while the rest
+// of the tractor's own inertia is negative: the inertia is lowest with the
+// weights at the rest's centre of gravity, between the ends, and negative
+// there. Refused, though both ends pass.
+TEST(Ballast, RejectsAnInertiaThatTurnsNegativeBetweenTheEnds) {
+    Params params = reference_params();
+    params.mass_kg = 1000.0;
+    params.wheelbase_m = 3.0;
+    params.ballast = {.mass_kg = 500.0,
+                      .rear_ahead_of_rear_axle_m = -0.5,
+                      .front_ahead_of_rear_axle_m = 3.5,
+                      .position = 0.0};
+    // The rest of the tractor at 1.5 m: with the weights at -0.5 m the
+    // centre of gravity is at 0.5 m, and the weights 2 m from the rest's
+    // centre of gravity add μ 2² = 250 · 4 = 1000 kg·m² to its own inertia.
+    params.cg_ahead_of_rear_axle_m = 0.5;
+    constexpr double kOwnInertia_kg_m2 = -100.0;
+    params.pitch_inertia_kg_m2 = kOwnInertia_kg_m2 + 1000.0;
+    params.yaw_inertia_kg_m2 = params.pitch_inertia_kg_m2;
+    ASSERT_GT(with_ballast_at(params, 1.0).pitch_inertia_kg_m2, 0.0);
+    ASSERT_LT(with_ballast_at(params, 0.5).pitch_inertia_kg_m2, 0.0);
+    EXPECT_EQ(validate(params), ParamError::kBallastOutOfRange);
+    params.pitch_inertia_kg_m2 = params.yaw_inertia_kg_m2 = 1100.0;
+    EXPECT_EQ(validate(params), std::nullopt);
 }
 
 }  // namespace

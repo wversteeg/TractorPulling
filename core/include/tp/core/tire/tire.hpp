@@ -64,9 +64,11 @@ struct Cornering {
 /// carcass lets the lugs fold and squirm instead of biting, which costs
 /// grip on firm ground where the footprint barely helps:
 ///
-///   limit = limit_ref (1 - lug_squirm (δ - δ_ref) / h)
+///   limit = limit_ref (1 - lug_squirm max(δ - δ_ref, 0) / h)
 ///
-/// so the best pressure depends on the track. Left out: the rolling radius
+/// so the best pressure depends on the track. Harder than the reference,
+/// the lugs gain nothing and the smaller footprint costs grip: the
+/// reference is what suits firm ground. Left out: the rolling radius
 /// shrinking with the deflection (it would move the axle and the gearing).
 struct Pressure {
     /// The pressure the tire's deflection and traction limit are given at;
@@ -129,7 +131,8 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] std::optional<ParamError> validate(const Cornering& cornering) noexcept;
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
-/// The tire at `pressure_bar` (held to its range): its deflection and
+/// The tire at `pressure_bar` (held to its range; a pressure that is not a
+/// number leaves it at the reference): its deflection and
 /// traction limit (see Pressure). A tire whose pressure is not set, or the
 /// reference pressure, gives `params` unchanged, bit for bit.
 [[nodiscard]] Params at_pressure(const Params& params, double pressure_bar) noexcept;

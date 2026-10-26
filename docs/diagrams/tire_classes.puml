@@ -53,7 +53,7 @@ package "tp::tire" {
     +lug_squirm : double
     --
     δ = δ_ref p_ref / p; limit loses
-    lug_squirm (δ - δ_ref) / h
+    lug_squirm max(δ - δ_ref, 0) / h
   }
   class Traction <<struct>> {
     +force_n : double
