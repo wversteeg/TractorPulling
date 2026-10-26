@@ -12,7 +12,9 @@
 # does not throw it open. Otherwise it jumps to where the finger lands.
 #
 # Each control has its own `colour` and `label`, so a thumb finds the
-# throttle, the clutch and the brakes apart at a glance.
+# throttle, the clutch and the brakes apart at a glance. set_band() marks a
+# stretch of the travel (where the clutch slips) and a line in it (where it
+# bites), at the thumb's middle for those values.
 class_name TouchSlider
 extends Control
 
@@ -24,6 +26,9 @@ const LABEL_SIZE := 22
 # The track behind the thumb, filled to where it is in the control's colour
 # at this strength, so how far a lever is open shows from afar.
 const FILL_ALPHA := 0.35
+const BAND_COLOUR := Color(1.0, 1.0, 1.0, 0.25)
+const MARK_COLOUR := Color(1.0, 0.95, 0.75, 0.95)
+const MARK_WIDTH := 4.0
 
 @export var colour := Color(0.95, 0.95, 0.95, 0.85)
 @export var label := ""
@@ -38,6 +43,11 @@ const FILL_ALPHA := 0.35
 @export var relative := false
 
 var value := 0.0
+# The marked stretch of the travel and its line, as values; none without.
+var has_band := false
+var band_from := 0.0
+var band_to := 0.0
+var mark := 0.0
 # The finger holding the slider, -1 for none.
 var _finger := -1
 # Where the finger landed along the slider (0 to 1) and the value then, for
@@ -49,6 +59,29 @@ var _grab_value := 0.0
 func _ready() -> void:
 	value = rest_value
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+# Marks the travel from `from_value` to `to_value`, and a line at
+# `mark_value`.
+func set_band(from_value: float, to_value: float, mark_value: float) -> void:
+	has_band = true
+	band_from = from_value
+	band_to = to_value
+	mark = mark_value
+	queue_redraw()
+
+
+func clear_band() -> void:
+	has_band = false
+	queue_redraw()
+
+
+# Where the thumb's middle is along the slider at `at_value`, from the
+# start end (the bottom of a vertical slider) [px].
+func position_of(at_value: float) -> float:
+	var length := size.y if vertical else size.x
+	var thumb := length * THUMB_SHARE
+	return inverse_lerp(start_value, end_value, at_value) * (length - thumb) + thumb / 2.0
 
 
 func is_held() -> bool:
@@ -120,14 +153,36 @@ func _draw() -> void:
 		var y := (1.0 - share) * (size.y - thumb)
 		if filled:
 			draw_rect(Rect2(0.0, y, size.x, size.y - y), fill)
+		_draw_band()
 		draw_rect(Rect2(0.0, y, size.x, thumb), thumb_colour)
 	else:
 		var thumb := size.x * THUMB_SHARE
 		var x := share * (size.x - thumb)
 		if filled:
 			draw_rect(Rect2(0.0, 0.0, x + thumb, size.y), fill)
+		_draw_band()
 		draw_rect(Rect2(x, 0.0, thumb, size.y), thumb_colour)
+	if has_band:
+		var at := position_of(mark)
+		_draw_across(at - MARK_WIDTH / 2.0, at + MARK_WIDTH / 2.0, MARK_COLOUR)
 	_draw_label()
+
+
+# The marked stretch, over the fill and under the thumb.
+func _draw_band() -> void:
+	if has_band:
+		_draw_across(position_of(band_from), position_of(band_to), BAND_COLOUR)
+
+
+# A stretch across the slider, from `from_px` to `to_px` along it (from the
+# start end).
+func _draw_across(from_px: float, to_px: float, fill_colour: Color) -> void:
+	var low := minf(from_px, to_px)
+	var high := maxf(from_px, to_px)
+	if vertical:
+		draw_rect(Rect2(0.0, size.y - high, size.x, high - low), fill_colour)
+	else:
+		draw_rect(Rect2(low, 0.0, high - low, size.y), fill_colour)
 
 
 # The label across the track's far end (the top of a vertical slider), in

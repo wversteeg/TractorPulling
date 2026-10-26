@@ -1,5 +1,5 @@
-# Just before a pull (or a practice pull): how the tractor is set up and
-# the control layout. The weights slide from the rear wheels to the front
+# Just before a pull (or a practice pull): how the tractor is set up, and
+# a line naming the controls (picked in the settings). The weights slide from the rear wheels to the front
 # bracket (more on the rear axle grips harder but lifts the nose sooner),
 # and the rear tires' pressure from soft (a bigger footprint for soft
 # tracks) to hard (lugs that bite on firm ones). TractorPullEvent keeps the
@@ -8,7 +8,6 @@ class_name SetupScreen
 extends MenuPanel
 
 signal tuning_changed(ballast_position: float, pressure_bar: float)
-signal layout_picked(pro: bool)
 signal pull_requested
 signal back_requested
 
@@ -23,13 +22,12 @@ const TIRE_COLOUR := Color(0.6, 0.6, 0.65, 0.9)
 
 var ballast_slider := TouchSlider.new()
 var pressure_slider := TouchSlider.new()
-var easy_button: TouchButton
-var pro_button: TouchButton
 var pull_button: TouchButton
 var back_button: TouchButton
 var _title: Label
 var _weights: Label
 var _pressure: Label
+var _controls: Label
 var _sent := Vector2(-1.0, -1.0)
 
 
@@ -44,14 +42,10 @@ func _ready() -> void:
 	_add_slider(ballast_slider, "REAR  ·  WEIGHTS  ·  FRONT", WEIGHT_COLOUR)
 	_pressure = add_line(LINE_SIZE)
 	_add_slider(pressure_slider, "SOFT  ·  REAR TIRES  ·  HARD", TIRE_COLOUR)
-	var layouts := add_button_row()
-	easy_button = add_button(layouts, "easy")
-	pro_button = add_button(layouts, "pro")
+	_controls = add_line(LINE_SIZE)
 	var go := add_button_row()
 	back_button = add_button(go, "Back")
 	pull_button = add_button(go, "Pull")
-	easy_button.tapped.connect(func() -> void: layout_picked.emit(false))
-	pro_button.tapped.connect(func() -> void: layout_picked.emit(true))
 	pull_button.tapped.connect(func() -> void: pull_requested.emit())
 	back_button.tapped.connect(func() -> void: back_requested.emit())
 
@@ -63,8 +57,10 @@ func _add_slider(slider: TouchSlider, text: String, colour: Color) -> void:
 	add_item(slider)
 
 
-# `title` names the pull to come; `tuning` is TractorPullEvent.get_tuning().
-func show_setup(title: String, tuning: Dictionary, pro: bool) -> void:
+# `title` names the pull to come; `tuning` is TractorPullEvent.get_tuning();
+# `pro` and `tilt` the controls that will drive (`tilt` only where the
+# phone can steer by tilting).
+func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> void:
 	_title.text = title
 	ballast_slider.visible = tuning.get("ballast", false)
 	pressure_slider.visible = tuning.get("pressure", false)
@@ -74,8 +70,8 @@ func show_setup(title: String, tuning: Dictionary, pro: bool) -> void:
 	pressure_slider.value = tuning.get("pressure_bar", 0.0)
 	_sent = Vector2(ballast_slider.value, pressure_slider.value)
 	show_values(tuning)
-	easy_button.selected = not pro
-	pro_button.selected = pro
+	_controls.text = "Controls: %s, %s steering" % ["pro" if pro else "easy",
+			"tilt" if tilt else "slider"]
 
 
 # The settings in words, from TractorPullEvent.get_tuning().

@@ -71,6 +71,23 @@ double pedal_for(const Params& params, double share) noexcept {
     return kPedalPressed;
 }
 
+EngagementRange engagement_range(const Params& params) noexcept {
+    // The curve never increases with pedal travel and is linear between its
+    // points, so the capacity is whole up to the last point at 1 and some
+    // up to the first point at 0.
+    EngagementRange range;
+    for (const math::CurvePoint& p : params.engagement.points()) {
+        if (p.y >= 1.0) {
+            range.full_grip_pedal = p.x;
+        }
+        if (p.y <= 0.0) {
+            range.bite_pedal = p.x;
+            break;
+        }
+    }
+    return range;
+}
+
 double resolve(State& state, const Params& params, double capacity_nm,
                double lock_torque_nm) noexcept {
     if (capacity_nm <= 0.0) {

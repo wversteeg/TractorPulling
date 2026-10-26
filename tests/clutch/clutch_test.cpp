@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cmath>
+#include <optional>
 
 #include "flywheel.hpp"
 #include "reference_clutch.hpp"
@@ -95,6 +96,31 @@ TEST(Clutch, PedalForAShareGivesThatShare) {
     EXPECT_EQ(pedal_for(params, 2.0), 0.0);
     // More share, less pedal.
     EXPECT_GT(pedal_for(params, 0.2), pedal_for(params, 0.4));
+}
+
+// The reference clutch: free play to 30 %, nothing from 70 % (clutch.toml).
+TEST(Clutch, EngagementRangeIsWhereItSlips) {
+    const Params params = reference_params();
+    const EngagementRange range = engagement_range(params);
+    EXPECT_EQ(range.full_grip_pedal, 0.3);
+    EXPECT_EQ(range.bite_pedal, 0.7);
+    const double whole_nm = params.static_torque_capacity_nm;
+    EXPECT_EQ(capacity_nm(params, range.full_grip_pedal), whole_nm);
+    EXPECT_LT(capacity_nm(params, range.full_grip_pedal + 0.01), whole_nm);
+    EXPECT_GT(capacity_nm(params, range.bite_pedal - 0.01), 0.0);
+    EXPECT_EQ(capacity_nm(params, range.bite_pedal), 0.0);
+}
+
+// A curve with no free play and no dead travel slips over the whole pedal.
+TEST(Clutch, EngagementRangeWithoutFreePlay) {
+    Params params = reference_params();
+    const std::array<math::CurvePoint, 2> points{{{0.0, 1.0}, {1.0, 0.0}}};
+    const std::optional<math::Curve> curve = math::Curve::create(points);
+    ASSERT_TRUE(curve.has_value());
+    params.engagement = curve.value_or(params.engagement);
+    const EngagementRange range = engagement_range(params);
+    EXPECT_EQ(range.full_grip_pedal, 0.0);
+    EXPECT_EQ(range.bite_pedal, 1.0);
 }
 
 TEST(Clutch, CapacityHelperMatchesStep) {

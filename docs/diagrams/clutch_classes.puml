@@ -36,11 +36,16 @@ package "tp::hash (see core_classes)" {
       +slip_power_w : double
       +capacity_nm : double
     }
+    class "EngagementRange" as ClutchRange <<struct>> {
+      +full_grip_pedal : double
+      +bite_pedal : double
+    }
     enum "ParamError" as ClutchParamError
     class "clutch functions" as ClutchFns <<free functions>> {
       +validate(const Params&) : optional<ParamError>
       +capacity_nm(const Params&, pedal) : double
       +pedal_for(const Params&, share) : double
+      +engagement_range(const Params&) : EngagementRange
       +resolve(State&, const Params&, capacity, lock_torque) : double
       +step(State&, const Params&, const Input&,
             engine_side, driveline_side : ShaftPrediction) : Output
@@ -52,6 +57,7 @@ package "tp::hash (see core_classes)" {
     ClutchFns ..> ClutchInput
     ClutchFns ..> ClutchOutput
     ClutchFns ..> ClutchParamError
+    ClutchFns ..> ClutchRange
   }
 
 ClutchFns ..> ShaftPrediction : engine_side,\ndriveline_side

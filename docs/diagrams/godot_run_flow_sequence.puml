@@ -3,15 +3,20 @@ title The game's flow: a season's event against the rivals, then the top tens
 autonumber
 actor Player
 participant "pull.gd" as Pull
-participant "StartScreen / BoardScreen /\nResultScreen" as Screens
+participant "StartScreen / SettingsScreen /\nBoardScreen / ResultScreen" as Screens
 participant "TractorPullEvent" as Event
 participant "TractorPullRun" as Run
 
+Pull -> Pull : GameSettings.read(): the layout, the steering
 Pull -> Event : start_season(season, seed: new each launch)
 Pull -> Event : start_event()
 Pull -> Screens : start screen: get_event() (name, n of count)
 loop each frame on the start screen and the board
   Pull -> Event : advance(slices of steps, ~6 ms a frame)\nwhile the turn is the rivals'
+end
+opt the gear: Settings
+  Player -> Screens : easy / pro, slider / tilt
+  Pull -> Pull : GameSettings.write()
 end
 opt Practice
   Player -> Screens : Practice
