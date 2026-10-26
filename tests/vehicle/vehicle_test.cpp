@@ -48,6 +48,7 @@ struct Pull {
     double max_slip = 0.0;
     double min_front_n = 1e12;
     double max_pitch_rad = 0.0;
+    double max_bar_n = 0.0;
     double steering_rad = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
@@ -95,6 +96,7 @@ struct Pull {
             }
             min_front_n = std::min(min_front_n, last.axle_loads.front_n);
             max_pitch_rad = std::max(max_pitch_rad, state.chassis.pitch_rad);
+            max_bar_n = std::max(max_bar_n, last.axle_loads.wheelie_bar_n);
             if (!state.engine.running) {
                 return;
             }
@@ -233,10 +235,11 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     EXPECT_TRUE(slipped) << "the clutch slips as the gear goes in";
     // The clutch brakes the wheels at its capacity, not in one jolt: the
     // shift's own step slows them by less than a tenth (the input shaft's
-    // jump alone took a quarter), and the rear tires keep a good share of
-    // their load.
+    // jump alone took a quarter). That braking torque's reaction pitches
+    // the nose down for a moment, onto the front tires, and the rear tires
+    // never lose all their load.
     EXPECT_GT(axle_after_rad_s, 0.9 * axle_before_rad_s);
-    EXPECT_GT(least_rear_n, 0.2 * kHeavier_n) << least_rear_n << " N";
+    EXPECT_GT(least_rear_n, 0.1 * kHeavier_n) << least_rear_n << " N";
     EXPECT_GT(locked_at, shifted_at);
     EXPECT_LT((locked_at - shifted_at) * kDt_s, 0.5) << "locked again within half a second";
     ASSERT_TRUE(shifted.state.engine.running) << "5th pulls on";
@@ -388,6 +391,34 @@ TEST(Vehicle, DumpingTheClutchInALowGearLiftsTheFront) {
     slipped.run(2, 8000.0, false, 15.0);
     EXPECT_GT(slipped.min_front_n, 1000.0);
     EXPECT_GT(dumped.max_pitch_rad, slipped.max_pitch_rad);
+}
+
+// The class's hitch keeps the nose down: the drawbar's weight transfer,
+// pull × hitch height / wheelbase, stays below what the front axle carries
+// even with the weights fully back. The same tractor with its drawbar at
+// 1.0 m (outside the class) pulls a wheelie onto its bar: wheelies emerge
+// from the moments, they are not scripted.
+TEST(Vehicle, AHighHitchPullsAWheelieOntoTheBar) {
+    constexpr double kHeavy_n = 24000.0;
+    const auto wheelie = [](double hitch_height_m) {
+        Params params =
+            tuned(reference_params(), {.ballast_position = 0.0, .rear_tire_pressure_bar = 1.0});
+        params.chassis.hitch_height_m = hitch_height_m;
+        Pull pull;
+        pull.model = Model::create(params).value_or(reference_model());
+        pull.state = initial_state(pull.model);
+        pull.run(6, kHeavy_n, false, 12.0);
+        return pull;
+    };
+    const Pull legal = wheelie(0.5);
+    const Pull high = wheelie(1.0);
+    EXPECT_GT(legal.min_front_n, 0.0) << "the front stays down at 0.5 m";
+    EXPECT_EQ(high.min_front_n, 0.0);
+    EXPECT_GT(high.max_bar_n, 0.0) << "on the bar";
+    EXPECT_EQ(legal.max_bar_n, 0.0);
+    // The bar's tip touches down at about 7° nose-up.
+    EXPECT_GT(high.max_pitch_rad, 0.1) << high.max_pitch_rad << " rad";
+    EXPECT_LT(legal.max_pitch_rad, 0.02) << legal.max_pitch_rad << " rad";
 }
 
 // How a pull against a slowly growing load ends: like a sled whose weight
@@ -721,7 +752,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x5ab88ff3ca835096ULL);
+    EXPECT_EQ(pull_hash(), 0x63bb5f926cf0f49dULL);
 }
 
 }  // namespace

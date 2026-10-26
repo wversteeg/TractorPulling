@@ -528,16 +528,22 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     relax_side_deflections(state, params, front_grip, rear_left_grip, rear_right_grip, steer, dt_s);
 
     // The torque the gearbox and the brakes put on the rear wheels, from
-    // their own balance: it spins them up and overcomes the tires' traction
-    // and rolling resistance. Its reaction on the body lifts the nose. At a
-    // standstill the resistances only hold, and the solved tire force is not
-    // a physical one: the tires then hold just the drawbar pull. Rolling
-    // resistance counts only while the wheels turn, as in the driveline.
+    // their own balance: it spins up the axle and the wheels and overcomes
+    // the tires' traction and rolling resistance. Its reaction on the body
+    // lifts the nose: a clutch dumped spins the heavy wheels up at once, and
+    // that kick is what lifts the front. The two sides' speeds differ by the
+    // differential, which cancels in their sum, so the wheels count at the
+    // axle's speed. At a standstill the resistances only hold, and the
+    // solved tire force is not a physical one: the tires then hold just the
+    // drawbar pull. Rolling resistance counts only while the wheels turn, as
+    // in the driveline.
     const bool standstill = next_axle_rad_s == 0.0 && state.chassis.velocity_m_s == 0.0;
     const double tire_force_n = standstill ? drawbar.pull_n : chain.tire_force_n;
-    const double axle_torque_nm =
-        driveline_params.output_inertia_kg_m2 * (next_axle_rad_s - axle_rad_s) / dt_s +
-        radius_m * tire_force_n + (next_axle_rad_s > 0.0 ? rear_rolling_nm : 0.0);
+    const double spun_up_kg_m2 =
+        driveline_params.output_inertia_kg_m2 + kSides * problem.side_inertia_kg_m2;
+    const double axle_torque_nm = spun_up_kg_m2 * (next_axle_rad_s - axle_rad_s) / dt_s +
+                                  radius_m * tire_force_n +
+                                  (next_axle_rad_s > 0.0 ? rear_rolling_nm : 0.0);
     chassis::advance_pitch(state.chassis, params.chassis, axle_torque_nm, drawbar,
                            out.front_rolling_resistance, dt_s);
 
