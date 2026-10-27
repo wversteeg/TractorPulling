@@ -247,7 +247,12 @@ a practice pull; it builds a view of the track, tractor, sled and chain
 from the run's dimensions, and each frame hands it the controls, advances
 it by the frame's time and places the views from the blended snapshot; the
 cameras follow the tractor and the `Hud` shows the engine and the
-distance. Who pulls next, and the standings, are the event's answer.
+distance. Each pull is the player's whole turn (`set_parking()`): from the
+bay in the parking (`VenueView`'s, beside the return lane on the right) to
+the sled and back, the rivals' tractors parked in the bays behind, the
+`Flagman` showing the run's stage with his flag, and the `Hud` saying what
+to do next; the result screen comes once the run says the turn is over.
+Who pulls next, and the standings, are the event's answer.
 `DriveControls` is the easy layout on a touch screen: a steering slider, a
 hand throttle and gear buttons, each following its own finger so both
 thumbs drive at once; the keyboard and a gamepad work it in development.

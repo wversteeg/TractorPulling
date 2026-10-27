@@ -10,10 +10,10 @@ extends SceneTree
 const MARK_STEP_MOST_M := 0.27
 # The venue finds room for at least this many fields round it.
 const FIELDS_AT_LEAST := 8
-# Past the lane's edge, the venue's outermost things: the tents, whose far
-# side is about 23 m out (the stands' back rows and the banks are nearer)
-# [m]. No field may reach inside it.
-const VENUE_PAST_LANE_M := 24.0
+# Past the lane's edge, the venue's outermost things: the tents beyond the
+# return lane, whose far side is about 29 m out (the stands' back rows and
+# the banks are nearer) [m]. No field may reach inside it.
+const VENUE_PAST_LANE_M := 30.0
 const FRAMES := 600
 const TOLERANCE_M := 1e-4
 

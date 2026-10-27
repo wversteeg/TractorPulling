@@ -45,6 +45,8 @@ func _initialize() -> void:
 	_pull.set("season_path", "res://tests/data/practice_season.toml")
 	# A new season, whatever this machine has saved, and nothing saved.
 	_pull.set("save_path", "")
+	# A pull from the start line: the whole turn is turn_test.gd's.
+	_pull.set("whole_turn", false)
 	root.add_child(_pull)
 	_play.call_deferred()
 
@@ -111,9 +113,14 @@ func _play() -> void:
 	_touch(TAP_FINGER, Vector2(640.0, 300.0), false)
 	_expect(controls.throttle() == 0.0 and controls.gear == 0, "a touch off the controls")
 
-	# The gear: down from neutral stays there, up stops at the top gear.
+	# The gear: down from neutral is reverse, and no further; up from it
+	# neutral again, and up stops at the top gear.
 	_tap(controls.gear_down)
-	_expect(controls.gear == 0, "no gear below neutral")
+	_expect(controls.gear == -1, "reverse below neutral: %d" % controls.gear)
+	_tap(controls.gear_down)
+	_expect(controls.gear == -1, "nothing below reverse")
+	_tap(controls.gear_up)
+	_expect(controls.gear == 0, "up from reverse: neutral")
 	for i in controls.gear_count + 2:
 		_tap(controls.gear_up)
 	_expect(controls.gear == controls.gear_count, "the top gear is the last")

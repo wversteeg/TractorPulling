@@ -15,12 +15,17 @@ package "GDScript (app/godot/scripts)" {
     +season_path : String
     +season_seed : int
     +autoplay : bool
+    +whole_turn : bool = true
     +settings_path : String
     +save_path : String
     +pro, tilt : bool
     +practice : bool
     +run : TractorPullRun
     +event : TractorPullEvent
+    +flagman : Flagman
+    +parked : Array[TractorView]
+    +hitch_marker : MeshInstance3D
+    +driver : Callable, a scripted driver for tests
     +screen : Screen {START, SETTINGS, GARAGE, EVENT,\n  SETUP, PULLING, RESULT, EVENT_END, SEASON}
     +show_start(error)
     -_new_season()
@@ -30,7 +35,10 @@ package "GDScript (app/godot/scripts)" {
     -_show_setup(for_practice)
     -_start_practice()
     -_start_event_pull()
+    -_place_parking()
     -_build(error) : bool
+    -_build_turn(dimensions)
+    -_camera_target() : Vector3
     -_set_screen(screen)
     -_process(delta)
     -_advance_rivals()
@@ -43,6 +51,7 @@ package "GDScript (app/godot/scripts)" {
     +build(dimensions)
   }
   class TractorView {
+    +paint, paint_dark, driver_shirt : Color
     +build(dimensions)
     +show_snapshot(snapshot, delta)
     +hitch_position() : Vector3
@@ -53,11 +62,19 @@ package "GDScript (app/godot/scripts)" {
     +hook_position() : Vector3
   }
   class VenueView {
+    +RETURN_LANE_M, PARKING_RIGHT_OF_LANE_M
+    +PLAYER_BAY_X_M, RIVAL_BAYS_X_M
     +build(dimensions)
     +show_distance(sled_m)
     +excitement() : float
     +banner_at_m() : float
     +{static} environment() : WorldEnvironment
+    +{static} past_lane_m(side) : float
+  }
+  class Flagman {
+    +stand(at, facing)
+    +show_stage(stage, flag_progress, delta)
+    +colour_name() : String
   }
   class TrackMarks {
     +build(dimensions)
@@ -100,6 +117,7 @@ package "GDScript (app/godot/scripts)" {
     +gear : int
     +lowest_gear : int
     +gear_count : int
+    +has_reverse : bool
     +pro, tilt : bool
     +tilt_steering : TiltSteering
     +throttle() : float
@@ -118,7 +136,10 @@ package "GDScript (app/godot/scripts)" {
   }
   class Hud {
     +build(dimensions)
+    +set_parking(bay)
     +show_snapshot(snapshot, title, pro)
+    +turn_text(snapshot) : String
+    +{static} gear_name(gear) : String
   }
   class MenuPanel {
     +panel_size : Vector2
@@ -250,6 +271,7 @@ package "tests (scripts/godot_test.sh)" {
   class "screenshots.gd" as Shots
   class "touch_test.gd" as TouchTest
   class "flow_test.gd" as FlowTest
+  class "turn_test.gd" as TurnTest
 }
 
 class "TractorPullRun\n(see godot_classes)" as Run
@@ -263,18 +285,21 @@ Node3D <|-- ChainView
 Node3D <|-- VenueView
 Node3D <|-- TrackMarks
 Node3D <|-- CameraRig
+Node3D <|-- Flagman
 Pull *-- Run
 Pull *-- Event
 Pull *-- TrackView
 Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky, hills
 Pull *-- TrackMarks : ruts and the pan's band,\ncleared each pull
 Pull *-- TractorView
+Pull *-- "3" TractorView : the rivals in their bays\n(a whole turn)
+Pull *-- Flagman : red flag, then green
 Pull *-- SledView
 Pull *-- ChainView
 Pull *-- CameraRig
 Pull *-- DriveControls : the easy or pro layout's controls
 DriveControls *-- "5" TouchSlider : steering (slider steering), hand throttle;\npro: clutch (its slipping range marked),\ntwo brakes
-DriveControls *-- "6" TouchButton : gear +/-, N, camera,\nagain, menu
+DriveControls *-- "6" TouchButton : gear +/- (R below N), N,\ncamera, again, menu
 Pull *-- Hud
 Pull *-- StartScreen
 Pull *-- SettingsScreen : from the start screen's gear
@@ -314,6 +339,7 @@ VenueView ..> KenneyModels : CC0 models (assets/kenney):\ntents, barn, clouds
 VenueView ..> Trees : copses and\nthe tree line
 VenueView ..> People : the crowd, one\nMultiMesh a pose
 TractorView ..> People : the driver
+Flagman ..> People : the official
 SledView ..> People : the operator
 TrackMarks ..> TrackSpace
 SceneTree <|-- SceneTest
@@ -323,6 +349,8 @@ Shots ..> Pull : autoplay, a PNG per camera
 SceneTree <|-- TouchTest
 TouchTest ..> DriveControls : simulated fingers\n(push_input) and a simulated\nmotion sensor (tilt)
 SceneTree <|-- FlowTest
+SceneTree <|-- TurnTest
+TurnTest ..> Pull : headless, a scripted driver: the whole turn\nfrom the bay to the sled and back
 FlowTest ..> Pull : a practice season (tests/data):\nstart, settings, practice, the event with its rivals,\nthe top tens, next event; launched again:\ncontinue, new season
 note bottom of Pull
   draws the blended snapshot and hands the run the controls;

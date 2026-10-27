@@ -56,6 +56,10 @@ const DIRT_FULL_SLIP := 0.5
 # Speed from which the rolling tires raise dust [m/s].
 const DUST_FROM_SPEED_M_S := 0.3
 
+# The tractor's colours; set before build(): the parked rivals' differ.
+var paint := PAINT
+var paint_dark := PAINT_DARK
+var driver_shirt := DRIVER
 var _body := Node3D.new()        # pivots about the rear axle
 var _hitch := Marker3D.new()
 var _rear_left := Node3D.new()
@@ -165,13 +169,13 @@ func _add_hood(wheelbase_m: float) -> void:
 	var front_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M
 	var back_m := 0.75
 	var length_m := front_m - back_m
-	var hood := Art.box(Vector3(HOOD_WIDTH_M, 0.5, length_m), PAINT, 0.35)
-	hood.material_override = Art.paint(PAINT)
+	var hood := Art.box(Vector3(HOOD_WIDTH_M, 0.5, length_m), paint, 0.35)
+	hood.material_override = Art.paint(paint)
 	hood.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M - 0.25)
 	_body.add_child(hood)
 	# A rounded top: a half cylinder along the hood.
 	var top := Art.instance(Art.cylinder_mesh(HOOD_WIDTH_M / 2.0, HOOD_WIDTH_M / 2.0, length_m, 16),
-			Art.paint(PAINT))
+			Art.paint(paint))
 	top.rotation.x = PI / 2.0
 	top.scale = Vector3(1.0, 1.0, 0.35)
 	top.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M)
@@ -183,7 +187,7 @@ func _add_hood(wheelbase_m: float) -> void:
 				side * (HOOD_WIDTH_M / 2.0 + 0.005), HOOD_TOP_M - 0.12)
 		_body.add_child(stripe)
 		for i in 6:
-			var louvre := Art.box(Vector3(0.02, 0.03, 0.18), PAINT_DARK)
+			var louvre := Art.box(Vector3(0.02, 0.03, 0.18), paint_dark)
 			louvre.position = TrackSpace.point(front_m - 0.35, side * (HOOD_WIDTH_M / 2.0 + 0.005),
 					HOOD_TOP_M - 0.22 - i * 0.05)
 			_body.add_child(louvre)
@@ -220,8 +224,8 @@ func _add_cab(rear_track_m: float) -> void:
 			post.position = TrackSpace.point(x_m, side * half_width_m, 0.35 + (CAB_ROOF_M - 0.35) / 2.0)
 			_body.add_child(post)
 	var roof := Art.box(Vector3(2.0 * half_width_m + 0.12, 0.08, 2.0 * CAB_HALF_DEPTH_M + 0.2),
-			PAINT, 0.35)
-	roof.material_override = Art.paint(PAINT)
+			paint, 0.35)
+	roof.material_override = Art.paint(paint)
 	roof.position = TrackSpace.point(0.15, 0.0, CAB_ROOF_M)
 	_body.add_child(roof)
 	var screen_material := StandardMaterial3D.new()
@@ -250,7 +254,7 @@ func _add_cab(rear_track_m: float) -> void:
 	_body.add_child(wheel)
 	# The driver in blue overalls, seated: People face +z, the tractor -z
 	# (TrackSpace's x); their hips 0.42 m behind their feet, on the seat.
-	var driver := People.one(true, DRIVER)
+	var driver := People.one(true, driver_shirt)
 	driver.rotation.y = PI
 	driver.position = TrackSpace.point(0.37, 0.0, 0.3)
 	_body.add_child(driver)
@@ -265,8 +269,8 @@ func _add_fenders(rear_track_m: float, rear_width_m: float) -> void:
 		for i in panels:
 			var angle := lerpf(0.25, PI - 0.55, (float(i) + 0.5) / panels)
 			var panel := Art.box(Vector3(rear_width_m + 0.1, 0.03, radius_m * PI / panels * 0.75),
-					PAINT, 0.35)
-			panel.material_override = Art.paint(PAINT)
+					paint, 0.35)
+			panel.material_override = Art.paint(paint)
 			panel.position = TrackSpace.point(radius_m * cos(angle), side * rear_track_m / 2.0,
 					radius_m * sin(angle))
 			# Tangent to the arc: turned about the axle's line.

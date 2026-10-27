@@ -15,11 +15,14 @@
 # the top corner. All of them are multi-touch, so
 # both thumbs drive at once.
 #
+# "-" from neutral puts reverse in where the gearbox has it (the gear shows
+# R), "+" from reverse neutral.
+#
 # For development the keyboard (W throttle, A and D steer, the digits for a
-# gear, held to the gearbox, Space presses the clutch, Q and E brake left
-# and right, C camera, R restart, M menu) and a gamepad (right trigger
-# throttle, left trigger clutch, left stick steer, shoulder buttons gear,
-# X neutral, Y camera, Back restart) drive the same controls. The run turns
+# gear, held to the gearbox, minus reverse, Space presses the clutch, Q and
+# E brake left and right, C camera, R restart, M menu) and a gamepad (right
+# trigger throttle, left trigger clutch, left stick steer, shoulder buttons
+# gear, X neutral, Y camera, Back restart) drive the same controls. The run turns
 # them into the tractor's input: the steering's dead zone and rate are the
 # core's (data/controls/easy.toml and pro.toml).
 class_name DriveControls
@@ -47,12 +50,15 @@ const SMALL_BUTTON := Vector2(120.0, 80.0)
 # under the share of the travel that turns the wheels).
 const KEY_STEERING := 0.3
 const GAMEPAD := 0
+const REVERSE := -1
 
 var gear := 0
 # The lowest gear the run takes now (its snapshot's lowest_gear).
 var lowest_gear := 1
 # The gearbox's forward gears; the gear buttons stop at the top one.
 var gear_count := 8
+# The gearbox has a reverse gear (REVERSE), below neutral.
+var has_reverse := false
 # The pro layout's controls are shown and read; else the easy layout's.
 var pro := false
 # Steering by tilting the phone (when it has the sensor), not the slider.
@@ -179,7 +185,7 @@ func set_gear(wanted: int) -> void:
 		if gear != 0:
 			return
 		wanted = lowest_gear
-	gear = clampi(wanted, 0, gear_count)
+	gear = clampi(wanted, REVERSE if has_reverse else 0, gear_count)
 
 
 # Back to the start: neutral, throttle closed, clutch pressed, nothing
@@ -261,6 +267,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			menu_requested.emit()
 		elif key.keycode >= KEY_0 and key.keycode <= KEY_9:
 			set_gear(key.keycode - KEY_0)
+		elif key.keycode == KEY_MINUS:
+			set_gear(REVERSE)
 		return
 	var button := event as InputEventJoypadButton
 	if button != null and button.pressed:

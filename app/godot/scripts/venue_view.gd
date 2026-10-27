@@ -52,11 +52,24 @@ const FIELDS := 18
 # tents are inside) [m].
 const FIELD_LIFT_M := 0.15
 const FIELD_TRIES := 20
-const FIELDS_CLEAR_OF_LANE_M := 30.0
+const FIELDS_CLEAR_OF_LANE_M := 36.0
 const GRASS_Y_M := -0.06
 const STRIP_MARGIN_M := 3.0
 const RUN_UP_M := 40.0
 const OVERRUN_M := 30.0
+# On the right, between the lane and the bales, room to drive back to the
+# parking after a pull, and for the parking behind the start line: the
+# fence, the bales and everything past them stand this much further out
+# there [m].
+const RETURN_LANE_M := 6.0
+# The parking: its bays' middle right of the lane's right-hand chalk line,
+# the player's bay and the rivals' behind it, down the track from the start
+# line (behind it) [m]. The player's tractor leaves from its bay and comes
+# back to it (TractorPullRun.set_parking).
+const PARKING_RIGHT_OF_LANE_M := 6.0
+const PLAYER_BAY_X_M := -12.0
+const RIVAL_BAYS_X_M: Array[float] = [-19.0, -26.0, -33.0]
+const BAY_SIZE_M := Vector2(6.0, 4.0)
 # The fence and the straw bales inside it, from the lane's edge [m].
 const FENCE_OUT_M := 6.5
 const BALES_OUT_M := 5.5
@@ -219,7 +232,7 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	var strip_length_m := RUN_UP_M + length_m + OVERRUN_M
 	var clay_material := StandardMaterial3D.new()
 	clay_material.albedo_texture = Art.ground_texture(CLAY_DARK, CLAY_LIGHT, 0.05, 11)
-	var strip_width_m := lane_m + 2.0 * (BALES_OUT_M - 0.5)
+	var strip_width_m := lane_m + 2.0 * (BALES_OUT_M - 0.5) + RETURN_LANE_M
 	# Clods catch the low sun: a fine normal map over the colour.
 	clay_material.normal_enabled = true
 	clay_material.normal_texture = Art.ground_normal(0.06, 12, 5.0)
@@ -229,9 +242,34 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	var clay := PlaneMesh.new()
 	clay.size = Vector2(strip_width_m, strip_length_m)
 	var strip := Art.instance(clay, clay_material)
-	strip.position = TrackSpace.point(length_m + OVERRUN_M - strip_length_m / 2.0, 0.0, -0.03)
+	# Wider on the right, for the return lane and the parking.
+	strip.position = TrackSpace.point(length_m + OVERRUN_M - strip_length_m / 2.0,
+			-RETURN_LANE_M / 2.0, -0.03)
 	_quiet(strip)
 	add_child(strip)
+	_add_bays(lane_m)
+
+
+# The parking's bays behind the start line: white lines on the clay, the
+# player's and the rivals'.
+func _add_bays(lane_m: float) -> void:
+	var y_m := -(lane_m / 2.0 + PARKING_RIGHT_OF_LANE_M)
+	var lines: Array[Transform3D] = []
+	var bays: Array[float] = [PLAYER_BAY_X_M]
+	bays.append_array(RIVAL_BAYS_X_M)
+	for x_m in bays:
+		for side: float in [-1.0, 1.0]:
+			lines.append(Transform3D(Basis(),
+					TrackSpace.point(x_m, y_m + side * BAY_SIZE_M.y / 2.0, -0.02)))
+	var line := BoxMesh.new()
+	line.size = Vector3(0.12, 0.02, BAY_SIZE_M.x)
+	add_child(_quiet(Art.many(line, lines, Art.material(Color(0.95, 0.95, 0.9), 0.9))))
+
+
+# How much further out the venue stands beside the lane on `side` (-1 right,
+# 1 left): the return lane is on the right.
+static func past_lane_m(side: float) -> float:
+	return RETURN_LANE_M if side < 0.0 else 0.0
 
 
 func _add_fence(length_m: float, lane_m: float, side: float) -> void:
@@ -240,16 +278,16 @@ func _add_fence(length_m: float, lane_m: float, side: float) -> void:
 	var posts: Array[Transform3D] = []
 	var x_m := from_m
 	while x_m <= to_m:
-		posts.append(Transform3D(Basis(), TrackSpace.point(x_m, side * (lane_m / 2.0 + FENCE_OUT_M),
-				0.55)))
+		posts.append(Transform3D(Basis(), TrackSpace.point(x_m,
+				side * (lane_m / 2.0 + FENCE_OUT_M + past_lane_m(side)), 0.55)))
 		x_m += POST_EVERY_M
 	var post_mesh := BoxMesh.new()
 	post_mesh.size = Vector3(0.1, 1.1, 0.1)
 	add_child(_quiet(Art.many(post_mesh, posts, Art.material(WOOD))))
 	for height_m: float in [0.45, 0.95]:
 		var rail := Art.box(Vector3(0.06, 0.12, to_m - from_m), BOARD)
-		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * (lane_m / 2.0 + FENCE_OUT_M),
-				height_m)
+		rail.position = TrackSpace.point((from_m + to_m) / 2.0,
+				side * (lane_m / 2.0 + FENCE_OUT_M + past_lane_m(side)), height_m)
 		add_child(_quiet(rail))
 
 	# Straw bales two high inside the fence, a few knocked askew.
@@ -259,7 +297,8 @@ func _add_fence(length_m: float, lane_m: float, side: float) -> void:
 		for layer in 2:
 			var yaw := _random.randf_range(-0.06, 0.06)
 			var at := TrackSpace.point(x_m + (0.6 if layer == 1 else 0.0),
-					side * (lane_m / 2.0 + BALES_OUT_M), BALE_SIZE_M.y * (layer + 0.5))
+					side * (lane_m / 2.0 + BALES_OUT_M + past_lane_m(side)),
+					BALE_SIZE_M.y * (layer + 0.5))
 			bales.append(Transform3D(Basis(Vector3.UP, yaw), at))
 		x_m += BALE_SIZE_M.z * 2.6 + 0.05
 	var bale_mesh := BoxMesh.new()
@@ -271,7 +310,8 @@ func _add_fence(length_m: float, lane_m: float, side: float) -> void:
 func _add_boards(length_m: float, lane_m: float, side: float) -> void:
 	var x_m := BOARD_EVERY_M
 	while x_m <= length_m + 0.5 * BOARD_EVERY_M:
-		var at := TrackSpace.point(x_m, side * (lane_m / 2.0 + BALES_OUT_M - 1.2), 0.0)
+		var at := TrackSpace.point(x_m,
+				side * (lane_m / 2.0 + BALES_OUT_M + past_lane_m(side) - 1.2), 0.0)
 		var post := Art.box(Vector3(0.08, 1.4, 0.08), STEEL)
 		post.position = at + Vector3(0.0, 0.7, 0.0)
 		add_child(_quiet(post))
@@ -362,7 +402,7 @@ func _add_flag(foot: Vector3, colour: Color, phase: float) -> void:
 # People standing two deep on a grass bank behind the fence on the right,
 # so they see over it.
 func _add_standing_crowd(length_m: float, lane_m: float) -> void:
-	var bank_from_m := lane_m / 2.0 + FENCE_OUT_M + 0.4
+	var bank_from_m := lane_m / 2.0 + FENCE_OUT_M + RETURN_LANE_M + 0.4
 	var bank := Art.box(Vector3(BANK_DEPTH_M, BANK_HEIGHT_M, length_m + 30.0), GRASS_LIGHT, 1.0)
 	bank.position = TrackSpace.point(length_m / 2.0, -(bank_from_m + BANK_DEPTH_M / 2.0),
 			BANK_HEIGHT_M / 2.0 - 0.05)
@@ -375,7 +415,7 @@ func _add_standing_crowd(length_m: float, lane_m: float) -> void:
 			if _random.randf() < 0.8:
 				var basis := Basis(Vector3.UP, -PI / 2.0 + _random.randf_range(-0.5, 0.5))
 				basis = basis.scaled(Vector3.ONE * PERSON_SCALE * _random.randf_range(0.85, 1.05))
-				var y_m := -(lane_m / 2.0 + FENCE_OUT_M + 0.8 + row * 1.0 + _random.randf_range(0.0, 0.4))
+				var y_m := -(bank_from_m + 0.4 + row * 1.0 + _random.randf_range(0.0, 0.4))
 				people.append(Transform3D(basis, TrackSpace.point(
 						x_m + _random.randf_range(-0.3, 0.3), y_m, BANK_HEIGHT_M - 0.05)))
 				colours.append(_shirt())
@@ -427,7 +467,8 @@ func _add_banner(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
 
 # The scoreboard on the right of the full-pull line, facing the track.
 func _add_scoreboard(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
-	var at := TrackSpace.point(full_pull_m - 8.0, -(lane_m / 2.0 + FENCE_OUT_M + 4.0), 0.0)
+	var at := TrackSpace.point(full_pull_m - 8.0,
+			-(lane_m / 2.0 + FENCE_OUT_M + RETURN_LANE_M + 4.0), 0.0)
 	for side: float in [-1.0, 1.0]:
 		var leg := Art.box(Vector3(0.2, 4.0, 0.2), STEEL)
 		leg.position = at + Vector3(side * 2.0, 2.0, 0.0)
@@ -445,7 +486,7 @@ func _add_scoreboard(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
 # Tents behind the standing crowd, a barn at the far end, trees around, a
 # few clouds.
 func _add_scenery(length_m: float, lane_m: float) -> void:
-	var right_m := -(lane_m / 2.0 + FENCE_OUT_M + 9.0)
+	var right_m := -(lane_m / 2.0 + FENCE_OUT_M + RETURN_LANE_M + 9.0)
 	for x_m: float in [15.0, 45.0, 75.0]:
 		_place(KenneyModels.TENTS, TrackSpace.point(x_m, right_m - 4.0, 0.0), 1.0, PI / 2.0)
 	_place(KenneyModels.BARN, TrackSpace.point(length_m + 55.0, 18.0, 0.0), 14.0, 0.3)
