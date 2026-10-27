@@ -19,7 +19,8 @@
 # R), "+" from reverse neutral.
 #
 # For development the keyboard (W throttle, A and D steer, the digits for a
-# gear, held to the gearbox, minus reverse, Space presses the clutch, Q and
+# gear, held to the gearbox, minus reverse from
+# neutral, Space presses the clutch, Q and
 # E brake left and right, C camera, R restart, M menu) and a gamepad (right
 # trigger throttle, left trigger clutch, left stick steer, shoulder buttons
 # gear, X neutral, Y camera, Back restart) drive the same controls. The run turns
@@ -267,7 +268,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			menu_requested.emit()
 		elif key.keycode >= KEY_0 and key.keycode <= KEY_9:
 			set_gear(key.keycode - KEY_0)
-		elif key.keycode == KEY_MINUS:
+		elif key.keycode == KEY_MINUS and gear == 0:
 			set_gear(REVERSE)
 		return
 	var button := event as InputEventJoypadButton

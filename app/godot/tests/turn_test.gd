@@ -91,6 +91,8 @@ func _play() -> void:
 	_expect(hud.turn_text(s).begins_with("Drive past the sled"), "told where to go")
 	_expect(venue.signal_shown() == "off" and hud.signal_shown() == "off",
 			"no signal before the chain is on")
+	_check_steer_hint(hud)
+	_check_reverse_key(_pull.get("controls"))
 
 	var stages: Array[String] = [s["stage"]]
 	var backing_up_told := false
@@ -156,6 +158,32 @@ func _play() -> void:
 	_expect(not bool(s["chain_hooked"]) and not marker.visible, "the chain off again")
 	print("turn test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# Backing up, the tail goes the way the wheel is turned: a hitch left of
+# the sled's line (across > 0) wants the wheel to the right.
+func _check_steer_hint(hud: Hud) -> void:
+	var backing := {"stage": "to_the_sled", "hitch_along_m": 2.0,
+			"hitch_to_hook_m": _chain_m + 1.0, "hitch_across_m": 0.5}
+	_expect(hud.turn_text(backing).ends_with("steer right"), "left of the line: steer right")
+	backing["hitch_across_m"] = -0.5
+	_expect(hud.turn_text(backing).ends_with("steer left"), "right of the line: steer left")
+	backing["hitch_across_m"] = 0.05
+	_expect(not hud.turn_text(backing).contains("steer"), "on the line: no steering hint")
+
+
+# The keyboard's minus key: reverse from neutral only, as the touch "-".
+func _check_reverse_key(controls: DriveControls) -> void:
+	var minus := InputEventKey.new()
+	minus.keycode = KEY_MINUS
+	minus.pressed = true
+	controls.set_gear(3)
+	controls._unhandled_input(minus)
+	_expect(controls.gear == 3, "minus does not jump from a gear into R: %d" % controls.gear)
+	controls.set_gear(0)
+	controls._unhandled_input(minus)
+	_expect(controls.gear == REVERSE, "minus from N selects R: %d" % controls.gear)
+	controls.set_gear(0)
 
 
 # The scripted driver: [throttle, clutch_pedal, gear, steering, brake_left,

@@ -162,8 +162,7 @@ for the big features; they are repeated at the end for completeness.
   2 m/s (`sled::kDriveBack_m_s`), without an engine or physics of its own,
   and through anything in its way.
 - **The official's flag.** Green after the chain has held 1 kN for a
-  second; there is no false start, no time limit on the way to the sled, and
-  no signal to stop the pull.
+  second; there is no false start and no time limit on the way to the sled.
 - **The red flag is a signal only.** After the pull the officials wave red
   and the driver should close the throttle, but nothing counts against one
   who does not; the result is the sled's, at its stop.

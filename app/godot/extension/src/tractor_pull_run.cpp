@@ -1,6 +1,7 @@
 #include "tractor_pull_run.hpp"
 
 #include "tp/core/chassis/chassis.hpp"
+#include "tp/core/turn/turn.hpp"
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
@@ -300,6 +301,8 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["pushdown_start_m"] = sled.pushdown_start_m;
     out["pushdown_full_m"] = sled.pushdown_start_m + sled.pushdown_ramp_m;
     out["chain_length_m"] = sled.chain.length_m;
+    // How far off the sled's line the hitch may be for the chain to go on.
+    out["hook_off_line_m"] = turn::kHookOffLine_m;
     const run::Rules& rules = setup_->rules;
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;

@@ -28,9 +28,13 @@ const FRONT_TOP := 184.0
 # The turn's line, under the top edge in the middle.
 const TURN_TOP := 250.0
 const TURN_COLOUR := Color(1.0, 0.95, 0.6)
-# Backing up: off the sled's line by more than this, it says which way to
-# steer (the chain goes on within 0.4 m, turn::kHookOffLine_m) [m].
-const STEER_HINT_M := 0.25
+# Backing up: off the sled's line by more than this share of how far off
+# the chain still goes on (turn::kHookOffLine_m), it says which way to steer.
+const STEER_HINT_SHARE := 0.6
+# Farther from the hook than this many chain lengths, plus a margin for
+# the turn into the lane, the tractor is still on its way past the sled.
+const PAST_THE_SLED_CHAINS := 3.0
+const PAST_THE_SLED_MARGIN_M := 10.0
 # The signal lamp: its middle, right of the bars' labels and clear of the
 # numbers line, the buttons and the gear buttons; its radius.
 const LAMP_CENTRE := Vector2(740.0, 155.0)
@@ -84,6 +88,7 @@ var _lamp := Label.new()
 # The officials' signal: "green", "red" or "off".
 var _signal := "off"
 var _chain_m := 1.0
+var _steer_hint_m := 0.25
 # The player's bay in the parking, on the track; INF for no whole turn.
 var _parking := Vector2.INF
 
@@ -127,10 +132,13 @@ func build(dimensions: Dictionary) -> void:
 	_pushdown_full_m = dimensions["pushdown_full_m"]
 	_front_rest_n = maxf(float(dimensions["front_axle_rest_load_n"]), 1.0)
 	_chain_m = dimensions["chain_length_m"]
+	_steer_hint_m = STEER_HINT_SHARE * float(dimensions["hook_off_line_m"])
 
 
 # The officials' signal (pull.gd's signal_for()): "green", "red" or "off".
 func show_signal(signal_name: String) -> void:
+	if signal_name == _signal:
+		return
 	_signal = signal_name
 	_lamp.text = {"green": "GO", "red": "STOP"}.get(signal_name, "")
 	_lamp.add_theme_color_override("font_color",
@@ -183,12 +191,13 @@ func turn_text(s: Dictionary) -> String:
 	match s.get("stage", "pulling"):
 		"to_the_sled":
 			var along: float = s["hitch_along_m"]
-			if along <= 0.0 or float(s["hitch_to_hook_m"]) > 3.0 * _chain_m + 10.0:
+			if along <= 0.0 or float(s["hitch_to_hook_m"]) \
+					> PAST_THE_SLED_CHAINS * _chain_m + PAST_THE_SLED_MARGIN_M:
 				return "Drive past the sled into the lane, then back up to it in R"
 			var to_go := maxf(float(s["hitch_to_hook_m"]) - _chain_m, 0.0)
 			var across: float = s["hitch_across_m"]
 			var steer := ""
-			if absf(across) > STEER_HINT_M:
+			if absf(across) > _steer_hint_m:
 				# Backing up, the tail goes the way the wheel is turned: a
 				# hitch left of the line wants the wheel to the right.
 				steer = "   steer %s" % ("right" if across > 0.0 else "left")

@@ -91,8 +91,11 @@ const FLAGMAN_IN_M := 1.5
 const END_FLAGMAN_FROM_M := 80.0
 const END_FLAGMAN_AHEAD_M := 12.0
 # Backing up to the sled, the cameras frame the hitch and the hook from
-# this close [m].
+# this close [m], and how fast they turn to them and back [1/s].
 const HITCH_FRAMING_M := 12.0
+const FRAMING_RATE_PER_S := 2.0
+# Off the hitch, the chain lies on the track this share of its length.
+const CHAIN_LYING_SHARE := 0.9
 # Where the stopping marker lies in front of the hook: a share of the
 # chain's length, where the hitch hooks on.
 const MARKER_SHARE := 0.6
@@ -137,6 +140,14 @@ var _time_s := 0.0
 # chalk line [m].
 var _full_pull_m := 100.0
 var _left_m := 4.5
+# Set for each run in _build_turn: whether it is the whole turn, and the
+# chain's length [m].
+var _whole_turn := false
+var _chain_m := 1.0
+# The latest snapshot (_show), and the cameras' eased offset from the
+# tractor (_camera_target).
+var _snapshot := {}
+var _framing := Vector3.ZERO
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
 
@@ -369,6 +380,7 @@ func _build(error: String) -> bool:
 	controls.reset()
 	_time_s = 0.0
 	_show(0.0)
+	_framing = Vector3.ZERO
 	cameras.follow(tractor_view.global_position, 0.0, false)
 	return true
 
@@ -377,6 +389,8 @@ func _build(error: String) -> bool:
 func _build_turn(dimensions: Dictionary) -> void:
 	var lane_m: float = dimensions["lane_width_m"]
 	var turn: bool = run.get_snapshot().get("stage", "pulling") != "pulling"
+	_whole_turn = turn
+	_chain_m = dimensions["chain_length_m"]
 	var bay_y_m := -(lane_m / 2.0 + VenueView.PARKING_RIGHT_OF_LANE_M)
 	# Built for the first whole turn only: a pull from the line has none.
 	if parked.is_empty() and turn:
@@ -450,16 +464,21 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
-	cameras.follow(_camera_target(), delta)
+	cameras.follow(_camera_target(delta), delta)
 
 
 # What the cameras follow: the tractor, or backing up to the sled, the
-# middle between its hitch and the sled's hook, so both are in view.
-func _camera_target() -> Vector3:
-	var s := run.get_snapshot()
-	if s.get("stage", "") == "to_the_sled" and float(s["hitch_to_hook_m"]) < HITCH_FRAMING_M:
-		return (tractor_view.hitch_position() + sled_view.hook_position()) / 2.0
-	return tractor_view.global_position
+# middle between its hitch and the sled's hook, so both are in view. The
+# cameras turn from one to the other over a moment, not in one frame: the
+# offset from the tractor is eased, so the tractor itself is not lagged.
+func _camera_target(delta: float) -> Vector3:
+	var wanted := Vector3.ZERO
+	if _snapshot.get("stage", "") == "to_the_sled" \
+			and float(_snapshot["hitch_to_hook_m"]) < HITCH_FRAMING_M:
+		var middle := (tractor_view.hitch_position() + sled_view.hook_position()) / 2.0
+		wanted = middle - tractor_view.global_position
+	_framing = _framing.lerp(wanted, 1.0 - exp(-FRAMING_RATE_PER_S * delta))
+	return tractor_view.global_position + _framing
 
 
 # The rivals' work, a slice at a time until the frame's budget is spent.
@@ -612,6 +631,7 @@ func _read_controls() -> void:
 
 func _show(delta: float) -> void:
 	var s := run.get_snapshot()
+	_snapshot = s
 	if s.is_empty():
 		return
 	controls.lowest_gear = s["lowest_gear"]
@@ -630,16 +650,15 @@ func _show(delta: float) -> void:
 		# Off the hitch, it lies on the track in front of the hook.
 		var ahead := TrackSpace.point(cos(float(s["sled_heading_rad"])),
 				sin(float(s["sled_heading_rad"])), 0.0)
-		var chain_m: float = run.get_dimensions()["chain_length_m"]
-		chain_view.show_between(Vector3(hook.x, 0.03, hook.z) + ahead * chain_m * 0.9, hook, 0.0)
+		chain_view.show_between(Vector3(hook.x, 0.03, hook.z) + ahead * _chain_m * CHAIN_LYING_SHARE,
+				hook, 0.0)
 	var stage: String = s.get("stage", "pulling")
 	_show_officials(s, delta)
 	hitch_marker.visible = stage == "to_the_sled"
 	if hitch_marker.visible:
 		var forward := TrackSpace.point(cos(float(s["sled_heading_rad"])),
 				sin(float(s["sled_heading_rad"])), 0.0)
-		var chain_length_m: float = run.get_dimensions()["chain_length_m"]
-		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * chain_length_m * MARKER_SHARE
+		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * _chain_m * MARKER_SHARE
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
 
@@ -662,7 +681,7 @@ static func signal_for(s: Dictionary, turn: bool) -> String:
 # Both officials, the gantry's light and the HUD's, from the snapshot.
 func _show_officials(s: Dictionary, delta: float) -> void:
 	var stage: String = s.get("stage", "pulling")
-	var shown := signal_for(s, whole_turn and not autoplay)
+	var shown := signal_for(s, _whole_turn)
 	var stop := shown == "red" and stage != "taking_up_slack"
 	# The start official: the red flag low, raised as the slack is taken
 	# up, green waved for the pull, red waved to stop.

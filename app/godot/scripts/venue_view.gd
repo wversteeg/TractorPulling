@@ -47,12 +47,11 @@ const CROPS: Array[Color] = [Color(0.82, 0.68, 0.32), Color(0.2, 0.36, 0.12),
 		Color(0.4, 0.27, 0.16), Color(0.55, 0.6, 0.25)]
 const CROP_ROW_M := 0.75
 const FIELDS := 18
-# The fields: lifted over the grass [m], tries to find room for them all,
-# and how far past the lane's edges they stay clear (the stands, banks and
-# tents are inside) [m].
+# The fields: lifted over the grass [m], and tries to find room for them
+# all (how far past the lane's edges they stay clear is below, past the
+# return lane).
 const FIELD_LIFT_M := 0.15
 const FIELD_TRIES := 20
-const FIELDS_CLEAR_OF_LANE_M := 36.0
 const GRASS_Y_M := -0.06
 const STRIP_MARGIN_M := 3.0
 const RUN_UP_M := 40.0
@@ -62,6 +61,9 @@ const OVERRUN_M := 30.0
 # fence, the bales and everything past them stand this much further out
 # there [m].
 const RETURN_LANE_M := 6.0
+# How far past the lane's edges the fields stay clear: the stands, banks
+# and tents are inside, on the right past the return lane [m].
+const FIELDS_CLEAR_OF_LANE_M := 30.0 + RETURN_LANE_M
 # The parking: its bays' middle right of the lane's right-hand chalk line,
 # the player's bay and the rivals' behind it, down the track from the start
 # line (behind it) [m]. The player's tractor leaves from its bay and comes
