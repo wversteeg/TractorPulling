@@ -148,8 +148,9 @@ The puller sets two things on the tractor before a pull
 - **The ballast.** 400 kg of weights moved between the rear wheels and the
   front weight bracket (`[tractor.chassis.ballast]`), so the rear axle
   carries 68 % to 52 % of the weight at rest. More on the rear grips harder
-  and pulls further, but in the pull the nose goes light: with all of it
-  at the rear the front tires lift and the tractor cannot steer.
+  and pulls further, but in the pull the nose goes light (the HUD's
+  "front" bar): with all of it at the rear a dumped clutch lifts the front
+  tires for a moment, and the tractor cannot steer then.
 - **The rear tires' pressure.** 0.5 to 1.6 bar (`[tire.pressure]`): lower
   deflects the tire more, for a bigger footprint that sinks less and pulls
   better on soft ground, but lets the lugs squirm, which costs grip on firm
@@ -171,6 +172,21 @@ done
 tractor in `pull`, `run` and `compare-tracks`. As built (the ballast
 halfway, 1.0 bar) the tractor is unchanged, and the scripted rivals pull
 it that way.
+
+### Why the front stays down in this class
+
+A steady pull takes weight off the front axle by pull × hitch height /
+wheelbase. The NTTO's 0.5 m limit on the hitch is there to keep it small:
+the reference tractor, weights fully back (10.9 kN on the front axle, 2.4 m
+wheelbase), would need about 52 kN of pull to lift its front, twice what
+its tires give on the best track (some 24 kN at the end of a pull, when
+the front still carries about 6 kN). So in the 3.5 t class the front only
+goes light; it lifts for a moment when the clutch is dumped, as the axle's
+torque spins the heavy rear wheels up (weights fully back, in 2nd to 6th:
+about 0.7° of pitch, the front tires off the ground for some 60 ms). Wheelies are the physics, not scripted: the same tractor with
+its drawbar at 1.0 m pulls one onto its wheelie bar (7.6°), which a test
+checks (`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher
+hitches will show them.
 
 ### Shifting down under load
 

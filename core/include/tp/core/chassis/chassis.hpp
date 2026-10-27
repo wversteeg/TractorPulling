@@ -230,6 +230,10 @@ struct AxleLoads {
 [[nodiscard]] AxleLoads axle_loads(const Params& params, const State& state,
                                    const Drawbar& drawbar) noexcept;
 
+/// The loads with the tractor standing level, at rest, nothing on the
+/// drawbar: what each axle carries of the weight.
+[[nodiscard]] AxleLoads axle_loads_at_rest(const Params& params) noexcept;
+
 /// Speed at the end of a step as a line in the drive force: free + k · F.
 struct Prediction {
     double free_velocity_m_s = 0.0;

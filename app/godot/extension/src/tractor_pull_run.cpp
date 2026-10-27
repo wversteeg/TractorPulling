@@ -1,5 +1,6 @@
 #include "tractor_pull_run.hpp"
 
+#include "tp/core/chassis/chassis.hpp"
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
@@ -199,6 +200,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["rear_left_omega_rad_s"] = s.rear_left_omega_rad_s;
     out["rear_right_omega_rad_s"] = s.rear_right_omega_rad_s;
     out["slip_ratio"] = s.slip_ratio;
+    out["front_axle_load_n"] = s.front_axle_load_n;
     out["engine_omega_rad_s"] = s.engine_omega_rad_s;
     out["engine_running"] = s.engine_running;
     out["gear"] = s.gear;
@@ -230,6 +232,8 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["front_tire_width_m"] = tractor.front_tire.section_width_m;
     out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
     out["hitch_height_m"] = chassis.hitch_height_m;
+    // What the front axle carries at rest, as the tractor is tuned.
+    out["front_axle_rest_load_n"] = chassis::axle_loads_at_rest(chassis).front_n;
     out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;

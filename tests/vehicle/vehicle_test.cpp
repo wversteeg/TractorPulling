@@ -48,6 +48,7 @@ struct Pull {
     double max_slip = 0.0;
     double min_front_n = 1e12;
     double max_pitch_rad = 0.0;
+    double max_bar_n = 0.0;
     double steering_rad = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
@@ -95,6 +96,7 @@ struct Pull {
             }
             min_front_n = std::min(min_front_n, last.axle_loads.front_n);
             max_pitch_rad = std::max(max_pitch_rad, state.chassis.pitch_rad);
+            max_bar_n = std::max(max_bar_n, last.axle_loads.wheelie_bar_n);
             if (!state.engine.running) {
                 return;
             }
@@ -388,6 +390,41 @@ TEST(Vehicle, DumpingTheClutchInALowGearLiftsTheFront) {
     slipped.run(2, 8000.0, false, 15.0);
     EXPECT_GT(slipped.min_front_n, 1000.0);
     EXPECT_GT(dumped.max_pitch_rad, slipped.max_pitch_rad);
+}
+
+// The class's hitch keeps the nose down: the drawbar's weight transfer,
+// pull × hitch height / wheelbase, stays below what the front axle carries
+// even with the weights fully back. The same tractor with its drawbar at
+// 1.0 m (outside the class) pulls a wheelie onto its bar: wheelies emerge
+// from the moments, they are not scripted.
+TEST(Vehicle, AHighHitchPullsAWheelieOntoTheBar) {
+    constexpr double kHeavy_n = 24000.0;
+    const auto with_hitch = [](double hitch_height_m) {
+        Params params =
+            tuned(reference_params(), {.ballast_position = 0.0, .rear_tire_pressure_bar = 1.0});
+        params.chassis.hitch_height_m = hitch_height_m;
+        return Model::create(params);
+    };
+    const std::optional<Model> legal_model = with_hitch(0.5);
+    const std::optional<Model> high_model = with_hitch(1.0);
+    ASSERT_TRUE(legal_model.has_value());
+    ASSERT_TRUE(high_model.has_value());
+    const auto pulled = [](const Model& model) {
+        Pull pull;
+        pull.model = model;
+        pull.state = initial_state(model);
+        pull.run(6, kHeavy_n, false, 12.0);
+        return pull;
+    };
+    const Pull legal = pulled(legal_model.value_or(reference_model()));
+    const Pull high = pulled(high_model.value_or(reference_model()));
+    EXPECT_GT(legal.min_front_n, 0.0) << "the front stays down at 0.5 m";
+    EXPECT_EQ(high.min_front_n, 0.0);
+    EXPECT_GT(high.max_bar_n, 0.0) << "on the bar";
+    EXPECT_EQ(legal.max_bar_n, 0.0);
+    // The bar's tip touches down at about 7° nose-up.
+    EXPECT_GT(high.max_pitch_rad, 0.1) << high.max_pitch_rad << " rad";
+    EXPECT_LT(legal.max_pitch_rad, 0.02) << legal.max_pitch_rad << " rad";
 }
 
 // How a pull against a slowly growing load ends: like a sled whose weight

@@ -82,9 +82,11 @@ package "tp::chassis" {
     +{static} kMaxWheelieBarContactPitch_rad = 30°
     +validate(const Params&) : optional<ParamError>
     +with_ballast_at(const Params&, position) : Params
+    +with_ballast_mass(const Params&, mass_kg) : Params
     +rear_axle_share(const Params&) : double
     +hitch(const Params&, const State&) : Hitch
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
+    +axle_loads_at_rest(const Params&) : AxleLoads
     +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
     +end_velocity_m_s(const Prediction&, drive_force_n) : double
     +advance_lateral(State&, const Params&, const SideForces&, dt_s)

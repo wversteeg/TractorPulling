@@ -96,6 +96,9 @@ struct Snapshot {
     double rear_left_omega_rad_s = 0.0;
     double rear_right_omega_rad_s = 0.0;
     double slip_ratio = 0.0;
+    /// What the ground carries under the front tires [N]: it falls as the
+    /// pull lifts the nose, and is 0 with the front in the air.
+    double front_axle_load_n = 0.0;
 
     double engine_omega_rad_s = 0.0;
     bool engine_running = false;
