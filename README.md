@@ -232,8 +232,8 @@ out after the push-down") lies between what 6th holds before the engine
 stalls and what 5th's grip holds: on a sled lighter than shipped (two
 knives, the pull-off setting at the shipped event, whose field pulls on
 one), not on the sled as shipped (four), where neither gear holds it. In
-6th (the clutch slipped in over 3 s), one shift to 5th once the engine falls below 90 % of its rated speed
-past 40 m:
+6th (the clutch slipped in over 3 s), one shift to 5th once the engine
+falls below 90 % of its rated speed past 40 m:
 
 | track (two knives) | stays in 6th | shifts to 5th (at) |
 |---|---|---|
