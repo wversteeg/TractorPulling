@@ -17,6 +17,18 @@
 # continue it, at the next event (an event left halfway starts again), or
 # to start a new one.
 #
+# A pull is the player's whole turn (`whole_turn`): from their bay in the
+# parking beside the track, past the sled and back up to it in reverse,
+# the chain hooked on, the slack taken up while the official holds the red
+# flag, the green flag and the pull (a second official down the track,
+# walking ahead of the tractor, waves green while it is good and both wave
+# red the moment it is over: stop; the light on the full-pull gantry and
+# the HUD's show the same), the chain released by backing off,
+# and back to the bay along the return lane while the sled drives itself
+# back; the result screen comes once the tractor stands in its bay again.
+# The rivals wait in the bays behind. Without it (and with `autoplay`), a
+# pull from the start line, hooked on.
+#
 # The player drives with the touch controls (DriveControls; the keyboard
 # and a gamepad for development), in the easy or the pro layout, steering
 # with the slider or by tilting the phone. With
@@ -41,6 +53,7 @@ enum Screen { START, SETTINGS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
 @export var pro := false
 @export var tilt := false
 @export var autoplay := false
+@export var whole_turn := true
 @export var autoplay_gear := 6
 @export var tractor_path := "res://data/tractors/farm_stock_light.toml"
 @export var sled_path := "res://data/sleds/light_class.toml"
@@ -64,6 +77,28 @@ const RESULT_DELAY_S := 2.0
 const RIVALS_SLICE_STEPS := 500
 const RIVALS_BUDGET_US := 6000
 const TOP := 10
+# The rivals' tractors in their bays, painted their own colours (none like
+# the player's red), and their drivers' shirts.
+const RIVAL_PAINTS: Array[Color] = [Color(0.16, 0.42, 0.2), Color(0.16, 0.3, 0.62),
+		Color(0.9, 0.45, 0.1)]
+const RIVAL_SHIRTS: Array[Color] = [Color(0.85, 0.8, 0.2), Color(0.8, 0.8, 0.82),
+		Color(0.2, 0.2, 0.22)]
+# The officials stand on the left of the lane, in from the left chalk line
+# [m]: one this far past the start line; the other down the track, from
+# here up to the full-pull line, this far ahead of the tractor's rear axle.
+const FLAGMAN_X_M := 9.0
+const FLAGMAN_IN_M := 1.5
+const END_FLAGMAN_FROM_M := 80.0
+const END_FLAGMAN_AHEAD_M := 12.0
+# Backing up to the sled, the cameras frame the hitch and the hook from
+# this close [m], and how fast they turn to them and back [1/s].
+const HITCH_FRAMING_M := 12.0
+const FRAMING_RATE_PER_S := 2.0
+# Off the hitch, the chain lies on the track this share of its length.
+const CHAIN_LYING_SHARE := 0.9
+# Where the stopping marker lies in front of the hook: a share of the
+# chain's length, where the hitch hooks on.
+const MARKER_SHARE := 0.6
 
 var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
@@ -82,6 +117,16 @@ var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
+var flagman := Flagman.new()
+var end_flagman := Flagman.new()
+var parked: Array[TractorView] = []
+# The white mark on the track in front of the sled's hook: stop the hitch
+# there and the chain goes on.
+var hitch_marker := MeshInstance3D.new()
+# For tests: a scripted driver, called each frame with the run's snapshot,
+# returning [throttle, clutch_pedal, gear, steering, brake_left,
+# brake_right] for the run in place of the touch controls.
+var driver := Callable()
 var screen := Screen.START
 # The pull being pulled is a practice pull (or autoplay's), not the event's.
 var practice := false
@@ -91,6 +136,18 @@ var _title := ""
 var _shown_log := -1
 var _shown_turn := ""
 var _time_s := 0.0
+# Where the officials stand: the full-pull line, and in from the left
+# chalk line [m].
+var _full_pull_m := 100.0
+var _left_m := 4.5
+# Set for each run in _build_turn: whether it is the whole turn, and the
+# chain's length [m].
+var _whole_turn := false
+var _chain_m := 1.0
+# The latest snapshot (_show), and the cameras' eased offset from the
+# tractor (_camera_target).
+var _snapshot := {}
+var _framing := Vector3.ZERO
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
 
@@ -98,8 +155,12 @@ var _ended_s := 0.0
 func _ready() -> void:
 	_add_world()
 	for node: Node in [venue_view, track_view, track_marks, tractor_view, sled_view, chain_view,
-			cameras]:
+			flagman, end_flagman, hitch_marker, cameras]:
 		add_child(node)
+	var marker := BoxMesh.new()
+	marker.size = Vector3(1.2, 0.02, 0.15)
+	hitch_marker.mesh = marker
+	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
 	for node: Node in [hud, controls, start_screen, settings_screen, garage_screen, board,
 			setup_screen, result_screen]:
@@ -164,6 +225,7 @@ func _ready() -> void:
 
 func _start_autoplay() -> void:
 	practice = true
+	run.clear_parking()
 	if _build(run.setup(tractor_path, sled_path, track_path, _controls_path())):
 		_set_screen(Screen.PULLING)
 
@@ -264,9 +326,18 @@ func _show_setup(for_practice: bool) -> void:
 	_set_screen(Screen.SETUP)
 
 
+# The next run is the whole turn from the player's bay, or the pull alone.
+func _place_parking() -> void:
+	if whole_turn and not autoplay:
+		run.set_parking(VenueView.PLAYER_BAY_X_M, VenueView.PARKING_RIGHT_OF_LANE_M)
+	else:
+		run.clear_parking()
+
+
 func _start_practice() -> void:
 	practice = true
 	_title = "Practice  ·  %s" % event.get_event().get("name", "")
+	_place_parking()
 	if _build(run.setup_practice(event, _controls_path())):
 		_set_screen(Screen.PULLING)
 
@@ -276,6 +347,7 @@ func _start_event_pull() -> void:
 	practice = false
 	_title = "%s  ·  %s" % [EventTexts.pull_name(info.get("pull_kind", ""),
 			info.get("pull_off_round", 0)), info.get("name", "")]
+	_place_parking()
 	if _build(run.setup_event_pull(event, _controls_path())):
 		_set_screen(Screen.PULLING)
 
@@ -298,7 +370,9 @@ func _build(error: String) -> bool:
 	if sled_view.get_child_count() == 0:
 		sled_view.build(dimensions)
 	hud.build(dimensions)
+	_build_turn(dimensions)
 	controls.gear_count = dimensions["gear_count"]
+	controls.has_reverse = dimensions.get("has_reverse", false)
 	controls.set_layout(run.get_layout() == "pro")
 	controls.set_steering(tilt)
 	controls.set_clutch_range(dimensions["clutch_full_grip_pedal"],
@@ -306,8 +380,36 @@ func _build(error: String) -> bool:
 	controls.reset()
 	_time_s = 0.0
 	_show(0.0)
+	_framing = Vector3.ZERO
 	cameras.follow(tractor_view.global_position, 0.0, false)
 	return true
+
+
+# The parking, its rivals and the official, for a whole turn.
+func _build_turn(dimensions: Dictionary) -> void:
+	var lane_m: float = dimensions["lane_width_m"]
+	var turn: bool = run.get_snapshot().get("stage", "pulling") != "pulling"
+	_whole_turn = turn
+	_chain_m = dimensions["chain_length_m"]
+	var bay_y_m := -(lane_m / 2.0 + VenueView.PARKING_RIGHT_OF_LANE_M)
+	# Built for the first whole turn only: a pull from the line has none.
+	if parked.is_empty() and turn:
+		for i in VenueView.RIVAL_BAYS_X_M.size():
+			var rival := TractorView.new()
+			rival.paint = RIVAL_PAINTS[i % RIVAL_PAINTS.size()]
+			rival.paint_dark = rival.paint.darkened(0.4)
+			rival.driver_shirt = RIVAL_SHIRTS[i % RIVAL_SHIRTS.size()]
+			add_child(rival)
+			rival.build(dimensions)
+			parked.append(rival)
+	for i in parked.size():
+		parked[i].position = TrackSpace.point(VenueView.RIVAL_BAYS_X_M[i], bay_y_m, 0.0)
+		parked[i].visible = turn
+	flagman.stand(TrackSpace.point(FLAGMAN_X_M, lane_m / 2.0 - FLAGMAN_IN_M, 0.0),
+			TrackSpace.point(0.0, 0.0, 0.0))
+	_full_pull_m = dimensions["full_pull_line_m"]
+	_left_m = lane_m / 2.0 - FLAGMAN_IN_M
+	hud.set_parking(Vector2(VenueView.PLAYER_BAY_X_M, bay_y_m) if turn else Vector2.INF)
 
 
 func _set_screen(next: Screen) -> void:
@@ -349,7 +451,9 @@ func _process(delta: float) -> void:
 		_read_controls()
 		# The run alone turns the frame's time into its 1 ms steps.
 		run.advance(int(delta * NS_PER_S))
-		if run.is_finished() and not autoplay:
+		# Over once the pull has ended at the line, or the tractor is back
+		# in its bay after a whole turn.
+		if run.is_over() and not autoplay:
 			_ended_s += delta
 			if _ended_s >= RESULT_DELAY_S:
 				_show_result()
@@ -360,7 +464,21 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
-	cameras.follow(tractor_view.global_position, delta)
+	cameras.follow(_camera_target(delta), delta)
+
+
+# What the cameras follow: the tractor, or backing up to the sled, the
+# middle between its hitch and the sled's hook, so both are in view. The
+# cameras turn from one to the other over a moment, not in one frame: the
+# offset from the tractor is eased, so the tractor itself is not lagged.
+func _camera_target(delta: float) -> Vector3:
+	var wanted := Vector3.ZERO
+	if _snapshot.get("stage", "") == "to_the_sled" \
+			and float(_snapshot["hitch_to_hook_m"]) < HITCH_FRAMING_M:
+		var middle := (tractor_view.hitch_position() + sled_view.hook_position()) / 2.0
+		wanted = middle - tractor_view.global_position
+	_framing = _framing.lerp(wanted, 1.0 - exp(-FRAMING_RATE_PER_S * delta))
+	return tractor_view.global_position + _framing
 
 
 # The rivals' work, a slice at a time until the frame's budget is spent.
@@ -495,6 +613,10 @@ func _on_board_second() -> void:
 
 
 func _read_controls() -> void:
+	if driver.is_valid():
+		var c: Array = driver.call(run.get_snapshot())
+		run.set_controls(c[0], c[1], c[2], c[3], c[4], c[5])
+		return
 	if autoplay:
 		var go := _time_s >= SELECT_GEAR_S
 		# The easy layout's assist ignores the clutch.
@@ -509,6 +631,7 @@ func _read_controls() -> void:
 
 func _show(delta: float) -> void:
 	var s := run.get_snapshot()
+	_snapshot = s
 	if s.is_empty():
 		return
 	controls.lowest_gear = s["lowest_gear"]
@@ -520,9 +643,66 @@ func _show(delta: float) -> void:
 	cameras.rumble = clampf(RUMBLE_PER_THROTTLE * float(s["throttle"])
 			+ RUMBLE_PER_SLIP * absf(float(s["slip_ratio"])), 0.0, 1.0) \
 			if bool(s["engine_running"]) else 0.0
-	chain_view.show_between(tractor_view.hitch_position(), sled_view.hook_position(),
-			s["chain_tension_n"])
+	var hook := sled_view.hook_position()
+	if s.get("chain_hooked", true):
+		chain_view.show_between(tractor_view.hitch_position(), hook, s["chain_tension_n"])
+	else:
+		# Off the hitch, it lies on the track in front of the hook.
+		var ahead := TrackSpace.point(cos(float(s["sled_heading_rad"])),
+				sin(float(s["sled_heading_rad"])), 0.0)
+		chain_view.show_between(Vector3(hook.x, 0.03, hook.z) + ahead * _chain_m * CHAIN_LYING_SHARE,
+				hook, 0.0)
+	var stage: String = s.get("stage", "pulling")
+	_show_officials(s, delta)
+	hitch_marker.visible = stage == "to_the_sled"
+	if hitch_marker.visible:
+		var forward := TrackSpace.point(cos(float(s["sled_heading_rad"])),
+				sin(float(s["sled_heading_rad"])), 0.0)
+		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * _chain_m * MARKER_SHARE
+		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
+
+
+# The officials' signal from the run's stage: "green" while the pull is
+# on and good, "red" while the tractor must wait (taking up the slack) or
+# stop (the pull is over: until the chain is off), "off" otherwise.
+# `turn` says the run is the whole turn; at the line it ends with the pull.
+static func signal_for(s: Dictionary, turn: bool) -> String:
+	match s.get("stage", "pulling"):
+		"pulling":
+			return "green"
+		"taking_up_slack", "releasing":
+			return "red"
+		"parked":
+			return "off" if turn else "red"
+	return "off"
+
+
+# Both officials, the gantry's light and the HUD's, from the snapshot.
+func _show_officials(s: Dictionary, delta: float) -> void:
+	var stage: String = s.get("stage", "pulling")
+	var shown := signal_for(s, _whole_turn)
+	var stop := shown == "red" and stage != "taking_up_slack"
+	# The start official: the red flag low, raised as the slack is taken
+	# up, green waved for the pull, red waved to stop.
+	var raise := 0.0
+	match stage:
+		"taking_up_slack":
+			raise = float(s.get("flag_progress", 0.0))
+		"pulling":
+			raise = 1.0
+	if stop:
+		raise = 1.0
+	flagman.show_signal(shown == "green", raise, stage == "pulling" or stop, delta)
+	# The official down the track walks ahead of the tractor, from 80 m up
+	# to the full-pull line, the green flag up while the pull is good.
+	var at_m := clampf(float(s["tractor_x_m"]) + END_FLAGMAN_AHEAD_M,
+			minf(END_FLAGMAN_FROM_M, _full_pull_m), _full_pull_m)
+	end_flagman.stand(TrackSpace.point(at_m, _left_m, 0.0),
+			TrackSpace.point(float(s["tractor_x_m"]), 0.0, 0.0))
+	end_flagman.show_signal(shown == "green", 1.0 if shown != "off" else 0.0, stop, delta)
+	venue_view.show_signal(shown)
+	hud.show_signal(shown)
 
 
 func _add_world() -> void:

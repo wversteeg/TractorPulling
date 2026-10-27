@@ -48,6 +48,8 @@ func _initialize() -> void:
 	_pull.set("settings_path", SETTINGS_PATH)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
 	_pull.set("save_path", SAVE_PATH)
+	# Pulls from the start line: the whole turn is turn_test.gd's.
+	_pull.set("whole_turn", false)
 	var args := OS.get_cmdline_user_args()
 	if not args.is_empty():
 		_shots = args[0]
@@ -323,6 +325,7 @@ func _launch() -> Node:
 	_pull.set("season_seed", SEED + 1)
 	_pull.set("settings_path", SETTINGS_PATH)
 	_pull.set("save_path", SAVE_PATH)
+	_pull.set("whole_turn", false)
 	root.add_child(_pull)
 	await _frames(2)
 	return _pull

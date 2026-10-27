@@ -445,6 +445,25 @@ shows the rev counter (stall and rated speeds marked), gear, speed,
 distance and a bar down the track to the full-pull line, with the
 push-down's stretch in orange ("PUSH-DOWN" beside it once it comes on).
 
+Every pull is your whole turn (see "From the parking to the sled and
+back"). You start in your bay in the parking, behind the start line on the
+right, with the rivals' tractors in the bays behind yours. Drive out along
+the return lane on the right, into the lane past the sled, and back up to
+it in reverse ("-" from N puts R in): a white mark on the track shows where
+the hitch should stop, the cameras frame the hitch and the hook as you come
+close, and the HUD says how far to go and which way to steer. Stand still
+there and the chain goes on. Creep forward to take up the slack while the
+official on the left past the start line raises the red flag; it turns
+green and the pull is on. A second official, down the track from 80 m,
+walks ahead of the tractor towards the full-pull line, the green flag up
+while the pull is good. The moment the pull is over (a full pull, the sled
+stopped, a disqualification) both wave red: stop, close the throttle. A
+light on top of the full-pull gantry and a lamp on the HUD
+show the same, green GO and red STOP. Then back off in R to release the
+chain, and drive back down the return lane to your bay while the sled
+drives itself back to the start line. The result comes once you stand in
+your bay. The chalk lines count only in the pull.
+
 The pull scene (`scenes/pull.tscn`) draws the run at a club venue, built
 from the run's sizes (`get_dimensions()`), in a bright style that stays
 cheap on a phone:
@@ -478,8 +497,9 @@ You drive on the touch screen, in the easy or the pro layout. Both have a
 steering slider under the left thumb, which springs back to straight ahead
 when let go; a hand throttle under the right, moved by sliding it like a
 lever (a touch alone does not move it) and staying where it is left, as a
-tractor's does; and gear buttons (+, - and N) beside it. Both thumbs work at
-once. In the easy layout the clutch assist works the clutch. The pro layout
+tractor's does; and gear buttons (+, - and N; "-" from N is reverse, R)
+beside it. Both thumbs work at once. In the easy layout the clutch assist
+works the clutch. The pro layout
 adds, on the left above the steering, a clutch slider, pressed at the top
 and in at the bottom, which starts pressed and stays where it is left, so
 you slip it in and leave it (a gear goes in only with the clutch pressed,
@@ -505,7 +525,8 @@ pull "again" (on lifting the finger on it) starts the same pull again, and
 "menu" goes back to the start screen (an event's pull counts: neither is
 there). On a desktop the mouse works the same controls, and for
 development the keyboard (W throttle, A and D steer, digits for a gear,
-Space clutch, Q and E brakes, C camera, R again, M menu) and a gamepad
+minus for reverse, Space clutch, Q and E brakes, C camera, R again, M
+menu) and a gamepad
 (right trigger, left trigger for the clutch, left stick, shoulder buttons
 for the gear, X neutral, Y camera, Back again) do too.
 
@@ -514,7 +535,9 @@ driver and checks the views follow the run, drives it with simulated
 fingers on the touch controls (and tilt steering with a simulated motion
 sensor), plays an event's flow (start, the settings, practice, the
 event with three rivals, its top ten and the season's, the next event) on a
-practice season, then plays two scripted runs
+practice season, drives a whole turn headless with a scripted driver (out
+of the bay, backing up to the sled, the flag, the pull, back to the bay),
+then plays two scripted runs
 and checks they end in the same state as `tp_pull`'s (with a renderer,
 under Xvfb if there is no display). To look at the scene without a display:
 

@@ -58,7 +58,9 @@ if [[ ! -f "${project}/.godot/extension_list.cfg" ]]; then
     echo "${project}/.godot/extension_list.cfg is missing: build the godot preset first" >&2
     exit 1
 fi
-readonly timeout_s=300
+# Long enough for the touch test under a software renderer (about 5 min
+# on a slow machine); a script that hangs still fails.
+readonly timeout_s=600
 timeout "${timeout_s}" "${godot}" --headless --path "${project}" --import >/dev/null 2>&1 || {
     echo "the Godot import failed" >&2
     exit 1
@@ -81,7 +83,24 @@ fi
 # running instead of quitting, so a timeout fails it; and GDScript abandons
 # a function that hits an error and carries on, so the error is looked for.
 play() {
-    output="$(timeout "${timeout_s}" "${runner[@]}" --path "${project}" "$@" 2>&1)" || {
+    play_with "${runner[@]}" -- "$@"
+}
+
+# As play(), headless: for a test that checks what the scene shows, not how
+# it draws it.
+play_headless() {
+    play_with "${godot}" --headless -- "$@"
+}
+
+# play()'s work with the Godot command line before "--", the test's after.
+play_with() {
+    local command=()
+    while [[ "$1" != "--" ]]; do
+        command+=("$1")
+        shift
+    done
+    shift
+    output="$(timeout "${timeout_s}" "${command[@]}" --path "${project}" "$@" 2>&1)" || {
         echo "${output:-}"
         echo "Godot failed or did not quit within ${timeout_s} s: $*" >&2
         exit 1
@@ -99,6 +118,10 @@ play --fixed-fps 60 --script res://tests/scene_test.gd
 play --fixed-fps 60 --script res://tests/touch_test.gd
 # The game's flow: start screen, qualifying, pull-off, the next event.
 play --fixed-fps 60 --script res://tests/flow_test.gd
+# A whole turn, a scripted driver from the parking to the sled and back.
+# Headless: drawn by a software renderer its thousands of frames would take
+# far too long.
+play_headless --fixed-fps 15 --script res://tests/turn_test.gd
 
 play --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
     --brake-right="${brake_right}"
