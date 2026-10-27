@@ -1,0 +1,71 @@
+@startuml turn_classes
+title Turn (tp::turn): one puller's turn, from the parking to the sled and back
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "run::Rules / State / Result\n+ start(), step()" as Run
+  class "pull::Model / State / Output\n+ hitch_end(), hook_end()" as Pull
+  class "vehicle::Input" as Input
+  class "engine::initial_state()" as Engine
+}
+
+package "tp::turn" {
+  enum Stage {
+    kToTheSled
+    kTakingUpSlack
+    kPulling
+    kReleasing
+    kToTheParking
+    kParked
+  }
+  class Parking <<struct>> {
+    +x_m : double
+    +y_m : double
+  }
+  class State <<struct>> {
+    +stage : Stage
+    +run : run::State
+    +from_the_parking : bool
+    +tension_held_steps : uint64
+    +sled_back : bool
+  }
+  class HitchToHook <<struct>> {
+    +distance_m : double
+    +along_m : double
+    +across_m : double
+  }
+  enum ParamError {
+    kNotFinite
+    kInTheLane
+  }
+  class "turn functions" as TurnFns <<free functions>> {
+    +validate(const Parking&, const run::Rules&) : optional<ParamError>
+    +at_the_line(const pull::Model&) : State
+    +from_the_parking(const pull::Model&, const Parking&) : State
+    +hitch_to_hook(const pull::Model&, const pull::State&) : HitchToHook
+    +hooks_on(const pull::Model&, const pull::State&) : bool
+    +step(State&, const pull::Model&, const run::Rules&,\n      const Parking&, vehicle::Input, dt_s) : pull::Output
+    +hash_append(Fnv1a&, const State&)
+    --
+    kAtRest_m_s 0.05, kHookOffLine_m 0.4, kHookTurned_rad 0.26,
+    kTakeUpTension_n 1000, kFlagAfter_s 1, kReleaseSlack_m 0.3,
+    kParkedWithin_m 2, kRestartPedal 0.95
+  }
+  State *-- Stage
+  TurnFns ..> State
+  TurnFns ..> Parking
+  TurnFns ..> HitchToHook
+  TurnFns ..> ParamError
+}
+State *-- Run
+TurnFns ..> Run : the pull
+TurnFns ..> Pull : off the pull, and the chain's ends
+TurnFns ..> Input : pull_on per stage
+TurnFns ..> Engine : a stalled engine restarted off the pull
+note bottom of TurnFns
+  the chalk lines count only in the pull; the pull's clock runs from the
+  green flag; at the line (the tools, the rivals) the turn is the pull alone
+end note
+@enduml

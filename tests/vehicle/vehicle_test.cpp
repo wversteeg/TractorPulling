@@ -646,10 +646,9 @@ TEST(VehicleReversing, ChangesDirectionOnlyStanding) {
     Pull forwards;
     forwards.run(4, 2000.0, false, 8.0);
     ASSERT_GT(forwards.state.chassis.velocity_m_s, 0.5);
-    const Output into_reverse =
-        step(forwards.state, forwards.model,
-             {.clutch_pedal = 1.0, .gear = driveline::kReverse, .pull_on = false}, kGround, {},
-             kDt_s);
+    const Output into_reverse = step(
+        forwards.state, forwards.model,
+        {.clutch_pedal = 1.0, .gear = driveline::kReverse, .pull_on = false}, kGround, {}, kDt_s);
     EXPECT_TRUE(into_reverse.shift_refused);
     EXPECT_EQ(forwards.state.driveline.gear, 4);
 

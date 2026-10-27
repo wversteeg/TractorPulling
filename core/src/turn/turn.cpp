@@ -90,8 +90,7 @@ void restart_if_stalled(pull::State& state, const pull::Model& model,
 
 bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
     const HitchToHook gap = hitch_to_hook(model, state);
-    const double turned_rad =
-        std::abs(state.tractor.chassis.heading_rad - state.sled.heading_rad);
+    const double turned_rad = std::abs(state.tractor.chassis.heading_rad - state.sled.heading_rad);
     return stands(state) && gap.along_m > 0.0 && gap.distance_m <= model.sled().chain.length_m &&
            std::abs(gap.across_m) <= kHookOffLine_m && turned_rad <= kHookTurned_rad;
 }
@@ -124,9 +123,9 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
     input.pull_on = false;
     restart_if_stalled(pull, model, input);
     const pull::Output out = pull::step(pull, model, input, dt_s);
-    state.sled_back = state.sled_back ||
-                      (pull.sled_mode == pull::SledMode::kDrivingBack &&
-                       pull.sled.position_m == model.start_line_m() && pull.sled.velocity_m_s == 0.0);
+    state.sled_back = state.sled_back || (pull.sled_mode == pull::SledMode::kDrivingBack &&
+                                          pull.sled.position_m == model.start_line_m() &&
+                                          pull.sled.velocity_m_s == 0.0);
 
     switch (state.stage) {
         case Stage::kToTheSled:
@@ -148,8 +147,8 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
             break;
         }
         case Stage::kReleasing:
-            if (stands(pull) && chain_span_m(model, pull) <=
-                                    model.sled().chain.length_m - kReleaseSlack_m) {
+            if (stands(pull) &&
+                chain_span_m(model, pull) <= model.sled().chain.length_m - kReleaseSlack_m) {
                 pull.hooked = false;
                 pull.sled_mode = pull::SledMode::kDrivingBack;
                 state.stage = Stage::kToTheParking;

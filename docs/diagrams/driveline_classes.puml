@@ -19,6 +19,7 @@ package "tp::driveline" {
   class Params <<struct>> {
     +gear_ratios : array<double, 16>
     +gear_count : size_t
+    +reverse_ratio : double, 0 = none
     +final_drive_ratio : double
     +efficiency : double
     +input_inertia_kg_m2 : double
@@ -29,14 +30,15 @@ package "tp::driveline" {
     +load_shifts_per_pull : int
   }
   class State <<struct>> {
-    +gear : int, 0 = neutral
+    +gear : int, 0 = neutral, -1 = kReverse
     +input_omega_rad_s : double
     +output_omega_rad_s : double
     +load_shifts : int
     +floor_gear : int
   }
   class Prediction <<struct>> {
-    +ratio : double
+    +ratio : double, negative in reverse
+    +direction : double, 1 or -1
     +efficiency : double
     +free_input_rad_s, input_per_nm : double
     +free_output_rad_s, output_per_nm : double
@@ -53,8 +55,9 @@ package "tp::driveline" {
     +shift_under_load(State&, const Params&, gear) : optional<double>
     +shift(State&, const Params&, gear, clutch_disengaged) : bool
     +start_pull(State&)
+    +end_pull(State&)
     +lowest_gear(const State&, const Params&) : int
-    +predict(const State&, const Params&, axle_load_torque_nm, dt_s) : Prediction
+    +predict(const State&, const Params&, axle_load_torque_nm, dt_s,\n      direction = 1) : Prediction
     +input_shaft(const Prediction&) : ShaftPrediction
     +response(const Prediction&) : Response
     +advance(State&, const Prediction&, clutch_torque_nm, axle_torque_nm = 0)

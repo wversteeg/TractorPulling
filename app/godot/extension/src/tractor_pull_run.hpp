@@ -46,6 +46,13 @@ public:
     godot::String setup_practice(const godot::Ref<TractorPullEvent>& event,
                                  const godot::String& controls_path);
 
+    /// From the next setup on, each run is the player's whole turn from a
+    /// parking beside the track at (x_m, y_m) on the track (turn::Parking):
+    /// driving to the sled, the pull, and back. clear_parking() goes back
+    /// to the pull alone, hooked at the line (the default). A parking in
+    /// the lane makes the setup fail.
+    void set_parking(double x_m, double y_m);
+    void clear_parking();
     /// The controls held from now on (see session::Controls: held to their
     /// range, and a value that is not a number reads as the control at rest).
     void set_controls(double throttle, double clutch_pedal, std::int64_t gear, double steering,
@@ -67,7 +74,8 @@ public:
     /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m,
     /// wheelie_bar_behind_rear_axle_m, wheelie_bar_tip_height_m, the
     /// weights as set (ballast_mass_kg, and ballast_position from 0
-    /// rearmost to 1 foremost) and gear_count, its forward gears. The
+    /// rearmost to 1 foremost), gear_count, its forward gears, and
+    /// has_reverse, whether it has a reverse gear (gear -1). The
     /// sled's: sled_wheel_radius_m, sled_wheel_width_m,
     /// hook_ahead_of_wheels_m, hook_height_m, pan_ahead_of_wheels_m,
     /// box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m and
@@ -82,7 +90,11 @@ public:
     /// "easy" or "pro", the layout the run is played in; "" before setup().
     [[nodiscard]] godot::String get_layout() const;
 
+    /// The pull has ended: its result is in (get_result()).
     [[nodiscard]] bool is_finished() const;
+    /// The turn is over: the pull at the line has ended, or after a turn
+    /// from the parking the tractor stands there again.
+    [[nodiscard]] bool is_over() const;
     /// {ending, distance_m, time_s, top_speed_m_s} once finished, else {}.
     [[nodiscard]] godot::Dictionary get_result() const;
     /// The replay hash (session::Session::hash) as 16 hex digits, the way
@@ -111,6 +123,7 @@ private:
     /// The setup the session was created from, for get_dimensions().
     std::optional<session::Setup> setup_;
     session::Controls controls_;
+    std::optional<turn::Parking> parking_;
     std::int64_t dropped_ns_ = 0;
 };
 

@@ -103,7 +103,8 @@ struct HitchToHook {
     double across_m = 0.0;
 };
 
-[[nodiscard]] HitchToHook hitch_to_hook(const pull::Model& model, const pull::State& state) noexcept;
+[[nodiscard]] HitchToHook hitch_to_hook(const pull::Model& model,
+                                        const pull::State& state) noexcept;
 
 /// Whether the chain hooks on now (see kHookOffLine_m).
 [[nodiscard]] bool hooks_on(const pull::Model& model, const pull::State& state) noexcept;

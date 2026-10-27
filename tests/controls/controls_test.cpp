@@ -553,16 +553,19 @@ TEST(ClutchAssist, BacksUpOnceTheTractorStands) {
     bool reverse_while_rolling = false;
     for (int i = 0; i < 20000; ++i) {
         const double t_s = i * kDt_s;
-        const EasyInput wanted = t_s < 0.5   ? EasyInput{}
-                                 : t_s < 6.0 ? EasyInput{.throttle = 0.6, .gear = 2}
-                                             : EasyInput{.throttle = 0.6, .gear = driveline::kReverse};
+        EasyInput wanted{.throttle = 0.6, .gear = driveline::kReverse};
+        if (t_s < 0.5) {
+            wanted = {};
+        } else if (t_s < 6.0) {
+            wanted.gear = 2;
+        }
         vehicle::Input in = easy(wanted, kEasy, assist, tractor, state, kDt_s);
         in.pull_on = false;
         vehicle::step(state, model, in, ground, {}, kDt_s);
         fastest_forwards_m_s = std::max(fastest_forwards_m_s, state.chassis.velocity_m_s);
         reverse_while_rolling =
-            reverse_while_rolling || (state.driveline.gear == driveline::kReverse &&
-                                      state.chassis.velocity_m_s > 0.05);
+            reverse_while_rolling ||
+            (state.driveline.gear == driveline::kReverse && state.chassis.velocity_m_s > 0.05);
     }
     EXPECT_GT(fastest_forwards_m_s, 0.3);
     EXPECT_FALSE(reverse_while_rolling);

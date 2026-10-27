@@ -151,9 +151,9 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
     RearSolution out;
     out.brake_left_nm = brake_left_nm;
     out.brake_right_nm = brake_right_nm;
-    out.driveline = driveline::predict(state.driveline, model.driveline(),
-                                       p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s,
-                                       p.direction);
+    out.driveline =
+        driveline::predict(state.driveline, model.driveline(),
+                           p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s, p.direction);
 
     const double slope_difference = p.slope_right - p.slope_left;
     const double denominator =

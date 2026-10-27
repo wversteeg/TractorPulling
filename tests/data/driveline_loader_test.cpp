@@ -73,9 +73,9 @@ TEST(DrivelineLoader, TheReverseGearIsOptional) {
     const auto plain = parse_driveline(kValidDriveline, "test.toml");
     ASSERT_TRUE(plain.ok()) << plain.error().message;
     EXPECT_EQ(plain.value().reverse_ratio, 0.0);
-    const auto with_reverse =
-        parse_driveline(with("ratios = [12.0, 6.0, 3.0]", "ratios = [12.0, 6.0, 3.0]\nreverse = 10.0"),
-                        "test.toml");
+    const auto with_reverse = parse_driveline(
+        with("ratios = [12.0, 6.0, 3.0]", "ratios = [12.0, 6.0, 3.0]\nreverse = 10.0"),
+        "test.toml");
     ASSERT_TRUE(with_reverse.ok()) << with_reverse.error().message;
     EXPECT_EQ(with_reverse.value().reverse_ratio, 10.0);
     for (const std::string_view bad : {"0.0", "-3.0"}) {

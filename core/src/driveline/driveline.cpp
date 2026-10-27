@@ -29,8 +29,8 @@ Line integrate(double omega_rad_s, double inertia_kg_m2, double torque_nm, doubl
 }  // namespace
 
 std::optional<ParamError> validate(const Params& params) noexcept {
-    const std::array scalars = {params.reverse_ratio,       params.final_drive_ratio,
-                                params.efficiency,          params.input_inertia_kg_m2,
+    const std::array scalars = {params.reverse_ratio,        params.final_drive_ratio,
+                                params.efficiency,           params.input_inertia_kg_m2,
                                 params.output_inertia_kg_m2, params.drag_torque_nm,
                                 params.viscous_drag_nm_s_rad};
     if (params.gear_count == 0) {

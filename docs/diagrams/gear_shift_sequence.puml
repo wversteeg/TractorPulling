@@ -6,7 +6,7 @@ participant "clutch::capacity_nm" as Capacity
 participant "driveline::shift_under_load" as Load
 participant "driveline::shift" as Shift
 
-Caller -> Caller : moving faster than kUnderWay_m_s:\ndriveline::start_pull(state): floor_gear = gear (once)
+Caller -> Caller : off the pull (Input::pull_on false): driveline::end_pull(state),\nno floor, the load shifts back; on it, moving faster than\nkUnderWay_m_s: driveline::start_pull(state): floor_gear = gear (once)
 Caller -> Capacity : capacity_nm(clutch_params, pedal)
 Capacity --> Caller : 0 when the pedal is fully pressed
 opt clutch in and shifts_under_load(state, params, gear)\n(a powershift step down, with a load shift left this pull)
@@ -19,13 +19,13 @@ end
 Caller -> Shift : otherwise: shift(state, params, gear, capacity == 0)
 alt same gear
   Shift --> Caller : true (nothing to do)
-else gear does not exist, clutch still transmits torque,\nor under way and below floor_gear
+else gear does not exist, clutch still transmits torque,\nunder way and below floor_gear, or into reverse with the axle\nturning forwards (out of it with it turning backwards)
   Shift --> Caller : false, gear unchanged
 else to neutral
   Shift -> Shift : gear = 0; input shaft and axle now turn freely
   Shift --> Caller : true
 else into a gear
-  Shift -> Shift : gear = g, G = gear_ratio * final_drive;\nunder way, floor_gear = g (up only)
+  Shift -> Shift : gear = g, G = gear_ratio * final_drive\n(negative in reverse); under way, floor_gear = g (up only)
   Shift -> Shift : synchronize (inelastic, momentum conserved):\nomega_axle = (I_out omega_axle + I_in G omega_in) / (I_out + I_in G^2)\nomega_in = G omega_axle
   Shift --> Caller : true
 end

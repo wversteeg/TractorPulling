@@ -73,10 +73,30 @@ const char* describe(session::SetupError error) {
             return "invalid easy controls";
         case session::SetupError::kProControls:
             return "invalid pro controls";
+        case session::SetupError::kParking:
+            return "the parking must be beside the track, out of the lane";
         case session::SetupError::kMaxStepsPerFrame:
             return "invalid steps per frame";
     }
     return "invalid setup";
+}
+
+const char* stage_name(turn::Stage stage) {
+    switch (stage) {
+        case turn::Stage::kToTheSled:
+            return "to_the_sled";
+        case turn::Stage::kTakingUpSlack:
+            return "taking_up_slack";
+        case turn::Stage::kPulling:
+            return "pulling";
+        case turn::Stage::kReleasing:
+            return "releasing";
+        case turn::Stage::kToTheParking:
+            return "to_the_parking";
+        case turn::Stage::kParked:
+            return "parked";
+    }
+    return "unknown";
 }
 
 }  // namespace
@@ -141,6 +161,7 @@ void TractorPullRun::reset() {
 
 godot::String TractorPullRun::start(session::Setup setup, const godot::String& controls_path,
                                     const data::ReadFile& read) {
+    setup.parking = parking_;
     if (!controls_path.is_empty()) {
         const auto controls = data::load_control_layout(to_std(controls_path), read);
         if (!controls) {
@@ -158,6 +179,14 @@ godot::String TractorPullRun::start(session::Setup setup, const godot::String& c
         setup_ = setup;
     }
     return session_ ? godot::String{} : godot::String{"inconsistent tractor, sled or track"};
+}
+
+void TractorPullRun::set_parking(double x_m, double y_m) {
+    parking_ = turn::Parking{.x_m = x_m, .y_m = y_m};
+}
+
+void TractorPullRun::clear_parking() {
+    parking_.reset();
 }
 
 void TractorPullRun::set_controls(double throttle, double clutch_pedal, std::int64_t gear,
@@ -215,6 +244,13 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["pushdown"] = s.pushdown;
     out["berm_m3"] = s.berm_m3;
     out["chain_tension_n"] = s.chain_tension_n;
+    out["stage"] = stage_name(s.stage);
+    out["chain_hooked"] = s.chain_hooked;
+    out["hitch_to_hook_m"] = s.hitch_to_hook_m;
+    out["hitch_along_m"] = s.hitch_along_m;
+    out["hitch_across_m"] = s.hitch_across_m;
+    out["flag_progress"] = s.flag_progress;
+    out["sled_back"] = s.sled_back;
     return out;
 }
 
@@ -244,6 +280,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     // What the front axle carries at rest, as the tractor is tuned.
     out["front_axle_rest_load_n"] = chassis::axle_loads_at_rest(chassis).front_n;
     out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
+    out["has_reverse"] = tractor.driveline.reverse_ratio > 0.0;
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;
     out["sled_wheel_width_m"] = sled.wheel.section_width_m;
@@ -280,6 +317,10 @@ godot::String TractorPullRun::get_layout() const {
 
 bool TractorPullRun::is_finished() const {
     return session_ && session_->result().has_value();
+}
+
+bool TractorPullRun::is_over() const {
+    return session_ && session_->over();
 }
 
 godot::Dictionary TractorPullRun::get_result() const {
@@ -326,6 +367,8 @@ void TractorPullRun::_bind_methods() {
                          &TractorPullRun::setup_event_pull);
     ClassDB::bind_method(D_METHOD("setup_practice", "event", "controls_path"),
                          &TractorPullRun::setup_practice);
+    ClassDB::bind_method(D_METHOD("set_parking", "x_m", "y_m"), &TractorPullRun::set_parking);
+    ClassDB::bind_method(D_METHOD("clear_parking"), &TractorPullRun::clear_parking);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
                                   "brake_left", "brake_right"),
                          &TractorPullRun::set_controls);
@@ -335,6 +378,7 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_dimensions"), &TractorPullRun::get_dimensions);
     ClassDB::bind_method(D_METHOD("get_layout"), &TractorPullRun::get_layout);
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
+    ClassDB::bind_method(D_METHOD("is_over"), &TractorPullRun::is_over);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
 }

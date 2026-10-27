@@ -43,6 +43,7 @@ func _init() -> void:
 	_check_a_missing_file()
 	_check_frames()
 	_check_layouts()
+	_check_parking()
 	_check_event()
 	_check_career_outlives_a_save()
 	if not args.has_all(["gear", "stick", "brake-right"]):
@@ -110,7 +111,10 @@ func _check_frames() -> void:
 	var dimensions := run.get_dimensions()
 	_expect(dimensions.get("wheelbase_m", 0.0) > 0.0 and dimensions.get("chain_length_m", 0.0) > 0.0,
 			"the tractor's and sled's dimensions")
-	_expect(dimensions.get("gear_count", 0) == 8, "the reference tractor's eight gears")
+	_expect(dimensions.get("gear_count", 0) == 8 and dimensions.get("has_reverse", false),
+			"the reference tractor's eight gears and a reverse")
+	_expect(snapshot.get("stage", "") == "pulling" and snapshot.get("chain_hooked", false)
+			and not run.is_over(), "at the line: hooked, the pull on")
 	_expect(dimensions.get("lane_width_m", 0.0) > 0.0
 			and dimensions.get("full_pull_line_m", 0.0) <= dimensions.get("track_length_m", 0.0),
 			"the track's dimensions")
@@ -125,6 +129,37 @@ func _check_layouts() -> void:
 				"%s plays the %s layout: %s" % [case[0], case[1], error])
 	var error := run.setup(TRACTOR, SLED, TRACK, TRACK)
 	_expect(error.contains("easy, pro"), "a track is no controls file: " + error)
+
+
+# With a parking, the run is the whole turn: it starts there, the chain off,
+# and backs up in reverse; one in the lane is refused, and clearing it goes
+# back to the pull alone.
+func _check_parking() -> void:
+	var run := TractorPullRun.new()
+	run.set_parking(-15.0, -10.0)
+	var error := run.setup(TRACTOR, SLED, TRACK, "")
+	_expect(error.is_empty(), "a turn from the parking: " + error)
+	var start := run.get_snapshot()
+	_expect(start.get("stage", "") == "to_the_sled" and not start.get("chain_hooked", true)
+			and float(start["tractor_x_m"]) == -15.0 and float(start["tractor_y_m"]) == -10.0
+			and not run.is_over() and not run.is_finished(),
+			"from the parking, the chain off: %s" % start)
+	run.set_controls(0.4, 1.0, -1, 0.0, 0.0, 0.0)
+	for i in 60:
+		run.advance(FRAME_60_FPS_NS)
+	run.set_controls(0.4, 0.0, -1, 0.0, 0.0, 0.0)
+	for i in 180:
+		run.advance(FRAME_60_FPS_NS)
+	var backed := run.get_snapshot()
+	_expect(int(backed["gear"]) == -1 and float(backed["tractor_x_m"]) < -15.5,
+			"backs up in reverse: %s m" % backed["tractor_x_m"])
+	run.set_parking(0.0, 1.0)
+	error = run.setup(TRACTOR, SLED, TRACK, "")
+	_expect(error.contains("out of the lane"), "a parking in the lane: " + error)
+	run.clear_parking()
+	error = run.setup(TRACTOR, SLED, TRACK, "")
+	_expect(error.is_empty() and run.get_snapshot().get("stage", "") == "pulling",
+			"cleared, the pull alone again: " + error)
 
 
 # A season's event (TractorPullEvent): the player and the named rivals,

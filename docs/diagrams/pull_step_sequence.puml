@@ -15,7 +15,7 @@ Hitch --> Step : hitch position and velocity (with pitch and heading)
 Step -> Sled : hook(sled state)
 Sled --> Step : hook position and velocity (with heading)
 Step -> Chain : chain_force(chain, hitch, hook)
-Chain --> Step : tension along the hook-to-hitch line\n(zero when slack, never pushing)
+Chain --> Step : tension along the hook-to-hitch line\n(zero when slack or unhooked, never pushing)
 Step -> Step : equal and opposite:\nDrawbar{pull, lift, side} on the hitch (body frame),\nHookForce{forward, up, side} on the hook (sled frame)
 Step -> Track : surface_at(rear axle), surface_at(front axle),\nsurface_at(sled pan), surface_at(sled wheels)
 Track --> Step : the ground under each contact
@@ -23,9 +23,15 @@ Step -> Vehicle : step(tractor, input, Ground{rear, front}, drawbar)\n(see the v
 Vehicle --> Step : tractor output
 Step -> Sled : loads(state, hook force, Ground{pan, wheels})
 Sled --> Step : pan / wheel loads, box position,\npush-down, resistance
-Step -> Sled : predict(resistance)
-Step -> Sled : advance_lateral(loads, hook side pull, wheel ground)\n(sideways and yaw: wheels' side grip, pan friction implicit)
-Step -> Sled : advance(forward pull): moves along its heading
-Step -> Sled : collect(soil the tractor threw back)\n(the berm grows, and spills as the sled moves)
+alt sled on the chain
+  Step -> Sled : predict(resistance)
+  Step -> Sled : advance_lateral(loads, hook side pull, wheel ground)\n(sideways and yaw: wheels' side grip, pan friction implicit)
+  Step -> Sled : advance(forward pull): moves along its heading
+  Step -> Sled : collect(soil the tractor threw back)\n(the berm grows, and spills as the sled moves)
+else held (before the flag, after the pull)
+  Step -> Step : the sled stands still
+else driving back (the chain off)
+  Step -> Sled : drive_back(start line): straight back at 2 m/s
+end
 Step --> Caller : Output{tractor, sled loads, chain}
 @enduml

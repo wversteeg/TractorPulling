@@ -333,8 +333,8 @@ AxleLoads axle_loads(const Params& params, const State& state, const Drawbar& dr
             .front_lifted = front.depth_m <= 0.0};
 }
 
-Prediction predict(const State& state, const Params& params, double resisting_force_n,
-                   double dt_s, double direction) noexcept {
+Prediction predict(const State& state, const Params& params, double resisting_force_n, double dt_s,
+                   double direction) noexcept {
     const double velocity_per_n = dt_s / params.mass_kg;
     const double cg_side_m_s =
         state.lateral_velocity_m_s + params.cg_ahead_of_rear_axle_m * state.yaw_rate_rad_s;

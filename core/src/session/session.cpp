@@ -165,12 +165,15 @@ Snapshot Session::snapshot() const noexcept {
     const double start_m = model_.start_line_m();
     const double axle_rad_s = tractor.driveline.output_omega_rad_s;
     const turn::HitchToHook gap = turn::hitch_to_hook(model_, pull);
-    const double flag_progress =
-        turn_.stage == turn::Stage::kTakingUpSlack
-            ? std::min(static_cast<double>(turn_.tension_held_steps) * clock_.step_s() /
-                           turn::kFlagAfter_s,
-                       1.0)
-            : (turn_.stage == turn::Stage::kToTheSled ? 0.0 : 1.0);
+    // None before the chain is on, all of it once the flag is green.
+    double flag_progress = 1.0;
+    if (turn_.stage == turn::Stage::kToTheSled) {
+        flag_progress = 0.0;
+    } else if (turn_.stage == turn::Stage::kTakingUpSlack) {
+        flag_progress = std::min(
+            static_cast<double>(turn_.tension_held_steps) * clock_.step_s() / turn::kFlagAfter_s,
+            1.0);
+    }
     return {.time_s = static_cast<double>(turn_.run.steps) * clock_.step_s(),
             .stage = turn_.stage,
             .tractor_x_m = body.position_m - start_m,

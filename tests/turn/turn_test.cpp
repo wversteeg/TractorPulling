@@ -204,27 +204,24 @@ struct Point {
 // pressed and both brakes on.
 class Driver {
 public:
-    explicit Driver(const session::Snapshot& now) : now_(now) {}
+    explicit Driver(const session::Snapshot& now) : now_(&now) {}
 
     // Steering towards the path, and whether its end is reached.
     session::Controls follow(std::span<const Point> path, int gear, bool reverse) {
-        const double heading_rad = now_.tractor_heading_rad + (reverse ? std::numbers::pi : 0.0);
+        const double heading_rad = now_->tractor_heading_rad + (reverse ? std::numbers::pi : 0.0);
         while (next_ + 1 < path.size() && distance_m(path[next_]) < kLookAhead_m) {
             ++next_;
         }
         const Point target = path[next_];
         const double bearing_rad =
-            std::atan2(target.y_m - now_.tractor_y_m, target.x_m - now_.tractor_x_m);
+            std::atan2(target.y_m - now_->tractor_y_m, target.x_m - now_->tractor_x_m);
         const double alpha_rad = std::remainder(bearing_rad - heading_rad, 2.0 * std::numbers::pi);
         const double wheels_rad =
             std::atan(2.0 * kWheelbase_m * std::sin(alpha_rad) / kLookAhead_m);
         const double steering =
             std::clamp((reverse ? -wheels_rad : wheels_rad) / kMaxSteer_rad, -1.0, 1.0);
         ramp_ = std::min(ramp_ + kDt_s, 1.0);
-        return {.throttle = 0.35,
-                .clutch_pedal = 1.0 - ramp_,
-                .gear = gear,
-                .steering = steering};
+        return {.throttle = 0.35, .clutch_pedal = 1.0 - ramp_, .gear = gear, .steering = steering};
     }
 
     [[nodiscard]] bool at_end(std::span<const Point> path) const {
@@ -245,10 +242,10 @@ private:
     static constexpr double kMaxSteer_rad = 40.0 * std::numbers::pi / 180.0;
 
     [[nodiscard]] double distance_m(const Point& p) const {
-        return std::hypot(p.x_m - now_.tractor_x_m, p.y_m - now_.tractor_y_m);
+        return std::hypot(p.x_m - now_->tractor_x_m, p.y_m - now_->tractor_y_m);
     }
 
-    const session::Snapshot& now_;
+    const session::Snapshot* now_;
     std::size_t next_ = 0;
     double ramp_ = 0.0;
 };
@@ -263,14 +260,14 @@ struct Played {
 };
 
 Played play_a_whole_turn() {
-    session::Setup setup{.tractor = vehicle::testing::reference_params(),
-                         .sled = sled::testing::reference_params(),
-                         .ground = track::testing::reference_params(),
-                         .rules = kRules,
-                         .layout = session::Layout::kPro,
-                         .easy = controls::testing::kReferenceEasy,
-                         .pro = controls::testing::kReferencePro,
-                         .parking = kParking};
+    const session::Setup setup{.tractor = vehicle::testing::reference_params(),
+                               .sled = sled::testing::reference_params(),
+                               .ground = track::testing::reference_params(),
+                               .rules = kRules,
+                               .layout = session::Layout::kPro,
+                               .easy = controls::testing::kReferenceEasy,
+                               .pro = controls::testing::kReferencePro,
+                               .parking = kParking};
     std::optional<session::Session> made = session::Session::create(setup);
     if (!made) {
         std::abort();
@@ -325,9 +322,9 @@ Played play_a_whole_turn() {
             case Stage::kReleasing:
                 // Stand, then reverse a little; it comes off by itself.
                 if (now.gear != driveline::kReverse) {
-                    controls = driver.stop(std::abs(now.tractor_speed_m_s) > 0.01
-                                               ? driveline::kNeutral
-                                               : driveline::kReverse);
+                    controls =
+                        driver.stop(std::abs(now.tractor_speed_m_s) > 0.01 ? driveline::kNeutral
+                                                                           : driveline::kReverse);
                 } else {
                     const std::array straight_back{Point{now.tractor_x_m - 10.0, 0.0}};
                     controls = driver.follow(straight_back, driveline::kReverse, true);
@@ -347,10 +344,11 @@ Played play_a_whole_turn() {
                     home.push_back({0.0, -10.0});
                     home.push_back({kParking.x_m, kParking.y_m});
                 }
-                if (now.gear != 2 && std::abs(now.tractor_speed_m_s) > 0.01) {
-                    controls = driver.stop(driveline::kNeutral);
-                } else if (std::hypot(now.tractor_x_m - kParking.x_m,
-                                      now.tractor_y_m - kParking.y_m) < 0.5 * kParkedWithin_m) {
+                const bool rolling_back = now.gear != 2 && std::abs(now.tractor_speed_m_s) > 0.01;
+                const bool home_now =
+                    std::hypot(now.tractor_x_m - kParking.x_m, now.tractor_y_m - kParking.y_m) <
+                    0.5 * kParkedWithin_m;
+                if (rolling_back || home_now) {
                     controls = driver.stop(driveline::kNeutral);
                 } else {
                     controls = driver.follow(home, 2, false);
@@ -362,9 +360,8 @@ Played play_a_whole_turn() {
                 break;
         }
         session.advance(controls, kSimulationStepNs);
-        played.hooked_while_pulling_off =
-            played.hooked_while_pulling_off ||
-            (now.stage == Stage::kToTheParking && now.chain_hooked);
+        played.hooked_while_pulling_off = played.hooked_while_pulling_off ||
+                                          (now.stage == Stage::kToTheParking && now.chain_hooked);
     }
     if (played.stages.back() != now.stage) {
         played.stages.push_back(now.stage);
@@ -380,25 +377,27 @@ Played play_a_whole_turn() {
 // the chain off, and back to the parking as the sled drives itself back.
 TEST(Turn, AWholeTurnFromTheParkingAndBack) {
     const Played played = play_a_whole_turn();
-    const std::vector<Stage> in_order{Stage::kToTheSled,   Stage::kTakingUpSlack,
-                                      Stage::kPulling,     Stage::kReleasing,
-                                      Stage::kToTheParking, Stage::kParked};
+    const std::vector<Stage> in_order{Stage::kToTheSled, Stage::kTakingUpSlack, Stage::kPulling,
+                                      Stage::kReleasing, Stage::kToTheParking,  Stage::kParked};
     EXPECT_EQ(played.stages, in_order);
-    ASSERT_TRUE(played.result);
+    if (!played.result) {
+        FAIL() << "the pull did not end";
+    }
+    const run::Result& result = *played.result;
     // Driving to the sled and away crosses the chalk lines freely: only the
     // pull counts them.
-    EXPECT_NE(played.result->ending, run::Ending::kOutOfBounds);
-    EXPECT_GT(played.result->distance_m, 20.0);
+    EXPECT_NE(result.ending, run::Ending::kOutOfBounds);
+    EXPECT_GT(result.distance_m, 20.0);
     EXPECT_EQ(played.end.sled_x_m, 0.0);
     EXPECT_EQ(played.end.sled_y_m, 0.0);
     EXPECT_TRUE(played.end.sled_back);
     EXPECT_FALSE(played.end.chain_hooked);
     EXPECT_FALSE(played.hooked_while_pulling_off);
-    EXPECT_LT(std::hypot(played.end.tractor_x_m - kParking.x_m,
-                         played.end.tractor_y_m - kParking.y_m),
-              kParkedWithin_m);
+    EXPECT_LT(
+        std::hypot(played.end.tractor_x_m - kParking.x_m, played.end.tractor_y_m - kParking.y_m),
+        kParkedWithin_m);
     // The pull's clock ran from the flag to the sled's stop only.
-    EXPECT_EQ(played.end.time_s, played.result->time_s);
+    EXPECT_EQ(played.end.time_s, result.time_s);
 }
 
 TEST(Turn, AWholeTurnIsDeterministic) {

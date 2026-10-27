@@ -7,6 +7,7 @@ skinparam classAttributeIconSize 0
 package "components (see their class diagrams)" {
   class "pull::Model / Output" as Pull
   class "run::Rules / State / Result" as Run
+  class "turn::State / Stage / Parking\n+ at_the_line(), from_the_parking()\n+ step(), hitch_to_hook()" as Turn
   class "controls::pro / easy\nEasyParams, ProParams, AssistState" as Controls
   class "FixedStepClock" as Clock
   class "vehicle::Params / Input" as Vehicle
@@ -28,18 +29,20 @@ package "tp::session" {
     +easy : controls::EasyParams
     +pro : controls::ProParams
     +max_steps_per_frame : uint32
+    +parking : optional<turn::Parking>
   }
   enum SetupError
   class Controls <<struct>> {
     +throttle : double
     +clutch_pedal : double
-    +gear : int
+    +gear : int, -1 = reverse
     +steering : double
     +brake_left : double
     +brake_right : double
   }
   class Snapshot <<struct>> {
-    +time_s : double
+    +time_s : double, the pull's clock
+    +stage : turn::Stage
     +tractor_x_m, tractor_y_m : double
     +tractor_heading_rad, tractor_pitch_rad : double
     +tractor_speed_m_s, steering_rad : double
@@ -52,6 +55,9 @@ package "tp::session" {
     +sled_x_m, sled_y_m, sled_heading_rad : double
     +sled_speed_m_s : double
     +box_ahead_of_wheels_m, pushdown, berm_m3, chain_tension_n : double
+    +chain_hooked, sled_back : bool
+    +hitch_to_hook_m, hitch_along_m, hitch_across_m : double
+    +flag_progress : double
   }
   class Frame <<struct>> {
     +steps : uint32
@@ -60,11 +66,12 @@ package "tp::session" {
   class Session {
     -model_ : pull::Model
     -rules_ : run::Rules
+    -parking_ : turn::Parking
     -layout_ : Layout
     -easy_ : controls::EasyParams
     -pro_ : controls::ProParams
     -clock_ : FixedStepClock
-    -run_ : run::State
+    -turn_ : turn::State
     -assist_ : controls::AssistState
     -input_ : vehicle::Input
     -output_ : pull::Output
@@ -74,11 +81,13 @@ package "tp::session" {
     +previous() / current() : const Snapshot&
     +alpha() : double
     +result() : const optional<run::Result>&
+    +over() : bool
     +hash() : uint64
   }
   class Inspector <<tools and tests>> {
     +{static} model(const Session&) : const pull::Model&
     +{static} run_state(const Session&) : const run::State&
+    +{static} turn_state(const Session&) : const turn::State&
     +{static} last_output(const Session&) : const pull::Output&
     +{static} last_input(const Session&) : const vehicle::Input&
   }
@@ -100,11 +109,13 @@ Setup *-- Vehicle
 Setup *-- Sled
 Setup *-- Track
 Session *-- Pull
-Session *-- Run
+Session *-- Turn : the whole turn,\nor the pull alone at the line
+Turn *-- Run
 Session *-- Clock : frame time to steps
 Session ..> Controls : layout to vehicle::Input
 note bottom of Session
   the frame time decides only how many 1 ms steps run, never their length;
-  no heap after create(); a pull-off is a new session on sled::heavier()
+  no heap after create(); a pull-off is a new session on sled::heavier();
+  with a parking, the session plays the whole turn (turn_sequence)
 end note
 @enduml
