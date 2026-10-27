@@ -284,8 +284,9 @@ upgraded, the tractor is at the class's limits like the rivals' reference
 tractor, and beyond it: wider tires (a traction limit of 0.95 against
 0.93) and a two-gear powershift step against one. Prizes are paid as an
 event is scored, once; upgrades are bought between events or before your
-first pull of one (`field::LiveSeason::player_may_change_tractor`). The money and the levels carry from season to season. The
-whole garage costs € 15,200; a season pays a winner of every event € 7,000.
+first pull of one (`field::LiveSeason::player_may_change_tractor`). The
+money and the levels carry from season to season. The whole garage costs
+€ 15,200; a season pays a winner of every event € 7,000.
 
 ### Playing a run from a game
 

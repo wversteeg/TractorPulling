@@ -193,10 +193,6 @@ func _check_event() -> void:
 	_expect(not event.score_event(), "an unfinished event is not scored")
 
 
-# The player's tuning: as built at first, each setting held to its range,
-# and a run set up after it is on the tuned tractor. The player starts on
-# the garage's first levels: 100 kg of weights halfway put a little more of
-# the lighter tractor on its rear axle than the reference's 60 %.
 # A save the season no longer takes (here another season's) still gives
 # its career back: the money and upgrades outlive seasons.
 func _check_career_outlives_a_save() -> void:
@@ -214,6 +210,10 @@ func _check_career_outlives_a_save() -> void:
 			"the career carried into it: %s" % garage)
 
 
+# The player's tuning: as built at first, each setting held to its range,
+# and a run set up after it is on the tuned tractor. The player starts on
+# the garage's first levels: 100 kg of weights halfway put a little more of
+# the lighter tractor on its rear axle than the reference's 60 %.
 func _check_tuning(event: TractorPullEvent) -> void:
 	var tuning := event.get_tuning()
 	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)
