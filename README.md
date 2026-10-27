@@ -280,8 +280,8 @@ earns nothing), and the garage spends it, between events:
 
 Each level sets its part outright, so the parts never interact; the season
 loader checks every level against the class (`garage::validate`). Fully
-upgraded, the tractor is at the class's limits like the rivals' reference
-tractor, and beyond it: wider tires (a traction limit of 0.95 against
+upgraded, the tractor is at the class's limits like the reference tractor
+the field is drawn around, and beyond it: wider tires (a traction limit of 0.95 against
 0.93) and a two-gear powershift step against one. Prizes are paid as an
 event is scored, once; upgrades are bought between events or before your
 first pull of one (`field::LiveSeason::player_may_change_tractor`). The
