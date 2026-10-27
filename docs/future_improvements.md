@@ -251,15 +251,19 @@ for the big features; they are repeated at the end for completeness.
 - **GDScript checks.** The GDScript runs in CI (the scene and run tests)
   but has no linter or formatter there; gdtoolkit's `gdlint` and `gdformat`
   would add a Python dependency, worth it as the scene and UI grow.
-- **The graybox look.** The pull scene is boxes and cylinders in flat
-  colours on a flat ground: no models, textures, tire tracks, thrown soil,
-  berm, smoke or sound. The hull is one box over the wheelbase; the sled
-  one frame, its weight box and wheels, without a pan or knives drawn. Art
-  replaces the views' meshes; the views' interfaces (`build` from the
+- **A toy look, not a realistic one.** The tractor and sled are built
+  from primitives and the crowd is stylized (Kenney's CC0 characters): no
+  textures beyond a noise ground, no tire tracks in the clay, no berm drawn,
+  no sound. A real tractor model, a modelled sled and a crowd that cheers
+  would replace the views' meshes; their interfaces (`build` from the
   dimensions, `show_snapshot`) stay.
-- **The chain as a bar.** `ChainView` draws a straight bar from hitch to
-  hook, darker as the tension rises, even when the chain is slack and
-  should sag.
+- **The visuals are not measured on a phone.** The venue is a few thousand
+  instances in MultiMeshes and one shadowed sun (60 m of shadow distance);
+  the frame time on a mid-range phone is not measured yet, nor is a
+  lower-detail setting there to fall back on.
+- **The chain is straight.** `ChainView` draws its links on a straight
+  line from hitch to hook, darker as the tension rises, even when the
+  chain is slack and should sag.
 - **The game's season.** The season is saved between events only: an
   event left halfway starts again from its beginning when continued (the
   rivals pull the same, from the seed, but the player's pulls in it are

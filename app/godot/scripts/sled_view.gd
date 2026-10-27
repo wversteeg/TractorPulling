@@ -150,9 +150,12 @@ func _build_box() -> void:
 				blocks.append(Transform3D(Basis(), Vector3((column - 1) * 0.62,
 						-size.y / 2.0 + 0.22 + layer * 0.29, (row - 1) * 0.48)))
 	_box.add_child(Art.many(block, blocks, Art.material(WEIGHT, 0.6, 0.4)))
-	var text := Art.label("TRANSFER SLED", 48, Color.WHITE, PAINT_DARK)
-	text.position = Vector3(0.0, -size.y * 0.2, size.z / 2.0 + 0.04)
-	_box.add_child(text)
+	# The name on both sides, where the cameras see it past the operator.
+	for side: float in [-1.0, 1.0]:
+		var text := Art.label("TRANSFER SLED", 36, Color.WHITE, PAINT_DARK)
+		text.position = Vector3(side * (size.x / 2.0 + 0.04), -size.y * 0.2, 0.0)
+		text.rotation.y = side * PI / 2.0
+		_box.add_child(text)
 	add_child(_box)
 
 

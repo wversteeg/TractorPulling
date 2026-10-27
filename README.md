@@ -334,10 +334,27 @@ season's (points per place), and the next event. During a pull the HUD
 shows the rev counter (stall and rated speeds marked), gear, speed,
 distance and a bar down the track to the full-pull line.
 
-The pull scene (`scenes/pull.tscn`) draws the run in graybox, built from the run's sizes (`get_dimensions()`):
-the lane with its chalk lines and the full-pull line, the tractor with
-wheels that turn and steer, the sled with its weight box moving forward,
-and the chain, darker as it pulls.
+The pull scene (`scenes/pull.tscn`) draws the run at a club venue, built
+from the run's sizes (`get_dimensions()`), in a bright, toy-like style that
+stays cheap on a phone:
+
+- the tractor: hood, grille, cab with the driver, fenders, lugged rear
+  tires, the wheelie bar and the drawbar at their real places, the front
+  weights and rear wheel discs where the ballast is set, exhaust smoke
+  that darkens under load and dirt thrown by a spinning tire;
+- the sled: frame and gooseneck, the pan, the weight box with its blocks
+  riding forward, the operator on the platform and the lamp that turns from
+  green to red; the chain as links, darker as it pulls;
+- the venue: a clay strip in the grass, the lane's chalk, fences and straw
+  bales, distance boards every 10 m, a grandstand with a seated crowd and a
+  standing crowd on a bank, a banner, the full-pull gantry, a scoreboard
+  showing the sled's distance, tents, a barn, trees and clouds, under a
+  sky with soft shadows.
+
+The crowd, trees, tents, flags and clouds are CC0 models from Kenney's
+starter kits (`app/godot/assets/kenney`, credited in its README); the
+crowd is drawn as a few MultiMeshes, so a thousand people cost a few
+draw calls. Everything else is built from primitives (`Art`).
 
 You drive on the touch screen, in the easy or the pro layout. Both have a
 steering slider under the left thumb, which springs back to straight ahead
