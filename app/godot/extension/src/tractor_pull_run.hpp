@@ -61,18 +61,22 @@ public:
     /// The state to draw now: the last two steps blended (session::blend).
     [[nodiscard]] godot::Dictionary get_snapshot() const;
 
-    /// The run's fixed sizes, to build the scene from (SI): the tractor's
-    /// (wheelbase_m, rear_axle_height_m, rear_track_m, front_track_m,
+    /// The run's fixed sizes, to build the scene from (SI). The tractor's:
+    /// wheelbase_m, rear_axle_height_m, rear_track_m, front_track_m,
     /// rear_tire_radius_m, rear_tire_width_m, front_tire_radius_m,
-    /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m, and
-    /// gear_count, its forward gears), the sled's (sled_wheel_radius_m,
+    /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m,
+    /// wheelie_bar_behind_rear_axle_m, wheelie_bar_tip_height_m, the
+    /// weights as set (ballast_mass_kg, and ballast_position from 0
+    /// rearmost to 1 foremost) and gear_count, its forward gears. The
+    /// sled's: sled_wheel_radius_m, sled_wheel_width_m,
     /// hook_ahead_of_wheels_m, hook_height_m, pan_ahead_of_wheels_m,
-    /// box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m,
-    /// chain_length_m), the track's (track_length_m, lane_width_m,
-    /// full_pull_line_m) and the engine's speeds for a rev counter
-    /// (stall_omega_rad_s, rated_omega_rad_s, high_idle_omega_rad_s), and
-    /// where the clutch slips along the pedal's travel (clutch_full_grip_pedal,
-    /// clutch_bite_pedal: clutch::engagement_range). {} before setup().
+    /// box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m and
+    /// chain_length_m. The track's: track_length_m, lane_width_m and
+    /// full_pull_line_m. The engine's speeds for a rev counter:
+    /// stall_omega_rad_s, rated_omega_rad_s and high_idle_omega_rad_s. And
+    /// where the clutch slips along the pedal's travel:
+    /// clutch_full_grip_pedal and clutch_bite_pedal
+    /// (clutch::engagement_range). {} before setup().
     [[nodiscard]] godot::Dictionary get_dimensions() const;
 
     /// "easy" or "pro", the layout the run is played in; "" before setup().

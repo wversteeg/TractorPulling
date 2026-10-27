@@ -1,5 +1,5 @@
 @startuml godot_scene_classes
-title The pull scene (app/godot/scenes/pull.tscn): a season's events against the rivals, in graybox
+title The pull scene (app/godot/scenes/pull.tscn): a season's events against the rivals, at a club venue
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -49,8 +49,25 @@ package "GDScript (app/godot/scripts)" {
   }
   class SledView {
     +build(dimensions)
-    +show_snapshot(snapshot)
+    +show_snapshot(snapshot, delta)
     +hook_position() : Vector3
+  }
+  class VenueView {
+    +build(dimensions)
+    +show_distance(sled_m)
+    +{static} environment() : WorldEnvironment
+  }
+  class Art <<static>> {
+    +{static} material(colour, roughness, metallic) : StandardMaterial3D
+    +{static} box(size, colour), cylinder(...), sphere(...)
+    +{static} axle_cylinder(radius_m, width_m, colour)
+    +{static} many(mesh, transforms, material, colours) : MultiMeshInstance3D
+    +{static} label(text, size_px, colour, outline) : Label3D
+    +{static} ground_texture(dark, light, frequency, seed) : NoiseTexture2D
+  }
+  class KenneyModels <<static>> {
+    +{static} scene(path) : Node3D
+    +{static} merged(path, skip) : Mesh
   }
   class ChainView {
     +show_between(hitch, hook, tension_n)
@@ -217,10 +234,12 @@ Node3D <|-- TrackView
 Node3D <|-- TractorView
 Node3D <|-- SledView
 Node3D <|-- ChainView
+Node3D <|-- VenueView
 Node3D <|-- CameraRig
 Pull *-- Run
 Pull *-- Event
 Pull *-- TrackView
+Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky
 Pull *-- TractorView
 Pull *-- SledView
 Pull *-- ChainView
@@ -258,9 +277,12 @@ TrackView ..> TrackSpace
 TractorView ..> TrackSpace
 SledView ..> TrackSpace
 TrackView ..> Graybox
-TractorView ..> Graybox
-SledView ..> Graybox
-ChainView ..> Graybox
+TractorView ..> Art
+SledView ..> Art
+ChainView ..> Art
+VenueView ..> Art
+VenueView ..> TrackSpace
+VenueView ..> KenneyModels : CC0 models (assets/kenney):\ncrowd, trees, tents, flags
 SceneTree <|-- SceneTest
 SceneTree <|-- Shots
 SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot

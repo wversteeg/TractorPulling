@@ -64,6 +64,7 @@ const TOP := 10
 var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
 var track_view := TrackView.new()
+var venue_view := VenueView.new()
 var tractor_view := TractorView.new()
 var sled_view := SledView.new()
 var chain_view := ChainView.new()
@@ -91,7 +92,7 @@ var _ended_s := 0.0
 
 func _ready() -> void:
 	_add_world()
-	for node: Node in [track_view, tractor_view, sled_view, chain_view, cameras]:
+	for node: Node in [venue_view, track_view, tractor_view, sled_view, chain_view, cameras]:
 		add_child(node)
 	var layer := CanvasLayer.new()
 	for node: Node in [hud, controls, start_screen, settings_screen, garage_screen, board,
@@ -282,8 +283,11 @@ func _build(error: String) -> bool:
 	for child in track_view.get_children():
 		child.queue_free()
 	track_view.build(dimensions)
-	if tractor_view.get_child_count() == 0:
-		tractor_view.build(dimensions)
+	venue_view.build(dimensions)
+	# The tractor moves its weights to the tuning on every pull; the rest of
+	# it, and the sled, are built once.
+	tractor_view.build(dimensions)
+	if sled_view.get_child_count() == 0:
 		sled_view.build(dimensions)
 	hud.build(dimensions)
 	controls.gear_count = dimensions["gear_count"]
@@ -500,22 +504,19 @@ func _show(delta: float) -> void:
 	if s.is_empty():
 		return
 	tractor_view.show_snapshot(s, delta)
-	sled_view.show_snapshot(s)
+	sled_view.show_snapshot(s, delta)
+	venue_view.show_distance(s["sled_x_m"])
 	chain_view.show_between(tractor_view.hitch_position(), sled_view.hook_position(),
 			s["chain_tension_n"])
 	hud.show_snapshot(s, _title, controls.pro)
 
 
 func _add_world() -> void:
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(0.55, 0.7, 0.9)
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.6, 0.6, 0.6)
-	var world := WorldEnvironment.new()
-	world.environment = environment
-	add_child(world)
+	add_child(VenueView.environment())
 	var sun := DirectionalLight3D.new()
-	sun.rotation = Vector3(deg_to_rad(-50.0), deg_to_rad(30.0), 0.0)
+	sun.rotation = Vector3(deg_to_rad(-48.0), deg_to_rad(35.0), 0.0)
+	sun.light_energy = 1.2
 	sun.shadow_enabled = true
+	# Shadows only near the camera, where the tractor and the sled are.
+	sun.directional_shadow_max_distance = 60.0
 	add_child(sun)

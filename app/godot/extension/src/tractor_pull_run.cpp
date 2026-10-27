@@ -233,11 +233,18 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["front_tire_width_m"] = tractor.front_tire.section_width_m;
     out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
     out["hitch_height_m"] = chassis.hitch_height_m;
+    out["wheelie_bar_behind_rear_axle_m"] = chassis.wheelie_bar.behind_rear_axle_m;
+    out["wheelie_bar_tip_height_m"] = chassis.wheelie_bar.tip_height_m;
+    // The weights as the puller set them, for drawing: how much, and where
+    // between their rearmost and foremost places (0 to 1).
+    out["ballast_mass_kg"] = chassis.ballast.mass_kg;
+    out["ballast_position"] = chassis.ballast.position;
     // What the front axle carries at rest, as the tractor is tuned.
     out["front_axle_rest_load_n"] = chassis::axle_loads_at_rest(chassis).front_n;
     out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;
+    out["sled_wheel_width_m"] = sled.wheel.section_width_m;
     out["hook_ahead_of_wheels_m"] = sled.hook_ahead_of_wheels_m;
     out["hook_height_m"] = sled.hook_height_m;
     out["pan_ahead_of_wheels_m"] = sled.pan_ahead_of_wheels_m;
