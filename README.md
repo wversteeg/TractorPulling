@@ -214,7 +214,7 @@ will show them.
 Some tractors shift a gear or two down under load, the clutch in: a
 powershift step, clutch packs inside the gearbox (`driveline.powershift`,
 `load_downshift_gears`; without it the gears change with the clutch pressed
-only). The shipped tractor shifts one gear down. In the game, "-" (or the
+only, and under way only up). The shipped tractor shifts one gear down. In the game, "-" (or the
 gamepad's left shoulder) then works with the clutch in; in the easy layout
 the clutch assist keeps the clutch in for it. The gear goes in at once:
 the wheels keep their speed, the input shaft turns faster than the

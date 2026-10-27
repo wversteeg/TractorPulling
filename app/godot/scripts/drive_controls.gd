@@ -171,10 +171,14 @@ func set_clutch_range(full_grip_pedal: float, bite_pedal: float) -> void:
 
 
 # A gear below `lowest_gear` (the run's: once the pull is under way, only
-# as far down as the powershift goes) is not taken; neutral always is.
+# as far down as the powershift goes) is not taken; neutral always is. Up
+# from neutral goes back into the lowest gear there is, so "+" never
+# leaves the tractor stuck in neutral under way.
 func set_gear(wanted: int) -> void:
-	if wanted != 0 and wanted < lowest_gear:
-		return
+	if wanted > 0 and wanted < lowest_gear:
+		if gear != 0:
+			return
+		wanted = lowest_gear
 	gear = clampi(wanted, 0, gear_count)
 
 

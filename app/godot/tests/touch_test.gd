@@ -19,6 +19,9 @@ const TAP_FINGER := 1
 const STEERING_FINGER := 2
 const STUCK_FINGER := 3
 const PULL_FRAMES := 300
+# Long enough for the easy layout's assist to press the clutch, change
+# gear and let it out again.
+const SHIFT_FRAMES := 60
 const STEER_FRAMES := 60
 const SETTINGS_PATH := "user://touch_test_settings.cfg"
 # The reference clutch slips between these pedals (data/clutches).
@@ -164,6 +167,15 @@ func _play() -> void:
 	_expect(controls.gear == 5 and int(run.get_snapshot()["gear"]) == 5
 			and int(run.get_snapshot()["lowest_gear"]) == 5,
 			"no second gear down: %d" % int(run.get_snapshot()["gear"]))
+	# Out to neutral and "+" again: back into the lowest gear there is, not
+	# stuck in neutral below it.
+	_tap(controls.neutral)
+	await _frames(3)
+	_expect(controls.gear == 0, "neutral under way: %d" % controls.gear)
+	_tap(controls.gear_up)
+	await _frames(SHIFT_FRAMES)
+	_expect(controls.gear == 5 and int(run.get_snapshot()["gear"]) == 5,
+			"up from neutral, back in 5th: %d" % int(run.get_snapshot()["gear"]))
 
 	# Steering with one thumb while the other holds the throttle: full left at
 	# the slider's left end, the wheels turning left at the steering rate.

@@ -165,6 +165,38 @@ TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
     EXPECT_EQ(pull.state.driveline.gear, driveline::kNeutral);
 }
 
+// Standing (creeping below kUnderWay_m_s), any gear may be chosen with the
+// clutch pressed, down too; past it the pull is under way, and down with the
+// clutch is refused at once.
+TEST(Vehicle, ShiftsDownWithTheClutchOnlyUntilUnderWay) {
+    constexpr int kMovedOffIn = 4;
+    constexpr int kLower = 2;
+    const Input pressed{.throttle = 0.0, .clutch_pedal = 1.0, .gear = kMovedOffIn};
+    const auto creeping_at = [&](double speed_m_s) {
+        Pull pull;
+        step(pull.state, pull.model, pressed, kGround, {}, kDt_s);
+        EXPECT_EQ(pull.state.driveline.gear, kMovedOffIn);
+        pull.state.chassis.velocity_m_s = speed_m_s;
+        Input down = pressed;
+        down.gear = kLower;
+        pull.last = step(pull.state, pull.model, down, kGround, {}, kDt_s);
+        return pull;
+    };
+
+    const Pull standing = creeping_at(0.9 * kUnderWay_m_s);
+    EXPECT_FALSE(standing.last.shift_refused);
+    EXPECT_EQ(standing.state.driveline.gear, kLower);
+
+    const Pull under_way = creeping_at(1.1 * kUnderWay_m_s);
+    EXPECT_TRUE(under_way.last.shift_refused);
+    EXPECT_EQ(under_way.state.driveline.gear, kMovedOffIn);
+    EXPECT_EQ(under_way.state.driveline.floor_gear, kMovedOffIn);
+
+    // Backwards counts the same: the speed, not its sign.
+    const Pull rolling_back = creeping_at(-1.1 * kUnderWay_m_s);
+    EXPECT_TRUE(rolling_back.last.shift_refused);
+}
+
 // The reference gearbox shifts one gear down under load, the clutch in (a
 // powershift step), which is what it is for: the load grows past what 6th
 // can pull, and the engine is pulled down towards the stall. Left in 6th it

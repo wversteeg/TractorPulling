@@ -74,8 +74,6 @@ namespace {
 constexpr double kFrontTires = 2.0;
 // The rear tires are split between two sides.
 constexpr double kSides = 2.0;
-// Faster than this the tractor is moving off: the pull is under way [m/s].
-constexpr double kUnderWay_m_s = 0.3;
 
 // One side's rear tires at the current speeds: traction per tire,
 // linearized for the solve, and the motion resistance its slip digs.

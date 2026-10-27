@@ -50,9 +50,9 @@ struct Params {
     /// How many gears down the gearbox shifts under load, the clutch in: 0
     /// for none, below gear_count.
     int load_downshift_gears = 0;
-    /// How many shifts under load one pull allows: after them every change
-    /// needs the clutch pressed. 0 or more; without a step
-    /// (load_downshift_gears 0) it does nothing.
+    /// How many shifts under load one pull allows: after them the gear goes
+    /// up with the clutch pressed, and under way never down. 0 or more;
+    /// without a step (load_downshift_gears 0) it does nothing.
     int load_shifts_per_pull = 1;
 };
 
