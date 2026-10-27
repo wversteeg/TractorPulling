@@ -37,6 +37,9 @@ func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
 	_pull.set("settings_path", SETTINGS_PATH)
+	# The reference tractor as it is, with its powershift step (the club
+	# season's garage starts the player without it).
+	_pull.set("season_path", "res://tests/data/practice_season.toml")
 	# A new season, whatever this machine has saved, and nothing saved.
 	_pull.set("save_path", "")
 	root.add_child(_pull)

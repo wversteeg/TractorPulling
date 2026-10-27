@@ -21,7 +21,7 @@ package "GDScript (app/godot/scripts)" {
     +practice : bool
     +run : TractorPullRun
     +event : TractorPullEvent
-    +screen : Screen {START, SETTINGS, EVENT, SETUP,\n  PULLING, RESULT, EVENT_END, SEASON}
+    +screen : Screen {START, SETTINGS, GARAGE, EVENT,\n  SETUP, PULLING, RESULT, EVENT_END, SEASON}
     +show_start(error)
     -_new_season()
     -_resume_season() : bool
@@ -87,13 +87,13 @@ package "GDScript (app/godot/scripts)" {
     +release_buttons()
   }
   class StartScreen {
-    +practice_button, event_button : TouchButton
+    +practice_button, garage_button, event_button : TouchButton
     +continue_button, new_season_button : TouchButton
     +settings_button : GearButton
     +show_event(event, error)
     +show_choice(season)
     ..signals..
-    practice_requested, event_requested,
+    practice_requested, event_requested, garage_requested,
     settings_requested, continue_requested,
     new_season_requested
   }
@@ -104,6 +104,14 @@ package "GDScript (app/godot/scripts)" {
     +show_settings(pro, tilt, tilt_available)
     ..signals..
     changed(pro, tilt), done
+  }
+  class GarageScreen {
+    +buy_buttons : Array[TouchButton]
+    +done_button : TouchButton
+    +show_garage(garage, message)
+    +{static} euros(amount) : String
+    ..signals..
+    buy_requested(index), done
   }
   class GameSettings {
     +pro, tilt : bool
@@ -141,6 +149,7 @@ package "GDScript (app/godot/scripts)" {
     +set_rows(rows, highlights)
     +row_count() : int
     +set_status(text)
+    +status() : String
     +set_buttons(first, second)
     ..signals..
     first_tapped, second_tapped
@@ -172,6 +181,7 @@ package "GDScript (app/godot/scripts)" {
     +text : String
     +fires_on_release : bool
     +selected : bool
+    +disabled : bool
     +is_held() : bool
     +release()
     ..signals..
@@ -221,6 +231,8 @@ DriveControls *-- "6" TouchButton : gear +/-, N, camera,\nagain, menu
 Pull *-- Hud
 Pull *-- StartScreen
 Pull *-- SettingsScreen : from the start screen's gear
+Pull *-- GarageScreen : from the start screen
+MenuPanel <|-- GarageScreen
 Pull ..> GameSettings : read at the start,\nwritten on a change
 StartScreen *-- GearButton
 TouchButton <|-- GearButton

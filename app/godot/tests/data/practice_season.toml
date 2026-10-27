@@ -1,10 +1,14 @@
 # Two events on the practice sled, for the flow test: the reference tractor
 # makes full pulls, so the test reaches the pull-off and the next event.
+# Its garage starts the player on the reference tractor, with one upgrade
+# to buy.
 
 [season]
 event = "practice_event.toml"
 seed = 2026
 points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+prize_money_eur = [700, 500, 400, 320, 260, 220, 190, 160, 140, 120]
+garage = "practice_garage.toml"
 
 [[season.events]]
 name = "Practice, watered start"

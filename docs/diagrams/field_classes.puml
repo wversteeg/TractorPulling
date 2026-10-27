@@ -9,6 +9,7 @@ package "other components" {
   class "rules::ClassRules\n+ check(), pto_power_w()" as Rules
   class "math::SplitMix64" as Random
   class "pull + run" as Run
+  class "garage::Career\n+ prize_eur()" as Garage
 }
 
 package "tp::driver" {
@@ -123,6 +124,9 @@ package "tp::field" {
     +start_event(const Venue&) : bool
     +event() : LiveEvent*
     +score_event() : bool
+    +score_event(span<const int64> prize_by_place, garage::Career&) : bool
+    +player_standing() : optional<event::Standing>
+    +player_may_change_tractor() : bool
     +add_pulled_event(standings) : bool
     +event_standings(number) : span<const event::Standing>
     +events_scored(), event_count(), events_started() : int
@@ -157,6 +161,7 @@ DriverFns ..> Vehicle
 FieldFns ..> Rules : every puller\nmay compete
 FieldFns ..> Random
 FieldFns ..> Run : run_pull runs\na whole pull
+LiveSeason ..> Garage : pays the\nplayer's prize
 note bottom of FieldFns
   each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
   torque tuned down to the class's PTO limit (bisection), mass capped at its limit;

@@ -9,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "../common/toml_reader.hpp"
@@ -88,6 +89,41 @@ std::optional<event::Standing> read_standing(const toml::node& node) {
                            .disqualified = *disqualified};
 }
 
+// Version 2's career into `career`; the error if it is broken.
+std::optional<LoadError> read_career(const toml::table& root, std::string_view source,
+                                     SavedCareer& career) {
+    detail::Reader reader{root, source};
+    career.money_eur = reader.integer("career.money_eur");
+    if (reader.error()) {
+        return reader.error();
+    }
+    if (career.money_eur < 0) {
+        return detail::make_error(source, "career.money_eur", "must be 0 or more");
+    }
+    const toml::node_view<const toml::node> upgrades = root.at_path("career.upgrades");
+    if (!upgrades) {
+        return std::nullopt;
+    }
+    const toml::array* list = upgrades.as_array();
+    if (list == nullptr) {
+        return detail::make_error(source, "career.upgrades", "must be an array of tables");
+    }
+    for (const toml::node& node : *list) {
+        const toml::table* line = node.as_table();
+        const std::optional<std::string> name =
+            line != nullptr ? line->at_path("name").value<std::string>() : std::nullopt;
+        const std::optional<std::int64_t> level =
+            line != nullptr ? line->at_path("level").value<std::int64_t>() : std::nullopt;
+        constexpr std::int64_t kMaxLevel = 1000;
+        if (!name || !level || *level < 0 || *level > kMaxLevel) {
+            return detail::make_error(source, "career.upgrades",
+                                      "every upgrade needs a name and a level (0 or more)");
+        }
+        career.upgrades.push_back({.name = *name, .level = static_cast<int>(*level)});
+    }
+    return std::nullopt;
+}
+
 Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
     const std::int64_t version = reader.integer("version");
@@ -99,9 +135,18 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
-    if (version != kSeasonSaveVersion) {
+    constexpr std::int64_t kBeforeTheGarage = 1;
+    if (version != kSeasonSaveVersion && version != kBeforeTheGarage) {
         return detail::make_error(source, "version",
-                                  "must be " + std::to_string(kSeasonSaveVersion));
+                                  "must be " + std::to_string(kBeforeTheGarage) + " or " +
+                                      std::to_string(kSeasonSaveVersion));
+    }
+    if (version == kSeasonSaveVersion) {
+        SavedCareer career;
+        if (const std::optional<LoadError> error = read_career(root, source, career)) {
+            return *error;
+        }
+        save.career = std::move(career);
     }
     // The tuning is the tractor's to hold to its ranges; a save only needs
     // to hold numbers that can be tuning at all.
@@ -159,6 +204,15 @@ std::string write_season_save(const SeasonSave& save) {
     out += "\n[tuning]\n";
     out += "ballast_position = " + exact(save.tuning.ballast_position) + "\n";
     out += "rear_tire_pressure_bar = " + exact(save.tuning.rear_tire_pressure_bar) + "\n";
+    const SavedCareer career = save.career.value_or(SavedCareer{});
+    out += "\n[career]\n";
+    out += "money_eur = " + std::to_string(career.money_eur) + "\n";
+    out += "upgrades = [\n";
+    for (const SavedUpgrade& upgrade : career.upgrades) {
+        out += "    { name = " + toml_string(upgrade.name) +
+               ", level = " + std::to_string(upgrade.level) + " },\n";
+    }
+    out += "]\n";
     for (const std::vector<event::Standing>& standings : save.events) {
         out += "\n[[events]]\nstandings = [\n";
         for (const event::Standing& s : standings) {

@@ -3,8 +3,24 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <span>
 
 namespace tp::engine {
+
+std::optional<Params> with_torque_scale(const Params& params, double scale) noexcept {
+    std::array<math::CurvePoint, math::Curve::kMaxPoints> points{};
+    const auto source = params.full_load_torque_nm.points();
+    for (std::size_t i = 0; i < source.size(); ++i) {
+        points[i] = {.x = source[i].x, .y = source[i].y * scale};
+    }
+    const auto curve = math::Curve::create(std::span{points.data(), source.size()});
+    if (!curve) {
+        return std::nullopt;
+    }
+    Params out = params;
+    out.full_load_torque_nm = *curve;
+    return out;
+}
 
 std::optional<ParamError> validate(const Params& params) noexcept {
     const std::array scalars = {

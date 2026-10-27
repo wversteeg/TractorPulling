@@ -67,6 +67,11 @@ enum class ParamError : std::uint8_t {
 /// `step` assumes valid parameters.
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
+/// The engine with its full-load torque scaled by `scale` (as a pump set
+/// richer or leaner would); nothing if the scaled curve is not a valid
+/// curve. A scale of 1 gives `params` unchanged.
+[[nodiscard]] std::optional<Params> with_torque_scale(const Params& params, double scale) noexcept;
+
 struct State {
     double omega_rad_s = 0.0;
     /// Turbo boost, from 0 (none) to 1 (full).
