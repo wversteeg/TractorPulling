@@ -1,9 +1,12 @@
 # What the driver reads during a pull: which pull it is, a rev counter with
-# the stall and rated speeds marked, the gear, the speed, and a bar down
-# the track with the full-pull line, the stretch where the sled's push-down
+# the stall and rated speeds marked, the gear, the speed, a bar down the
+# track with the full-pull line, the stretch where the sled's push-down
 # comes on (orange: from there the drag rises to its most) and how far the
-# sled has got, with "PUSH-DOWN" beside it once it is on; in the pro
-# layout also how far the clutch is in. It only shows the run's snapshot.
+# sled has got, with "PUSH-DOWN" beside it once it is on, and how much the
+# front tires still carry, against what they carry at rest (marked): the
+# pull takes weight off the front, and with none left the front is up and
+# the front wheels do not steer. In the pro layout also how far the clutch
+# is in. It only shows the run's snapshot.
 class_name Hud
 extends Control
 
@@ -15,6 +18,7 @@ const BAR_WIDTH := 460.0
 const BAR_HEIGHT := 22.0
 const REV_TOP := 112.0
 const TRACK_TOP := 148.0
+const FRONT_TOP := 184.0
 const FONT_SIZE := 30
 const SMALL_FONT_SIZE := 22
 const OUTLINE := 6
@@ -25,6 +29,11 @@ const RATED_COLOUR := Color(0.3, 0.85, 0.3)
 const SLED_COLOUR := Color(0.95, 0.95, 0.9)
 const LINE_COLOUR := Color(0.9, 0.2, 0.15)
 const PUSHDOWN_COLOUR := Color(1.0, 0.55, 0.1)
+const FRONT_COLOUR := Color(0.45, 0.7, 0.95)
+const FRONT_UP_COLOUR := Color(0.95, 0.3, 0.2)
+# The front bar ends a little past the load at rest: a dip of the nose
+# (a hard shift) loads the front more.
+const FRONT_HEADROOM := 1.5
 const RPM_PER_RAD_S := 60.0 / TAU
 const KMH_PER_M_S := 3.6
 # The rev counter ends a little past high idle, the track bar past the line.
@@ -44,12 +53,15 @@ var _pushdown_start_m := 0.0
 var _pushdown_full_m := 0.0
 var _pushdown := 0.0
 var _pushdown_label := Label.new()
+var _front_rest_n := 1.0
+var _front_n := 0.0
+var _front := Label.new()
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for label: Label in [_pull, _numbers, _pushdown_label]:
+	for label: Label in [_pull, _numbers, _pushdown_label, _front]:
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
 		label.add_theme_constant_override("outline_size", OUTLINE)
 		add_child(label)
@@ -60,6 +72,8 @@ func _ready() -> void:
 	_pushdown_label.position = Vector2(BAR_LEFT + BAR_WIDTH + MARGIN / 2.0, TRACK_TOP - 6.0)
 	_pushdown_label.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
 	_pushdown_label.add_theme_color_override("font_color", PUSHDOWN_COLOUR)
+	_front.position = Vector2(BAR_LEFT + BAR_WIDTH + MARGIN / 2.0, FRONT_TOP - 6.0)
+	_front.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
 
 
 # The run's fixed sizes (TractorPullRun.get_dimensions()).
@@ -71,6 +85,7 @@ func build(dimensions: Dictionary) -> void:
 	_bar_m = _line_m * TRACK_HEADROOM
 	_pushdown_start_m = dimensions["pushdown_start_m"]
 	_pushdown_full_m = dimensions["pushdown_full_m"]
+	_front_rest_n = maxf(float(dimensions["front_axle_rest_load_n"]), 1.0)
 
 
 # `title` names the pull ("" none), `pro` whether to show the clutch.
@@ -85,6 +100,11 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 		_pushdown_label.text = "PUSH-DOWN %3.0f %%" % (_pushdown * 100.0)
 	else:
 		_pushdown_label.text = "PUSH-DOWN SET"
+	_front_n = s["front_axle_load_n"]
+	_front.text = "FRONT UP" if _front_n <= 0.0 else "front %3.0f %%" % (
+			_front_n / _front_rest_n * 100.0)
+	_front.add_theme_color_override("font_color",
+			FRONT_UP_COLOUR if _front_n <= 0.0 else Color.WHITE)
 	var gear: int = s["gear"]
 	var text := "%s   %4.0f rpm   %4.1f km/h   %6.2f m" % [
 			"N" if gear == 0 else str(gear), _omega_rad_s * RPM_PER_RAD_S,
@@ -118,6 +138,17 @@ func _draw() -> void:
 			PUSHDOWN_COLOUR if _pushdown > 0.0 else SLED_COLOUR)
 	_mark(track, _pushdown_start_m / _bar_m, PUSHDOWN_COLOUR)
 	_mark(track, _line_m / _bar_m, LINE_COLOUR)
+
+	# What the front tires carry, the load at rest marked.
+	var front := Rect2(BAR_LEFT, FRONT_TOP, BAR_WIDTH, BAR_HEIGHT)
+	draw_rect(front, BACK_COLOUR)
+	var front_top_n := _front_rest_n * FRONT_HEADROOM
+	var front_share := clampf(_front_n / front_top_n, 0.0, 1.0)
+	draw_rect(Rect2(front.position, Vector2(BAR_WIDTH * front_share, BAR_HEIGHT)),
+			FRONT_COLOUR)
+	_mark(front, 1.0 / FRONT_HEADROOM, Color.WHITE)
+	if _front_n <= 0.0:
+		draw_rect(front, FRONT_UP_COLOUR, false, 3.0)
 
 
 func _mark(bar: Rect2, share: float, colour: Color) -> void:

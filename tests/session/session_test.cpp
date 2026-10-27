@@ -1,8 +1,10 @@
 #include "tp/core/session/session.hpp"
 
+#include "tp/core/chassis/chassis.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/math/random.hpp"
 #include "tp/core/session/inspect.hpp"
+#include "tp/core/units/constants.hpp"
 
 #include <gtest/gtest.h>
 
@@ -243,6 +245,11 @@ TEST(Session, StartsAtTheStartLine) {
     EXPECT_TRUE(start.engine_running);
     EXPECT_EQ(start.box_ahead_of_wheels_m, setup.sled.box_start_ahead_of_wheels_m);
     EXPECT_EQ(start.pushdown, 0.0);
+    // The front tires carry their share of the weight at rest.
+    const double weight_n = setup.tractor.chassis.mass_kg * units::kStandardGravity_m_s2;
+    EXPECT_NEAR(start.front_axle_load_n,
+                weight_n * (1.0 - chassis::rear_axle_share(setup.tractor.chassis)),
+                1e-6 * weight_n);
     EXPECT_EQ(session.previous().time_s, start.time_s);
     EXPECT_FALSE(session.result());
 }
@@ -266,6 +273,7 @@ TEST(Session, KeepsTheLastTwoStepsToDrawBetween) {
 
 TEST(Session, ShowsTheTractorPullingTheSled) {
     Session session = make(reference_setup(Layout::kEasy));
+    const double start_front_n = session.current().front_axle_load_n;
     const Controls pulling{.throttle = 1.0, .gear = 6};
     for (int frame = 0; frame < 600; ++frame) {
         session.advance(pulling, 16 * kStep_ns);
@@ -286,6 +294,9 @@ TEST(Session, ShowsTheTractorPullingTheSled) {
     const double radius_m = vehicle::testing::reference_params().rear_tire.size.radius_m;
     EXPECT_GT(now.rear_left_omega_rad_s * radius_m, now.tractor_speed_m_s);
     EXPECT_GT(now.slip_ratio, 0.0);
+    // The pull takes weight off the front, never all of it.
+    EXPECT_GT(now.front_axle_load_n, 0.0);
+    EXPECT_LT(now.front_axle_load_n, start_front_n);
 }
 
 TEST(Session, StandsStillOnceTheRunHasEnded) {

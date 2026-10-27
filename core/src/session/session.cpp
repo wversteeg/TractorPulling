@@ -1,5 +1,6 @@
 #include "tp/core/session/session.hpp"
 
+#include "tp/core/chassis/chassis.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 
 #include <cmath>
@@ -61,6 +62,7 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.rear_right_omega_rad_s =
         lerp(from.rear_right_omega_rad_s, to.rear_right_omega_rad_s, alpha);
     out.slip_ratio = lerp(from.slip_ratio, to.slip_ratio, alpha);
+    out.front_axle_load_n = lerp(from.front_axle_load_n, to.front_axle_load_n, alpha);
     out.engine_omega_rad_s = lerp(from.engine_omega_rad_s, to.engine_omega_rad_s, alpha);
     out.throttle = lerp(from.throttle, to.throttle, alpha);
     out.clutch_pedal = lerp(from.clutch_pedal, to.clutch_pedal, alpha);
@@ -98,8 +100,10 @@ Session::Session(const pull::Model& model, const Setup& setup, const FixedStepCl
       assist_(),
       input_(),
       output_() {
-    // Before the first step the weight box stands where it starts.
+    // Before the first step the weight box stands where it starts, and the
+    // tractor stands on its tires at rest.
     output_.sled.box_ahead_of_wheels_m = model_.sled().box_start_ahead_of_wheels_m;
+    output_.tractor.axle_loads = chassis::axle_loads_at_rest(model_.tractor().params().chassis);
     current_ = snapshot();
     previous_ = current_;
 }
@@ -158,6 +162,7 @@ Snapshot Session::snapshot() const noexcept {
             .rear_left_omega_rad_s = axle_rad_s - tractor.differential_rad_s,
             .rear_right_omega_rad_s = axle_rad_s + tractor.differential_rad_s,
             .slip_ratio = output_.tractor.slip_ratio,
+            .front_axle_load_n = output_.tractor.axle_loads.front_n,
             .engine_omega_rad_s = tractor.engine.omega_rad_s,
             .engine_running = tractor.engine.running,
             .gear = tractor.driveline.gear,
