@@ -50,6 +50,19 @@ Session make(const Setup& setup) {
     return *session;
 }
 
+// The hash of a session at the line whose pull is `run`, with the layout's
+// `assist`: its turn is the pull alone, over once the run has ended.
+std::uint64_t at_the_line_hash(const Session& session, const run::State& run,
+                               const controls::AssistState& assist) {
+    turn::State turn = turn::at_the_line(Inspector::model(session));
+    turn.run = run;
+    turn.stage = run.result ? turn::Stage::kParked : turn::Stage::kPulling;
+    hash::Fnv1a hash;
+    turn::hash_append(hash, turn);
+    controls::hash_append(hash, assist);
+    return hash.value();
+}
+
 // Advances `session` in frames of `frame_ns` with `controls` until its run
 // has ended.
 void run_to_the_end(Session& session, const Controls& controls, std::int64_t frame_ns) {
@@ -138,10 +151,7 @@ TEST(Session, IsTheRunSteppedByHand) {
         session.advance(controls, kStep_ns);
         most_steering = std::max(most_steering, steering.steering);
 
-        hash::Fnv1a expected;
-        run::hash_append(expected, by_hand);
-        controls::hash_append(expected, steering);
-        ASSERT_EQ(session.hash(), expected.value()) << "step " << i;
+        ASSERT_EQ(session.hash(), at_the_line_hash(session, by_hand, steering)) << "step " << i;
     }
     EXPECT_GT(most_steering, 0.0);
     const std::optional<run::Result>& result = session.result();
@@ -184,10 +194,7 @@ TEST(Session, RunsTheClutchAssistOfTheEasyLayout) {
         most_steering = std::max(most_steering, assist.steering);
     }
     EXPECT_GT(most_steering, 0.0);
-    hash::Fnv1a expected;
-    run::hash_append(expected, by_hand);
-    controls::hash_append(expected, assist);
-    EXPECT_EQ(session.hash(), expected.value());
+    EXPECT_EQ(session.hash(), at_the_line_hash(session, by_hand, assist));
     const std::optional<run::Result>& result = session.result();
     if (!result) {
         FAIL() << "the run did not end";

@@ -6,6 +6,7 @@
 #include "tp/core/sled/sled.hpp"
 #include "tp/core/time/fixed_step_clock.hpp"
 #include "tp/core/track/track.hpp"
+#include "tp/core/turn/turn.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
 
 #include <cstdint>
@@ -37,6 +38,10 @@ struct Setup {
     /// The most steps one frame may run; a longer frame drops the rest of
     /// its time instead of catching up (see FixedStepClock).
     std::uint32_t max_steps_per_frame = FixedStepClock::Config{}.max_steps_per_advance;
+    /// Where the tractor waits beside the track: given, the session plays
+    /// the whole turn from there (turn::from_the_parking); without it, the
+    /// pull alone, hooked at the start line.
+    std::optional<turn::Parking> parking = std::nullopt;
 };
 
 enum class SetupError : std::uint8_t {
@@ -46,6 +51,7 @@ enum class SetupError : std::uint8_t {
     kRules,
     kEasyControls,
     kProControls,
+    kParking,
     kMaxStepsPerFrame,
 };
 
@@ -63,7 +69,7 @@ struct Controls {
     double throttle = 0.0;
     /// 0 released (engaged) to 1 pressed.
     double clutch_pedal = 1.0;
-    /// 0 is neutral.
+    /// 0 is neutral, driveline::kReverse reverse.
     int gear = driveline::kNeutral;
     /// -1 (full right) to 1 (full left): the share of the steering's
     /// range; in the easy layout its last stretch brakes the inner rear
@@ -79,8 +85,10 @@ struct Controls {
 /// the left of the lane's centre line, the ground at z = 0 (see
 /// docs/conventions.md).
 struct Snapshot {
-    /// Seconds since the start: steps × dt.
+    /// The pull's clock: steps since the green flag × dt; 0 before it.
     double time_s = 0.0;
+    /// Where the turn is (turn::Stage).
+    turn::Stage stage = turn::Stage::kPulling;
 
     /// The tractor's rear axle, at the middle of the axle.
     double tractor_x_m = 0.0;
@@ -126,6 +134,20 @@ struct Snapshot {
     /// berm (sled::Berm), as a volume to draw [m³].
     double berm_m3 = 0.0;
     double chain_tension_n = 0.0;
+    /// The chain is on the hitch; off, it lies from the sled's hook.
+    bool chain_hooked = true;
+    /// The tractor's hitch from the sled's hook (turn::HitchToHook):
+    /// apart, along the sled's line (positive ahead of it) and across it
+    /// (positive to its left) [m]. Backing up to the sled, the chain hooks
+    /// on within its length, close to the line.
+    double hitch_to_hook_m = 0.0;
+    double hitch_along_m = 0.0;
+    double hitch_across_m = 0.0;
+    /// Taking up the slack: how far the official is towards the green flag,
+    /// 0 to 1 (the chain has held its tension that share of the time).
+    double flag_progress = 0.0;
+    /// After the pull, the sled stands back at the start line.
+    bool sled_back = false;
 };
 
 /// The snapshot `alpha` of the way from `from` to `to` (0 to 1), for drawing
@@ -155,8 +177,9 @@ public:
     [[nodiscard]] static std::optional<Session> create(const Setup& setup) noexcept;
 
     /// Adds `elapsed_ns` of real time and runs the whole steps it makes up,
-    /// all with `controls`. Once the run has ended the steps still count,
-    /// but nothing moves.
+    /// all with `controls`. Once the pull has ended at the line the steps
+    /// still count, but nothing moves; from the parking the turn goes on
+    /// (turn::step).
     Frame advance(const Controls& controls, std::int64_t elapsed_ns) noexcept;
 
     /// The state before the last step and after it; draw blend(previous(),
@@ -166,8 +189,13 @@ public:
     /// How far the time not yet stepped is into the next step, 0 to 1.
     [[nodiscard]] double alpha() const noexcept { return clock_.alpha(); }
 
-    /// The run's result, once it has ended.
-    [[nodiscard]] const std::optional<run::Result>& result() const noexcept { return run_.result; }
+    /// The pull's result, once it has ended.
+    [[nodiscard]] const std::optional<run::Result>& result() const noexcept {
+        return turn_.run.result;
+    }
+    /// The turn is over: the pull ended (at the line), or the tractor
+    /// stands in the parking again.
+    [[nodiscard]] bool over() const noexcept { return turn_.stage == turn::Stage::kParked; }
     /// The replay hash: the run's state and the layout's (the clutch
     /// assist's and the steering's, controls::AssistState). It leaves
     /// out the frame time not yet stepped, so two sessions with the same
@@ -188,11 +216,12 @@ private:
 
     pull::Model model_;
     run::Rules rules_;
+    turn::Parking parking_;
     Layout layout_;
     controls::EasyParams easy_;
     controls::ProParams pro_;
     FixedStepClock clock_;
-    run::State run_;
+    turn::State turn_;
     controls::AssistState assist_;
     vehicle::Input input_;
     pull::Output output_;
