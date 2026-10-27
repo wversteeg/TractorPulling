@@ -103,6 +103,9 @@ struct Snapshot {
     double engine_omega_rad_s = 0.0;
     bool engine_running = false;
     int gear = driveline::kNeutral;
+    /// The lowest gear the gearbox goes into now (driveline::lowest_gear):
+    /// once the pull is under way, down only as far as the powershift allows.
+    int lowest_gear = 1;
     double throttle = 0.0;
     /// The clutch pedal as the car has it: the player's, or the assist's
     /// in the easy layout. 0 engaged, 1 pressed.

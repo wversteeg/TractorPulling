@@ -12,7 +12,7 @@ opt clutch fully in and plan.downshift_share > 0
   Driver -> Driver : below = engine < downshift_share x rated speed
   Driver -> Driver : watching |= !below\n(the engine is back from the launch's dip)
   alt a load shift already this pull
-    Driver -> Driver : gear = the gear in (another needs the clutch)
+    Driver -> Driver : gear = the gear in (under way none lower)
   else watching, below, the engine running
     Driver -> Load : shifts_under_load(driveline state, params, gear in - 1)
     Load --> Driver : true if the gearbox can

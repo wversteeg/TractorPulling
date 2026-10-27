@@ -165,6 +165,38 @@ TEST(Vehicle, RefusesToShiftWithTheClutchEngaged) {
     EXPECT_EQ(pull.state.driveline.gear, driveline::kNeutral);
 }
 
+// Standing (creeping below kUnderWay_m_s), any gear may be chosen with the
+// clutch pressed, down too; past it the pull is under way, and down with the
+// clutch is refused at once.
+TEST(Vehicle, ShiftsDownWithTheClutchOnlyUntilUnderWay) {
+    constexpr int kMovedOffIn = 4;
+    constexpr int kLower = 2;
+    const Input pressed{.throttle = 0.0, .clutch_pedal = 1.0, .gear = kMovedOffIn};
+    const auto creeping_at = [&](double speed_m_s) {
+        Pull pull;
+        step(pull.state, pull.model, pressed, kGround, {}, kDt_s);
+        EXPECT_EQ(pull.state.driveline.gear, kMovedOffIn);
+        pull.state.chassis.velocity_m_s = speed_m_s;
+        Input down = pressed;
+        down.gear = kLower;
+        pull.last = step(pull.state, pull.model, down, kGround, {}, kDt_s);
+        return pull;
+    };
+
+    const Pull standing = creeping_at(0.9 * kUnderWay_m_s);
+    EXPECT_FALSE(standing.last.shift_refused);
+    EXPECT_EQ(standing.state.driveline.gear, kLower);
+
+    const Pull under_way = creeping_at(1.1 * kUnderWay_m_s);
+    EXPECT_TRUE(under_way.last.shift_refused);
+    EXPECT_EQ(under_way.state.driveline.gear, kMovedOffIn);
+    EXPECT_EQ(under_way.state.driveline.floor_gear, kMovedOffIn);
+
+    // Backwards counts the same: the speed, not its sign.
+    const Pull rolling_back = creeping_at(-1.1 * kUnderWay_m_s);
+    EXPECT_TRUE(rolling_back.last.shift_refused);
+}
+
 // The reference gearbox shifts one gear down under load, the clutch in (a
 // powershift step), which is what it is for: the load grows past what 6th
 // can pull, and the engine is pulled down towards the stall. Left in 6th it
@@ -246,12 +278,25 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     EXPECT_GT(shifted.state.engine.omega_rad_s, shifted_at_rad_s);
     EXPECT_GT(shifted.state.chassis.velocity_m_s, 0.5);
 
-    // Once a pull: 4th now needs the clutch pressed.
+    // Once a pull: 4th is refused with the clutch in, and with it pressed
+    // too, for under way the gearbox goes down only by its powershift.
     Input fourth = input;
     fourth.gear = 4;
     EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
                     .shift_refused);
     EXPECT_EQ(shifted.state.driveline.gear, 5);
+    fourth.clutch_pedal = 1.0;
+    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                    .shift_refused);
+    EXPECT_EQ(shifted.state.driveline.gear, 5) << "not with the clutch pressed either";
+    Input neutral = fourth;
+    neutral.gear = driveline::kNeutral;
+    EXPECT_FALSE(step(shifted.state, shifted.model, neutral, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                     .shift_refused)
+        << "neutral is always there";
+    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                    .shift_refused)
+        << "nor down through neutral";
 }
 
 // A shift under load with the engine stalled and the tractor still rolling:
@@ -758,7 +803,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x5ab88ff3ca835096ULL);
+    EXPECT_EQ(pull_hash(), 0x4cbe5b1e61c8c56ULL);
 }
 
 }  // namespace

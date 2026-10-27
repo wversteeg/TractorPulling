@@ -434,8 +434,9 @@ TEST(ClutchAssist, PressesTheClutchToChangeGear) {
 }
 
 // A gear down that the gearbox shifts under load (the reference's
-// powershift step) goes in at once, the clutch staying fully in; two down
-// still take the clutch out.
+// powershift step) goes in at once, the clutch staying fully in; two down,
+// more than the powershift steps, are not taken at all during the pull: the
+// clutch stays in and the gear as it is.
 TEST(ClutchAssist, ShiftsDownUnderLoadWithTheClutchIn) {
     const pull::Model model = model_with(light_sled());
     constexpr double kShiftAt_s = 10.0;
@@ -453,19 +454,20 @@ TEST(ClutchAssist, ShiftsDownUnderLoadWithTheClutchIn) {
                 }
             });
         EXPECT_FALSE(r.shift_refused) << down;
-        EXPECT_EQ(r.state.pull.tractor.driveline.gear, 6 - down) << down;
+        EXPECT_EQ(least_engaged, 1.0) << down << ": the clutch stays in";
         if (down == 1) {
+            EXPECT_EQ(r.state.pull.tractor.driveline.gear, 5);
             EXPECT_LE(shifted_at_s, kShiftAt_s + kDt_s);
-            EXPECT_EQ(least_engaged, 1.0) << "the clutch stays in";
         } else {
-            EXPECT_GT(shifted_at_s, kShiftAt_s + kDt_s);
-            EXPECT_EQ(least_engaged, 0.0) << "the clutch out first";
+            EXPECT_EQ(r.state.pull.tractor.driveline.gear, 6) << "not two down";
+            EXPECT_LT(shifted_at_s, 0.0);
         }
     }
 }
 
-// One shift under load a pull: the second gear down waits for the clutch
-// out, as any other change does.
+// One shift under load a pull, and no other way down while pulling: the
+// second gear down is not taken (the assist keeps the clutch in), however
+// long it is asked for.
 TEST(ClutchAssist, ShiftsDownUnderLoadOnceAPull) {
     const pull::Model model = model_with(light_sled());
     constexpr double kFirst_s = 10.0;
@@ -491,10 +493,10 @@ TEST(ClutchAssist, ShiftsDownUnderLoadOnceAPull) {
             }
         });
     EXPECT_FALSE(r.shift_refused);
-    EXPECT_EQ(r.state.pull.tractor.driveline.gear, 4);
+    EXPECT_EQ(r.state.pull.tractor.driveline.gear, 5) << "one gear down, no more";
     EXPECT_EQ(r.state.pull.tractor.driveline.load_shifts, 1);
     EXPECT_EQ(least_engaged_first, 1.0) << "the first: the clutch stays in";
-    EXPECT_EQ(least_engaged_second, 0.0) << "the second: the clutch out first";
+    EXPECT_EQ(least_engaged_second, 1.0) << "the second: not taken, the clutch stays in";
 }
 
 // A touch of throttle creeps the tractor away too: at part throttle the
@@ -569,7 +571,7 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x4948ce6eb3b4335ULL);
+    EXPECT_EQ(hash, 0x8e8f559374d48f75ULL);
     // 92.08355580331734 m, every bit pinned.
     EXPECT_EQ(result.distance_m, 0x1.70558fa70a8e5p+6);
     EXPECT_EQ(result.ending, run::Ending::kStopped);

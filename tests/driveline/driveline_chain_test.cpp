@@ -156,7 +156,7 @@ TEST(DrivelineChain, LaunchIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(DrivelineChain, LaunchMatchesRegressionHash) {
-    EXPECT_EQ(launch_hash(), 0x13d46baae6970191ULL);
+    EXPECT_EQ(launch_hash(), 0x2b31615f6c9d9571ULL);
 }
 
 }  // namespace

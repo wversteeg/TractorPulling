@@ -16,6 +16,9 @@ namespace tp::vehicle {
 inline constexpr int kMaxRearTires = 8;
 /// A side its brake holds ends the step within this of rest [rad/s].
 inline constexpr double kBrakeHoldTolerance_rad_s = 1e-9;
+/// Faster than this the tractor is moving off: the pull is under way, and
+/// from then on the gearbox goes down only by its powershift [m/s].
+inline constexpr double kUnderWay_m_s = 0.3;
 
 /// The front wheels' steering.
 struct Steering {

@@ -88,12 +88,31 @@ bool shifts_under_load(const State& state, const Params& params, int to) noexcep
            state.load_shifts < params.load_shifts_per_pull;
 }
 
+void start_pull(State& state) noexcept {
+    if (state.floor_gear == kNeutral && state.gear != kNeutral) {
+        state.floor_gear = state.gear;
+    }
+}
+
+int lowest_gear(const State& state, const Params& params) noexcept {
+    if (state.floor_gear == kNeutral) {
+        return 1;
+    }
+    const int by_load_shift = std::max(state.gear - params.load_downshift_gears, 1);
+    return shifts_under_load(state, params, by_load_shift)
+               ? std::min(by_load_shift, state.floor_gear)
+               : state.floor_gear;
+}
+
 std::optional<double> shift_under_load(State& state, const Params& params, int gear) noexcept {
     if (!shifts_under_load(state, params, gear)) {
         return std::nullopt;
     }
     state.gear = gear;
     ++state.load_shifts;
+    if (state.floor_gear != kNeutral) {
+        state.floor_gear = gear;
+    }
     const double before_rad_s = state.input_omega_rad_s;
     state.input_omega_rad_s = state.output_omega_rad_s * overall_ratio(params, gear);
     return params.input_inertia_kg_m2 * (state.input_omega_rad_s - before_rad_s);
@@ -106,6 +125,14 @@ bool shift(State& state, const Params& params, int gear, bool clutch_disengaged)
     if (gear < kNeutral || static_cast<std::size_t>(gear) > ratios(params).size() ||
         !clutch_disengaged) {
         return false;
+    }
+    // Under way, never back down with the clutch: only a shift under load
+    // goes down, as often as the powershift allows. Up raises the floor.
+    if (gear != kNeutral && state.floor_gear != kNeutral) {
+        if (gear < state.floor_gear) {
+            return false;
+        }
+        state.floor_gear = gear;
     }
     state.gear = gear;
     if (gear != kNeutral) {

@@ -47,7 +47,7 @@ package "tp::session" {
     +slip_ratio, front_axle_load_n : double
     +engine_omega_rad_s : double
     +engine_running : bool
-    +gear : int
+    +gear, lowest_gear : int
     +throttle, clutch_pedal : double
     +sled_x_m, sled_y_m, sled_heading_rad : double
     +sled_speed_m_s : double

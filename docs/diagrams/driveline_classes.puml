@@ -33,6 +33,7 @@ package "tp::driveline" {
     +input_omega_rad_s : double
     +output_omega_rad_s : double
     +load_shifts : int
+    +floor_gear : int
   }
   class Prediction <<struct>> {
     +ratio : double
@@ -51,6 +52,8 @@ package "tp::driveline" {
     +shifts_under_load(const State&, const Params&, to) : bool
     +shift_under_load(State&, const Params&, gear) : optional<double>
     +shift(State&, const Params&, gear, clutch_disengaged) : bool
+    +start_pull(State&)
+    +lowest_gear(const State&, const Params&) : int
     +predict(const State&, const Params&, axle_load_torque_nm, dt_s) : Prediction
     +input_shaft(const Prediction&) : ShaftPrediction
     +response(const Prediction&) : Response

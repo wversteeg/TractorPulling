@@ -285,7 +285,7 @@ TEST(Pull, IsDeterministic) {
 
 // Regression hash; must match on every compiler, build type and platform.
 TEST(Pull, MatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xc3d2edc3cd6730f3ULL);
+    EXPECT_EQ(pull_hash(), 0x6085160231185e3bULL);
 }
 
 }  // namespace
