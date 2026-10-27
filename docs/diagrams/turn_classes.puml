@@ -41,7 +41,7 @@ package "tp::turn" {
     kInTheLane
   }
   class "turn functions" as TurnFns <<free functions>> {
-    +validate(const Parking&, const run::Rules&) : optional<ParamError>
+    +validate(const Parking&, const run::Rules&, half_width_m) : optional<ParamError>
     +at_the_line(const pull::Model&) : State
     +from_the_parking(const pull::Model&, const Parking&) : State
     +hitch_to_hook(const pull::Model&, const pull::State&) : HitchToHook

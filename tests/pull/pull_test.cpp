@@ -220,11 +220,18 @@ TEST(Pull, UnhookedTheChainPullsNothing) {
 TEST(Pull, AHeldSledStaysPut) {
     Driver run;
     run.state.sled_mode = SledMode::kHeld;
+    // Speeds it had before it was held do not move it, nor its hook.
+    run.state.sled.velocity_m_s = 1.0;
+    run.state.sled.lateral_velocity_m_s = 0.2;
+    run.state.sled.yaw_rate_rad_s = 0.1;
     run.drive(4, false, 10.0);
     const State start = initial_state(run.model);
     EXPECT_GT(run.max_tension_n, 5000.0);
     EXPECT_EQ(run.state.sled.position_m, start.sled.position_m);
     EXPECT_EQ(run.state.sled.distance_m, 0.0);
+    EXPECT_EQ(run.state.sled.velocity_m_s, 0.0);
+    EXPECT_EQ(run.state.sled.lateral_velocity_m_s, 0.0);
+    EXPECT_EQ(run.state.sled.yaw_rate_rad_s, 0.0);
     EXPECT_LT(run.state.tractor.chassis.position_m - start.tractor.chassis.position_m, 0.1);
 }
 

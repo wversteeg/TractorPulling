@@ -166,7 +166,11 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
             break;
         }
         case SledMode::kHeld:
-            // Simplified: however hard the chain pulls, it stays put.
+            // Simplified: however hard the chain pulls, it stays put, its
+            // hook too (the chain's damping reads its speed).
+            state.sled.velocity_m_s = 0.0;
+            state.sled.lateral_velocity_m_s = 0.0;
+            state.sled.yaw_rate_rad_s = 0.0;
             break;
         case SledMode::kDrivingBack:
             sled::drive_back(state.sled, model.start_line_m(), dt_s);
