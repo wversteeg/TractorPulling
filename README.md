@@ -425,7 +425,9 @@ ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
 `[event.game]`. The season is saved after every event, with your tuning
 and your career (`user://season.toml`, `tp::data::SeasonSave`): at the
 next launch the start screen asks whether to continue it, at the next
-event, or to start a new season. An event left halfway is not saved:
+event, to start a new season (your career carries over) or a new career
+(the garage's start money, nothing bought; also in the settings, on a
+second tap). An event left halfway is not saved:
 continued, it starts again from its beginning, and the rivals pull as they
 did, since the field and every event's draws come from the season's seed.
 A finished season is kept for its career, which the next season starts

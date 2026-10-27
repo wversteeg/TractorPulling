@@ -80,6 +80,11 @@ const char* turn_name(field::LiveEvent::Turn turn) {
 
 }  // namespace
 
+godot::String TractorPullEvent::start_career(const godot::String& season_path, std::int64_t seed) {
+    career_.reset();
+    return start_season(season_path, seed);
+}
+
 godot::String TractorPullEvent::start_season(const godot::String& season_path, std::int64_t seed) {
     season_.reset();
     definition_.reset();
@@ -504,6 +509,8 @@ void TractorPullEvent::_bind_methods() {
     using godot::D_METHOD;
     ClassDB::bind_method(D_METHOD("start_season", "season_path", "seed"),
                          &TractorPullEvent::start_season);
+    ClassDB::bind_method(D_METHOD("start_career", "season_path", "seed"),
+                         &TractorPullEvent::start_career);
     ClassDB::bind_method(D_METHOD("get_save"), &TractorPullEvent::get_save);
     ClassDB::bind_method(D_METHOD("resume_season", "season_path", "save"),
                          &TractorPullEvent::resume_season);
