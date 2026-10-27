@@ -55,6 +55,11 @@ for the big features; they are repeated at the end for completeness.
   still moves after it. A real sled operator sets both, and a sled whose
   box gearing follows the push-down setting would keep the drag's top
   where the push-down ends.
+- **Tracks matter less now that the drag tops out.** With the drag flat
+  from 88 m, the six shipped tracks end within about 2 m of each other for
+  the reference tractor (firm loam and ideal clay-sand give the same
+  distance). Heavier classes and more along-track variation (see "Later")
+  should spread them again; worth checking when milestone 6 adds classes.
 - **The push-down is drawn larger than it is.** The game lifts the sled's
   rear wheels 15 cm with the push-down fully set, so that it shows from
   the tractor; a real sled lifts them a few centimetres.

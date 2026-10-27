@@ -34,8 +34,8 @@ constexpr std::int64_t kStep_ns = 1'000'000;
 // Past the launch, where the engine dips anyway: from here on the driver
 // watches the rev counter [m].
 constexpr double kWatchFrom_m = 40.0;
-// The class sled as the operator sets it after short test pulls: two
-// knives. Past the push-down its drag levels out between what 6th holds
+// A sled lighter than shipped: two knives, the pull-off setting at the
+// shipped event (its field pulls on one, where the shift pays more). Past the push-down its drag levels out between what 6th holds
 // before the engine stalls and what 5th's grip holds, which is where a
 // shift down pays; on the heavier sled as shipped neither gear holds it.
 constexpr int kKnivesAtTheEvent = 2;

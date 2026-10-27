@@ -49,7 +49,7 @@ travel_distance_m = 88.0             # sled travel to move it from start to end:
 # pull and the track's state (for example 70 or 80 m).
 [sled.pushdown]
 start_m = 78.0
-ramp_m = 10.0                         # travel until the wheels are fully off
+ramp_m = 10.0                        # travel until the wheels are fully off
 
 [sled.chain]
 length_m = 1.15                      # 1.1 to 1.2 m

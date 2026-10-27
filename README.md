@@ -149,7 +149,9 @@ on the class sled, set per track and by the operator) the sled's rear
 wheels come off the track over 10 m: from 88 m the pan carries all of the
 sled and the box is at its stop, so the drag is at its most and stays
 there (`Sled.TopsOutShortlyAfterThePushdown`; only the berm the tires
-throw still grows a little). A tractor that can hold that drag goes on to
+throw still grows a little). Where the operator brings the push-down
+earlier (73 m on the dry hard clay) the wheels are off by 83 m, but the
+drag still rises until the box reaches its stop at 88 m. A tractor that can hold that drag goes on to
 a full pull; one that cannot slows and stops a few metres on, as momentum
 runs out. So the operator sets the push-down by the test pulls, and a
 step (a knife) changes the distance little until the tractor can hold the
@@ -201,10 +203,11 @@ its tires give on the best track (some 24 kN at the end of a pull, when
 the front still carries about 6 kN). So in the 3.5 t class the front only
 goes light; it lifts for a moment when the clutch is dumped, as the axle's
 torque spins the heavy rear wheels up (weights fully back, in 2nd to 6th:
-about 0.7° of pitch, the front tires off the ground for some 60 ms). Wheelies are the physics, not scripted: the same tractor with
-its drawbar at 1.0 m pulls one onto its wheelie bar (7.6°), which a test
-checks (`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher
-hitches will show them.
+about 0.7° of pitch, the front tires off the ground for some 60 ms).
+Wheelies are the physics, not scripted: the same tractor with its drawbar
+at 1.0 m pulls one onto its wheelie bar (7.6°), which a test checks
+(`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher hitches
+will show them.
 
 ### Shifting down under load
 
@@ -226,9 +229,9 @@ first: one shift under load a pull (`shifts_per_pull`, 1 if left out).
 It is for the end of a pull, when the sled has the engine pulled down
 towards the stall. It pays where the sled's most drag (see "The sled tops
 out after the push-down") lies between what 6th holds before the engine
-stalls and what 5th's grip holds: on the class sled as the operator sets
-it after short test pulls (two knives), not on the heavier sled as
-shipped, where neither gear holds it. In 6th (the clutch slipped in over
+stalls and what 5th's grip holds: on a sled lighter than shipped (two
+knives, the pull-off setting at the shipped event, whose field pulls on
+one), not on the sled as shipped (four), where neither gear holds it. In 6th (the clutch slipped in over
 3 s), one shift to 5th once the engine falls below 90 % of its rated speed
 past 40 m:
 
