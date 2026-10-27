@@ -173,6 +173,12 @@ func _check_steer_hint(hud: Hud) -> void:
 	_expect(hud.turn_text(backing).ends_with("steer left"), "right of the line: steer left")
 	backing["hitch_across_m"] = 0.05
 	_expect(not hud.turn_text(backing).contains("steer"), "on the line: no steering hint")
+	# Waiting for the flag with the chain short of tight: told to creep on.
+	var waiting := {"stage": "waiting_for_the_flag", "flag_progress": 0.0,
+			"hitch_to_hook_m": _chain_m - 0.2}
+	_expect(hud.turn_text(waiting).begins_with("Creep forward"), "a short chain: creep forward")
+	waiting["hitch_to_hook_m"] = _chain_m - 0.02
+	_expect(hud.turn_text(waiting).begins_with("Chain tight"), "a tight chain: stand ready")
 
 
 # The keyboard's minus key: reverse from neutral only, as the touch "-".

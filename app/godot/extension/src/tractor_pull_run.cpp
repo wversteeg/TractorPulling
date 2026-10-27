@@ -305,6 +305,9 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["chain_length_m"] = sled.chain.length_m;
     // How far off the sled's line the hitch may be for the chain to go on.
     out["hook_off_line_m"] = turn::kHookOffLine_m;
+    // How much shorter than its length the chain may be to count as tight
+    // for the flag.
+    out["ready_taut_within_m"] = turn::kReadyTautWithin_m;
     const run::Rules& rules = setup_->rules;
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;

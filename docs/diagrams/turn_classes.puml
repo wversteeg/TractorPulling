@@ -51,8 +51,9 @@ package "tp::turn" {
     +hash_append(Fnv1a&, const State&)
     --
     kAtRest_m_s 0.05, kHookOffLine_m 0.4, kHookTurned_rad 0.26,
-    kTakeUpTension_n 1000, kReadyTautWithin_m 0.1,
-    kFlagAfter_s 2, kReleaseSlack_m 0.3, kParkedWithin_m 2, kRestartPedal 0.95
+    kTakeUpTension_n 1000, kReadyTautWithin_m 0.1, kReadyStretched_m 0.001,
+    kFlagAfter_s 2, kChainEasesBack_m_s 0.05, kReleaseSlack_m 0.3,
+    kParkedWithin_m 2, kRestartPedal 0.95
   }
   State *-- Stage
   TurnFns ..> State

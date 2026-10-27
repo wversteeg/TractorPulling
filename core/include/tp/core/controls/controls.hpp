@@ -78,8 +78,9 @@ struct EasyParams {
     /// across would otherwise throw the wheels from lock to lock in a step.
     double steer_rate_per_s = 0.0;
     /// Off the gas (below the clutch assist's min_throttle) both rear brakes
-    /// come on this far, a share of full pedal: lifting off stops the
-    /// tractor and holds it, as the assist takes the clutch out. 0 to 1.
+    /// come on this far, a share of full pedal, once the assist has the
+    /// clutch out: lifting off stops the tractor and holds it, and the
+    /// brakes never fight the engine. 0 to 1.
     double brake_off_the_gas = 0.0;
     ClutchAssist clutch_assist;
 };

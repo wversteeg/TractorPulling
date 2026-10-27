@@ -157,9 +157,9 @@ for the big features; they are repeated at the end for completeness.
   rest on the chain (in a forward gear it only drives forwards), so the
   jolt that ends the creep would stay in the stretched chain. Waiting for
   the flag with the drive out, the turn moves the standing tractor back to
-  the chain's length at 5 cm/s instead (`turn::kChainEasesBack_m_s`); a
-  driveline that could roll back with the clutch pressed would do it
-  physically.
+  the chain's length at 5 cm/s instead (`turn::kChainEasesBack_m_s`), its
+  brakes on or not; the flag waits until it has. A driveline that could
+  roll back with the clutch pressed would do it physically.
 - **No collisions.** The tractor drives through the sled, the fence and the
   parked tractors; nothing stops it but the driver.
 - **The ground beside the track.** Off the lane, in the parking and on the

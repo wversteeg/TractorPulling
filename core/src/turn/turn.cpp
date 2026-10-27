@@ -116,7 +116,11 @@ void wait_for_the_flag(State& state, const pull::Model& model, const vehicle::In
     if (drive_out && stands(pull) && span_m > chain_m) {
         ease_back(pull.tractor.chassis, std::min(span_m - chain_m, kChainEasesBack_m_s * dt_s));
     }
-    const bool ready = stands(pull) && span_m >= chain_m - kReadyTautWithin_m && drive_out;
+    // Measured after easing back, so the step that eases the last of the
+    // jolt out may count.
+    const double eased_m = chain_span_m(model, pull);
+    const bool ready = stands(pull) && eased_m >= chain_m - kReadyTautWithin_m &&
+                       eased_m <= chain_m + kReadyStretched_m && drive_out;
     state.ready_steps = ready ? state.ready_steps + 1 : 0;
     if (static_cast<double>(state.ready_steps) * dt_s >= kFlagAfter_s) {
         // The green flag: the sled is free. The pull's clock starts now

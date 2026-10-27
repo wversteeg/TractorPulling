@@ -180,9 +180,11 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
                              ? (travel - params.steer_share) / (1.0 - params.steer_share)
                              : 0.0;
     const bool left = steering > 0.0;
-    // Off the gas both brakes hold; the steering's brake may add to one.
-    const double hold =
-        throttle < params.clutch_assist.min_throttle ? params.brake_off_the_gas : 0.0;
+    // Off the gas both brakes hold, once the clutch is out: they never fight
+    // the engine, and a brief lift in the pull barely brakes. The
+    // steering's brake may add to one.
+    const bool off_the_gas = throttle < params.clutch_assist.min_throttle;
+    const double hold = off_the_gas && assist.engagement == 0.0 ? params.brake_off_the_gas : 0.0;
     return {.throttle = throttle,
             .clutch_pedal = clutch::pedal_for(tractor.clutch, assist.engagement),
             .gear = load_shift || (shifting && assist.engagement == 0.0) ? wanted_gear : gear_in,

@@ -318,7 +318,8 @@ TEST(Easy, SteersThenBrakesTheInnerWheels) {
 }
 
 // Off the gas both brakes hold the tractor, as far as brake_off_the_gas
-// says; on the gas they let go. The steering's brake still adds to one.
+// says, once the clutch is out; on the gas they let go. The steering's
+// brake still adds to one.
 TEST(Easy, OffTheGasBothBrakesHold) {
     const vehicle::Params tractor = vehicle::testing::reference_params();
     const std::optional<vehicle::Model> model = vehicle::Model::create(tractor);
@@ -347,6 +348,21 @@ TEST(Easy, OffTheGasBothBrakesHold) {
     const vehicle::Input turning = with({.throttle = 0.0, .gear = 3, .steering = -1.0});
     EXPECT_EQ(turning.brake_left, 0.7);
     EXPECT_EQ(turning.brake_right, 1.0);
+
+    // Lifting off with the clutch in: no brakes until the assist has it out,
+    // so they never fight the engine.
+    AssistState assist{.engagement = 1.0};
+    const vehicle::Input lifted = easy({.gear = 3}, params, assist, tractor, state, kDt_s);
+    EXPECT_GT(assist.engagement, 0.0);
+    EXPECT_EQ(lifted.brake_left, 0.0);
+    EXPECT_EQ(lifted.brake_right, 0.0);
+    vehicle::Input out = lifted;
+    for (int i = 0; i < 1000 && assist.engagement > 0.0; ++i) {
+        out = easy({.gear = 3}, params, assist, tractor, state, kDt_s);
+    }
+    ASSERT_EQ(assist.engagement, 0.0);
+    EXPECT_EQ(out.brake_left, 0.7);
+    EXPECT_EQ(out.brake_right, 0.7);
 }
 
 // A control within the dead zone steers straight; past it, the rest of the

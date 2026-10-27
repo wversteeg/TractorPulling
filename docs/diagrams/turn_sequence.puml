@@ -26,7 +26,7 @@ else any other stage
     Turn -> Turn : tension >= 1 kN: the slack is taken up, kWaitingForTheFlag
   else kWaitingForTheFlag
     Turn -> Turn : the chain 0.3 m slack: back to kTakingUpSlack
-    Turn -> Turn : standing, the chain tight (within 0.1 m), the drive out\n(clutch pressed off its bite, or neutral), for 2 s without a break: the green flag, the sled on the chain,\nthe pull's clock at 0, kPulling
+    Turn -> Turn : the chain eased back to its length; standing, the chain tight\n(0.1 m short to 1 mm over), the drive out\n(clutch pressed off its bite, or neutral), for 2 s without a break: the green flag, the sled on the chain,\nthe pull's clock at 0, kPulling
   else kReleasing
     Turn -> Turn : standing, the chain 0.3 m slack: unhooked,\nthe sled driving back, kToTheParking
   else kToTheParking

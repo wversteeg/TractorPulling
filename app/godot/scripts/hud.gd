@@ -89,6 +89,9 @@ var _lamp := Label.new()
 var _signal := "off"
 var _chain_m := 1.0
 var _steer_hint_m := 0.25
+# Shorter than the chain's length by more than this, the chain is not
+# tight enough for the flag [m].
+var _taut_within_m := 0.1
 # The pro layout: the driver works the clutch (the easy one's assist does).
 var _pro := false
 # The player's bay in the parking, on the track; INF for no whole turn.
@@ -135,6 +138,7 @@ func build(dimensions: Dictionary) -> void:
 	_front_rest_n = maxf(float(dimensions["front_axle_rest_load_n"]), 1.0)
 	_chain_m = dimensions["chain_length_m"]
 	_steer_hint_m = STEER_HINT_SHARE * float(dimensions["hook_off_line_m"])
+	_taut_within_m = dimensions["ready_taut_within_m"]
 
 
 # The officials' signal (pull.gd's signal_for()): "green", "red" or "off".
@@ -212,6 +216,10 @@ func turn_text(s: Dictionary) -> String:
 		"waiting_for_the_flag":
 			if float(s.get("flag_progress", 0.0)) > 0.0:
 				return "Hold it there... the flag is coming"
+			# The hitch's distance on the ground: a little short of the
+			# chain's span, which climbs to the hook.
+			if float(s["hitch_to_hook_m"]) < _chain_m - _taut_within_m:
+				return "Creep forward a little: the chain is not tight"
 			if _pro:
 				return "Chain tight: press the clutch, stand still in your pulling gear"
 			return "Chain tight: let go of the gas and stand still in your pulling gear"

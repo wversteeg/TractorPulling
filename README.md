@@ -508,9 +508,10 @@ when let go; a hand throttle under the right, moved by sliding it like a
 lever (a touch alone does not move it) and staying where it is left, as a
 tractor's does; and gear buttons (+, - and N; "-" from N is reverse, R)
 beside it. Both thumbs work at once. In the easy layout the clutch assist
-works the clutch, and closing the throttle also puts both brakes on
-(`brake_off_the_gas` in `data/controls/easy.toml`): let go of the gas and
-the tractor stops and stands. The pro layout
+works the clutch, and closing the throttle also puts both brakes on once
+the clutch is out (`brake_off_the_gas` in `data/controls/easy.toml`): let
+go of the gas and the tractor stops and stands; a brief lift in the pull
+barely brakes. The pro layout
 adds, on the left above the steering, a clutch slider, pressed at the top
 and in at the bottom, which starts pressed and stays where it is left, so
 you slip it in and leave it (a gear goes in only with the clutch pressed,

@@ -52,6 +52,23 @@ void place_hitch(const pull::Model& model, pull::State& state, double along_m, d
     state.tractor.chassis.lateral_position_m += across_m - now.across_m;
 }
 
+// The chain's span from the hitch to the hook, the height between them
+// included [m].
+double chain_span_m(const pull::Model& model, const pull::State& state) {
+    const pull::ChainEnd hitch = pull::hitch_end(model, state);
+    const pull::ChainEnd hook = pull::hook_end(model, state);
+    return std::hypot(hitch.x_m - hook.x_m, hitch.y_m - hook.y_m, hitch.z_m - hook.z_m);
+}
+
+// Moves the tractor straight ahead of the sled so the chain spans `span_m`
+// from the hitch to the hook.
+void place_span(const pull::Model& model, pull::State& state, double span_m) {
+    const pull::ChainEnd hitch = pull::hitch_end(model, state);
+    const pull::ChainEnd hook = pull::hook_end(model, state);
+    const double dz_m = hitch.z_m - hook.z_m;
+    place_hitch(model, state, std::sqrt(span_m * span_m - dz_m * dz_m), 0.0);
+}
+
 // The whole tractor beside the lane, out to its tires' outer edges.
 TEST(Parking, MustBeBesideTheTrack) {
     constexpr double kHalfWidth_m = 1.2;
@@ -149,7 +166,7 @@ TEST(Turn, TheFlagGoesGreenOnceTheTractorStandsReady) {
     EXPECT_EQ(state.run.pull.tractor.driveline.gear, 4) << "the gear picked while waiting";
     EXPECT_LE(std::abs(state.run.pull.tractor.chassis.velocity_m_s), kAtRest_m_s);
     // The jolt that ended the creep has eased out of the chain.
-    EXPECT_LE(hitch_to_hook(model, state.run.pull).distance_m, model.sled().chain.length_m + 1e-9);
+    EXPECT_LE(chain_span_m(model, state.run.pull), model.sled().chain.length_m + kReadyStretched_m);
     EXPECT_FALSE(state.run.result);
 }
 
@@ -163,7 +180,7 @@ TEST(Turn, MovingOrLettingTheClutchInLowersTheFlag) {
         state.run.pull.hooked = true;
         state.ready_steps = 1500;
         state.run.pull.tractor.driveline.gear = input.gear;
-        place_hitch(model, state.run.pull, model.sled().chain.length_m, 0.0);
+        place_span(model, state.run.pull, model.sled().chain.length_m);
         state.run.pull.tractor.chassis.velocity_m_s = speed_m_s;
         step(state, model, kRules, kParking, input, kDt_s);
         return state;
@@ -178,6 +195,23 @@ TEST(Turn, MovingOrLettingTheClutchInLowersTheFlag) {
     const State clutch_in = waiting(0.0, {.clutch_pedal = 0.0, .gear = 4});
     EXPECT_EQ(clutch_in.ready_steps, 0U) << "the clutch let in";
     EXPECT_EQ(clutch_in.stage, Stage::kWaitingForTheFlag);
+}
+
+// The green flag waits for the jolt to ease out of the chain: stretched
+// past kReadyStretched_m, the tractor is not ready yet, however long the
+// count has run.
+TEST(Turn, AStretchedChainIsNotReady) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    state.stage = Stage::kWaitingForTheFlag;
+    state.run.pull.hooked = true;
+    state.ready_steps = 1500;
+    place_span(model, state.run.pull, model.sled().chain.length_m + 0.05);
+    step(state, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 4}, kDt_s);
+    EXPECT_EQ(state.ready_steps, 0U);
+    EXPECT_EQ(state.stage, Stage::kWaitingForTheFlag);
+    EXPECT_LT(chain_span_m(model, state.run.pull), model.sled().chain.length_m + 0.05)
+        << "eased back";
 }
 
 // A pull that ends with the sled still rolling (here a full pull on a
@@ -224,22 +258,37 @@ TEST(Turn, ASledStillRollingAfterThePullStopsBeforeItIsHeld) {
     EXPECT_EQ(state.run.pull.sled.velocity_m_s, 0.0) << "it stood when it was held";
 }
 
-// In the easy layout the driver stands ready by letting go of the gas: the
-// clutch assist then takes the drive out, as the flag asks.
-TEST(Turn, OffTheGasTheEasyAssistStandsReady) {
+// In the easy layout the driver stands ready by letting go of the gas:
+// the clutch assist takes the drive out and the brakes hold the tractor.
+// Driven through the assist from hooking on to the green flag: creep in
+// 1st on part throttle, then off the gas with 6th asked for.
+TEST(Turn, OffTheGasTheEasyLayoutGetsTheFlag) {
     const pull::Model model = reference_model();
-    State state = from_the_parking(model, kParking);
-    vehicle::State& tractor = state.run.pull.tractor;
-    tractor.driveline.gear = 6;
     const vehicle::Params& params = model.tractor().params();
-    controls::AssistState assist{.engagement = 1.0};
-    vehicle::Input input;
-    for (int i = 0; i < 3000; ++i) {
-        input = controls::easy({.throttle = 0.0, .gear = 6}, controls::testing::kReferenceEasy,
-                               assist, params, tractor, kDt_s);
+    State state = from_the_parking(model, kParking);
+    place_hitch(model, state.run.pull, 0.8 * model.sled().chain.length_m, 0.0);
+    step(state, model, kRules, kParking, {}, kDt_s);
+    ASSERT_EQ(state.stage, Stage::kTakingUpSlack);
+
+    controls::AssistState assist;
+    bool waited = false;
+    bool held_by_the_brakes = false;
+    for (int i = 0; state.stage != Stage::kPulling && i < 30000; ++i) {
+        const bool creeping = state.stage == Stage::kTakingUpSlack;
+        waited = waited || state.stage == Stage::kWaitingForTheFlag;
+        const vehicle::Input input = controls::easy(
+            creeping ? controls::EasyInput{.throttle = 0.3, .gear = 1}
+                     : controls::EasyInput{.throttle = 0.0, .gear = 6},
+            controls::testing::kReferenceEasy, assist, params, state.run.pull.tractor, kDt_s);
+        held_by_the_brakes = held_by_the_brakes ||
+                             (!creeping && input.brake_left == 1.0 && input.brake_right == 1.0);
+        step(state, model, kRules, kParking, input, kDt_s);
+        ASSERT_EQ(state.run.pull.sled.position_m, model.start_line_m());
     }
-    EXPECT_EQ(input.gear, 6);
-    EXPECT_EQ(clutch::capacity_nm(params.clutch, input.clutch_pedal), 0.0);
+    ASSERT_EQ(state.stage, Stage::kPulling);
+    EXPECT_TRUE(waited);
+    EXPECT_TRUE(held_by_the_brakes);
+    EXPECT_EQ(state.run.pull.tractor.driveline.gear, 6);
 }
 
 // Backing off while waiting slackens the chain: the slack is to be taken

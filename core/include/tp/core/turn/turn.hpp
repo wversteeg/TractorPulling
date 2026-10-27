@@ -71,12 +71,15 @@ inline constexpr double kHookTurned_rad = 0.26;
 /// "Some force on the chain": the slack is taken up once the chain holds at
 /// least this tension [N].
 inline constexpr double kTakeUpTension_n = 1000.0;
-/// Ready for the flag: the tractor stands with the chain within this of
-/// its length between the hitch and the hook [m], the drive out (the
+/// Ready for the flag: the tractor stands with the chain at most
+/// kReadyTautWithin_m short of its length between the hitch and the hook
+/// and at most kReadyStretched_m longer (the jolt eased out, see
+/// kChainEasesBack_m_s) [m], the drive out (the
 /// clutch pressed so far it carries nothing, or the gear in neutral): the
 /// chain held, not pulled on. The official waves green once the tractor
 /// has stood ready this long without a break [s].
 inline constexpr double kReadyTautWithin_m = 0.1;
+inline constexpr double kReadyStretched_m = 0.001;
 inline constexpr double kFlagAfter_s = 2.0;
 /// A tractor never rolls back from rest on the chain (vehicle::step: in a
 /// forward gear it only drives forwards), so the jolt that ends the creep
