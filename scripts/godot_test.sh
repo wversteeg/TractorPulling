@@ -58,7 +58,9 @@ if [[ ! -f "${project}/.godot/extension_list.cfg" ]]; then
     echo "${project}/.godot/extension_list.cfg is missing: build the godot preset first" >&2
     exit 1
 fi
-readonly timeout_s=300
+# Long enough for the touch test under a software renderer (about 5 min
+# on a slow machine); a script that hangs still fails.
+readonly timeout_s=600
 timeout "${timeout_s}" "${godot}" --headless --path "${project}" --import >/dev/null 2>&1 || {
     echo "the Godot import failed" >&2
     exit 1

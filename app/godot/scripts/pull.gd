@@ -378,7 +378,8 @@ func _build_turn(dimensions: Dictionary) -> void:
 	var lane_m: float = dimensions["lane_width_m"]
 	var turn: bool = run.get_snapshot().get("stage", "pulling") != "pulling"
 	var bay_y_m := -(lane_m / 2.0 + VenueView.PARKING_RIGHT_OF_LANE_M)
-	if parked.is_empty():
+	# Built for the first whole turn only: a pull from the line has none.
+	if parked.is_empty() and turn:
 		for i in VenueView.RIVAL_BAYS_X_M.size():
 			var rival := TractorView.new()
 			rival.paint = RIVAL_PAINTS[i % RIVAL_PAINTS.size()]
