@@ -257,12 +257,17 @@ public:
     // Steering towards the path, and whether its end is reached.
     session::Controls follow(std::span<const Point> path, int gear, bool reverse) {
         const double heading_rad = now_->tractor_heading_rad + (reverse ? std::numbers::pi : 0.0);
-        // A shorter path than the last one: its last point at most.
-        next_ = std::min(next_, path.size() - 1);
-        while (next_ + 1 < path.size() && distance_m(path[next_]) < kLookAhead_m) {
-            ++next_;
+        if (path.empty()) {
+            return stop(gear);
         }
-        const Point target = path[next_];
+        // A shorter path than the last one: its last point at most.
+        const std::size_t last = path.size() - 1;
+        std::size_t next = std::min(next_, last);
+        while (next < last && distance_m(path[next]) < kLookAhead_m) {
+            ++next;
+        }
+        next_ = next;
+        const Point target = path[next];
         const double bearing_rad =
             std::atan2(target.y_m - now_->tractor_y_m, target.x_m - now_->tractor_x_m);
         const double alpha_rad = std::remainder(bearing_rad - heading_rad, 2.0 * std::numbers::pi);
