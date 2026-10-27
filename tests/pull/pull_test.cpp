@@ -202,6 +202,65 @@ TEST(Pull, TheChainKeepsTractorAndSledTogether) {
     EXPECT_NEAR(gap_m, start_gap_m, 0.05);
 }
 
+// Off the hook the chain pulls neither end: the tractor drives away, and
+// the sled stays where it was.
+TEST(Pull, UnhookedTheChainPullsNothing) {
+    Driver run;
+    run.state.hooked = false;
+    run.drive(6, false, 15.0);
+    const State start = initial_state(run.model);
+    EXPECT_EQ(run.max_tension_n, 0.0);
+    EXPECT_EQ(run.state.sled.position_m, start.sled.position_m);
+    EXPECT_EQ(run.state.sled.velocity_m_s, 0.0);
+    EXPECT_GT(run.state.tractor.chassis.position_m - start.tractor.chassis.position_m, 10.0);
+}
+
+// Held, the sled stays put however hard the chain pulls: the tractor takes
+// up the slack and stands on the stretched chain, its wheels spinning.
+TEST(Pull, AHeldSledStaysPut) {
+    Driver run;
+    run.state.sled_mode = SledMode::kHeld;
+    run.drive(4, false, 10.0);
+    const State start = initial_state(run.model);
+    EXPECT_GT(run.max_tension_n, 5000.0);
+    EXPECT_EQ(run.state.sled.position_m, start.sled.position_m);
+    EXPECT_EQ(run.state.sled.distance_m, 0.0);
+    EXPECT_LT(run.state.tractor.chassis.position_m - start.tractor.chassis.position_m, 0.1);
+}
+
+// After a pull, off the chain, the sled drives itself back: straight to
+// the start line, at its own speed, the box back where it starts.
+TEST(Pull, TheSledDrivesItselfBack) {
+    Driver run;
+    run.drive(6, false, 20.0);
+    const double pulled_m = run.state.sled.position_m - run.model.start_line_m();
+    ASSERT_GT(pulled_m, 10.0);
+    run.state.hooked = false;
+    run.state.sled_mode = SledMode::kDrivingBack;
+    run.state.sled.lateral_position_m = 0.4;
+    run.state.sled.heading_rad = 0.05;
+    double previous_m = run.state.sled.position_m;
+    int steps = 0;
+    const vehicle::Input idle{};
+    while (run.state.sled.position_m > run.model.start_line_m() && steps < 100000) {
+        step(run.state, run.model, idle, kDt_s);
+        ASSERT_LT(run.state.sled.position_m, previous_m);
+        ASSERT_GE(run.state.sled.lateral_position_m, 0.0);
+        previous_m = run.state.sled.position_m;
+        ++steps;
+    }
+    EXPECT_NEAR(steps * kDt_s, pulled_m / sled::kDriveBack_m_s, 0.01);
+    EXPECT_EQ(run.state.sled.position_m, run.model.start_line_m());
+    EXPECT_EQ(run.state.sled.lateral_position_m, 0.0);
+    EXPECT_EQ(run.state.sled.heading_rad, 0.0);
+    EXPECT_EQ(run.state.sled.velocity_m_s, 0.0);
+    EXPECT_EQ(run.state.sled.distance_m, 0.0);
+    EXPECT_EQ(run.state.sled.berm_kg, 0.0);
+    // There it stays.
+    step(run.state, run.model, idle, kDt_s);
+    EXPECT_EQ(run.state.sled.position_m, run.model.start_line_m());
+}
+
 TEST(Chain, RunsSidewaysToAnOffsetHitch) {
     const sled::Chain chain{.length_m = 3.0, .stiffness_n_per_m = 1e5, .damping_n_s_per_m = 0.0};
     const ChainForce force = chain_force(chain, {.x_m = 4.0, .y_m = 0.5}, {.x_m = 0.0});

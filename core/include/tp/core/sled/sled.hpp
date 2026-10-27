@@ -278,6 +278,17 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
 /// the sled moved. Implicit in the spill, so it never goes negative.
 void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept;
 
+/// How fast the sled drives itself back to its start after a pull, on its
+/// own engine [m/s].
+inline constexpr double kDriveBack_m_s = 2.0;
+
+/// The sled after a pull, the chain off: it drives itself back, the pan
+/// lifted (the berm stays on the track), straight towards its start at
+/// `start_x_m` on the centre line at kDriveBack_m_s, the box running back
+/// with it. Returns true once it stands there, straight, ready for the
+/// next pull. Its velocity is negative while it drives.
+bool drive_back(State& state, double start_x_m, double dt_s) noexcept;
+
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);
     hash.add(state.velocity_m_s);
