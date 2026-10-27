@@ -64,8 +64,9 @@ part = "hitch_height_m"
 name = "Drawbar"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
-    { value = 0.45, cost_eur = 300, label = "Adjustable drawbar, 0.45 m" },
-    { value = 0.50, cost_eur = 500, label = "Pulling hitch at the class's 0.50 m" },
+    { value = 0.43, cost_eur = 400, label = "Drawbar raised, 0.43 m" },
+    { value = 0.46, cost_eur = 900, label = "Adjustable drawbar, 0.46 m" },
+    { value = 0.50, cost_eur = 2000, label = "Pulling hitch at the class's 0.50 m" },
 ]
 
 [[garage.upgrades]]

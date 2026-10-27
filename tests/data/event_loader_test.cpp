@@ -114,6 +114,10 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.pull_to_pull.grip_share, 0.01);
     EXPECT_EQ(definition.pull_to_pull.clutch_slip_in_s, 0.3);
     EXPECT_EQ(definition.variation.mass_kg.high, 3550.0);
+    EXPECT_EQ(definition.variation.hitch_height_m.low, 0.36);
+    EXPECT_EQ(definition.variation.hitch_height_m.high, 0.5);
+    EXPECT_EQ(definition.variation.fewest_load_downshift_gears, 0);
+    EXPECT_EQ(definition.variation.most_load_downshift_gears, 1);
     EXPECT_EQ(definition.track.rules.track_length_m, 100.0);
 }
 
@@ -123,7 +127,7 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("gears = [4, 6]", "gears = [4, 12]"))
                   .find("event.field.gears: must be [lowest, highest] within the gearbox"),
               std::string::npos);
-    EXPECT_NE(error_of(with("mass_kg = [3300.0, 3550.0]", "mass_kg = [3300.0]"))
+    EXPECT_NE(error_of(with("mass_kg = [3150.0, 3550.0]", "mass_kg = [3150.0]"))
                   .find("event.field.mass_kg: must be [low, high]"),
               std::string::npos);
     EXPECT_NE(error_of(with("extended_full_pull_m = 110.0", "extended_full_pull_m = 90.0"))
@@ -137,6 +141,18 @@ TEST(EventLoader, RejectsNonsense) {
               std::string::npos);
     EXPECT_NE(error_of(with("downshift_share = [0.82, 0.95]", "downshift_share = [0.82, 1.0]"))
                   .find("downshift_share within [0, 1)"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("load_downshift_gears = [0, 1]", "load_downshift_gears = [1, 0]"))
+                  .find("event.field.load_downshift_gears: must be [fewest, most]"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("load_downshift_gears = [0, 1]", "load_downshift_gears = [0, 1.5]"))
+                  .find("event.field.load_downshift_gears: must be [fewest, most]"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("load_downshift_gears = [0, 1]", "load_downshift_gears = [0, 9]"))
+                  .find("fewer than the gearbox's gears"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("hitch_height_m = [0.36, 0.50]", "hitch_height_m = [0.5, 0.36]"))
+                  .find("event.field: every range"),
               std::string::npos);
     EXPECT_NE(error_of(with("downshift_share = 0.9", "downshift_share = 1.2")).find("event.driver"),
               std::string::npos);
@@ -178,7 +194,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 22);
-    EXPECT_EQ(first.hash, 0xf547cd6953a3c2cfULL);
+    EXPECT_EQ(first.hash, 0x642fc5699e1fa4faULL);
 }
 
 }  // namespace

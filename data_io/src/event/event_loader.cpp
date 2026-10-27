@@ -1,10 +1,12 @@
 #include "tp/data/event/event_loader.hpp"
 
+#include "tp/core/driveline/driveline.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -59,6 +61,9 @@ FieldError describe(field::ParamError error) {
                     "[0, 1], downshift_share within [0, 1)"};
         case ParamError::kGearsOutOfRange:
             return {"event.field.gears", "must be [lowest, highest] within the gearbox"};
+        case ParamError::kLoadDownshiftsOutOfRange:
+            return {"event.field.load_downshift_gears",
+                    "must be [fewest, most], fewer than the gearbox's gears"};
         case ParamError::kCountOutOfRange:
             return {"event.pullers", "must be 1 to 32"};
         case ParamError::kReference:
@@ -129,6 +134,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .clutch_slip_in_s = range(reader, "event.field.clutch_slip_in_s"),
         .track_reading = range(reader, "event.field.track_reading"),
         .downshift_share = range(reader, "event.field.downshift_share"),
+        .hitch_height_m = {},
+        .fewest_load_downshift_gears = -1,
+        .most_load_downshift_gears = -1,
     };
     const field::PullToPull pull_to_pull{
         .grip_share = reader.number("event.field.pull_to_pull_grip_share"),
@@ -142,6 +150,26 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
     variation.lowest_gear = static_cast<int>(gears[0]);
     variation.highest_gear = static_cast<int>(gears[1]);
+    // Optional: without them every puller has the reference's drawbar and
+    // powershift.
+    if (reader.has("event.field.hitch_height_m")) {
+        variation.hitch_height_m = range(reader, "event.field.hitch_height_m");
+    }
+    if (reader.has("event.field.load_downshift_gears")) {
+        const std::vector<double> counts = reader.numbers("event.field.load_downshift_gears");
+        const bool whole = std::ranges::all_of(counts, [](double c) {
+            return c >= 0.0 && c == std::floor(c) && c <= static_cast<double>(driveline::kMaxGears);
+        });
+        if (counts.size() != 2 || !whole) {
+            return detail::make_error(source, "event.field.load_downshift_gears",
+                                      "must be [fewest, most], whole numbers from 0");
+        }
+        variation.fewest_load_downshift_gears = static_cast<int>(counts[0]);
+        variation.most_load_downshift_gears = static_cast<int>(counts[1]);
+    }
+    if (const std::optional<LoadError>& late = reader.error()) {
+        return *late;
+    }
     // Written to also reject NaN.
     const bool grip_ok = pull_to_pull.grip_share >= 0.0 && pull_to_pull.grip_share < 1.0;
     const bool clutch_ok = pull_to_pull.clutch_slip_in_s >= 0.0;

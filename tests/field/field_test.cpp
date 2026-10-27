@@ -32,10 +32,13 @@ constexpr Variation kVariation{.torque_scale = {.low = 0.95, .high = 1.03},
                                .highest_gear = 6,
                                .clutch_slip_in_s = {.low = 2.0, .high = 4.0},
                                .track_reading = {.low = 0.5, .high = 0.95},
-                               .downshift_share = {.low = 0.85, .high = 0.95}};
+                               .downshift_share = {.low = 0.85, .high = 0.95},
+                               .hitch_height_m = {},
+                               .fewest_load_downshift_gears = -1,
+                               .most_load_downshift_gears = -1};
 
-Field field_of(int count, std::uint64_t seed) {
-    const auto field = generate(reference(), kVariation, ntto_standard_3500(), count, seed);
+Field field_of(int count, std::uint64_t seed, const Variation& variation = kVariation) {
+    const auto field = generate(reference(), variation, ntto_standard_3500(), count, seed);
     if (!field) {
         std::abort();
     }
@@ -50,6 +53,26 @@ TEST(FieldParams, RejectsNonsense) {
     v = kVariation;
     v.highest_gear = 9;
     EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kGearsOutOfRange);
+    v = kVariation;
+    v.hitch_height_m = {.low = -0.1, .high = 0.5};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder);
+    v.hitch_height_m = {.low = 0.0, .high = 0.5};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder)
+        << "a drawbar on the ground";
+    v = kVariation;
+    v.fewest_load_downshift_gears = 1;
+    v.most_load_downshift_gears = 0;
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15),
+              ParamError::kLoadDownshiftsOutOfRange);
+    v.fewest_load_downshift_gears = -1;
+    v.most_load_downshift_gears = 1;
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15),
+              ParamError::kLoadDownshiftsOutOfRange)
+        << "both kept or both drawn";
+    v.fewest_load_downshift_gears = 0;
+    v.most_load_downshift_gears = static_cast<int>(reference().tractor.driveline.gear_count);
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15),
+              ParamError::kLoadDownshiftsOutOfRange);
     EXPECT_EQ(validate(reference(), kVariation, ntto_standard_3500(), 0),
               ParamError::kCountOutOfRange);
     EXPECT_EQ(validate(reference(), kVariation, ntto_standard_3500(), event::kMaxPullers + 1),
@@ -105,6 +128,36 @@ TEST(Field, PullersDifferAndTheSeedRepeats) {
         EXPECT_EQ(a.driver.clutch_slip_in_s, b.driver.clutch_slip_in_s);
     }
     EXPECT_NE(field.pullers[0].tractor.chassis.mass_kg, other.pullers[0].tractor.chassis.mass_kg);
+}
+
+// Left out, the drawbar and the powershift are the reference's; given,
+// each puller draws them, the drawbar held to the class's limit.
+TEST(Field, DrawbarAndPowershiftVary) {
+    const Field kept = field_of(10, 5);
+    const vehicle::Params& base = reference().tractor;
+    for (int i = 0; i < kept.count; ++i) {
+        const vehicle::Params& t = kept.pullers[static_cast<std::size_t>(i)].tractor;
+        EXPECT_EQ(t.chassis.hitch_height_m, base.chassis.hitch_height_m);
+        EXPECT_EQ(t.driveline.load_downshift_gears, base.driveline.load_downshift_gears);
+    }
+    Variation v = kVariation;
+    v.hitch_height_m = {.low = 0.36, .high = 0.6};
+    v.fewest_load_downshift_gears = 0;
+    v.most_load_downshift_gears = 1;
+    const Field field = field_of(event::kMaxPullers, 5, v);
+    std::set<int> counts;
+    bool at_the_limit = false;
+    for (int i = 0; i < field.count; ++i) {
+        const vehicle::Params& t = field.pullers[static_cast<std::size_t>(i)].tractor;
+        EXPECT_GE(t.chassis.hitch_height_m, 0.36) << i;
+        EXPECT_LE(t.chassis.hitch_height_m, ntto_standard_3500().max_hitch_height_m) << i;
+        at_the_limit =
+            at_the_limit || t.chassis.hitch_height_m == ntto_standard_3500().max_hitch_height_m;
+        counts.insert(t.driveline.load_downshift_gears);
+        EXPECT_TRUE(rules::check(ntto_standard_3500(), t).ok()) << i;
+    }
+    EXPECT_TRUE(at_the_limit) << "a draw past the class's drawbar limit is held to it";
+    EXPECT_EQ(counts, (std::set<int>{0, 1}));
 }
 
 // A heavier tractor keeps its balance: the pitch inertia scales with the
