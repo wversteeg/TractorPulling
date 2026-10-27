@@ -4,14 +4,16 @@
 #include "tp/core/math/trig.hpp"
 
 #include <cmath>
+#include <numbers>
 
 namespace tp::turn {
 
-std::optional<ParamError> validate(const Parking& parking, const run::Rules& rules) noexcept {
+std::optional<ParamError> validate(const Parking& parking, const run::Rules& rules,
+                                   double half_width_m) noexcept {
     if (!std::isfinite(parking.x_m) || !std::isfinite(parking.y_m)) {
         return ParamError::kNotFinite;
     }
-    if (std::abs(parking.y_m) < 0.5 * rules.lane_width_m) {
+    if (std::abs(parking.y_m) < 0.5 * rules.lane_width_m + half_width_m) {
         return ParamError::kInTheLane;
     }
     return std::nullopt;
@@ -90,7 +92,8 @@ void restart_if_stalled(pull::State& state, const pull::Model& model,
 
 bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
     const HitchToHook gap = hitch_to_hook(model, state);
-    const double turned_rad = std::abs(state.tractor.chassis.heading_rad - state.sled.heading_rad);
+    const double turned_rad = std::abs(std::remainder(
+        state.tractor.chassis.heading_rad - state.sled.heading_rad, 2.0 * std::numbers::pi));
     return stands(state) && gap.along_m > 0.0 && gap.distance_m <= model.sled().chain.length_m &&
            std::abs(gap.across_m) <= kHookOffLine_m && turned_rad <= kHookTurned_rad;
 }
@@ -105,9 +108,9 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
             // At the line the pull is the whole turn.
             state.stage = Stage::kParked;
         } else if (state.run.result) {
-            // The official holds the sled; the chain stays on until the
-            // tractor backs off.
-            pull.sled_mode = pull::SledMode::kHeld;
+            // The chain stays on until the tractor backs off; a sled still
+            // rolling (a full pull, a disqualification) rolls on until it
+            // stops, and is then held (kReleasing).
             state.stage = Stage::kReleasing;
         }
         return out;
@@ -138,16 +141,21 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
             state.tension_held_steps =
                 out.chain.tension_n >= kTakeUpTension_n ? state.tension_held_steps + 1 : 0;
             if (static_cast<double>(state.tension_held_steps) * dt_s >= kFlagAfter_s) {
-                // The green flag: the sled is free, and the pull's clock starts.
+                // The green flag: the sled is free. The pull's clock starts
+                // now: run::step has not run before the flag.
                 pull.sled_mode = pull::SledMode::kOnTheChain;
-                state.run.steps = 0;
-                state.run.top_speed_m_s = 0.0;
                 state.stage = Stage::kPulling;
             }
             break;
         }
         case Stage::kReleasing:
-            if (stands(pull) &&
+            if (pull.sled_mode == pull::SledMode::kOnTheChain && pull.sled.velocity_m_s == 0.0) {
+                // Stopped after the pull: the official holds it from now on.
+                pull.sled_mode = pull::SledMode::kHeld;
+            }
+            // Off only once the sled stands too: one still rolling can run
+            // up on the tractor and slacken the chain by itself.
+            if (pull.sled_mode == pull::SledMode::kHeld && stands(pull) &&
                 chain_span_m(model, pull) <= model.sled().chain.length_m - kReleaseSlack_m) {
                 pull.hooked = false;
                 pull.sled_mode = pull::SledMode::kDrivingBack;

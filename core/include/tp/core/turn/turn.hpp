@@ -24,7 +24,9 @@ enum class Stage : std::uint8_t {
     /// The pull (run::step), until the sled stops or reaches the end.
     kPulling,
     /// The pull is over (the result is set): back off to slacken the chain,
-    /// which comes off once it is slack and the tractor stands.
+    /// which comes off once it is slack and the tractor stands. A sled
+    /// still rolling (a full pull, a disqualification) rolls on until it
+    /// stops, and is held from then on.
     kReleasing,
     /// The chain off, back to the parking; the sled drives itself back.
     kToTheParking,
@@ -43,12 +45,14 @@ struct Parking {
 
 enum class ParamError : std::uint8_t {
     kNotFinite,
-    /// The parking is in the lane: it must be beside the track.
+    /// The parking is (partly) in the lane: it must be beside the track.
     kInTheLane,
 };
 
-[[nodiscard]] std::optional<ParamError> validate(const Parking& parking,
-                                                 const run::Rules& rules) noexcept;
+/// A parking must keep a tractor `half_width_m` wide each side of its
+/// middle out of the lane.
+[[nodiscard]] std::optional<ParamError> validate(const Parking& parking, const run::Rules& rules,
+                                                 double half_width_m) noexcept;
 
 /// Slower than this the tractor stands [m/s].
 inline constexpr double kAtRest_m_s = 0.05;

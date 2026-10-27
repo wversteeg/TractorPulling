@@ -52,7 +52,8 @@ public:
     /// the lane's right-hand chalk line, whatever the track's lane width.
     /// The turn drives to the sled, pulls, and comes back. clear_parking()
     /// goes back to the pull alone, hooked at the line (the default). A
-    /// parking in the lane (right_of_lane_m below 0) makes the setup fail.
+    /// parking in the lane (right_of_lane_m below half the tractor's width)
+    /// makes the setup fail.
     void set_parking(double x_m, double right_of_lane_m);
     void clear_parking();
     /// The controls held from now on (see session::Controls: held to their

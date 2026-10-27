@@ -283,7 +283,8 @@ void collect(State& state, const Params& params, double thrown_soil_m3_s, double
 inline constexpr double kDriveBack_m_s = 2.0;
 
 /// The sled after a pull, the chain off: it drives itself back, the pan
-/// lifted (the berm stays on the track), straight towards its start at
+/// lifted (the berm is dropped: the track keeps no soil), straight towards
+/// its start at
 /// `start_x_m` on the centre line at kDriveBack_m_s, the box running back
 /// with it. Returns true once it stands there, straight, ready for the
 /// next pull. Its velocity is negative while it drives.

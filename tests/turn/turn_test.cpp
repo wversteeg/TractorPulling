@@ -50,10 +50,15 @@ void place_hitch(const pull::Model& model, pull::State& state, double along_m, d
     state.tractor.chassis.lateral_position_m += across_m - now.across_m;
 }
 
+// The whole tractor beside the lane, out to its tires' outer edges.
 TEST(Parking, MustBeBesideTheTrack) {
-    EXPECT_FALSE(validate(kParking, kRules));
-    EXPECT_EQ(validate({.x_m = 0.0, .y_m = 5.9}, kRules), ParamError::kInTheLane);
-    EXPECT_EQ(validate({.x_m = std::nan(""), .y_m = -10.0}, kRules), ParamError::kNotFinite);
+    constexpr double kHalfWidth_m = 1.2;
+    EXPECT_FALSE(validate(kParking, kRules, kHalfWidth_m));
+    EXPECT_FALSE(validate({.x_m = 0.0, .y_m = 7.2}, kRules, kHalfWidth_m));
+    EXPECT_EQ(validate({.x_m = 0.0, .y_m = 7.1}, kRules, kHalfWidth_m), ParamError::kInTheLane);
+    EXPECT_EQ(validate({.x_m = 0.0, .y_m = -5.9}, kRules, 0.0), ParamError::kInTheLane);
+    EXPECT_EQ(validate({.x_m = std::nan(""), .y_m = -10.0}, kRules, kHalfWidth_m),
+              ParamError::kNotFinite);
 }
 
 TEST(Turn, StartsInTheParking) {
@@ -130,6 +135,48 @@ TEST(Turn, TheFlagGoesGreenOnceTheChainHolds) {
     EXPECT_FALSE(state.run.result);
 }
 
+// A pull that ends with the sled still rolling (here a full pull on a
+// short track) leaves it on the chain until it has stopped; then it is
+// held, standing still for good, its speeds all 0.
+TEST(Turn, ASledStillRollingAfterThePullStopsBeforeItIsHeld) {
+    const pull::Model model = reference_model();
+    run::Rules short_track = kRules;
+    short_track.track_length_m = 5.0;
+    short_track.full_pull_line_m = 5.0;
+    State state = from_the_parking(model, kParking);
+    place_hitch(model, state.run.pull, 0.8 * model.sled().chain.length_m, 0.0);
+    step(state, model, short_track, kParking, {}, kDt_s);
+    ASSERT_EQ(state.stage, Stage::kTakingUpSlack);
+    // The slack taken up in 4th, then full throttle until the full pull.
+    for (int i = 0; state.stage != Stage::kReleasing && i < 60000; ++i) {
+        const double t_s = i * kDt_s;
+        const bool pulling = state.stage == Stage::kPulling;
+        const vehicle::Input in{
+            .throttle = pulling ? 1.0 : 0.3,
+            .clutch_pedal = pulling ? 0.0 : std::clamp(1.0 - 0.3 * t_s, 0.5, 1.0),
+            .gear = t_s < 0.1 ? driveline::kNeutral : 4};
+        step(state, model, short_track, kParking, in, kDt_s);
+    }
+    ASSERT_EQ(state.stage, Stage::kReleasing);
+    ASSERT_TRUE(state.run.result);
+    EXPECT_EQ(state.run.result.value_or(run::Result{}).ending, run::Ending::kFullPull);
+    EXPECT_GT(state.run.pull.sled.velocity_m_s, 0.0) << "still rolling at the result";
+    EXPECT_EQ(state.run.pull.sled_mode, pull::SledMode::kOnTheChain);
+
+    // Throttle closed, the clutch pressed: it rolls to a stop on the chain,
+    // and only then is held (here and unhooked at once: the tractor stands
+    // with the chain slack).
+    const vehicle::Input stopping{
+        .clutch_pedal = 1.0, .gear = 4, .brake_left = 1.0, .brake_right = 1.0};
+    int steps = 0;
+    while (state.run.pull.sled_mode == pull::SledMode::kOnTheChain && steps < 30000) {
+        step(state, model, short_track, kParking, stopping, kDt_s);
+        ++steps;
+    }
+    EXPECT_NE(state.run.pull.sled_mode, pull::SledMode::kOnTheChain);
+    EXPECT_EQ(state.run.pull.sled.velocity_m_s, 0.0) << "it stood when it was held";
+}
+
 // The tension must hold without a break: a slack moment starts the count
 // again.
 TEST(Turn, ASlackChainStartsTheFlagCountAgain) {
@@ -151,6 +198,7 @@ TEST(Turn, TheChainComesOffOnceSlack) {
     State state = from_the_parking(model, kParking);
     state.stage = Stage::kReleasing;
     state.run.pull.hooked = true;
+    ASSERT_EQ(state.run.pull.sled_mode, pull::SledMode::kHeld);
     state.run.result = run::Result{.ending = run::Ending::kStopped, .distance_m = 40.0};
     const double chain_m = model.sled().chain.length_m;
     place_hitch(model, state.run.pull, chain_m - 0.5 * kReleaseSlack_m, 0.0);
@@ -209,6 +257,8 @@ public:
     // Steering towards the path, and whether its end is reached.
     session::Controls follow(std::span<const Point> path, int gear, bool reverse) {
         const double heading_rad = now_->tractor_heading_rad + (reverse ? std::numbers::pi : 0.0);
+        // A shorter path than the last one: its last point at most.
+        next_ = std::min(next_, path.size() - 1);
         while (next_ + 1 < path.size() && distance_m(path[next_]) < kLookAhead_m) {
             ++next_;
         }

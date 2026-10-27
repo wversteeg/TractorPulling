@@ -43,7 +43,10 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     if (setup.layout == Layout::kPro && controls::validate(setup.pro)) {
         return SetupError::kProControls;
     }
-    if (setup.parking && turn::validate(*setup.parking, setup.rules)) {
+    // The whole tractor beside the lane: its rear tires' outer edges.
+    const double half_width_m =
+        0.5 * (setup.tractor.chassis.rear_track_m + setup.tractor.rear_tire.size.section_width_m);
+    if (setup.parking && turn::validate(*setup.parking, setup.rules, half_width_m)) {
         return SetupError::kParking;
     }
     if (!make_clock(setup)) {
