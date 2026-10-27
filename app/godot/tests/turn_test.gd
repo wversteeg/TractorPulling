@@ -4,7 +4,8 @@
 # the sled into the lane, back up to it in reverse, the slack taken up,
 # the pull at the green flag, the chain released, and back to the bay
 # round the end of the pull and along the return lane. Checks what the
-# scene shows at each stage: the rivals in their bays, the official's flag,
+# scene shows at each stage: the rivals in their bays, the officials' flags
+# and the signal lights (green while the pull is good, red to stop),
 # the chain on or off, the stopping marker, the guidance line, and the
 # result screen only once the tractor is back in its bay.
 # Run: godot --fixed-fps 15 --path app/godot --script res://tests/turn_test.gd
@@ -71,6 +72,8 @@ func _play() -> void:
 	var s := run.get_snapshot()
 	var parked: Array[TractorView] = _pull.get("parked")
 	var flagman: Flagman = _pull.get("flagman")
+	var end_flagman: Flagman = _pull.get("end_flagman")
+	var venue: VenueView = _pull.get("venue_view")
 	var marker: MeshInstance3D = _pull.get("hitch_marker")
 	var hud: Hud = _pull.get("hud")
 	var result: ResultScreen = _pull.get("result_screen")
@@ -86,6 +89,8 @@ func _play() -> void:
 	_expect(marker.visible, "the stopping mark in front of the sled")
 	_expect(not bool(s["chain_hooked"]), "the chain off")
 	_expect(hud.turn_text(s).begins_with("Drive past the sled"), "told where to go")
+	_expect(venue.signal_shown() == "off" and hud.signal_shown() == "off",
+			"no signal before the chain is on")
 
 	var stages: Array[String] = [s["stage"]]
 	var backing_up_told := false
@@ -93,6 +98,11 @@ func _play() -> void:
 	var flag_green_pulling := true
 	var flag_red_before := true
 	var chain_on_while_hooked := true
+	var green_while_pulling := true
+	var red_to_stop := true
+	var told_to_stop := false
+	var ahead_of_the_tractor := true
+	var full_pull_m: float = dimensions["full_pull_line_m"]
 	for frame in MAX_FRAMES:
 		await process_frame
 		s = run.get_snapshot()
@@ -106,6 +116,21 @@ func _play() -> void:
 			flag_green_pulling = flag_green_pulling and flagman.colour_name() == "green"
 		if stage in ["taking_up_slack", "pulling", "releasing"]:
 			chain_on_while_hooked = chain_on_while_hooked and bool(s["chain_hooked"])
+		if stage == "pulling":
+			green_while_pulling = green_while_pulling and end_flagman.colour_name() == "green" \
+					and end_flagman.raised() and venue.signal_shown() == "green" \
+					and hud.signal_shown() == "green"
+			# Down the track, from 80 m to the full-pull line, in front of
+			# the tractor.
+			var official_m := -end_flagman.position.z
+			ahead_of_the_tractor = ahead_of_the_tractor and official_m >= 80.0 - 1e-3 \
+					and official_m <= full_pull_m + 1e-3 \
+					and (official_m > float(s["tractor_x_m"]) or official_m >= full_pull_m - 1e-3)
+		if stage == "releasing":
+			red_to_stop = red_to_stop and flagman.colour_name() == "red" and flagman.raised() \
+					and end_flagman.colour_name() == "red" and end_flagman.raised() \
+					and venue.signal_shown() == "red" and hud.signal_shown() == "red"
+			told_to_stop = told_to_stop or hud.turn_text(s).begins_with("Red flag: stop!")
 		if stage != "parked" and result.visible:
 			result_too_soon = true
 		if stage == "parked" and result.visible:
@@ -116,6 +141,11 @@ func _play() -> void:
 	_expect(backing_up_told, "told how far to back up")
 	_expect(flag_red_before and flag_green_pulling, "red before the pull, green in it")
 	_expect(chain_on_while_hooked, "the chain on from hooking to releasing")
+	_expect(green_while_pulling, "both officials green, the lights green, in the pull")
+	_expect(ahead_of_the_tractor, "the official down the track walks ahead of the tractor")
+	_expect(red_to_stop, "both officials red, the lights red, once the pull is over")
+	_expect(told_to_stop, "told to stop after the pull")
+	_expect(venue.signal_shown() == "off", "the light off once parked")
 	_expect(not result_too_soon, "no result before the tractor is back in its bay")
 	_expect(result.visible, "the result once parked")
 	_expect(run.get_result().get("ending", "") != "out_of_bounds"

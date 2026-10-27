@@ -22,7 +22,7 @@ package "GDScript (app/godot/scripts)" {
     +practice : bool
     +run : TractorPullRun
     +event : TractorPullEvent
-    +flagman : Flagman
+    +flagman, end_flagman : Flagman
     +parked : Array[TractorView]
     +hitch_marker : MeshInstance3D
     +driver : Callable, a scripted driver for tests
@@ -39,6 +39,8 @@ package "GDScript (app/godot/scripts)" {
     -_build(error) : bool
     -_build_turn(dimensions)
     -_camera_target() : Vector3
+    -_show_officials(snapshot, delta)
+    +{static} signal_for(snapshot, turn) : String
     -_set_screen(screen)
     -_process(delta)
     -_advance_rivals()
@@ -70,11 +72,14 @@ package "GDScript (app/godot/scripts)" {
     +banner_at_m() : float
     +{static} environment() : WorldEnvironment
     +{static} past_lane_m(side) : float
+    +show_signal(signal) : the gantry's light
+    +signal_shown() : String
   }
   class Flagman {
     +stand(at, facing)
-    +show_stage(stage, flag_progress, delta)
+    +show_signal(green, raise, wave, delta)
     +colour_name() : String
+    +raised() : bool
   }
   class TrackMarks {
     +build(dimensions)
@@ -139,6 +144,8 @@ package "GDScript (app/godot/scripts)" {
     +set_parking(bay)
     +show_snapshot(snapshot, title, pro)
     +turn_text(snapshot) : String
+    +show_signal(signal) : the lamp at the top
+    +signal_shown() : String
     +{static} gear_name(gear) : String
   }
   class MenuPanel {
@@ -293,7 +300,7 @@ Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky, hi
 Pull *-- TrackMarks : ruts and the pan's band,\ncleared each pull
 Pull *-- TractorView
 Pull *-- "3" TractorView : the rivals in their bays\n(a whole turn)
-Pull *-- Flagman : red flag, then green
+Pull *-- "2" Flagman : at the start and down the track:\ngreen while the pull is good, red to stop
 Pull *-- SledView
 Pull *-- ChainView
 Pull *-- CameraRig

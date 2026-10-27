@@ -453,8 +453,13 @@ it in reverse ("-" from N puts R in): a white mark on the track shows where
 the hitch should stop, the cameras frame the hitch and the hook as you come
 close, and the HUD says how far to go and which way to steer. Stand still
 there and the chain goes on. Creep forward to take up the slack while the
-official, on the left past the start line, raises the red flag; it turns
-green and the pull is on. After the pull, back off in R to release the
+official on the left past the start line raises the red flag; it turns
+green and the pull is on. A second official, down the track from 80 m,
+walks ahead of the tractor towards the full-pull line, the green flag up
+while the pull is good. The moment the pull is over (a full pull, the sled
+stopped, a disqualification) both wave red: stop, close the throttle. A
+light on top of the full-pull gantry and a lamp at the top of the HUD
+show the same, green GO and red STOP. Then back off in R to release the
 chain, and drive back down the return lane to your bay while the sled
 drives itself back to the start line. The result comes once you stand in
 your bay. The chalk lines count only in the pull.

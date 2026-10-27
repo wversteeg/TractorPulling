@@ -164,6 +164,9 @@ for the big features; they are repeated at the end for completeness.
 - **The official's flag.** Green after the chain has held 1 kN for a
   second; there is no false start, no time limit on the way to the sled, and
   no signal to stop the pull.
+- **The red flag is a signal only.** After the pull the officials wave red
+  and the driver should close the throttle, but nothing counts against one
+  who does not; the result is the sled's, at its stop.
 - **One reverse gear, and an instant restart.** A real gearbox may have
   several reverse gears or a shuttle; a stalled engine starts again the
   moment the clutch is pressed.

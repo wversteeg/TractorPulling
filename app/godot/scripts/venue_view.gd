@@ -70,6 +70,11 @@ const PARKING_RIGHT_OF_LANE_M := 6.0
 const PLAYER_BAY_X_M := -12.0
 const RIVAL_BAYS_X_M: Array[float] = [-19.0, -26.0, -33.0]
 const BAY_SIZE_M := Vector2(6.0, 4.0)
+# The signal light's lamps on the full-pull gantry.
+const LAMP_RADIUS_M := 0.22
+const LAMP_RED := Color(1.0, 0.12, 0.08)
+const LAMP_GREEN := Color(0.15, 1.0, 0.3)
+const LAMP_GLOW := 3.0
 # The fence and the straw bales inside it, from the lane's edge [m].
 const FENCE_OUT_M := 6.5
 const BALES_OUT_M := 5.5
@@ -106,6 +111,10 @@ const CALM := 0.15
 const CHEER_FROM := 0.75
 
 var _scoreboard: Label3D
+# The signal light on the full-pull gantry: its red and green lamps.
+var _red_lamp := StandardMaterial3D.new()
+var _green_lamp := StandardMaterial3D.new()
+var _signal := ""
 var _crowd_material: ShaderMaterial
 # The track's length and lane width the venue was built for [m].
 var _sizes := Vector2.ZERO
@@ -463,6 +472,39 @@ func _add_banner(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
 	var text := Art.label("FULL PULL", 120, Color.WHITE, BANNER.darkened(0.5))
 	text.position = TrackSpace.point(full_pull_m - 0.06, 0.0, height_m - 0.5)
 	parent.add_child(text)
+	# The signal light on top, facing down the track: red above green, as
+	# the officials' flags show (show_signal()).
+	var housing := Art.box(Vector3(0.7, 1.3, 0.35), Color(0.08, 0.08, 0.09))
+	housing.position = TrackSpace.point(full_pull_m, 0.0, height_m + 0.65)
+	parent.add_child(_quiet(housing))
+	for lamp: Array in [[_red_lamp, 0.95], [_green_lamp, 0.35]]:
+		var sphere := SphereMesh.new()
+		sphere.radius = LAMP_RADIUS_M
+		sphere.height = 2.0 * LAMP_RADIUS_M
+		var bulb := Art.instance(sphere, lamp[0])
+		bulb.position = TrackSpace.point(full_pull_m - 0.18, 0.0, height_m + float(lamp[1]))
+		parent.add_child(_quiet(bulb))
+	_signal = "?"
+	show_signal("off")
+
+
+# The signal light: "green" while the pull is good, "red" to stop, "off".
+func show_signal(signal_name: String) -> void:
+	if signal_name == _signal:
+		return
+	_signal = signal_name
+	for pair: Array in [[_red_lamp, LAMP_RED, "red"], [_green_lamp, LAMP_GREEN, "green"]]:
+		var lamp: StandardMaterial3D = pair[0]
+		var lit: bool = signal_name == pair[2]
+		lamp.albedo_color = pair[1] if lit else Color(pair[1]).darkened(0.8)
+		lamp.emission_enabled = lit
+		lamp.emission = pair[1]
+		lamp.emission_energy_multiplier = LAMP_GLOW
+
+
+# The signal light's state now (show_signal()), for tests.
+func signal_shown() -> String:
+	return _signal
 
 
 # The scoreboard on the right of the full-pull line, facing the track.

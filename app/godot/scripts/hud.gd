@@ -9,8 +9,10 @@
 # is in. In a whole turn, a line in the middle says what to do next: drive
 # to the sled and back up to it (how far the hitch still has to go, and
 # which way to steer), take up the slack, wait for the flag, back off to
-# release the chain, drive back to the bay. It only shows the run's
-# snapshot.
+# release the chain, drive back to the bay. A lamp at the top in the
+# middle repeats the officials' signal: green GO while the pull is good,
+# red STOP to wait or to stop (the pull is over: close the throttle). It
+# only shows the run's snapshot.
 class_name Hud
 extends Control
 
@@ -29,6 +31,15 @@ const TURN_COLOUR := Color(1.0, 0.95, 0.6)
 # Backing up: off the sled's line by more than this, it says which way to
 # steer (the chain goes on within 0.4 m, turn::kHookOffLine_m) [m].
 const STEER_HINT_M := 0.25
+# The signal lamp: its middle under the top edge, its radius.
+const LAMP_TOP := 52.0
+const LAMP_RADIUS := 30.0
+const LAMP_RED := Color(1.0, 0.15, 0.1)
+const LAMP_GREEN := Color(0.2, 0.95, 0.35)
+# Still rolling forwards, or the throttle still open, after the red flag
+# [m/s, share of the throttle].
+const STOPPED_M_S := 0.05
+const THROTTLE_CLOSED := 0.05
 const FONT_SIZE := 30
 const SMALL_FONT_SIZE := 22
 const OUTLINE := 6
@@ -67,6 +78,9 @@ var _front_rest_n := 1.0
 var _front_n := 0.0
 var _front := Label.new()
 var _turn := Label.new()
+var _lamp := Label.new()
+# The officials' signal: "green", "red" or "off".
+var _signal := "off"
 var _chain_m := 1.0
 # The player's bay in the parking, on the track; INF for no whole turn.
 var _parking := Vector2.INF
@@ -75,7 +89,7 @@ var _parking := Vector2.INF
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn]:
+	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn, _lamp]:
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
 		label.add_theme_constant_override("outline_size", OUTLINE)
 		add_child(label)
@@ -94,6 +108,11 @@ func _ready() -> void:
 	_turn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_turn.add_theme_font_size_override("font_size", FONT_SIZE)
 	_turn.add_theme_color_override("font_color", TURN_COLOUR)
+	_lamp.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_lamp.offset_top = LAMP_TOP + LAMP_RADIUS + 4.0
+	_lamp.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_lamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_lamp.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
 
 
 # The run's fixed sizes (TractorPullRun.get_dimensions()).
@@ -107,6 +126,20 @@ func build(dimensions: Dictionary) -> void:
 	_pushdown_full_m = dimensions["pushdown_full_m"]
 	_front_rest_n = maxf(float(dimensions["front_axle_rest_load_n"]), 1.0)
 	_chain_m = dimensions["chain_length_m"]
+
+
+# The officials' signal (pull.gd's signal_for()): "green", "red" or "off".
+func show_signal(signal_name: String) -> void:
+	_signal = signal_name
+	_lamp.text = {"green": "GO", "red": "STOP"}.get(signal_name, "")
+	_lamp.add_theme_color_override("font_color",
+			LAMP_GREEN if signal_name == "green" else LAMP_RED)
+	queue_redraw()
+
+
+# The signal lamp's state now, for tests.
+func signal_shown() -> String:
+	return _signal
 
 
 # The player's bay (x, y on the track), for the way back; Vector2.INF
@@ -166,6 +199,9 @@ func turn_text(s: Dictionary) -> String:
 				return "Hold it there... the flag is coming"
 			return "Hooked on. Creep forward to take up the slack"
 		"releasing":
+			var rolling := float(s["tractor_speed_m_s"]) > STOPPED_M_S
+			if rolling or float(s["throttle"]) > THROTTLE_CLOSED:
+				return "Red flag: stop! Close the throttle"
 			return "Back off in R to release the chain"
 		"to_the_parking":
 			if _parking == Vector2.INF:
@@ -173,7 +209,7 @@ func turn_text(s: Dictionary) -> String:
 			var gap := Vector2(float(s["tractor_x_m"]), float(s["tractor_y_m"])) - _parking
 			return "Drive back to your bay: %.0f m" % gap.length()
 		"parked":
-			return "Parked"
+			return "Parked" if _parking != Vector2.INF else ""
 	return ""
 
 
@@ -185,6 +221,11 @@ static func gear_name(gear: int) -> String:
 
 
 func _draw() -> void:
+	# The officials' signal, at the top in the middle.
+	if _signal != "off":
+		var middle := Vector2(size.x / 2.0, LAMP_TOP)
+		draw_circle(middle, LAMP_RADIUS + 5.0, BACK_COLOUR)
+		draw_circle(middle, LAMP_RADIUS, LAMP_GREEN if _signal == "green" else LAMP_RED)
 	# The rev counter, with the stall and rated speeds marked.
 	var revs := Rect2(BAR_LEFT, REV_TOP, BAR_WIDTH, BAR_HEIGHT)
 	draw_rect(revs, BACK_COLOUR)

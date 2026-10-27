@@ -1,9 +1,11 @@
-# The track official who starts each pull, standing on the left of the
-# lane a little past the start line, facing the tractor coming to the sled.
-# A red flag held low while the tractor comes to the sled; raised as the
-# slack is taken up (higher with the run's flag_progress); waved green when
-# the pull is on; lowered again after it. The run decides when: this only
-# draws its snapshot.
+# A track official with a flag, standing beside the lane facing the
+# tractor. Two of them work each pull (pull.gd): one past the start line,
+# who holds the red flag while the tractor comes to the sled and raises it
+# as the slack is taken up, and one further down the track, who walks
+# ahead of the tractor towards the full-pull line. Both wave green while
+# the pull is good, and red the moment it is over (a full pull, the sled
+# stopped, a disqualification): stop. The run decides when; this only
+# draws the signal it is given.
 class_name Flagman
 extends Node3D
 
@@ -18,7 +20,7 @@ const HAND_LOW_M := 1.0
 const HAND_HIGH_M := 1.9
 const LOW_RAD := deg_to_rad(-60.0)
 const HIGH_RAD := deg_to_rad(35.0)
-# Waving the green flag: how far either way, and how fast.
+# Waving a flag: how far either way, and how fast.
 const WAVE_RAD := deg_to_rad(25.0)
 const WAVE_PER_S := 7.0
 
@@ -26,7 +28,6 @@ var _arm := Node3D.new()
 var _cloth := MeshInstance3D.new()
 var _material := StandardMaterial3D.new()
 var _time_s := 0.0
-var _stage := ""
 
 
 func _ready() -> void:
@@ -46,32 +47,33 @@ func _ready() -> void:
 	_cloth.position = Vector3(0.0, POLE_M - CLOTH_M.y / 2.0, CLOTH_M.x / 2.0)
 	_cloth.rotation.y = PI / 2.0
 	_arm.add_child(_cloth)
-	show_stage("to_the_sled", 0.0, 0.0)
+	show_signal(false, 0.0, false, 0.0)
 
 
 # Stands at `at` (on the ground), facing `facing` (a point to look at).
 func stand(at: Vector3, facing: Vector3) -> void:
 	position = at
-	look_at(Vector3(facing.x, at.y, facing.z), Vector3.UP, true)
+	var level := Vector3(facing.x, at.y, facing.z)
+	if not level.is_equal_approx(at):
+		look_at(level, Vector3.UP, true)
 
 
-# The run's stage and flag_progress (0 to 1) from its snapshot.
-func show_stage(stage: String, flag_progress: float, delta: float) -> void:
+# The flag: green or red, raised from 0 (held low) to 1 (overhead), waved
+# or held still.
+func show_signal(green: bool, raise: float, wave: bool, delta: float) -> void:
 	_time_s += delta
-	_stage = stage
-	var green := stage == "pulling"
 	_material.albedo_color = GREEN if green else RED
-	var raise := 0.0
-	match stage:
-		"taking_up_slack":
-			raise = clampf(flag_progress, 0.0, 1.0)
-		"pulling":
-			raise = 1.0
-	_arm.position = Vector3(0.25, lerpf(HAND_LOW_M, HAND_HIGH_M, raise), 0.0)
-	var wave := sin(_time_s * WAVE_PER_S) * WAVE_RAD if green else 0.0
-	_arm.rotation = Vector3(0.0, 0.0, lerpf(LOW_RAD, HIGH_RAD, raise) + wave)
+	var up := clampf(raise, 0.0, 1.0)
+	_arm.position = Vector3(0.25, lerpf(HAND_LOW_M, HAND_HIGH_M, up), 0.0)
+	var swing := sin(_time_s * WAVE_PER_S) * WAVE_RAD if wave else 0.0
+	_arm.rotation = Vector3(0.0, 0.0, lerpf(LOW_RAD, HIGH_RAD, up) + swing)
 
 
 # The flag's colour now, for tests: "red" or "green".
 func colour_name() -> String:
 	return "green" if _material.albedo_color == GREEN else "red"
+
+
+# Whether the flag is up (raised past halfway), for tests.
+func raised() -> bool:
+	return _arm.position.y > (HAND_LOW_M + HAND_HIGH_M) / 2.0

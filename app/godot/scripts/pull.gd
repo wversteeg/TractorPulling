@@ -20,7 +20,10 @@
 # A pull is the player's whole turn (`whole_turn`): from their bay in the
 # parking beside the track, past the sled and back up to it in reverse,
 # the chain hooked on, the slack taken up while the official holds the red
-# flag, the green flag and the pull, the chain released by backing off,
+# flag, the green flag and the pull (a second official down the track,
+# walking ahead of the tractor, waves green while it is good and both wave
+# red the moment it is over: stop; the light on the full-pull gantry and
+# the HUD's show the same), the chain released by backing off,
 # and back to the bay along the return lane while the sled drives itself
 # back; the result screen comes once the tractor stands in its bay again.
 # The rivals wait in the bays behind. Without it (and with `autoplay`), a
@@ -80,10 +83,13 @@ const RIVAL_PAINTS: Array[Color] = [Color(0.16, 0.42, 0.2), Color(0.16, 0.3, 0.6
 		Color(0.9, 0.45, 0.1)]
 const RIVAL_SHIRTS: Array[Color] = [Color(0.85, 0.8, 0.2), Color(0.8, 0.8, 0.82),
 		Color(0.2, 0.2, 0.22)]
-# The official stands on the left of the lane, this far past the start line
-# and in from the left chalk line [m].
+# The officials stand on the left of the lane, in from the left chalk line
+# [m]: one this far past the start line; the other down the track, from
+# here up to the full-pull line, this far ahead of the tractor's rear axle.
 const FLAGMAN_X_M := 9.0
 const FLAGMAN_IN_M := 1.5
+const END_FLAGMAN_FROM_M := 80.0
+const END_FLAGMAN_AHEAD_M := 12.0
 # Backing up to the sled, the cameras frame the hitch and the hook from
 # this close [m].
 const HITCH_FRAMING_M := 12.0
@@ -109,6 +115,7 @@ var settings_screen := SettingsScreen.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
 var flagman := Flagman.new()
+var end_flagman := Flagman.new()
 var parked: Array[TractorView] = []
 # The white mark on the track in front of the sled's hook: stop the hitch
 # there and the chain goes on.
@@ -126,6 +133,10 @@ var _title := ""
 var _shown_log := -1
 var _shown_turn := ""
 var _time_s := 0.0
+# Where the officials stand: the full-pull line, and in from the left
+# chalk line [m].
+var _full_pull_m := 100.0
+var _left_m := 4.5
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
 
@@ -133,7 +144,7 @@ var _ended_s := 0.0
 func _ready() -> void:
 	_add_world()
 	for node: Node in [venue_view, track_view, track_marks, tractor_view, sled_view, chain_view,
-			flagman, hitch_marker, cameras]:
+			flagman, end_flagman, hitch_marker, cameras]:
 		add_child(node)
 	var marker := BoxMesh.new()
 	marker.size = Vector3(1.2, 0.02, 0.15)
@@ -379,9 +390,10 @@ func _build_turn(dimensions: Dictionary) -> void:
 	for i in parked.size():
 		parked[i].position = TrackSpace.point(VenueView.RIVAL_BAYS_X_M[i], bay_y_m, 0.0)
 		parked[i].visible = turn
-	flagman.visible = turn
 	flagman.stand(TrackSpace.point(FLAGMAN_X_M, lane_m / 2.0 - FLAGMAN_IN_M, 0.0),
 			TrackSpace.point(0.0, 0.0, 0.0))
+	_full_pull_m = dimensions["full_pull_line_m"]
+	_left_m = lane_m / 2.0 - FLAGMAN_IN_M
 	hud.set_parking(Vector2(VenueView.PLAYER_BAY_X_M, bay_y_m) if turn else Vector2.INF)
 
 
@@ -620,7 +632,7 @@ func _show(delta: float) -> void:
 		var chain_m: float = run.get_dimensions()["chain_length_m"]
 		chain_view.show_between(Vector3(hook.x, 0.03, hook.z) + ahead * chain_m * 0.9, hook, 0.0)
 	var stage: String = s.get("stage", "pulling")
-	flagman.show_stage(stage, s.get("flag_progress", 1.0), delta)
+	_show_officials(s, delta)
 	hitch_marker.visible = stage == "to_the_sled"
 	if hitch_marker.visible:
 		var forward := TrackSpace.point(cos(float(s["sled_heading_rad"])),
@@ -629,6 +641,48 @@ func _show(delta: float) -> void:
 		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * chain_length_m * MARKER_SHARE
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
+
+
+# The officials' signal from the run's stage: "green" while the pull is
+# on and good, "red" while the tractor must wait (taking up the slack) or
+# stop (the pull is over: until the chain is off), "off" otherwise.
+# `turn` says the run is the whole turn; at the line it ends with the pull.
+static func signal_for(s: Dictionary, turn: bool) -> String:
+	match s.get("stage", "pulling"):
+		"pulling":
+			return "green"
+		"taking_up_slack", "releasing":
+			return "red"
+		"parked":
+			return "off" if turn else "red"
+	return "off"
+
+
+# Both officials, the gantry's light and the HUD's, from the snapshot.
+func _show_officials(s: Dictionary, delta: float) -> void:
+	var stage: String = s.get("stage", "pulling")
+	var shown := signal_for(s, whole_turn and not autoplay)
+	var stop := shown == "red" and stage != "taking_up_slack"
+	# The start official: the red flag low, raised as the slack is taken
+	# up, green waved for the pull, red waved to stop.
+	var raise := 0.0
+	match stage:
+		"taking_up_slack":
+			raise = float(s.get("flag_progress", 0.0))
+		"pulling":
+			raise = 1.0
+	if stop:
+		raise = 1.0
+	flagman.show_signal(shown == "green", raise, stage == "pulling" or stop, delta)
+	# The official down the track walks ahead of the tractor, from 80 m up
+	# to the full-pull line, the green flag up while the pull is good.
+	var at_m := clampf(float(s["tractor_x_m"]) + END_FLAGMAN_AHEAD_M,
+			minf(END_FLAGMAN_FROM_M, _full_pull_m), _full_pull_m)
+	end_flagman.stand(TrackSpace.point(at_m, _left_m, 0.0),
+			TrackSpace.point(float(s["tractor_x_m"]), 0.0, 0.0))
+	end_flagman.show_signal(shown == "green", 1.0 if shown != "off" else 0.0, stop, delta)
+	venue_view.show_signal(shown)
+	hud.show_signal(shown)
 
 
 func _add_world() -> void:
