@@ -45,6 +45,11 @@ const MAX_DISCS_A_SIDE := 4
 # Taken off before rounding up, so a share that is a whole number of weights
 # in doubles a hair over does not draw one more.
 const WEIGHT_COUNT_TOLERANCE := 1e-6
+# A wheel weight's thickness, the step from one to the next, and the gap
+# that keeps the first clear of the hub cap [m].
+const DISC_THICKNESS_M := 0.06
+const DISC_PITCH_M := 0.065
+const DISC_CLEAR_OF_CAP_M := 0.005
 # Slip above which the rear tires throw dirt, and where they throw most.
 const DIRT_FROM_SLIP := 0.08
 const DIRT_FULL_SLIP := 0.5
@@ -324,10 +329,12 @@ func _add_rear_wheel(spin: Node3D, side_m: float, width_m: float) -> void:
 					carcass_m, 0.0)
 			lugs.append(Transform3D(basis, at))
 	spin.add_child(Art.many(lug, lugs, Art.material(TIRE, 0.9)))
-	# A wheel weight's place: on the hub, outboard.
+	# A wheel weight's place: on the hub, outboard of the rim and its cap.
 	var weights := Node3D.new()
 	weights.name = "weights"
-	weights.position = TrackSpace.point(0.0, outward * (width_m * 0.5 + 0.04), 0.0)
+	weights.set_meta("outward", outward)
+	weights.position = TrackSpace.point(0.0, outward * (width_m * 0.5 + Art.RIM_PROUD_M
+			+ Art.HUB_REACH_M + DISC_CLEAR_OF_CAP_M + DISC_THICKNESS_M / 2.0), 0.0)
 	spin.add_child(weights)
 
 
@@ -373,10 +380,11 @@ func _show_weights(d: Dictionary) -> void:
 	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG
 			- WEIGHT_COUNT_TOLERANCE), MAX_DISCS_A_SIDE)
 	for holder: Node3D in holders:
-		var outward := signf(holder.get_parent().position.x * -1.0)
+		var outward: float = holder.get_meta("outward")
 		for i in discs:
-			var disc := Art.axle_cylinder(_rear_radius_m * 0.42, 0.06, WEIGHT.darkened(0.1), 20, 0.6)
-			disc.position = TrackSpace.point(0.0, outward * i * 0.065, 0.0)
+			var disc := Art.axle_cylinder(_rear_radius_m * 0.42, DISC_THICKNESS_M,
+					WEIGHT.darkened(0.1), 20, 0.6)
+			disc.position = TrackSpace.point(0.0, outward * i * DISC_PITCH_M, 0.0)
 			holder.add_child(disc)
 
 

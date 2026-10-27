@@ -7,6 +7,9 @@ class_name Art
 
 # How far a rim's face stands out past its tire's sidewall [m].
 const RIM_PROUD_M := 0.012
+# How far the hub cap stands out past the rim's face [m], and its length.
+const HUB_REACH_M := 0.07
+const HUB_CAP_LENGTH_M := 0.06
 
 # Shared materials by colour, roughness and metalness.
 static var _materials := {}
@@ -263,8 +266,10 @@ static func rim(spin: Node3D, radius_m: float, width_m: float, outward: float, b
 				radius_m * 0.32 * sin(angle))
 		at.append(Transform3D(Basis(Vector3.FORWARD, PI / 2.0), spot))
 	spin.add_child(many(bolt_mesh, at, material(Color(0.22, 0.22, 0.24), 0.35, 0.7)))
-	var cap := axle_cylinder(radius_m * 0.14, 0.06, Color(0.8, 0.8, 0.82), 14, 0.2, 0.9)
-	cap.position = TrackSpace.point(0.0, face_m + outward * 0.04, 0.0)
+	var cap := axle_cylinder(radius_m * 0.14, HUB_CAP_LENGTH_M, Color(0.8, 0.8, 0.82), 14, 0.2,
+			0.9)
+	cap.position = TrackSpace.point(0.0,
+			face_m + outward * (HUB_REACH_M - HUB_CAP_LENGTH_M / 2.0), 0.0)
 	spin.add_child(cap)
 
 

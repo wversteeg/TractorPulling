@@ -48,10 +48,11 @@ const CROPS: Array[Color] = [Color(0.82, 0.68, 0.32), Color(0.2, 0.36, 0.12),
 const CROP_ROW_M := 0.75
 const FIELDS := 18
 # The fields: lifted over the grass [m], tries to find room for them all,
-# and how far from the track's line they stay (the sine of their bearing).
+# and how far past the lane's edges they stay clear (the stands, banks and
+# tents are inside) [m].
 const FIELD_LIFT_M := 0.15
 const FIELD_TRIES := 20
-const FIELD_CLEAR_OF_TRACK := 0.85
+const FIELDS_CLEAR_OF_LANE_M := 30.0
 const GRASS_Y_M := -0.06
 const STRIP_MARGIN_M := 3.0
 const RUN_UP_M := 40.0
@@ -98,6 +99,9 @@ var _sizes := Vector2.ZERO
 var _full_pull_m := -1.0
 # The banner and the scoreboard, which follow the full-pull line.
 var _line: Node3D
+# The fields round the venue, in track space: each one's centre (x along,
+# y across) and the circle it turns in (z) [m].
+var _fields: Array[Vector3] = []
 var _random := RandomNumberGenerator.new()
 
 
@@ -121,7 +125,7 @@ func build(d: Dictionary) -> void:
 		_add_grandstand(lane_m)
 		_add_standing_crowd(length_m, lane_m)
 		_add_scenery(length_m, lane_m)
-		_add_farmland(length_m)
+		_add_farmland(length_m, lane_m)
 		_add_horizon(length_m)
 	if full_pull_m != _full_pull_m:
 		if _line != null:
@@ -136,6 +140,10 @@ func build(d: Dictionary) -> void:
 # Where the banner over the full-pull line stands, along the track [m].
 func banner_at_m() -> float:
 	return _full_pull_m
+
+
+func fields() -> Array[Vector3]:
+	return _fields
 
 
 # How far the sled has got, on the board by the full-pull line; and the
@@ -469,7 +477,7 @@ func _add_scenery(length_m: float, lane_m: float) -> void:
 
 # Fields of wheat, maize, ploughed land and grass ley round the venue,
 # each a flat patch with its rows, so the land around reads as farmland.
-func _add_farmland(length_m: float) -> void:
+func _add_farmland(length_m: float, lane_m: float) -> void:
 	var materials: Array[StandardMaterial3D] = []
 	var rows := _rows_texture()
 	for crop in CROPS:
@@ -479,21 +487,29 @@ func _add_farmland(length_m: float) -> void:
 		m.roughness = 1.0
 		materials.append(m)
 	var centre := TrackSpace.point(length_m / 2.0, 0.0, 0.0)
+	# The strip from the run-up to the overrun, the stands, banks and tents
+	# beside it, in track space: no field reaches into it, since a field
+	# lies above the clay and would cover the lane.
+	var half_m := lane_m / 2.0 + FIELDS_CLEAR_OF_LANE_M
+	var keep_clear := Rect2(-RUN_UP_M, -half_m, RUN_UP_M + length_m + OVERRUN_M, 2.0 * half_m)
 	# Each field's circle (its centre and half its diagonal), so the next
 	# can be kept off it: fields that overlapped would fight for depth.
 	var taken: Array[Vector4] = []
+	_fields.clear()
 	for i in FIELDS * FIELD_TRIES:
 		if taken.size() >= FIELDS:
 			break
 		var angle := _random.randf_range(0.0, TAU)
-		# None along the track's own line, where a field would reach under
-		# the clay strip (the track runs along Godot's z).
-		if absf(sin(angle)) > FIELD_CLEAR_OF_TRACK:
-			continue
 		var reach := _random.randf_range(110.0, 250.0)
 		var size := Vector2(_random.randf_range(60.0, 110.0), _random.randf_range(50.0, 90.0))
 		var at := centre + Vector3(cos(angle), 0.0, sin(angle)) * reach
 		var radius := size.length() / 2.0
+		# The field's centre in track space (TrackSpace.point inverted).
+		var track_at := Vector2(-at.z, -at.x)
+		var nearest := Vector2(clampf(track_at.x, keep_clear.position.x, keep_clear.end.x),
+				clampf(track_at.y, keep_clear.position.y, keep_clear.end.y))
+		if nearest.distance_to(track_at) < radius:
+			continue
 		var clear := true
 		for other in taken:
 			if Vector2(at.x, at.z).distance_to(Vector2(other.x, other.y)) < radius + other.z:
@@ -502,6 +518,7 @@ func _add_farmland(length_m: float) -> void:
 		if not clear:
 			continue
 		taken.append(Vector4(at.x, at.z, radius, 0.0))
+		_fields.append(Vector3(track_at.x, track_at.y, radius))
 		var patch := PlaneMesh.new()
 		patch.size = size
 		# Its own copy: the rows tile to the field's size.

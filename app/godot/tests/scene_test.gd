@@ -8,6 +8,8 @@ extends SceneTree
 # The most a mark's step comes to: STEP_M and up to a frame's travel at
 # the pull's speed (60 frames a second, a few metres a second) [m].
 const MARK_STEP_MOST_M := 0.27
+# The venue finds room for at least this many fields round it.
+const FIELDS_AT_LEAST := 8
 const FRAMES := 600
 const TOLERANCE_M := 1e-4
 
@@ -96,6 +98,21 @@ func _check() -> void:
 			"a wider lane builds the venue again: %d parts, board %s" % [
 			venue.get_child_count(), board.text if board != null else "none"])
 	venue.build(dimensions)
+	# The fields round the venue lie above the clay, so none may reach the
+	# strip, from the run-up to the overrun, or the stands beside it.
+	var length_m: float = dimensions["track_length_m"]
+	var clear_half_m := float(dimensions["lane_width_m"]) / 2.0 + VenueView.STAND_FROM_M
+	var strip := Rect2(-VenueView.RUN_UP_M, -clear_half_m,
+			VenueView.RUN_UP_M + length_m + VenueView.OVERRUN_M, 2.0 * clear_half_m)
+	var on_strip := 0
+	for field in venue.fields():
+		var centre := Vector2(field.x, field.y)
+		var nearest := Vector2(clampf(centre.x, strip.position.x, strip.end.x),
+				clampf(centre.y, strip.position.y, strip.end.y))
+		if nearest.distance_to(centre) < field.z:
+			on_strip += 1
+	_expect(venue.fields().size() >= FIELDS_AT_LEAST and on_strip == 0,
+			"the fields stay off the strip: %d of %d on it" % [on_strip, venue.fields().size()])
 
 	# The sizes the views draw the parts from are there and positive.
 	for key: String in ["wheelie_bar_behind_rear_axle_m", "wheelie_bar_tip_height_m",

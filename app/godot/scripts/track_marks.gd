@@ -12,8 +12,9 @@ const SMOOTHED := Color(0.56, 0.41, 0.27)
 # past 130 m stops adding: the track ends there).
 const STEP_M := 0.2
 const MAX_POINTS := 700
-# Points a chunk of a mark's mesh: only the last chunk is built again.
-const CHUNK_POINTS := 50
+# Points a chunk of a mark's mesh: only the last chunk is built again, and
+# each chunk is a surface, a draw call (5 a mark at MAX_POINTS).
+const CHUNK_POINTS := 150
 # Above the clay strip (which lies 3 cm under the track's zero, so the
 # chalk lines show), the smoothed band over the ruts [m].
 const CLAY_TOP_M := -0.03
