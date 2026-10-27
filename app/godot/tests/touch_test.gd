@@ -151,6 +151,20 @@ func _play() -> void:
 	_expect(float(s["throttle"]) == 1.0, "the run has the throttle open")
 	_expect(float(s["tractor_speed_m_s"]) > 0.5, "the tractor pulls: %s m/s" % s["tractor_speed_m_s"])
 
+	# Under way the gearbox goes down only by its powershift: this tractor's
+	# (the practice garage's first level) steps one gear down, once. A second
+	# "-" is not taken, by the controls or by the run.
+	_expect(int(s["lowest_gear"]) == 5, "under way, 5th at the lowest: %s" % s["lowest_gear"])
+	_tap(controls.gear_down)
+	await _frames(3)
+	_expect(controls.gear == 5 and int(run.get_snapshot()["gear"]) == 5,
+			"one gear down under load: %d" % int(run.get_snapshot()["gear"]))
+	_tap(controls.gear_down)
+	await _frames(3)
+	_expect(controls.gear == 5 and int(run.get_snapshot()["gear"]) == 5
+			and int(run.get_snapshot()["lowest_gear"]) == 5,
+			"no second gear down: %d" % int(run.get_snapshot()["gear"]))
+
 	# Steering with one thumb while the other holds the throttle: full left at
 	# the slider's left end, the wheels turning left at the steering rate.
 	_touch(THROTTLE_FINGER, throttle.position + Vector2(1.0, 1.0), true)
@@ -302,11 +316,13 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	s = run.get_snapshot()
 	_expect(s["gear"] == 5 and float(s["clutch_pedal"]) == 0.0, "5th with the clutch in: %s"
 			% s["gear"])
-	# Once a pull: another gear down now needs the clutch pressed.
+	# Once a pull, and under way never down with the clutch either: a
+	# second "-" is not taken.
 	_tap(controls.gear_down)
 	await _frames(2)
 	s = run.get_snapshot()
-	_expect(s["gear"] == 5, "a second shift under load is refused: %s" % s["gear"])
+	_expect(s["gear"] == 5 and controls.gear == 5,
+			"a second gear down is refused: %s" % s["gear"])
 
 	# A brake brakes while held and comes off when let go.
 	var brake := controls.brake_left_slider.get_global_rect()

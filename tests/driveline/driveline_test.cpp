@@ -245,6 +245,56 @@ TEST(Driveline, ShiftsOnlyWithTheClutchDisengaged) {
     EXPECT_EQ(state.gear, 3);
 }
 
+// Standing, any gear may be chosen. Once the pull is under way the gearbox
+// never goes back down with the clutch: up raises the floor, neutral is
+// always there, and only a shift under load goes down, as far and as often
+// as the powershift allows (here one gear, once).
+TEST(Driveline, UnderWayGoesDownOnlyUnderLoad) {
+    const Params params = reference_params();
+    State state;
+    EXPECT_EQ(lowest_gear(state, params), 1) << "standing: any gear";
+    ASSERT_TRUE(shift(state, params, 6, true));
+    EXPECT_TRUE(shift(state, params, 3, true)) << "not under way yet";
+    ASSERT_TRUE(shift(state, params, 6, true));
+
+    start_pull(state);
+    EXPECT_EQ(state.floor_gear, 6);
+    EXPECT_EQ(lowest_gear(state, params), 5) << "one down, under load";
+    EXPECT_FALSE(shift(state, params, 5, true)) << "not with the clutch";
+    EXPECT_FALSE(shift(state, params, 1, true));
+    EXPECT_EQ(state.gear, 6);
+    EXPECT_TRUE(shift(state, params, 7, true)) << "up is allowed";
+    EXPECT_EQ(state.floor_gear, 7);
+    EXPECT_FALSE(shift(state, params, 6, true)) << "and then not back down";
+    EXPECT_TRUE(shift(state, params, kNeutral, true)) << "neutral always";
+    EXPECT_FALSE(shift(state, params, 6, true)) << "nor down through neutral";
+    ASSERT_TRUE(shift(state, params, 7, true));
+    start_pull(state);
+    EXPECT_EQ(state.floor_gear, 7) << "the floor stays once set";
+
+    ASSERT_TRUE(shift_under_load(state, params, 6).has_value());
+    EXPECT_EQ(state.floor_gear, 6) << "a shift under load lowers it";
+    EXPECT_EQ(lowest_gear(state, params), 6) << "no load shifts left";
+    EXPECT_FALSE(shift_under_load(state, params, 5).has_value());
+    EXPECT_FALSE(shift(state, params, 5, true));
+    EXPECT_EQ(state.gear, 6);
+
+    // Without a powershift, the gear the pull is under way in is the
+    // lowest there is.
+    Params none = params;
+    none.load_downshift_gears = 0;
+    State plain{.gear = 6};
+    start_pull(plain);
+    EXPECT_EQ(lowest_gear(plain, none), 6);
+    EXPECT_FALSE(shift(plain, none, 5, true));
+    // A two-gear step goes two down, once.
+    Params two = params;
+    two.load_downshift_gears = 2;
+    State stepped{.gear = 6};
+    start_pull(stepped);
+    EXPECT_EQ(lowest_gear(stepped, two), 4);
+}
+
 bool shifts_under_load_from(const Params& params, int from, int to) {
     return shifts_under_load(State{.gear = from}, params, to);
 }

@@ -246,12 +246,25 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     EXPECT_GT(shifted.state.engine.omega_rad_s, shifted_at_rad_s);
     EXPECT_GT(shifted.state.chassis.velocity_m_s, 0.5);
 
-    // Once a pull: 4th now needs the clutch pressed.
+    // Once a pull: 4th is refused with the clutch in, and with it pressed
+    // too, for under way the gearbox goes down only by its powershift.
     Input fourth = input;
     fourth.gear = 4;
     EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
                     .shift_refused);
     EXPECT_EQ(shifted.state.driveline.gear, 5);
+    fourth.clutch_pedal = 1.0;
+    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                    .shift_refused);
+    EXPECT_EQ(shifted.state.driveline.gear, 5) << "not with the clutch pressed either";
+    Input neutral = fourth;
+    neutral.gear = driveline::kNeutral;
+    EXPECT_FALSE(step(shifted.state, shifted.model, neutral, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                     .shift_refused)
+        << "neutral is always there";
+    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+                    .shift_refused)
+        << "nor down through neutral";
 }
 
 // A shift under load with the engine stalled and the tractor still rolling:
@@ -758,7 +771,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x5ab88ff3ca835096ULL);
+    EXPECT_EQ(pull_hash(), 0x4cbe5b1e61c8c56ULL);
 }
 
 }  // namespace

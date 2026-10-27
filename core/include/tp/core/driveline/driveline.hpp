@@ -85,7 +85,21 @@ struct State {
     double output_omega_rad_s = 0.0;
     /// Shifts under load so far in this pull.
     int load_shifts = 0;
+    /// Once the pull is under way (start_pull), the lowest gear the gearbox
+    /// goes into with the clutch: the gear it pulls in, rising as it shifts
+    /// up, so it never goes back down but by a shift under load. Neutral (0)
+    /// before: standing, any gear may be chosen.
+    int floor_gear = kNeutral;
 };
+
+/// The pull is under way: from now on the gearbox goes down only by shifts
+/// under load (see floor_gear). Keeps the floor once set.
+void start_pull(State& state) noexcept;
+
+/// The lowest gear the gearbox goes into now, by a shift with the clutch or
+/// one under load: 1 before the pull is under way; then the floor, or
+/// lower by what a shift under load still allows. Neutral is always there.
+[[nodiscard]] int lowest_gear(const State& state, const Params& params) noexcept;
 
 /// Whether the gearbox shifts from its gear now to gear `to` with the
 /// clutch in: down, to a gear (not neutral), at most load_downshift_gears,
@@ -103,9 +117,10 @@ struct State {
 [[nodiscard]] std::optional<double> shift_under_load(State& state, const Params& params,
                                                      int gear) noexcept;
 
-/// Changes gear. Refused (returns false) for a gear that does not exist, or
-/// while the clutch still transmits torque: gears are chosen with the clutch
-/// pressed (a shift under load is shift_under_load's). Engaging a gear works
+/// Changes gear. Refused (returns false) for a gear that does not exist,
+/// while the clutch still transmits torque (gears are chosen with the
+/// clutch pressed; a shift under load is shift_under_load's), or below the
+/// floor once the pull is under way (see floor_gear). Engaging a gear works
 /// like a synchronizer, done in one step: the input shaft and the axle side
 /// exchange momentum through the gears until they turn at the same speed,
 /// so momentum is conserved and energy only lost. The input shaft is light,
@@ -164,6 +179,7 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.input_omega_rad_s);
     hash.add(state.output_omega_rad_s);
     hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.load_shifts)));
+    hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.floor_gear)));
 }
 
 }  // namespace tp::driveline

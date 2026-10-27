@@ -74,6 +74,8 @@ namespace {
 constexpr double kFrontTires = 2.0;
 // The rear tires are split between two sides.
 constexpr double kSides = 2.0;
+// Faster than this the tractor is moving off: the pull is under way [m/s].
+constexpr double kUnderWay_m_s = 0.3;
 
 // One side's rear tires at the current speeds: traction per tire,
 // linearized for the solve, and the motion resistance its slip digs.
@@ -397,6 +399,11 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     Output out;
 
     const double clutch_capacity_nm = clutch::capacity_nm(params.clutch, input.clutch_pedal);
+    // Moving off, the pull is under way: from here the gearbox goes down
+    // only by its powershift (driveline::floor_gear).
+    if (std::abs(state.chassis.velocity_m_s) > kUnderWay_m_s) {
+        driveline::start_pull(state.driveline);
+    }
     if (input.gear != state.driveline.gear) {
         const bool clutch_out = clutch_capacity_nm == 0.0;
         if (!clutch_out &&

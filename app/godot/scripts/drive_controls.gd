@@ -49,6 +49,8 @@ const KEY_STEERING := 0.3
 const GAMEPAD := 0
 
 var gear := 0
+# The lowest gear the run takes now (its snapshot's lowest_gear).
+var lowest_gear := 1
 # The gearbox's forward gears; the gear buttons stop at the top one.
 var gear_count := 8
 # The pro layout's controls are shown and read; else the easy layout's.
@@ -168,7 +170,11 @@ func set_clutch_range(full_grip_pedal: float, bite_pedal: float) -> void:
 	clutch_slider.set_band(full_grip_pedal, bite_pedal, bite_pedal)
 
 
+# A gear below `lowest_gear` (the run's: once the pull is under way, only
+# as far down as the powershift goes) is not taken; neutral always is.
 func set_gear(wanted: int) -> void:
+	if wanted != 0 and wanted < lowest_gear:
+		return
 	gear = clampi(wanted, 0, gear_count)
 
 
@@ -177,6 +183,7 @@ func set_gear(wanted: int) -> void:
 func reset() -> void:
 	tilt_steering.centre()
 	gear = 0
+	lowest_gear = 1
 	throttle_slider.value = 0.0
 	clutch_slider.value = clutch_slider.rest_value
 	reset_fingers()
