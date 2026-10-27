@@ -55,7 +55,8 @@ class Mark:
 			if i > 0:
 				along_m += points[i].distance_to(points[i - 1])
 			var half := lefts[i] * width_m / 2.0
-			for edge: float in [1.0, -1.0]:
+			# Right edge first: the strip's triangles then face up.
+			for edge: float in [-1.0, 1.0]:
 				var p := points[i] + half * edge
 				mesh.surface_set_normal(Vector3.UP)
 				mesh.surface_set_uv(Vector2(0.5 - edge * 0.5, along_m / repeat_m))
@@ -129,7 +130,6 @@ static func _material(texture: Texture2D, colour: Color, priority: int) -> Stand
 	m.albedo_color = colour
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.roughness = 0.9
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
 	m.render_priority = priority
 	return m
 
