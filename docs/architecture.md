@@ -161,7 +161,9 @@ How a front end's controls become the vehicle's input. The pro layout has
 every control on its own. The easy layout has one steering control that
 brakes the inner rear wheels past full lock, and a clutch assist that works
 the clutch: it slips it to keep the engine near peak torque instead of
-stalling. Both layouts' steering has a dead zone in the middle and a rate
+stalling. Off the gas it takes the clutch out and puts both rear brakes on
+(`brake_off_the_gas`), so lifting off stops the tractor and holds it.
+Both layouts' steering has a dead zone in the middle and a rate
 (a touch slider can jump), from their parameters; the pro layout's default
 parameters steer as the control is, for scripted drivers. The assist's
 state, the steering's too, is plain data, like the simulation's.

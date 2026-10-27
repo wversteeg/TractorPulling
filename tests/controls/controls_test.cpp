@@ -118,6 +118,10 @@ TEST(ControlsParams, RejectsNonsense) {
               ParamError::kGuardOutOfRange);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.min_throttle = 1.0; }),
               ParamError::kMinThrottleOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) { p.brake_off_the_gas = -0.1; }),
+              ParamError::kBrakeOffTheGasOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) { p.brake_off_the_gas = 1.1; }),
+              ParamError::kBrakeOffTheGasOutOfRange);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.engage_time_s = std::nan(""); }),
               ParamError::kNotFinite);
 }
@@ -258,8 +262,9 @@ TEST(Easy, ReadsNotANumberAsAtRest) {
                                    kEasy, assist, tractor, state, kDt_s);
     EXPECT_EQ(in.throttle, 0.0);
     EXPECT_EQ(in.steering_rad, 0.0);
-    EXPECT_EQ(in.brake_left, 0.0);
-    EXPECT_EQ(in.brake_right, 0.0);
+    // Off the gas: the brakes hold, as far as the layout says.
+    EXPECT_EQ(in.brake_left, kEasy.brake_off_the_gas);
+    EXPECT_EQ(in.brake_right, kEasy.brake_off_the_gas);
     EXPECT_TRUE(std::isfinite(assist.engagement));
 }
 
@@ -289,10 +294,12 @@ Steered hold_steering(double control, double held_s, const EasyParams& params = 
 // Easy: the first stretch of the steering control turns the wheels; past
 // it they stay at full lock and the inner rear brake comes on, to full
 // pedal at the end. Left and right mirror each other. Without a dead zone,
-// and with the steering settled.
+// with the steering settled, and the steering's brake alone (no hold off
+// the gas).
 TEST(Easy, SteersThenBrakesTheInnerWheels) {
     EasyParams params = kEasy;
     params.steer_dead_zone = 0.0;
+    params.brake_off_the_gas = 0.0;
     const double max_rad = vehicle::testing::reference_params().steering.max_angle_rad;
     const auto with = [&](double steering) { return hold_steering(steering, 2.0, params).input; };
     const vehicle::Input half = with(0.3);
@@ -308,6 +315,38 @@ TEST(Easy, SteersThenBrakesTheInnerWheels) {
     EXPECT_EQ(right.brake_left, 0.0);
     EXPECT_EQ(right.brake_right, 1.0);
     EXPECT_EQ(with(0.0).steering_rad, 0.0);
+}
+
+// Off the gas both brakes hold the tractor, as far as brake_off_the_gas
+// says; on the gas they let go. The steering's brake still adds to one.
+TEST(Easy, OffTheGasBothBrakesHold) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    const std::optional<vehicle::Model> model = vehicle::Model::create(tractor);
+    if (!model) {
+        FAIL() << "invalid reference tractor";
+    }
+    const vehicle::State state = vehicle::initial_state(*model);
+    EasyParams params = kEasy;
+    params.brake_off_the_gas = 0.7;
+    const auto with = [&](EasyInput in) {
+        AssistState assist;
+        vehicle::Input out;
+        for (int i = 0; i < 1000; ++i) {
+            out = easy(in, params, assist, tractor, state, kDt_s);
+        }
+        return out;
+    };
+    const vehicle::Input off = with({.throttle = 0.0, .gear = 3});
+    EXPECT_EQ(off.brake_left, 0.7);
+    EXPECT_EQ(off.brake_right, 0.7);
+    const vehicle::Input lifting = with({.throttle = 0.5 * kEasy.clutch_assist.min_throttle});
+    EXPECT_EQ(lifting.brake_left, 0.7) << "below min_throttle counts as off the gas";
+    const vehicle::Input on = with({.throttle = 0.5, .gear = 3});
+    EXPECT_EQ(on.brake_left, 0.0);
+    EXPECT_EQ(on.brake_right, 0.0);
+    const vehicle::Input turning = with({.throttle = 0.0, .gear = 3, .steering = -1.0});
+    EXPECT_EQ(turning.brake_left, 0.7);
+    EXPECT_EQ(turning.brake_right, 1.0);
 }
 
 // A control within the dead zone steers straight; past it, the rest of the

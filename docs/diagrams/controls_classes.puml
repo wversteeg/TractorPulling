@@ -34,6 +34,7 @@ package "tp::controls" {
     +steer_share : double
     +steer_dead_zone : double
     +steer_rate_per_s : double
+    +brake_off_the_gas : double
     +clutch_assist : ClutchAssist
   }
   class ProParams <<struct>> {

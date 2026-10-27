@@ -461,7 +461,8 @@ chain is tight, press the clutch, stand still and put the pulling gear in.
 While you stand ready the official on the left past the start line raises
 the red flag; after 2 s it turns green and the pull is on (moving or
 letting the clutch in before that lowers the flag again). In the easy
-layout, let go of the gas and the clutch assist presses the clutch for
+layout, let go of the gas: the clutch assist presses the clutch and the
+brakes hold the tractor for
 you. A second official, down the track from 80 m,
 walks ahead of the tractor towards the full-pull line, the green flag up
 while the pull is good. The moment the pull is over (a full pull, the sled
@@ -507,7 +508,9 @@ when let go; a hand throttle under the right, moved by sliding it like a
 lever (a touch alone does not move it) and staying where it is left, as a
 tractor's does; and gear buttons (+, - and N; "-" from N is reverse, R)
 beside it. Both thumbs work at once. In the easy layout the clutch assist
-works the clutch. The pro layout
+works the clutch, and closing the throttle also puts both brakes on
+(`brake_off_the_gas` in `data/controls/easy.toml`): let go of the gas and
+the tractor stops and stands. The pro layout
 adds, on the left above the steering, a clutch slider, pressed at the top
 and in at the bottom, which starts pressed and stays where it is left, so
 you slip it in and leave it (a gear goes in only with the clutch pressed,
