@@ -267,8 +267,8 @@ disqualified pull scores no points.
 A career starts on an older tractor, with what the NTTO standard class lets
 a puller improve on a stock farm tractor still to buy (`data/garages/`,
 `tp::garage`). Every event pays by place (`prize_money_eur` in the season
-file, € 700 for a win down to € 120 for 10th; a disqualified pull earns
-nothing), and the garage spends it, between events:
+file, € 1,500 for a win down to € 320 for 10th; a disqualified pull
+earns nothing), and the garage spends it, between events:
 
 | part | starts at | up to (the class's limit) |
 |---|---|---|
@@ -284,8 +284,31 @@ upgraded, the tractor is at the class's limits like the rivals' reference
 tractor, and beyond it: wider tires (a traction limit of 0.95 against
 0.93) and a two-gear powershift step against one. Prizes are paid as an
 event is scored, once; upgrades are bought between events or before your
-first pull of one (`field::LiveSeason::player_may_change_tractor`). The money and the levels carry from season to season. The
-whole garage costs € 15,200; a season pays a winner of every event € 7,000.
+first pull of one (`field::LiveSeason::player_may_change_tractor`). The
+money and the levels carry from season to season. The whole garage costs
+€ 15,200; a season of eight events pays € 2,560 at the back of the field and
+€ 12,000 to a winner of every event.
+
+### The rivals
+
+The rivals' tractors span what the garage offers (`event.field` in the
+event file): their engines and tires from worn to the class's limit, from
+3150 kg to the class's weight, drawbars from 0.36 to 0.50 m, and a
+powershift step of one gear or none (`hitch_height_m`,
+`load_downshift_gears`). The sled operator sets the sled for the field,
+so where the player ends depends on how they rank in it. Driving as the
+reference driver does, in the best gear:
+
+| the player's tractor | place among ten (the first event, eight fields) |
+|---|---|
+| new | 8th to 10th |
+| every part one level up (€ 4,200) | 3rd to 7th |
+| two levels up (€ 10,500) | 1st |
+| fully upgraded (€ 15,200) | 1st |
+
+So a career starts near the back, beating a rival or two, and gets to the
+front as it upgrades (`RivalDifficulty`, a test). A player drives less
+evenly than the script, and picks the gear themselves.
 
 ### Playing a run from a game
 

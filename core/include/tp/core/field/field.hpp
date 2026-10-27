@@ -45,6 +45,14 @@ struct Variation {
     Range track_reading;
     /// When a driver shifts down under load (driver::Plan): within [0, 1).
     Range downshift_share;
+    /// The drawbar's height [m]: farm drawbars sit lower than the class
+    /// allows. Within the class's limit; {0, 0} keeps the reference's.
+    Range hitch_height_m;
+    /// How many gears the powershift steps down under load
+    /// (driveline::Params::load_downshift_gears), inclusive: a puller draws
+    /// each count as often. Both -1 keep the reference's.
+    int fewest_load_downshift_gears = -1;
+    int most_load_downshift_gears = -1;
 };
 
 /// How one pull differs from the next for the same puller: the spot on the
@@ -61,6 +69,8 @@ enum class ParamError : std::uint8_t {
     kNotFinite,
     kRangeOutOfOrder,
     kGearsOutOfRange,
+    /// The powershift's counts out of order, or not fewer than the gears.
+    kLoadDownshiftsOutOfRange,
     kCountOutOfRange,
     /// The reference tractor, driver or class rules themselves.
     kReference,

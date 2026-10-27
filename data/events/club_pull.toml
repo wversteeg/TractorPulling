@@ -20,15 +20,21 @@ launch_s = 3.0
 clutch_slip_in_s = 3.0
 downshift_share = 0.9
 
-# How the pullers differ. Power and weight are kept within the class. Each
-# driver picks a gear between `gears` for the day's track: the best one as
-# often as their track_reading says, otherwise one off. Each shifts down at
-# their own engine speed. And no two pulls are the same: the spot on the
-# track and the driver's timing differ a little.
+# How the pullers differ. Power and weight are kept within the class. The
+# field spans what the garage offers (data/garages): its weakest tractors
+# are about a new career's (a worn pump and tires, light, a farm drawbar, no
+# powershift), its best about a fully upgraded one, so a new tractor starts
+# near the back and an upgraded one works its way to the front. Each driver
+# picks a gear between `gears` for the day's track: the best one as often
+# as their track_reading says, otherwise one off. Each shifts down at their
+# own engine speed, if their powershift can. And no two pulls are the same:
+# the spot on the track and the driver's timing differ a little.
 [event.field]
-torque_scale = [0.95, 1.03]
-mass_kg = [3300.0, 3550.0]
-traction_limit = [0.90, 0.95]
+torque_scale = [0.85, 1.03]
+mass_kg = [3150.0, 3550.0]
+traction_limit = [0.82, 0.95]
+hitch_height_m = [0.36, 0.50]          # farm drawbars up to the class's 0.5 m
+load_downshift_gears = [0, 1]          # gears down under load: none or one
 gears = [4, 6]                         # gear 7 cannot get this class's sled moving
 clutch_slip_in_s = [2.0, 4.0]
 track_reading = [0.5, 0.95]

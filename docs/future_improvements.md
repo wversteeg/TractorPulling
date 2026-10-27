@@ -150,6 +150,14 @@ for the big features; they are repeated at the end for completeness.
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
 
+- **Rivals don't upgrade.** The field is drawn once a season and stays as
+  it is; the player climbs through it by upgrading. Rivals buying parts
+  over a career, or a field that follows the player's progress, would keep
+  a fully upgraded career challenging.
+- **The difficulty is measured with a scripted player.** `RivalDifficulty`
+  places a player who drives as the reference driver does, always in the
+  best gear. How a person places, with touch controls, is not measured.
+
 ## Competition
 
 - **Pull-off modes.** A pull-off is run on a heavier sled, again among
