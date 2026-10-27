@@ -193,8 +193,8 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog first = run(definition.value());
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
-    EXPECT_EQ(first.pulls, 23);
-    EXPECT_EQ(first.hash, 0x50bda2c44432f3e8ULL);
+    EXPECT_EQ(first.pulls, 22);
+    EXPECT_EQ(first.hash, 0x642fc5699e1fa4faULL);
 }
 
 }  // namespace

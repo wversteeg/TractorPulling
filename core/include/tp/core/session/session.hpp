@@ -116,6 +116,9 @@ struct Snapshot {
     double sled_speed_m_s = 0.0;
     /// The weight box, forward of the sled's rear wheels.
     double box_ahead_of_wheels_m = 0.0;
+    /// The push-down, 0 off to 1 fully set: the sled's rear wheels off the
+    /// track, all its weight on the pan, its drag at its most.
+    double pushdown = 0.0;
     double chain_tension_n = 0.0;
 };
 
