@@ -8,8 +8,10 @@ seed = 2026                          # the field and every event's draws
 # Points per place: 20, 17, 15, then one less per place.
 points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # Prize money per place at every event [EUR]: what buys the garage's
-# upgrades. A disqualified pull earns nothing.
-prize_money_eur = [700, 500, 400, 320, 260, 220, 190, 160, 140, 120]
+# upgrades (about 17,700 for all of them). A new tractor at the back earns
+# enough for a first part every event or two; a career is fully upgraded
+# in two to three seasons. A disqualified pull earns nothing.
+prize_money_eur = [1500, 1100, 900, 750, 650, 550, 480, 420, 370, 320]
 garage = "../garages/ntto_standard_3500.toml"   # what the player can upgrade
 
 [[season.events]]

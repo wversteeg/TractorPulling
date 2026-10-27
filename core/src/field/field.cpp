@@ -71,6 +71,13 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
         random.uniform(variation.track_reading.low, variation.track_reading.high);
     const double downshift_share =
         random.uniform(variation.downshift_share.low, variation.downshift_share.high);
+    const double hitch_height_m =
+        random.uniform(variation.hitch_height_m.low, variation.hitch_height_m.high);
+    const int load_downshift_choices =
+        variation.most_load_downshift_gears - variation.fewest_load_downshift_gears + 1;
+    const int load_downshift_gears =
+        variation.fewest_load_downshift_gears +
+        static_cast<int>(random.below(static_cast<std::uint64_t>(load_downshift_choices)));
 
     // An engine within the class's PTO power, and a tractor within its
     // weight. The pitch and yaw inertias go with the mass; the balance stays.
@@ -88,6 +95,13 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     puller.driver.clutch_slip_in_s = slip_in_s;
     puller.track_reading = track_reading;
     puller.driver.downshift_share = downshift_share;
+    if (variation.hitch_height_m.high > 0.0) {
+        puller.tractor.chassis.hitch_height_m =
+            std::min(hitch_height_m, class_rules.max_hitch_height_m);
+    }
+    if (variation.most_load_downshift_gears >= 0) {
+        puller.tractor.driveline.load_downshift_gears = load_downshift_gears;
+    }
     if (vehicle::validate(puller.tractor) || !rules::check(class_rules, puller.tractor).ok()) {
         return std::nullopt;
     }
@@ -106,7 +120,8 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
                                    const rules::ClassRules& class_rules, int count) noexcept {
     const std::array ranges = {variation.torque_scale,   variation.mass_kg,
                                variation.traction_limit, variation.clutch_slip_in_s,
-                               variation.track_reading,  variation.downshift_share};
+                               variation.track_reading,  variation.downshift_share,
+                               variation.hitch_height_m};
     if (!std::ranges::all_of(
             ranges, [](const Range& r) { return std::isfinite(r.low) && std::isfinite(r.high); })) {
         return ParamError::kNotFinite;
@@ -114,13 +129,20 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
     if (!std::ranges::all_of(ranges, range_valid) || variation.torque_scale.low <= 0.0 ||
         variation.mass_kg.low <= 0.0 || variation.clutch_slip_in_s.low < 0.0 ||
         variation.track_reading.low < 0.0 || variation.track_reading.high > 1.0 ||
-        variation.downshift_share.low < 0.0 || variation.downshift_share.high >= 1.0) {
+        variation.downshift_share.low < 0.0 || variation.downshift_share.high >= 1.0 ||
+        variation.hitch_height_m.low < 0.0 ||
+        (variation.hitch_height_m.high > 0.0 && variation.hitch_height_m.low <= 0.0)) {
         return ParamError::kRangeOutOfOrder;
     }
     const auto gear_count = static_cast<int>(reference.tractor.driveline.gear_count);
     if (variation.lowest_gear < 1 || variation.lowest_gear > variation.highest_gear ||
         variation.highest_gear > gear_count) {
         return ParamError::kGearsOutOfRange;
+    }
+    const int fewest = variation.fewest_load_downshift_gears;
+    const int most = variation.most_load_downshift_gears;
+    if (fewest > most || (fewest < 0) != (most < 0) || most >= gear_count) {
+        return ParamError::kLoadDownshiftsOutOfRange;
     }
     if (count < 1 || count > event::kMaxPullers) {
         return ParamError::kCountOutOfRange;

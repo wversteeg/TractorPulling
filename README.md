@@ -293,26 +293,53 @@ disqualified pull scores no points.
 A career starts on an older tractor, with what the NTTO standard class lets
 a puller improve on a stock farm tractor still to buy (`data/garages/`,
 `tp::garage`). Every event pays by place (`prize_money_eur` in the season
-file, € 700 for a win down to € 120 for 10th; a disqualified pull earns
-nothing), and the garage spends it, between events:
+file, € 1,500 for a win down to € 320 for 10th; a disqualified pull
+earns nothing), and the garage spends it, between events:
 
 | part | starts at | up to (the class's limit) |
 |---|---|---|
 | injection pump | 90 % of the torque, worn | the maker's figures: 84 hp at the PTO (85 hp) |
 | rear tires | worn, traction limit 0.86 | wider deep-tread rubber, 0.95 (rubber only, uncut) |
 | weights | 100 kg, 3200 kg in all | 400 kg, 3500 kg (3500 kg) |
-| drawbar | 0.40 m | 0.50 m (0.5 m, below the rear axle) |
+| drawbar | 0.40 m | 0.50 m in three steps, the last the dearest (0.5 m, below the rear axle) |
 | powershift | none | two gears down under load, once a pull (one make) |
 
 Each level sets its part outright, so the parts never interact; the season
 loader checks every level against the class (`garage::validate`). Fully
-upgraded, the tractor is at the class's limits like the rivals' reference
-tractor, and beyond it: wider tires (a traction limit of 0.95 against
+upgraded, the tractor is at the class's limits like the reference tractor
+the field is drawn around, and beyond it: wider tires (a traction limit of 0.95 against
 0.93) and a two-gear powershift step against one. Prizes are paid as an
 event is scored, once; upgrades are bought between events or before your
 first pull of one (`field::LiveSeason::player_may_change_tractor`). The
 money and the levels carry from season to season. The whole garage costs
-€ 15,200; a season pays a winner of every event € 7,000.
+€ 17,700; a season of eight events pays € 2,560 at the back of the field and
+€ 12,000 to a winner of every event.
+
+### The rivals
+
+The rivals' tractors span what the garage offers (`event.field` in the
+event file): their engines and tires from worn to the class's limit, from
+3150 kg to the class's weight, drawbars from 0.36 to 0.50 m, and a
+powershift step of one gear or none (`hitch_height_m`,
+`load_downshift_gears`). The sled operator sets the sled for the field,
+counting a step as worth about 8 m (`step_m`: with the drag flat after the
+push-down, a small change goes a long way, so a wide field still gets one
+full pull or none in the first round). Where the player ends depends on
+how they rank in the field. Driving as the reference driver does, in the
+best gear:
+
+| the player's tractor | place among ten (the first event, eight fields) |
+|---|---|
+| new | 6th to 9th |
+| every part one level up (€ 4,300) | 4th to 7th |
+| two levels up (€ 11,000) | 1st to 5th |
+| fully upgraded (€ 17,700) | 1st |
+
+So a career starts near the back, beating a few rivals, climbs with every
+level and wins once fully upgraded. The drawbar's last 4 cm matter most
+(the weight it puts on the rear tires), so they cost the most. A test
+(`RivalDifficulty`) checks every row on three of the eight fields. A player drives less
+evenly than the script, and picks the gear themselves.
 
 ### Playing a run from a game
 

@@ -73,6 +73,8 @@ package "tp::field" {
     +clutch_slip_in_s : Range
     +track_reading : Range
     +downshift_share : Range
+    +hitch_height_m : Range
+    +fewest_load_downshift_gears, most_load_downshift_gears : int
   }
   class Field <<struct>> {
     +pullers : array<Puller, 32>
