@@ -86,8 +86,10 @@ for the big features; they are repeated at the end for completeness.
   patch's own length and the tire's bulge are left out.
 - **Steering is instant.** The front wheels take the asked angle at once; a
   steering rate (the driver turning the wheel) belongs in the input mapping.
-- **Rear tire compliance.** The rear axle stays at the tire radius; a springy
-  rear tire would soften launches and let the tractor squat.
+- **Rear tire compliance and sinkage.** The rear axle stays at the tire
+  radius; a springy rear tire would soften launches and let the tractor
+  squat, and a tire digging its own hole, which tilts a real tractor back
+  and helps the front up at the end of a pull, does not pitch the body.
 - **Centre of gravity moving with pitch.** When the body pitches, the centre
   of gravity's shift along the track does not feed back into the longitudinal
   motion (second order).

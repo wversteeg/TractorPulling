@@ -44,7 +44,7 @@ package "tp::session" {
     +tractor_heading_rad, tractor_pitch_rad : double
     +tractor_speed_m_s, steering_rad : double
     +rear_left_omega_rad_s, rear_right_omega_rad_s : double
-    +slip_ratio : double
+    +slip_ratio, front_axle_load_n : double
     +engine_omega_rad_s : double
     +engine_running : bool
     +gear : int
