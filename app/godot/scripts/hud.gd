@@ -9,8 +9,8 @@
 # is in. In a whole turn, a line in the middle says what to do next: drive
 # to the sled and back up to it (how far the hitch still has to go, and
 # which way to steer), take up the slack, wait for the flag, back off to
-# release the chain, drive back to the bay. A lamp at the top in the
-# middle repeats the officials' signal: green GO while the pull is good,
+# release the chain, drive back to the bay. A lamp right of the bars
+# repeats the officials' signal: green GO while the pull is good,
 # red STOP to wait or to stop (the pull is over: close the throttle). It
 # only shows the run's snapshot.
 class_name Hud
@@ -31,9 +31,11 @@ const TURN_COLOUR := Color(1.0, 0.95, 0.6)
 # Backing up: off the sled's line by more than this, it says which way to
 # steer (the chain goes on within 0.4 m, turn::kHookOffLine_m) [m].
 const STEER_HINT_M := 0.25
-# The signal lamp: its middle under the top edge, its radius.
-const LAMP_TOP := 52.0
+# The signal lamp: its middle, right of the bars' labels and clear of the
+# numbers line, the buttons and the gear buttons; its radius.
+const LAMP_CENTRE := Vector2(740.0, 155.0)
 const LAMP_RADIUS := 30.0
+const LAMP_LABEL_WIDTH := 120.0
 const LAMP_RED := Color(1.0, 0.15, 0.1)
 const LAMP_GREEN := Color(0.2, 0.95, 0.35)
 # Still rolling forwards, or the throttle still open, after the red flag
@@ -108,9 +110,8 @@ func _ready() -> void:
 	_turn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_turn.add_theme_font_size_override("font_size", FONT_SIZE)
 	_turn.add_theme_color_override("font_color", TURN_COLOUR)
-	_lamp.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_lamp.offset_top = LAMP_TOP + LAMP_RADIUS + 4.0
-	_lamp.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_lamp.position = Vector2(LAMP_CENTRE.x - LAMP_LABEL_WIDTH / 2.0, LAMP_CENTRE.y + LAMP_RADIUS + 4.0)
+	_lamp.size.x = LAMP_LABEL_WIDTH
 	_lamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lamp.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
 
@@ -221,11 +222,10 @@ static func gear_name(gear: int) -> String:
 
 
 func _draw() -> void:
-	# The officials' signal, at the top in the middle.
+	# The officials' signal.
 	if _signal != "off":
-		var middle := Vector2(size.x / 2.0, LAMP_TOP)
-		draw_circle(middle, LAMP_RADIUS + 5.0, BACK_COLOUR)
-		draw_circle(middle, LAMP_RADIUS, LAMP_GREEN if _signal == "green" else LAMP_RED)
+		draw_circle(LAMP_CENTRE, LAMP_RADIUS + 5.0, BACK_COLOUR)
+		draw_circle(LAMP_CENTRE, LAMP_RADIUS, LAMP_GREEN if _signal == "green" else LAMP_RED)
 	# The rev counter, with the stall and rated speeds marked.
 	var revs := Rect2(BAR_LEFT, REV_TOP, BAR_WIDTH, BAR_HEIGHT)
 	draw_rect(revs, BACK_COLOUR)

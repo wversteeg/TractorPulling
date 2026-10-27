@@ -144,7 +144,7 @@ package "GDScript (app/godot/scripts)" {
     +set_parking(bay)
     +show_snapshot(snapshot, title, pro)
     +turn_text(snapshot) : String
-    +show_signal(signal) : the lamp at the top
+    +show_signal(signal) : the lamp on the HUD
     +signal_shown() : String
     +{static} gear_name(gear) : String
   }
