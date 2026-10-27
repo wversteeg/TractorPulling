@@ -48,6 +48,8 @@ const WEIGHT_COUNT_TOLERANCE := 1e-6
 # Slip above which the rear tires throw dirt, and where they throw most.
 const DIRT_FROM_SLIP := 0.08
 const DIRT_FULL_SLIP := 0.5
+# Speed from which the rolling tires raise dust [m/s].
+const DUST_FROM_SPEED_M_S := 0.3
 
 var _body := Node3D.new()        # pivots about the rear axle
 var _hitch := Marker3D.new()
@@ -122,7 +124,7 @@ func _build_body(d: Dictionary) -> void:
 		steer.position = front_axle + TrackSpace.point(0.0, float(pair[2]) * front_track_m / 2.0,
 				0.0)
 		_body.add_child(steer)
-		_add_front_wheel(steer, pair[1], front_width_m)
+		_add_front_wheel(steer, pair[1], front_width_m, float(pair[2]))
 
 	_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.05, 0.0,
 			_front_radius_m - axle_height_m + 0.35)
@@ -329,7 +331,8 @@ func _add_rear_wheel(spin: Node3D, side_m: float, width_m: float) -> void:
 	spin.add_child(weights)
 
 
-func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float) -> void:
+# `side` is 1 on the left, -1 on the right (TrackSpace's y).
+func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float, side: float) -> void:
 	steer.add_child(spin)
 	Art.tire(spin, _front_radius_m - 0.015, width_m, TIRE)
 	for rib in 3:
@@ -337,8 +340,7 @@ func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float) -> void:
 				Art.material(TIRE.lightened(0.05), 0.85))
 		ring.position = TrackSpace.point(0.0, (float(rib) - 1.0) * width_m * 0.28, 0.0)
 		spin.add_child(ring)
-	var outward := signf(steer.position.x * -1.0)
-	Art.rim(spin, _front_radius_m * 0.58, width_m, outward if outward != 0.0 else 1.0, 6, RIM)
+	Art.rim(spin, _front_radius_m * 0.58, width_m, side, 6, RIM)
 
 
 # Suitcase weights on the front bracket and wheel weights on the rear hubs,
@@ -529,7 +531,7 @@ func show_snapshot(s: Dictionary, delta: float) -> void:
 		dirt.initial_velocity_max = 2.0 + 4.0 * throwing
 		dirt.color = Color(DIRT, 0.3 + 0.7 * throwing)
 	# Dust whenever the tires move dry clay, more as they slip.
-	var moving := absf(float(s["tractor_speed_m_s"])) > 0.3
+	var moving := absf(float(s["tractor_speed_m_s"])) > DUST_FROM_SPEED_M_S
 	for dust in _dust:
 		dust.emitting = moving or throwing > 0.0
 		dust.color = Color(1.0, 1.0, 1.0, clampf(0.35 + 0.65 * throwing, 0.0, 1.0))

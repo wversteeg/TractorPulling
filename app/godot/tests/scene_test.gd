@@ -5,6 +5,9 @@
 #   godot --fixed-fps 60 --path app/godot --script res://tests/scene_test.gd
 extends SceneTree
 
+# How far ahead of the sled's start the tractor may stand at the start,
+# past the chain's length (its hitch behind the rear axle) [m].
+const MARKS_START_SLACK_M := 3.0
 const FRAMES := 600
 const TOLERANCE_M := 1e-4
 
@@ -107,9 +110,15 @@ func _check() -> void:
 	# way, and the band the pan smooths behind the sled.
 	var marks: TrackMarks = _pull.get("track_marks")
 	var counts := marks.point_counts()
-	var rut_points := int(float(s["tractor_x_m"]) / TrackMarks.STEP_M)
-	_expect(counts.x > rut_points / 2 and counts.x <= rut_points + 2 and counts.y == counts.x
-			and counts.z > 0, "the marks: %s points, about %d a rut" % [counts, rut_points])
+	# From where the tractor started (a few metres ahead of the sled's
+	# start) to where it is now: a point every STEP_M, give or take the
+	# start and the way it weaves.
+	var travel_m := float(s["tractor_x_m"]) - float(dimensions["chain_length_m"]) \
+			- MARKS_START_SLACK_M
+	var rut_points := int(travel_m / TrackMarks.STEP_M)
+	var most := int(float(s["tractor_x_m"]) / TrackMarks.STEP_M) + 2
+	_expect(counts.x >= rut_points and counts.x <= most and counts.y == counts.x
+			and counts.z > 0, "the marks: %s points, %d to %d a rut" % [counts, rut_points, most])
 
 	# The weights drawn for their mass at each end: 45 kg suitcase weights,
 	# 70 kg wheel weights a hub, rounded up so a little weight still shows.

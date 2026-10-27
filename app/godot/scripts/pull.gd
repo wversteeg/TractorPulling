@@ -46,6 +46,10 @@ enum Screen { START, SETTINGS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
 @export var sled_path := "res://data/sleds/light_class.toml"
 @export var track_path := "res://data/tracks/ideal_clay_sand.toml"
 
+# How hard the cameras shake (CameraRig.rumble): for full throttle, and for
+# each unit of the rear tires' slip ratio.
+const RUMBLE_PER_THROTTLE := 0.4
+const RUMBLE_PER_SLIP := 1.5
 const SELECT_GEAR_S := 0.5
 # The scripted driver drops the clutch a moment after selecting the gear:
 # a gear goes in only with the clutch pressed.
@@ -512,8 +516,9 @@ func _show(delta: float) -> void:
 	venue_view.show_distance(s["sled_x_m"])
 	track_marks.show_snapshot(s)
 	# The cameras shake with the work: the throttle, more as the tires slip.
-	cameras.rumble = clampf(0.4 * float(s["throttle"]) + 1.5 * absf(float(s["slip_ratio"])),
-			0.0, 1.0) if bool(s["engine_running"]) else 0.0
+	cameras.rumble = clampf(RUMBLE_PER_THROTTLE * float(s["throttle"])
+			+ RUMBLE_PER_SLIP * absf(float(s["slip_ratio"])), 0.0, 1.0) \
+			if bool(s["engine_running"]) else 0.0
 	chain_view.show_between(tractor_view.hitch_position(), sled_view.hook_position(),
 			s["chain_tension_n"])
 	hud.show_snapshot(s, _title, controls.pro)

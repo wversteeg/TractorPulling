@@ -47,6 +47,12 @@ const CROPS: Array[Color] = [Color(0.82, 0.68, 0.32), Color(0.2, 0.36, 0.12),
 		Color(0.4, 0.27, 0.16), Color(0.55, 0.6, 0.25)]
 const CROP_ROW_M := 0.75
 const FIELDS := 18
+# The fields: lifted over the grass [m], tries to find room for them all,
+# and how far from the track's line they stay (the sine of their bearing).
+const FIELD_LIFT_M := 0.15
+const FIELD_TRIES := 20
+const FIELD_CLEAR_OF_TRACK := 0.85
+const GRASS_Y_M := -0.06
 const STRIP_MARGIN_M := 3.0
 const RUN_UP_M := 40.0
 const OVERRUN_M := 30.0
@@ -198,7 +204,7 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	var grass := PlaneMesh.new()
 	grass.size = FIELD_M
 	var field := Art.instance(grass, grass_material)
-	field.position = TrackSpace.point(length_m / 2.0, 0.0, -0.06)
+	field.position = TrackSpace.point(length_m / 2.0, 0.0, GRASS_Y_M)
 	_quiet(field)
 	add_child(field)
 
@@ -473,20 +479,39 @@ func _add_farmland(length_m: float) -> void:
 		m.roughness = 1.0
 		materials.append(m)
 	var centre := TrackSpace.point(length_m / 2.0, 0.0, 0.0)
-	for i in FIELDS:
-		var angle := TAU * (float(i) + _random.randf_range(-0.2, 0.2)) / FIELDS
+	# Each field's circle (its centre and half its diagonal), so the next
+	# can be kept off it: fields that overlapped would fight for depth.
+	var taken: Array[Vector4] = []
+	for i in FIELDS * FIELD_TRIES:
+		if taken.size() >= FIELDS:
+			break
+		var angle := _random.randf_range(0.0, TAU)
+		# None along the track's own line, where a field would reach under
+		# the clay strip (the track runs along Godot's z).
+		if absf(sin(angle)) > FIELD_CLEAR_OF_TRACK:
+			continue
 		var reach := _random.randf_range(110.0, 250.0)
 		var size := Vector2(_random.randf_range(60.0, 110.0), _random.randf_range(50.0, 90.0))
+		var at := centre + Vector3(cos(angle), 0.0, sin(angle)) * reach
+		var radius := size.length() / 2.0
+		var clear := true
+		for other in taken:
+			if Vector2(at.x, at.z).distance_to(Vector2(other.x, other.y)) < radius + other.z:
+				clear = false
+				break
+		if not clear:
+			continue
+		taken.append(Vector4(at.x, at.z, radius, 0.0))
 		var patch := PlaneMesh.new()
 		patch.size = size
-		var crop := i % CROPS.size()
 		# Its own copy: the rows tile to the field's size.
-		var surface := materials[crop].duplicate() as StandardMaterial3D
+		var surface := materials[taken.size() % CROPS.size()].duplicate() as StandardMaterial3D
 		surface.uv1_scale = Vector3(size.x / (CROP_ROW_M * 16.0), size.y / 8.0, 1.0)
 		var field := Art.instance(patch, surface)
-		field.position = centre + Vector3(cos(angle), 0.0, sin(angle)) * reach \
-				+ Vector3(0.0, -0.04, 0.0)
-		field.rotation.y = angle + _random.randf_range(-0.3, 0.3)
+		# Lifted clear of the grass, far enough for a phone's depth buffer at
+		# this distance.
+		field.position = at + Vector3(0.0, GRASS_Y_M + FIELD_LIFT_M, 0.0)
+		field.rotation.y = _random.randf_range(0.0, TAU)
 		add_child(_quiet(field))
 
 
@@ -534,6 +559,7 @@ func _add_horizon(length_m: float) -> void:
 	tool.generate_normals()
 	var hills_material := StandardMaterial3D.new()
 	hills_material.vertex_color_use_as_albedo = true
+	hills_material.vertex_color_is_srgb = true
 	hills_material.roughness = 1.0
 	hills_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	add_child(_quiet(Art.instance(tool.commit(), hills_material)))

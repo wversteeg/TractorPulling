@@ -24,6 +24,7 @@ const CANOPY_M := 1.9             # the canopy above the platform
 const BERM := Color(0.44, 0.31, 0.19)
 const OPERATOR := Color(0.78, 0.88, 0.15)
 const BERM_FLATNESS := 0.6        # its height, a share of its depth
+const BERM_WIDTH_M := WIDTH_M + 0.2  # across the pan, spilling a little past it
 const RAIL_HEIGHT_M := 0.25
 const RAIL_GAP_M := 1.7
 const BOX_SIZE_M := Vector3(2.0, 1.0, 1.6)
@@ -119,7 +120,7 @@ func build(d: Dictionary) -> void:
 	berm_material.normal_enabled = true
 	berm_material.normal_texture = Art.ground_normal(0.2, 5, 8.0)
 	berm_material.roughness = 1.0
-	_berm.mesh = Art.cylinder_mesh(1.0, 1.0, WIDTH_M + 0.2, 20)
+	_berm.mesh = Art.cylinder_mesh(1.0, 1.0, BERM_WIDTH_M, 20)
 	_berm.material_override = berm_material
 	_berm.rotation.z = PI / 2.0
 	add_child(_berm)
@@ -248,7 +249,7 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 # The berm as a low mound across the pan, half a cylinder flattened to
 # BERM_FLATNESS of its depth, holding the simulation's volume.
 func _show_berm(volume_m3: float) -> void:
-	var depth_m := sqrt(2.0 * maxf(volume_m3, 0.0) / (PI * BERM_FLATNESS * WIDTH_M))
+	var depth_m := sqrt(2.0 * maxf(volume_m3, 0.0) / (PI * BERM_FLATNESS * BERM_WIDTH_M))
 	_berm.visible = depth_m > 0.01
 	# Turned a quarter about z, the mesh's own x is up and its y across.
 	_berm.scale = Vector3(BERM_FLATNESS * depth_m, 1.0, depth_m)

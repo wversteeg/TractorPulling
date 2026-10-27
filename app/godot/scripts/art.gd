@@ -5,6 +5,9 @@
 # draw call each, which keeps a phone's frame cheap.
 class_name Art
 
+# How far a rim's face stands out past its tire's sidewall [m].
+const RIM_PROUD_M := 0.012
+
 # Shared materials by colour, roughness and metalness.
 static var _materials := {}
 
@@ -235,31 +238,33 @@ static func tire(spin: Node3D, radius_m: float, width_m: float, colour: Color) -
 		spin.add_child(band)
 
 
-# A steel rim seen from outside: the rim's lip, the dished centre a shade
-# darker, the bolt circle and the hub cap.
+# A steel rim seen from outside: the dished face a shade darker, its lip,
+# the centre disc, the bolt circle and the hub cap. All of it stands just
+# outboard of the tire's sidewall (Art.tire), which would hide it.
 static func rim(spin: Node3D, radius_m: float, width_m: float, outward: float, bolts: int,
 		colour: Color) -> void:
-	var face_m := outward * (width_m / 2.0 - 0.02)
+	var face_m := outward * (width_m / 2.0 + RIM_PROUD_M)
+	var dish := axle_cylinder(radius_m, 0.012, colour.darkened(0.15), 28)
+	dish.material_override = paint(colour.darkened(0.15), 0.45)
+	dish.position = TrackSpace.point(0.0, face_m, 0.0)
+	spin.add_child(dish)
 	var lip := instance(torus_across(radius_m, 0.03), paint(colour, 0.35))
 	lip.position = TrackSpace.point(0.0, face_m, 0.0)
 	spin.add_child(lip)
-	var dish := axle_cylinder(radius_m, width_m * 0.9, colour.darkened(0.15), 28, 0.45, 0.2)
-	dish.material_override = paint(colour.darkened(0.15), 0.45)
-	spin.add_child(dish)
-	var centre := axle_cylinder(radius_m * 0.45, 0.05, colour, 20, 0.35)
+	var centre := axle_cylinder(radius_m * 0.45, 0.03, colour, 20)
 	centre.material_override = paint(colour, 0.35)
-	centre.position = TrackSpace.point(0.0, face_m - outward * 0.02, 0.0)
+	centre.position = TrackSpace.point(0.0, face_m + outward * 0.015, 0.0)
 	spin.add_child(centre)
-	var bolt_mesh := cylinder_mesh(0.018, 0.018, 0.04, 6)
+	var bolt_mesh := cylinder_mesh(0.018, 0.018, 0.03, 6)
 	var at: Array[Transform3D] = []
 	for i in bolts:
 		var angle := TAU * float(i) / bolts
-		var spot := TrackSpace.point(radius_m * 0.32 * cos(angle), face_m,
+		var spot := TrackSpace.point(radius_m * 0.32 * cos(angle), face_m + outward * 0.035,
 				radius_m * 0.32 * sin(angle))
 		at.append(Transform3D(Basis(Vector3.FORWARD, PI / 2.0), spot))
 	spin.add_child(many(bolt_mesh, at, material(Color(0.22, 0.22, 0.24), 0.35, 0.7)))
-	var cap := axle_cylinder(radius_m * 0.14, 0.08, Color(0.8, 0.8, 0.82), 14, 0.2, 0.9)
-	cap.position = TrackSpace.point(0.0, face_m, 0.0)
+	var cap := axle_cylinder(radius_m * 0.14, 0.06, Color(0.8, 0.8, 0.82), 14, 0.2, 0.9)
+	cap.position = TrackSpace.point(0.0, face_m + outward * 0.04, 0.0)
 	spin.add_child(cap)
 
 

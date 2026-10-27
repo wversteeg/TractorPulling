@@ -1,7 +1,7 @@
 # What a pull leaves in the clay: the rear tires' ruts, printed with their
 # lugs, and behind the sled the wide band its pan smooths over them. Each
 # mark is a strip of quads along the points the snapshot passes, a new
-# point every STEP_M; the strip is rebuilt only when a point is added.
+# point every STEP_M, in chunks so that a new point redraws only the last.
 # Cleared for every pull (the track is prepared again between pulls).
 class_name TrackMarks
 extends Node3D
@@ -12,6 +12,8 @@ const SMOOTHED := Color(0.56, 0.41, 0.27)
 # past 130 m stops adding: the track ends there).
 const STEP_M := 0.2
 const MAX_POINTS := 700
+# Points a chunk of a mark's mesh: only the last chunk is built again.
+const CHUNK_POINTS := 50
 # Above the clay strip (which lies 3 cm under the track's zero, so the
 # chalk lines show), the smoothed band over the ruts [m].
 const CLAY_TOP_M := -0.03
@@ -28,40 +30,61 @@ class Mark:
 	var lift_m := 0.0
 	var points := PackedVector2Array()
 	var lefts := PackedVector2Array()
-	var mesh := ImmediateMesh.new()
+	# Distance along the mark at each point [m], for the texture.
+	var alongs := PackedFloat32Array()
+	# One surface a chunk of CHUNK_POINTS points; neighbours share a point.
+	var mesh := ArrayMesh.new()
 
 	func clear() -> void:
 		points.clear()
 		lefts.clear()
+		alongs.clear()
 		mesh.clear_surfaces()
 
-	# Adds the point if it is STEP_M on from the last; true if added.
+	# Adds the point if it is STEP_M on from the last, and redraws the last
+	# chunk; true if added.
 	func add(at: Vector2, left: Vector2) -> bool:
 		if points.size() >= MAX_POINTS:
 			return false
-		if not points.is_empty() and points[points.size() - 1].distance_to(at) < STEP_M:
-			return false
+		var along_m := 0.0
+		if not points.is_empty():
+			var last := points[points.size() - 1]
+			if last.distance_to(at) < STEP_M:
+				return false
+			along_m = alongs[alongs.size() - 1] + last.distance_to(at)
 		points.append(at)
 		lefts.append(left)
+		alongs.append(along_m)
+		_redraw_last_chunk()
 		return true
 
-	func rebuild() -> void:
-		mesh.clear_surfaces()
-		if points.size() < 2:
+	# The chunk the newest point is in, built again in one call; the ones
+	# before it stay as they are, so a point costs the same all pull long.
+	func _redraw_last_chunk() -> void:
+		var count := points.size()
+		if count < 2:
 			return
-		mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-		var along_m := 0.0
-		for i in points.size():
-			if i > 0:
-				along_m += points[i].distance_to(points[i - 1])
+		var chunk := (count - 2) / (CHUNK_POINTS - 1)
+		var first := chunk * (CHUNK_POINTS - 1)
+		if mesh.get_surface_count() > chunk:
+			mesh.surface_remove(chunk)
+		var vertices := PackedVector3Array()
+		var normals := PackedVector3Array()
+		var uvs := PackedVector2Array()
+		for i in range(first, count):
 			var half := lefts[i] * width_m / 2.0
 			# Right edge first: the strip's triangles then face up.
 			for edge: float in [-1.0, 1.0]:
 				var p := points[i] + half * edge
-				mesh.surface_set_normal(Vector3.UP)
-				mesh.surface_set_uv(Vector2(0.5 - edge * 0.5, along_m / repeat_m))
-				mesh.surface_add_vertex(TrackSpace.point(p.x, p.y, CLAY_TOP_M + lift_m))
-		mesh.surface_end()
+				vertices.append(TrackSpace.point(p.x, p.y, CLAY_TOP_M + lift_m))
+				normals.append(Vector3.UP)
+				uvs.append(Vector2(0.5 - edge * 0.5, alongs[i] / repeat_m))
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = vertices
+		arrays[Mesh.ARRAY_NORMAL] = normals
+		arrays[Mesh.ARRAY_TEX_UV] = uvs
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLE_STRIP, arrays)
 
 
 var _left_rut := Mark.new()
@@ -100,15 +123,13 @@ func show_snapshot(s: Dictionary) -> void:
 	var half_track := left * _rear_track_m / 2.0
 	for pair: Array in [[_left_rut, tractor + half_track], [_right_rut, tractor - half_track]]:
 		var rut: Mark = pair[0]
-		if rut.add(pair[1], left):
-			rut.rebuild()
+		rut.add(pair[1], left)
 	var sled_heading: float = s["sled_heading_rad"]
 	var forward := Vector2(cos(sled_heading), sin(sled_heading))
 	var pan := Vector2(s["sled_x_m"], s["sled_y_m"]) + forward * _pan_ahead_m
 	# The pan smooths what it slides over, from its back edge.
-	if _band.add(pan - forward * SledView.PAN_DEPTH_M / 2.0,
-			Vector2(-sin(sled_heading), cos(sled_heading))):
-		_band.rebuild()
+	_band.add(pan - forward * SledView.PAN_DEPTH_M / 2.0,
+			Vector2(-sin(sled_heading), cos(sled_heading)))
 
 
 # How many points each mark has: the left rut, the right rut, the band.

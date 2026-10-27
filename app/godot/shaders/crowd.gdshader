@@ -8,8 +8,15 @@ shader_type spatial;
 
 uniform float excitement : hint_range(0.0, 1.0) = 0.2;
 
+// Skin from fair to dark, and the vertex colours, are written as sRGB
+// like every colour in GDScript; to_linear brings them to the light maths'
+// space, as `source_color` does for a uniform.
 const vec3 FAIR = vec3(0.93, 0.76, 0.64);
 const vec3 DARK = vec3(0.42, 0.28, 0.2);
+
+vec3 to_linear(vec3 c) {
+	return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+}
 
 varying vec4 part;
 varying vec4 person;
@@ -39,6 +46,6 @@ void fragment() {
 	} else if (part.a < 0.75) {
 		colour = mix(FAIR, DARK, person.a);
 	}
-	ALBEDO = colour;
+	ALBEDO = to_linear(colour);
 	ROUGHNESS = 0.85;
 }
