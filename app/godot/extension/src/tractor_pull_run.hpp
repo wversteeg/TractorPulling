@@ -64,8 +64,12 @@ public:
     /// The run's fixed sizes, to build the scene from (SI): the tractor's
     /// (wheelbase_m, rear_axle_height_m, rear_track_m, front_track_m,
     /// rear_tire_radius_m, rear_tire_width_m, front_tire_radius_m,
-    /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m, and
-    /// gear_count, its forward gears), the sled's (sled_wheel_radius_m,
+    /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m,
+    /// wheelie_bar_behind_rear_axle_m, wheelie_bar_tip_height_m, the
+    /// weights as set: ballast_mass_kg, ballast_position (0 rearmost to 1
+    /// foremost) between ballast_rear_ahead_of_rear_axle_m and
+    /// ballast_front_ahead_of_rear_axle_m, and gear_count, its forward
+    /// gears), the sled's (sled_wheel_radius_m, sled_wheel_width_m,
     /// hook_ahead_of_wheels_m, hook_height_m, pan_ahead_of_wheels_m,
     /// box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m,
     /// chain_length_m), the track's (track_length_m, lane_width_m,

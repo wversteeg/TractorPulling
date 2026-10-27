@@ -8,7 +8,8 @@ enum View { CHASE, SIDE, OVERHEAD }
 # Where each camera sits from what it follows, in the track's axes
 # (x along, y left, z up) [m].
 const CHASE_OFFSET := Vector3(-20.0, 3.0, 9.0)
-const SIDE_OFFSET := Vector3(-2.0, 18.0, 3.0)
+# On the right, inside the straw bales: the grandstand is on the left.
+const SIDE_OFFSET := Vector3(-2.0, -10.0, 3.5)
 const OVERHEAD_OFFSET := Vector3(-8.0, 0.0, 40.0)
 # How fast a camera catches up with its place, per second.
 const FOLLOW_RATE := 6.0
