@@ -107,7 +107,9 @@ func _check() -> void:
 	# 70 kg wheel weights a hub, rounded up so a little weight still shows.
 	var view: TractorView = _pull.get("tractor_view")
 	for case: Array in [[400.0, 1.0, Vector2i(9, 0)], [400.0, 0.0, Vector2i(0, 3)],
-			[100.0, 0.5, Vector2i(2, 1)], [0.0, 0.5, Vector2i(0, 0)]]:
+			[100.0, 0.5, Vector2i(2, 1)], [0.0, 0.5, Vector2i(0, 0)],
+			# Whole numbers of weights that come out a hair over in doubles.
+			[900.0, 0.55, Vector2i(11, 3)], [750.0, 0.44, Vector2i(8, 3)]]:
 		var weighted := dimensions.duplicate()
 		weighted["ballast_mass_kg"] = case[0]
 		weighted["ballast_position"] = case[1]

@@ -40,6 +40,9 @@ const PLATE_KG := 45.0
 const DISC_KG := 70.0
 const MAX_PLATES := 12
 const MAX_DISCS_A_SIDE := 4
+# Taken off before rounding up, so a share that is a whole number of weights
+# in doubles a hair over does not draw one more.
+const WEIGHT_COUNT_TOLERANCE := 1e-6
 # Slip above which the rear tires throw dirt, and where they throw most.
 const DIRT_FROM_SLIP := 0.08
 const DIRT_FULL_SLIP := 0.5
@@ -356,7 +359,7 @@ func _show_weights(d: Dictionary) -> void:
 		return
 	# Each end gets its share of the mass, in plates or discs of their size.
 	# Rounded up, so a little weight at an end still shows.
-	var plates := mini(ceili(position_share * mass_kg / PLATE_KG), MAX_PLATES)
+	var plates := mini(ceili(position_share * mass_kg / PLATE_KG - WEIGHT_COUNT_TOLERANCE), MAX_PLATES)
 	var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
 	bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
 	_front_weights.add_child(bracket)
@@ -365,7 +368,8 @@ func _show_weights(d: Dictionary) -> void:
 				0.6)
 		plate.position = TrackSpace.point(0.03 + i * 0.05, 0.0, 0.0)
 		_front_weights.add_child(plate)
-	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG), MAX_DISCS_A_SIDE)
+	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG
+			- WEIGHT_COUNT_TOLERANCE), MAX_DISCS_A_SIDE)
 	for holder: Node3D in holders:
 		var outward := signf(holder.get_parent().position.x * -1.0)
 		for i in discs:
