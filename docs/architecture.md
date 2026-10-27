@@ -106,7 +106,9 @@ line (the dog-tail).
 
 A pull: the tractor and the sled joined by the chain, which pulls along its
 own line between the hitch and the hook, on a track whose ground each
-contact reads where it is.
+contact reads where it is. The chain can be off the hitch, when it pulls
+neither end, and the sled can be held still (before the flag) or drive
+itself back to the start line after the pull.
 
 ![Pull classes](diagrams/svg/pull_classes.svg)
 
@@ -118,6 +120,19 @@ heavier sled. A tractor tire touching a chalk line before the full-pull line
 disqualifies the pull (out of bounds, 0 m); the sled may cross the lines.
 
 ![Run classes](diagrams/svg/run_classes.svg)
+
+### Turn (`tp::turn`)
+
+One puller's turn at an event, as the game plays it: from the parking beside
+the track to the sled, backing up to it in reverse; the chain hooked on by
+itself once the tractor stands in reach; the slack taken up on the held
+sled until the official waves the green flag; the pull (the run); the chain
+released once the tractor has backed off; and back to the parking while the
+sled drives itself back. The chalk lines count only in the pull, and the
+pull's clock runs from the flag. At the start line the turn is the pull
+alone, as the tools and the rivals pull.
+
+![Turn classes](diagrams/svg/turn_classes.svg)
 
 ### Driver and field (`tp::driver`, `tp::field`)
 
@@ -158,8 +173,9 @@ One run as the game plays it, and the interface the Godot binding will use:
 a setup given once, the player's controls and the frame's real time in,
 snapshots to draw out. The frame time decides only how many 1 ms steps run,
 never their length, so the same controls on the same steps give the same run
-however the time is split into frames. It wraps the run, the controls and
-the fixed-step clock; `tp_pull run` plays through it too. Tools and tests
+however the time is split into frames. It wraps the turn (the whole turn
+from a parking, or the pull alone at the line), the controls and the
+fixed-step clock; `tp_pull run` plays through it too. Tools and tests
 look at the whole simulation inside it through `session::Inspector`
 (`inspect.hpp`), which the binding does not use.
 
@@ -259,6 +275,13 @@ tractor reruns on a heavier sled.
 
 ![Full run](diagrams/svg/full_run_sequence.svg)
 
+### A puller's turn
+
+Each step of a turn from the parking: the stage decides what the controls
+drive, and moves on when its condition holds.
+
+![Turn](diagrams/svg/turn_sequence.svg)
+
 ### One pull step (1 kHz)
 
 The chain's force from where the hitch and hook are, then the tractor and the
@@ -307,7 +330,9 @@ at the steering rate.
 One shift under load a pull goes in with the clutch in. Standing, any other
 change needs the clutch pressed; once under way the gearbox never goes below
 its lowest gear so far (the gear it moved off in, or the one the powershift
-took it to), with the clutch or without.
+took it to), with the clutch or without. Off the pull (driving to the sled
+and away from it) any gear may be chosen. Reverse, and a forward gear out of
+it, goes in only with the axle at rest: it has no synchronizer.
 
 ![Gear shift](diagrams/svg/gear_shift_sequence.svg)
 

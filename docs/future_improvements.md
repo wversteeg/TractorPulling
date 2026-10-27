@@ -148,6 +148,26 @@ for the big features; they are repeated at the end for completeness.
   reads the sled's distance, the wheelspin or the chain would shift later on
   a track where the tires spin first (dry hard clay).
 
+## The turn
+
+- **The held sled never moves.** Before the flag the sled stands still
+  however hard the chain pulls; a real one is held by its operator and its
+  pan, and a tractor pulling too hard could drag it.
+- **No collisions.** The tractor drives through the sled, the fence and the
+  parked tractors; nothing stops it but the driver.
+- **The ground beside the track.** Off the lane, in the parking and on the
+  way back, the tractor rolls on the track's own soil; grass or a gravel
+  lane would grip and roll differently.
+- **The sled drives back by the clock.** It goes straight back at a steady
+  2 m/s (`sled::kDriveBack_m_s`), without an engine or physics of its own,
+  and through anything in its way.
+- **The official's flag.** Green after the chain has held 1 kN for a
+  second; there is no false start, no time limit on the way to the sled, and
+  no signal to stop the pull.
+- **One reverse gear, and an instant restart.** A real gearbox may have
+  several reverse gears or a shuttle; a stalled engine starts again the
+  moment the clutch is pressed.
+
 ## Tuning
 
 - **Tire pressure and the rolling radius.** A softer tire rolls on a

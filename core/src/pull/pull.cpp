@@ -74,7 +74,7 @@ namespace {
 // the tractor moves.
 constexpr double kStartSlack_m = 0.001;
 
-ChainEnd hitch_end(const Model& model, const State& state) noexcept {
+ChainEnd hitch_at(const Model& model, const State& state) noexcept {
     const chassis::Hitch hitch =
         chassis::hitch(model.tractor().params().chassis, state.tractor.chassis);
     return {.x_m = hitch.x_m,
@@ -85,7 +85,7 @@ ChainEnd hitch_end(const Model& model, const State& state) noexcept {
             .velocity_z_m_s = hitch.velocity_z_m_s};
 }
 
-ChainEnd hook_end(const sled::Params& sled, const sled::State& state) noexcept {
+ChainEnd hook_at(const sled::Params& sled, const sled::State& state) noexcept {
     const sled::Hook hook = sled::hook(sled, state);
     return {.x_m = hook.x_m,
             .y_m = hook.y_m,
@@ -96,10 +96,18 @@ ChainEnd hook_end(const sled::Params& sled, const sled::State& state) noexcept {
 
 }  // namespace
 
+ChainEnd hitch_end(const Model& model, const State& state) noexcept {
+    return hitch_at(model, state);
+}
+
+ChainEnd hook_end(const Model& model, const State& state) noexcept {
+    return hook_at(model.sled(), state.sled);
+}
+
 State initial_state(const Model& model) noexcept {
     State state{.tractor = vehicle::initial_state(model.tractor()), .sled = {}};
     const sled::Params& sled = model.sled();
-    const ChainEnd hitch = hitch_end(model, state);
+    const ChainEnd hitch = hitch_at(model, state);
     const double rise_m = hitch.z_m - sled.hook_height_m;
     const double laid_out_m = sled.chain.length_m - kStartSlack_m;
     const double reach_m = std::sqrt(std::max(laid_out_m * laid_out_m - rise_m * rise_m, 0.0));
@@ -110,7 +118,10 @@ State initial_state(const Model& model) noexcept {
 Output step(State& state, const Model& model, const vehicle::Input& input, double dt_s) noexcept {
     const sled::Params& sled = model.sled();
     Output out;
-    out.chain = chain_force(sled.chain, hitch_end(model, state), hook_end(sled, state.sled));
+    out.chain = chain_force(sled.chain, hitch_at(model, state), hook_at(sled, state.sled));
+    if (!state.hooked) {
+        out.chain.tension_n = 0.0;
+    }
 
     // Equal and opposite at the two ends, along the chain; the tractor and
     // the sled each feel it in their own frame.
@@ -144,11 +155,27 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
         vehicle::step(state.tractor, model.tractor(), input, tractor_ground, drawbar, dt_s);
 
     out.sled = sled::loads(sled, state.sled, hook, sled_ground);
-    const sled::Prediction prediction =
-        sled::predict(state.sled, sled, out.sled.resistance_n, dt_s);
-    sled::advance_lateral(state.sled, sled, out.sled, hook.side_n, sled_ground.wheels, dt_s);
-    sled::advance(state.sled, prediction, hook.forward_n, dt_s);
-    sled::collect(state.sled, sled, out.tractor.thrown_soil_m3_s, dt_s);
+    switch (state.sled_mode) {
+        case SledMode::kOnTheChain: {
+            const sled::Prediction prediction =
+                sled::predict(state.sled, sled, out.sled.resistance_n, dt_s);
+            sled::advance_lateral(state.sled, sled, out.sled, hook.side_n, sled_ground.wheels,
+                                  dt_s);
+            sled::advance(state.sled, prediction, hook.forward_n, dt_s);
+            sled::collect(state.sled, sled, out.tractor.thrown_soil_m3_s, dt_s);
+            break;
+        }
+        case SledMode::kHeld:
+            // Simplified: however hard the chain pulls, it stays put, its
+            // hook too (the chain's damping reads its speed).
+            state.sled.velocity_m_s = 0.0;
+            state.sled.lateral_velocity_m_s = 0.0;
+            state.sled.yaw_rate_rad_s = 0.0;
+            break;
+        case SledMode::kDrivingBack:
+            sled::drive_back(state.sled, model.start_line_m(), dt_s);
+            break;
+    }
     return out;
 }
 

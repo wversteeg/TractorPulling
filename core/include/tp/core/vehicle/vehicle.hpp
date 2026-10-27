@@ -124,7 +124,8 @@ struct Input {
     double throttle = 0.0;
     /// 0 released (engaged) to 1 pressed.
     double clutch_pedal = 1.0;
-    /// Requested gear; 0 is neutral. Changes only with the clutch pressed.
+    /// Requested gear; 0 is neutral, driveline::kReverse reverse. Changes
+    /// only with the clutch pressed.
     int gear = driveline::kNeutral;
     /// Front wheel angle, positive to the left; held to the steering's
     /// range [rad].
@@ -132,7 +133,17 @@ struct Input {
     /// Brake pedals for the left and right rear wheels, 0 to 1.
     double brake_left = 0.0;
     double brake_right = 0.0;
+    /// The pull is on: moving off past kUnderWay_m_s arms the gearbox's
+    /// floor (driveline::start_pull). Off (driving to the sled or away from
+    /// it) any gear may be chosen, and the floor is cleared.
+    bool pull_on = true;
 };
+
+/// The way the tractor travels this step: -1 in reverse, or rolling
+/// backwards in neutral; 1 otherwise. Resistances (rolling, the brakes at
+/// rest) act against it, and hold the tractor at rest without turning it
+/// round.
+[[nodiscard]] double travel_direction(const State& state) noexcept;
 
 /// The ground under the tractor's tires this step. The track decides it from
 /// where each axle is; tests and tools may pass one surface for both.

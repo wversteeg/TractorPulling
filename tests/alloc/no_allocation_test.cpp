@@ -202,6 +202,38 @@ TEST(NoAllocation, AWholeSessionInFrames) {
     EXPECT_GT(drawn_x_m, 0.0);
 }
 
+// A turn from the parking: driving off, reversing, and the stages' checks
+// (the hitch to the hook, the parking) each step, in frames.
+TEST(NoAllocation, ATurnFromTheParkingInFrames) {
+    std::optional<session::Session> game =
+        session::Session::create({.tractor = vehicle::testing::reference_params(),
+                                  .sled = sled::testing::reference_params(),
+                                  .ground = track::testing::reference_params(),
+                                  .rules = kRules,
+                                  .layout = session::Layout::kEasy,
+                                  .easy = controls::testing::kReferenceEasy,
+                                  .pro = controls::testing::kReferencePro,
+                                  .parking = turn::Parking{.x_m = -15.0, .y_m = -10.0}});
+    if (!game) {
+        ADD_FAILURE() << "invalid reference session";
+        return;
+    }
+    constexpr std::int64_t kFrame_ns = 16'666'667;
+    constexpr int kFrames = 600;
+    double drawn_x_m = 0.0;
+    const std::size_t counted = allocations_in([&] {
+        for (int frame = 0; frame < kFrames; ++frame) {
+            const int gear = frame < kFrames / 2 ? 2 : driveline::kReverse;
+            game->advance({.throttle = 0.5, .gear = gear, .steering = 0.3}, kFrame_ns);
+            drawn_x_m =
+                session::blend(game->previous(), game->current(), game->alpha()).tractor_x_m;
+        }
+    });
+    EXPECT_EQ(counted, 0U);
+    EXPECT_EQ(game->current().stage, turn::Stage::kToTheSled);
+    EXPECT_NE(drawn_x_m, -15.0);
+}
+
 // A game's event, frame by frame: the rivals choosing gears and pulling in
 // slices, the operator, the decisions, and the player's pulls and choices
 // handed in. Creating it may allocate; playing it may not.

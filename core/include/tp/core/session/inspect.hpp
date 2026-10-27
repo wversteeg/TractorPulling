@@ -17,7 +17,10 @@ public:
         return session.model_;
     }
     [[nodiscard]] static const run::State& run_state(const Session& session) noexcept {
-        return session.run_;
+        return session.turn_.run;
+    }
+    [[nodiscard]] static const turn::State& turn_state(const Session& session) noexcept {
+        return session.turn_;
     }
     /// The last step's output and the vehicle input it was given.
     [[nodiscard]] static const pull::Output& last_output(const Session& session) noexcept {

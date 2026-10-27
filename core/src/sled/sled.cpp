@@ -356,6 +356,32 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
     state.distance_m += velocity_m_s * dt_s;
 }
 
+bool drive_back(State& state, double start_x_m, double dt_s) noexcept {
+    state.berm_kg = 0.0;
+    state.lateral_velocity_m_s = 0.0;
+    state.yaw_rate_rad_s = 0.0;
+    state.wheel_side_deflection_m = 0.0;
+    const double remaining_m = state.position_m - start_x_m;
+    const double step_m = kDriveBack_m_s * dt_s;
+    if (remaining_m <= step_m) {
+        state.position_m = start_x_m;
+        state.velocity_m_s = 0.0;
+        state.distance_m = 0.0;
+        state.lateral_position_m = 0.0;
+        state.heading_rad = 0.0;
+        return true;
+    }
+    // Straight back to the start: what is left across and of the turn
+    // shrinks in step with what is left along.
+    const double kept = (remaining_m - step_m) / remaining_m;
+    state.position_m -= step_m;
+    state.velocity_m_s = -kDriveBack_m_s;
+    state.lateral_position_m *= kept;
+    state.heading_rad *= kept;
+    state.distance_m = std::max(state.distance_m - step_m, 0.0);
+    return false;
+}
+
 void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept {
     const double landed_kg = params.berm.collected_share * soil::kLooseDensity_kg_m3 *
                              std::max(thrown_soil_m3_s, 0.0) * dt_s;

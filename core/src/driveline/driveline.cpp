@@ -29,9 +29,10 @@ Line integrate(double omega_rad_s, double inertia_kg_m2, double torque_nm, doubl
 }  // namespace
 
 std::optional<ParamError> validate(const Params& params) noexcept {
-    const std::array scalars = {params.final_drive_ratio,   params.efficiency,
-                                params.input_inertia_kg_m2, params.output_inertia_kg_m2,
-                                params.drag_torque_nm,      params.viscous_drag_nm_s_rad};
+    const std::array scalars = {params.reverse_ratio,        params.final_drive_ratio,
+                                params.efficiency,           params.input_inertia_kg_m2,
+                                params.output_inertia_kg_m2, params.drag_torque_nm,
+                                params.viscous_drag_nm_s_rad};
     if (params.gear_count == 0) {
         return ParamError::kNoGears;
     }
@@ -50,6 +51,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         if (!(gears[i] < gears[i - 1])) {
             return ParamError::kRatiosNotDecreasing;
         }
+    }
+    if (params.reverse_ratio < 0.0) {
+        return ParamError::kReverseRatioNegative;
     }
     if (params.final_drive_ratio <= 0.0) {
         return ParamError::kFinalDriveNotPositive;
@@ -74,6 +78,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
 }
 
 double overall_ratio(const Params& params, int gear) noexcept {
+    if (gear == kReverse) {
+        return -params.reverse_ratio * params.final_drive_ratio;
+    }
     const auto gears = ratios(params);
     if (gear <= kNeutral || static_cast<std::size_t>(gear) > gears.size()) {
         return 0.0;
@@ -89,9 +96,14 @@ bool shifts_under_load(const State& state, const Params& params, int to) noexcep
 }
 
 void start_pull(State& state) noexcept {
-    if (state.floor_gear == kNeutral && state.gear != kNeutral) {
+    if (state.floor_gear == kNeutral && state.gear > kNeutral) {
         state.floor_gear = state.gear;
     }
+}
+
+void end_pull(State& state) noexcept {
+    state.floor_gear = kNeutral;
+    state.load_shifts = 0;
 }
 
 int lowest_gear(const State& state, const Params& params) noexcept {
@@ -122,13 +134,20 @@ bool shift(State& state, const Params& params, int gear, bool clutch_disengaged)
     if (gear == state.gear) {
         return true;
     }
-    if (gear < kNeutral || static_cast<std::size_t>(gear) > ratios(params).size() ||
-        !clutch_disengaged) {
+    const bool reverse_exists = gear == kReverse && params.reverse_ratio > 0.0;
+    if ((gear < kNeutral && !reverse_exists) ||
+        static_cast<std::size_t>(std::max(gear, 0)) > ratios(params).size() || !clutch_disengaged) {
+        return false;
+    }
+    // No synchronizer for reverse: the axle must stand (near enough) still
+    // before the gears that turn it the other way mesh.
+    if ((gear == kReverse && state.output_omega_rad_s > kDirectionChangeAtRest_rad_s) ||
+        (gear > kNeutral && state.output_omega_rad_s < -kDirectionChangeAtRest_rad_s)) {
         return false;
     }
     // Under way, never back down with the clutch: only a shift under load
     // goes down, as often as the powershift allows. Up raises the floor.
-    if (gear != kNeutral && state.floor_gear != kNeutral) {
+    if (gear > kNeutral && state.floor_gear != kNeutral) {
         if (gear < state.floor_gear) {
             return false;
         }
@@ -144,14 +163,21 @@ bool shift(State& state, const Params& params, int gear, bool clutch_disengaged)
         state.output_omega_rad_s =
             momentum / (params.output_inertia_kg_m2 + params.input_inertia_kg_m2 * ratio * ratio);
         state.input_omega_rad_s = state.output_omega_rad_s * ratio;
+        // Meshing at (near) rest the other way round would leave the input
+        // shaft turning backwards by a hair; the engine side never does.
+        if (state.input_omega_rad_s < 0.0) {
+            state.input_omega_rad_s = 0.0;
+            state.output_omega_rad_s = 0.0;
+        }
     }
     return true;
 }
 
 Prediction predict(const State& state, const Params& params, double axle_load_torque_nm,
-                   double dt_s) noexcept {
+                   double dt_s, double direction) noexcept {
     Prediction p;
     p.ratio = overall_ratio(params, state.gear);
+    p.direction = direction;
     p.efficiency = params.efficiency;
 
     // Constant drag opposes rotation; a shaft at rest is held, not reversed
@@ -219,14 +245,17 @@ void advance(State& state, const Prediction& p, double clutch_torque_nm,
     if (p.ratio == 0.0) {
         state.input_omega_rad_s =
             std::max(p.free_input_rad_s + p.input_per_nm * clutch_torque_nm, 0.0);
+        // Free of the gears, the axle keeps its direction of travel: the
+        // resistances bring it to rest, never round the other way.
+        const double output_rad_s = p.free_output_rad_s + p.output_per_nm * axle_torque_nm;
         state.output_omega_rad_s =
-            std::max(p.free_output_rad_s + p.output_per_nm * axle_torque_nm, 0.0);
+            p.direction > 0.0 ? std::max(output_rad_s, 0.0) : std::min(output_rad_s, 0.0);
         return;
     }
     const double effective_nm =
         clutch_torque_nm >= 0.0 ? clutch_torque_nm * p.efficiency : clutch_torque_nm / p.efficiency;
-    // Resistance holds the train at rest but never drives it backwards; there
-    // is no reverse gear.
+    // Resistance holds the train at rest but never turns the input shaft
+    // backwards: in reverse the axle turns backwards through the gears.
     state.input_omega_rad_s = std::max(p.free_input_rad_s + p.input_per_nm * effective_nm +
                                            p.input_per_nm / p.ratio * axle_torque_nm,
                                        0.0);

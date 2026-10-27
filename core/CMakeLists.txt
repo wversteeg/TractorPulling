@@ -23,6 +23,7 @@ add_library(tp_core STATIC
     src/tire/tire.cpp
     src/time/fixed_step_clock.cpp
     src/track/track.cpp
+    src/turn/turn.cpp
     src/vehicle/chain_solver.cpp
     src/vehicle/tuning.cpp
     src/vehicle/vehicle.cpp)

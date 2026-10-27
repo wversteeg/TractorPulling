@@ -53,9 +53,10 @@ package "tp::vehicle" {
   class Input <<struct>> {
     +throttle : double
     +clutch_pedal : double
-    +gear : int
+    +gear : int, -1 = reverse
     +steering_rad : double
     +brake_left, brake_right : double
+    +pull_on : bool = true
   }
   class RearWheels <<struct>> {
     +slip_ratio : double
@@ -103,6 +104,7 @@ package "tp::vehicle" {
   class "vehicle functions" as VehicleFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +initial_state(const Model&) : State
+    +travel_direction(const State&) : double
     +step(State&, const Model&, const Input&, const Ground&,\n      const chassis::Drawbar&, dt_s) : Output
     +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
     +hash_append(Fnv1a&, const State&)

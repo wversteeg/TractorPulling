@@ -1,0 +1,34 @@
+@startuml turn_sequence
+title A puller's turn from the parking, each step (turn::step)
+autonumber
+participant "Session" as Session
+participant "turn::step" as Turn
+participant "pull::step" as Pull
+participant "run::step" as Run
+
+Session -> Turn : step(turn, model, rules, parking, input, dt)
+alt stage kPulling
+  Turn -> Run : step(run, model, rules, input with pull_on)
+  Run --> Turn : the pull's output; its result once the sled stops
+  Turn -> Turn : result in: the sled held, stage kReleasing\n(at the line: kParked, and nothing moves after)
+else any other stage
+  Turn -> Turn : pull_on off (any gear); a stalled engine starts\nagain once the clutch is pressed; parked: idle in neutral
+  Turn -> Pull : step(pull, model, input)
+  note right of Pull
+    unhooked, the chain pulls neither end;
+    held, the sled stands still;
+    driving back, it goes to the start line (sled::drive_back)
+  end note
+  Pull --> Turn : output (chain tension)
+  alt kToTheSled
+    Turn -> Turn : hooks_on (standing, the hitch ahead of the hook within\nthe chain's length, near the sled's line): hooked, kTakingUpSlack
+  else kTakingUpSlack
+    Turn -> Turn : tension >= 1 kN for 1 s without a break: the green flag,\nthe sled on the chain, the pull's clock at 0, kPulling
+  else kReleasing
+    Turn -> Turn : standing, the chain 0.3 m slack: unhooked,\nthe sled driving back, kToTheParking
+  else kToTheParking
+    Turn -> Turn : standing within 2 m of the parking: kParked
+  end
+end
+Turn --> Session : pull::Output
+@enduml

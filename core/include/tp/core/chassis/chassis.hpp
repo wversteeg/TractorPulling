@@ -238,16 +238,20 @@ struct AxleLoads {
 struct Prediction {
     double free_velocity_m_s = 0.0;
     double velocity_per_n = 0.0;
+    /// The way the body travels: 1 forwards, -1 backwards (in reverse).
+    double direction = 1.0;
 };
 
 /// `resisting_force_n` opposes forward motion (drawbar pull, rolling
-/// resistance). It can hold the body at rest but never push it backwards;
-/// there is no reverse. A turning body's sideways motion adds v_cg r.
+/// resistance; negative against a body travelling backwards). It can hold
+/// the body at rest but never push it against `direction`. A turning
+/// body's sideways motion adds v_cg r.
 [[nodiscard]] Prediction predict(const State& state, const Params& params, double resisting_force_n,
-                                 double dt_s) noexcept;
+                                 double dt_s, double direction = 1.0) noexcept;
 
 /// Forward speed at the end of the step under `drive_force_n`, as advance()
-/// sets it: the resistance holds the body at rest but never pushes it back.
+/// sets it: the resistance holds the body at rest but never pushes it
+/// against its direction of travel.
 [[nodiscard]] double end_velocity_m_s(const Prediction& prediction, double drive_force_n) noexcept;
 
 /// Side forces on the body, to its left [N], and the yaw moment of forces

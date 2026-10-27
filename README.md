@@ -214,15 +214,15 @@ will show them.
 Some tractors shift a gear or two down under load, the clutch in: a
 powershift step, clutch packs inside the gearbox (`driveline.powershift`,
 `load_downshift_gears`; without it the gears change with the clutch pressed
-only, and under way only up). The shipped tractor shifts one gear down. In the game, "-" (or the
-gamepad's left shoulder) then works with the clutch in; in the easy layout
-the clutch assist keeps the clutch in for it. The gear goes in at once:
-the wheels keep their speed, the input shaft turns faster than the
-engine, and the clutch slips (at most its capacity, for a fraction of a
-second) and pulls
-the engine up to the lower gear's speed, while the tractor slows through
-its tires. A 44 % step is a big one: the tractor slows while the sled rolls
-on, so the chain goes slack for a moment and then snatches. Up still
+only, and under way only up). The shipped tractor shifts one gear down. In
+the game, "-" (or the gamepad's left shoulder) then works with the clutch
+in; in the easy layout the clutch assist keeps the clutch in for it. The
+gear goes in at once: the wheels keep their speed, the input shaft turns
+faster than the engine, and the clutch slips (at most its capacity, for a
+fraction of a second) and pulls the engine up to the lower gear's speed,
+while the tractor slows through its tires. A 44 % step is a big one: the
+tractor slows while the sled rolls on, so the chain goes slack for a moment
+and then snatches. Up still
 takes the clutch. Down, once the tractor moves off, goes only by the
 powershift, as far and as often as it allows (`load_downshift_gears`, and
 `shifts_per_pull`, 1 if left out): not two gears at once with a one-gear
@@ -260,6 +260,32 @@ the two-knife sled it takes the reference rival in 6th from 94.94 to
 96.65 m (at 90 %), about what 5th gets without a shift; in 4th and 5th the
 tires, not the engine, end the pull, so the engine is never pulled down and
 the driver never shifts.
+
+### From the parking to the sled and back
+
+At an event a puller waits in the parking beside the track, behind the start
+line, until it is their turn (`tp::turn`). They drive out, past the sled and
+into the lane, and back up to it in reverse (`driveline.gearbox.reverse`:
+the shipped tractor's reverse crawls at about 2.5 km/h at rated speed;
+reverse goes in only with the tractor standing). Once the tractor stands with
+its hitch in front of the sled's hook, within the chain's length and close
+to the sled's line, the chain is hooked on. The tractor then creeps forward
+to put some force on the chain while the sled is held where it stands
+(simplified: it does not move however hard the chain pulls); once the chain
+has held 1 kN for a second the official waves the green flag, and the pull
+is on, its clock starting at the flag. After the pull the tractor backs off
+to slacken the chain, which comes off once it is slack, and drives back to
+the parking along the track; the sled drives itself back to the start line
+on its own engine. The turn is over when the tractor stands in the parking.
+The chalk lines count only in the pull, so driving to the sled and away from
+it cannot disqualify the pull, and off the pull any gear may be chosen (the
+gearbox's floor is cleared). An engine stalled at the end of the pull, or on
+the way, starts again once the clutch is pressed.
+
+A session plays the whole turn when its setup names a parking
+(`session::Setup::parking`); without one it is the pull alone, hooked at the
+start line, as `tp_pull` and the rivals pull. A test drives a whole turn with
+a scripted driver, every stage in order (`Turn.AWholeTurnFromTheParkingAndBack`).
 
 ### A class at an event
 

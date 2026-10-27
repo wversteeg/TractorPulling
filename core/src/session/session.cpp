@@ -4,6 +4,7 @@
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/soil/soil.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 namespace tp::session {
@@ -42,6 +43,12 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     if (setup.layout == Layout::kPro && controls::validate(setup.pro)) {
         return SetupError::kProControls;
     }
+    // The whole tractor beside the lane: its rear tires' outer edges.
+    const double half_width_m =
+        0.5 * (setup.tractor.chassis.rear_track_m + setup.tractor.rear_tire.size.section_width_m);
+    if (setup.parking && turn::validate(*setup.parking, setup.rules, half_width_m)) {
+        return SetupError::kParking;
+    }
     if (!make_clock(setup)) {
         return SetupError::kMaxStepsPerFrame;
     }
@@ -75,6 +82,10 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.pushdown = lerp(from.pushdown, to.pushdown, alpha);
     out.berm_m3 = lerp(from.berm_m3, to.berm_m3, alpha);
     out.chain_tension_n = lerp(from.chain_tension_n, to.chain_tension_n, alpha);
+    out.hitch_to_hook_m = lerp(from.hitch_to_hook_m, to.hitch_to_hook_m, alpha);
+    out.hitch_along_m = lerp(from.hitch_along_m, to.hitch_along_m, alpha);
+    out.hitch_across_m = lerp(from.hitch_across_m, to.hitch_across_m, alpha);
+    out.flag_progress = lerp(from.flag_progress, to.flag_progress, alpha);
     return out;
 }
 
@@ -94,11 +105,13 @@ std::optional<Session> Session::create(const Setup& setup) noexcept {
 Session::Session(const pull::Model& model, const Setup& setup, const FixedStepClock& clock) noexcept
     : model_(model),
       rules_(setup.rules),
+      parking_(setup.parking.value_or(turn::Parking{})),
       layout_(setup.layout),
       easy_(setup.easy),
       pro_(setup.pro),
       clock_(clock),
-      run_(run::start(model)),
+      turn_(setup.parking ? turn::from_the_parking(model, *setup.parking)
+                          : turn::at_the_line(model)),
       assist_(),
       input_(),
       output_() {
@@ -126,7 +139,7 @@ Frame Session::advance(const Controls& controls, std::int64_t elapsed_ns) noexce
 }
 
 void Session::step(const Controls& controls) noexcept {
-    if (run_.result) {
+    if (over() && !turn_.from_the_parking) {
         // Over: nothing moves, and the last step's output stays.
         return;
     }
@@ -135,7 +148,7 @@ void Session::step(const Controls& controls) noexcept {
     if (layout_ == Layout::kEasy) {
         const controls::EasyInput easy{
             .throttle = controls.throttle, .gear = controls.gear, .steering = controls.steering};
-        input_ = controls::easy(easy, easy_, assist_, tractor, run_.pull.tractor, dt_s);
+        input_ = controls::easy(easy, easy_, assist_, tractor, turn_.run.pull.tractor, dt_s);
     } else {
         const controls::ProInput pro{.throttle = controls.throttle,
                                      .clutch_pedal = controls.clutch_pedal,
@@ -145,16 +158,27 @@ void Session::step(const Controls& controls) noexcept {
                                      .brake_right = controls.brake_right};
         input_ = controls::pro(pro, pro_, assist_, tractor, dt_s);
     }
-    output_ = run::step(run_, model_, rules_, input_, dt_s);
+    output_ = turn::step(turn_, model_, rules_, parking_, input_, dt_s);
 }
 
 Snapshot Session::snapshot() const noexcept {
-    const pull::State& pull = run_.pull;
+    const pull::State& pull = turn_.run.pull;
     const vehicle::State& tractor = pull.tractor;
     const chassis::State& body = tractor.chassis;
     const double start_m = model_.start_line_m();
     const double axle_rad_s = tractor.driveline.output_omega_rad_s;
-    return {.time_s = static_cast<double>(run_.steps) * clock_.step_s(),
+    const turn::HitchToHook gap = turn::hitch_to_hook(model_, pull);
+    // None before the chain is on, all of it once the flag is green.
+    double flag_progress = 1.0;
+    if (turn_.stage == turn::Stage::kToTheSled) {
+        flag_progress = 0.0;
+    } else if (turn_.stage == turn::Stage::kTakingUpSlack) {
+        flag_progress = std::min(
+            static_cast<double>(turn_.tension_held_steps) * clock_.step_s() / turn::kFlagAfter_s,
+            1.0);
+    }
+    return {.time_s = static_cast<double>(turn_.run.steps) * clock_.step_s(),
+            .stage = turn_.stage,
             .tractor_x_m = body.position_m - start_m,
             .tractor_y_m = body.lateral_position_m,
             .tractor_heading_rad = body.heading_rad,
@@ -178,12 +202,18 @@ Snapshot Session::snapshot() const noexcept {
             .box_ahead_of_wheels_m = output_.sled.box_ahead_of_wheels_m,
             .pushdown = output_.sled.pushdown,
             .berm_m3 = pull.sled.berm_kg / soil::kLooseDensity_kg_m3,
-            .chain_tension_n = output_.chain.tension_n};
+            .chain_tension_n = output_.chain.tension_n,
+            .chain_hooked = pull.hooked,
+            .hitch_to_hook_m = gap.distance_m,
+            .hitch_along_m = gap.along_m,
+            .hitch_across_m = gap.across_m,
+            .flag_progress = flag_progress,
+            .sled_back = turn_.sled_back};
 }
 
 std::uint64_t Session::hash() const noexcept {
     hash::Fnv1a hash;
-    run::hash_append(hash, run_);
+    turn::hash_append(hash, turn_);
     controls::hash_append(hash, assist_);
     return hash.value();
 }

@@ -65,7 +65,7 @@ TEST(Driveline, OverallRatioIsGearTimesFinalDrive) {
     EXPECT_DOUBLE_EQ(overall_ratio(params, 1), 15.0 * 22.0);
     EXPECT_DOUBLE_EQ(overall_ratio(params, 8), 22.0);
     EXPECT_EQ(overall_ratio(params, 9), 0.0);
-    EXPECT_EQ(overall_ratio(params, -1), 0.0);
+    EXPECT_EQ(overall_ratio(params, kReverse - 1), 0.0);
 }
 
 // In gear the train is rigid: input speed is always axle speed times G.
@@ -241,8 +241,95 @@ TEST(Driveline, ShiftsOnlyWithTheClutchDisengaged) {
     EXPECT_TRUE(shift(state, params, 3, false)) << "staying in gear is always allowed";
     EXPECT_FALSE(shift(state, params, kNeutral, false));
     EXPECT_FALSE(shift(state, params, 9, true));
-    EXPECT_FALSE(shift(state, params, -1, true));
+    EXPECT_FALSE(shift(state, params, kReverse - 1, true));
     EXPECT_EQ(state.gear, 3);
+}
+
+TEST(Driveline, ReverseTurnsTheAxleBackwards) {
+    const Params params = reference_params();
+    EXPECT_DOUBLE_EQ(overall_ratio(params, kReverse),
+                     -params.reverse_ratio * params.final_drive_ratio);
+    State state;
+    ASSERT_TRUE(shift(state, params, kReverse, true));
+    for (int i = 0; i < 500; ++i) {
+        // The engine drives the input shaft forwards, against the rolling
+        // resistance of a train going backwards.
+        step(state, params, 20.0, -5.0);
+    }
+    EXPECT_GT(state.input_omega_rad_s, 0.0);
+    EXPECT_LT(state.output_omega_rad_s, 0.0);
+    EXPECT_DOUBLE_EQ(state.input_omega_rad_s,
+                     state.output_omega_rad_s * overall_ratio(params, kReverse));
+}
+
+// A gearbox without a reverse gear has none to shift into.
+TEST(Driveline, ReverseNeedsAReverseGear) {
+    Params params = reference_params();
+    params.reverse_ratio = 0.0;
+    State state;
+    EXPECT_FALSE(shift(state, params, kReverse, true));
+    EXPECT_EQ(state.gear, kNeutral);
+    EXPECT_EQ(overall_ratio(params, kReverse), 0.0);
+    params.reverse_ratio = -1.0;
+    EXPECT_EQ(validate(params), ParamError::kReverseRatioNegative);
+}
+
+// No synchronizer for reverse: into it, or out of it into a forward gear,
+// only with the axle (near enough) at rest. Neutral is always there.
+TEST(Driveline, ChangesDirectionOnlyAtRest) {
+    const Params params = reference_params();
+    State rolling_on{.gear = kNeutral, .output_omega_rad_s = 1.0};
+    EXPECT_FALSE(shift(rolling_on, params, kReverse, true));
+    EXPECT_EQ(rolling_on.gear, kNeutral);
+    rolling_on.output_omega_rad_s = 0.5 * kDirectionChangeAtRest_rad_s;
+    EXPECT_TRUE(shift(rolling_on, params, kReverse, true));
+    EXPECT_LE(rolling_on.output_omega_rad_s, 0.0) << "meshing never turns it forwards";
+    EXPECT_GE(rolling_on.input_omega_rad_s, 0.0) << "the input shaft never turns backwards";
+
+    State rolling_back{.gear = kReverse, .output_omega_rad_s = -1.0};
+    EXPECT_FALSE(shift(rolling_back, params, 1, true));
+    EXPECT_EQ(rolling_back.gear, kReverse);
+    EXPECT_TRUE(shift(rolling_back, params, kNeutral, true));
+    EXPECT_FALSE(shift(rolling_back, params, 1, true)) << "still rolling back";
+    rolling_back.output_omega_rad_s = 0.0;
+    EXPECT_TRUE(shift(rolling_back, params, 1, true));
+}
+
+// Going backwards the resistance holds the train at rest but never turns it
+// forwards, in reverse and rolling back in neutral alike.
+TEST(Driveline, ResistanceHoldsAReversingTrainWithoutTurningItForwards) {
+    const Params params = reference_params();
+    State reversing;
+    ASSERT_TRUE(shift(reversing, params, kReverse, true));
+    for (int i = 0; i < 1000; ++i) {
+        advance(reversing, predict(reversing, params, -50000.0, kDt_s, -1.0), 10.0);
+        ASSERT_EQ(reversing.output_omega_rad_s, 0.0);
+    }
+
+    State rolling_back{.gear = kNeutral, .output_omega_rad_s = -2.0};
+    for (int i = 0; i < 5000; ++i) {
+        const double before_rad_s = rolling_back.output_omega_rad_s;
+        advance(rolling_back, predict(rolling_back, params, -200.0, kDt_s, -1.0), 0.0);
+        ASSERT_LE(rolling_back.output_omega_rad_s, 0.0);
+        ASSERT_GE(rolling_back.output_omega_rad_s, before_rad_s) << "it only slows";
+    }
+    EXPECT_EQ(rolling_back.output_omega_rad_s, 0.0);
+}
+
+// Off the pull the floor is gone and the shifts under load are back; the
+// floor is never reverse.
+TEST(Driveline, EndingThePullFreesTheGears) {
+    const Params params = reference_params();
+    State state{.gear = kReverse};
+    start_pull(state);
+    EXPECT_EQ(state.floor_gear, kNeutral);
+    state = {.gear = 6, .load_shifts = 1};
+    start_pull(state);
+    ASSERT_EQ(state.floor_gear, 6);
+    end_pull(state);
+    EXPECT_EQ(state.floor_gear, kNeutral);
+    EXPECT_EQ(state.load_shifts, 0);
+    EXPECT_EQ(lowest_gear(state, params), 1);
 }
 
 // Standing, any gear may be chosen. Once the pull is under way the gearbox

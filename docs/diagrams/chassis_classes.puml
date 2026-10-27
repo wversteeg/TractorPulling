@@ -76,6 +76,7 @@ package "tp::chassis" {
   class Prediction <<struct>> {
     +free_velocity_m_s : double
     +velocity_per_n : double
+    +direction : double, 1 or -1
   }
   enum ParamError
   class "chassis functions" as ChassisFns <<free functions>> {
@@ -87,7 +88,7 @@ package "tp::chassis" {
     +hitch(const Params&, const State&) : Hitch
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +axle_loads_at_rest(const Params&) : AxleLoads
-    +predict(const State&, const Params&, resisting_force_n, dt_s) : Prediction
+    +predict(const State&, const Params&, resisting_force_n, dt_s,\n      direction = 1) : Prediction
     +end_velocity_m_s(const Prediction&, drive_force_n) : double
     +advance_lateral(State&, const Params&, const SideForces&, dt_s)
     +advance(State&, const Prediction&, drive_force_n, dt_s)

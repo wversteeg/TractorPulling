@@ -53,6 +53,7 @@ TEST(DrivelineLoader, ShippedFileMatchesTestReference) {
     const driveline::Params reference = driveline::testing::reference_params();
     EXPECT_EQ(loaded.gear_count, reference.gear_count);
     EXPECT_EQ(loaded.gear_ratios, reference.gear_ratios);
+    EXPECT_EQ(loaded.reverse_ratio, reference.reverse_ratio);
     EXPECT_EQ(loaded.final_drive_ratio, reference.final_drive_ratio);
     EXPECT_EQ(loaded.efficiency, reference.efficiency);
     EXPECT_EQ(loaded.input_inertia_kg_m2, reference.input_inertia_kg_m2);
@@ -67,6 +68,24 @@ TEST(DrivelineLoader, ShippedFileMatchesTestReference) {
 
 // Without a [driveline.powershift] table the gears change with the clutch
 // pressed only; with one, it says how many gears down shift under load.
+// Without one the gearbox only goes forwards; one named must be a gear.
+TEST(DrivelineLoader, TheReverseGearIsOptional) {
+    const auto plain = parse_driveline(kValidDriveline, "test.toml");
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().reverse_ratio, 0.0);
+    const auto with_reverse = parse_driveline(
+        with("ratios = [12.0, 6.0, 3.0]", "ratios = [12.0, 6.0, 3.0]\nreverse = 10.0"),
+        "test.toml");
+    ASSERT_TRUE(with_reverse.ok()) << with_reverse.error().message;
+    EXPECT_EQ(with_reverse.value().reverse_ratio, 10.0);
+    for (const std::string_view bad : {"0.0", "-3.0"}) {
+        EXPECT_NE(error_of(with("ratios = [12.0, 6.0, 3.0]",
+                                "ratios = [12.0, 6.0, 3.0]\nreverse = " + std::string{bad}))
+                      .find("driveline.gearbox.reverse"),
+                  std::string::npos);
+    }
+}
+
 TEST(DrivelineLoader, ThePowershiftStepIsOptional) {
     const auto plain = parse_driveline(kValidDriveline, "test.toml");
     ASSERT_TRUE(plain.ok()) << plain.error().message;

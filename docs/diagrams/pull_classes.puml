@@ -31,6 +31,13 @@ package "tp::pull" {
   class State <<struct>> {
     +tractor : vehicle::State
     +sled : sled::State
+    +hooked : bool = true
+    +sled_mode : SledMode
+  }
+  enum SledMode {
+    kOnTheChain
+    kHeld
+    kDrivingBack
   }
   class ChainEnd <<struct>> {
     +x_m, y_m, z_m : double
@@ -55,9 +62,12 @@ package "tp::pull" {
     +chain_force(const sled::Chain&, hitch, hook : ChainEnd) : ChainForce
     +initial_state(const Model&) : State
     +step(State&, const Model&, const vehicle::Input&, dt_s) : Output
+    +hitch_end(const Model&, const State&) : ChainEnd
+    +hook_end(const Model&, const State&) : ChainEnd
     +hash_append(Fnv1a&, const State&)
   }
   Model *-- Params
+  State *-- SledMode
   PullFns ..> Model
   PullFns ..> State
   PullFns ..> ChainEnd
@@ -74,6 +84,8 @@ note bottom of PullFns
   backwards and down/up on the tractor's hitch,
   forwards and up/down on the sled's hook;
   the tractor feels it in its body frame (pull, lift, side);
-  the sled follows the tractor's line sideways (hook behind the hitch)
+  the sled follows the tractor's line sideways (hook behind the hitch);
+  unhooked the chain pulls neither end; a held sled stands still;
+  one driving back goes its own way (sled::drive_back)
 end note
 @enduml

@@ -333,14 +333,15 @@ AxleLoads axle_loads(const Params& params, const State& state, const Drawbar& dr
             .front_lifted = front.depth_m <= 0.0};
 }
 
-Prediction predict(const State& state, const Params& params, double resisting_force_n,
-                   double dt_s) noexcept {
+Prediction predict(const State& state, const Params& params, double resisting_force_n, double dt_s,
+                   double direction) noexcept {
     const double velocity_per_n = dt_s / params.mass_kg;
     const double cg_side_m_s =
         state.lateral_velocity_m_s + params.cg_ahead_of_rear_axle_m * state.yaw_rate_rad_s;
     return {.free_velocity_m_s = state.velocity_m_s - velocity_per_n * resisting_force_n +
                                  dt_s * cg_side_m_s * state.yaw_rate_rad_s,
-            .velocity_per_n = velocity_per_n};
+            .velocity_per_n = velocity_per_n,
+            .direction = direction};
 }
 
 void advance_lateral(State& state, const Params& params, const SideForces& forces,
@@ -372,7 +373,9 @@ void advance_lateral(State& state, const Params& params, const SideForces& force
 }
 
 double end_velocity_m_s(const Prediction& prediction, double drive_force_n) noexcept {
-    return std::max(prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n, 0.0);
+    const double velocity_m_s =
+        prediction.free_velocity_m_s + prediction.velocity_per_n * drive_force_n;
+    return prediction.direction > 0.0 ? std::max(velocity_m_s, 0.0) : std::min(velocity_m_s, 0.0);
 }
 
 void advance(State& state, const Prediction& prediction, double drive_force_n,
@@ -409,13 +412,14 @@ void advance_pitch(State& state, const Params& params, double axle_torque_nm,
                        weight_n(params) * cg.x_m +
                        params.mass_kg * state.acceleration_m_s2 * cg.z_m + front.moment_nm +
                        bar.moment_nm;
-    if (state.velocity_m_s > 0.0) {
-        // Rolling drag of the front tires and the bar acts backwards at the
-        // ground, below the axle: nose-down. Like all rolling resistance it
-        // only acts while moving.
+    if (state.velocity_m_s != 0.0) {
+        // Rolling drag of the front tires and the bar acts against the
+        // motion at the ground, below the axle: nose-down going forwards,
+        // nose-up backwards. Like all rolling resistance it only acts while
+        // moving.
         const double drag_n = front_rolling_resistance * front.force_n +
                               params.wheelie_bar.rolling_resistance_coefficient * bar.force_n;
-        moment_nm -= drag_n * params.rear_axle_height_m;
+        moment_nm -= std::copysign(drag_n, state.velocity_m_s) * params.rear_axle_height_m;
     }
 
     // Implicit midpoint on the linearized contacts, explicit in everything

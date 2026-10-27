@@ -105,6 +105,8 @@ package "tp::sled" {
     +advance_lateral(State&, const Params&, const Loads&, hook_side_n,\n      const soil::Surface& wheel_ground, dt_s)
     +advance(State&, const Prediction&, forward_n, dt_s)
     +collect(State&, const Params&, thrown_soil_m3_s, dt_s)
+    +drive_back(State&, start_x_m, dt_s) : bool
+    +kDriveBack_m_s : double = 2
     +hash_append(Fnv1a&, const State&)
   }
   Params *-- Chain
