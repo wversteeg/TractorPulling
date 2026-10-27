@@ -38,7 +38,7 @@ package "GDScript (app/godot/scripts)" {
     -_place_parking()
     -_build(error) : bool
     -_build_turn(dimensions)
-    -_camera_target() : Vector3
+    -_camera_target(delta) : Vector3
     -_show_officials(snapshot, delta)
     +{static} signal_for(snapshot, turn) : String
     -_set_screen(screen)
