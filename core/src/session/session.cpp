@@ -102,8 +102,7 @@ Session::Session(const pull::Model& model, const Setup& setup, const FixedStepCl
     // Before the first step the weight box stands where it starts, and the
     // tractor stands on its tires at rest.
     output_.sled.box_ahead_of_wheels_m = model_.sled().box_start_ahead_of_wheels_m;
-    output_.tractor.axle_loads =
-        chassis::axle_loads(model_.tractor().params().chassis, run_.pull.tractor.chassis, {});
+    output_.tractor.axle_loads = chassis::axle_loads_at_rest(model_.tractor().params().chassis);
     current_ = snapshot();
     previous_ = current_;
 }

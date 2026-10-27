@@ -1,7 +1,6 @@
 #include "tractor_pull_run.hpp"
 
 #include "tp/core/chassis/chassis.hpp"
-#include "tp/core/units/constants.hpp"
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/files.hpp"
 #include "tp/data/result.hpp"
@@ -234,8 +233,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
     out["hitch_height_m"] = chassis.hitch_height_m;
     // What the front axle carries at rest, as the tractor is tuned.
-    out["front_axle_rest_load_n"] =
-        chassis.mass_kg * units::kStandardGravity_m_s2 * (1.0 - chassis::rear_axle_share(chassis));
+    out["front_axle_rest_load_n"] = chassis::axle_loads_at_rest(chassis).front_n;
     out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;

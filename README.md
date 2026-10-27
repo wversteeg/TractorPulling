@@ -53,7 +53,7 @@ high gear it takes more torque than the engine gives and stalls it:
 ```bash
 ./build/release/tools/tp_pull pull data/tractors/farm_stock_light.toml --gear 4 \
     --resistance-kn 8 --brake-right 0.3 -o pull.csv
-# ... ended -11.38 m to the left, heading -33.40°
+# ... ended -11.37 m to the left, heading -33.39°
 ```
 
 ### The lane
@@ -128,7 +128,7 @@ the shipped tracks:
     data/sleds/light_class.toml data/tracks/*.toml --gear 6
 # track                         cone index   grip  fall-off  push-down  result
 # covered_heavy_clay                875 kPa   1.00      0.21     60.0 m  86.58 m, engine stalled
-# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  88.61 m, engine stalled
+# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  88.60 m, engine stalled
 # firm_loam                        1943 kPa   1.00      0.24     60.0 m  89.09 m, engine stalled
 # ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  89.20 m, engine stalled
 # sandy_clay                       2107 kPa   1.00      0.26     60.0 m  89.30 m, engine stalled
@@ -163,8 +163,8 @@ for bar in 0.5 1.0 1.6; do
       data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
       data/tracks/dry_hard_clay.toml --gear 6 --pressure $bar
 done
-# 0.5 bar: covered heavy clay 87.31 m, dry hard clay 84.71 m
-# 1.0 bar: covered heavy clay 86.58 m, dry hard clay 88.61 m
+# 0.5 bar: covered heavy clay 87.33 m, dry hard clay 84.71 m
+# 1.0 bar: covered heavy clay 86.58 m, dry hard clay 88.60 m
 # 1.6 bar: covered heavy clay 85.51 m, dry hard clay 88.34 m
 ```
 
@@ -182,8 +182,8 @@ wheelbase), would need about 52 kN of pull to lift its front, twice what
 its tires give on the best track (some 24 kN at the end of a pull, when
 the front still carries about 6 kN). So in the 3.5 t class the front only
 goes light; it lifts for a moment when the clutch is dumped, as the axle's
-torque spins the heavy rear wheels up (0.7° of pitch, about 3 cm at the
-front axle). Wheelies are the physics, not scripted: the same tractor with
+torque spins the heavy rear wheels up (weights fully back, in 2nd to 6th:
+about 0.7° of pitch, the front tires off the ground for some 60 ms). Wheelies are the physics, not scripted: the same tractor with
 its drawbar at 1.0 m pulls one onto its wheelie bar (7.6°), which a test
 checks (`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher
 hitches will show them.
@@ -214,11 +214,11 @@ past 40 m:
 |---|---|---|
 | ideal clay-sand | 89.20 m, stalled | **91.11 m** (76.6 m) |
 | covered heavy clay | 86.58 m, stalled | **87.99 m** (74.7 m) |
-| watered start | 88.51 m, stalled | **90.51 m** (75.8 m) |
-| dry hard clay | **88.61 m**, stalled | 87.06 m, spun out (75.2 m) |
+| watered start | 88.51 m, stalled | **90.50 m** (75.8 m) |
+| dry hard clay | **88.60 m**, stalled | 87.06 m, spun out (75.2 m) |
 
 On dry hard clay the extra torque spins the wheels: there a later shift,
-at 60 % of rated speed (87.0 m), gets 89.24 m. A test pins the first row
+at 60 % of rated speed (87.0 m), gets 89.23 m. A test pins the first row
 (`LoadDownshiftRuns`).
 
 The scripted rivals shift too. Once the clutch is fully in, a driver waits

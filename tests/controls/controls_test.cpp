@@ -569,9 +569,9 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x5c6f0fa2c979e70dULL);
+    EXPECT_EQ(hash, 0xd453773ac0969493ULL);
     // 88.693174910881481 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.62c2158abccc2p+6);
+    EXPECT_EQ(result.distance_m, 0x1.62c5cfa4d2932p+6);
     EXPECT_EQ(result.ending, run::Ending::kSpunOut);
 }
 

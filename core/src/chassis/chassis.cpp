@@ -255,6 +255,10 @@ Params with_ballast_at(const Params& params, double position) noexcept {
     return out;
 }
 
+AxleLoads axle_loads_at_rest(const Params& params) noexcept {
+    return axle_loads(params, State{}, Drawbar{});
+}
+
 double rear_axle_share(const Params& params) noexcept {
     return 1.0 - params.cg_ahead_of_rear_axle_m / params.wheelbase_m;
 }
