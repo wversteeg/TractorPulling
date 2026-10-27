@@ -11,7 +11,7 @@ extends Node3D
 
 const PAINT := Color(0.95, 0.62, 0.08)
 const PAINT_DARK := Color(0.6, 0.38, 0.05)
-const STEEL := Color(0.3, 0.31, 0.33)
+const STEEL := Color(0.27, 0.25, 0.23)
 const DARK := Color(0.1, 0.1, 0.11)
 const TIRE := Color(0.08, 0.08, 0.08)
 const WEIGHT := Color(0.28, 0.29, 0.31)
@@ -85,10 +85,10 @@ func build(d: Dictionary) -> void:
 
 	# The pan: a wide steel plate on the track, its leading edge turned up,
 	# hung from the rails.
-	var pan := Art.box(Vector3(WIDTH_M, 0.06, PAN_DEPTH_M), STEEL, 0.6, 0.3)
+	var pan := Art.box(Vector3(WIDTH_M, 0.06, PAN_DEPTH_M), STEEL, 0.7)
 	pan.position = TrackSpace.point(pan_ahead_m, 0.0, 0.03)
 	add_child(pan)
-	var lip := Art.box(Vector3(WIDTH_M, 0.05, 0.35), STEEL, 0.6, 0.3)
+	var lip := Art.box(Vector3(WIDTH_M, 0.05, 0.35), STEEL, 0.7)
 	lip.position = TrackSpace.point(pan_ahead_m + PAN_DEPTH_M / 2.0 + 0.12, 0.0, 0.12)
 	lip.rotation.x = 0.7
 	add_child(lip)

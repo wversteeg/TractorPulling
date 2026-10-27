@@ -473,7 +473,7 @@ func _show_smoke(s: Dictionary) -> void:
 	_smoke.emitting = running and throttle > 0.05
 	# The ramp fades each puff out; this sets how dark and thick it starts.
 	var thick := clampf(0.25 + 0.75 * throttle * (0.4 + 0.6 * lugging), 0.0, 1.0)
-	var shade := lerpf(2.2, 0.8, lugging)
+	var shade := lerpf(1.3, 0.45, lugging)
 	_smoke.color = Color(shade, shade, shade, thick)
 	_smoke.initial_velocity_max = 1.5 + 2.5 * throttle
 

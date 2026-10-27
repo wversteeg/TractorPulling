@@ -52,7 +52,7 @@ const BANK_HEIGHT_M := 0.9
 const BANK_DEPTH_M := 3.5
 # Kenney's scenery tiles stand on a plate of their own; sunk this share of
 # their size into the grass, the plate is gone.
-const TILE_PLATE_SHARE := 0.03
+const TILE_PLATE_SHARE := 0.09
 const STANDING_EVERY_M := 1.1
 const BOARD_EVERY_M := 10.0
 
