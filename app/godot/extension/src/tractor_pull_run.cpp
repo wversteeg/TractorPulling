@@ -88,6 +88,8 @@ const char* stage_name(turn::Stage stage) {
             return "to_the_sled";
         case turn::Stage::kTakingUpSlack:
             return "taking_up_slack";
+        case turn::Stage::kWaitingForTheFlag:
+            return "waiting_for_the_flag";
         case turn::Stage::kPulling:
             return "pulling";
         case turn::Stage::kReleasing:
@@ -303,6 +305,9 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["chain_length_m"] = sled.chain.length_m;
     // How far off the sled's line the hitch may be for the chain to go on.
     out["hook_off_line_m"] = turn::kHookOffLine_m;
+    // How much shorter than its length the chain may be to count as tight
+    // for the flag.
+    out["ready_taut_within_m"] = turn::kReadyTautWithin_m;
     const run::Rules& rules = setup_->rules;
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;

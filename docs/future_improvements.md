@@ -153,6 +153,13 @@ for the big features; they are repeated at the end for completeness.
 - **The held sled never moves.** Before the flag the sled stands still
   however hard the chain pulls; a real one is held by its operator and its
   pan, and a tractor pulling too hard could drag it.
+- **The chain eases the tractor back.** A tractor never rolls back from
+  rest on the chain (in a forward gear it only drives forwards), so the
+  jolt that ends the creep would stay in the stretched chain. Waiting for
+  the flag with the drive out, the turn moves the standing tractor back to
+  the chain's length at 5 cm/s instead (`turn::kChainEasesBack_m_s`), its
+  brakes on or not; the flag waits until it has. A driveline that could
+  roll back with the clutch pressed would do it physically.
 - **No collisions.** The tractor drives through the sled, the fence and the
   parked tractors; nothing stops it but the driver.
 - **The ground beside the track.** Off the lane, in the parking and on the
@@ -161,8 +168,10 @@ for the big features; they are repeated at the end for completeness.
 - **The sled drives back by the clock.** It goes straight back at a steady
   2 m/s (`sled::kDriveBack_m_s`), without an engine or physics of its own,
   and through anything in its way.
-- **The official's flag.** Green after the chain has held 1 kN for a
-  second; there is no false start and no time limit on the way to the sled.
+- **The official's flag.** Green after the tractor has stood ready for 2 s,
+  the chain tight; there is no false start (moving before the flag only
+  lowers it again) and no time limit on the way to the sled or for the
+  flag.
 - **The red flag is a signal only.** After the pull the officials wave red
   and the driver should close the throttle, but nothing counts against one
   who does not; the result is the sled's, at its stop.

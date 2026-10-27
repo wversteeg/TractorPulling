@@ -126,7 +126,8 @@ disqualifies the pull (out of bounds, 0 m); the sled may cross the lines.
 One puller's turn at an event, as the game plays it: from the parking beside
 the track to the sled, backing up to it in reverse; the chain hooked on by
 itself once the tractor stands in reach; the slack taken up on the held
-sled until the official waves the green flag; the pull (the run); the chain
+sled; the tractor standing ready in its pulling gear until the official
+waves the green flag; the pull (the run); the chain
 released once the tractor has backed off; and back to the parking while the
 sled drives itself back. The chalk lines count only in the pull, and the
 pull's clock runs from the flag. At the start line the turn is the pull
@@ -160,7 +161,9 @@ How a front end's controls become the vehicle's input. The pro layout has
 every control on its own. The easy layout has one steering control that
 brakes the inner rear wheels past full lock, and a clutch assist that works
 the clutch: it slips it to keep the engine near peak torque instead of
-stalling. Both layouts' steering has a dead zone in the middle and a rate
+stalling. Off the gas it takes the clutch out and puts both rear brakes on
+(`brake_off_the_gas`), so lifting off stops the tractor and holds it.
+Both layouts' steering has a dead zone in the middle and a rate
 (a touch slider can jump), from their parameters; the pro layout's default
 parameters steer as the control is, for scripted drivers. The assist's
 state, the steering's too, is plain data, like the simulation's.

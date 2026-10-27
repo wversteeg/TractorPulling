@@ -15,6 +15,7 @@ constexpr std::string_view kValidEasy = R"(
 steer_share = 0.5
 steer_dead_zone = 0.05
 steer_rate_per_s = 2.0
+brake_off_the_gas = 0.8
 
 [easy.clutch_assist]
 engage_time_s = 1.5
@@ -49,6 +50,7 @@ TEST(ControlsLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.steer_share, reference.steer_share);
     EXPECT_EQ(loaded.steer_dead_zone, reference.steer_dead_zone);
     EXPECT_EQ(loaded.steer_rate_per_s, reference.steer_rate_per_s);
+    EXPECT_EQ(loaded.brake_off_the_gas, reference.brake_off_the_gas);
     EXPECT_EQ(loaded.clutch_assist.engage_time_s, reference.clutch_assist.engage_time_s);
     EXPECT_EQ(loaded.clutch_assist.release_time_s, reference.clutch_assist.release_time_s);
     EXPECT_EQ(loaded.clutch_assist.guard_speed_share, reference.clutch_assist.guard_speed_share);
@@ -62,6 +64,7 @@ TEST(ControlsLoader, ParsesValues) {
     EXPECT_EQ(result.value().steer_share, 0.5);
     EXPECT_EQ(result.value().steer_dead_zone, 0.05);
     EXPECT_EQ(result.value().steer_rate_per_s, 2.0);
+    EXPECT_EQ(result.value().brake_off_the_gas, 0.8);
     EXPECT_EQ(result.value().clutch_assist.engage_time_s, 1.5);
     EXPECT_EQ(result.value().clutch_assist.min_throttle, 0.1);
 }
@@ -74,6 +77,9 @@ TEST(ControlsLoader, RejectsNonsenseNamingTheField) {
               std::string::npos);
     EXPECT_NE(error_of(with("steer_rate_per_s = 2.0", "steer_rate_per_s = 0.0"))
                   .find("easy.steer_rate_per_s"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("brake_off_the_gas = 0.8", "brake_off_the_gas = 1.5"))
+                  .find("easy.brake_off_the_gas"),
               std::string::npos);
     EXPECT_NE(error_of(with("release_time_s = 0.2", "release_time_s = 0.0")).find("release_time_s"),
               std::string::npos);

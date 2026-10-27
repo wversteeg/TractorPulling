@@ -1,8 +1,10 @@
 #include "tp/core/turn/turn.hpp"
 
+#include "tp/core/clutch/clutch.hpp"
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/math/trig.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <numbers>
 
@@ -23,7 +25,7 @@ State at_the_line(const pull::Model& model) noexcept {
     return State{.stage = Stage::kPulling,
                  .run = run::start(model),
                  .from_the_parking = false,
-                 .tension_held_steps = 0,
+                 .ready_steps = 0,
                  .sled_back = false};
 }
 
@@ -31,7 +33,7 @@ State from_the_parking(const pull::Model& model, const Parking& parking) noexcep
     State state{.stage = Stage::kToTheSled,
                 .run = run::start(model),
                 .from_the_parking = true,
-                .tension_held_steps = 0,
+                .ready_steps = 0,
                 .sled_back = false};
     pull::State& pull = state.run.pull;
     pull.hooked = false;
@@ -69,6 +71,13 @@ double chain_span_m(const pull::Model& model, const pull::State& state) noexcept
     return std::sqrt(dx_m * dx_m + dy_m * dy_m + dz_m * dz_m);
 }
 
+// Moves the standing tractor `by_m` back along its heading.
+void ease_back(chassis::State& body, double by_m) noexcept {
+    const math::SinCos heading = math::sin_cos_any(body.heading_rad);
+    body.position_m -= by_m * heading.cos;
+    body.lateral_position_m -= by_m * heading.sin;
+}
+
 bool parked(const pull::Model& model, const pull::State& state, const Parking& parking) noexcept {
     const chassis::State& body = state.tractor.chassis;
     const double dx_m = body.position_m - (model.start_line_m() + parking.x_m);
@@ -85,6 +94,58 @@ void restart_if_stalled(pull::State& state, const pull::Model& model,
         input.clutch_pedal >= kRestartPedal || state.tractor.driveline.gear == driveline::kNeutral;
     if (!engine.running && may_start) {
         engine = engine::initial_state(model.tractor().params().engine);
+    }
+}
+
+// kWaitingForTheFlag, after the step: the count while the tractor stands
+// ready, the green flag after kFlagAfter_s, or back to taking up the slack.
+void wait_for_the_flag(State& state, const pull::Model& model, const vehicle::Input& input,
+                       double dt_s) noexcept {
+    pull::State& pull = state.run.pull;
+    const double span_m = chain_span_m(model, pull);
+    const double chain_m = model.sled().chain.length_m;
+    if (span_m < chain_m - kReleaseSlack_m) {
+        // Backed off: the slack is to be taken up again.
+        state.ready_steps = 0;
+        state.stage = Stage::kTakingUpSlack;
+        return;
+    }
+    const bool drive_out =
+        pull.tractor.driveline.gear == driveline::kNeutral ||
+        clutch::capacity_nm(model.tractor().params().clutch, input.clutch_pedal) == 0.0;
+    if (drive_out && stands(pull) && span_m > chain_m) {
+        ease_back(pull.tractor.chassis, std::min(span_m - chain_m, kChainEasesBack_m_s * dt_s));
+    }
+    // Measured after easing back, so the step that eases the last of the
+    // jolt out may count.
+    const double eased_m = chain_span_m(model, pull);
+    const bool ready = stands(pull) && eased_m >= chain_m - kReadyTautWithin_m &&
+                       eased_m <= chain_m + kReadyStretched_m && drive_out;
+    state.ready_steps = ready ? state.ready_steps + 1 : 0;
+    if (static_cast<double>(state.ready_steps) * dt_s >= kFlagAfter_s) {
+        // The green flag: the sled is free. The pull's clock starts now
+        // (run::step has not run before the flag), from a standstill, in
+        // the gear the driver has picked.
+        pull.sled_mode = pull::SledMode::kOnTheChain;
+        state.stage = Stage::kPulling;
+    }
+}
+
+// kReleasing, after the step: the sled held once it stops, the chain off
+// once it is slack.
+void release(State& state, const pull::Model& model) noexcept {
+    pull::State& pull = state.run.pull;
+    if (pull.sled_mode == pull::SledMode::kOnTheChain && pull.sled.velocity_m_s == 0.0) {
+        // Stopped after the pull: the official holds it from now on.
+        pull.sled_mode = pull::SledMode::kHeld;
+    }
+    // Off only once the sled stands too: one still rolling can run up on
+    // the tractor and slacken the chain by itself.
+    if (pull.sled_mode == pull::SledMode::kHeld && stands(pull) &&
+        chain_span_m(model, pull) <= model.sled().chain.length_m - kReleaseSlack_m) {
+        pull.hooked = false;
+        pull.sled_mode = pull::SledMode::kDrivingBack;
+        state.stage = Stage::kToTheParking;
     }
 }
 
@@ -137,30 +198,17 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
                 state.stage = Stage::kTakingUpSlack;
             }
             break;
-        case Stage::kTakingUpSlack: {
-            state.tension_held_steps =
-                out.chain.tension_n >= kTakeUpTension_n ? state.tension_held_steps + 1 : 0;
-            if (static_cast<double>(state.tension_held_steps) * dt_s >= kFlagAfter_s) {
-                // The green flag: the sled is free. The pull's clock starts
-                // now: run::step has not run before the flag.
-                pull.sled_mode = pull::SledMode::kOnTheChain;
-                state.stage = Stage::kPulling;
+        case Stage::kTakingUpSlack:
+            if (out.chain.tension_n >= kTakeUpTension_n) {
+                state.ready_steps = 0;
+                state.stage = Stage::kWaitingForTheFlag;
             }
             break;
-        }
+        case Stage::kWaitingForTheFlag:
+            wait_for_the_flag(state, model, input, dt_s);
+            break;
         case Stage::kReleasing:
-            if (pull.sled_mode == pull::SledMode::kOnTheChain && pull.sled.velocity_m_s == 0.0) {
-                // Stopped after the pull: the official holds it from now on.
-                pull.sled_mode = pull::SledMode::kHeld;
-            }
-            // Off only once the sled stands too: one still rolling can run
-            // up on the tractor and slacken the chain by itself.
-            if (pull.sled_mode == pull::SledMode::kHeld && stands(pull) &&
-                chain_span_m(model, pull) <= model.sled().chain.length_m - kReleaseSlack_m) {
-                pull.hooked = false;
-                pull.sled_mode = pull::SledMode::kDrivingBack;
-                state.stage = Stage::kToTheParking;
-            }
+            release(state, model);
             break;
         case Stage::kToTheParking:
             if (parked(model, pull, parking)) {

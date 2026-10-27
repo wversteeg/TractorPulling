@@ -271,9 +271,13 @@ reverse goes in only with the tractor standing). Once the tractor stands with
 its hitch in front of the sled's hook, within the chain's length and close
 to the sled's line, the chain is hooked on. The tractor then creeps forward
 to put some force on the chain while the sled is held where it stands
-(simplified: it does not move however hard the chain pulls); once the chain
-has held 1 kN for a second the official waves the green flag, and the pull
-is on, its clock starting at the flag. After the pull the tractor backs off
+(simplified: it does not move however hard the chain pulls). Once the chain
+holds 1 kN the slack is taken up: the driver stops, picks the pulling gear
+(the pull has not begun, so any gear goes in) and stands ready, the chain
+tight but not pulled on (the clutch pressed, or neutral). The official raises the flag while
+the tractor stands so, lowers it again if it moves or pulls, and waves
+green after 2 s; the pull is on from a standstill, in the gear picked, its
+clock starting at the flag. After the pull the tractor backs off
 to slacken the chain, which comes off once it is slack, and drives back to
 the parking along the track; the sled drives itself back to the start line
 on its own engine. The turn is over when the tractor stands in the parking.
@@ -452,9 +456,14 @@ the return lane on the right, into the lane past the sled, and back up to
 it in reverse ("-" from N puts R in): a white mark on the track shows where
 the hitch should stop, the cameras frame the hitch and the hook as you come
 close, and the HUD says how far to go and which way to steer. Stand still
-there and the chain goes on. Creep forward to take up the slack while the
-official on the left past the start line raises the red flag; it turns
-green and the pull is on. A second official, down the track from 80 m,
+there and the chain goes on. Creep forward to take up the slack; once the
+chain is tight, press the clutch, stand still and put the pulling gear in.
+While you stand ready the official on the left past the start line raises
+the red flag; after 2 s it turns green and the pull is on (moving or
+letting the clutch in before that lowers the flag again). In the easy
+layout, let go of the gas: the clutch assist presses the clutch and the
+brakes hold the tractor for
+you. A second official, down the track from 80 m,
 walks ahead of the tractor towards the full-pull line, the green flag up
 while the pull is good. The moment the pull is over (a full pull, the sled
 stopped, a disqualification) both wave red: stop, close the throttle. A
@@ -499,7 +508,10 @@ when let go; a hand throttle under the right, moved by sliding it like a
 lever (a touch alone does not move it) and staying where it is left, as a
 tractor's does; and gear buttons (+, - and N; "-" from N is reverse, R)
 beside it. Both thumbs work at once. In the easy layout the clutch assist
-works the clutch. The pro layout
+works the clutch, and closing the throttle also puts both brakes on once
+the clutch is out (`brake_off_the_gas` in `data/controls/easy.toml`): let
+go of the gas and the tractor stops and stands; a brief lift in the pull
+barely brakes. The pro layout
 adds, on the left above the steering, a clutch slider, pressed at the top
 and in at the bottom, which starts pressed and stays where it is left, so
 you slip it in and leave it (a gear goes in only with the clutch pressed,

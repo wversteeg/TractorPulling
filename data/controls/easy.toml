@@ -14,6 +14,11 @@ steer_dead_zone = 0.03
 # second, as a driver turns the wheel: the wheels reach full lock (60 % of
 # the travel) in 0.4 s, and full brake in 0.67 s.
 steer_rate_per_s = 1.5
+# Off the gas (below the clutch assist's min_throttle) both rear brakes come
+# on fully once the assist has the clutch out: lifting off stops the
+# tractor and holds it, so it stands still behind the sled and at the red
+# flag; a brief lift in the pull barely brakes.
+brake_off_the_gas = 1.0
 
 [easy.clutch_assist]
 engage_time_s = 2.0       # fully out to fully in while the engine holds speed

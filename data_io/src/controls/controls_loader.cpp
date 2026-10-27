@@ -33,6 +33,8 @@ FieldError describe(controls::ParamError error) {
                     "guard_speed_share)"};
         case ParamError::kMinThrottleOutOfRange:
             return {"easy.clutch_assist.min_throttle", "must be in [0, 1)"};
+        case ParamError::kBrakeOffTheGasOutOfRange:
+            return {"easy.brake_off_the_gas", "must be in [0, 1]"};
     }
     return {"easy", "invalid"};
 }
@@ -49,6 +51,7 @@ FieldError describe_pro(controls::ParamError error) {
         case ParamError::kAssistTimeNotPositive:
         case ParamError::kGuardOutOfRange:
         case ParamError::kMinThrottleOutOfRange:
+        case ParamError::kBrakeOffTheGasOutOfRange:
             break;
     }
     return {"pro", "all values must be finite"};
@@ -60,6 +63,7 @@ Result<controls::EasyParams> read_easy(const toml::table& root, std::string_view
         .steer_share = reader.number("easy.steer_share"),
         .steer_dead_zone = reader.number("easy.steer_dead_zone"),
         .steer_rate_per_s = reader.number("easy.steer_rate_per_s"),
+        .brake_off_the_gas = reader.number("easy.brake_off_the_gas"),
         .clutch_assist = {
             .engage_time_s = reader.number("easy.clutch_assist.engage_time_s"),
             .release_time_s = reader.number("easy.clutch_assist.release_time_s"),

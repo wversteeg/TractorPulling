@@ -12,15 +12,22 @@ namespace tp::turn {
 
 /// One puller's turn at an event, in the order it goes: from the parking
 /// beside the track to the sled, the chain hooked on and the slack taken
-/// up while the sled is held, the green flag and the pull, the chain
-/// released, and back to the parking while the sled drives itself back to
-/// the start line.
+/// up while the sled is held, the tractor standing ready in its pulling
+/// gear, the green flag and the pull, the chain released, and back to the
+/// parking while the sled drives itself back to the start line.
 enum class Stage : std::uint8_t {
     /// Driving from the parking and backing up to the sled, the chain off.
     kToTheSled,
     /// Hooked on: the tractor creeps forward to put some force on the
-    /// chain, the sled held, until the official waves the green flag.
+    /// chain, the sled held.
     kTakingUpSlack,
+    /// The slack taken up: the driver stops, picks the pulling gear (the
+    /// pull has not begun, so any gear goes) and stands ready; the official
+    /// raises the flag while the tractor stands with the chain tight and
+    /// the drive out, and waves green once it has stood so long. Moving or
+    /// letting the clutch in lowers the flag again; backing off slackens the chain, back to
+    /// kTakingUpSlack.
+    kWaitingForTheFlag,
     /// The pull (run::step), until the sled stops or reaches the end.
     kPulling,
     /// The pull is over (the result is set): back off to slacken the chain,
@@ -61,11 +68,26 @@ inline constexpr double kAtRest_m_s = 0.05;
 /// sled's line [m] and turned at most this far from it [rad].
 inline constexpr double kHookOffLine_m = 0.4;
 inline constexpr double kHookTurned_rad = 0.26;
-/// "Some force on the chain": the official waves the green flag once the
-/// chain has held at least this tension [N] for this long without a break
-/// [s].
+/// "Some force on the chain": the slack is taken up once the chain holds at
+/// least this tension [N].
 inline constexpr double kTakeUpTension_n = 1000.0;
-inline constexpr double kFlagAfter_s = 1.0;
+/// Ready for the flag: the tractor stands with the chain at most
+/// kReadyTautWithin_m short of its length between the hitch and the hook
+/// and at most kReadyStretched_m longer (the jolt eased out, see
+/// kChainEasesBack_m_s) [m], the drive out (the
+/// clutch pressed so far it carries nothing, or the gear in neutral): the
+/// chain held, not pulled on. The official waves green once the tractor
+/// has stood ready this long without a break [s].
+inline constexpr double kReadyTautWithin_m = 0.1;
+inline constexpr double kReadyStretched_m = 0.001;
+inline constexpr double kFlagAfter_s = 2.0;
+/// A tractor never rolls back from rest on the chain (vehicle::step: in a
+/// forward gear it only drives forwards), so the jolt that ends the creep
+/// would stay in the stretched chain and, at the flag, throw the freed
+/// sled a few centimetres: a stop that ends the pull. Waiting with the
+/// drive out, the chain eases the standing tractor back to its length at
+/// this speed instead [m/s].
+inline constexpr double kChainEasesBack_m_s = 0.05;
 /// The chain comes off once it is this much shorter than its length
 /// between the hitch and the hook, with the tractor standing [m].
 inline constexpr double kReleaseSlack_m = 0.3;
@@ -84,9 +106,9 @@ struct State {
     /// Started in the parking (a whole turn), or hooked at the start line
     /// (the pull alone, as the tools and the rivals run it).
     bool from_the_parking = false;
-    /// Steps the chain has held kTakeUpTension_n without a break: exact,
-    /// where a running sum of dt would drift.
-    std::uint64_t tension_held_steps = 0;
+    /// Steps the tractor has stood ready for the flag without a break:
+    /// exact, where a running sum of dt would drift.
+    std::uint64_t ready_steps = 0;
     /// The sled stands back at the start line after the pull.
     bool sled_back = false;
 };
@@ -125,7 +147,7 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(static_cast<std::uint64_t>(state.stage));
     run::hash_append(hash, state.run);
     hash.add(state.from_the_parking);
-    hash.add(state.tension_held_steps);
+    hash.add(state.ready_steps);
     hash.add(state.sled_back);
 }
 

@@ -78,10 +78,10 @@ double steering_after(double dead_zone, std::optional<double> rate_per_s, double
 
 std::optional<ParamError> validate(const EasyParams& params) noexcept {
     const ClutchAssist& assist = params.clutch_assist;
-    const std::array values = {params.steer_share,      params.steer_dead_zone,
-                               params.steer_rate_per_s, assist.engage_time_s,
-                               assist.release_time_s,   assist.guard_speed_share,
-                               assist.guard_band_share, assist.min_throttle};
+    const std::array values = {
+        params.steer_share,       params.steer_dead_zone,  params.steer_rate_per_s,
+        params.brake_off_the_gas, assist.engage_time_s,    assist.release_time_s,
+        assist.guard_speed_share, assist.guard_band_share, assist.min_throttle};
     if (!std::ranges::all_of(values, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -103,6 +103,9 @@ std::optional<ParamError> validate(const EasyParams& params) noexcept {
     }
     if (assist.min_throttle < 0.0 || assist.min_throttle >= 1.0) {
         return ParamError::kMinThrottleOutOfRange;
+    }
+    if (params.brake_off_the_gas < 0.0 || params.brake_off_the_gas > 1.0) {
+        return ParamError::kBrakeOffTheGasOutOfRange;
     }
     return std::nullopt;
 }
@@ -177,12 +180,17 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
                              ? (travel - params.steer_share) / (1.0 - params.steer_share)
                              : 0.0;
     const bool left = steering > 0.0;
+    // Off the gas both brakes hold, once the clutch is out: they never fight
+    // the engine, and a brief lift in the pull barely brakes. The
+    // steering's brake may add to one.
+    const bool off_the_gas = throttle < params.clutch_assist.min_throttle;
+    const double hold = off_the_gas && assist.engagement == 0.0 ? params.brake_off_the_gas : 0.0;
     return {.throttle = throttle,
             .clutch_pedal = clutch::pedal_for(tractor.clutch, assist.engagement),
             .gear = load_shift || (shifting && assist.engagement == 0.0) ? wanted_gear : gear_in,
             .steering_rad = std::copysign(wheels, steering) * tractor.steering.max_angle_rad,
-            .brake_left = left ? brake : 0.0,
-            .brake_right = left ? 0.0 : brake};
+            .brake_left = std::max(left ? brake : 0.0, hold),
+            .brake_right = std::max(left ? 0.0 : brake, hold)};
 }
 
 }  // namespace tp::controls

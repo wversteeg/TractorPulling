@@ -96,6 +96,7 @@ func _play() -> void:
 
 	var stages: Array[String] = [s["stage"]]
 	var backing_up_told := false
+	var told_to_stand := false
 	var result_too_soon := false
 	var flag_green_pulling := true
 	var flag_red_before := true
@@ -112,11 +113,12 @@ func _play() -> void:
 		if stage != stages.back():
 			stages.append(stage)
 		backing_up_told = backing_up_told or hud.turn_text(s).begins_with("Back up to the sled")
-		if stage in ["to_the_sled", "taking_up_slack"]:
+		told_to_stand = told_to_stand or hud.turn_text(s).begins_with("Chain tight")
+		if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
 			flag_red_before = flag_red_before and flagman.colour_name() == "red"
 		if stage == "pulling":
 			flag_green_pulling = flag_green_pulling and flagman.colour_name() == "green"
-		if stage in ["taking_up_slack", "pulling", "releasing"]:
+		if stage in ["taking_up_slack", "waiting_for_the_flag", "pulling", "releasing"]:
 			chain_on_while_hooked = chain_on_while_hooked and bool(s["chain_hooked"])
 		if stage == "pulling":
 			green_while_pulling = green_while_pulling and end_flagman.colour_name() == "green" \
@@ -138,8 +140,9 @@ func _play() -> void:
 		if stage == "parked" and result.visible:
 			break
 
-	_expect(stages == ["to_the_sled", "taking_up_slack", "pulling", "releasing",
-			"to_the_parking", "parked"], "every stage in order: %s" % [stages])
+	_expect(stages == ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling",
+			"releasing", "to_the_parking", "parked"], "every stage in order: %s" % [stages])
+	_expect(told_to_stand, "told to stand ready for the flag")
 	_expect(backing_up_told, "told how far to back up")
 	_expect(flag_red_before and flag_green_pulling, "red before the pull, green in it")
 	_expect(chain_on_while_hooked, "the chain on from hooking to releasing")
@@ -170,6 +173,12 @@ func _check_steer_hint(hud: Hud) -> void:
 	_expect(hud.turn_text(backing).ends_with("steer left"), "right of the line: steer left")
 	backing["hitch_across_m"] = 0.05
 	_expect(not hud.turn_text(backing).contains("steer"), "on the line: no steering hint")
+	# Waiting for the flag with the chain short of tight: told to creep on.
+	var waiting := {"stage": "waiting_for_the_flag", "flag_progress": 0.0,
+			"hitch_to_hook_m": _chain_m - 0.2}
+	_expect(hud.turn_text(waiting).begins_with("Creep forward"), "a short chain: creep forward")
+	waiting["hitch_to_hook_m"] = _chain_m - 0.02
+	_expect(hud.turn_text(waiting).begins_with("Chain tight"), "a tight chain: stand ready")
 
 
 # The keyboard's minus key: reverse from neutral only, as the touch "-".
@@ -208,8 +217,13 @@ func _drive(s: Dictionary) -> Array:
 			_follow_path([Vector2(at.x - 30.0, 0.0)])
 			return _follow(s, REVERSE, true, 0.6)
 		"taking_up_slack":
+			# Creep in 1st until the chain is tight.
 			_clutch = maxf(_clutch - 0.4 / 15.0, 0.55)
-			return [0.4, _clutch, 6, 0.0, 0.0, 0.0]
+			return [0.3, _clutch, 1, 0.0, 0.0, 0.0]
+		"waiting_for_the_flag":
+			# Stand ready in 6th, the clutch pressed.
+			_clutch = 1.0
+			return [0.0, 1.0, 6, 0.0, 0.0, 0.0]
 		"pulling":
 			# Full throttle, the clutch let in, along the lane's middle.
 			_clutch = maxf(_clutch - 0.5 / 15.0, 0.0)
