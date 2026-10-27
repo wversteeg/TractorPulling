@@ -35,10 +35,11 @@ constexpr std::int64_t kStep_ns = 1'000'000;
 // watches the rev counter [m].
 constexpr double kWatchFrom_m = 40.0;
 // A sled lighter than shipped: two knives, the pull-off setting at the
-// shipped event (its field pulls on one, where the shift pays more). Past the push-down its drag levels out between what 6th holds
-// before the engine stalls and what 5th's grip holds, which is where a
-// shift down pays; on the heavier sled as shipped neither gear holds it.
-constexpr int kKnivesAtTheEvent = 2;
+// shipped event (its field pulls on one, where the shift pays more). Past
+// the push-down its drag levels out between what 6th holds before the
+// engine stalls and what 5th's grip holds, which is where a shift down
+// pays; on the heavier sled as shipped neither gear holds it.
+constexpr int kPullOffKnives = 2;
 
 std::filesystem::path data(const std::string& file) {
     return std::filesystem::path{TP_DATA_DIR} / file;
@@ -60,7 +61,7 @@ double reach_m(std::optional<double> lugging_share) {
     const vehicle::Params tractor =
         loaded(data::load_tractor(data("tractors/farm_stock_light.toml")));
     sled::Params sled = loaded(data::load_sled(data("sleds/light_class.toml")));
-    sled.knives.count = kKnivesAtTheEvent;
+    sled.knives.count = kPullOffKnives;
     const data::Track track = loaded(data::load_track(data("tracks/ideal_clay_sand.toml")));
     std::optional<Session> session = Session::create(data::run_setup(tractor, sled, track));
     if (!session) {
@@ -107,7 +108,7 @@ RivalPull rival_pull(int gear, double share) {
     const data::EventDefinition event = loaded(data::load_event(data("events/club_pull.toml")));
     const data::Track track = loaded(data::load_track(data("tracks/ideal_clay_sand.toml")));
     sled::Params sled = event.sled;
-    sled.knives.count = kKnivesAtTheEvent;
+    sled.knives.count = kPullOffKnives;
     const field::Venue venue = data::venue(sled, track);
     const run::Rules rules = field::pull_rules(event.rules, venue, event.rules.full_pull_m);
     field::Puller puller = event.reference;

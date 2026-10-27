@@ -151,9 +151,9 @@ sled and the box is at its stop, so the drag is at its most and stays
 there (`Sled.TopsOutShortlyAfterThePushdown`; only the berm the tires
 throw still grows a little). Where the operator brings the push-down
 earlier (73 m on the dry hard clay) the wheels are off by 83 m, but the
-drag still rises until the box reaches its stop at 88 m. A tractor that can hold that drag goes on to
-a full pull; one that cannot slows and stops a few metres on, as momentum
-runs out. So the operator sets the push-down by the test pulls, and a
+drag still rises until the box reaches its stop at 88 m. A tractor that
+can hold that drag goes on to a full pull; one that cannot slows and stops
+a few metres on, as momentum runs out. So the operator sets the push-down by the test pulls, and a
 step (a knife) changes the distance little until the tractor can hold the
 sled, then a lot. In the game the HUD marks the push-down's stretch on the
 track bar and shows "PUSH-DOWN" while it comes on; on the sled the rear
@@ -231,8 +231,8 @@ towards the stall. It pays where the sled's most drag (see "The sled tops
 out after the push-down") lies between what 6th holds before the engine
 stalls and what 5th's grip holds: on a sled lighter than shipped (two
 knives, the pull-off setting at the shipped event, whose field pulls on
-one), not on the sled as shipped (four), where neither gear holds it. In 6th (the clutch slipped in over
-3 s), one shift to 5th once the engine falls below 90 % of its rated speed
+one), not on the sled as shipped (four), where neither gear holds it. In
+6th (the clutch slipped in over 3 s), one shift to 5th once the engine falls below 90 % of its rated speed
 past 40 m:
 
 | track (two knives) | stays in 6th | shifts to 5th (at) |
