@@ -5,6 +5,15 @@
 #   godot --fixed-fps 60 --path app/godot --script res://tests/scene_test.gd
 extends SceneTree
 
+# The most a mark's step comes to: STEP_M and up to a frame's travel at
+# the pull's speed (60 frames a second, a few metres a second) [m].
+const MARK_STEP_MOST_M := 0.27
+# The venue finds room for at least this many fields round it.
+const FIELDS_AT_LEAST := 8
+# Past the lane's edge, the venue's outermost things: the tents, whose far
+# side is about 23 m out (the stands' back rows and the banks are nearer)
+# [m]. No field may reach inside it.
+const VENUE_PAST_LANE_M := 24.0
 const FRAMES := 600
 const TOLERANCE_M := 1e-4
 
@@ -93,6 +102,22 @@ func _check() -> void:
 			"a wider lane builds the venue again: %d parts, board %s" % [
 			venue.get_child_count(), board.text if board != null else "none"])
 	venue.build(dimensions)
+	# The fields round the venue lie above the clay, so none may reach the
+	# strip, from the run-up to the overrun, or the stands, banks and tents
+	# beside it.
+	var length_m: float = dimensions["track_length_m"]
+	var clear_half_m := float(dimensions["lane_width_m"]) / 2.0 + VENUE_PAST_LANE_M
+	var strip := Rect2(-VenueView.RUN_UP_M, -clear_half_m,
+			VenueView.RUN_UP_M + length_m + VenueView.OVERRUN_M, 2.0 * clear_half_m)
+	var on_strip := 0
+	for field in venue.fields():
+		var centre := Vector2(field.x, field.y)
+		var nearest := Vector2(clampf(centre.x, strip.position.x, strip.end.x),
+				clampf(centre.y, strip.position.y, strip.end.y))
+		if nearest.distance_to(centre) < field.z:
+			on_strip += 1
+	_expect(venue.fields().size() >= FIELDS_AT_LEAST and on_strip == 0,
+			"the fields stay off the strip: %d of %d on it" % [on_strip, venue.fields().size()])
 
 	# The sizes the views draw the parts from are there and positive.
 	for key: String in ["wheelie_bar_behind_rear_axle_m", "wheelie_bar_tip_height_m",
@@ -102,6 +127,21 @@ func _check() -> void:
 			and float(dimensions.get("ballast_position", -1.0)) >= 0.0,
 			"the weights: %s kg at %s" % [dimensions.get("ballast_mass_kg"),
 			dimensions.get("ballast_position")])
+
+	# The marks the pull left: a rut a tire, a point every 0.2 m of the
+	# way, and the band the pan smooths behind the sled.
+	var marks: TrackMarks = _pull.get("track_marks")
+	var counts := marks.point_counts()
+	# Every mark gets a point each time its end has moved STEP_M on, which
+	# is a little more than STEP_M (it moves in frames): about the sled's
+	# distance in STEP_M to MARK_STEP_MOST_M steps. Half the step would
+	# give twice the points.
+	var moved_m := float(s["sled_x_m"])
+	var fewest := int(moved_m / MARK_STEP_MOST_M) - 2
+	var most := int(moved_m / TrackMarks.STEP_M) + 2
+	_expect(counts.x >= fewest and counts.x <= most and counts.y == counts.x
+			and counts.z >= fewest and counts.z <= most,
+			"the marks: %s points, %d to %d a mark" % [counts, fewest, most])
 
 	# The weights drawn for their mass at each end: 45 kg suitcase weights,
 	# 70 kg wheel weights a hub, rounded up so a little weight still shows.

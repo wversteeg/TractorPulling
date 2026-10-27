@@ -420,26 +420,33 @@ distance and a bar down the track to the full-pull line, with the
 push-down's stretch in orange ("PUSH-DOWN" beside it once it comes on).
 
 The pull scene (`scenes/pull.tscn`) draws the run at a club venue, built
-from the run's sizes (`get_dimensions()`), in a bright, toy-like style that
-stays cheap on a phone:
+from the run's sizes (`get_dimensions()`), in a bright style that stays
+cheap on a phone:
 
-- the tractor: hood, grille, cab with the driver, fenders, lugged rear
-  tires, the wheelie bar and the drawbar at their real places, the front
-  weights and rear wheel discs where the ballast is set, exhaust smoke
-  that darkens under load and dirt thrown by a spinning tire;
-- the sled: frame and gooseneck, the pan, the weight box with its blocks
-  riding forward, the operator on the platform and the lamp that turns from
-  green to red; the chain as links, darker as it pulls;
-- the venue: a clay strip in the grass, the lane's chalk, fences and straw
-  bales, distance boards every 10 m, a grandstand with a seated crowd and a
-  standing crowd on a bank, a banner, the full-pull gantry, a scoreboard
-  showing the sled's distance, tents, a barn, trees and clouds, under a
-  sky with soft shadows.
+- the tractor: hood, grille, cab with the driver, fenders in glossy paint,
+  rear tires with tall chevron bars and rounded shoulders on dished rims,
+  the wheelie bar and the drawbar at their real places, the front weights
+  and rear wheel weights as the ballast is set, soft exhaust smoke that
+  turns black under load, dirt thrown by a spinning tire and dust behind;
+- the sled: frame and gooseneck, the pan and the berm of loose soil it
+  pushes (`Snapshot::berm_m3`, from the simulation), the weight box
+  riding forward, the operator under a canopy and the lamp that turns
+  from green to red; the chain as links, darker as it pulls;
+- the track: ruts with the lugs' prints behind the rear tires, and behind
+  the sled the wide band its pan smooths over them (`TrackMarks`), on clay
+  whose clods catch the low sun;
+- the venue: fences and straw bales, distance boards every 10 m, a
+  grandstand and a bank full of people who sway and cheer louder as the
+  sled nears the full-pull line, waving flags, the full-pull gantry, a
+  scoreboard showing the sled's distance, tents and a barn, farmland, a
+  tree line and hills all round, under a deep summer sky with soft
+  shadows and a little glow. The cameras shake a little with the work.
 
-The crowd, trees, tents, flags and clouds are CC0 models from Kenney's
-starter kits (`app/godot/assets/kenney`, credited in its README); the
-crowd is drawn as a few MultiMeshes, so a thousand people cost a few
-draw calls. Everything else is built from primitives (`Art`).
+The trees, tents, barn and clouds are CC0 models from Kenney's starter kits
+(`app/godot/assets/kenney`, credited in its README). Everything else is built
+in code: the people (`People`, one low-poly figure, standing or seated) and
+the rest from primitives (`Art`). Repeated things (lugs, bolts, the crowd,
+the tree line) are MultiMeshes, so a thousand people cost one draw call.
 
 You drive on the touch screen, in the easy or the pro layout. Both have a
 steering slider under the left thumb, which springs back to straight ahead

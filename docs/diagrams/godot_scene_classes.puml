@@ -55,19 +55,43 @@ package "GDScript (app/godot/scripts)" {
   class VenueView {
     +build(dimensions)
     +show_distance(sled_m)
+    +excitement() : float
+    +banner_at_m() : float
     +{static} environment() : WorldEnvironment
+  }
+  class TrackMarks {
+    +build(dimensions)
+    +show_snapshot(snapshot)
+    +point_counts() : Vector3i
+  }
+  class People <<static>> {
+    +{static} standing() : ArrayMesh
+    +{static} seated() : ArrayMesh
+    +{static} material(shirt, skin) : ShaderMaterial
+    +{static} one(seated, shirt) : MeshInstance3D
   }
   class Art <<static>> {
     +{static} material(colour, roughness, metallic) : StandardMaterial3D
     +{static} box(size, colour), cylinder(...), sphere(...)
     +{static} axle_cylinder(radius_m, width_m, colour)
-    +{static} many(mesh, transforms, material, colours) : MultiMeshInstance3D
+    +{static} many(mesh, transforms, material, colours, custom) : MultiMeshInstance3D
     +{static} label(text, size_px, colour, outline) : Label3D
     +{static} ground_texture(dark, light, frequency, seed) : NoiseTexture2D
+    +{static} ground_normal(frequency, seed, strength) : NoiseTexture2D
+    +{static} paint(colour, roughness) : StandardMaterial3D
+    +{static} puff_mesh(size_m) : QuadMesh
+    +{static} torus_across(radius_m, thickness_m) : Mesh
+    +{static} tire(spin, radius_m, width_m, colour)
+    +{static} rim(spin, radius_m, width_m, outward, bolts, colour)
+    +{static} append_coloured(tool, mesh, at, colour)
   }
   class KenneyModels <<static>> {
     +{static} scene(path) : Node3D
-    +{static} merged(path, skip) : Mesh
+  }
+  class Trees <<static>> {
+    +{static} pine() : ArrayMesh
+    +{static} broadleaf() : ArrayMesh
+    +{static} many(mesh, places, random, smallest, largest) : MultiMeshInstance3D
   }
   class ChainView {
     +show_between(hitch, hook, tension_n)
@@ -208,6 +232,7 @@ package "GDScript (app/godot/scripts)" {
   class CameraRig {
     +view : View {CHASE, SIDE, OVERHEAD}
     +next()
+    +rumble : float
     +current_camera() : Camera3D
     +follow(target, delta, smooth)
   }
@@ -236,11 +261,13 @@ Node3D <|-- TractorView
 Node3D <|-- SledView
 Node3D <|-- ChainView
 Node3D <|-- VenueView
+Node3D <|-- TrackMarks
 Node3D <|-- CameraRig
 Pull *-- Run
 Pull *-- Event
 Pull *-- TrackView
-Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky
+Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky, hills
+Pull *-- TrackMarks : ruts and the pan's band,\ncleared each pull
 Pull *-- TractorView
 Pull *-- SledView
 Pull *-- ChainView
@@ -283,7 +310,12 @@ SledView ..> Art
 ChainView ..> Art
 VenueView ..> Art
 VenueView ..> TrackSpace
-VenueView ..> KenneyModels : CC0 models (assets/kenney):\ncrowd, trees, tents, flags
+VenueView ..> KenneyModels : CC0 models (assets/kenney):\ntents, barn, clouds
+VenueView ..> Trees : copses and\nthe tree line
+VenueView ..> People : the crowd, one\nMultiMesh a pose
+TractorView ..> People : the driver
+SledView ..> People : the operator
+TrackMarks ..> TrackSpace
 SceneTree <|-- SceneTest
 SceneTree <|-- Shots
 SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot

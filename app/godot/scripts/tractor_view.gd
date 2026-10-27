@@ -24,7 +24,9 @@ const WEIGHT := Color(0.9, 0.72, 0.1)
 const GLASS := Color(0.75, 0.85, 0.95, 0.35)
 const LAMP := Color(1.0, 0.95, 0.75)
 const SMOKE := Color(0.16, 0.16, 0.16, 0.8)
+const DRIVER := Color(0.16, 0.26, 0.52)
 const DIRT := Color(0.45, 0.31, 0.19)
+const DUST := Color(0.66, 0.54, 0.42)
 
 # Shapes the simulation does not size [m].
 const HOOD_WIDTH_M := 0.62
@@ -32,7 +34,7 @@ const HOOD_TOP_M := 0.65          # above the rear axle
 const HOOD_PAST_FRONT_AXLE_M := 0.3
 const CAB_ROOF_M := 1.75          # above the rear axle
 const CAB_HALF_DEPTH_M := 0.55
-const LUGS_PER_SIDE := 22
+const LUGS_PER_SIDE := 23
 # The weights at the sizes they come in, so any class's ballast draws
 # right: a suitcase weight on the front bracket, a wheel weight on a rear
 # hub [kg]; and as many as the bracket and a hub take.
@@ -43,9 +45,16 @@ const MAX_DISCS_A_SIDE := 4
 # Taken off before rounding up, so a share that is a whole number of weights
 # in doubles a hair over does not draw one more.
 const WEIGHT_COUNT_TOLERANCE := 1e-6
+# A wheel weight's thickness, the step from one to the next, and the gap
+# that keeps the first clear of the hub cap [m].
+const DISC_THICKNESS_M := 0.06
+const DISC_PITCH_M := 0.065
+const DISC_CLEAR_OF_CAP_M := 0.005
 # Slip above which the rear tires throw dirt, and where they throw most.
 const DIRT_FROM_SLIP := 0.08
 const DIRT_FULL_SLIP := 0.5
+# Speed from which the rolling tires raise dust [m/s].
+const DUST_FROM_SPEED_M_S := 0.3
 
 var _body := Node3D.new()        # pivots about the rear axle
 var _hitch := Marker3D.new()
@@ -59,6 +68,7 @@ var _front_weights := Node3D.new()
 var _rear_weights := Node3D.new()
 var _smoke := CPUParticles3D.new()
 var _dirt: Array[CPUParticles3D] = []
+var _dust: Array[CPUParticles3D] = []
 var _built := false
 var _rear_radius_m := 1.0
 var _front_radius_m := 0.5
@@ -119,7 +129,7 @@ func _build_body(d: Dictionary) -> void:
 		steer.position = front_axle + TrackSpace.point(0.0, float(pair[2]) * front_track_m / 2.0,
 				0.0)
 		_body.add_child(steer)
-		_add_front_wheel(steer, pair[1], front_width_m)
+		_add_front_wheel(steer, pair[1], front_width_m, float(pair[2]))
 
 	_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.05, 0.0,
 			_front_radius_m - axle_height_m + 0.35)
@@ -156,11 +166,12 @@ func _add_hood(wheelbase_m: float) -> void:
 	var back_m := 0.75
 	var length_m := front_m - back_m
 	var hood := Art.box(Vector3(HOOD_WIDTH_M, 0.5, length_m), PAINT, 0.35)
+	hood.material_override = Art.paint(PAINT)
 	hood.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M - 0.25)
 	_body.add_child(hood)
 	# A rounded top: a half cylinder along the hood.
 	var top := Art.instance(Art.cylinder_mesh(HOOD_WIDTH_M / 2.0, HOOD_WIDTH_M / 2.0, length_m, 16),
-			Art.material(PAINT, 0.35))
+			Art.paint(PAINT))
 	top.rotation.x = PI / 2.0
 	top.scale = Vector3(1.0, 1.0, 0.35)
 	top.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M)
@@ -210,6 +221,7 @@ func _add_cab(rear_track_m: float) -> void:
 			_body.add_child(post)
 	var roof := Art.box(Vector3(2.0 * half_width_m + 0.12, 0.08, 2.0 * CAB_HALF_DEPTH_M + 0.2),
 			PAINT, 0.35)
+	roof.material_override = Art.paint(PAINT)
 	roof.position = TrackSpace.point(0.15, 0.0, CAB_ROOF_M)
 	_body.add_child(roof)
 	var screen_material := StandardMaterial3D.new()
@@ -236,14 +248,11 @@ func _add_cab(rear_track_m: float) -> void:
 	wheel.position = TrackSpace.point(0.4, 0.0, 0.98)
 	wheel.rotation.x = -0.6
 	_body.add_child(wheel)
-	var driver := KenneyModels.scene(KenneyModels.CHARACTER)
-	var antenna := driver.find_child("antenna", true, false)
-	if antenna != null:
-		antenna.queue_free()
-	driver.scale = Vector3.ONE * 1.05
-	# The model faces +z; the tractor faces -z (TrackSpace's x).
+	# The driver in blue overalls, seated: People face +z, the tractor -z
+	# (TrackSpace's x); their hips 0.42 m behind their feet, on the seat.
+	var driver := People.one(true, DRIVER)
 	driver.rotation.y = PI
-	driver.position = TrackSpace.point(-0.02, 0.0, 0.42)
+	driver.position = TrackSpace.point(0.37, 0.0, 0.3)
 	_body.add_child(driver)
 
 
@@ -257,6 +266,7 @@ func _add_fenders(rear_track_m: float, rear_width_m: float) -> void:
 			var angle := lerpf(0.25, PI - 0.55, (float(i) + 0.5) / panels)
 			var panel := Art.box(Vector3(rear_width_m + 0.1, 0.03, radius_m * PI / panels * 0.75),
 					PAINT, 0.35)
+			panel.material_override = Art.paint(PAINT)
 			panel.position = TrackSpace.point(radius_m * cos(angle), side * rear_track_m / 2.0,
 					radius_m * sin(angle))
 			# Tangent to the arc: turned about the axle's line.
@@ -301,44 +311,43 @@ func _add_hitch_and_bar(d: Dictionary, axle_height_m: float, rear_track_m: float
 func _add_rear_wheel(spin: Node3D, side_m: float, width_m: float) -> void:
 	spin.position = TrackSpace.point(0.0, side_m, 0.0)
 	_body.add_child(spin)
-	var lug_height_m := 0.05
-	spin.add_child(Art.axle_cylinder(_rear_radius_m - lug_height_m, width_m, TIRE, 32, 0.95))
+	var lug_height_m := 0.06
+	var carcass_m := _rear_radius_m - lug_height_m
+	Art.tire(spin, carcass_m, width_m, TIRE)
 	var outward := signf(side_m)
-	var rim := Art.axle_cylinder(_rear_radius_m * 0.6, width_m * 0.6, RIM, 24, 0.4, 0.2)
-	rim.position = TrackSpace.point(0.0, outward * width_m * 0.21, 0.0)
-	spin.add_child(rim)
-	var hub := Art.axle_cylinder(0.14, width_m * 0.66, IRON, 12, 0.4, 0.5)
-	hub.position = TrackSpace.point(0.0, outward * width_m * 0.21, 0.0)
-	spin.add_child(hub)
-	# Chevron lugs: on each half of the tread, angled towards the middle.
+	Art.rim(spin, _rear_radius_m * 0.62, width_m, outward, 10, RIM)
+	# Pulling bars: tall lugs in a chevron, each half of the tread angled
+	# towards the middle, reaching over the shoulder onto the sidewall.
 	var lugs: Array[Transform3D] = []
 	var lug := BoxMesh.new()
-	lug.size = Vector3(width_m * 0.5, lug_height_m * 2.0, 0.07)
+	lug.size = Vector3(width_m * 0.56, lug_height_m * 2.0, 0.085)
 	for i in LUGS_PER_SIDE:
 		for half: float in [-1.0, 1.0]:
 			var angle := TAU * (float(i) + (0.5 if half > 0.0 else 0.0)) / LUGS_PER_SIDE
-			var basis := Basis(Vector3.RIGHT, -angle) * Basis(Vector3.UP, half * 0.45)
-			var at := Basis(Vector3.RIGHT, -angle) * Vector3(half * width_m * 0.24,
-					_rear_radius_m - lug_height_m, 0.0)
+			var basis := Basis(Vector3.RIGHT, -angle) * Basis(Vector3.UP, half * 0.5)
+			var at := Basis(Vector3.RIGHT, -angle) * Vector3(half * width_m * 0.25,
+					carcass_m, 0.0)
 			lugs.append(Transform3D(basis, at))
-	spin.add_child(Art.many(lug, lugs, Art.material(TIRE, 0.95)))
-	# A wheel weight's place: on the hub, outboard.
+	spin.add_child(Art.many(lug, lugs, Art.material(TIRE, 0.9)))
+	# A wheel weight's place: on the hub, outboard of the rim and its cap.
 	var weights := Node3D.new()
 	weights.name = "weights"
-	weights.position = TrackSpace.point(0.0, outward * (width_m * 0.5 + 0.04), 0.0)
+	weights.set_meta("outward", outward)
+	weights.position = TrackSpace.point(0.0, outward * (width_m * 0.5 + Art.RIM_PROUD_M
+			+ Art.HUB_REACH_M + DISC_CLEAR_OF_CAP_M + DISC_THICKNESS_M / 2.0), 0.0)
 	spin.add_child(weights)
 
 
-func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float) -> void:
+# `side` is 1 on the left, -1 on the right (TrackSpace's y).
+func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float, side: float) -> void:
 	steer.add_child(spin)
-	spin.add_child(Art.axle_cylinder(_front_radius_m, width_m, TIRE, 24, 0.95))
+	Art.tire(spin, _front_radius_m - 0.015, width_m, TIRE)
 	for rib in 3:
-		var ring := Art.axle_cylinder(_front_radius_m + 0.012, 0.025, TIRE.lightened(0.08), 24)
-		ring.position = TrackSpace.point(0.0, (float(rib) - 1.0) * width_m * 0.3, 0.0)
+		var ring := Art.instance(Art.torus_across(_front_radius_m - 0.01, 0.018),
+				Art.material(TIRE.lightened(0.05), 0.85))
+		ring.position = TrackSpace.point(0.0, (float(rib) - 1.0) * width_m * 0.28, 0.0)
 		spin.add_child(ring)
-	var rim := Art.axle_cylinder(_front_radius_m * 0.55, width_m * 1.02, RIM, 18, 0.4, 0.2)
-	spin.add_child(rim)
-	spin.add_child(Art.axle_cylinder(0.08, width_m * 1.08, IRON, 10))
+	Art.rim(spin, _front_radius_m * 0.58, width_m, side, 6, RIM)
 
 
 # Suitcase weights on the front bracket and wheel weights on the rear hubs,
@@ -371,10 +380,11 @@ func _show_weights(d: Dictionary) -> void:
 	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG
 			- WEIGHT_COUNT_TOLERANCE), MAX_DISCS_A_SIDE)
 	for holder: Node3D in holders:
-		var outward := signf(holder.get_parent().position.x * -1.0)
+		var outward: float = holder.get_meta("outward")
 		for i in discs:
-			var disc := Art.axle_cylinder(_rear_radius_m * 0.42, 0.06, WEIGHT.darkened(0.1), 20, 0.6)
-			disc.position = TrackSpace.point(0.0, outward * i * 0.065, 0.0)
+			var disc := Art.axle_cylinder(_rear_radius_m * 0.42, DISC_THICKNESS_M,
+					WEIGHT.darkened(0.1), 20, 0.6)
+			disc.position = TrackSpace.point(0.0, outward * i * DISC_PITCH_M, 0.0)
 			holder.add_child(disc)
 
 
@@ -387,8 +397,8 @@ func _add_smoke(wheelbase_m: float) -> void:
 	cap.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.97)
 	_body.add_child(cap)
 	_smoke.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 1.0)
-	_smoke.amount = 48
-	_smoke.lifetime = 1.6
+	_smoke.amount = 60
+	_smoke.lifetime = 2.2
 	_smoke.emitting = false
 	_smoke.local_coords = false
 	_smoke.direction = Vector3.UP
@@ -396,17 +406,27 @@ func _add_smoke(wheelbase_m: float) -> void:
 	_smoke.initial_velocity_min = 1.5
 	_smoke.initial_velocity_max = 2.5
 	_smoke.gravity = Vector3(0.0, 0.6, 0.0)
-	_smoke.scale_amount_min = 0.6
-	_smoke.scale_amount_max = 1.0
+	_smoke.scale_amount_min = 0.7
+	_smoke.scale_amount_max = 1.1
+	# Each puff turns a little as it rises, so the column does not repeat.
+	_smoke.angle_min = 0.0
+	_smoke.angle_max = 360.0
+	_smoke.angular_velocity_min = -40.0
+	_smoke.angular_velocity_max = 40.0
+	_smoke.damping_min = 0.6
+	_smoke.damping_max = 1.2
 	var grow := Curve.new()
-	grow.add_point(Vector2(0.0, 0.5))
-	grow.add_point(Vector2(1.0, 3.5))
+	grow.add_point(Vector2(0.0, 0.35))
+	grow.add_point(Vector2(0.3, 1.4))
+	grow.add_point(Vector2(1.0, 3.8))
 	_smoke.scale_amount_curve = grow
 	var fade := Gradient.new()
-	fade.set_color(0, SMOKE)
-	fade.set_color(1, Color(SMOKE.r * 3.0, SMOKE.g * 3.0, SMOKE.b * 3.0, 0.0))
+	fade.set_color(0, Color(SMOKE, 0.0))
+	fade.add_point(0.08, SMOKE)
+	fade.set_color(fade.get_point_count() - 1,
+			Color(SMOKE.r * 3.5, SMOKE.g * 3.5, SMOKE.b * 3.5, 0.0))
 	_smoke.color_ramp = fade
-	_smoke.mesh = _puff_mesh(0.3)
+	_smoke.mesh = Art.puff_mesh(0.7)
 	_body.add_child(_smoke)
 
 
@@ -429,6 +449,33 @@ func _add_dirt(side_m: float, axle_height_m: float) -> void:
 	dirt.mesh = _puff_mesh(0.07)
 	_body.add_child(dirt)
 	_dirt.append(dirt)
+	# The dust the spinning lugs raise: soft and low, it hangs behind.
+	var dust := CPUParticles3D.new()
+	dust.position = dirt.position
+	dust.amount = 30
+	dust.lifetime = 2.5
+	dust.emitting = false
+	dust.local_coords = false
+	dust.direction = Vector3(0.0, 0.5, 1.0)
+	dust.spread = 40.0
+	dust.initial_velocity_min = 0.5
+	dust.initial_velocity_max = 1.5
+	dust.gravity = Vector3(0.0, 0.15, 0.0)
+	dust.damping_min = 0.5
+	dust.damping_max = 1.0
+	dust.angle_max = 360.0
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.5))
+	grow.add_point(Vector2(1.0, 3.0))
+	dust.scale_amount_curve = grow
+	var fade := Gradient.new()
+	fade.set_color(0, Color(DUST, 0.0))
+	fade.add_point(0.15, Color(DUST, 0.45))
+	fade.set_color(fade.get_point_count() - 1, Color(DUST, 0.0))
+	dust.color_ramp = fade
+	dust.mesh = Art.puff_mesh(0.9)
+	_body.add_child(dust)
+	_dust.append(dust)
 
 
 # A soft round puff for smoke and dirt, lit and shaded but casting nothing.
@@ -491,6 +538,11 @@ func show_snapshot(s: Dictionary, delta: float) -> void:
 		dirt.emitting = throwing > 0.0
 		dirt.initial_velocity_max = 2.0 + 4.0 * throwing
 		dirt.color = Color(DIRT, 0.3 + 0.7 * throwing)
+	# Dust whenever the tires move dry clay, more as they slip.
+	var moving := absf(float(s["tractor_speed_m_s"])) > DUST_FROM_SPEED_M_S
+	for dust in _dust:
+		dust.emitting = moving or throwing > 0.0
+		dust.color = Color(1.0, 1.0, 1.0, clampf(0.35 + 0.65 * throwing, 0.0, 1.0))
 
 
 # More smoke with more throttle, and blacker as the sled pulls the engine

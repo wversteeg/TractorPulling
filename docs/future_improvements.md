@@ -277,16 +277,19 @@ for the big features; they are repeated at the end for completeness.
 - **GDScript checks.** The GDScript runs in CI (the scene and run tests)
   but has no linter or formatter there; gdtoolkit's `gdlint` and `gdformat`
   would add a Python dependency, worth it as the scene and UI grow.
-- **A toy look, not a realistic one.** The tractor and sled are built
-  from primitives and the crowd is stylized (Kenney's CC0 characters): no
-  textures beyond a noise ground, no tire tracks in the clay, no berm drawn,
-  no sound. A real tractor model, a modelled sled and a crowd that cheers
-  would replace the views' meshes; their interfaces (`build` from the
-  dimensions, `show_snapshot`) stay.
+- **A stylized look, not a realistic one.** The tractor, the sled and the
+  people are built in code from primitives; there are no textures beyond
+  procedural noise, rows and lug prints, and no sound. The people do not
+  turn their heads to follow the tractor, and the berm is a smooth mound.
+  A modelled tractor and sled would replace the views' meshes; their
+  interfaces (`build` from the dimensions, `show_snapshot`) stay.
+- **Marks are cleared, not raked.** Between pulls the ruts and the band
+  are gone at once; the track crew's tractor raking the lane is not shown.
 - **The visuals are not measured on a phone.** The venue is a few thousand
-  instances in MultiMeshes and one shadowed sun (60 m of shadow distance);
-  the frame time on a mid-range phone is not measured yet, nor is a
-  lower-detail setting there to fall back on.
+  instances in MultiMeshes, one shadowed sun (60 m of shadow distance),
+  glow, and a few soft-particle emitters; the frame time on a mid-range
+  phone is not measured yet, nor is a lower-detail setting there to fall
+  back on (fewer people, no glow, no dust).
 - **The chain is straight.** `ChainView` draws its links on a straight
   line from hitch to hook, darker as the tension rises, even when the
   chain is slack and should sag.

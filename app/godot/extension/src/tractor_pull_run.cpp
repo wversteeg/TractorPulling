@@ -213,6 +213,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["sled_speed_m_s"] = s.sled_speed_m_s;
     out["box_ahead_of_wheels_m"] = s.box_ahead_of_wheels_m;
     out["pushdown"] = s.pushdown;
+    out["berm_m3"] = s.berm_m3;
     out["chain_tension_n"] = s.chain_tension_n;
     return out;
 }

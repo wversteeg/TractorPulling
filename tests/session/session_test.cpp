@@ -245,6 +245,7 @@ TEST(Session, StartsAtTheStartLine) {
     EXPECT_TRUE(start.engine_running);
     EXPECT_EQ(start.box_ahead_of_wheels_m, setup.sled.box_start_ahead_of_wheels_m);
     EXPECT_EQ(start.pushdown, 0.0);
+    EXPECT_EQ(start.berm_m3, 0.0);
     // The front tires carry their share of the weight at rest.
     const double weight_n = setup.tractor.chassis.mass_kg * units::kStandardGravity_m_s2;
     EXPECT_NEAR(start.front_axle_load_n,
@@ -294,6 +295,8 @@ TEST(Session, ShowsTheTractorPullingTheSled) {
     const double radius_m = vehicle::testing::reference_params().rear_tire.size.radius_m;
     EXPECT_GT(now.rear_left_omega_rad_s * radius_m, now.tractor_speed_m_s);
     EXPECT_GT(now.slip_ratio, 0.0);
+    // The tires throw soil back, and it heaps up in front of the pan.
+    EXPECT_GT(now.berm_m3, 0.0);
     // The pull takes weight off the front, never all of it.
     EXPECT_GT(now.front_axle_load_n, 0.0);
     EXPECT_LT(now.front_axle_load_n, start_front_n);

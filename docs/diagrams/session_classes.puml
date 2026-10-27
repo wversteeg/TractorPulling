@@ -51,7 +51,7 @@ package "tp::session" {
     +throttle, clutch_pedal : double
     +sled_x_m, sled_y_m, sled_heading_rad : double
     +sled_speed_m_s : double
-    +box_ahead_of_wheels_m, pushdown, chain_tension_n : double
+    +box_ahead_of_wheels_m, pushdown, berm_m3, chain_tension_n : double
   }
   class Frame <<struct>> {
     +steps : uint32
