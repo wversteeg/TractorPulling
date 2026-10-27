@@ -4,7 +4,8 @@
 # money on the tractor. The gear in the top right
 # corner opens the settings. At launch, with a season saved, it first asks
 # whether to continue it, start a new season (the career, money and
-# upgrades, carries over) or a new career (show_choice).
+# upgrades, carries over) or a new career (show_choice), which starts over
+# on a second tap: the first asks to be sure.
 class_name StartScreen
 extends MenuPanel
 
@@ -23,7 +24,9 @@ const LINE_SIZE := 28
 const GEAR_SIZE := 96.0
 const GEAR_MARGIN := 24.0
 # Wider than the panel's other buttons: "New season" fits on one line;
-# the panel is wider too, for three of them in a row.
+# the panel is wider too, for three of them in a row: 3 × 280 + 2 gaps of
+# MenuPanel.GAP + 2 × MenuPanel.PADDING = 960, so a wider button needs a
+# wider panel.
 const CHOICE_BUTTON_SIZE := Vector2(280.0, 90.0)
 const START_PANEL_SIZE := Vector2(960.0, 470.0)
 
@@ -37,6 +40,8 @@ var settings_button := GearButton.new()
 var _event: Label
 var _name: Label
 var _error: Label
+# The first tap on "New career" made: the next one starts it.
+var _career_asked := false
 
 
 func _init() -> void:
@@ -64,7 +69,7 @@ func _ready() -> void:
 	garage_button.tapped.connect(func() -> void: garage_requested.emit())
 	continue_button.tapped.connect(func() -> void: continue_requested.emit())
 	new_season_button.tapped.connect(func() -> void: new_season_requested.emit())
-	new_career_button.tapped.connect(func() -> void: new_career_requested.emit())
+	new_career_button.tapped.connect(_ask_new_career)
 	settings_button.fires_on_release = true
 	settings_button.anchor_left = 1.0
 	settings_button.anchor_right = 1.0
@@ -112,6 +117,20 @@ func show_choice(season: Dictionary) -> void:
 	continue_button.visible = true
 	new_season_button.visible = true
 	new_career_button.visible = true
+	_career_asked = false
+	new_career_button.text = "New career"
 	# The settings wait for the choice.
 	settings_button.visible = false
 	_error.text = ""
+
+
+# The first tap asks to be sure; the second starts the new career.
+func _ask_new_career() -> void:
+	if _career_asked:
+		_career_asked = false
+		new_career_button.text = "New career"
+		new_career_requested.emit()
+		return
+	_career_asked = true
+	new_career_button.text = "Sure? Tap again"
+	_name.text = "A new career starts over: the garage's start money, nothing bought."

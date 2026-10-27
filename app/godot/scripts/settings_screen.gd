@@ -11,7 +11,7 @@ signal changed(pro: bool, tilt: bool)
 signal done
 signal new_career_requested
 
-const SETTINGS_SIZE := Vector2(820.0, 700.0)
+const SETTINGS_SIZE := Vector2(820.0, 600.0)
 const TITLE_SIZE := 36
 const LINE_SIZE := 26
 const HINT_SIZE := 20
@@ -47,10 +47,10 @@ func _ready() -> void:
 	tilt_button = add_button(steering, "tilt")
 	_hint = add_line(HINT_SIZE)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var career := add_button_row()
-	new_career_button = add_button(career, "New career")
-	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
+	# New career beside Done: the panel keeps its height.
 	var go := add_button_row()
+	new_career_button = add_button(go, "New career")
+	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
 	done_button = add_button(go, "Done")
 	easy_button.tapped.connect(func() -> void: _pick(false, _tilt))
 	pro_button.tapped.connect(func() -> void: _pick(true, _tilt))

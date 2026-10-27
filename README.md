@@ -346,7 +346,7 @@ the field is drawn around, and beyond it: wider tires (a traction limit of 0.95 
 event is scored, once; upgrades are bought between events or before your
 first pull of one (`field::LiveSeason::player_may_change_tractor`). The
 money and the levels carry from season to season. The whole garage costs
-€ 17,700; a season of eight events pays € 2,560 at the back of the field and
+€ 17,900; a season of eight events pays € 2,560 at the back of the field and
 € 12,000 to a winner of every event.
 
 ### The rivals
@@ -365,13 +365,17 @@ best gear:
 | the player's tractor | place among ten (the first event, eight fields) |
 |---|---|
 | new | 6th to 9th |
-| every part one level up (€ 4,300) | 4th to 7th |
-| two levels up (€ 11,000) | 1st to 5th |
-| fully upgraded (€ 17,700) | 1st |
+| every part one level up (€ 5,500) | 4th to 7th |
+| two levels up (€ 11,200) | 1st to 5th |
+| fully upgraded (€ 17,900) | 1st |
 
 So a career starts near the back, beating a few rivals, climbs with every
 level and wins once fully upgraded. The drawbar's last 4 cm matter most
-(the weight it puts on the rear tires), so they cost the most. A test
+(the weight it puts on the rear tires), so they cost the most. The first
+powershift step (€ 3,000, one gear down under load) is dearer than the
+second (€ 1,500): it is the one that saves a pull. So one level of every
+part costs € 5,500, and a new career, earning a few hundred euros an event
+at the back, takes several events to reach the 4th-to-7th row. A test
 (`RivalDifficulty`) checks every row on three of the eight fields. A player drives less
 evenly than the script, and picks the gear themselves.
 
@@ -426,8 +430,8 @@ ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
 and your career (`user://season.toml`, `tp::data::SeasonSave`): at the
 next launch the start screen asks whether to continue it, at the next
 event, to start a new season (your career carries over) or a new career
-(the garage's start money, nothing bought; also in the settings, on a
-second tap). An event left halfway is not saved:
+(the garage's start money, nothing bought; on a second tap, here or in
+the settings). An event left halfway is not saved:
 continued, it starts again from its beginning, and the rivals pull as they
 did, since the field and every event's draws come from the season's seed.
 A finished season is kept for its career, which the next season starts

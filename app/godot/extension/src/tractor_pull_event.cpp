@@ -10,6 +10,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "godot_files.hpp"
@@ -81,8 +82,14 @@ const char* turn_name(field::LiveEvent::Turn turn) {
 }  // namespace
 
 godot::String TractorPullEvent::start_career(const godot::String& season_path, std::int64_t seed) {
+    // The career so far stays if the season cannot be started.
+    std::optional<garage::Career> kept = std::move(career_);
     career_.reset();
-    return start_season(season_path, seed);
+    godot::String error = start_season(season_path, seed);
+    if (!error.is_empty()) {
+        career_ = std::move(kept);
+    }
+    return error;
 }
 
 godot::String TractorPullEvent::start_season(const godot::String& season_path, std::int64_t seed) {
