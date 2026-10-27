@@ -103,6 +103,19 @@ func _check() -> void:
 			"the weights: %s kg at %s" % [dimensions.get("ballast_mass_kg"),
 			dimensions.get("ballast_position")])
 
+	# The weights drawn for their mass at each end: 45 kg suitcase weights,
+	# 70 kg wheel weights a hub, rounded up so a little weight still shows.
+	var view: TractorView = _pull.get("tractor_view")
+	for case: Array in [[400.0, 1.0, Vector2i(9, 0)], [400.0, 0.0, Vector2i(0, 3)],
+			[100.0, 0.5, Vector2i(2, 1)], [0.0, 0.5, Vector2i(0, 0)]]:
+		var weighted := dimensions.duplicate()
+		weighted["ballast_mass_kg"] = case[0]
+		weighted["ballast_position"] = case[1]
+		view.build(weighted)
+		_expect(view.weight_counts() == case[2], "%s kg at %s: %s weights, not %s" % [
+				case[0], case[1], view.weight_counts(), case[2]])
+	view.build(dimensions)
+
 	var cameras: Node = _pull.get("cameras")
 	var camera: Camera3D = cameras.call("current_camera")
 	_expect(camera != null and camera.is_current(), "a camera is current")

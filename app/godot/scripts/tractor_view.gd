@@ -341,14 +341,22 @@ func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float) -> void:
 # Suitcase weights on the front bracket and wheel weights on the rear hubs,
 # each in proportion to the mass of the ballast at that end.
 func _show_weights(d: Dictionary) -> void:
-	for child in _front_weights.get_children():
-		child.queue_free()
+	# The last pull's weights come off first, at both ends.
+	var holders: Array[Node3D] = []
+	for spin: Node3D in [_rear_left, _rear_right]:
+		var holder := spin.get_node_or_null("weights") as Node3D
+		if holder != null:
+			holders.append(holder)
+	for parent: Node3D in [_front_weights] + holders:
+		for child in parent.get_children():
+			child.queue_free()
 	var mass_kg: float = d["ballast_mass_kg"]
 	var position_share: float = d["ballast_position"]
 	if mass_kg <= 0.0:
 		return
 	# Each end gets its share of the mass, in plates or discs of their size.
-	var plates := mini(roundi(position_share * mass_kg / PLATE_KG), MAX_PLATES)
+	# Rounded up, so a little weight at an end still shows.
+	var plates := mini(ceili(position_share * mass_kg / PLATE_KG), MAX_PLATES)
 	var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
 	bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
 	_front_weights.add_child(bracket)
@@ -357,14 +365,9 @@ func _show_weights(d: Dictionary) -> void:
 				0.6)
 		plate.position = TrackSpace.point(0.03 + i * 0.05, 0.0, 0.0)
 		_front_weights.add_child(plate)
-	var discs := mini(roundi((1.0 - position_share) * mass_kg / 2.0 / DISC_KG), MAX_DISCS_A_SIDE)
-	for spin: Node3D in [_rear_left, _rear_right]:
-		var holder := spin.get_node_or_null("weights") as Node3D
-		if holder == null:
-			continue
-		for child in holder.get_children():
-			child.queue_free()
-		var outward := signf(spin.position.x * -1.0)
+	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG), MAX_DISCS_A_SIDE)
+	for holder: Node3D in holders:
+		var outward := signf(holder.get_parent().position.x * -1.0)
 		for i in discs:
 			var disc := Art.axle_cylinder(_rear_radius_m * 0.42, 0.06, WEIGHT.darkened(0.1), 20, 0.6)
 			disc.position = TrackSpace.point(0.0, outward * i * 0.065, 0.0)
@@ -437,6 +440,23 @@ func _puff_mesh(radius_m: float) -> SphereMesh:
 	m.roughness = 1.0
 	mesh.material = m
 	return mesh
+
+
+# The weights drawn: suitcase weights on the front bracket (x) and wheel
+# weights on each rear hub (y).
+func weight_counts() -> Vector2i:
+	var plates := 0
+	for child: Node in _front_weights.get_children():
+		if not child.is_queued_for_deletion() and child is MeshInstance3D:
+			plates += 1
+	var discs := 0
+	var holder := _rear_left.get_node_or_null("weights")
+	if holder != null:
+		for child: Node in holder.get_children():
+			if not child.is_queued_for_deletion():
+				discs += 1
+	# The bracket is not a weight.
+	return Vector2i(maxi(plates - 1, 0), discs)
 
 
 # Where the chain pulls, in the world.
