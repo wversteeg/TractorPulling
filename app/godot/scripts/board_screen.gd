@@ -78,6 +78,10 @@ func set_status(text: String) -> void:
 	_status.text = text
 
 
+func status() -> String:
+	return _status.text
+
+
 # The buttons' texts; "" hides a button.
 func set_buttons(first: String, second: String = "") -> void:
 	first_button.text = first

@@ -71,6 +71,7 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.sled_heading_rad = lerp(from.sled_heading_rad, to.sled_heading_rad, alpha);
     out.sled_speed_m_s = lerp(from.sled_speed_m_s, to.sled_speed_m_s, alpha);
     out.box_ahead_of_wheels_m = lerp(from.box_ahead_of_wheels_m, to.box_ahead_of_wheels_m, alpha);
+    out.pushdown = lerp(from.pushdown, to.pushdown, alpha);
     out.chain_tension_n = lerp(from.chain_tension_n, to.chain_tension_n, alpha);
     return out;
 }
@@ -172,6 +173,7 @@ Snapshot Session::snapshot() const noexcept {
             .sled_heading_rad = pull.sled.heading_rad,
             .sled_speed_m_s = pull.sled.velocity_m_s,
             .box_ahead_of_wheels_m = output_.sled.box_ahead_of_wheels_m,
+            .pushdown = output_.sled.pushdown,
             .chain_tension_n = output_.chain.tension_n};
 }
 

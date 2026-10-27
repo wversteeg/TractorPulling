@@ -4,6 +4,7 @@
 #include "tp/core/field/field.hpp"
 #include "tp/core/field/live.hpp"
 #include "tp/core/field/play.hpp"
+#include "tp/core/garage/garage.hpp"
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/season/season.hpp"
 
@@ -52,6 +53,16 @@ public:
     /// Scores the event once it is finished, in the championship; false if
     /// there is none to score.
     bool score_event() noexcept;
+    /// As score_event(), and pays the player's place into `career`
+    /// (garage::prize_eur by `prize_by_place`): once, as the event is scored
+    /// once.
+    bool score_event(std::span<const std::int64_t> prize_by_place, garage::Career& career) noexcept;
+    /// The player's line in the event's standings so far; nothing before an
+    /// event.
+    [[nodiscard]] std::optional<event::Standing> player_standing() noexcept;
+    /// Whether the player may change their tractor (the garage): between
+    /// events, and in an event until their first pull, not after it.
+    [[nodiscard]] bool player_may_change_tractor() const noexcept;
     /// Scores the next event as pulled earlier, from its standings (a saved
     /// season's: each puller once, places 1 to the field's size), without
     /// pulling it. Only the places and

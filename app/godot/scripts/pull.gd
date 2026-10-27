@@ -5,10 +5,12 @@
 # pulls and the sled operator's verdicts fill in as they are simulated, a
 # few each frame (from the start screen on). Before every pull the setup
 # screen sets the tractor (the weights and the rear tires' pressure, kept
-# for the season). The gear on the start screen opens the settings: the
-# control layout and the steering (slider or tilt), kept on the device. When the player is due they pull
-# (a run, TractorPullRun, stepped by each frame's time and drawn from its
-# blended snapshot) or, after a test pull, keep it or pull again. After the
+# for the season). "Garage" spends the prize money each event pays on the
+# tractor (the career: money and upgrades carry from season to season).
+# The gear on the start screen opens the settings: the control layout and
+# the steering (slider or tilt), kept on the device. When the player is due
+# they pull (a run, TractorPullRun, stepped by each frame's time and drawn
+# from its blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its top ten, then the season's; then the next event, or a new
 # season after the last. The season is saved after every event (and the
 # tuning on every pull): at the next launch the start screen offers to
@@ -23,7 +25,7 @@
 # dropped.
 extends Node3D
 
-enum Screen { START, SETTINGS, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
+enum Screen { START, SETTINGS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
 
 @export var season_path := "res://data/seasons/club_season.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
@@ -73,6 +75,7 @@ var start_screen := StartScreen.new()
 var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
+var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
 var screen := Screen.START
 # The pull being pulled is a practice pull (or autoplay's), not the event's.
@@ -92,8 +95,8 @@ func _ready() -> void:
 	for node: Node in [venue_view, track_view, tractor_view, sled_view, chain_view, cameras]:
 		add_child(node)
 	var layer := CanvasLayer.new()
-	for node: Node in [hud, controls, start_screen, settings_screen, board, setup_screen,
-			result_screen]:
+	for node: Node in [hud, controls, start_screen, settings_screen, garage_screen, board,
+			setup_screen, result_screen]:
 		layer.add_child(node)
 	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
@@ -111,6 +114,16 @@ func _ready() -> void:
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.done.connect(show_start)
+	start_screen.garage_requested.connect(func() -> void:
+		garage_screen.show_garage(event.get_garage())
+		_set_screen(Screen.GARAGE))
+	garage_screen.buy_requested.connect(func(index: int) -> void:
+		var error := event.buy_upgrade(index)
+		if error.is_empty():
+			_save_season()
+		garage_screen.show_garage(event.get_garage(),
+				"" if error.is_empty() else "Cannot buy it: %s." % error))
+	garage_screen.done.connect(show_start)
 	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float) -> void:
 		event.set_tuning(ballast_position, bar)
 		setup_screen.show_values(event.get_tuning()))
@@ -183,7 +196,8 @@ func _new_season() -> void:
 
 # The season saved at `save_path`, picked up again and offered on the start
 # screen; false if there is none (or it cannot be read, or it is over, or
-# it has no event pulled yet: nothing to lose then).
+# it has no event pulled yet: nothing to lose then). Its career carries
+# into a new season either way.
 func _resume_season() -> bool:
 	if save_path.is_empty() or not FileAccess.file_exists(save_path):
 		return false
@@ -200,13 +214,11 @@ func _resume_season() -> bool:
 	return true
 
 
-# Saves the season so far, for the next launch; a season that is over is
-# not kept.
+# Saves the season so far, with the career, for the next launch. A season
+# that is over is kept for its career: the next launch starts a new season
+# with it.
 func _save_season() -> void:
 	if save_path.is_empty() or autoplay:
-		return
-	if event.get_season().get("over", false):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
 		return
 	# Written beside the save, then renamed over it: an app killed mid-write
 	# (Android does that to apps in the background) leaves the old save whole.
@@ -294,6 +306,7 @@ func _set_screen(next: Screen) -> void:
 	screen = next
 	start_screen.visible = screen == Screen.START
 	settings_screen.visible = screen == Screen.SETTINGS
+	garage_screen.visible = screen == Screen.GARAGE
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
 	result_screen.visible = screen == Screen.RESULT
@@ -304,6 +317,7 @@ func _set_screen(next: Screen) -> void:
 	controls.menu_button.visible = practice and not autoplay
 	start_screen.release_buttons()
 	settings_screen.release_buttons()
+	garage_screen.release_buttons()
 	setup_screen.release_buttons()
 	setup_screen.release_sliders()
 	board.release_buttons()
@@ -331,7 +345,7 @@ func _process(delta: float) -> void:
 			_ended_s += delta
 			if _ended_s >= RESULT_DELAY_S:
 				_show_result()
-	elif screen in [Screen.START, Screen.SETTINGS, Screen.EVENT, Screen.SETUP]:
+	elif screen in [Screen.START, Screen.SETTINGS, Screen.GARAGE, Screen.EVENT, Screen.SETUP]:
 		# The rivals get on with their work (their gears first) while the
 		# player reads the start screen too.
 		_advance_rivals()
@@ -414,7 +428,9 @@ func _show_event_end() -> void:
 		if rows.size() < TOP:
 			rows.append(EventTexts.standing_row(line))
 	board.set_rows(rows, mine)
-	board.set_status("You placed %d of %d." % [place, info.get("pullers", 0)])
+	var prize := event.get_event_prize()
+	board.set_status("You placed %d of %d%s." % [place, info.get("pullers", 0),
+			" and won %s" % GarageScreen.euros(prize) if prize > 0 else ""])
 	board.set_buttons("Season")
 
 

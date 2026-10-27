@@ -28,7 +28,7 @@ Try a run:
 cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 -o run.csv
-# run: 89.20 m, engine stalled (36.4 s, top 11.9 km/h)
+# run: 92.61 m, engine stalled (36.9 s, top 11.8 km/h)
 ```
 
 ### Steering
@@ -98,7 +98,7 @@ clutch in by hand, but the sled stops with the engine running:
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 \
     --easy data/controls/easy.toml
-# run: 88.70 m, wheels spun out (33.5 s, top 11.9 km/h)
+# run: 92.09 m, stopped (33.7 s, top 11.9 km/h)
 ```
 
 `--stick S` holds the steering control at S (-1 right to 1 left) from the
@@ -127,18 +127,37 @@ the shipped tracks:
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml --gear 6
 # track                         cone index   grip  fall-off  push-down  result
-# covered_heavy_clay                875 kPa   1.00      0.21     60.0 m  86.58 m, engine stalled
-# dry_hard_clay                    6000 kPa   0.96      0.19     55.0 m  88.60 m, engine stalled
-# firm_loam                        1943 kPa   1.00      0.24     60.0 m  89.09 m, engine stalled
-# ideal_clay_sand                  1485 kPa   1.00      0.22     60.0 m  89.20 m, engine stalled
-# sandy_clay                       2107 kPa   1.00      0.26     60.0 m  89.30 m, engine stalled
-# watered_start                     584 kPa   1.00      0.25     60.0 m  88.51 m, engine stalled
+# covered_heavy_clay                875 kPa   1.00      0.21     78.0 m  90.89 m, engine stalled
+# dry_hard_clay                    6000 kPa   0.96      0.19     73.0 m  91.06 m, engine stalled
+# firm_loam                        1943 kPa   1.00      0.24     78.0 m  92.61 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     78.0 m  92.61 m, engine stalled
+# sandy_clay                       2107 kPa   1.00      0.26     78.0 m  92.71 m, engine stalled
+# watered_start                     584 kPa   1.00      0.25     78.0 m  92.26 m, engine stalled
 ```
 
 Pulling tracks are clay mixes, prepared and covered when it rains, so they
-differ by a few metres for the same tractor: the moist heavy clay is the
+differ by a metre or two for the same tractor: the moist heavy clay is the
 shortest, and the sled operator evens out the rest with the push-down and
-the knives on the day.
+the knives on the day. On the fast dry clay the operator brings the
+push-down 5 m earlier.
+
+### The sled tops out after the push-down
+
+The weight box rides forward from over the rear wheels to over the pan
+along the first 88 m, so the drag grows steadily. At the push-down (78 m
+on the class sled, set per track and by the operator) the sled's rear
+wheels come off the track over 10 m: from 88 m the pan carries all of the
+sled and the box is at its stop, so the drag is at its most and stays
+there (`Sled.TopsOutShortlyAfterThePushdown`; only the berm the tires
+throw still grows a little). Where the operator brings the push-down
+earlier (73 m on the dry hard clay) the wheels are off by 83 m, but the
+drag still rises until the box reaches its stop at 88 m. A tractor that
+can hold that drag goes on to a full pull; one that cannot slows and stops
+a few metres on, as momentum runs out. So the operator sets the push-down by the test pulls, and a
+step (a knife) changes the distance little until the tractor can hold the
+sled, then a lot. In the game the HUD marks the push-down's stretch on the
+track bar and shows "PUSH-DOWN" while it comes on; on the sled the rear
+wheels lift and its lamp turns from green to red.
 
 ### Tuning before a pull
 
@@ -153,19 +172,20 @@ The puller sets two things on the tractor before a pull
   tires for a moment, and the tractor cannot steer then.
 - **The rear tires' pressure.** 0.5 to 1.6 bar (`[tire.pressure]`): lower
   deflects the tire more, for a bigger footprint that sinks less and pulls
-  better on soft ground, but lets the lugs squirm, which costs grip on firm
-  ground; harder than 1.0 bar only shrinks the footprint. The best pressure
-  depends on the track:
+  better on soft ground, but lets the lugs squirm, which costs grip, most
+  on firm ground; harder than 1.0 bar only shrinks the footprint. The best
+  pressure depends on the track (about 0.7 bar on the soft covered heavy
+  clay, about 0.9 on dry hard clay, where 0.7 costs nearly 2 m):
 
 ```bash
-for bar in 0.5 1.0 1.6; do
+for bar in 0.7 1.0 1.6; do
   ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
       data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
       data/tracks/dry_hard_clay.toml --gear 6 --pressure $bar
 done
-# 0.5 bar: covered heavy clay 87.33 m, dry hard clay 84.71 m
-# 1.0 bar: covered heavy clay 86.58 m, dry hard clay 88.60 m
-# 1.6 bar: covered heavy clay 85.51 m, dry hard clay 88.34 m
+# 0.7 bar: covered heavy clay 91.16 m, dry hard clay 89.29 m
+# 1.0 bar: covered heavy clay 90.89 m, dry hard clay 91.06 m
+# 1.6 bar: covered heavy clay 90.28 m, dry hard clay 90.84 m
 ```
 
 `--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the
@@ -183,10 +203,11 @@ its tires give on the best track (some 24 kN at the end of a pull, when
 the front still carries about 6 kN). So in the 3.5 t class the front only
 goes light; it lifts for a moment when the clutch is dumped, as the axle's
 torque spins the heavy rear wheels up (weights fully back, in 2nd to 6th:
-about 0.7° of pitch, the front tires off the ground for some 60 ms). Wheelies are the physics, not scripted: the same tractor with
-its drawbar at 1.0 m pulls one onto its wheelie bar (7.6°), which a test
-checks (`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher
-hitches will show them.
+about 0.7° of pitch, the front tires off the ground for some 60 ms).
+Wheelies are the physics, not scripted: the same tractor with its drawbar
+at 1.0 m pulls one onto its wheelie bar (7.6°), which a test checks
+(`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher hitches
+will show them.
 
 ### Shifting down under load
 
@@ -206,30 +227,35 @@ down, or up, still take the clutch, and so does every shift after the
 first: one shift under load a pull (`shifts_per_pull`, 1 if left out).
 
 It is for the end of a pull, when the sled has the engine pulled down
-towards the stall. On the light class in 6th (the clutch slipped in over
-3 s), one shift to 5th once the engine falls below 90 % of its rated speed
-past 40 m:
+towards the stall. It pays where the sled's most drag (see "The sled tops
+out after the push-down") lies between what 6th holds before the engine
+stalls and what 5th's grip holds: on a sled lighter than shipped (two
+knives, the pull-off setting at the shipped event, whose field pulls on
+one), not on the sled as shipped (four), where neither gear holds it. In
+6th (the clutch slipped in over 3 s), one shift to 5th once the engine
+falls below 90 % of its rated speed past 40 m:
 
-| track | stays in 6th | shifts to 5th (at) |
+| track (two knives) | stays in 6th | shifts to 5th (at) |
 |---|---|---|
-| ideal clay-sand | 89.20 m, stalled | **91.11 m** (76.6 m) |
-| covered heavy clay | 86.58 m, stalled | **87.99 m** (74.7 m) |
-| watered start | 88.51 m, stalled | **90.50 m** (75.8 m) |
-| dry hard clay | **88.60 m**, stalled | 87.06 m, spun out (75.2 m) |
+| ideal clay-sand | 94.94 m, stalled | **96.65 m** (86.1 m) |
+| covered heavy clay | **91.86 m**, stalled | 90.83 m, spun out (84.8 m) |
+| watered start | 94.69 m, stalled | **96.06 m** (85.9 m) |
+| dry hard clay | 97.85 m, stalled | **full pull** (83.1 m) |
 
-On dry hard clay the extra torque spins the wheels: there a later shift,
-at 60 % of rated speed (87.0 m), gets 89.23 m. A test pins the first row
-(`LoadDownshiftRuns`).
+On the soft heavy clay the extra torque spins the wheels: there a later
+shift, at 60 % of rated speed (90.3 m), gets 92.24 m. A test pins the first
+row (`LoadDownshiftRuns`).
 
 The scripted rivals shift too. Once the clutch is fully in, a driver waits
 for the engine to come back from the launch's dip and then watches the rev
 counter: when the sled pulls it below their `downshift_share` of the rated
 speed, they shift one gear down under load (`driver::Plan`). Each rival
 draws their own share (`event.field.downshift_share`, 82 to 95 %), so some
-shift at the right moment and some a little early. On ideal clay-sand it
-takes the reference rival in 6th from 89.20 to 91.11 m (at 90 %), about what
-5th gets without a shift; in 4th and 5th the tires, not the engine, end the
-pull, so the engine is never pulled down and the driver never shifts.
+shift at the right moment and some a little early. On ideal clay-sand and
+the two-knife sled it takes the reference rival in 6th from 94.94 to
+96.65 m (at 90 %), about what 5th gets without a shift; in 4th and 5th the
+tires, not the engine, end the pull, so the engine is never pulled down and
+the driver never shifts.
 
 ### A class at an event
 
@@ -261,6 +287,32 @@ disqualified pull scores no points.
 ```bash
 ./build/release/tools/tp_pull season data/seasons/club_season.toml [--seed N]
 ```
+
+### The garage
+
+A career starts on an older tractor, with what the NTTO standard class lets
+a puller improve on a stock farm tractor still to buy (`data/garages/`,
+`tp::garage`). Every event pays by place (`prize_money_eur` in the season
+file, € 700 for a win down to € 120 for 10th; a disqualified pull earns
+nothing), and the garage spends it, between events:
+
+| part | starts at | up to (the class's limit) |
+|---|---|---|
+| injection pump | 90 % of the torque, worn | the maker's figures: 84 hp at the PTO (85 hp) |
+| rear tires | worn, traction limit 0.86 | wider deep-tread rubber, 0.95 (rubber only, uncut) |
+| weights | 100 kg, 3200 kg in all | 400 kg, 3500 kg (3500 kg) |
+| drawbar | 0.40 m | 0.50 m (0.5 m, below the rear axle) |
+| powershift | none | two gears down under load, once a pull (one make) |
+
+Each level sets its part outright, so the parts never interact; the season
+loader checks every level against the class (`garage::validate`). Fully
+upgraded, the tractor is at the class's limits like the rivals' reference
+tractor, and beyond it: wider tires (a traction limit of 0.95 against
+0.93) and a two-gear powershift step against one. Prizes are paid as an
+event is scored, once; upgrades are bought between events or before your
+first pull of one (`field::LiveSeason::player_may_change_tractor`). The
+money and the levels carry from season to season. The whole garage costs
+€ 15,200; a season pays a winner of every event € 7,000.
 
 ### Playing a run from a game
 
@@ -310,15 +362,16 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 The game plays a season (`data/seasons/club_season.toml`, the club class on
 ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
 `[event.game]`. The season is saved after every event, with your tuning
-(`user://season.toml`, `tp::data::SeasonSave`): at the next launch the
-start screen asks whether to continue it, at the next event, or to start a
-new season. An event left halfway is not saved: continued, it starts again
-from its beginning, and the rivals pull as they did, since the field and
-every event's draws come from the season's seed. A finished season is not
-kept. You pull
-the class's reference tractor. The start screen shows the next event and
-its track. "Practice" is a free pull on the track; "Event" goes to the
-event's board, where the rivals' pulls and the
+and your career (`user://season.toml`, `tp::data::SeasonSave`): at the
+next launch the start screen asks whether to continue it, at the next
+event, or to start a new season. An event left halfway is not saved:
+continued, it starts again from its beginning, and the rivals pull as they
+did, since the field and every event's draws come from the season's seed.
+A finished season is kept for its career, which the next season starts
+with. You pull the class's reference tractor as your garage has it (see
+"The garage"). The start screen shows the next event and its track.
+"Practice" is a free pull on the track; "Garage" spends your prize money;
+"Event" goes to the event's board, where the rivals' pulls and the
 sled operator's verdicts fill in as they are simulated (the rivals try
 their gears from the start screen on). When you are due, you pull: a test
 pull, a pull, a re-pull or a pull-off, each on the sled as the operator has
@@ -332,7 +385,8 @@ between launches. After a test pull on a
 changed sled you keep it or pull again. Then the event's top ten and the
 season's (points per place), and the next event. During a pull the HUD
 shows the rev counter (stall and rated speeds marked), gear, speed,
-distance and a bar down the track to the full-pull line.
+distance and a bar down the track to the full-pull line, with the
+push-down's stretch in orange ("PUSH-DOWN" beside it once it comes on).
 
 The pull scene (`scenes/pull.tscn`) draws the run at a club venue, built
 from the run's sizes (`get_dimensions()`), in a bright, toy-like style that

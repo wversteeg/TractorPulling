@@ -48,6 +48,21 @@ for the big features; they are repeated at the end for completeness.
 - **Drag after the push-down.** Once the push-down is fully engaged the
   drag grows only with the berm and ploughing; on hard tracks the sled
   stays touchier than on soft ones.
+- **The box's travel and the push-down are set apart.** The weight box
+  reaches its stop after a fixed 88 m of the sled's travel, the push-down
+  wherever the track and the operator put it. Set later than 78 m, the box
+  is at its stop before the push-down is fully on; set earlier, the box
+  still moves after it. A real sled operator sets both, and a sled whose
+  box gearing follows the push-down setting would keep the drag's top
+  where the push-down ends.
+- **Tracks matter less now that the drag tops out.** With the drag flat
+  from 88 m, the six shipped tracks end within about 2 m of each other for
+  the reference tractor (firm loam and ideal clay-sand give the same
+  distance). Heavier classes and more along-track variation (see "Later")
+  should spread them again; worth checking when milestone 6 adds classes.
+- **The push-down is drawn larger than it is.** The game lifts the sled's
+  rear wheels 15 cm with the push-down fully set, so that it shows from
+  the tractor; a real sled lifts them a few centimetres.
 - **Speed-dependent pan resistance.** The pan's drag does not depend on speed.
   Right for the stock classes, which crawl because they lack the power to run
   fast; faster classes may need the pan to plough harder with speed.
@@ -121,10 +136,10 @@ for the big features; they are repeated at the end for completeness.
   the README's run). That is the physics of such a big step, not of the
   model; a real powershift's smaller steps (15 to 20 %) would lurch less,
   so a gearbox with a finer step would be worth data of its own.
-- **Up under load, and an upgrade.** Only shifts down, a gear or two
-  (`load_downshift_gears`), once a pull (`shifts_per_pull`); a powershift
-  that also shifts up under load, and the step as an upgrade to buy
-  (career, milestone 6) are left out.
+- **Up under load.** Only shifts down, a gear or two
+  (`load_downshift_gears`, the garage's powershift), once a pull
+  (`shifts_per_pull`); a powershift that also shifts up under load, or a
+  second shift a pull as an upgrade, are left out.
 - **The rivals shift by the rev counter alone.** A scripted driver shifts
   once the engine falls below their share of its rated speed; one who also
   reads the sled's distance, the wheelspin or the chain would shift later on
@@ -271,9 +286,9 @@ for the big features; they are repeated at the end for completeness.
   a save of another version or season, or one the shipped data no longer
   fits, gives way to a new season with only a warning on the console (a
   line on the start screen would be kinder). The
-  player pulls the class's reference
-  tractor, with no other tractor or upgrades to choose (career, milestone
-  6); it tunes the weights and the tire pressure only. An event's pull
+  player pulls the class's reference tractor as the garage has it, with no
+  other tractor to choose; before a pull they tune the weights and the tire
+  pressure only. An event's pull
   counts as it is: no pulling again outside the rules; practice pulls are
   free, on the event's sled as it is. The board shows the last ten lines; the rivals have names
   but no tractors or faces of their own. The gamepad has no brakes yet.
@@ -349,6 +364,24 @@ for the big features; they are repeated at the end for completeness.
   wheels' side grip, the pan's sliding speed and the headings' sine and
   cosine. The hook's position and the sled's heading could share one
   sine and cosine per step.
+
+## Garage and career
+
+- **The parts are values, not parts.** An upgrade sets one value (a torque
+  scale, a traction limit, a ballast mass, a drawbar height, a downshift
+  step); a new tire does not change the tire's size, rolling radius or
+  inflation range, and a wider tire not its section width or the lane it
+  needs. A heavier engine part, a wheelie bar, a clutch, final drive ratios
+  and gear ratios are not offered.
+- **Ballast at the centre of gravity's height.** Weights bought sit where
+  the tractor's weights sit, at the height of its centre of gravity, so the
+  centre of gravity moves along the tractor only.
+- **One career, no resale.** The career carries from season to season with
+  no way to start it over from the game, and an upgrade cannot be sold or
+  taken back. Prize money is paid by place only: no start money for
+  everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
+- **The rivals do not upgrade.** Their tractors are drawn once for the
+  season around the reference tractor.
 
 ## Roadmap features (from CLAUDE.md "Later")
 

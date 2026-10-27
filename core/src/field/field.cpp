@@ -19,23 +19,6 @@ bool range_valid(const Range& range) noexcept {
     return std::isfinite(range.low) && std::isfinite(range.high) && range.low <= range.high;
 }
 
-// The engine with its full-load torque scaled; nothing if the scaled curve
-// is not valid.
-std::optional<engine::Params> scaled(const engine::Params& engine, double scale) noexcept {
-    std::array<math::CurvePoint, math::Curve::kMaxPoints> points{};
-    const auto source = engine.full_load_torque_nm.points();
-    for (std::size_t i = 0; i < source.size(); ++i) {
-        points[i] = {.x = source[i].x, .y = source[i].y * scale};
-    }
-    const auto curve = math::Curve::create(std::span{points.data(), source.size()});
-    if (!curve) {
-        return std::nullopt;
-    }
-    engine::Params out = engine;
-    out.full_load_torque_nm = *curve;
-    return out;
-}
-
 // The tractor with its engine's torque scaled by `scale`, or by the largest
 // scale the class's PTO power limit allows if that is less. PTO power is net
 // of the engine's friction, so it does not scale in proportion: the limit is
@@ -44,7 +27,7 @@ std::optional<vehicle::Params> with_torque_scale(const vehicle::Params& tractor,
                                                  const rules::ClassRules& class_rules) noexcept {
     const auto power_w = [&](double s) {
         vehicle::Params t = tractor;
-        const auto engine = scaled(tractor.engine, s);
+        const auto engine = engine::with_torque_scale(tractor.engine, s);
         if (!engine) {
             return class_rules.max_pto_power_w * 2.0;
         }
@@ -62,7 +45,7 @@ std::optional<vehicle::Params> with_torque_scale(const vehicle::Params& tractor,
         }
         allowed = low;
     }
-    const auto engine = scaled(tractor.engine, allowed);
+    const auto engine = engine::with_torque_scale(tractor.engine, allowed);
     if (!engine) {
         return std::nullopt;
     }

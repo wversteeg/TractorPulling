@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tp/core/field/live_season.hpp"
+#include "tp/core/garage/garage.hpp"
 #include "tp/core/session/session.hpp"
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/season/season_loader.hpp"
@@ -43,19 +44,24 @@ class TractorPullEvent : public godot::RefCounted {
 
 public:
     /// Loads a season (res:// paths work) and draws its field for `seed`, a
-    /// new season. Returns "" or what is wrong, naming the file and field.
+    /// new season. The player's career (money and upgrades) carries over
+    /// from the season before; the first season starts one (the garage's
+    /// start money, nothing bought). Returns "" or what is wrong, naming the
+    /// file and field.
     godot::String start_season(const godot::String& season_path, std::int64_t seed);
     /// The season so far as save text (data::SeasonSave): the season file,
-    /// its seed, the player's tuning and every event scored. An event being
+    /// its seed, the player's tuning and career and every event scored. An event being
     /// pulled is not in it: picked up again, it starts from its beginning.
     /// "" before a season.
     [[nodiscard]] godot::String get_save() const;
     /// Picks up a season saved by get_save() for `season_path`: the season
     /// drawn again for the saved seed, each saved event scored as it was
-    /// (field::LiveSeason::add_pulled_event), and the tuning set; the next
+    /// (field::LiveSeason::add_pulled_event), and the tuning and career
+    /// set (a save from before the garage keeps the career); the next
     /// event is the one after them. Returns "" or what is wrong (a broken
     /// save, another season's, or events that no longer fit it), leaving no
-    /// season.
+    /// season; the save's career is kept even then, for the new season that
+    /// follows, as it outlives seasons.
     godot::String resume_season(const godot::String& season_path, const godot::String& save);
     /// {events, scored, index, over, names}: the season's event count, the
     /// events scored, the index of the next event to start, whether all are
@@ -101,9 +107,23 @@ public:
     /// The player's keep (true) or re-pull (false), while it is due.
     void decide(bool keep);
 
-    /// Scores the finished event in the championship; false if it is not
-    /// finished or already scored.
+    /// Scores the finished event in the championship and pays the player
+    /// their prize (get_event_prize()); false if it is not finished or
+    /// already scored.
     bool score_event();
+    /// What the event being pulled pays the player for their place so far
+    /// [EUR] (garage::prize_eur); 0 before an event.
+    [[nodiscard]] std::int64_t get_event_prize() const;
+
+    /// The garage: {money_eur, can_buy, fully_upgraded, upgrades}, each
+    /// upgrade {name, level, levels, label, next_label, next_cost_eur} (the
+    /// next ones "" and 0 at the top level). `can_buy` is false while the
+    /// player has pulled in the event being pulled: a tractor changes
+    /// between events, not during one. {} before a season.
+    [[nodiscard]] godot::Dictionary get_garage() const;
+    /// Buys the next level of upgrade `index`; "" or why not ("top level",
+    /// "not enough money", "not during an event", "no such upgrade").
+    godot::String buy_upgrade(std::int64_t index);
     /// The championship so far, best first: {place, puller, name, points,
     /// wins}.
     [[nodiscard]] godot::Array get_season_standings() const;
@@ -139,6 +159,9 @@ private:
     [[nodiscard]] godot::Dictionary entry(const field::LogEntry& entry, double line_before_m) const;
     /// The full-pull line each event starts with.
     [[nodiscard]] double first_line_m() const;
+    /// The player's tractor as their career has it (garage::equipped),
+    /// before the tuning.
+    [[nodiscard]] vehicle::Params player_tractor() const;
 
     std::optional<data::SeasonDefinition> definition_;
     /// The season file and seed start_season() was given, for get_save().
@@ -146,6 +169,8 @@ private:
     std::uint64_t seed_ = 0;
     std::vector<std::string> names_;
     vehicle::Tuning tuning_;
+    /// Kept from season to season; set by the first start_season().
+    std::optional<garage::Career> career_;
     // Large plain data: on the heap.
     std::unique_ptr<field::LiveSeason> season_;
 };

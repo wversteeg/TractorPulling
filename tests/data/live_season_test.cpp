@@ -114,6 +114,45 @@ TEST(LiveSeason, PlaysTheEventsInTurn) {
     EXPECT_EQ(season->standings().size(), static_cast<std::size_t>(kPullers));
 }
 
+// The prize for the player's place is paid as the event is scored, once;
+// the garage is open until the player's first pull of an event, and again
+// once it is over.
+TEST(LiveSeason, PaysThePrizeOnceAndClosesTheGarageWhileThePlayerPulls) {
+    const data::SeasonDefinition d = club_season();
+    const std::unique_ptr<LiveSeason> season = start(d);
+    garage::Career career{.money_eur = 100, .levels = {}};
+    EXPECT_TRUE(season->player_may_change_tractor()) << "before the season's first event";
+    EXPECT_FALSE(season->player_standing().has_value());
+    ASSERT_TRUE(season->start_event(data::venue(d.event.sled, d.rounds.front().track)));
+    EXPECT_TRUE(season->player_may_change_tractor()) << "before the player's first pull";
+    LiveEvent* event = season->event();
+    ASSERT_NE(event, nullptr);
+    bool closed_after_a_pull = false;
+    for (int guard = 0; guard < 100'000 && event->turn() != LiveEvent::Turn::kFinished; ++guard) {
+        if (event->turn() == LiveEvent::Turn::kPlayerPull) {
+            event->record_player({.ending = run::Ending::kStalled, .distance_m = kPlayerReach_m},
+                                 kPlayerGear);
+            closed_after_a_pull = closed_after_a_pull || !season->player_may_change_tractor();
+        } else if (event->turn() == LiveEvent::Turn::kPlayerDecision) {
+            event->decide_player(event->suggested_keep());
+        } else {
+            event->advance(kSlice);
+        }
+    }
+    ASSERT_EQ(event->turn(), LiveEvent::Turn::kFinished);
+    EXPECT_TRUE(closed_after_a_pull);
+    EXPECT_TRUE(season->player_may_change_tractor()) << "the event is over";
+    const std::optional<event::Standing> standing = season->player_standing();
+    ASSERT_TRUE(standing.has_value());
+    const std::int64_t prize_eur =
+        garage::prize_eur(d.prize_money_eur, standing.value_or(event::Standing{}));
+    EXPECT_GT(prize_eur, 0) << "place " << standing.value_or(event::Standing{}).place;
+    EXPECT_TRUE(season->score_event(d.prize_money_eur, career));
+    EXPECT_EQ(career.money_eur, 100 + prize_eur);
+    EXPECT_FALSE(season->score_event(d.prize_money_eur, career)) << "scored once";
+    EXPECT_EQ(career.money_eur, 100 + prize_eur) << "paid once";
+}
+
 // Plays the event being pulled with the player pulling and deciding as
 // play_event's scripted puller did in `played`.
 void replay(LiveEvent& event, const PlayedEvent& played) {

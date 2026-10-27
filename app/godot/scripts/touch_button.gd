@@ -11,6 +11,7 @@ const COLOUR := Color(0.1, 0.1, 0.1, 0.45)
 const HELD_COLOUR := Color(1.0, 0.8, 0.2, 0.8)
 const SELECTED_COLOUR := Color(0.2, 0.45, 0.8, 0.85)
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
+const DISABLED_TEXT_COLOUR := Color(0.55, 0.55, 0.55)
 const FONT_SIZE := 36
 
 @export var text := ""
@@ -20,6 +21,11 @@ const FONT_SIZE := 36
 	set(value):
 		selected = value
 		queue_redraw()
+# Shown, but not to be tapped (an upgrade the player cannot afford).
+@export var disabled := false:
+	set(value):
+		disabled = value
+		release()
 
 var _finger := -1
 
@@ -34,7 +40,8 @@ func _input(event: InputEvent) -> void:
 	var touch := event as InputEventScreenTouch
 	if touch == null:
 		return
-	if touch.pressed and _finger < 0 and get_global_rect().has_point(touch.position):
+	if touch.pressed and _finger < 0 and not disabled \
+			and get_global_rect().has_point(touch.position):
 		_finger = touch.index
 		queue_redraw()
 		get_viewport().set_input_as_handled()
@@ -74,4 +81,5 @@ func _draw() -> void:
 	var line := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
 	var at := Vector2((size.x - line.x) / 2.0, (size.y + font.get_ascent(FONT_SIZE)
 			- font.get_descent(FONT_SIZE)) / 2.0)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, TEXT_COLOUR)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE,
+			DISABLED_TEXT_COLOUR if disabled else TEXT_COLOUR)

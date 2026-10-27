@@ -73,6 +73,39 @@ bool LiveSeason::score_event() noexcept {
     return scored_;
 }
 
+bool LiveSeason::score_event(std::span<const std::int64_t> prize_by_place,
+                             garage::Career& career) noexcept {
+    const std::optional<event::Standing> standing = player_standing();
+    if (!score_event()) {
+        return false;
+    }
+    if (standing) {
+        career.money_eur += garage::prize_eur(prize_by_place, *standing);
+    }
+    return true;
+}
+
+std::optional<event::Standing> LiveSeason::player_standing() noexcept {
+    if (!event_.has_value()) {
+        return std::nullopt;
+    }
+    for (const event::Standing& s : event_->standings()) {
+        if (s.puller == kPlayer) {
+            return s;
+        }
+    }
+    return std::nullopt;
+}
+
+bool LiveSeason::player_may_change_tractor() const noexcept {
+    if (!event_.has_value() || event_->turn() == LiveEvent::Turn::kFinished) {
+        return true;
+    }
+    return std::ranges::none_of(event_->log(), [](const LogEntry& e) {
+        return e.deciding < 0 && e.pull.puller == kPlayer;
+    });
+}
+
 bool LiveSeason::add_pulled_event(std::span<const event::Standing> standings) noexcept {
     if (!scored_ || started_ >= events_ ||
         standings.size() != static_cast<std::size_t>(field_.count)) {

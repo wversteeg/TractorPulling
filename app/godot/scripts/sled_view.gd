@@ -209,7 +209,7 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 	_wheel_angle -= float(s["sled_speed_m_s"]) / _wheel_height_m * delta
 	for spin in _wheel_spin:
 		spin.rotation.x = wrapf(_wheel_angle, -PI, PI)
-	_show_pushdown(float(s.get("pushdown", 0.0)))
+	_show_pushdown(s["pushdown"])
 
 
 func _show_pushdown(share: float) -> void:

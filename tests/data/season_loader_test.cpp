@@ -23,6 +23,8 @@ constexpr std::string_view kTwoEvents = R"(
 event = "../events/club_pull.toml"
 seed = 7
 points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+prize_money_eur = [700, 500, 400]
+garage = "../garages/ntto_standard_3500.toml"
 
 [[season.events]]
 name = "Clay-sand"
@@ -61,6 +63,12 @@ TEST(SeasonLoader, LoadsTheShippedSeason) {
     EXPECT_EQ(season::points_for(season.points, 3), 15);
     EXPECT_EQ(season::points_for(season.points, 4), 14);
     EXPECT_EQ(season.rounds.front().name, "Spring opener, watered start");
+    ASSERT_EQ(season.prize_money_eur.size(), 10U);
+    EXPECT_EQ(season.prize_money_eur.front(), 700);
+    EXPECT_EQ(season.garage.catalogue.count, 5U);
+    EXPECT_EQ(season.garage.texts.size(), 5U);
+    EXPECT_EQ(season.garage.texts.front().name, "Injection pump");
+    EXPECT_EQ(season.garage.catalogue.start_money_eur, 1000);
 }
 
 TEST(SeasonLoader, RejectsNonsense) {
@@ -76,6 +84,14 @@ TEST(SeasonLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("ideal_clay_sand.toml", "missing.toml")).find("cannot open file"),
               std::string::npos);
     EXPECT_NE(error_of(with("seed = 7", "seed = -7")).find("season.seed: must not be negative"),
+              std::string::npos);
+    for (const char* prizes : {"[700, 800, 400]", "[700, 500.5, 400]", "[700, 500, -1]"}) {
+        EXPECT_NE(error_of(with("[700, 500, 400]", prizes)).find("season.prize_money_eur"),
+                  std::string::npos)
+            << prizes;
+    }
+    EXPECT_NE(error_of(with("garage = \"../garages/ntto_standard_3500.toml\"\n", ""))
+                  .find("season.garage"),
               std::string::npos);
 }
 
@@ -127,7 +143,7 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
     EXPECT_LT(awarded, 2 * table_total + 20);
     EXPECT_EQ(standings[0].place, 1);
     EXPECT_GE(standings[0].points, standings[1].points);
-    EXPECT_EQ(hash.value(), 0xecf3236ac792ee76ULL);
+    EXPECT_EQ(hash.value(), 0xcb955118d9ec4261ULL);
 }
 
 }  // namespace
