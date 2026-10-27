@@ -130,7 +130,8 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
         variation.mass_kg.low <= 0.0 || variation.clutch_slip_in_s.low < 0.0 ||
         variation.track_reading.low < 0.0 || variation.track_reading.high > 1.0 ||
         variation.downshift_share.low < 0.0 || variation.downshift_share.high >= 1.0 ||
-        variation.hitch_height_m.low < 0.0) {
+        variation.hitch_height_m.low < 0.0 ||
+        (variation.hitch_height_m.high > 0.0 && variation.hitch_height_m.low <= 0.0)) {
         return ParamError::kRangeOutOfOrder;
     }
     const auto gear_count = static_cast<int>(reference.tractor.driveline.gear_count);

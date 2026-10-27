@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +19,8 @@ namespace {
 
 // The game's event (ten pullers) at the season's first round, with the
 // drivers choosing between 5th and 6th only, so the debug build plays it
-// quickly; a few seeds, each a different field.
+// quickly (with 4th to 6th, as shipped, every place is the same); a few
+// seeds, each a different field.
 constexpr std::array<std::uint64_t, 3> kSeeds{1, 2, 3};
 constexpr int kGamePullers = 10;
 constexpr int kLowestGear = 5;
@@ -89,31 +91,43 @@ int place(const data::SeasonDefinition& d, const garage::Career& career, std::ui
     throw std::runtime_error("the event did not finish");
 }
 
-garage::Career fully_upgraded(const garage::Catalogue& catalogue) {
+// Every part `steps` levels up from the start, or as far as it goes.
+garage::Career levels_up(const garage::Catalogue& catalogue, int steps) {
     garage::Career career = garage::new_career(catalogue);
     for (std::size_t i = 0; i < catalogue.count; ++i) {
-        career.levels[i] = static_cast<int>(catalogue.upgrades[i].level_count) - 1;
+        const int top = static_cast<int>(catalogue.upgrades[i].level_count) - 1;
+        career.levels[i] = std::min(steps, top);
     }
     return career;
 }
 
+constexpr int kFullyUpgraded = static_cast<int>(garage::kMaxLevels);
+
 // The field spans the garage: its weakest rivals about a new career's
 // tractor, its strongest about a fully upgraded one. So a new tractor
-// starts near the back, beating a rival or two, and a fully upgraded one
-// wins.
+// starts near the back, beating a rival or two, climbs with every level,
+// and a fully upgraded one wins.
 TEST(RivalDifficulty, ANewTractorStartsNearTheBackAndAFullyUpgradedOneWins) {
     const data::SeasonDefinition d = club_season();
     const garage::Catalogue& catalogue = d.garage.catalogue;
-    const garage::Career full = fully_upgraded(catalogue);
+    const garage::Career full = levels_up(catalogue, kFullyUpgraded);
     ASSERT_TRUE(garage::fully_upgraded(catalogue, full));
     bool beat_a_rival = false;
+    bool two_up_lost_one = false;
     for (const std::uint64_t seed : kSeeds) {
         const int start = place(d, garage::new_career(catalogue), seed);
         EXPECT_GE(start, kGamePullers - 3) << "seed " << seed;
         beat_a_rival = beat_a_rival || start < kGamePullers;
+        const int one_up = place(d, levels_up(catalogue, 1), seed);
+        EXPECT_GT(one_up, 1) << "seed " << seed;
+        EXPECT_LT(one_up, start) << "seed " << seed;
+        const int two_up = place(d, levels_up(catalogue, 2), seed);
+        EXPECT_LE(two_up, one_up) << "seed " << seed;
+        two_up_lost_one = two_up_lost_one || two_up > 1;
         EXPECT_EQ(place(d, full, seed), 1) << "seed " << seed;
     }
     EXPECT_TRUE(beat_a_rival) << "a new tractor is not last at every event";
+    EXPECT_TRUE(two_up_lost_one) << "the last levels still buy places";
 }
 
 }  // namespace

@@ -1,5 +1,6 @@
 #include "tp/data/event/event_loader.hpp"
 
+#include "tp/core/driveline/driveline.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
@@ -156,8 +157,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
     if (reader.has("event.field.load_downshift_gears")) {
         const std::vector<double> counts = reader.numbers("event.field.load_downshift_gears");
-        const bool whole = std::ranges::all_of(
-            counts, [](double c) { return c >= 0.0 && c == std::floor(c) && c <= 16.0; });
+        const bool whole = std::ranges::all_of(counts, [](double c) {
+            return c >= 0.0 && c == std::floor(c) && c <= static_cast<double>(driveline::kMaxGears);
+        });
         if (counts.size() != 2 || !whole) {
             return detail::make_error(source, "event.field.load_downshift_gears",
                                       "must be [fewest, most], whole numbers from 0");

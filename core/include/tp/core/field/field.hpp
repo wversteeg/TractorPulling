@@ -46,7 +46,8 @@ struct Variation {
     /// When a driver shifts down under load (driver::Plan): within [0, 1).
     Range downshift_share;
     /// The drawbar's height [m]: farm drawbars sit lower than the class
-    /// allows. Within the class's limit; {0, 0} keeps the reference's.
+    /// allows. Above 0, held to the class's limit; {0, 0} keeps the
+    /// reference's.
     Range hitch_height_m;
     /// How many gears the powershift steps down under load
     /// (driveline::Params::load_downshift_gears), inclusive: a puller draws

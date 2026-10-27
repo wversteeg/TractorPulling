@@ -56,6 +56,9 @@ TEST(FieldParams, RejectsNonsense) {
     v = kVariation;
     v.hitch_height_m = {.low = -0.1, .high = 0.5};
     EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder);
+    v.hitch_height_m = {.low = 0.0, .high = 0.5};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder)
+        << "a drawbar on the ground";
     v = kVariation;
     v.fewest_load_downshift_gears = 1;
     v.most_load_downshift_gears = 0;
