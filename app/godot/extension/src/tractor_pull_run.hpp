@@ -68,9 +68,9 @@ public:
     /// wheelie_bar_behind_rear_axle_m, wheelie_bar_tip_height_m, the
     /// weights as set: ballast_mass_kg and ballast_position (0 rearmost to
     /// 1 foremost), and gear_count, its forward gears), the sled's
-    /// (sled_wheel_radius_m, sled_wheel_width_m, hook_ahead_of_wheels_m, hook_height_m,
-    /// pan_ahead_of_wheels_m, box_start_ahead_of_wheels_m, box_end_ahead_of_wheels_m,
-    /// chain_length_m), the track's (track_length_m, lane_width_m,
+    /// (sled_wheel_radius_m, sled_wheel_width_m, hook_ahead_of_wheels_m,
+    /// hook_height_m, pan_ahead_of_wheels_m, box_start_ahead_of_wheels_m,
+    /// box_end_ahead_of_wheels_m, chain_length_m), the track's (track_length_m, lane_width_m,
     /// full_pull_line_m) and the engine's speeds for a rev counter
     /// (stall_omega_rad_s, rated_omega_rad_s, high_idle_omega_rad_s), and
     /// where the clutch slips along the pedal's travel (clutch_full_grip_pedal,

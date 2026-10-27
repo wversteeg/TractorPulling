@@ -59,6 +59,6 @@ func show_between(hitch: Vector3, hook: Vector3, tension_n: float) -> void:
 		var stretch := length_m / count / (LINK_LENGTH_M * 0.75)
 		var normal := up if i % 2 == 0 else side
 		var basis := Basis(along.cross(normal), normal, along)
-		multi.set_instance_transform(i, Transform3D(basis.orthonormalized().scaled_local(
+		multi.set_instance_transform(i, Transform3D(basis.scaled_local(
 				Vector3(1.0, 1.0, stretch)), at))
 	_material.albedo_color = SLACK_COLOUR.lerp(TAUT_COLOUR, clampf(tension_n / TAUT_N, 0.0, 1.0))

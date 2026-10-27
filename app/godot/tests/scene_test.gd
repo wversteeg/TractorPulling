@@ -71,13 +71,27 @@ func _check() -> void:
 	_expect(venue.banner_at_m() == float(dimensions["full_pull_line_m"]),
 			"the banner at the full-pull line: %s m" % venue.banner_at_m())
 	var parts := venue.get_child_count()
-	var first_part := venue.get_child(0)
+	var first_part := venue.get_child(0).get_instance_id()
 	var moved := dimensions.duplicate()
 	moved["full_pull_line_m"] = 110.0
 	venue.build(moved)
 	_expect(venue.banner_at_m() == 110.0 and venue.get_child_count() == parts
-			and venue.get_child(0) == first_part,
+			and venue.get_child(0).get_instance_id() == first_part,
 			"the banner moves with the line, the venue stays: %s m" % venue.banner_at_m())
+	venue.build(dimensions)
+	# Another event's track, a wider lane: the venue is built again, with
+	# its banner at the line and a working scoreboard.
+	var wider := dimensions.duplicate()
+	wider["lane_width_m"] = float(dimensions["lane_width_m"]) + 2.0
+	venue.build(wider)
+	venue.show_distance(12.5)
+	var board: Label3D = venue.get("_scoreboard")
+	_expect(venue.banner_at_m() == float(dimensions["full_pull_line_m"])
+			and venue.get_child_count() == parts
+			and venue.get_child(0).get_instance_id() != first_part
+			and board != null and board.text.strip_edges() == "12.50 m",
+			"a wider lane builds the venue again: %d parts, board %s" % [
+			venue.get_child_count(), board.text if board != null else "none"])
 	venue.build(dimensions)
 
 	# The sizes the views draw the parts from are there and positive.

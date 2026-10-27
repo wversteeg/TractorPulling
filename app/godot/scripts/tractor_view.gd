@@ -33,9 +33,13 @@ const HOOD_PAST_FRONT_AXLE_M := 0.3
 const CAB_ROOF_M := 1.75          # above the rear axle
 const CAB_HALF_DEPTH_M := 0.55
 const LUGS_PER_SIDE := 22
-const FRONT_PLATES := 8           # suitcase weights with all the ballast at the front
-const REAR_DISCS := 3             # wheel weights a side with all of it at the rear
-const FULL_BALLAST_KG := 400.0    # drawn as all the plates or discs: the class's most
+# The weights at the sizes they come in, so any class's ballast draws
+# right: a suitcase weight on the front bracket, a wheel weight on a rear
+# hub [kg]; and as many as the bracket and a hub take.
+const PLATE_KG := 45.0
+const DISC_KG := 70.0
+const MAX_PLATES := 12
+const MAX_DISCS_A_SIDE := 4
 # Slip above which the rear tires throw dirt, and where they throw most.
 const DIRT_FROM_SLIP := 0.08
 const DIRT_FULL_SLIP := 0.5
@@ -343,10 +347,8 @@ func _show_weights(d: Dictionary) -> void:
 	var position_share: float = d["ballast_position"]
 	if mass_kg <= 0.0:
 		return
-	# Each end gets its share of the weights, in plates or discs for the
-	# mass there.
-	var mass_share := clampf(mass_kg / FULL_BALLAST_KG, 0.0, 1.0)
-	var plates := roundi(position_share * mass_share * FRONT_PLATES)
+	# Each end gets its share of the mass, in plates or discs of their size.
+	var plates := mini(roundi(position_share * mass_kg / PLATE_KG), MAX_PLATES)
 	var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
 	bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
 	_front_weights.add_child(bracket)
@@ -355,7 +357,7 @@ func _show_weights(d: Dictionary) -> void:
 				0.6)
 		plate.position = TrackSpace.point(0.03 + i * 0.05, 0.0, 0.0)
 		_front_weights.add_child(plate)
-	var discs := roundi((1.0 - position_share) * mass_share * REAR_DISCS)
+	var discs := mini(roundi((1.0 - position_share) * mass_kg / 2.0 / DISC_KG), MAX_DISCS_A_SIDE)
 	for spin: Node3D in [_rear_left, _rear_right]:
 		var holder := spin.get_node_or_null("weights") as Node3D
 		if holder == null:
