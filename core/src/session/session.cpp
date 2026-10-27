@@ -2,6 +2,7 @@
 
 #include "tp/core/chassis/chassis.hpp"
 #include "tp/core/hash/fnv1a.hpp"
+#include "tp/core/soil/soil.hpp"
 
 #include <cmath>
 
@@ -72,6 +73,7 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.sled_speed_m_s = lerp(from.sled_speed_m_s, to.sled_speed_m_s, alpha);
     out.box_ahead_of_wheels_m = lerp(from.box_ahead_of_wheels_m, to.box_ahead_of_wheels_m, alpha);
     out.pushdown = lerp(from.pushdown, to.pushdown, alpha);
+    out.berm_m3 = lerp(from.berm_m3, to.berm_m3, alpha);
     out.chain_tension_n = lerp(from.chain_tension_n, to.chain_tension_n, alpha);
     return out;
 }
@@ -174,6 +176,7 @@ Snapshot Session::snapshot() const noexcept {
             .sled_speed_m_s = pull.sled.velocity_m_s,
             .box_ahead_of_wheels_m = output_.sled.box_ahead_of_wheels_m,
             .pushdown = output_.sled.pushdown,
+            .berm_m3 = pull.sled.berm_kg / soil::kLooseDensity_kg_m3,
             .chain_tension_n = output_.chain.tension_n};
 }
 

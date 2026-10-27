@@ -65,6 +65,7 @@ var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
 var track_view := TrackView.new()
 var venue_view := VenueView.new()
+var track_marks := TrackMarks.new()
 var tractor_view := TractorView.new()
 var sled_view := SledView.new()
 var chain_view := ChainView.new()
@@ -92,7 +93,8 @@ var _ended_s := 0.0
 
 func _ready() -> void:
 	_add_world()
-	for node: Node in [venue_view, track_view, tractor_view, sled_view, chain_view, cameras]:
+	for node: Node in [venue_view, track_view, track_marks, tractor_view, sled_view, chain_view,
+			cameras]:
 		add_child(node)
 	var layer := CanvasLayer.new()
 	for node: Node in [hud, controls, start_screen, settings_screen, garage_screen, board,
@@ -284,6 +286,8 @@ func _build(error: String) -> bool:
 		child.queue_free()
 	track_view.build(dimensions)
 	venue_view.build(dimensions)
+	# A new pull on a prepared track: the last pull's marks are gone.
+	track_marks.build(dimensions)
 	# The tractor moves its weights to the tuning on every pull; the rest of
 	# it, and the sled, are built once.
 	tractor_view.build(dimensions)
@@ -506,6 +510,10 @@ func _show(delta: float) -> void:
 	tractor_view.show_snapshot(s, delta)
 	sled_view.show_snapshot(s, delta)
 	venue_view.show_distance(s["sled_x_m"])
+	track_marks.show_snapshot(s)
+	# The cameras shake with the work: the throttle, more as the tires slip.
+	cameras.rumble = clampf(0.4 * float(s["throttle"]) + 1.5 * absf(float(s["slip_ratio"])),
+			0.0, 1.0) if bool(s["engine_running"]) else 0.0
 	chain_view.show_between(tractor_view.hitch_position(), sled_view.hook_position(),
 			s["chain_tension_n"])
 	hud.show_snapshot(s, _title, controls.pro)

@@ -103,6 +103,14 @@ func _check() -> void:
 			"the weights: %s kg at %s" % [dimensions.get("ballast_mass_kg"),
 			dimensions.get("ballast_position")])
 
+	# The marks the pull left: a rut a tire, a point every 0.2 m of the
+	# way, and the band the pan smooths behind the sled.
+	var marks: TrackMarks = _pull.get("track_marks")
+	var counts := marks.point_counts()
+	var rut_points := int(float(s["tractor_x_m"]) / TrackMarks.STEP_M)
+	_expect(counts.x > rut_points / 2 and counts.x <= rut_points + 2 and counts.y == counts.x
+			and counts.z > 0, "the marks: %s points, about %d a rut" % [counts, rut_points])
+
 	# The weights drawn for their mass at each end: 45 kg suitcase weights,
 	# 70 kg wheel weights a hub, rounded up so a little weight still shows.
 	var view: TractorView = _pull.get("tractor_view")
