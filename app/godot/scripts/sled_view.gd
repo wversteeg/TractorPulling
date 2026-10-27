@@ -51,7 +51,7 @@ func build(d: Dictionary) -> void:
 	var hook_height_m: float = d["hook_height_m"]
 	var pan_ahead_m: float = d["pan_ahead_of_wheels_m"]
 	_wheel_height_m = d["sled_wheel_radius_m"]
-	var wheel_width_m: float = d.get("sled_wheel_width_m", 0.4)
+	var wheel_width_m: float = d["sled_wheel_width_m"]
 	var rail_z_m := _wheel_height_m + RAIL_HEIGHT_M
 
 	# Two rails, cross members, and the gooseneck down to the hook.

@@ -3,8 +3,11 @@
 # side, a covered grandstand full of people on the left and a standing crowd
 # behind the fence on the right, distance boards every 10 m, a banner over
 # the full-pull line and a scoreboard showing how far the sled has got;
-# beyond them food tents, a barn, trees and flags. Built once, from the
-# first run's sizes; only the scoreboard changes during a pull.
+# beyond them food tents, a barn, trees and flags. Built from the run's
+# sizes: again only when the track's length or lane width changes (another
+# event's track), and the banner and scoreboard move with the full-pull
+# line (to 110 m after a test pull past 100 m). Only the scoreboard changes
+# during a pull.
 #
 # The people, trees, tents, barn, flags and clouds are Kenney's CC0 models
 # (assets/kenney); the rest is built here. Copies of a thing are one
@@ -57,28 +60,47 @@ const STANDING_EVERY_M := 1.1
 const BOARD_EVERY_M := 10.0
 
 var _scoreboard: Label3D
-var _built := false
+# The track's length and lane width the venue was built for [m].
+var _sizes := Vector2.ZERO
+var _full_pull_m := -1.0
+# The banner and the scoreboard, which follow the full-pull line.
+var _line: Node3D
 var _random := RandomNumberGenerator.new()
 
 
 func build(d: Dictionary) -> void:
-	if _built:
-		return
-	_built = true
-	# The same venue at every launch.
-	_random.seed = 2026
 	var length_m: float = d["track_length_m"]
 	var lane_m: float = d["lane_width_m"]
 	var full_pull_m: float = d["full_pull_line_m"]
-	_add_ground(length_m, lane_m)
-	for side: float in [-1.0, 1.0]:
-		_add_fence(length_m, lane_m, side)
-		_add_boards(length_m, lane_m, side)
-	_add_grandstand(lane_m)
-	_add_standing_crowd(length_m, lane_m)
-	_add_banner(full_pull_m, lane_m)
-	_add_scoreboard(full_pull_m, lane_m)
-	_add_scenery(length_m, lane_m)
+	var sizes := Vector2(length_m, lane_m)
+	if sizes != _sizes:
+		for child: Node in get_children():
+			child.free()
+		_line = null
+		_sizes = sizes
+		_full_pull_m = -1.0
+		# The same venue at every launch.
+		_random.seed = 2026
+		_add_ground(length_m, lane_m)
+		for side: float in [-1.0, 1.0]:
+			_add_fence(length_m, lane_m, side)
+			_add_boards(length_m, lane_m, side)
+		_add_grandstand(lane_m)
+		_add_standing_crowd(length_m, lane_m)
+		_add_scenery(length_m, lane_m)
+	if full_pull_m != _full_pull_m:
+		if _line != null:
+			_line.free()
+		_line = Node3D.new()
+		add_child(_line)
+		_add_banner(_line, full_pull_m, lane_m)
+		_add_scoreboard(_line, full_pull_m, lane_m)
+		_full_pull_m = full_pull_m
+
+
+# Where the banner over the full-pull line stands, along the track [m].
+func banner_at_m() -> float:
+	return _full_pull_m
 
 
 # How far the sled has got, on the board by the full-pull line.
@@ -281,36 +303,36 @@ func _shirt() -> Color:
 
 
 # A banner over the full-pull line on two poles.
-func _add_banner(full_pull_m: float, lane_m: float) -> void:
+func _add_banner(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
 	var half_m := lane_m / 2.0 + 1.5
 	var height_m := 5.5
 	for side: float in [-1.0, 1.0]:
 		var pole := Art.cylinder(0.12, height_m, STEEL, 10, 0.4, 0.6)
 		pole.position = TrackSpace.point(full_pull_m, side * half_m, height_m / 2.0)
-		add_child(pole)
+		parent.add_child(pole)
 	var banner := Art.box(Vector3(2.0 * half_m, 1.0, 0.08), BANNER)
 	banner.position = TrackSpace.point(full_pull_m, 0.0, height_m - 0.5)
-	add_child(_quiet(banner))
+	parent.add_child(_quiet(banner))
 	var text := Art.label("FULL PULL", 120, Color.WHITE, BANNER.darkened(0.5))
 	text.position = TrackSpace.point(full_pull_m - 0.06, 0.0, height_m - 0.5)
-	add_child(text)
+	parent.add_child(text)
 
 
 # The scoreboard on the right of the full-pull line, facing the track.
-func _add_scoreboard(full_pull_m: float, lane_m: float) -> void:
+func _add_scoreboard(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
 	var at := TrackSpace.point(full_pull_m - 8.0, -(lane_m / 2.0 + FENCE_OUT_M + 4.0), 0.0)
 	for side: float in [-1.0, 1.0]:
 		var leg := Art.box(Vector3(0.2, 4.0, 0.2), STEEL)
 		leg.position = at + Vector3(side * 2.0, 2.0, 0.0)
-		add_child(_quiet(leg))
+		parent.add_child(_quiet(leg))
 	var panel := Art.box(Vector3(5.0, 2.0, 0.3), Color(0.08, 0.08, 0.1))
 	panel.position = at + Vector3(0.0, 5.0, 0.0)
 	panel.rotation.y = -0.5
-	add_child(panel)
+	parent.add_child(panel)
 	_scoreboard = Art.label("  0.00 m", 160, Color(1.0, 0.75, 0.15), Color(0.0, 0.0, 0.0, 0.0))
 	_scoreboard.position = at + Vector3(0.0, 5.0, 0.0) + Basis(Vector3.UP, -0.5) * Vector3(0.0, 0.0, 0.17)
 	_scoreboard.rotation.y = -0.5
-	add_child(_scoreboard)
+	parent.add_child(_scoreboard)
 
 
 # Tents behind the standing crowd, a barn at the far end, trees around, a

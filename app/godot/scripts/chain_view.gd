@@ -10,7 +10,8 @@ const SLACK_COLOUR := Color(0.62, 0.62, 0.64)
 const TAUT_COLOUR := Color(0.2, 0.2, 0.22)
 # The tension at which it is drawn fully taut [N].
 const TAUT_N := 40_000.0
-# Links drawn, enough for the longest chain a sled uses.
+# Links drawn at most: a span of up to 2 m in links of their own length
+# (the shipped chain is 1.15 m); a longer span stretches them.
 const MAX_LINKS := 24
 
 var _links := MultiMeshInstance3D.new()
@@ -57,7 +58,7 @@ func show_between(hitch: Vector3, hook: Vector3, tension_n: float) -> void:
 		# quarter about the chain.
 		var stretch := length_m / count / (LINK_LENGTH_M * 0.75)
 		var normal := up if i % 2 == 0 else side
-		var basis := Basis(along.cross(normal), normal, along * stretch)
+		var basis := Basis(along.cross(normal), normal, along)
 		multi.set_instance_transform(i, Transform3D(basis.orthonormalized().scaled_local(
 				Vector3(1.0, 1.0, stretch)), at))
 	_material.albedo_color = SLACK_COLOUR.lerp(TAUT_COLOUR, clampf(tension_n / TAUT_N, 0.0, 1.0))

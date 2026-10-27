@@ -35,6 +35,7 @@ const CAB_HALF_DEPTH_M := 0.55
 const LUGS_PER_SIDE := 22
 const FRONT_PLATES := 8           # suitcase weights with all the ballast at the front
 const REAR_DISCS := 3             # wheel weights a side with all of it at the rear
+const FULL_BALLAST_KG := 400.0    # drawn as all the plates or discs: the class's most
 # Slip above which the rear tires throw dirt, and where they throw most.
 const DIRT_FROM_SLIP := 0.08
 const DIRT_FULL_SLIP := 0.5
@@ -268,8 +269,8 @@ func _add_hitch_and_bar(d: Dictionary, axle_height_m: float, rear_track_m: float
 	var clevis := Art.box(Vector3(0.16, 0.14, 0.1), FRAME, 0.4, 0.5)
 	clevis.position = TrackSpace.point(-behind_m, 0.0, hitch_z_m)
 	_body.add_child(clevis)
-	var bar_m: float = d.get("wheelie_bar_behind_rear_axle_m", 1.3)
-	var tip_z_m := float(d.get("wheelie_bar_tip_height_m", 0.15)) - axle_height_m
+	var bar_m: float = d["wheelie_bar_behind_rear_axle_m"]
+	var tip_z_m := float(d["wheelie_bar_tip_height_m"]) - axle_height_m
 	var start := Vector3(-0.3, 0.0, -0.25)
 	var tip := Vector3(-bar_m, 0.0, tip_z_m + 0.12)
 	for side: float in [-1.0, 1.0]:
@@ -334,15 +335,18 @@ func _add_front_wheel(steer: Node3D, spin: Node3D, width_m: float) -> void:
 
 
 # Suitcase weights on the front bracket and wheel weights on the rear hubs,
-# each in proportion to the share of the ballast at that end.
+# each in proportion to the mass of the ballast at that end.
 func _show_weights(d: Dictionary) -> void:
 	for child in _front_weights.get_children():
 		child.queue_free()
-	var mass_kg: float = d.get("ballast_mass_kg", 0.0)
-	var position_share: float = d.get("ballast_position", 0.5)
+	var mass_kg: float = d["ballast_mass_kg"]
+	var position_share: float = d["ballast_position"]
 	if mass_kg <= 0.0:
 		return
-	var plates := roundi(position_share * FRONT_PLATES)
+	# Each end gets its share of the weights, in plates or discs for the
+	# mass there.
+	var mass_share := clampf(mass_kg / FULL_BALLAST_KG, 0.0, 1.0)
+	var plates := roundi(position_share * mass_share * FRONT_PLATES)
 	var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
 	bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
 	_front_weights.add_child(bracket)
@@ -351,7 +355,7 @@ func _show_weights(d: Dictionary) -> void:
 				0.6)
 		plate.position = TrackSpace.point(0.03 + i * 0.05, 0.0, 0.0)
 		_front_weights.add_child(plate)
-	var discs := roundi((1.0 - position_share) * REAR_DISCS)
+	var discs := roundi((1.0 - position_share) * mass_share * REAR_DISCS)
 	for spin: Node3D in [_rear_left, _rear_right]:
 		var holder := spin.get_node_or_null("weights") as Node3D
 		if holder == null:

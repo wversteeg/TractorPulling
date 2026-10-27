@@ -65,6 +65,30 @@ func _check() -> void:
 	_expect(absf(hitch.distance_to(hook) - chain_m) < 0.1 * chain_m,
 			"hitch to hook is the chain's length: %.2f m" % hitch.distance_to(hook))
 
+	# The venue's banner stands at the full-pull line, and follows it when a
+	# test pull moves it to 110 m; the rest of the venue is not rebuilt.
+	var venue: VenueView = _pull.get("venue_view")
+	_expect(venue.banner_at_m() == float(dimensions["full_pull_line_m"]),
+			"the banner at the full-pull line: %s m" % venue.banner_at_m())
+	var parts := venue.get_child_count()
+	var first_part := venue.get_child(0)
+	var moved := dimensions.duplicate()
+	moved["full_pull_line_m"] = 110.0
+	venue.build(moved)
+	_expect(venue.banner_at_m() == 110.0 and venue.get_child_count() == parts
+			and venue.get_child(0) == first_part,
+			"the banner moves with the line, the venue stays: %s m" % venue.banner_at_m())
+	venue.build(dimensions)
+
+	# The sizes the views draw the parts from are there and positive.
+	for key: String in ["wheelie_bar_behind_rear_axle_m", "wheelie_bar_tip_height_m",
+			"sled_wheel_width_m"]:
+		_expect(float(dimensions.get(key, 0.0)) > 0.0, "%s: %s" % [key, dimensions.get(key)])
+	_expect(float(dimensions.get("ballast_mass_kg", -1.0)) >= 0.0
+			and float(dimensions.get("ballast_position", -1.0)) >= 0.0,
+			"the weights: %s kg at %s" % [dimensions.get("ballast_mass_kg"),
+			dimensions.get("ballast_position")])
+
 	var cameras: Node = _pull.get("cameras")
 	var camera: Camera3D = cameras.call("current_camera")
 	_expect(camera != null and camera.is_current(), "a camera is current")
