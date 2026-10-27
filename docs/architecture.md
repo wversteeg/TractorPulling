@@ -126,7 +126,8 @@ disqualifies the pull (out of bounds, 0 m); the sled may cross the lines.
 One puller's turn at an event, as the game plays it: from the parking beside
 the track to the sled, backing up to it in reverse; the chain hooked on by
 itself once the tractor stands in reach; the slack taken up on the held
-sled until the official waves the green flag; the pull (the run); the chain
+sled; the tractor standing ready in its pulling gear until the official
+waves the green flag; the pull (the run); the chain
 released once the tractor has backed off; and back to the parking while the
 sled drives itself back. The chalk lines count only in the pull, and the
 pull's clock runs from the flag. At the start line the turn is the pull

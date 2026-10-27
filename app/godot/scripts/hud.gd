@@ -89,6 +89,8 @@ var _lamp := Label.new()
 var _signal := "off"
 var _chain_m := 1.0
 var _steer_hint_m := 0.25
+# The pro layout: the driver works the clutch (the easy one's assist does).
+var _pro := false
 # The player's bay in the parking, on the track; INF for no whole turn.
 var _parking := Vector2.INF
 
@@ -159,6 +161,7 @@ func set_parking(bay: Vector2) -> void:
 
 # `title` names the pull ("" none), `pro` whether to show the clutch.
 func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
+	_pro = pro
 	_pull.text = title
 	_omega_rad_s = s["engine_omega_rad_s"]
 	_sled_m = s["sled_x_m"]
@@ -205,9 +208,13 @@ func turn_text(s: Dictionary) -> String:
 				return "Stop: the chain goes on" + steer
 			return "Back up to the sled: %.1f m%s" % [to_go, steer]
 		"taking_up_slack":
+			return "Hooked on. Creep forward to take up the slack"
+		"waiting_for_the_flag":
 			if float(s.get("flag_progress", 0.0)) > 0.0:
 				return "Hold it there... the flag is coming"
-			return "Hooked on. Creep forward to take up the slack"
+			if _pro:
+				return "Chain tight: press the clutch, stand still in your pulling gear"
+			return "Chain tight: let go of the gas and stand still in your pulling gear"
 		"releasing":
 			var rolling := float(s["tractor_speed_m_s"]) > STOPPED_M_S
 			if rolling or float(s["throttle"]) > THROTTLE_CLOSED:

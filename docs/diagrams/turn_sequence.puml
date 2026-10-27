@@ -23,7 +23,10 @@ else any other stage
   alt kToTheSled
     Turn -> Turn : hooks_on (standing, the hitch ahead of the hook within\nthe chain's length, near the sled's line): hooked, kTakingUpSlack
   else kTakingUpSlack
-    Turn -> Turn : tension >= 1 kN for 1 s without a break: the green flag,\nthe sled on the chain, the pull's clock at 0, kPulling
+    Turn -> Turn : tension >= 1 kN: the slack is taken up, kWaitingForTheFlag
+  else kWaitingForTheFlag
+    Turn -> Turn : the chain 0.3 m slack: back to kTakingUpSlack
+    Turn -> Turn : standing, the chain tight (within 0.1 m), the drive out\n(clutch pressed off its bite, or neutral), for 2 s without a break: the green flag, the sled on the chain,\nthe pull's clock at 0, kPulling
   else kReleasing
     Turn -> Turn : standing, the chain 0.3 m slack: unhooked,\nthe sled driving back, kToTheParking
   else kToTheParking

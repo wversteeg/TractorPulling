@@ -664,14 +664,14 @@ func _show(delta: float) -> void:
 
 
 # The officials' signal from the run's stage: "green" while the pull is
-# on and good, "red" while the tractor must wait (taking up the slack) or
-# stop (the pull is over: until the chain is off), "off" otherwise.
+# on and good, "red" while the tractor must wait (taking up the slack,
+# standing ready for the flag) or stop (the pull is over: until the chain is off), "off" otherwise.
 # `turn` says the run is the whole turn; at the line it ends with the pull.
 static func signal_for(s: Dictionary, turn: bool) -> String:
 	match s.get("stage", "pulling"):
 		"pulling":
 			return "green"
-		"taking_up_slack", "releasing":
+		"taking_up_slack", "waiting_for_the_flag", "releasing":
 			return "red"
 		"parked":
 			return "off" if turn else "red"
@@ -682,12 +682,12 @@ static func signal_for(s: Dictionary, turn: bool) -> String:
 func _show_officials(s: Dictionary, delta: float) -> void:
 	var stage: String = s.get("stage", "pulling")
 	var shown := signal_for(s, _whole_turn)
-	var stop := shown == "red" and stage != "taking_up_slack"
-	# The start official: the red flag low, raised as the slack is taken
-	# up, green waved for the pull, red waved to stop.
+	var stop := shown == "red" and stage not in ["taking_up_slack", "waiting_for_the_flag"]
+	# The start official: the red flag low, raised while the tractor stands
+	# ready, green waved for the pull, red waved to stop.
 	var raise := 0.0
 	match stage:
-		"taking_up_slack":
+		"waiting_for_the_flag":
 			raise = float(s.get("flag_progress", 0.0))
 		"pulling":
 			raise = 1.0

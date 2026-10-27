@@ -88,6 +88,8 @@ const char* stage_name(turn::Stage stage) {
             return "to_the_sled";
         case turn::Stage::kTakingUpSlack:
             return "taking_up_slack";
+        case turn::Stage::kWaitingForTheFlag:
+            return "waiting_for_the_flag";
         case turn::Stage::kPulling:
             return "pulling";
         case turn::Stage::kReleasing:

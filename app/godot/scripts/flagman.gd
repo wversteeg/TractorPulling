@@ -1,7 +1,7 @@
 # A track official with a flag, standing beside the lane facing the
 # tractor. Two of them work each pull (pull.gd): one past the start line,
 # who holds the red flag while the tractor comes to the sled and raises it
-# as the slack is taken up, and one further down the track, who walks
+# while the tractor stands ready, and one further down the track, who walks
 # ahead of the tractor towards the full-pull line. Both wave green while
 # the pull is good, and red the moment it is over (a full pull, the sled
 # stopped, a disqualification): stop. The run decides when; this only
