@@ -511,6 +511,7 @@ func _show(delta: float) -> void:
 	var s := run.get_snapshot()
 	if s.is_empty():
 		return
+	controls.lowest_gear = s["lowest_gear"]
 	tractor_view.show_snapshot(s, delta)
 	sled_view.show_snapshot(s, delta)
 	venue_view.show_distance(s["sled_x_m"])

@@ -152,7 +152,11 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     // clutch staying in; every other change waits for the clutch out.
     const bool load_shift =
         driveline::shifts_under_load(state.driveline, tractor.driveline, wanted_gear);
-    const bool shifting = wanted_gear != gear_in && !load_shift;
+    // A gear the gearbox would refuse (under way, below its floor) is not
+    // asked for: the assist keeps the clutch in and the gear as it is.
+    const bool allowed = wanted_gear == driveline::kNeutral ||
+                         wanted_gear >= driveline::lowest_gear(state.driveline, tractor.driveline);
+    const bool shifting = wanted_gear != gear_in && !load_shift && allowed;
     const bool clutch_wanted_out =
         throttle < params.clutch_assist.min_throttle || shifting || gear_in == driveline::kNeutral;
     assist.engagement = engagement_after(params.clutch_assist, assist.engagement, clutch_wanted_out,

@@ -214,7 +214,7 @@ will show them.
 Some tractors shift a gear or two down under load, the clutch in: a
 powershift step, clutch packs inside the gearbox (`driveline.powershift`,
 `load_downshift_gears`; without it the gears change with the clutch pressed
-only). The shipped tractor shifts one gear down. In the game, "-" (or the
+only, and under way only up). The shipped tractor shifts one gear down. In the game, "-" (or the
 gamepad's left shoulder) then works with the clutch in; in the easy layout
 the clutch assist keeps the clutch in for it. The gear goes in at once:
 the wheels keep their speed, the input shaft turns faster than the
@@ -222,9 +222,13 @@ engine, and the clutch slips (at most its capacity, for a fraction of a
 second) and pulls
 the engine up to the lower gear's speed, while the tractor slows through
 its tires. A 44 % step is a big one: the tractor slows while the sled rolls
-on, so the chain goes slack for a moment and then snatches. Two gears
-down, or up, still take the clutch, and so does every shift after the
-first: one shift under load a pull (`shifts_per_pull`, 1 if left out).
+on, so the chain goes slack for a moment and then snatches. Up still
+takes the clutch. Down, once the tractor moves off, goes only by the
+powershift, as far and as often as it allows (`load_downshift_gears`, and
+`shifts_per_pull`, 1 if left out): not two gears at once with a one-gear
+step, not again after the last, and not with the clutch pressed either
+(`driveline::floor_gear`). Standing, any gear may be chosen. A tractor
+without a powershift pulls in the gear it moves off in, or higher.
 
 It is for the end of a pull, when the sled has the engine pulled down
 towards the stall. It pays where the sled's most drag (see "The sled tops

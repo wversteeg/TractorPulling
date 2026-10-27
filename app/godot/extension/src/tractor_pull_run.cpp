@@ -204,6 +204,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["engine_omega_rad_s"] = s.engine_omega_rad_s;
     out["engine_running"] = s.engine_running;
     out["gear"] = s.gear;
+    out["lowest_gear"] = s.lowest_gear;
     out["throttle"] = s.throttle;
     out["clutch_pedal"] = s.clutch_pedal;
     out["sled_x_m"] = s.sled_x_m;

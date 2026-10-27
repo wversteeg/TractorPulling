@@ -304,8 +304,10 @@ at the steering rate.
 
 ### Changing gear
 
-One shift under load a pull goes in with the clutch in; every other change
-needs the clutch pressed.
+One shift under load a pull goes in with the clutch in. Standing, any other
+change needs the clutch pressed; once under way the gearbox never goes below
+its lowest gear so far (the gear it moved off in, or the one the powershift
+took it to), with the clutch or without.
 
 ![Gear shift](diagrams/svg/gear_shift_sequence.svg)
 

@@ -98,6 +98,7 @@ package "GDScript (app/godot/scripts)" {
   }
   class DriveControls {
     +gear : int
+    +lowest_gear : int
     +gear_count : int
     +pro, tilt : bool
     +tilt_steering : TiltSteering

@@ -168,6 +168,7 @@ Snapshot Session::snapshot() const noexcept {
             .engine_omega_rad_s = tractor.engine.omega_rad_s,
             .engine_running = tractor.engine.running,
             .gear = tractor.driveline.gear,
+            .lowest_gear = driveline::lowest_gear(tractor.driveline, model_.tractor().driveline()),
             .throttle = input_.throttle,
             .clutch_pedal = input_.clutch_pedal,
             .sled_x_m = pull.sled.position_m - start_m,

@@ -140,6 +140,9 @@ for the big features; they are repeated at the end for completeness.
   (`load_downshift_gears`, the garage's powershift), once a pull
   (`shifts_per_pull`); a powershift that also shifts up under load, or a
   second shift a pull as an upgrade, are left out.
+- **When a pull is under way.** Past `vehicle::kUnderWay_m_s` (0.3 m/s) the
+  gearbox goes no lower than its floor, the same for every class. If classes
+  ever set it differently, it belongs in the class rules in `data/`.
 - **The rivals shift by the rev counter alone.** A scripted driver shifts
   once the engine falls below their share of its rated speed; one who also
   reads the sled's distance, the wheelspin or the chain would shift later on

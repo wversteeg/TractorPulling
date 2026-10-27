@@ -302,6 +302,35 @@ TEST(Session, ShowsTheTractorPullingTheSled) {
     EXPECT_LT(now.front_axle_load_n, start_front_n);
 }
 
+// The lowest gear the run takes now: any before moving off; under way one
+// below the gear it moved off in (the reference powershift's step), then,
+// once that step is used, the gear it went to.
+TEST(Session, ShowsTheLowestGearTheRunTakes) {
+    Session session = make(reference_setup(Layout::kEasy));
+    EXPECT_EQ(session.current().lowest_gear, 1);
+    const Controls pulling{.throttle = 1.0, .gear = 6};
+    for (int frame = 0; frame < 600; ++frame) {
+        session.advance(pulling, 16 * kStep_ns);
+    }
+    ASSERT_FALSE(session.result());
+    EXPECT_EQ(session.current().gear, 6);
+    EXPECT_EQ(session.current().lowest_gear, 5);
+
+    Controls lower = pulling;
+    lower.gear = 5;
+    session.advance(lower, 16 * kStep_ns);
+    ASSERT_FALSE(session.result());
+    EXPECT_EQ(session.current().gear, 5);
+    EXPECT_EQ(session.current().lowest_gear, 5);
+
+    lower.gear = 4;
+    for (int frame = 0; frame < 60; ++frame) {
+        session.advance(lower, 16 * kStep_ns);
+    }
+    EXPECT_EQ(session.current().gear, 5);
+    EXPECT_EQ(session.current().lowest_gear, 5);
+}
+
 TEST(Session, StandsStillOnceTheRunHasEnded) {
     Session session = make(reference_setup(Layout::kEasy));
     const Controls pulling{.throttle = 1.0, .gear = 6};

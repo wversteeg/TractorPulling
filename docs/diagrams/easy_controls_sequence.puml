@@ -9,6 +9,7 @@ participant "run::step" as Run
 Frontend -> Easy : easy({throttle, gear, steering}, params, assist,\ntractor, state.pull.tractor, dt)
 Easy -> Easy : guard = max(min(guard_share x rated,\n  engine::full_fuel_omega_rad_s(throttle)), stall + band)
 Easy -> Easy : load shift: driveline::shifts_under_load(driveline state, gear asked)\n(none left after this pull's first)
+Easy -> Easy : a gear below driveline::lowest_gear (under way) is not asked for:\nthe clutch stays in, the gear as it is
 alt lifted off, neutral in, or another gear asked for (not a load shift)
   Easy -> Easy : engagement -= dt / release_time
 else engine at or above the guard speed

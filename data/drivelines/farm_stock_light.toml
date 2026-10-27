@@ -12,9 +12,10 @@ output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tire
 ratios = [15.0, 10.5, 7.4, 5.2, 3.6, 2.5, 1.7, 1.0]   # 1st to 8th
 
 # A powershift step: one gear down under load, the clutch in, when the
-# engine is pulled down near the end of a pull; once a pull, after which
-# every change needs the clutch pressed. Without the table the gears change
-# with the clutch pressed only.
+# engine is pulled down near the end of a pull; once a pull. Otherwise the
+# gears change with the clutch pressed, and once under way only up: the
+# gearbox never goes below the gear it moved off in, or the one this step
+# took it to.
 [driveline.powershift]
 load_downshift_gears = 1
 shifts_per_pull = 1            # 1 if left out
