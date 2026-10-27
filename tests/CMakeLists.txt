@@ -12,6 +12,7 @@ add_executable(tp_core_tests
     engine/engine_test.cpp
     event/event_test.cpp
     field/field_test.cpp
+    garage/garage_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp
     math/exp_test.cpp
@@ -53,6 +54,7 @@ if(TP_BUILD_DATA_IO)
         data/engine_loader_test.cpp
         data/event_loader_test.cpp
         data/files_test.cpp
+        data/garage_loader_test.cpp
         data/run_setup_test.cpp
         data/season_loader_test.cpp
         data/season_save_test.cpp

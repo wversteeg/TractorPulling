@@ -262,6 +262,32 @@ disqualified pull scores no points.
 ./build/release/tools/tp_pull season data/seasons/club_season.toml [--seed N]
 ```
 
+### The garage
+
+A career starts on an older tractor, with what the NTTO standard class lets
+a puller improve on a stock farm tractor still to buy (`data/garages/`,
+`tp::garage`). Every event pays by place (`prize_money_eur` in the season
+file, € 700 for a win down to € 120 for 10th; a disqualified pull earns
+nothing), and the garage spends it, between events:
+
+| part | starts at | up to (the class's limit) |
+|---|---|---|
+| injection pump | 90 % of the torque, worn | the maker's figures: 84 hp at the PTO (85 hp) |
+| rear tires | worn, traction limit 0.86 | wider deep-tread rubber, 0.95 (rubber only, uncut) |
+| weights | 100 kg, 3200 kg in all | 400 kg, 3500 kg (3500 kg) |
+| drawbar | 0.40 m | 0.50 m (0.5 m, below the rear axle) |
+| powershift | none | two gears down under load, once a pull (one make) |
+
+Each level sets its part outright, so the parts never interact; the season
+loader checks every level against the class (`garage::validate`). Fully
+upgraded, the tractor is at the class's limits like the rivals' reference
+tractor, and beyond it: wider tires (a traction limit of 0.95 against
+0.93) and a two-gear powershift step against one. Prizes are paid as an
+event is scored, once; upgrades are bought between events or before your
+first pull of one (`field::LiveSeason::player_may_change_tractor`). The
+money and the levels carry from season to season. The whole garage costs
+€ 15,200; a season pays a winner of every event € 7,000.
+
 ### Playing a run from a game
 
 A game drives a run through `tp::session`: it creates a session once from a
@@ -310,15 +336,16 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 The game plays a season (`data/seasons/club_season.toml`, the club class on
 ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
 `[event.game]`. The season is saved after every event, with your tuning
-(`user://season.toml`, `tp::data::SeasonSave`): at the next launch the
-start screen asks whether to continue it, at the next event, or to start a
-new season. An event left halfway is not saved: continued, it starts again
-from its beginning, and the rivals pull as they did, since the field and
-every event's draws come from the season's seed. A finished season is not
-kept. You pull
-the class's reference tractor. The start screen shows the next event and
-its track. "Practice" is a free pull on the track; "Event" goes to the
-event's board, where the rivals' pulls and the
+and your career (`user://season.toml`, `tp::data::SeasonSave`): at the
+next launch the start screen asks whether to continue it, at the next
+event, or to start a new season. An event left halfway is not saved:
+continued, it starts again from its beginning, and the rivals pull as they
+did, since the field and every event's draws come from the season's seed.
+A finished season is kept for its career, which the next season starts
+with. You pull the class's reference tractor as your garage has it (see
+"The garage"). The start screen shows the next event and its track.
+"Practice" is a free pull on the track; "Garage" spends your prize money;
+"Event" goes to the event's board, where the rivals' pulls and the
 sled operator's verdicts fill in as they are simulated (the rivals try
 their gears from the start screen on). When you are due, you pull: a test
 pull, a pull, a re-pull or a pull-off, each on the sled as the operator has

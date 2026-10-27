@@ -3,6 +3,7 @@
 #include "tp/core/season/season.hpp"
 #include "tp/data/event/event_loader.hpp"
 #include "tp/data/files.hpp"
+#include "tp/data/garage/garage_loader.hpp"
 #include "tp/data/result.hpp"
 #include "tp/data/track/track_loader.hpp"
 
@@ -21,11 +22,15 @@ struct SeasonRound {
 };
 
 /// Everything a season file describes (see data/seasons/): the class's
-/// event (field, rules, sled), the points table and the rounds. The same
-/// field pulls every round.
+/// event (field, rules, sled), the points table, the prize money and the
+/// rounds, and the class's garage. The same field pulls every round.
 struct SeasonDefinition {
     EventDefinition event;
     season::Points points;
+    /// What each event pays by place, 1st first [EUR]; garage::prize_eur.
+    std::vector<std::int64_t> prize_money_eur;
+    /// Checked against the event's tractor and class (garage::validate).
+    GarageDefinition garage;
     std::vector<SeasonRound> rounds;
     std::uint64_t seed = 0;
 };

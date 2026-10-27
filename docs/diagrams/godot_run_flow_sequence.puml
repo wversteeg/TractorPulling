@@ -3,17 +3,17 @@ title The game's flow: a season's event against the rivals, then the top tens
 autonumber
 actor Player
 participant "pull.gd" as Pull
-participant "StartScreen / SettingsScreen /\nBoardScreen / ResultScreen" as Screens
+participant "StartScreen / SettingsScreen /\nGarageScreen / BoardScreen /\nResultScreen" as Screens
 participant "TractorPullEvent" as Event
 participant "TractorPullRun" as Run
 
 Pull -> Pull : GameSettings.read(): the layout, the steering
 alt a season saved after an event (user://season.toml)
-  Pull -> Event : resume_season(season, save)\n(drawn again for its seed, its events scored)
+  Pull -> Event : resume_season(season, save)\n(drawn again for its seed, its events scored,\nthe career: money and upgrades)
   Pull -> Screens : start screen: continue, or a new season?
   alt New season
     Player -> Screens : New season
-    Pull -> Event : start_season(season, new seed)
+    Pull -> Event : start_season(season, new seed)\n(the career carries over)
   else Continue
     Player -> Screens : Continue
   end
@@ -29,6 +29,14 @@ end
 opt the gear: Settings
   Player -> Screens : easy / pro, slider / tilt
   Pull -> Pull : GameSettings.write()
+end
+opt Garage (before the player's first pull of the event)
+  Pull -> Screens : get_garage(): the money, each part's level\nand the next one's cost
+  loop each Buy
+    Player -> Screens : Buy
+    Pull -> Event : buy_upgrade(index)\n(garage::buy; the tractor is garage::equipped)
+    Pull -> Pull : save: get_save()
+  end
 end
 opt Practice
   Player -> Screens : Practice
@@ -59,10 +67,10 @@ loop until get_event().turn is "finished"
   end
 end
 Player -> Screens : Results
-Pull -> Screens : the event's top ten: get_standings()
+Pull -> Screens : the event's top ten: get_standings(),\nthe prize: get_event_prize()
 Player -> Screens : Season
-Pull -> Event : score_event()
-Pull -> Pull : save: get_save() (none once the season is over)
+Pull -> Event : score_event() (pays the prize)
+Pull -> Pull : save: get_save() (kept once the season is over,\nfor its career)
 Pull -> Screens : the season's top ten: get_season_standings()
 alt more events
   Player -> Screens : Next event

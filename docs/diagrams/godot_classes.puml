@@ -40,6 +40,7 @@ package "tp::godot_binding" {
     -names_ : vector<string>
     -season_ : unique_ptr<field::LiveSeason>
     -tuning_ : vehicle::Tuning
+    -career_ : optional<garage::Career>
     +start_season(season_path, seed) : String
     +get_save() : String
     +resume_season(season_path, save) : String
@@ -55,6 +56,9 @@ package "tp::godot_binding" {
     +decide(keep)
     +score_event() : bool
     +get_season_standings() : Array
+    +get_event_prize() : int
+    +get_garage() : Dictionary
+    +buy_upgrade(index) : String
     +get_tuning() : Dictionary
     +set_tuning(ballast_position, pressure_bar)
     ..C++ only..
