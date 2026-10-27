@@ -34,6 +34,12 @@ const HOOD_TOP_M := 0.65          # above the rear axle
 const HOOD_PAST_FRONT_AXLE_M := 0.3
 const CAB_ROOF_M := 1.75          # above the rear axle
 const CAB_HALF_DEPTH_M := 0.55
+# The cab camera: at the seated driver's eyes, a little in front of the
+# face so the head does not fill the view, above the rear axle [m]; and
+# its near plane, close enough for the steering wheel [m].
+const EYES_AHEAD_M := 0.12
+const EYES_UP_M := 1.38
+const CAB_NEAR_M := 0.05
 const LUGS_PER_SIDE := 23
 # The weights at the sizes they come in, so any class's ballast draws
 # right: a suitcase weight on the front bracket, a wheel weight on a rear
@@ -61,6 +67,7 @@ var paint := PAINT
 var paint_dark := PAINT_DARK
 var driver_shirt := DRIVER
 var _body := Node3D.new()        # pivots about the rear axle
+var _cab_camera: Camera3D = null
 var _hitch := Marker3D.new()
 var _rear_left := Node3D.new()
 var _rear_right := Node3D.new()
@@ -515,6 +522,18 @@ func weight_counts() -> Vector2i:
 
 
 # Where the chain pulls, in the world.
+# A camera at the driver's eyes, looking ahead: it turns and pitches with
+# the tractor (CameraRig.cab). Made once.
+func cab_camera() -> Camera3D:
+	if _cab_camera == null:
+		_cab_camera = Camera3D.new()
+		_cab_camera.near = CAB_NEAR_M
+		_cab_camera.far = CameraRig.FAR_M
+		_cab_camera.position = TrackSpace.point(EYES_AHEAD_M, 0.0, EYES_UP_M)
+		_body.add_child(_cab_camera)
+	return _cab_camera
+
+
 func hitch_position() -> Vector3:
 	return _hitch.global_position
 

@@ -532,7 +532,10 @@ steering holds. A device without a motion sensor keeps the slider. Godot
 reads the phone's sensors only when the project asks for them
 (`input_devices/sensors/enable_gravity` and `enable_accelerometer` in
 `project.godot`, off by default since Godot 4.3).
-"cam" switches between the chase, side and overhead cameras; in a practice
+"cam" switches between the cameras: the chase camera, a close one just
+behind the sled that turns with the tractor (the whole sled just in
+view), the cab (at the driver's eyes, looking over the hood), beside the
+tractor and overhead; in a practice
 pull "again" (on lifting the finger on it) starts the same pull again, and
 "menu" goes back to the start screen (an event's pull counts: neither is
 there). On a desktop the mouse works the same controls, and for

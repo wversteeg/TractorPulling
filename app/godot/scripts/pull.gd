@@ -370,6 +370,12 @@ func _build(error: String) -> bool:
 	if sled_view.get_child_count() == 0:
 		sled_view.build(dimensions)
 	hud.build(dimensions)
+	cameras.cab = tractor_view.cab_camera()
+	# The close camera stands behind the sled: from the rear axle to the
+	# hitch, the chain, the hook to the sled's wheels, and its rear.
+	cameras.sled_rear_behind_m = float(dimensions["hitch_behind_rear_axle_m"]) \
+			+ float(dimensions["chain_length_m"]) + float(dimensions["hook_ahead_of_wheels_m"]) \
+			+ SledView.REAR_BEHIND_WHEELS_M
 	_build_turn(dimensions)
 	controls.gear_count = dimensions["gear_count"]
 	controls.has_reverse = dimensions.get("has_reverse", false)
@@ -381,7 +387,8 @@ func _build(error: String) -> bool:
 	_time_s = 0.0
 	_show(0.0)
 	_framing = Vector3.ZERO
-	cameras.follow(tractor_view.global_position, 0.0, false)
+	cameras.follow(tractor_view.global_position, 0.0, false,
+			float(_snapshot.get("tractor_heading_rad", 0.0)))
 	return true
 
 
@@ -464,7 +471,8 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
-	cameras.follow(_camera_target(delta), delta)
+	cameras.follow(_camera_target(delta), delta, true,
+			float(_snapshot.get("tractor_heading_rad", 0.0)))
 
 
 # What the cameras follow: the tractor, or backing up to the sled, the

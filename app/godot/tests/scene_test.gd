@@ -163,3 +163,29 @@ func _check() -> void:
 	_expect(camera != null and camera.is_current(), "a camera is current")
 	_expect(camera.global_position.distance_to(tractor.global_position) < 50.0,
 			"the camera follows the tractor")
+	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
+
+
+# The close camera has the whole sled in view, from its rear to the
+# tractor; the cab camera rides on the tractor; next() goes round every
+# view and back.
+func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) -> void:
+	var close: Camera3D = cameras.get("_cameras")[CameraRig.View.CLOSE]
+	var sled_rear := sled.global_position + TrackSpace.point(-SledView.REAR_BEHIND_WHEELS_M, 0.0, 0.0)
+	_expect(close.is_position_in_frustum(sled_rear) and close.is_position_in_frustum(sled.hook_position())
+			and close.is_position_in_frustum(tractor.global_position),
+			"the close camera sees the whole sled and the tractor")
+	# Down the track is -z (TrackSpace): behind is +z.
+	var behind_m := (close.global_position - tractor.global_position).z
+	_expect(behind_m > cameras.sled_rear_behind_m, "the close camera behind the sled: %.1f m"
+			% behind_m)
+	_expect(cameras.cab != null and tractor.is_ancestor_of(cameras.cab),
+			"the cab camera rides on the tractor")
+	var seen: Array[Camera3D] = []
+	for i in CameraRig.View.size():
+		var current := cameras.current_camera()
+		_expect(current.is_current(), "view %d is current" % cameras.view)
+		seen.append(current)
+		cameras.next()
+	_expect(cameras.view == CameraRig.View.CHASE and seen.has(cameras.cab),
+			"next() goes round every view, the cab too")

@@ -26,6 +26,8 @@ const OPERATOR := Color(0.78, 0.88, 0.15)
 const BERM_FLATNESS := 0.6        # its height, a share of its depth
 const BERM_WIDTH_M := WIDTH_M + 0.2  # across the pan, spilling a little past it
 const RAIL_HEIGHT_M := 0.25
+# How far the rails reach behind the wheels: the sled's rear [m].
+const REAR_BEHIND_WHEELS_M := 0.7
 const RAIL_GAP_M := 1.7
 const BOX_SIZE_M := Vector3(2.0, 1.0, 1.6)
 const PAN_DEPTH_M := 1.2
@@ -63,7 +65,7 @@ func build(d: Dictionary) -> void:
 	var rail_z_m := _wheel_height_m + RAIL_HEIGHT_M
 
 	# Two rails, cross members, and the gooseneck down to the hook.
-	var rail_from_m := -0.7
+	var rail_from_m := -REAR_BEHIND_WHEELS_M
 	var rail_to_m := pan_ahead_m + 0.2
 	for side: float in [-1.0, 1.0]:
 		var rail := _painted(Vector3(0.16, 0.24, rail_to_m - rail_from_m), PAINT)
