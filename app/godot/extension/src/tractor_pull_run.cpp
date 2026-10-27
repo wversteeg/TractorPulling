@@ -211,6 +211,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["sled_heading_rad"] = s.sled_heading_rad;
     out["sled_speed_m_s"] = s.sled_speed_m_s;
     out["box_ahead_of_wheels_m"] = s.box_ahead_of_wheels_m;
+    out["pushdown"] = s.pushdown;
     out["chain_tension_n"] = s.chain_tension_n;
     return out;
 }
@@ -242,6 +243,10 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["pan_ahead_of_wheels_m"] = sled.pan_ahead_of_wheels_m;
     out["box_start_ahead_of_wheels_m"] = sled.box_start_ahead_of_wheels_m;
     out["box_end_ahead_of_wheels_m"] = sled.box_end_ahead_of_wheels_m;
+    // Where the push-down starts and has the wheels fully off, as the sled
+    // is set for this pull [m along the track].
+    out["pushdown_start_m"] = sled.pushdown_start_m;
+    out["pushdown_full_m"] = sled.pushdown_start_m + sled.pushdown_ramp_m;
     out["chain_length_m"] = sled.chain.length_m;
     const run::Rules& rules = setup_->rules;
     out["track_length_m"] = rules.track_length_m;

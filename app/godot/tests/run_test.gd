@@ -152,6 +152,10 @@ func _check_event() -> void:
 	_expect(run.setup_practice(event, EASY).is_empty(), "a practice pull at the event")
 	_expect(event.record_pull(run).is_empty(), "a practice pull is not the event's")
 	var dimensions := run.get_dimensions()
+	_expect(float(dimensions.get("pushdown_start_m", 0.0)) > 0.0
+			and float(dimensions["pushdown_full_m"]) > float(dimensions["pushdown_start_m"])
+			and float(run.get_snapshot()["pushdown"]) == 0.0,
+			"the push-down, from where to where: %s" % dimensions)
 	var rest_n: float = dimensions.get("front_axle_rest_load_n", 0.0)
 	_expect(rest_n > 0.0 and absf(float(run.get_snapshot()["front_axle_load_n"]) - rest_n)
 			< 1e-6 * rest_n, "the front tires carry their load at rest: %s" % rest_n)

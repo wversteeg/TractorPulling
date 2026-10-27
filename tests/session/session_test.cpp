@@ -244,6 +244,7 @@ TEST(Session, StartsAtTheStartLine) {
     EXPECT_EQ(start.gear, driveline::kNeutral);
     EXPECT_TRUE(start.engine_running);
     EXPECT_EQ(start.box_ahead_of_wheels_m, setup.sled.box_start_ahead_of_wheels_m);
+    EXPECT_EQ(start.pushdown, 0.0);
     // The front tires carry their share of the weight at rest.
     const double weight_n = setup.tractor.chassis.mass_kg * units::kStandardGravity_m_s2;
     EXPECT_NEAR(start.front_axle_load_n,
@@ -305,6 +306,8 @@ TEST(Session, StandsStillOnceTheRunHasEnded) {
     ASSERT_TRUE(session.result());
     const std::uint64_t hash = session.hash();
     const Snapshot last = session.current();
+    // The pull ends past the push-down: set, the sled at its heaviest.
+    EXPECT_EQ(last.pushdown, 1.0) << last.sled_x_m << " m";
 
     const Frame frame = session.advance(pulling, 16 * kStep_ns);
     EXPECT_EQ(frame.steps, 16U);
