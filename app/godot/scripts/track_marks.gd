@@ -7,7 +7,7 @@ class_name TrackMarks
 extends Node3D
 
 const RUT := Color(0.3, 0.2, 0.12)
-const SMOOTHED := Color(0.62, 0.47, 0.32)
+const SMOOTHED := Color(0.56, 0.41, 0.27)
 # A new point every this far [m], and at most this many a mark (a pull
 # past 130 m stops adding: the track ends there).
 const STEP_M := 0.2
