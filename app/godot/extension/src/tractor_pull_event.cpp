@@ -140,20 +140,13 @@ godot::String TractorPullEvent::resume_season(const godot::String& season_path,
         return to_godot(parsed.error().message);
     }
     const data::SeasonSave& saved = parsed.value();
-    if (saved.season != to_std(season_path)) {
-        season_.reset();
-        return godot::vformat("the saved season is %s's", to_godot(saved.season));
-    }
     if (godot::String error = start_season(season_path, static_cast<std::int64_t>(saved.seed));
         !error.is_empty()) {
         return error;
     }
-    for (const std::vector<event::Standing>& standings : saved.events) {
-        if (!season_->add_pulled_event(standings)) {
-            season_.reset();
-            return "the saved events do not fit the season";
-        }
-    }
+    // The career first: it outlives seasons, so a season the save no longer
+    // fits (another season's, or events the data has changed under) gives
+    // way to a new season with the career kept, not to a new career.
     if (saved.career && definition_) {
         // By name: an upgrade the garage no longer offers is dropped, and a
         // level past its top is held to it (garage::equipped).
@@ -167,6 +160,16 @@ godot::String TractorPullEvent::resume_season(const godot::String& season_path,
             }
         }
         career_ = career;
+    }
+    if (saved.season != to_std(season_path)) {
+        season_.reset();
+        return godot::vformat("the saved season is %s's", to_godot(saved.season));
+    }
+    for (const std::vector<event::Standing>& standings : saved.events) {
+        if (!season_->add_pulled_event(standings)) {
+            season_.reset();
+            return "the saved events do not fit the season";
+        }
     }
     set_tuning(saved.tuning.ballast_position, saved.tuning.rear_tire_pressure_bar);
     return {};
@@ -393,26 +396,18 @@ void TractorPullEvent::decide(bool keep) {
 }
 
 bool TractorPullEvent::score_event() {
-    const std::int64_t prize_eur = get_event_prize();
-    if (!season_ || !season_->score_event()) {
+    if (!season_ || !definition_ || !career_) {
         return false;
     }
-    if (career_) {
-        career_->money_eur += prize_eur;
-    }
-    return true;
+    return season_->score_event(definition_->prize_money_eur, *career_);
 }
 
 std::int64_t TractorPullEvent::get_event_prize() const {
-    if (!season_ || !definition_ || season_->event() == nullptr) {
+    if (!season_ || !definition_) {
         return 0;
     }
-    for (const event::Standing& s : season_->event()->standings()) {
-        if (s.puller == field::LiveSeason::kPlayer) {
-            return garage::prize_eur(definition_->prize_money_eur, s);
-        }
-    }
-    return 0;
+    const std::optional<event::Standing> standing = season_->player_standing();
+    return standing ? garage::prize_eur(definition_->prize_money_eur, *standing) : 0;
 }
 
 vehicle::Params TractorPullEvent::player_tractor() const {
@@ -420,19 +415,17 @@ vehicle::Params TractorPullEvent::player_tractor() const {
     if (!career_ || !definition_) {
         return reference;
     }
-    // The season loader checked every level against the class.
-    return garage::equipped(reference, definition_->garage.catalogue, *career_).value_or(reference);
-}
-
-bool TractorPullEvent::player_pulled() const {
-    const field::LiveEvent* event = season_ ? season_->event() : nullptr;
-    if (event == nullptr || event->turn() == field::LiveEvent::Turn::kFinished) {
-        return false;
+    const garage::Catalogue& catalogue = definition_->garage.catalogue;
+    // The season loader checked every level against the class, so this
+    // holds; were it ever refused, the tractor the career starts with is the
+    // honest fallback, not the rivals' reference.
+    const std::optional<vehicle::Params> equipped =
+        garage::equipped(reference, catalogue, *career_);
+    if (equipped) {
+        return *equipped;
     }
-    const auto log = event->log();
-    return std::any_of(log.begin(), log.end(), [](const field::LogEntry& e) {
-        return e.deciding < 0 && e.pull.puller == field::LiveSeason::kPlayer;
-    });
+    return garage::equipped(reference, catalogue, garage::new_career(catalogue))
+        .value_or(reference);
 }
 
 godot::Dictionary TractorPullEvent::get_garage() const {
@@ -442,7 +435,7 @@ godot::Dictionary TractorPullEvent::get_garage() const {
     }
     const data::GarageDefinition& garage = definition_->garage;
     out["money_eur"] = career_->money_eur;
-    out["can_buy"] = !player_pulled();
+    out["can_buy"] = season_->player_may_change_tractor();
     out["fully_upgraded"] = garage::fully_upgraded(garage.catalogue, *career_);
     godot::Array upgrades;
     for (std::size_t i = 0; i < garage.catalogue.count; ++i) {
@@ -469,7 +462,7 @@ godot::String TractorPullEvent::buy_upgrade(std::int64_t index) {
     if (!season_ || !definition_ || !career_ || index < 0) {
         return "no such upgrade";
     }
-    if (player_pulled()) {
+    if (!season_->player_may_change_tractor()) {
         return "not during an event";
     }
     const std::optional<garage::BuyError> error =

@@ -87,7 +87,8 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
     const std::optional<std::string> name =
         table != nullptr ? table->at_path("name").value<std::string>() : std::nullopt;
     if (!part_name || !name || name->empty()) {
-        return detail::make_error(source, "garage.upgrades", "every upgrade needs a part and a name");
+        return detail::make_error(source, "garage.upgrades",
+                                  "every upgrade needs a part and a name");
     }
     const std::optional<garage::Part> part = part_named(*part_name);
     if (!part) {
@@ -103,9 +104,9 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
     }
     const toml::array* levels = table->at_path("levels").as_array();
     if (levels == nullptr) {
-        return detail::make_error(source, "garage.upgrades.levels",
-                                  *name + ": must list 1 to " +
-                                      std::to_string(garage::kMaxLevels) + " levels");
+        return detail::make_error(
+            source, "garage.upgrades.levels",
+            *name + ": must list 1 to " + std::to_string(garage::kMaxLevels) + " levels");
     }
     garage::Upgrade upgrade{.part = *part, .levels = {}, .level_count = 0};
     UpgradeText text{.name = *name, .level_labels = {}};

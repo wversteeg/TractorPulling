@@ -32,8 +32,8 @@ enum class Part : std::uint8_t {
     /// tires, up to the class's limit.
     kHitchHeight,
     /// How many gears the gearbox shifts down under load (a whole number;
-    /// driveline::Params::load_downshift_gears), once a pull unless the
-    /// tractor says otherwise.
+    /// driveline::Params::load_downshift_gears), as often a pull as the
+    /// tractor's driveline allows (load_shifts_per_pull).
     kLoadDownshift,
 };
 
@@ -87,9 +87,11 @@ enum class ParamError : std::uint8_t {
 };
 
 /// Whether every level of every upgrade, together with every other
-/// upgrade's highest level, gives a valid tractor within the class (the
-/// parts are independent, so that covers every combination), and the money
-/// adds up.
+/// upgrade's highest level, gives a valid tractor within the class, and the
+/// money adds up. That covers every combination because each of the class's
+/// limits (rules::check) reads one part alone: the mass the ballast, the
+/// PTO power the torque, the hitch the drawbar. A rule coupling two parts
+/// (power to weight) would need every combination checked.
 [[nodiscard]] std::optional<ParamError> validate(const Catalogue& catalogue,
                                                  const vehicle::Params& tractor,
                                                  const rules::ClassRules& class_rules) noexcept;

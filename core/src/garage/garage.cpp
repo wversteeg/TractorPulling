@@ -45,9 +45,6 @@ std::optional<vehicle::Params> with_part(const vehicle::Params& tractor, Part pa
                 return std::nullopt;
             }
             out.driveline.load_downshift_gears = static_cast<int>(value);
-            if (out.driveline.load_downshift_gears > 0 && out.driveline.load_shifts_per_pull == 0) {
-                out.driveline.load_shifts_per_pull = 1;
-            }
             break;
     }
     return out;
@@ -101,8 +98,9 @@ std::optional<ParamError> validate(const Catalogue& catalogue, const vehicle::Pa
             return error;
         }
     }
-    // Each level with every other part at its highest: the parts change
-    // different values, so this covers every combination the class judges.
+    // Each level with every other part at its highest: each class limit
+    // reads one part alone (see the header), so this covers every
+    // combination the class judges.
     Career top;
     for (std::size_t i = 0; i < offer.size(); ++i) {
         top.levels[i] = static_cast<int>(offer[i].level_count) - 1;

@@ -77,9 +77,10 @@ TEST(Garage, ANewCareerStartsOnAnOlderTractor) {
     EXPECT_FALSE(fully_upgraded(catalogue, career));
 }
 
-// Fully upgraded, the tractor is the reference one, at the class's limits,
-// with two gears down under load.
-TEST(Garage, FullyUpgradedIsTheReferenceTractor) {
+// Fully upgraded, the tractor is at the class's limits like the rivals'
+// reference one, and beyond it: wider tires (0.95 against the reference's
+// 0.93) and two gears down under load against one.
+TEST(Garage, FullyUpgradedIsBeyondTheRivalsTractor) {
     const Catalogue catalogue = reference_catalogue();
     Career career = new_career(catalogue);
     career.levels = {3, 3, 3, 2, 2};

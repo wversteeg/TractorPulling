@@ -60,7 +60,8 @@ public:
     /// set (a save from before the garage keeps the career); the next
     /// event is the one after them. Returns "" or what is wrong (a broken
     /// save, another season's, or events that no longer fit it), leaving no
-    /// season.
+    /// season; the save's career is kept even then, for the new season that
+    /// follows, as it outlives seasons.
     godot::String resume_season(const godot::String& season_path, const godot::String& save);
     /// {events, scored, index, over, names}: the season's event count, the
     /// events scored, the index of the next event to start, whether all are
@@ -161,8 +162,6 @@ private:
     /// The player's tractor as their career has it (garage::equipped),
     /// before the tuning.
     [[nodiscard]] vehicle::Params player_tractor() const;
-    /// Whether the player has pulled in the event being pulled.
-    [[nodiscard]] bool player_pulled() const;
 
     std::optional<data::SeasonDefinition> definition_;
     /// The season file and seed start_season() was given, for get_save().

@@ -44,6 +44,7 @@ func _init() -> void:
 	_check_frames()
 	_check_layouts()
 	_check_event()
+	_check_career_outlives_a_save()
 	if not args.has_all(["gear", "stick", "brake-right"]):
 		printerr("needs --gear=N --stick=S --brake-right=B after --")
 		_failures += 1
@@ -193,6 +194,23 @@ func _check_event() -> void:
 # and a run set up after it is on the tuned tractor. The player starts on
 # the garage's first levels: 100 kg of weights halfway put a little more of
 # the lighter tractor on its rear axle than the reference's 60 %.
+# A save the season no longer takes (here another season's) still gives
+# its career back: the money and upgrades outlive seasons.
+func _check_career_outlives_a_save() -> void:
+	var event := TractorPullEvent.new()
+	_expect(event.start_season(SEASON, 7).is_empty(), "the season")
+	_expect(event.buy_upgrade(0).is_empty(), "the start money buys the first upgrade")
+	var bought := event.get_garage()
+	var save := event.get_save().replace(SEASON, "res://data/seasons/another.toml")
+	var later := TractorPullEvent.new()
+	_expect(not later.resume_season(SEASON, save).is_empty(), "another season's save is refused")
+	_expect(later.get_season().is_empty(), "no season from it")
+	_expect(later.start_season(SEASON, 8).is_empty(), "a new season")
+	var garage := later.get_garage()
+	_expect(garage["money_eur"] == bought["money_eur"] and garage["upgrades"] == bought["upgrades"],
+			"the career carried into it: %s" % garage)
+
+
 func _check_tuning(event: TractorPullEvent) -> void:
 	var tuning := event.get_tuning()
 	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)

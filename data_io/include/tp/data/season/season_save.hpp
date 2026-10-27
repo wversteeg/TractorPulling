@@ -33,8 +33,7 @@ struct SavedCareer {
 /// A season saved between events, to pick up on the next launch: which
 /// season file, the seed its field and draws came from, the player's
 /// tuning and career, and each event pulled so far, by its final standings.
-/// Starting
-/// the same season with the same seed and scoring those events
+/// Starting the same season with the same seed and scoring those events
 /// (field::LiveSeason::add_pulled_event) gives the season as it was; an
 /// event left halfway is not saved, and starts again from its beginning.
 struct SeasonSave {
