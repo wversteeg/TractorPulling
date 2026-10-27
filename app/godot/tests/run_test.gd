@@ -136,7 +136,8 @@ func _check_layouts() -> void:
 # back to the pull alone.
 func _check_parking() -> void:
 	var run := TractorPullRun.new()
-	run.set_parking(-15.0, -10.0)
+	# 4 m right of the reference track's 12 m lane: y -10 m.
+	run.set_parking(-15.0, 4.0)
 	var error := run.setup(TRACTOR, SLED, TRACK, "")
 	_expect(error.is_empty(), "a turn from the parking: " + error)
 	var start := run.get_snapshot()
@@ -153,7 +154,7 @@ func _check_parking() -> void:
 	var backed := run.get_snapshot()
 	_expect(int(backed["gear"]) == -1 and float(backed["tractor_x_m"]) < -15.5,
 			"backs up in reverse: %s m" % backed["tractor_x_m"])
-	run.set_parking(0.0, 1.0)
+	run.set_parking(0.0, -1.0)
 	error = run.setup(TRACTOR, SLED, TRACK, "")
 	_expect(error.contains("out of the lane"), "a parking in the lane: " + error)
 	run.clear_parking()

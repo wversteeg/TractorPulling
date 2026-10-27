@@ -18,12 +18,12 @@ package "tp::godot_binding" {
     -setup_ : optional<session::Setup>
     -event_pull_ : optional<PullKey>
     -controls_ : session::Controls
-    -parking_ : optional<turn::Parking>
+    -parking_ : optional<ParkingBesideLane>
     -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, controls_path) : String
     +setup_event_pull(event : TractorPullEvent, controls_path) : String
     +setup_practice(event : TractorPullEvent, controls_path) : String
-    +set_parking(x_m, y_m)
+    +set_parking(x_m, right_of_lane_m)
     +clear_parking()
     +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right)
     +advance(elapsed_ns) : int

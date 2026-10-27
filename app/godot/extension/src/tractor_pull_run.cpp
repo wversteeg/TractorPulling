@@ -161,7 +161,12 @@ void TractorPullRun::reset() {
 
 godot::String TractorPullRun::start(session::Setup setup, const godot::String& controls_path,
                                     const data::ReadFile& read) {
-    setup.parking = parking_;
+    if (parking_) {
+        // Right of the lane: y is negative, past the right-hand chalk line.
+        setup.parking =
+            turn::Parking{.x_m = parking_->x_m,
+                          .y_m = -(0.5 * setup.rules.lane_width_m + parking_->right_of_lane_m)};
+    }
     if (!controls_path.is_empty()) {
         const auto controls = data::load_control_layout(to_std(controls_path), read);
         if (!controls) {
@@ -181,8 +186,9 @@ godot::String TractorPullRun::start(session::Setup setup, const godot::String& c
     return session_ ? godot::String{} : godot::String{"inconsistent tractor, sled or track"};
 }
 
-void TractorPullRun::set_parking(double x_m, double y_m) {
-    parking_ = turn::Parking{.x_m = x_m, .y_m = y_m};
+void TractorPullRun::set_parking(double x_m, double right_of_lane_m) {
+    // Kept as given; start() places it beside the setup's lane.
+    parking_ = ParkingBesideLane{.x_m = x_m, .right_of_lane_m = right_of_lane_m};
 }
 
 void TractorPullRun::clear_parking() {
@@ -367,7 +373,8 @@ void TractorPullRun::_bind_methods() {
                          &TractorPullRun::setup_event_pull);
     ClassDB::bind_method(D_METHOD("setup_practice", "event", "controls_path"),
                          &TractorPullRun::setup_practice);
-    ClassDB::bind_method(D_METHOD("set_parking", "x_m", "y_m"), &TractorPullRun::set_parking);
+    ClassDB::bind_method(D_METHOD("set_parking", "x_m", "right_of_lane_m"),
+                         &TractorPullRun::set_parking);
     ClassDB::bind_method(D_METHOD("clear_parking"), &TractorPullRun::clear_parking);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
                                   "brake_left", "brake_right"),

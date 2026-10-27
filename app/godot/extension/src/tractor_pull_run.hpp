@@ -47,11 +47,13 @@ public:
                                  const godot::String& controls_path);
 
     /// From the next setup on, each run is the player's whole turn from a
-    /// parking beside the track at (x_m, y_m) on the track (turn::Parking):
-    /// driving to the sled, the pull, and back. clear_parking() goes back
-    /// to the pull alone, hooked at the line (the default). A parking in
-    /// the lane makes the setup fail.
-    void set_parking(double x_m, double y_m);
+    /// parking beside the track (turn::Parking): x_m down the track from
+    /// the start line (negative behind it), right_of_lane_m to the right of
+    /// the lane's right-hand chalk line, whatever the track's lane width.
+    /// The turn drives to the sled, pulls, and comes back. clear_parking()
+    /// goes back to the pull alone, hooked at the line (the default). A
+    /// parking in the lane (right_of_lane_m below 0) makes the setup fail.
+    void set_parking(double x_m, double right_of_lane_m);
     void clear_parking();
     /// The controls held from now on (see session::Controls: held to their
     /// range, and a value that is not a number reads as the control at rest).
@@ -123,7 +125,13 @@ private:
     /// The setup the session was created from, for get_dimensions().
     std::optional<session::Setup> setup_;
     session::Controls controls_;
-    std::optional<turn::Parking> parking_;
+    /// The parking as set_parking() was given it, to place beside each
+    /// setup's lane.
+    struct ParkingBesideLane {
+        double x_m = 0.0;
+        double right_of_lane_m = 0.0;
+    };
+    std::optional<ParkingBesideLane> parking_;
     std::int64_t dropped_ns_ = 0;
 };
 
