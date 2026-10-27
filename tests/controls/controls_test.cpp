@@ -540,6 +540,37 @@ TEST(ClutchAssist, HoldsTheGearToTheGearbox) {
     EXPECT_GT(r.assist.engagement, 0.0);
 }
 
+// Backing up in the easy layout, free of the sled: reverse asked for while
+// rolling forwards in 2nd waits, the clutch out, until the tractor stands;
+// then the assist lets the clutch in and it backs up.
+TEST(ClutchAssist, BacksUpOnceTheTractorStands) {
+    const vehicle::Model model = vehicle::testing::reference_model();
+    const vehicle::Params& tractor = model.params();
+    vehicle::State state = vehicle::initial_state(model);
+    AssistState assist;
+    const vehicle::Ground ground = vehicle::testing::reference_ground();
+    double fastest_forwards_m_s = 0.0;
+    bool reverse_while_rolling = false;
+    for (int i = 0; i < 20000; ++i) {
+        const double t_s = i * kDt_s;
+        const EasyInput wanted = t_s < 0.5   ? EasyInput{}
+                                 : t_s < 6.0 ? EasyInput{.throttle = 0.6, .gear = 2}
+                                             : EasyInput{.throttle = 0.6, .gear = driveline::kReverse};
+        vehicle::Input in = easy(wanted, kEasy, assist, tractor, state, kDt_s);
+        in.pull_on = false;
+        vehicle::step(state, model, in, ground, {}, kDt_s);
+        fastest_forwards_m_s = std::max(fastest_forwards_m_s, state.chassis.velocity_m_s);
+        reverse_while_rolling =
+            reverse_while_rolling || (state.driveline.gear == driveline::kReverse &&
+                                      state.chassis.velocity_m_s > 0.05);
+    }
+    EXPECT_GT(fastest_forwards_m_s, 0.3);
+    EXPECT_FALSE(reverse_while_rolling);
+    EXPECT_EQ(state.driveline.gear, driveline::kReverse);
+    EXPECT_LT(state.chassis.velocity_m_s, -0.3);
+    EXPECT_GT(assist.engagement, 0.0);
+}
+
 std::uint64_t easy_hash(run::Result& result) {
     const pull::Model model = model_with(sled::testing::reference_params());
     hash::Fnv1a hash;

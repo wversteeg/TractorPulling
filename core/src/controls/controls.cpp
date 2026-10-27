@@ -146,15 +146,19 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     const int gear_in = state.driveline.gear;
     // A gear the gearbox does not have is held to its range: otherwise the
     // assist would keep the clutch out for a shift that never comes.
+    // Reverse, where the gearbox has it, waits with the clutch out until the
+    // tractor stands (see driveline::shift).
+    const int lowest =
+        tractor.driveline.reverse_ratio > 0.0 ? driveline::kReverse : driveline::kNeutral;
     const int wanted_gear =
-        std::clamp(input.gear, driveline::kNeutral, static_cast<int>(tractor.driveline.gear_count));
+        std::clamp(input.gear, lowest, static_cast<int>(tractor.driveline.gear_count));
     // A gear down that the gearbox shifts under load goes in at once, the
     // clutch staying in; every other change waits for the clutch out.
     const bool load_shift =
         driveline::shifts_under_load(state.driveline, tractor.driveline, wanted_gear);
     // A gear the gearbox would refuse (under way, below its floor) is not
     // asked for: the assist keeps the clutch in and the gear as it is.
-    const bool allowed = wanted_gear == driveline::kNeutral ||
+    const bool allowed = wanted_gear <= driveline::kNeutral ||
                          wanted_gear >= driveline::lowest_gear(state.driveline, tractor.driveline);
     const bool shifting = wanted_gear != gear_in && !load_shift && allowed;
     const bool clutch_wanted_out =

@@ -12,6 +12,11 @@ namespace tp::driveline {
 
 inline constexpr std::size_t kMaxGears = 16;
 inline constexpr int kNeutral = 0;
+/// The reverse gear, below neutral.
+inline constexpr int kReverse = -1;
+/// Into reverse, or out of it into a forward gear, only with the axle this
+/// close to rest: a reverse gear has no synchronizer [rad/s].
+inline constexpr double kDirectionChangeAtRest_rad_s = 0.1;
 
 /// Gearbox, final drive and rear axle as a rigid gear train.
 ///
@@ -26,6 +31,9 @@ inline constexpr int kNeutral = 0;
 /// efficiency × the power the axle feeds back. Churning and bearing drag act
 /// on the input shaft.
 ///
+/// Reverse turns the axle backwards: its overall ratio is negative, so the
+/// input shaft still turns forwards, as the engine does.
+///
 /// Gears change with the clutch pressed, except that some gearboxes shift a
 /// gear or two down under load, the clutch in (a powershift step, worked by
 /// clutch packs inside the gearbox): load_downshift_gears says how many,
@@ -35,6 +43,9 @@ struct Params {
     /// Gearbox ratios, 1st first; strictly decreasing.
     std::array<double, kMaxGears> gear_ratios{};
     std::size_t gear_count = 0;
+    /// The reverse gear's ratio, positive (it turns the axle backwards); 0
+    /// for a gearbox without one.
+    double reverse_ratio = 0.0;
     /// Bevel gear and final reduction together.
     double final_drive_ratio = 0.0;
     /// Overall mesh efficiency, in (0, 1].
@@ -62,6 +73,7 @@ enum class ParamError : std::uint8_t {
     kTooManyGears,
     kRatioNotPositive,
     kRatiosNotDecreasing,
+    kReverseRatioNegative,
     kFinalDriveNotPositive,
     kEfficiencyOutOfRange,
     kInertiaNotPositive,
@@ -73,12 +85,12 @@ enum class ParamError : std::uint8_t {
 /// Returns the first physically meaningless value in `params`, if any.
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
-/// Input shaft speed per axle speed in `gear` (1-based); 0 in neutral or for
-/// a gear that does not exist.
+/// Input shaft speed per axle speed in `gear` (1-based; kReverse, negative,
+/// in reverse); 0 in neutral or for a gear that does not exist.
 [[nodiscard]] double overall_ratio(const Params& params, int gear) noexcept;
 
 struct State {
-    /// 0 is neutral, 1 the lowest gear.
+    /// 0 is neutral, 1 the lowest gear, kReverse reverse.
     int gear = kNeutral;
     double input_omega_rad_s = 0.0;
     /// Axle speed [rad/s].
@@ -93,8 +105,13 @@ struct State {
 };
 
 /// The pull is under way: from now on the gearbox goes down only by shifts
-/// under load (see floor_gear). Keeps the floor once set.
+/// under load (see floor_gear). Keeps the floor once set; nothing in
+/// neutral or reverse.
 void start_pull(State& state) noexcept;
+
+/// The pull is over: any gear may be chosen again, and the shifts under
+/// load are there again for the next pull.
+void end_pull(State& state) noexcept;
 
 /// The lowest gear the gearbox goes into now, by a shift with the clutch or
 /// one under load: 1 before the pull is under way; then the floor, or
@@ -119,8 +136,10 @@ void start_pull(State& state) noexcept;
 
 /// Changes gear. Refused (returns false) for a gear that does not exist,
 /// while the clutch still transmits torque (gears are chosen with the
-/// clutch pressed; a shift under load is shift_under_load's), or below the
-/// floor once the pull is under way (see floor_gear). Engaging a gear works
+/// clutch pressed; a shift under load is shift_under_load's), below the
+/// floor once the pull is under way (see floor_gear), or into reverse while
+/// the axle turns forwards, or out of it into a forward gear while it turns
+/// backwards (kDirectionChangeAtRest_rad_s). Engaging a gear works
 /// like a synchronizer, done in one step: the input shaft and the axle side
 /// exchange momentum through the gears until they turn at the same speed,
 /// so momentum is conserved and energy only lost. The input shaft is light,
@@ -128,9 +147,12 @@ void start_pull(State& state) noexcept;
 bool shift(State& state, const Params& params, int gear, bool clutch_disengaged) noexcept;
 
 /// First half of a step, under `axle_load_torque_nm` (resistance at the axle,
-/// positive opposing forward rotation). Pure.
+/// positive opposing forward rotation), with the train travelling in
+/// `direction` (1 forwards, -1 backwards): resistance holds the axle at
+/// rest, but never turns it against that direction. Pure.
 struct Prediction {
     double ratio = 0.0;
+    double direction = 1.0;
     double efficiency = 1.0;
     // Input shaft speed at the end of the step: free + k * effective torque.
     double free_input_rad_s = 0.0;
@@ -141,7 +163,8 @@ struct Prediction {
 };
 
 [[nodiscard]] Prediction predict(const State& state, const Params& params,
-                                 double axle_load_torque_nm, double dt_s) noexcept;
+                                 double axle_load_torque_nm, double dt_s,
+                                 double direction = 1.0) noexcept;
 
 /// The input shaft's end-of-step speed as a function of clutch torque, for
 /// the clutch solve. Includes the mesh efficiency in each direction.

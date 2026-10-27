@@ -124,6 +124,8 @@ struct RearProblem {
     // Mean wheel surface speed minus ground speed [m/s].
     double common_slip_m_s = 0.0;
     double dt_s = 0.0;
+    // 1 forwards, -1 backwards (travel_direction).
+    double direction = 1.0;
 };
 
 struct RearSolution {
@@ -150,7 +152,8 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
     out.brake_left_nm = brake_left_nm;
     out.brake_right_nm = brake_right_nm;
     out.driveline = driveline::predict(state.driveline, model.driveline(),
-                                       p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s);
+                                       p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s,
+                                       p.direction);
 
     const double slope_difference = p.slope_right - p.slope_left;
     const double denominator =
@@ -201,10 +204,12 @@ struct Brake {
 };
 
 // Kinetic friction against the side's rotation; a side at rest is first
-// tried turning forwards.
-Brake kinetic(double capacity_nm, double omega_rad_s) noexcept {
+// tried turning the way the tractor travels.
+Brake kinetic(double capacity_nm, double omega_rad_s, double direction) noexcept {
+    const bool backwards = omega_rad_s < -kBrakeHoldTolerance_rad_s ||
+                           (direction < 0.0 && omega_rad_s <= kBrakeHoldTolerance_rad_s);
     return {.capacity_nm = capacity_nm,
-            .torque_nm = omega_rad_s < -kBrakeHoldTolerance_rad_s ? -capacity_nm : capacity_nm,
+            .torque_nm = backwards ? -capacity_nm : capacity_nm,
             .held = false};
 }
 
@@ -338,8 +343,8 @@ Change hold_change(const State& state, const Model& model, const RearProblem& p,
 RearSolution solve_rear_with_brakes(const State& state, const Model& model, const RearProblem& p,
                                     double left_capacity_nm, double right_capacity_nm) noexcept {
     const double axle_rad_s = state.driveline.output_omega_rad_s;
-    Brake left = kinetic(left_capacity_nm, axle_rad_s - state.differential_rad_s);
-    Brake right = kinetic(right_capacity_nm, axle_rad_s + state.differential_rad_s);
+    Brake left = kinetic(left_capacity_nm, axle_rad_s - state.differential_rad_s, p.direction);
+    Brake right = kinetic(right_capacity_nm, axle_rad_s + state.differential_rad_s, p.direction);
     RearSolution solution = solve_rear(state, model, p, left.torque_nm, right.torque_nm);
     Bracket left_bracket;
     Bracket right_bracket;
@@ -387,6 +392,16 @@ void relax_side_deflections(State& state, const Params& params, const tire::Side
 
 }  // namespace
 
+double travel_direction(const State& state) noexcept {
+    const int gear = state.driveline.gear;
+    if (gear == driveline::kReverse) {
+        return -1.0;
+    }
+    const bool rolling_back =
+        state.chassis.velocity_m_s < 0.0 || state.driveline.output_omega_rad_s < 0.0;
+    return gear == driveline::kNeutral && rolling_back ? -1.0 : 1.0;
+}
+
 Output step(State& state, const Model& model, const Input& input, const Ground& ground,
             const chassis::Drawbar& drawbar, double dt_s) noexcept {
     const Params& params = model.params();
@@ -398,8 +413,10 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
 
     const double clutch_capacity_nm = clutch::capacity_nm(params.clutch, input.clutch_pedal);
     // Moving off, the pull is under way: from here the gearbox goes down
-    // only by its powershift (driveline::floor_gear).
-    if (std::abs(state.chassis.velocity_m_s) > kUnderWay_m_s) {
+    // only by its powershift (driveline::floor_gear). Off the pull, any gear.
+    if (!input.pull_on) {
+        driveline::end_pull(state.driveline);
+    } else if (std::abs(state.chassis.velocity_m_s) > kUnderWay_m_s) {
         driveline::start_pull(state.driveline);
     }
     if (input.gear != state.driveline.gear) {
@@ -419,6 +436,8 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         }
     }
 
+    // After the gear change: a tractor put into reverse travels backwards.
+    const double direction = travel_direction(state);
     out.axle_loads = chassis::axle_loads(params.chassis, state.chassis, drawbar);
     const double load_per_tire_n = out.axle_loads.rear_n / params.rear_tire_count;
 
@@ -473,21 +492,23 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
                           tire::side_force_n(rear_right_grip, state.rear_right_side_deflection_m));
 
     // Predictions. Rolling resistance acts as a known torque on the axle
-    // (rear) and force on the body (front tires, wheelie bar); like the
-    // drawbar pull, it holds things at rest but never drives them backwards.
+    // (rear) and force on the body (front tires, wheelie bar), against the
+    // direction of travel; like the drawbar pull, it holds things at rest
+    // but never turns them round.
     const engine::Prediction engine_prediction =
         engine::predict(state.engine, params.engine, input.throttle, dt_s);
     const double side_load_n = out.axle_loads.rear_n / kSides;
-    const double rear_rolling_nm = left.rolling_resistance * side_load_n * radius_m +
-                                   right.rolling_resistance * side_load_n * radius_m;
+    const double rear_rolling_nm = direction * (left.rolling_resistance * side_load_n * radius_m +
+                                                right.rolling_resistance * side_load_n * radius_m);
     // The steered front tires' side force has a component along the body
     // that holds the tractor back.
     const double front_drag_n =
-        out.front_rolling_resistance * out.axle_loads.front_n +
-        params.chassis.wheelie_bar.rolling_resistance_coefficient * out.axle_loads.wheelie_bar_n +
+        direction * (out.front_rolling_resistance * out.axle_loads.front_n +
+                     params.chassis.wheelie_bar.rolling_resistance_coefficient *
+                         out.axle_loads.wheelie_bar_n) +
         out.front_side_force_n * steer.sin;
-    const chassis::Prediction body_prediction =
-        chassis::predict(state.chassis, params.chassis, drawbar.pull_n + front_drag_n, dt_s);
+    const chassis::Prediction body_prediction = chassis::predict(
+        state.chassis, params.chassis, drawbar.pull_n + front_drag_n, dt_s, direction);
 
     const RearProblem problem{
         .engine = engine::shaft_prediction(engine_prediction),
@@ -500,7 +521,8 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         .slope_left = tires_per_side * left.traction.force_per_slip_speed,
         .slope_right = tires_per_side * right.traction.force_per_slip_speed,
         .common_slip_m_s = axle_rad_s * radius_m - ground_m_s,
-        .dt_s = dt_s};
+        .dt_s = dt_s,
+        .direction = direction};
     const RearSolution solution = solve_rear_with_brakes(
         state, model, problem, std::clamp(input.brake_left, 0.0, 1.0) * params.brakes.max_torque_nm,
         std::clamp(input.brake_right, 0.0, 1.0) * params.brakes.max_torque_nm);
@@ -517,9 +539,9 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     engine::advance(state.engine, params.engine, engine_prediction, chain.clutch_torque_nm);
     driveline::advance(state.driveline, solution.driveline, chain.clutch_torque_nm,
                        -radius_m * chain.tire_force_n);
-    // The axle never turns backwards (there is no reverse gear), but one
-    // side may: an open differential lets a tractor turning on the spot roll
-    // its inner wheels back.
+    // The axle turns backwards only in reverse (or rolling back in neutral),
+    // but one side may always: an open differential lets a tractor turning
+    // on the spot roll its inner wheels back.
     const double next_axle_rad_s = state.driveline.output_omega_rad_s;
     state.differential_rad_s += solution.differential_change_rad_s;
     chassis::advance_lateral(
@@ -542,7 +564,7 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const double tire_force_n = standstill ? drawbar.pull_n : chain.tire_force_n;
     const double axle_torque_nm =
         driveline_params.output_inertia_kg_m2 * (next_axle_rad_s - axle_rad_s) / dt_s +
-        radius_m * tire_force_n + (next_axle_rad_s > 0.0 ? rear_rolling_nm : 0.0);
+        radius_m * tire_force_n + (next_axle_rad_s != 0.0 ? rear_rolling_nm : 0.0);
     chassis::advance_pitch(state.chassis, params.chassis, axle_torque_nm, drawbar,
                            out.front_rolling_resistance, dt_s);
 

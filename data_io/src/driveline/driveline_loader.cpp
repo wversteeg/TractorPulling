@@ -37,6 +37,8 @@ FieldError describe(driveline::ParamError error) {
             return {"driveline.gearbox.ratios", "must all be > 0"};
         case ParamError::kRatiosNotDecreasing:
             return {"driveline.gearbox.ratios", "must decrease from 1st to top gear"};
+        case ParamError::kReverseRatioNegative:
+            return {"driveline.gearbox.reverse", "must be > 0"};
         case ParamError::kFinalDriveNotPositive:
             return {"driveline.final_drive_ratio", "must be > 0"};
         case ParamError::kEfficiencyOutOfRange:
@@ -69,6 +71,8 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
         .viscous_drag_nm_s_rad = reader.number("driveline.drag.viscous_nm_per_1000_rpm") /
                                  units::rpm_to_rad_s(kRpmPerKiloRpm),
     };
+    // Optional: a gearbox without a reverse gear only goes forwards.
+    const std::optional<double> reverse = reader.optional_number("driveline.gearbox.reverse");
     // Optional: a gearbox without it shifts with the clutch pressed only.
     const std::optional<double> downshift =
         reader.optional_number("driveline.powershift.load_downshift_gears");
@@ -76,6 +80,13 @@ Result<driveline::Params> read_driveline(const toml::table& root, std::string_vi
         reader.optional_number("driveline.powershift.shifts_per_pull");
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
+    }
+    if (reverse) {
+        // 0 would read as "no reverse gear": a file that names one means one.
+        if (!(*reverse > 0.0)) {
+            return detail::make_error(source, "driveline.gearbox.reverse", "must be > 0");
+        }
+        params.reverse_ratio = *reverse;
     }
     if (downshift) {
         if (*downshift != std::floor(*downshift) || *downshift < 0.0) {

@@ -570,6 +570,115 @@ TEST(Vehicle, PullingLoadsTheRearAxle) {
     EXPECT_GT(heavy.last.axle_loads.rear_n, light.last.axle_loads.rear_n);
 }
 
+// ---- Reversing
+
+// A driver backing up: reverse in at rest, the clutch let in over a second
+// at a little throttle, the wheels at `steering_rad`; after `seconds`,
+// the clutch pressed again. Free of the sled: no drawbar.
+struct Reversing {
+    Model model = reference_model();
+    State state = initial_state(model);
+    Output last;
+    double max_speed_m_s = 0.0;
+    bool went_forwards = false;
+
+    void run(double seconds, double steering_rad, double coast_s = 0.0) {
+        const int driving = static_cast<int>(seconds / kDt_s);
+        const int coasting = static_cast<int>(coast_s / kDt_s);
+        for (int i = 0; i < driving + coasting; ++i) {
+            const double t_s = i * kDt_s;
+            const Input input{.throttle = 0.3,
+                              .clutch_pedal = i >= driving ? 1.0 : std::clamp(1.5 - t_s, 0.0, 1.0),
+                              .gear = driveline::kReverse,
+                              .steering_rad = steering_rad,
+                              .pull_on = false};
+            last = step(state, model, input, kGround, {}, kDt_s);
+            EXPECT_FALSE(last.shift_refused);
+            went_forwards = went_forwards || state.chassis.velocity_m_s > 0.0;
+            max_speed_m_s = std::max(max_speed_m_s, -state.chassis.velocity_m_s);
+        }
+    }
+};
+
+TEST(VehicleReversing, BacksUpInReverse) {
+    Reversing back;
+    back.run(8.0, 0.0);
+    EXPECT_EQ(back.state.driveline.gear, driveline::kReverse);
+    EXPECT_TRUE(back.state.engine.running);
+    EXPECT_LT(back.state.chassis.velocity_m_s, -0.3);
+    EXPECT_LT(back.state.chassis.position_m, -2.0);
+    EXPECT_FALSE(back.went_forwards);
+    // The wheels turn backwards and pull the tractor back: traction and
+    // speed point the same way, the engine still turns forwards.
+    EXPECT_LT(back.state.driveline.output_omega_rad_s, 0.0);
+    EXPECT_LT(back.last.tire_force_n, 0.0);
+    EXPECT_GT(back.state.driveline.input_omega_rad_s, 0.0);
+    EXPECT_EQ(back.state.chassis.lateral_position_m, 0.0);
+    // Reverse is a crawling gear: at most a few km/h.
+    EXPECT_LT(back.max_speed_m_s, 1.5);
+}
+
+// With the clutch pressed the resistances bring it to rest, and it stays
+// there: they never turn it round.
+TEST(VehicleReversing, ComesToRestWithoutRollingForwards) {
+    Reversing back;
+    back.run(6.0, 0.0, 6.0);
+    EXPECT_FALSE(back.went_forwards);
+    EXPECT_EQ(back.state.chassis.velocity_m_s, 0.0);
+    EXPECT_EQ(back.state.driveline.output_omega_rad_s, 0.0);
+}
+
+// Backing up with the wheels to the left swings the nose left too, so the
+// tractor turns right: the other way from going forwards.
+TEST(VehicleReversing, SteersTheOtherWayRound) {
+    Reversing left;
+    left.run(8.0, 0.2);
+    Reversing right;
+    right.run(8.0, -0.2);
+    EXPECT_LT(left.state.chassis.heading_rad, -0.02);
+    EXPECT_EQ(right.state.chassis.heading_rad, -left.state.chassis.heading_rad);
+    EXPECT_EQ(right.state.chassis.position_m, left.state.chassis.position_m);
+}
+
+// No change of direction while moving: reverse waits for the tractor to
+// stand, as does a forward gear while it backs up.
+TEST(VehicleReversing, ChangesDirectionOnlyStanding) {
+    Pull forwards;
+    forwards.run(4, 2000.0, false, 8.0);
+    ASSERT_GT(forwards.state.chassis.velocity_m_s, 0.5);
+    const Output into_reverse =
+        step(forwards.state, forwards.model,
+             {.clutch_pedal = 1.0, .gear = driveline::kReverse, .pull_on = false}, kGround, {},
+             kDt_s);
+    EXPECT_TRUE(into_reverse.shift_refused);
+    EXPECT_EQ(forwards.state.driveline.gear, 4);
+
+    Reversing back;
+    back.run(6.0, 0.0);
+    ASSERT_LT(back.state.chassis.velocity_m_s, -0.3);
+    const Output into_first =
+        step(back.state, back.model, {.clutch_pedal = 1.0, .gear = 1, .pull_on = false}, kGround,
+             {}, kDt_s);
+    EXPECT_TRUE(into_first.shift_refused);
+    EXPECT_EQ(back.state.driveline.gear, driveline::kReverse);
+}
+
+// Off the pull no gear is barred: the floor an earlier pull set is gone.
+TEST(VehicleReversing, OffThePullAnyGear) {
+    Pull pull;
+    pull.run(6, 2000.0, false, 8.0);
+    ASSERT_EQ(pull.state.driveline.floor_gear, 6);
+    for (int i = 0; i < 3000; ++i) {
+        pull.last = step(pull.state, pull.model, {.clutch_pedal = 1.0, .gear = 6, .pull_on = false},
+                         kGround, {}, kDt_s);
+    }
+    EXPECT_EQ(pull.state.driveline.floor_gear, driveline::kNeutral);
+    EXPECT_FALSE(step(pull.state, pull.model, {.clutch_pedal = 1.0, .gear = 2, .pull_on = false},
+                      kGround, {}, kDt_s)
+                     .shift_refused);
+    EXPECT_EQ(pull.state.driveline.gear, 2);
+}
+
 // ---- Steering
 
 TEST(VehicleSteering, StraightWheelsKeepItOnTheLine) {
