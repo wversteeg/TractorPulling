@@ -54,6 +54,10 @@ struct Variation {
     /// each count as often. Both -1 keep the reference's.
     int fewest_load_downshift_gears = -1;
     int most_load_downshift_gears = -1;
+    /// The governor's rated speed [rad/s] (engine::with_rated_speed). Above
+    /// 0, held to the class's unloaded engine speed; {0, 0} keeps the
+    /// reference's.
+    Range rated_omega_rad_s;
 };
 
 /// How one pull differs from the next for the same puller: the spot on the

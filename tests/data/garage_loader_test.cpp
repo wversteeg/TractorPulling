@@ -1,5 +1,7 @@
 #include "tp/data/garage/garage_loader.hpp"
 
+#include "tp/core/units/conversions.hpp"
+
 #include <gtest/gtest.h>
 
 #include <string>
@@ -56,6 +58,22 @@ TEST(GarageLoader, ReadsTheCatalogueAndItsNames) {
     EXPECT_EQ(g.texts[0].name, "Drawbar");
     ASSERT_EQ(g.texts[0].level_labels.size(), 2U);
     EXPECT_EQ(g.texts[0].level_labels[1], "Pulling hitch");
+}
+
+// The governor's levels are in rpm in the file, rad/s in the core.
+TEST(GarageLoader, ReadsTheGovernorInRpm) {
+    const auto result =
+        parse_garage(with("part = \"load_downshift_gears\"\nname = \"Powershift\"\n"
+                          "levels = [{ value = 0.0, cost_eur = 0, label = \"None\" }]",
+                          "part = \"rated_rpm\"\nname = \"Governor\"\n"
+                          "levels = [{ value = 2200.0, cost_eur = 0, label = \"Stock\" }, "
+                          "{ value = 2500.0, cost_eur = 1800, label = \"Turned up\" }]"),
+                     "garage.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const garage::Upgrade& governor = result.value().catalogue.upgrades[1];
+    EXPECT_EQ(governor.part, garage::Part::kRatedSpeed);
+    EXPECT_EQ(governor.levels[1].value, units::rpm_to_rad_s(2500.0));
+    EXPECT_EQ(governor.levels[1].cost_eur, 1800);
 }
 
 TEST(GarageLoader, RefusesNonsense) {

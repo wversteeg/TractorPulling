@@ -21,7 +21,11 @@ boost_onset_rpm = 1000
 full_boost_rpm = 1600
 
 # Full-load torque at full boost. Peak 400 N·m at 1400 rpm; net power peaks
-# at about 68 kW near 2000 rpm.
+# at about 68 kW near 2000 rpm. Past the rated speed the curve is what the
+# engine gives at full fuel there, under 10 % below the peak power up to
+# 2500 rpm: a governor set higher (the garage's) gives about the same power
+# at a higher speed. It reaches past the class's 2700 rpm unloaded, for
+# that governor.
 [engine.torque_curve]
-rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400]
-torque_nm = [279,  335,  381,  400,  395,  381,  358,  316,  270]
+rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800]
+torque_nm = [279,  335,  381,  400,  395,  381,  358,  316,  290,  266,  238]

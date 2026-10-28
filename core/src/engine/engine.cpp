@@ -22,6 +22,17 @@ std::optional<Params> with_torque_scale(const Params& params, double scale) noex
     return out;
 }
 
+std::optional<Params> with_rated_speed(const Params& params, double rated_omega_rad_s) noexcept {
+    Params out = params;
+    out.high_idle_omega_rad_s =
+        rated_omega_rad_s + (params.high_idle_omega_rad_s - params.rated_omega_rad_s);
+    out.rated_omega_rad_s = rated_omega_rad_s;
+    if (validate(out)) {
+        return std::nullopt;
+    }
+    return out;
+}
+
 std::optional<ParamError> validate(const Params& params) noexcept {
     const std::array scalars = {
         params.inertia_kg_m2,

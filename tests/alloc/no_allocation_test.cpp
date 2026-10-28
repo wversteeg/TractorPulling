@@ -252,7 +252,8 @@ TEST(NoAllocation, AnEventWithAPlayer) {
                                      .downshift_share = {.low = 0.85, .high = 0.95},
                                      .hitch_height_m = {},
                                      .fewest_load_downshift_gears = -1,
-                                     .most_load_downshift_gears = -1};
+                                     .most_load_downshift_gears = -1,
+                                     .rated_omega_rad_s = {}};
     const std::optional<field::Field> field =
         field::generate(reference, variation, rules::testing::ntto_standard_3500(), kPullers, 1);
     const event::Rules rules{.full_pull_m = 100.0,

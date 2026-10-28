@@ -198,19 +198,19 @@ TEST(Vehicle, ShiftsDownWithTheClutchOnlyUntilUnderWay) {
 }
 
 // The reference gearbox shifts one gear down under load, the clutch in (a
-// powershift step), which is what it is for: the load grows past what 6th
-// can pull, and the engine is pulled down towards the stall. Left in 6th it
-// stalls; shifted to 5th as it lugs, it pulls on. The shift goes in at once:
+// powershift step), which is what it is for: the load grows past what 7th
+// can pull, and the engine is pulled down towards the stall. Left in 7th it
+// stalls; shifted to 6th as it lugs, it pulls on. The shift goes in at once:
 // the wheels keep their speed (no jolt in the step), the input shaft then
 // turns faster than the engine, so the clutch slips, at most its capacity,
 // and locks again within half a second. Two gears down with the clutch in
 // are refused.
 TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
-    constexpr double kSteady_n = 16000.0;
-    constexpr double kHeavier_n = 22000.0;
+    constexpr double kSteady_n = 14000.0;
+    constexpr double kHeavier_n = 19000.0;
     constexpr double kFor_s = 10.0;
     Pull held;
-    held.run(6, kSteady_n, false, 10.0);
+    held.run(7, kSteady_n, false, 10.0);
     ASSERT_TRUE(held.state.engine.running);
     Pull shifted = held;
     const Params& p = held.model.params();
@@ -218,15 +218,15 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     // torque, about 80 % of the rated speed.
     const double lugging_rad_s = 0.8 * p.engine.rated_omega_rad_s;
 
-    Input input{.throttle = 1.0, .clutch_pedal = 0.0, .gear = 6};
+    Input input{.throttle = 1.0, .clutch_pedal = 0.0, .gear = 7};
     for (int i = 0; i < static_cast<int>(kFor_s / kDt_s) && held.state.engine.running; ++i) {
         step(held.state, held.model, input, kGround, {.pull_n = kHeavier_n}, kDt_s);
     }
     EXPECT_FALSE(held.state.engine.running)
-        << "6th stalls: " << held.state.engine.omega_rad_s << " rad/s";
+        << "7th stalls: " << held.state.engine.omega_rad_s << " rad/s";
 
     Input two_down = input;
-    two_down.gear = 4;
+    two_down.gear = 5;
     double shifted_at_rad_s = 0.0;
     double axle_before_rad_s = 0.0;
     double axle_after_rad_s = 0.0;
@@ -237,7 +237,7 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     bool refused_two = false;
     for (int i = 0; i < static_cast<int>(kFor_s / kDt_s); ++i) {
         const double engine_rad_s = shifted.state.engine.omega_rad_s;
-        const bool shift_now = input.gear == 6 && engine_rad_s < lugging_rad_s;
+        const bool shift_now = input.gear == 7 && engine_rad_s < lugging_rad_s;
         if (shift_now) {
             refused_two =
                 step(shifted.state, shifted.model, two_down, kGround, {.pull_n = kHeavier_n}, kDt_s)
@@ -245,7 +245,7 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
             shifted_at_rad_s = engine_rad_s;
             axle_before_rad_s = shifted.state.driveline.output_omega_rad_s;
             shifted_at = i;
-            input.gear = 5;
+            input.gear = 6;
         }
         const Output out =
             step(shifted.state, shifted.model, input, kGround, {.pull_n = kHeavier_n}, kDt_s);
@@ -263,7 +263,7 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     }
     EXPECT_TRUE(refused_two) << "two gears down";
     EXPECT_GT(shifted_at_rad_s, 0.0) << "the engine lugged";
-    EXPECT_EQ(shifted.state.driveline.gear, 5);
+    EXPECT_EQ(shifted.state.driveline.gear, 6);
     EXPECT_TRUE(slipped) << "the clutch slips as the gear goes in";
     // The clutch brakes the wheels at its capacity, not in one jolt: the
     // shift's own step slows them by less than a tenth (the input shaft's
@@ -273,28 +273,28 @@ TEST(Vehicle, ShiftsOneGearDownUnderLoad) {
     EXPECT_GT(least_rear_n, 0.2 * kHeavier_n) << least_rear_n << " N";
     EXPECT_GT(locked_at, shifted_at);
     EXPECT_LT((locked_at - shifted_at) * kDt_s, 0.5) << "locked again within half a second";
-    ASSERT_TRUE(shifted.state.engine.running) << "5th pulls on";
+    ASSERT_TRUE(shifted.state.engine.running) << "6th pulls on";
     EXPECT_TRUE(shifted.state.clutch.locked);
     EXPECT_GT(shifted.state.engine.omega_rad_s, shifted_at_rad_s);
     EXPECT_GT(shifted.state.chassis.velocity_m_s, 0.5);
 
-    // Once a pull: 4th is refused with the clutch in, and with it pressed
+    // Once a pull: 5th is refused with the clutch in, and with it pressed
     // too, for under way the gearbox goes down only by its powershift.
-    Input fourth = input;
-    fourth.gear = 4;
-    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+    Input fifth = input;
+    fifth.gear = 5;
+    EXPECT_TRUE(step(shifted.state, shifted.model, fifth, kGround, {.pull_n = kHeavier_n}, kDt_s)
                     .shift_refused);
-    EXPECT_EQ(shifted.state.driveline.gear, 5);
-    fourth.clutch_pedal = 1.0;
-    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+    EXPECT_EQ(shifted.state.driveline.gear, 6);
+    fifth.clutch_pedal = 1.0;
+    EXPECT_TRUE(step(shifted.state, shifted.model, fifth, kGround, {.pull_n = kHeavier_n}, kDt_s)
                     .shift_refused);
-    EXPECT_EQ(shifted.state.driveline.gear, 5) << "not with the clutch pressed either";
-    Input neutral = fourth;
+    EXPECT_EQ(shifted.state.driveline.gear, 6) << "not with the clutch pressed either";
+    Input neutral = fifth;
     neutral.gear = driveline::kNeutral;
     EXPECT_FALSE(step(shifted.state, shifted.model, neutral, kGround, {.pull_n = kHeavier_n}, kDt_s)
                      .shift_refused)
         << "neutral is always there";
-    EXPECT_TRUE(step(shifted.state, shifted.model, fourth, kGround, {.pull_n = kHeavier_n}, kDt_s)
+    EXPECT_TRUE(step(shifted.state, shifted.model, fifth, kGround, {.pull_n = kHeavier_n}, kDt_s)
                     .shift_refused)
         << "nor down through neutral";
 }
@@ -711,7 +711,7 @@ TEST(VehicleSteering, TurnsTheWayTheWheelsPoint) {
 TEST(VehicleSteering, TurnsAtTheGeometricRateWhenSlow) {
     Pull pull;
     pull.steering_rad = 0.15;
-    pull.run(4, 5000.0, false, 10.0);
+    pull.run(3, 5000.0, false, 10.0);
     const chassis::State& body = pull.state.chassis;
     ASSERT_GT(body.velocity_m_s, 0.5);
     const double geometric_rad_s =
@@ -977,7 +977,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x4cbe5b1e61c8c56ULL);
+    EXPECT_EQ(pull_hash(), 0x6b2b48556b2db740ULL);
 }
 
 }  // namespace

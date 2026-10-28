@@ -46,6 +46,15 @@ std::optional<vehicle::Params> with_part(const vehicle::Params& tractor, Part pa
             }
             out.driveline.load_downshift_gears = static_cast<int>(value);
             break;
+        case Part::kRatedSpeed: {
+            const std::optional<engine::Params> engine =
+                engine::with_rated_speed(tractor.engine, value);
+            if (!engine) {
+                return std::nullopt;
+            }
+            out.engine = *engine;
+            break;
+        }
     }
     return out;
 }

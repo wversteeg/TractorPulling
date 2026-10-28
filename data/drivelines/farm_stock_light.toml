@@ -1,7 +1,10 @@
 # 8-speed gearbox with one reverse, final drive and rear axle for the light
 # farm-stock class.
-# With 0.8 m rear tires at 2200 rpm: 1st ~2 km/h, 4th-5th ~6-8 km/h (pulling
-# gears), 8th ~30 km/h.
+# With 0.8 m rear tires at 2200 rpm: 1st ~2 km/h, 4th ~7 km/h, the pulling
+# gears 5th to 7th close together at ~11, ~13 and ~14 km/h, and 8th
+# ~30 km/h on the road. Which pulling gear a tractor can get the sled
+# moving in is set by its torque low down: a new career's tractor 5th, one
+# with a better pump 6th, a fully upgraded one 7th.
 
 [driveline]
 final_drive_ratio = 22.0       # bevel gear and final reduction together
@@ -10,7 +13,7 @@ input_inertia_kg_m2 = 0.05     # clutch disc, input shaft, countershaft
 output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tires
 
 [driveline.gearbox]
-ratios = [15.0, 10.5, 7.4, 5.2, 3.6, 2.5, 1.7, 1.0]   # 1st to 8th
+ratios = [15.0, 10.5, 7.0, 4.2, 2.65, 2.4, 2.2, 1.0]   # 1st to 8th
 reverse = 12.0                 # ~2.5 km/h at 2200 rpm, ~1 km/h at idle
 
 # A powershift step: one gear down under load, the clutch in, when the

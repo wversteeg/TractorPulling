@@ -78,10 +78,25 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     const int load_downshift_gears =
         variation.fewest_load_downshift_gears +
         static_cast<int>(random.below(static_cast<std::uint64_t>(load_downshift_choices)));
+    const double rated_omega_rad_s =
+        random.uniform(variation.rated_omega_rad_s.low, variation.rated_omega_rad_s.high);
 
-    // An engine within the class's PTO power, and a tractor within its
-    // weight. The pitch and yaw inertias go with the mass; the balance stays.
-    const auto tractor = with_torque_scale(base, torque_scale, class_rules);
+    // The governor within the class's engine speed, then an engine within
+    // its PTO power at that speed, and a tractor within its weight. The
+    // pitch and yaw inertias go with the mass; the balance stays.
+    vehicle::Params governed = base;
+    if (variation.rated_omega_rad_s.high > 0.0) {
+        const double droop_rad_s =
+            base.engine.high_idle_omega_rad_s - base.engine.rated_omega_rad_s;
+        const auto engine = engine::with_rated_speed(
+            base.engine,
+            std::min(rated_omega_rad_s, class_rules.max_engine_speed_rad_s - droop_rad_s));
+        if (!engine) {
+            return std::nullopt;
+        }
+        governed.engine = *engine;
+    }
+    const auto tractor = with_torque_scale(governed, torque_scale, class_rules);
     if (!tractor) {
         return std::nullopt;
     }
@@ -121,7 +136,7 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
     const std::array ranges = {variation.torque_scale,   variation.mass_kg,
                                variation.traction_limit, variation.clutch_slip_in_s,
                                variation.track_reading,  variation.downshift_share,
-                               variation.hitch_height_m};
+                               variation.hitch_height_m, variation.rated_omega_rad_s};
     if (!std::ranges::all_of(
             ranges, [](const Range& r) { return std::isfinite(r.low) && std::isfinite(r.high); })) {
         return ParamError::kNotFinite;
@@ -131,7 +146,9 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
         variation.track_reading.low < 0.0 || variation.track_reading.high > 1.0 ||
         variation.downshift_share.low < 0.0 || variation.downshift_share.high >= 1.0 ||
         variation.hitch_height_m.low < 0.0 ||
-        (variation.hitch_height_m.high > 0.0 && variation.hitch_height_m.low <= 0.0)) {
+        (variation.hitch_height_m.high > 0.0 && variation.hitch_height_m.low <= 0.0) ||
+        variation.rated_omega_rad_s.low < 0.0 ||
+        (variation.rated_omega_rad_s.high > 0.0 && variation.rated_omega_rad_s.low <= 0.0)) {
         return ParamError::kRangeOutOfOrder;
     }
     const auto gear_count = static_cast<int>(reference.tractor.driveline.gear_count);

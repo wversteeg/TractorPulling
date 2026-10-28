@@ -173,19 +173,20 @@ The puller sets two things on the tractor before a pull
 - **The rear tires' pressure.** 0.5 to 1.6 bar (`[tire.pressure]`): lower
   deflects the tire more, for a bigger footprint that sinks less and pulls
   better on soft ground, but lets the lugs squirm, which costs grip, most
-  on firm ground; harder than 1.0 bar only shrinks the footprint. The best
-  pressure depends on the track (about 0.7 bar on the soft covered heavy
-  clay, about 0.9 on dry hard clay, where 0.7 costs nearly 2 m):
+  on firm ground; harder than 1.0 bar only shrinks the footprint. What a
+  pressure costs depends on the track: on dry hard clay 0.7 bar costs over
+  2 m, on the soft covered heavy clay only half a metre (in 6th there it
+  pulls a little further than 1.0 bar):
 
 ```bash
 for bar in 0.7 1.0 1.6; do
   ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
       data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
-      data/tracks/dry_hard_clay.toml --gear 6 --pressure $bar
+      data/tracks/dry_hard_clay.toml --gear 5 --pressure $bar
 done
-# 0.7 bar: covered heavy clay 91.16 m, dry hard clay 89.29 m
-# 1.0 bar: covered heavy clay 90.89 m, dry hard clay 91.06 m
-# 1.6 bar: covered heavy clay 90.28 m, dry hard clay 90.84 m
+# 0.7 bar: covered heavy clay 90.86 m, dry hard clay 88.66 m
+# 1.0 bar: covered heavy clay 91.34 m, dry hard clay 91.02 m
+# 1.6 bar: covered heavy clay 90.36 m, dry hard clay 90.82 m
 ```
 
 `--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the
@@ -202,8 +203,9 @@ wheelbase), would need about 52 kN of pull to lift its front, twice what
 its tires give on the best track (some 24 kN at the end of a pull, when
 the front still carries about 6 kN). So in the 3.5 t class the front only
 goes light; it lifts for a moment when the clutch is dumped, as the axle's
-torque spins the heavy rear wheels up (weights fully back, in 2nd to 6th:
-about 0.7° of pitch, the front tires off the ground for some 60 ms).
+torque spins the heavy rear wheels up (weights fully back, 8 kN behind:
+1° to 5° of pitch, most in 5th, the front tires off the ground for 10 to
+80 ms; `tp_pull pull --dump --ballast 0`).
 Wheelies are the physics, not scripted: the same tractor with its drawbar
 at 1.0 m pulls one onto its wheelie bar (7.6°), which a test checks
 (`Vehicle.AHighHitchPullsAWheelieOntoTheBar`). Classes with higher hitches
@@ -220,10 +222,11 @@ in; in the easy layout the clutch assist keeps the clutch in for it. The
 gear goes in at once: the wheels keep their speed, the input shaft turns
 faster than the engine, and the clutch slips (at most its capacity, for a
 fraction of a second) and pulls the engine up to the lower gear's speed,
-while the tractor slows through its tires. A 44 % step is a big one: the
-tractor slows while the sled rolls on, so the chain goes slack for a moment
-and then snatches. Up still
-takes the clutch. Down, once the tractor moves off, goes only by the
+while the tractor slows through its tires. The pulling gears 5th to 7th
+are about 10 % apart, so a step between them is a small one; from 5th to
+4th it is 58 %, a big one: the tractor slows while the sled rolls on, so
+the chain goes slack for a moment and then snatches. Up still takes the
+clutch. Down, once the tractor moves off, goes only by the
 powershift, as far and as often as it allows (`load_downshift_gears`, and
 `shifts_per_pull`, 1 if left out): not two gears at once with a one-gear
 step, not again after the last, and not with the clutch pressed either
@@ -241,14 +244,13 @@ falls below 90 % of its rated speed past 40 m:
 
 | track (two knives) | stays in 6th | shifts to 5th (at) |
 |---|---|---|
-| ideal clay-sand | 94.94 m, stalled | **96.65 m** (86.1 m) |
-| covered heavy clay | **91.86 m**, stalled | 90.83 m, spun out (84.8 m) |
-| watered start | 94.69 m, stalled | **96.06 m** (85.9 m) |
-| dry hard clay | 97.85 m, stalled | **full pull** (83.1 m) |
+| ideal clay-sand | 93.93 m, stalled | **97.58 m** (85.5 m) |
+| covered heavy clay | 91.32 m, stalled | **93.04 m** (84.2 m) |
+| watered start | 93.71 m, stalled | **97.25 m** (85.3 m) |
+| dry hard clay | 94.51 m, stalled | **full pull** (82.4 m) |
 
-On the soft heavy clay the extra torque spins the wheels: there a later
-shift, at 60 % of rated speed (90.3 m), gets 92.24 m. A test pins the first
-row (`LoadDownshiftRuns`).
+Late is too late: shifting at 60 % of rated speed (about 90 m) gains only
+half a metre to a metre. A test pins the first row (`LoadDownshiftRuns`).
 
 The scripted rivals shift too. Once the clutch is fully in, a driver waits
 for the engine to come back from the launch's dip and then watches the rev
@@ -256,8 +258,8 @@ counter: when the sled pulls it below their `downshift_share` of the rated
 speed, they shift one gear down under load (`driver::Plan`). Each rival
 draws their own share (`event.field.downshift_share`, 82 to 95 %), so some
 shift at the right moment and some a little early. On ideal clay-sand and
-the two-knife sled it takes the reference rival in 6th from 94.94 to
-96.65 m (at 90 %), about what 5th gets without a shift; in 4th and 5th the
+the two-knife sled it takes the reference rival in 6th from 94.03 to
+97.61 m (at 90 %), about what 5th gets without a shift; in 3rd and 4th the
 tires, not the engine, end the pull, so the engine is never pulled down and
 the driver never shifts.
 
@@ -332,53 +334,69 @@ earns nothing), and the garage spends it, between events:
 
 | part | starts at | up to (the class's limit) |
 |---|---|---|
-| injection pump | 90 % of the torque, worn | the maker's figures: 84 hp at the PTO (85 hp) |
+| injection pump | 80 % of the torque, worn: 65 hp | the maker's figures: 84 hp at the PTO (85 hp) |
 | rear tires | worn, traction limit 0.86 | wider deep-tread rubber, 0.95 (rubber only, uncut) |
 | weights | 100 kg, 3200 kg in all | 400 kg, 3500 kg (3500 kg) |
 | drawbar | 0.40 m | 0.50 m in three steps, the last the dearest (0.5 m, below the rear axle) |
 | powershift | none | two gears down under load, once a pull (one make) |
+| governor | 2200 rpm rated, 2400 unloaded | 2500 rpm rated, 2700 unloaded (2700 rpm) |
 
 Each level sets its part outright, so the parts never interact; the season
 loader checks every level against the class (`garage::validate`). Fully
 upgraded, the tractor is at the class's limits like the reference tractor
 the field is drawn around, and beyond it: wider tires (a traction limit of 0.95 against
-0.93) and a two-gear powershift step against one. Prizes are paid as an
+0.93), a two-gear powershift step against one, and the governor at the
+class's engine speed. Prizes are paid as an
 event is scored, once; upgrades are bought between events or before your
 first pull of one (`field::LiveSeason::player_may_change_tractor`). The
 money and the levels carry from season to season. The whole garage costs
-€ 17,900; a season of eight events pays € 2,560 at the back of the field and
-€ 12,000 to a winner of every event.
+€ 20,900; a season of ten events pays € 3,200 at the back of the field and
+€ 15,000 to a winner of every event.
+
+The pump decides which gear the tractor can get the sled moving in. The
+pulling gears 5th to 7th are close together (`data/drivelines`), and as
+the clutch comes in the engine has to hold its speed against the sled: a
+gear too high pulls it down below its turbo's boost, and it stalls within
+a few metres. A new career's worn pump starts the class's sled in 5th,
+new injectors in 6th, the maker's figures in 7th (on the first event's
+track; a firmer one lets a tractor start a gear higher). The
+governor (`engine::with_rated_speed`) moves the rated and unloaded speeds
+up together: the engine gives full fuel to 2500 rpm instead of 2200, so it
+runs faster in the same gear, close to the class's 2700 rpm, with about
+the same power, which the class limits.
 
 ### The rivals
 
-The rivals' tractors span what the garage offers (`event.field` in the
-event file): their engines and tires from worn to the class's limit, from
-3150 kg to the class's weight, drawbars from 0.36 to 0.50 m, and a
-powershift step of one gear or none (`hitch_height_m`,
-`load_downshift_gears`). The sled operator sets the sled for the field,
+The rivals' tractors span what the garage offers, a step above it
+(`event.field` in the event file): their engines and tires from a little
+better than a new career's to the class's limit, from 3200 kg to the
+class's weight, drawbars from 0.38 to 0.50 m, governors from 2200 to
+2500 rpm rated, and a powershift step of one gear or none
+(`hitch_height_m`, `rated_rpm`, `load_downshift_gears`). Each picks a gear
+from 5th to 7th for the day's track. The sled operator sets the sled for the field,
 counting a step as worth about 8 m (`step_m`: with the drag flat after the
 push-down, a small change goes a long way, so a wide field still gets one
 full pull or none in the first round). Where the player ends depends on
 how they rank in the field. Driving as the reference driver does, in the
 best gear:
 
-| the player's tractor | place among ten (the first event, eight fields) |
-|---|---|
-| new | 6th to 9th |
-| every part one level up (€ 5,500) | 4th to 7th |
-| two levels up (€ 11,200) | 1st to 5th |
-| fully upgraded (€ 17,900) | 1st |
+| the player's tractor | place among ten (the first event, eight fields) | the test's range |
+|---|---|---|
+| new | 7th to 10th | 7th to 10th |
+| every part one level up (€ 6,700) | 6th to 8th | 5th to 8th |
+| halfway: two levels up (€ 14,200) | 3rd to 6th | 3rd to 6th |
+| fully upgraded (€ 20,900) | 1st | on the podium |
 
-So a career starts near the back, beating a few rivals, climbs with every
-level and wins once fully upgraded. The drawbar's last 4 cm matter most
-(the weight it puts on the rear tires), so they cost the most. The first
-powershift step (€ 3,000, one gear down under load) is dearer than the
-second (€ 1,500): it is the one that saves a pull. So one level of every
-part costs € 5,500, and a new career, earning € 370 to € 550 an event at
-the back, takes about a season and a half (some twelve events) to reach
-the 4th-to-7th row. A test
-(`RivalDifficulty`) checks every row on three of the eight fields. A player drives less
-evenly than the script, and picks the gear themselves.
+So a career starts at the back, climbs with every level and is on the
+podium once fully upgraded; halfway, it still has to beat a few strong
+rivals. The drawbar's last 7 cm matter most (the weight it puts on the
+rear tires), so they cost the most. The first powershift step (€ 3,000,
+one gear down under load) is dearer than the second (€ 1,500): it is the
+one that saves a pull. So one level of every part costs € 6,700, and a new
+career, earning € 320 to € 420 an event at the back, takes the best part
+of two seasons to buy it all, sooner as the first levels win places. A
+test (`RivalDifficulty`) checks every row on three of the eight fields. A
+player drives less evenly than the script, and picks the gear themselves.
 
 ### Playing a run from a game
 

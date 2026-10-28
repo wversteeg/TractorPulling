@@ -1,5 +1,7 @@
 #include "tp/data/garage/garage_loader.hpp"
 
+#include "tp/core/units/conversions.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -15,18 +17,27 @@ namespace tp::data {
 
 namespace {
 
-constexpr std::array<std::pair<std::string_view, garage::Part>, 5> kParts = {{
-    {"engine_torque", garage::Part::kEngineTorque},
-    {"rear_traction", garage::Part::kRearTraction},
-    {"ballast_kg", garage::Part::kBallastMass},
-    {"hitch_height_m", garage::Part::kHitchHeight},
-    {"load_downshift_gears", garage::Part::kLoadDownshift},
+// A part's name in the file, and what turns its values into the core's
+// units (rpm into rad/s).
+struct PartName {
+    std::string_view key;
+    garage::Part part = garage::Part::kEngineTorque;
+    double to_si = 1.0;
+};
+
+constexpr std::array<PartName, 6> kParts = {{
+    {.key = "engine_torque", .part = garage::Part::kEngineTorque, .to_si = 1.0},
+    {.key = "rear_traction", .part = garage::Part::kRearTraction, .to_si = 1.0},
+    {.key = "ballast_kg", .part = garage::Part::kBallastMass, .to_si = 1.0},
+    {.key = "hitch_height_m", .part = garage::Part::kHitchHeight, .to_si = 1.0},
+    {.key = "load_downshift_gears", .part = garage::Part::kLoadDownshift, .to_si = 1.0},
+    {.key = "rated_rpm", .part = garage::Part::kRatedSpeed, .to_si = units::rpm_to_rad_s(1.0)},
 }};
 
-std::optional<garage::Part> part_named(std::string_view name) {
-    for (const auto& [key, part] : kParts) {
-        if (key == name) {
-            return part;
+std::optional<PartName> part_named(std::string_view name) {
+    for (const PartName& p : kParts) {
+        if (p.key == name) {
+            return p;
         }
     }
     return std::nullopt;
@@ -49,8 +60,8 @@ std::optional<std::pair<garage::Level, std::string>> read_level(const toml::node
 
 // The levels of upgrade `name` into `upgrade` and `text`; the error if any.
 std::optional<LoadError> read_levels(const toml::array& levels, const std::string& name,
-                                     std::string_view source, garage::Upgrade& upgrade,
-                                     UpgradeText& text) {
+                                     double to_si, std::string_view source,
+                                     garage::Upgrade& upgrade, UpgradeText& text) {
     if (levels.empty() || levels.size() > garage::kMaxLevels) {
         return detail::make_error(
             source, "garage.upgrades.levels",
@@ -66,7 +77,8 @@ std::optional<LoadError> read_levels(const toml::array& levels, const std::strin
             return detail::make_error(source, "garage.upgrades.levels",
                                       name + ": a cost must not be negative");
         }
-        upgrade.levels[upgrade.level_count] = level->first;
+        upgrade.levels[upgrade.level_count] = {.value = level->first.value * to_si,
+                                               .cost_eur = level->first.cost_eur};
         ++upgrade.level_count;
         text.level_labels.push_back(level->second);
     }
@@ -90,15 +102,16 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
         return detail::make_error(source, "garage.upgrades",
                                   "every upgrade needs a part and a name");
     }
-    const std::optional<garage::Part> part = part_named(*part_name);
+    const std::optional<PartName> part = part_named(*part_name);
     if (!part) {
         return detail::make_error(source, "garage.upgrades.part",
                                   "unknown part '" + *part_name +
                                       "' (engine_torque, rear_traction, ballast_kg, "
-                                      "hitch_height_m or load_downshift_gears)");
+                                      "hitch_height_m, load_downshift_gears or rated_rpm)");
     }
     const std::span<const garage::Upgrade> before = out.catalogue.offer();
-    if (std::ranges::any_of(before, [&](const garage::Upgrade& u) { return u.part == *part; })) {
+    if (std::ranges::any_of(before,
+                            [&](const garage::Upgrade& u) { return u.part == part->part; })) {
         return detail::make_error(source, "garage.upgrades.part",
                                   "'" + *part_name + "' is listed twice");
     }
@@ -108,9 +121,10 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
             source, "garage.upgrades.levels",
             *name + ": must list 1 to " + std::to_string(garage::kMaxLevels) + " levels");
     }
-    garage::Upgrade upgrade{.part = *part, .levels = {}, .level_count = 0};
+    garage::Upgrade upgrade{.part = part->part, .levels = {}, .level_count = 0};
     UpgradeText text{.name = *name, .level_labels = {}};
-    if (std::optional<LoadError> error = read_levels(*levels, *name, source, upgrade, text)) {
+    if (std::optional<LoadError> error =
+            read_levels(*levels, *name, part->to_si, source, upgrade, text)) {
         return error;
     }
     out.catalogue.upgrades[out.catalogue.count] = upgrade;

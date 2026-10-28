@@ -1,6 +1,7 @@
 #include "tp/data/event/event_loader.hpp"
 
 #include "tp/core/driveline/driveline.hpp"
+#include "tp/core/units/conversions.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
@@ -58,7 +59,7 @@ FieldError describe(field::ParamError error) {
         case ParamError::kRangeOutOfOrder:
             return {"event.field",
                     "every range is [low, high] with low <= high, low > 0, track_reading within "
-                    "[0, 1], downshift_share within [0, 1)"};
+                    "[0, 1], downshift_share within [0, 1); hitch_height_m and rated_rpm above 0"};
         case ParamError::kGearsOutOfRange:
             return {"event.field.gears", "must be [lowest, highest] within the gearbox"};
         case ParamError::kLoadDownshiftsOutOfRange:
@@ -137,6 +138,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .hitch_height_m = {},
         .fewest_load_downshift_gears = -1,
         .most_load_downshift_gears = -1,
+        .rated_omega_rad_s = {},
     };
     const field::PullToPull pull_to_pull{
         .grip_share = reader.number("event.field.pull_to_pull_grip_share"),
@@ -150,10 +152,15 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
     variation.lowest_gear = static_cast<int>(gears[0]);
     variation.highest_gear = static_cast<int>(gears[1]);
-    // Optional: without them every puller has the reference's drawbar and
-    // powershift.
+    // Optional: without them every puller has the reference's drawbar,
+    // powershift and governor.
     if (reader.has("event.field.hitch_height_m")) {
         variation.hitch_height_m = range(reader, "event.field.hitch_height_m");
+    }
+    if (reader.has("event.field.rated_rpm")) {
+        const field::Range rpm = range(reader, "event.field.rated_rpm");
+        variation.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
+                                       .high = units::rpm_to_rad_s(rpm.high)};
     }
     if (reader.has("event.field.load_downshift_gears")) {
         const std::vector<double> counts = reader.numbers("event.field.load_downshift_gears");
