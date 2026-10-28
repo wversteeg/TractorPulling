@@ -103,7 +103,8 @@ func _play() -> void:
 
 	# Every control is on the screen, where a thumb can reach it.
 	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.gear_up,
-			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
+			controls.gear_down, controls.gear_readout, controls.camera_button,
+			controls.restart_button,
 			controls.menu_button])
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible
 			and not controls.brake_left_slider.visible, "the easy layout, without clutch or brakes")
@@ -124,8 +125,19 @@ func _play() -> void:
 	for i in controls.gear_count + 2:
 		_tap(controls.gear_up)
 	_expect(controls.gear == controls.gear_count, "the top gear is the last")
-	_tap(controls.neutral)
-	_expect(controls.gear == 0, "neutral")
+	# The readout between the buttons shows the gear in and the one asked
+	# for; it is not a button.
+	_tap(controls.gear_readout)
+	_expect(controls.gear == controls.gear_count, "the readout is not a button")
+	controls.show_gear(0)
+	_expect(controls.gear_readout.text == "N › %d" % controls.gear_count
+			and controls.gear_readout.selected, "asked for, waiting: %s" % controls.gear_readout.text)
+	for i in controls.gear_count:
+		_tap(controls.gear_down)
+	_expect(controls.gear == 0, "down to neutral")
+	controls.show_gear(0)
+	_expect(controls.gear_readout.text == "N" and not controls.gear_readout.selected,
+			"in neutral: %s" % controls.gear_readout.text)
 	for i in 6:
 		_tap(controls.gear_up)
 	_expect(controls.gear == 6, "six taps up: 6th gear")
@@ -158,6 +170,8 @@ func _play() -> void:
 	await _frames(PULL_FRAMES)
 	var s := run.get_snapshot()
 	_expect(s["gear"] == 6, "the run is in 6th: %s" % s["gear"])
+	_expect(controls.gear_readout.text == "6" and not controls.gear_readout.selected,
+			"the readout shows 6th: %s" % controls.gear_readout.text)
 	_expect(float(s["throttle"]) == 1.0, "the run has the throttle open")
 	_expect(float(s["tractor_speed_m_s"]) > 0.5, "the tractor pulls: %s m/s" % s["tractor_speed_m_s"])
 
@@ -174,9 +188,9 @@ func _play() -> void:
 	_expect(controls.gear == 5 and int(run.get_snapshot()["gear"]) == 5
 			and int(run.get_snapshot()["lowest_gear"]) == 5,
 			"no second gear down: %d" % int(run.get_snapshot()["gear"]))
-	# Out to neutral and "+" again: back into the lowest gear there is, not
-	# stuck in neutral below it.
-	_tap(controls.neutral)
+	# Out to neutral (the gamepad's X) and "+" again: back into the lowest
+	# gear there is, not stuck in neutral below it.
+	controls.set_gear(0)
 	await _frames(3)
 	_expect(controls.gear == 0, "neutral under way: %d" % controls.gear)
 	_tap(controls.gear_up)
@@ -291,7 +305,8 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(run.get_layout() == "pro" and controls.pro, "the pro layout")
 	_expect_on_screen([controls.steering_slider, controls.throttle_slider, controls.clutch_slider,
 			controls.brake_left_slider, controls.brake_right_slider, controls.gear_up,
-			controls.gear_down, controls.neutral, controls.camera_button, controls.restart_button,
+			controls.gear_down, controls.gear_readout, controls.camera_button,
+			controls.restart_button,
 			controls.menu_button])
 	_expect(controls.clutch() == 1.0, "the clutch starts pressed")
 	# The clutch slider marks where the clutch slips, its line at the bite,
