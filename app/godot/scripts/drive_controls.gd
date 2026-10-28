@@ -19,9 +19,9 @@
 # standing; under way it stops at the lowest gear the gearbox may go to
 # (set_gear), so a thumb cannot knock it out of gear mid-pull: once the
 # pull is over the gearbox's floor is gone and "-" reaches N again (the
-# keyboard and gamepad still select N at any time). "+" steps up. Between them the gear readout shows the gear in (N, R or
-# its number) and, while a change waits for the clutch, where it goes:
-# "5 › 7" on blue.
+# keyboard and gamepad still select N at any time). "+" steps up. Between
+# them the gear readout shows the gear in (N, R or its number) and, while
+# a change waits for the clutch, where it goes: "5 › 7" on blue.
 #
 # For development the keyboard (W throttle, A and D steer, the digits for a
 # gear, held to the gearbox, minus reverse from
