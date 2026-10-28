@@ -21,6 +21,8 @@ const FONT_SIZE := 36
 	set(value):
 		selected = value
 		queue_redraw()
+# Shows something, not to be tapped, drawn as a button (the gear in).
+@export var readout := false
 # Shown, but not to be tapped (an upgrade the player cannot afford).
 @export var disabled := false:
 	set(value):
@@ -40,7 +42,7 @@ func _input(event: InputEvent) -> void:
 	var touch := event as InputEventScreenTouch
 	if touch == null:
 		return
-	if touch.pressed and _finger < 0 and not disabled \
+	if touch.pressed and _finger < 0 and not disabled and not readout \
 			and get_global_rect().has_point(touch.position):
 		_finger = touch.index
 		queue_redraw()

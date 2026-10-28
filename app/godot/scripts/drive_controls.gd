@@ -15,8 +15,10 @@
 # the top corner. All of them are multi-touch, so
 # both thumbs drive at once.
 #
-# "-" from neutral puts reverse in where the gearbox has it (the gear shows
-# R), "+" from reverse neutral.
+# "-" steps down to neutral and, where the gearbox has it, reverse (R);
+# "+" steps up. Between them the gear readout shows the gear in (N, R or
+# its number) and, while a change waits for the clutch, where it goes:
+# "5 › 7" on blue.
 #
 # For development the keyboard (W throttle, A and D steer, the digits for a
 # gear, held to the gearbox, minus reverse from
@@ -73,7 +75,8 @@ var brake_left_slider := TouchSlider.new()
 var brake_right_slider := TouchSlider.new()
 var gear_up := TouchButton.new()
 var gear_down := TouchButton.new()
-var neutral := TouchButton.new()
+# The gear in and the one asked for (show_gear): a readout, not a button.
+var gear_readout := TouchButton.new()
 var camera_button := TouchButton.new()
 var restart_button := TouchButton.new()
 var menu_button := TouchButton.new()
@@ -126,8 +129,9 @@ func _ready() -> void:
 
 	gear_down.text = "-"
 	gear_up.text = "+"
-	neutral.text = "N"
-	for button: TouchButton in [gear_down, gear_up, neutral]:
+	gear_readout.readout = true
+	show_gear(0)
+	for button: TouchButton in [gear_down, gear_up, gear_readout]:
 		add_child(button)
 
 	camera_button.text = "cam"
@@ -141,7 +145,6 @@ func _ready() -> void:
 
 	gear_up.tapped.connect(func() -> void: set_gear(gear + 1))
 	gear_down.tapped.connect(func() -> void: set_gear(gear - 1))
-	neutral.tapped.connect(func() -> void: set_gear(0))
 	camera_button.tapped.connect(func() -> void: camera_requested.emit())
 	restart_button.tapped.connect(func() -> void: restart_requested.emit())
 	menu_button.tapped.connect(func() -> void: menu_requested.emit())
@@ -159,7 +162,7 @@ func set_layout(is_pro: bool) -> void:
 	_anchor(gear_down, Vector2(1.0, 1.0), _right_column(column, BUTTON_SIZE, BUTTON_SIZE))
 	_anchor(gear_up, Vector2(1.0, 1.0),
 			_right_column(column, BUTTON_SIZE, BUTTON_SIZE, BUTTON_SIZE + GAP))
-	_anchor(neutral, Vector2(1.0, 1.0),
+	_anchor(gear_readout, Vector2(1.0, 1.0),
 			_right_column(column, BUTTON_SIZE, BUTTON_SIZE, 2.0 * (BUTTON_SIZE + GAP)))
 
 
@@ -189,6 +192,16 @@ func set_gear(wanted: int) -> void:
 	gear = clampi(wanted, REVERSE if has_reverse else 0, gear_count)
 
 
+# The readout: `gear_in` (the run's), and while the gear asked for differs
+# (a change waiting for the clutch, or the easy layout's assist), an arrow
+# to it, on blue.
+func show_gear(gear_in: int) -> void:
+	var waiting := gear != gear_in
+	gear_readout.text = Hud.gear_name(gear_in) + (" › " + Hud.gear_name(gear) if waiting else "")
+	gear_readout.selected = waiting
+	gear_readout.queue_redraw()
+
+
 # Back to the start: neutral, throttle closed, clutch pressed, nothing
 # held, and the phone's angle now straight ahead for tilt steering.
 func reset() -> void:
@@ -206,7 +219,7 @@ func reset_fingers() -> void:
 	for slider: TouchSlider in [steering_slider, throttle_slider, clutch_slider,
 			brake_left_slider, brake_right_slider]:
 		slider.release()
-	for button: TouchButton in [gear_up, gear_down, neutral, camera_button, restart_button,
+	for button: TouchButton in [gear_up, gear_down, gear_readout, camera_button, restart_button,
 			menu_button]:
 		button.release()
 
