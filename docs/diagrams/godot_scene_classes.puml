@@ -57,11 +57,13 @@ package "GDScript (app/godot/scripts)" {
     +build(dimensions)
     +show_snapshot(snapshot, delta)
     +hitch_position() : Vector3
+    +cab_camera() : Camera3D
   }
   class SledView {
     +build(dimensions)
     +show_snapshot(snapshot, delta)
     +hook_position() : Vector3
+    +rear_position() : Vector3
   }
   class VenueView {
     +RETURN_LANE_M, PARKING_RIGHT_OF_LANE_M
@@ -258,11 +260,12 @@ package "GDScript (app/godot/scripts)" {
     tapped
   }
   class CameraRig {
-    +view : View {CHASE, SIDE, OVERHEAD}
+    +view : View {CHASE, CLOSE, CAB, SIDE, OVERHEAD}
     +next()
     +rumble : float
+    +cab : Camera3D
     +current_camera() : Camera3D
-    +follow(target, delta, smooth)
+    +follow(target, delta, smooth, heading_rad, sled_rear)
   }
   class TrackSpace <<static>> {
     +{static} point(x_m, y_m, z_m) : Vector3
@@ -346,6 +349,7 @@ VenueView ..> KenneyModels : CC0 models (assets/kenney):\ntents, barn, clouds
 VenueView ..> Trees : copses and\nthe tree line
 VenueView ..> People : the crowd, one\nMultiMesh a pose
 TractorView ..> People : the driver
+CameraRig ..> TractorView : the cab camera, at the driver's eyes
 Flagman ..> People : the official
 SledView ..> People : the operator
 TrackMarks ..> TrackSpace

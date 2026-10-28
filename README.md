@@ -374,8 +374,9 @@ level and wins once fully upgraded. The drawbar's last 4 cm matter most
 (the weight it puts on the rear tires), so they cost the most. The first
 powershift step (€ 3,000, one gear down under load) is dearer than the
 second (€ 1,500): it is the one that saves a pull. So one level of every
-part costs € 5,500, and a new career, earning a few hundred euros an event
-at the back, takes several events to reach the 4th-to-7th row. A test
+part costs € 5,500, and a new career, earning € 370 to € 550 an event at
+the back, takes about a season and a half (some twelve events) to reach
+the 4th-to-7th row. A test
 (`RivalDifficulty`) checks every row on three of the eight fields. A player drives less
 evenly than the script, and picks the gear themselves.
 
@@ -538,7 +539,10 @@ steering holds. A device without a motion sensor keeps the slider. Godot
 reads the phone's sensors only when the project asks for them
 (`input_devices/sensors/enable_gravity` and `enable_accelerometer` in
 `project.godot`, off by default since Godot 4.3).
-"cam" switches between the chase, side and overhead cameras; in a practice
+"cam" switches between the cameras: the chase camera, a close one just
+behind the sled that turns with the tractor (the whole sled just in
+view), the cab (at the driver's eyes, looking over the hood), beside the
+tractor and overhead; in a practice
 pull "again" (on lifting the finger on it) starts the same pull again, and
 "menu" goes back to the start screen (an event's pull counts: neither is
 there). On a desktop the mouse works the same controls, and for

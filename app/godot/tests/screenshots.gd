@@ -38,7 +38,7 @@ func _process(_delta: float) -> bool:
 	image.save_png(path)
 	print("saved ", path)
 	_view += 1
-	if _view >= 3:
+	if _view >= CameraRig.View.size():
 		quit(0)
 		return true
 	_pull.get("cameras").call("next")
