@@ -401,9 +401,10 @@ func _play_tilt(controls: DriveControls, run: TractorPullRun) -> void:
 		_tap(controls.gear_up)
 	_slide(THROTTLE_FINGER, controls.throttle_slider, true)
 	await _frames(PULL_FRAMES)
-	# A tremble of a degree steers nothing.
-	_gravity = _tilted(21.0)
-	_expect(controls.steering() == 0.0, "1° steers nothing: %s" % controls.steering())
+	# A tremble of a few degrees stays inside the core's 3 % dead zone.
+	_gravity = _tilted(23.0)
+	_expect(controls.steering() > 0.0 and controls.steering() < 0.03,
+			"3° stays in the dead zone: %s" % controls.steering())
 	# Rolled 10° more to the left: gently, well under 10° of the 35° that
 	# steer fully.
 	_gravity = _tilted(30.0)

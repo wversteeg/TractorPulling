@@ -341,8 +341,9 @@ for the big features; they are repeated at the end for completeness.
   engagement; its slipping range is marked, but nothing on screen shows
   how much it is slipping now (the HUD shows the pedal). The brakes act at
   once.
-- **Tilt steering.** Its range (35° either way), dead zone (2°) and
-  response curve are fixed, with no sensitivity setting; the centre is taken at Pull only, not mid-pull; and
+- **Tilt steering.** Its range (35° either way) and response curve are
+  fixed, with no sensitivity setting; the centre is taken at Pull only,
+  not mid-pull; and
   the sensor's readings are not filtered beyond the core's steering rate.
   Which way Android reports the roll is taken from its sensor convention
   and checked with a simulated sensor only: a real phone may steer the
