@@ -868,6 +868,72 @@ TEST(VehicleBrakes, HoldAgainstTurningBackwards) {
     EXPECT_TRUE(pull.held_against_backward);
 }
 
+// Standing in neutral, the rear sides turning against each other (as a
+// tractor stopped in a turn leaves them), the steering held: both brakes
+// on hold both sides at rest. With the axle held, only the sides'
+// difference is free and both brakes act on it; they must not overshoot
+// through rest every step, which kept the wheels flicking either way and
+// reported a large slip at a standstill. Mirrored, and with one brake much
+// weaker than the other, the hold is the same. Faster sides take a few
+// steps to stop, slowing all the way, through rest at most once.
+struct TurningAgainst {
+    double differential_rad_s = 0.0;
+    double steering_rad = 0.0;
+    double brake_left = 0.0;
+    double brake_right = 0.0;
+    // Steps before both sides are at rest.
+    int steps_to_hold = 0;
+};
+
+class BothBrakesHold : public ::testing::TestWithParam<TurningAgainst> {};
+
+TEST_P(BothBrakesHold, SidesTurningAgainstEachOther) {
+    const TurningAgainst c = GetParam();
+    Pull pull;
+    pull.state.differential_rad_s = c.differential_rad_s;
+    const Input input{.clutch_pedal = 1.0,
+                      .gear = driveline::kNeutral,
+                      .steering_rad = c.steering_rad,
+                      .brake_left = c.brake_left,
+                      .brake_right = c.brake_right};
+    // The tires' contact patches settle after the stop (relaxation).
+    constexpr int kTiresSettledSteps = 100;
+    constexpr int kSteps = 2000;
+    double worst_rad_s = 0.0;
+    double worst_slip = 0.0;
+    int through_rest = 0;
+    double last_left_rad_s = pull.left_rad_s();
+    for (int i = 0; i < kSteps; ++i) {
+        const Output out = step(pull.state, pull.model, input, kGround, {}, kDt_s);
+        const double left_rad_s = pull.left_rad_s();
+        if (std::abs(left_rad_s) > kBrakeHoldTolerance_rad_s) {
+            through_rest += left_rad_s * last_left_rad_s < 0.0 ? 1 : 0;
+            last_left_rad_s = left_rad_s;
+        }
+        if (i > c.steps_to_hold) {
+            worst_rad_s =
+                std::max({worst_rad_s, std::abs(left_rad_s), std::abs(pull.right_rad_s())});
+        }
+        if (i > kTiresSettledSteps) {
+            worst_slip = std::max(worst_slip, std::abs(out.slip_ratio));
+        }
+    }
+    EXPECT_LE(worst_rad_s, kBrakeHoldTolerance_rad_s);
+    EXPECT_LE(through_rest, 1);
+    EXPECT_LT(worst_slip, 0.01);
+    EXPECT_EQ(pull.state.chassis.velocity_m_s, 0.0);
+}
+
+INSTANTIATE_TEST_SUITE_P(VehicleBrakes, BothBrakesHold,
+                         ::testing::Values(TurningAgainst{0.3, 0.2, 1.0, 1.0, 0},
+                                           TurningAgainst{-0.3, -0.2, 1.0, 1.0, 0},
+                                           TurningAgainst{0.3, 0.2, 0.1, 1.0, 0},
+                                           TurningAgainst{0.3, 0.2, 1.0, 0.1, 0},
+                                           TurningAgainst{-0.3, -0.2, 0.1, 1.0, 0},
+                                           TurningAgainst{-0.3, -0.2, 1.0, 0.1, 0},
+                                           TurningAgainst{1.5, 0.2, 0.1, 1.0, 5},
+                                           TurningAgainst{-1.5, -0.2, 1.0, 0.1, 5}));
+
 // The reported slip is the more positive (driving) slip of the two sides:
 // one side spinning is how an open differential spins out.
 TEST(VehicleBrakes, SlipIsTheSideThatSlipsMore) {
