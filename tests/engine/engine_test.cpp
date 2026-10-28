@@ -354,7 +354,7 @@ TEST(Engine, AGovernorSetHigherHoldsAHigherSpeed) {
     EXPECT_DOUBLE_EQ(p.high_idle_omega_rad_s - p.rated_omega_rad_s,
                      stock.high_idle_omega_rad_s - stock.rated_omega_rad_s);
     EXPECT_EQ(p.full_load_torque_nm.points().size(), stock.full_load_torque_nm.points().size());
-    EXPECT_EQ(with_rated_speed(stock, stock.rated_omega_rad_s)->high_idle_omega_rad_s,
+    EXPECT_EQ(with_rated_speed(stock, stock.rated_omega_rad_s).value_or(p).high_idle_omega_rad_s,
               stock.high_idle_omega_rad_s);
 
     constexpr double kLoad_nm = 200.0;
