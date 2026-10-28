@@ -13,9 +13,10 @@ signal done
 const GARAGE_SIZE := Vector2(1180.0, 660.0)
 const TITLE_SIZE := 36
 const LINE_SIZE := 24
-const ROW_SIZE := 22
-const COLUMN_GAP := 24
-const BUY_SIZE := Vector2(130.0, 64.0)
+const ROW_SIZE := 21
+const COLUMN_GAP := 20
+# Six parts, each a row, fit the panel at this height.
+const BUY_SIZE := Vector2(110.0, 56.0)
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const DONE_COLOUR := Color(0.6, 0.85, 0.6)
 
