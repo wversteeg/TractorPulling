@@ -531,8 +531,11 @@ You drive on the touch screen, in the easy or the pro layout. Both have a
 steering slider under the left thumb, which springs back to straight ahead
 when let go; a hand throttle under the right, moved by sliding it like a
 lever (a touch alone does not move it) and staying where it is left, as a
-tractor's does; and gear buttons (+, - and N; "-" from N is reverse, R)
-beside it. Both thumbs work at once. In the easy layout the clutch assist
+tractor's does; and beside it gear buttons, "+" and "-" ("-" steps down
+to N and then R standing; under way only to the lowest gear the gearbox
+allows, so a thumb cannot knock it out of gear mid-pull), with the gear
+in shown between them: "5 › 7" on blue while a change waits for the
+clutch. Both thumbs work at once. In the easy layout the clutch assist
 works the clutch, and closing the throttle also puts both brakes on once
 the clutch is out (`brake_off_the_gas` in `data/controls/easy.toml`): let
 go of the gas and the tractor stops and stands; a brief lift in the pull
