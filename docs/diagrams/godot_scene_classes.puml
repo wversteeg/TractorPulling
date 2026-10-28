@@ -135,6 +135,7 @@ package "GDScript (app/godot/scripts)" {
     +set_steering(by_tilt)
     +set_clutch_range(full_grip_pedal, bite_pedal)
     +set_gear(gear)
+    +show_gear(gear_in)
     +reset()
     +reset_fingers()
     ..signals..
@@ -254,6 +255,7 @@ package "GDScript (app/godot/scripts)" {
     +text : String
     +fires_on_release : bool
     +selected : bool
+    +readout : bool
     +disabled : bool
     +is_held() : bool
     +release()
