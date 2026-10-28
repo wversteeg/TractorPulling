@@ -868,6 +868,35 @@ TEST(VehicleBrakes, HoldAgainstTurningBackwards) {
     EXPECT_TRUE(pull.held_against_backward);
 }
 
+// Standing in neutral, the rear sides turning against each other (as a
+// tractor stopped in a turn leaves them), the steering held: both brakes
+// on hold both sides at rest. With the axle held, only the sides'
+// difference is free and both brakes act on it alike; they must not
+// overshoot through rest every step, which kept the wheels flicking either
+// way and reported a large slip at a standstill.
+TEST(VehicleBrakes, BothBrakesHoldSidesTurningAgainstEachOther) {
+    Pull pull;
+    pull.state.differential_rad_s = 0.3;
+    const Input input{.clutch_pedal = 1.0,
+                      .gear = driveline::kNeutral,
+                      .steering_rad = 0.2,
+                      .brake_left = 1.0,
+                      .brake_right = 1.0};
+    double worst_rad_s = 0.0;
+    double worst_slip = 0.0;
+    // The first step stops the sides; from then on they stay at rest.
+    step(pull.state, pull.model, input, kGround, {}, kDt_s);
+    for (int i = 0; i < 2000; ++i) {
+        const Output out = step(pull.state, pull.model, input, kGround, {}, kDt_s);
+        worst_rad_s =
+            std::max({worst_rad_s, std::abs(pull.left_rad_s()), std::abs(pull.right_rad_s())});
+        worst_slip = std::max(worst_slip, std::abs(out.slip_ratio));
+    }
+    EXPECT_LE(worst_rad_s, kBrakeHoldTolerance_rad_s);
+    EXPECT_LT(worst_slip, 0.01);
+    EXPECT_EQ(pull.state.chassis.velocity_m_s, 0.0);
+}
+
 // The reported slip is the more positive (driving) slip of the two sides:
 // one side spinning is how an open differential spins out.
 TEST(VehicleBrakes, SlipIsTheSideThatSlipsMore) {

@@ -196,6 +196,11 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
 // turning forwards and one that leaves it turning backwards are known, is
 // narrowed between them instead (Illinois), which a kink cannot throw off.
 constexpr int kMaxHoldSteps = 8;
+// Two held sides whose slopes are this close to proportional (the
+// determinant against the size of its terms) move as one: an open
+// differential with its axle held at rest leaves only the sides' difference
+// free, and either brake alone holds that.
+constexpr double kOneModeShare = 1e-9;
 
 struct Brake {
     double capacity_nm = 0.0;
@@ -303,13 +308,16 @@ Change hold_step(const Brake& left, const Brake& right, const RearSolution& at,
     if (left.held && right.held) {
         const double determinant =
             per_left.left * per_right.right - per_right.left * per_left.right;
-        if (determinant == 0.0) {
-            return {};
-        }
-        return {.left_nm = (-at.left_rad_s * per_right.right + at.right_rad_s * per_right.left) /
+        const double scale =
+            std::abs(per_left.left * per_right.right) + std::abs(per_right.left * per_left.right);
+        if (std::abs(determinant) > kOneModeShare * scale) {
+            return {
+                .left_nm = (-at.left_rad_s * per_right.right + at.right_rad_s * per_right.left) /
                            determinant,
                 .right_nm = (-at.right_rad_s * per_left.left + at.left_rad_s * per_left.right) /
                             determinant};
+        }
+        // One mode: the left brake alone brings it to rest (below).
     }
     if (left.held && per_left.left != 0.0) {
         return {.left_nm = -at.left_rad_s / per_left.left};
