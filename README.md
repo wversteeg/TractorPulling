@@ -374,8 +374,9 @@ level and wins once fully upgraded. The drawbar's last 4 cm matter most
 (the weight it puts on the rear tires), so they cost the most. The first
 powershift step (€ 3,000, one gear down under load) is dearer than the
 second (€ 1,500): it is the one that saves a pull. So one level of every
-part costs € 5,500, and a new career, earning a few hundred euros an event
-at the back, takes several events to reach the 4th-to-7th row. A test
+part costs € 5,500, and a new career, earning € 370 to € 550 an event at
+the back, takes about a season and a half (some twelve events) to reach
+the 4th-to-7th row. A test
 (`RivalDifficulty`) checks every row on three of the eight fields. A player drives less
 evenly than the script, and picks the gear themselves.
 
