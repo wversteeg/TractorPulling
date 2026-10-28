@@ -213,10 +213,11 @@ for the club season), the most points win and more event wins break a tie.
 
 The player's career: the garage's upgrades, each a part of the tractor
 (engine torque, rear tires' traction, ballast, drawbar height, the
-powershift step) with levels that set its value outright, and the money
-events pay by place. A career starts on every part's first level, an older
-tractor; `equipped` builds the tractor from the reference one, and
-`validate` checks every level against the class's rules.
+powershift step, the governor's rated speed) with levels that set its
+value outright, and the money events pay by place. A career starts on
+every part's first level, an older tractor; `equipped` builds the tractor
+from the reference one, and `validate` checks every level against the
+class's rules.
 
 ![Garage classes](diagrams/svg/garage_classes.svg)
 

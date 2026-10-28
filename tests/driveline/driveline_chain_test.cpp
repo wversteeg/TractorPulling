@@ -115,7 +115,7 @@ TEST(DrivelineChain, LowGearPullsWhatHighGearCannot) {
 // clutch puts in, less the input shaft's drag; the rest heats the gearbox.
 TEST(DrivelineChain, SteadyPullDeliversEfficiencyTimesClutchPower) {
     Rig rig{25000.0};
-    rig.launch(5, 15.0);
+    rig.launch(4, 15.0);
     ASSERT_TRUE(rig.engine.running);
     ASSERT_TRUE(rig.clutch.locked);
     const Params& params = rig.driveline_params;
@@ -156,7 +156,7 @@ TEST(DrivelineChain, LaunchIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(DrivelineChain, LaunchMatchesRegressionHash) {
-    EXPECT_EQ(launch_hash(), 0x2b31615f6c9d9571ULL);
+    EXPECT_EQ(launch_hash(), 0x448f342c290a0a49ULL);
 }
 
 }  // namespace

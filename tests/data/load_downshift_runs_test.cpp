@@ -138,8 +138,8 @@ RivalPull rival_pull(int gear, double share) {
 }
 
 // As the README says: a rival in 6th watching the rev counter shifts once,
-// as the sled pulls the engine down, and pulls about as far as 5th; in 4th
-// and 5th the tires end the pull before the engine is pulled down, and the
+// as the sled pulls the engine down, and pulls about as far as 5th; in 3rd
+// and 4th the tires end the pull before the engine is pulled down, and the
 // rival never shifts.
 TEST(LoadDownshiftRuns, RivalsShiftDownLateIn6th) {
     const RivalPull held = rival_pull(6, 0.0);
@@ -150,7 +150,7 @@ TEST(LoadDownshiftRuns, RivalsShiftDownLateIn6th) {
         << "held " << held.reached_m << " m, shifted " << shifted.reached_m << " m";
     const RivalPull fifth = rival_pull(5, 0.0);
     EXPECT_NEAR(shifted.reached_m, fifth.reached_m, 1.0);
-    for (const int gear : {4, 5}) {
+    for (const int gear : {3, 4}) {
         const RivalPull watching = rival_pull(gear, 0.9);
         EXPECT_EQ(watching.load_shifts, 0) << gear;
         EXPECT_EQ(watching.reached_m, rival_pull(gear, 0.0).reached_m) << gear;

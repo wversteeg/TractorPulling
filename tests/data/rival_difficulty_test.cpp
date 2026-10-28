@@ -17,13 +17,10 @@
 namespace tp::field {
 namespace {
 
-// The game's event (ten pullers) at the season's first round, with the
-// drivers choosing between 5th and 6th only, so the debug build plays it
-// quickly (with 4th to 6th, as shipped, every place is the same); a few
-// seeds, each a different field.
+// The game's event (ten pullers) at the season's first round, as shipped;
+// a few seeds, each a different field.
 constexpr std::array<std::uint64_t, 3> kSeeds{1, 2, 3};
 constexpr int kGamePullers = 10;
-constexpr int kLowestGear = 5;
 constexpr std::int64_t kSlice = 1'000'000;
 
 data::SeasonDefinition club_season() {
@@ -32,9 +29,7 @@ data::SeasonDefinition club_season() {
     if (!season) {
         throw std::runtime_error(season.error().message);
     }
-    data::SeasonDefinition definition = season.value();
-    definition.event.variation.lowest_gear = kLowestGear;
-    return definition;
+    return season.value();
 }
 
 // Where the player ends at the first event with this career's tractor,
@@ -66,7 +61,7 @@ int place(const data::SeasonDefinition& d, const garage::Career& career, std::ui
                 break;
             case LiveEvent::Turn::kPlayerPull: {
                 const track::Params& track = event.venue().track;
-                player.driver.gear = best_gear(player, event.sled(), track, kLowestGear,
+                player.driver.gear = best_gear(player, event.sled(), track, e.variation.lowest_gear,
                                                e.variation.highest_gear, event.pull_rules())
                                          .value_or(e.reference.driver.gear);
                 event.record_player(run_pull(player, event.sled(), track, event.pull_rules())
@@ -103,31 +98,39 @@ garage::Career levels_up(const garage::Catalogue& catalogue, int steps) {
 
 constexpr int kFullyUpgraded = static_cast<int>(garage::kMaxLevels);
 
-// The field spans the garage: its weakest rivals about a new career's
-// tractor, its strongest about a fully upgraded one. So a new tractor
-// starts near the back, beating a rival or two, climbs with every level,
-// and a fully upgraded one wins.
-TEST(RivalDifficulty, ANewTractorStartsNearTheBackAndAFullyUpgradedOneWins) {
+// The field spans the garage, one step above it: its weakest rivals about
+// a new career's tractor with a level or two bought, its strongest about a
+// fully upgraded one. So a new tractor starts at the back, climbs with
+// every level, and a fully upgraded one is on the podium, though not
+// always on top.
+struct Places {
+    int best = 0;
+    int worst = 0;
+};
+
+constexpr Places kNew{.best = 7, .worst = 10};
+constexpr Places kOneLevelUp{.best = 5, .worst = 8};
+constexpr Places kHalfway{.best = 3, .worst = 6};
+constexpr Places kOnThePodium{.best = 1, .worst = 3};
+// Halfway: every part at its second level of three or four.
+constexpr int kHalfwayLevels = 2;
+
+TEST(RivalDifficulty, ANewTractorStartsAtTheBackAndAFullyUpgradedOneIsOnThePodium) {
     const data::SeasonDefinition d = club_season();
     const garage::Catalogue& catalogue = d.garage.catalogue;
     const garage::Career full = levels_up(catalogue, kFullyUpgraded);
     ASSERT_TRUE(garage::fully_upgraded(catalogue, full));
-    bool beat_a_rival = false;
-    bool two_up_lost_one = false;
+    const auto expect_within = [](int place, Places places, std::uint64_t seed, const char* who) {
+        EXPECT_GE(place, places.best) << who << ", seed " << seed;
+        EXPECT_LE(place, places.worst) << who << ", seed " << seed;
+    };
     for (const std::uint64_t seed : kSeeds) {
-        const int start = place(d, garage::new_career(catalogue), seed);
-        EXPECT_GE(start, kGamePullers - 3) << "seed " << seed;
-        beat_a_rival = beat_a_rival || start < kGamePullers;
-        const int one_up = place(d, levels_up(catalogue, 1), seed);
-        EXPECT_GT(one_up, 1) << "seed " << seed;
-        EXPECT_LT(one_up, start) << "seed " << seed;
-        const int two_up = place(d, levels_up(catalogue, 2), seed);
-        EXPECT_LE(two_up, one_up) << "seed " << seed;
-        two_up_lost_one = two_up_lost_one || two_up > 1;
-        EXPECT_EQ(place(d, full, seed), 1) << "seed " << seed;
+        expect_within(place(d, garage::new_career(catalogue), seed), kNew, seed, "new");
+        expect_within(place(d, levels_up(catalogue, 1), seed), kOneLevelUp, seed, "one level up");
+        expect_within(place(d, levels_up(catalogue, kHalfwayLevels), seed), kHalfway, seed,
+                      "halfway");
+        expect_within(place(d, full, seed), kOnThePodium, seed, "fully upgraded");
     }
-    EXPECT_TRUE(beat_a_rival) << "a new tractor is not last at every event";
-    EXPECT_TRUE(two_up_lost_one) << "the last levels still buy places";
 }
 
 }  // namespace

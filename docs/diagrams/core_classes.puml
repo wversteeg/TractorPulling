@@ -93,6 +93,8 @@ skinparam classAttributeIconSize 0
     }
     class "engine functions" as EngineFns <<free functions>> {
       +validate(const Params&) : optional<ParamError>
+      +with_torque_scale(const Params&, scale) : optional<Params>
+      +with_rated_speed(const Params&, rated_omega_rad_s) : optional<Params>
       +initial_state(const Params&) : State
       +max_net_power_w(const Params&) : double
       +full_fuel_omega_rad_s(const Params&, throttle) : double

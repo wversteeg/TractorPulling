@@ -128,14 +128,32 @@ for the big features; they are repeated at the end for completeness.
   clutch's several kJ of slip. A real step slips its own packs over a
   set time, with the torque handed from one to the other, at their own
   capacity rather than the main clutch's.
-- **What a 44 % step does.** 6th to 5th asks the engine to turn 44 %
-  faster; that energy comes from the tractor's motion, through the
-  slipping clutch and the tires, which brake (down to about -0.14 slip).
-  The tractor slows while the sled rolls on: the chain goes slack for
-  about 0.1 s and then snatches (to about 32 kN against 20 kN steady, in
-  the README's run). That is the physics of such a big step, not of the
-  model; a real powershift's smaller steps (15 to 20 %) would lurch less,
-  so a gearbox with a finer step would be worth data of its own.
+- **What a big step does.** The pulling gears 5th to 7th are about 10 %
+  apart, but 5th to 4th asks the engine to turn 58 % faster; that energy
+  comes from the tractor's motion, through the slipping clutch and the
+  tires, which brake. The tractor slows while the sled rolls on: the chain
+  goes slack for a moment and then snatches. That is the physics of such a
+  big step, not of the model; the shipped gearbox has eight gears, a real
+  pulling tractor's powershift more and finer ones, which would be worth
+  data of their own.
+- **Which gear starts the sled is a cliff.** As the clutch comes in, a
+  gear too high pulls the engine below its turbo's boost and it stalls
+  within metres; one gear lower pulls nearly as far as any. The scripted
+  driver lets the clutch in over a fixed time, and a longer slip does not
+  move the cliff. Real drivers start a gear higher with a slipping clutch
+  and more revs; a clutch or launch model with more to it (a slipping
+  clutch held at a set engine speed) would let technique move it.
+- **The governor gives speed, not metres.** With the governor at 2500 rpm
+  the tractor pulls faster in the same gear, but in the scripted pulls the
+  tires' grip, not the engine, ends the pull, so it barely changes the
+  place. Its worth to a player is the higher gear and the speed; a sled
+  whose drag grows with speed, or a scoring that counts time, would give
+  it more.
+- **The rivals' parts are drawn one by one.** Each rival draws each part
+  of its tractor on its own, so few have every part at the top: the field
+  is tuned by its ranges to sit a step above the garage, not by drawing
+  whole careers. Drawing a rival's career level and its parts around it
+  would make the field's spread easier to read.
 - **Up under load.** Only shifts down, a gear or two
   (`load_downshift_gears`, the garage's powershift), once a pull
   (`shifts_per_pull`); a powershift that also shifts up under load, or a

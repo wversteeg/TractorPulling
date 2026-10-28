@@ -72,6 +72,14 @@ enum class ParamError : std::uint8_t {
 /// curve. A scale of 1 gives `params` unchanged.
 [[nodiscard]] std::optional<Params> with_torque_scale(const Params& params, double scale) noexcept;
 
+/// The engine with its governor set to `rated_omega_rad_s`: full fuel at
+/// full throttle up to that speed, and the high idle moved with it, the
+/// droop kept (as a governor spring set higher would). The torque curve
+/// stays: it must already reach the new high idle. Nothing if the result is
+/// not a valid engine.
+[[nodiscard]] std::optional<Params> with_rated_speed(const Params& params,
+                                                     double rated_omega_rad_s) noexcept;
+
 struct State {
     double omega_rad_s = 0.0;
     /// Turbo boost, from 0 (none) to 1 (full).

@@ -1,7 +1,9 @@
 #include "tp/core/garage/garage.hpp"
 
 #include "tp/core/chassis/chassis.hpp"
+#include "tp/core/engine/engine.hpp"
 #include "tp/core/rules/class_rules.hpp"
+#include "tp/core/units/conversions.hpp"
 
 #include <gtest/gtest.h>
 
@@ -48,7 +50,12 @@ Catalogue reference_catalogue() {
                                  {.value = 1.0, .cost_eur = 3000},
                                  {.value = 2.0, .cost_eur = 1500}}},
                      .level_count = 3};
-    c.count = 5;
+    c.upgrades[5] = {.part = Part::kRatedSpeed,
+                     .levels = {{{.value = units::rpm_to_rad_s(2200.0), .cost_eur = 0},
+                                 {.value = units::rpm_to_rad_s(2350.0), .cost_eur = 1200},
+                                 {.value = units::rpm_to_rad_s(2500.0), .cost_eur = 1800}}},
+                     .level_count = 3};
+    c.count = 6;
     return c;
 }
 
@@ -79,18 +86,23 @@ TEST(Garage, ANewCareerStartsOnAnOlderTractor) {
 
 // Fully upgraded, the tractor is at the class's limits like the rivals'
 // reference one, and beyond it: wider tires (0.95 against the reference's
-// 0.93) and two gears down under load against one.
+// 0.93), two gears down under load against one, and the governor at the
+// class's engine speed.
 TEST(Garage, FullyUpgradedIsBeyondTheRivalsTractor) {
     const Catalogue catalogue = reference_catalogue();
     Career career = new_career(catalogue);
-    career.levels = {3, 3, 3, 2, 2};
+    career.levels = {3, 3, 3, 2, 2, 2};
     EXPECT_TRUE(fully_upgraded(catalogue, career));
     const std::optional<vehicle::Params> top = equipped(kTractor, catalogue, career);
     ASSERT_TRUE(top.has_value());
     const vehicle::Params& t = top.value_or(kTractor);
     EXPECT_EQ(t.chassis.mass_kg, kTractor.chassis.mass_kg);
     EXPECT_EQ(t.chassis.cg_ahead_of_rear_axle_m, kTractor.chassis.cg_ahead_of_rear_axle_m);
-    EXPECT_EQ(rules::pto_power_w(t), rules::pto_power_w(kTractor));
+    // The governor moves where the engine gives its power, not its peak
+    // (sampled over a wider speed range, so not to the last bit).
+    EXPECT_NEAR(rules::pto_power_w(t), rules::pto_power_w(kTractor),
+                1e-4 * rules::pto_power_w(kTractor));
+    EXPECT_GT(t.engine.rated_omega_rad_s, kTractor.engine.rated_omega_rad_s);
     EXPECT_EQ(t.rear_tire.traction.limit, 0.95);
     EXPECT_EQ(t.driveline.load_downshift_gears, 2);
     EXPECT_EQ(t.driveline.load_shifts_per_pull, 1);
@@ -107,7 +119,7 @@ TEST(Garage, BuysTheNextLevelWithTheMoney) {
     EXPECT_EQ(buy(career, catalogue, 0), BuyError::kNotEnoughMoney);
     EXPECT_EQ(career.levels[0], 1);
     EXPECT_EQ(career.money_eur, 100);
-    EXPECT_EQ(buy(career, catalogue, 5), BuyError::kNoSuchUpgrade);
+    EXPECT_EQ(buy(career, catalogue, 6), BuyError::kNoSuchUpgrade);
     career.money_eur = 10000;
     EXPECT_EQ(buy(career, catalogue, 3), std::nullopt);
     EXPECT_EQ(buy(career, catalogue, 3), std::nullopt);
@@ -163,6 +175,11 @@ TEST(Garage, RefusesNonsense) {
               ParamError::kOutsideTheClass);
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[3].levels[2].value = 0.55; }),
               ParamError::kOutsideTheClass);
+    EXPECT_EQ(error_with([](Catalogue& c) {
+                  c.upgrades[5].levels[2].value = units::rpm_to_rad_s(2550.0);
+              }),
+              ParamError::kOutsideTheClass)
+        << "2750 rpm unloaded";
     // Not a tractor at all.
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[4].levels[2].value = 1.5; }),
               ParamError::kValueInvalid);
@@ -172,6 +189,28 @@ TEST(Garage, RefusesNonsense) {
               ParamError::kValueInvalid);
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[1].levels[0].value = -0.5; }),
               ParamError::kValueInvalid);
+    EXPECT_EQ(error_with(
+                  [](Catalogue& c) { c.upgrades[5].levels[1].value = units::rpm_to_rad_s(700.0); }),
+              ParamError::kValueInvalid)
+        << "below idle";
+}
+
+// The governor sets the rated speed, the unloaded speed with it, up to the
+// class's 2700 rpm; the rest of the engine stays.
+TEST(Garage, TheGovernorRaisesTheEngineSpeeds) {
+    const Catalogue catalogue = reference_catalogue();
+    Career career = new_career(catalogue);
+    const std::optional<vehicle::Params> stock = equipped(kTractor, catalogue, career);
+    career.levels[5] = 2;
+    const std::optional<vehicle::Params> raised = equipped(kTractor, catalogue, career);
+    ASSERT_TRUE(stock.has_value() && raised.has_value());
+    const engine::Params& before = stock.value_or(kTractor).engine;
+    const engine::Params& after = raised.value_or(kTractor).engine;
+    EXPECT_EQ(before.rated_omega_rad_s, kTractor.engine.rated_omega_rad_s);
+    EXPECT_EQ(after.rated_omega_rad_s, units::rpm_to_rad_s(2500.0));
+    EXPECT_NEAR(after.high_idle_omega_rad_s, units::rpm_to_rad_s(2700.0), 1e-9);
+    EXPECT_EQ(after.idle_omega_rad_s, before.idle_omega_rad_s);
+    EXPECT_TRUE(rules::check(kClass, raised.value_or(kTractor)).ok());
 }
 
 TEST(Garage, PaysByPlace) {

@@ -65,8 +65,8 @@ TEST(SeasonLoader, LoadsTheShippedSeason) {
     EXPECT_EQ(season.rounds.front().name, "Spring opener, watered start");
     ASSERT_EQ(season.prize_money_eur.size(), 10U);
     EXPECT_EQ(season.prize_money_eur.front(), 1500);
-    EXPECT_EQ(season.garage.catalogue.count, 5U);
-    EXPECT_EQ(season.garage.texts.size(), 5U);
+    EXPECT_EQ(season.garage.catalogue.count, 6U);
+    EXPECT_EQ(season.garage.texts.size(), 6U);
     EXPECT_EQ(season.garage.texts.front().name, "Injection pump");
     EXPECT_EQ(season.garage.catalogue.start_money_eur, 1000);
 }
@@ -143,7 +143,7 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
     EXPECT_LT(awarded, 2 * table_total + 20);
     EXPECT_EQ(standings[0].place, 1);
     EXPECT_GE(standings[0].points, standings[1].points);
-    EXPECT_EQ(hash.value(), 0x77735cc039f349c5ULL);
+    EXPECT_EQ(hash.value(), 0xe6441fcb111f39f4ULL);
 }
 
 }  // namespace

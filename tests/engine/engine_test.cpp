@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 #include <vector>
 
 #include "reference_engine.hpp"
@@ -339,6 +340,41 @@ TEST(Engine, MaxNetPowerScalesWithTorque) {
     ASSERT_TRUE(curve.has_value());
     params.full_load_torque_nm = curve.value_or(params.full_load_torque_nm);
     EXPECT_DOUBLE_EQ(max_net_power_w(params), 2.0 * base_w);
+}
+
+// A governor set higher (the garage's): full fuel up to a higher speed and
+// the high idle moved with it, the droop and the torque curve kept. Under
+// a load the engine holds a higher speed, giving the same torque there.
+TEST(Engine, AGovernorSetHigherHoldsAHigherSpeed) {
+    const Params stock = reference_params();
+    const std::optional<Params> raised = with_rated_speed(stock, rpm_to_rad_s(2500.0));
+    ASSERT_TRUE(raised.has_value());
+    const Params& p = raised.value_or(stock);
+    EXPECT_EQ(p.rated_omega_rad_s, rpm_to_rad_s(2500.0));
+    EXPECT_DOUBLE_EQ(p.high_idle_omega_rad_s - p.rated_omega_rad_s,
+                     stock.high_idle_omega_rad_s - stock.rated_omega_rad_s);
+    EXPECT_EQ(p.full_load_torque_nm.points().size(), stock.full_load_torque_nm.points().size());
+    EXPECT_EQ(with_rated_speed(stock, stock.rated_omega_rad_s).value_or(p).high_idle_omega_rad_s,
+              stock.high_idle_omega_rad_s);
+
+    constexpr double kLoad_nm = 200.0;
+    State held = initial_state(stock);
+    State faster = initial_state(p);
+    run(held, stock, {.throttle = 1.0}, 3.0);
+    run(faster, p, {.throttle = 1.0}, 3.0);
+    run(held, stock, {.throttle = 1.0, .load_torque_nm = kLoad_nm}, 10.0);
+    run(faster, p, {.throttle = 1.0, .load_torque_nm = kLoad_nm}, 10.0);
+    EXPECT_GT(faster.omega_rad_s, held.omega_rad_s + rpm_to_rad_s(250.0));
+    // About the same power at the higher speed: within 10 % of the peak.
+    EXPECT_GT(max_net_power_w(p), 0.9 * max_net_power_w(stock));
+}
+
+// Beyond what the torque curve covers, or not above idle, it is no engine.
+TEST(Engine, AGovernorNeedsTheTorqueCurve) {
+    const Params stock = reference_params();
+    EXPECT_FALSE(with_rated_speed(stock, stock.full_load_torque_nm.max_x()).has_value());
+    EXPECT_FALSE(with_rated_speed(stock, stock.idle_omega_rad_s).has_value());
+    EXPECT_FALSE(with_rated_speed(stock, std::numeric_limits<double>::quiet_NaN()).has_value());
 }
 
 }  // namespace

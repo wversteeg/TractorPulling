@@ -1,6 +1,8 @@
 #include "tp/core/field/field.hpp"
 
 #include "tp/core/field/play.hpp"
+#include "tp/core/rules/class_rules.hpp"
+#include "tp/core/units/conversions.hpp"
 
 #include <gtest/gtest.h>
 
@@ -35,7 +37,8 @@ constexpr Variation kVariation{.torque_scale = {.low = 0.95, .high = 1.03},
                                .downshift_share = {.low = 0.85, .high = 0.95},
                                .hitch_height_m = {},
                                .fewest_load_downshift_gears = -1,
-                               .most_load_downshift_gears = -1};
+                               .most_load_downshift_gears = -1,
+                               .rated_omega_rad_s = {}};
 
 Field field_of(int count, std::uint64_t seed, const Variation& variation = kVariation) {
     const auto field = generate(reference(), variation, ntto_standard_3500(), count, seed);
@@ -59,6 +62,20 @@ TEST(FieldParams, RejectsNonsense) {
     v.hitch_height_m = {.low = 0.0, .high = 0.5};
     EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder)
         << "a drawbar on the ground";
+    v = kVariation;
+    v.rated_omega_rad_s = {.low = 0.0, .high = 250.0};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder)
+        << "a governor at standstill";
+    v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(500.0), .high = units::rpm_to_rad_s(600.0)};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kGovernorOutOfRange)
+        << "below idle";
+    rules::ClassRules faster = ntto_standard_3500();
+    faster.max_engine_speed_rad_s = units::rpm_to_rad_s(3200.0);
+    v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(2200.0), .high = units::rpm_to_rad_s(3000.0)};
+    EXPECT_EQ(validate(reference(), v, faster, 15), ParamError::kGovernorOutOfRange)
+        << "a high idle past the torque curve";
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), std::nullopt)
+        << "held to the class's 2700 rpm, the curve covers it";
     v = kVariation;
     v.fewest_load_downshift_gears = 1;
     v.most_load_downshift_gears = 0;
@@ -158,6 +175,37 @@ TEST(Field, DrawbarAndPowershiftVary) {
     }
     EXPECT_TRUE(at_the_limit) << "a draw past the class's drawbar limit is held to it";
     EXPECT_EQ(counts, (std::set<int>{0, 1}));
+}
+
+// Given, each puller draws a governor, held to the class's unloaded engine
+// speed; left out, every one has the reference's.
+TEST(Field, GovernorsVary) {
+    const vehicle::Params& base = reference().tractor;
+    const Field kept = field_of(10, 5);
+    for (int i = 0; i < kept.count; ++i) {
+        EXPECT_EQ(kept.pullers[static_cast<std::size_t>(i)].tractor.engine.rated_omega_rad_s,
+                  base.engine.rated_omega_rad_s);
+    }
+    Variation v = kVariation;
+    v.rated_omega_rad_s = {.low = base.engine.rated_omega_rad_s,
+                           .high = units::rpm_to_rad_s(2700.0)};
+    const Field field = field_of(event::kMaxPullers, 5, v);
+    bool raised = false;
+    bool at_the_limit = false;
+    for (int i = 0; i < field.count; ++i) {
+        const engine::Params& e = field.pullers[static_cast<std::size_t>(i)].tractor.engine;
+        EXPECT_GE(e.rated_omega_rad_s, base.engine.rated_omega_rad_s) << i;
+        EXPECT_LE(e.high_idle_omega_rad_s, ntto_standard_3500().max_engine_speed_rad_s + 1e-9) << i;
+        raised = raised || e.rated_omega_rad_s > base.engine.rated_omega_rad_s;
+        at_the_limit = at_the_limit || std::abs(e.high_idle_omega_rad_s -
+                                                ntto_standard_3500().max_engine_speed_rad_s) < 1e-9;
+        EXPECT_TRUE(
+            rules::check(ntto_standard_3500(), field.pullers[static_cast<std::size_t>(i)].tractor)
+                .ok())
+            << i;
+    }
+    EXPECT_TRUE(raised);
+    EXPECT_TRUE(at_the_limit) << "a draw past the class's engine speed is held to it";
 }
 
 // A heavier tractor keeps its balance: the pitch inertia scales with the
