@@ -554,8 +554,12 @@ Both come from the tractor's clutch (`clutch::engagement_range`).
 
 With tilt steering (in the settings) the steering slider goes: you steer by
 rolling the phone like a steering wheel, its left side down to steer left;
-25° either way steers fully. However you hold the phone when you tap Pull
-is straight ahead, so it works sitting or lying down. Lying flat, the
+35° either way is the steering control's end. It steers gently at first,
+so small corrections stay small, and the first 3.4° or so steer nothing
+(the steering's 3 % dead zone). In the easy layout the wheels reach full
+lock at about 25°, and rolling on to 35° adds the steering brake. However
+you hold the phone when you tap Pull is straight ahead, so it works
+sitting or lying down. Lying flat, the
 steering holds. A device without a motion sensor keeps the slider. Godot
 reads the phone's sensors only when the project asks for them
 (`input_devices/sensors/enable_gravity` and `enable_accelerometer` in

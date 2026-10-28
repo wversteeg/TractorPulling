@@ -4,8 +4,12 @@
 # straight ahead, so it works sitting, standing or lying down (lying flat
 # then, the first angle it is lifted to is straight ahead); FULL_TILT_DEG
 # either way is the steering control's end (-1 full right, 1 full left,
-# the run's convention). The core's dead zone and steering rate then shape
-# it, as they do the slider (data/controls/easy.toml, pro.toml).
+# the run's convention). The control grows slowly at first (shape()), so
+# small corrections near straight ahead stay small and a full lock still
+# takes FULL_TILT_DEG. The core's dead zone and steering rate then shape
+# it, as they do the slider (data/controls/easy.toml, pro.toml): through
+# the curve its 3 % dead zone is about 3.4° of roll, enough for a hand
+# that never holds a phone quite still.
 #
 # The angle is read from gravity in the screen's plane, so it does not
 # matter which in-plane axes the platform reports it in. `gravity` gives
@@ -15,7 +19,10 @@ class_name TiltSteering
 extends RefCounted
 
 # The roll either way that steers fully [degrees].
-const FULL_TILT_DEG := 25.0
+const FULL_TILT_DEG := 35.0
+# The control grows as the tilt's share to this power: above 1, gentle
+# near straight ahead and quicker towards full lock.
+const RESPONSE_POWER := 1.5
 # Gravity in the screen's plane below this share of its whole: the phone
 # lies (nearly) flat, the roll is not defined, so the last reading holds.
 const MIN_IN_PLANE_SHARE := 0.3
@@ -51,8 +58,15 @@ func steering() -> float:
 			_centre_rad = float(roll)
 			_centred = true
 		var tilt_rad := wrapf(float(roll) - _centre_rad, -PI, PI)
-		_steering = clampf(tilt_rad / deg_to_rad(FULL_TILT_DEG), -1.0, 1.0)
+		_steering = shape(rad_to_deg(tilt_rad))
 	return _steering
+
+
+# The steering control for a roll of `tilt_deg` from straight ahead, left
+# positive: -1 to 1.
+static func shape(tilt_deg: float) -> float:
+	var share := clampf(absf(tilt_deg) / FULL_TILT_DEG, 0.0, 1.0)
+	return signf(tilt_deg) * pow(share, RESPONSE_POWER)
 
 
 # The phone's roll about the screen's normal [rad], or null lying flat.

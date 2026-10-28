@@ -196,6 +196,7 @@ package "GDScript (app/godot/scripts)" {
     +available() : bool
     +centre()
     +steering() : float
+    +{static} shape(tilt_deg) : float
   }
   class GearButton
   class SetupScreen {
