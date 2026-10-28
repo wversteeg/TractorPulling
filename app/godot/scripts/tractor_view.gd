@@ -521,7 +521,6 @@ func weight_counts() -> Vector2i:
 	return Vector2i(maxi(plates - 1, 0), discs)
 
 
-# Where the chain pulls, in the world.
 # A camera at the driver's eyes, looking ahead: it turns and pitches with
 # the tractor (CameraRig.cab). Made once.
 func cab_camera() -> Camera3D:
@@ -534,6 +533,7 @@ func cab_camera() -> Camera3D:
 	return _cab_camera
 
 
+# Where the chain pulls, in the world.
 func hitch_position() -> Vector3:
 	return _hitch.global_position
 

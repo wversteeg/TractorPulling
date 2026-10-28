@@ -63,6 +63,7 @@ package "GDScript (app/godot/scripts)" {
     +build(dimensions)
     +show_snapshot(snapshot, delta)
     +hook_position() : Vector3
+    +rear_position() : Vector3
   }
   class VenueView {
     +RETURN_LANE_M, PARKING_RIGHT_OF_LANE_M
@@ -263,9 +264,8 @@ package "GDScript (app/godot/scripts)" {
     +next()
     +rumble : float
     +cab : Camera3D
-    +sled_rear_behind_m : float
     +current_camera() : Camera3D
-    +follow(target, delta, smooth, heading_rad)
+    +follow(target, delta, smooth, heading_rad, sled_rear)
   }
   class TrackSpace <<static>> {
     +{static} point(x_m, y_m, z_m) : Vector3

@@ -371,11 +371,6 @@ func _build(error: String) -> bool:
 		sled_view.build(dimensions)
 	hud.build(dimensions)
 	cameras.cab = tractor_view.cab_camera()
-	# The close camera stands behind the sled: from the rear axle to the
-	# hitch, the chain, the hook to the sled's wheels, and its rear.
-	cameras.sled_rear_behind_m = float(dimensions["hitch_behind_rear_axle_m"]) \
-			+ float(dimensions["chain_length_m"]) + float(dimensions["hook_ahead_of_wheels_m"]) \
-			+ SledView.REAR_BEHIND_WHEELS_M
 	_build_turn(dimensions)
 	controls.gear_count = dimensions["gear_count"]
 	controls.has_reverse = dimensions.get("has_reverse", false)
@@ -388,7 +383,7 @@ func _build(error: String) -> bool:
 	_show(0.0)
 	_framing = Vector3.ZERO
 	cameras.follow(tractor_view.global_position, 0.0, false,
-			float(_snapshot.get("tractor_heading_rad", 0.0)))
+			float(_snapshot.get("tractor_heading_rad", 0.0)), _close_behind())
 	return true
 
 
@@ -472,7 +467,7 @@ func _process(delta: float) -> void:
 			_show_event()
 	_show(delta)
 	cameras.follow(_camera_target(delta), delta, true,
-			float(_snapshot.get("tractor_heading_rad", 0.0)))
+			float(_snapshot.get("tractor_heading_rad", 0.0)), _close_behind())
 
 
 # What the cameras follow: the tractor, or backing up to the sled, the
@@ -487,6 +482,12 @@ func _camera_target(delta: float) -> Vector3:
 		wanted = middle - tractor_view.global_position
 	_framing = _framing.lerp(wanted, 1.0 - exp(-FRAMING_RATE_PER_S * delta))
 	return tractor_view.global_position + _framing
+
+
+# What the close camera stands behind: the sled's rear while it is on the
+# chain, else nothing (CameraRig.follow).
+func _close_behind() -> Vector3:
+	return sled_view.rear_position() if _snapshot.get("chain_hooked", true) else Vector3.INF
 
 
 # The rivals' work, a slice at a time until the frame's budget is spent.

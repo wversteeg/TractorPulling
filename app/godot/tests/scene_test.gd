@@ -171,14 +171,26 @@ func _check() -> void:
 # view and back.
 func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) -> void:
 	var close: Camera3D = cameras.get("_cameras")[CameraRig.View.CLOSE]
-	var sled_rear := sled.global_position + TrackSpace.point(-SledView.REAR_BEHIND_WHEELS_M, 0.0, 0.0)
+	var sled_rear := sled.rear_position()
 	_expect(close.is_position_in_frustum(sled_rear) and close.is_position_in_frustum(sled.hook_position())
 			and close.is_position_in_frustum(tractor.global_position),
 			"the close camera sees the whole sled and the tractor")
 	# Down the track is -z (TrackSpace): behind is +z.
-	var behind_m := (close.global_position - tractor.global_position).z
-	_expect(behind_m > cameras.sled_rear_behind_m, "the close camera behind the sled: %.1f m"
-			% behind_m)
+	var behind_m := (close.global_position - sled_rear).z
+	_expect(behind_m > 0.0, "the close camera behind the sled: %.1f m" % behind_m)
+	# On the dog-tail, the tractor turned and the sled's rear off to one
+	# side: the camera stands behind where the sled really is.
+	var target := tractor.global_position
+	var heading_rad := 0.3
+	var trailing := sled_rear + TrackSpace.point(0.0, -1.5, 0.0)
+	cameras.follow(target, 0.0, false, heading_rad, trailing)
+	_expect(close.is_position_in_frustum(trailing) and close.is_position_in_frustum(target),
+			"on the dog-tail, the close camera sees the sled's rear and the tractor")
+	# Off the chain, it stands behind the tractor.
+	cameras.follow(target, 0.0, false, 0.0)
+	_expect(close.is_position_in_frustum(target)
+			and (close.global_position - target).z > CameraRig.CLOSE_UNHOOKED_BACK_M - 1e-3,
+			"off the chain, the close camera behind the tractor")
 	_expect(cameras.cab != null and tractor.is_ancestor_of(cameras.cab),
 			"the cab camera rides on the tractor")
 	var seen: Array[Camera3D] = []

@@ -236,6 +236,12 @@ func hook_position() -> Vector3:
 	return _hook.global_position
 
 
+# The middle of the sled's rear on the ground, in the world: where it sits
+# and points, the dog-tail included.
+func rear_position() -> Vector3:
+	return global_transform * TrackSpace.point(-REAR_BEHIND_WHEELS_M, 0.0, 0.0)
+
+
 func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 	position = TrackSpace.point(s["sled_x_m"], s["sled_y_m"], 0.0)
 	rotation.y = s["sled_heading_rad"]
