@@ -199,7 +199,9 @@ constexpr int kMaxHoldSteps = 8;
 // Two held sides whose slopes are this close to proportional (the
 // determinant against the size of its terms) move as one: an open
 // differential with its axle held at rest leaves only the sides' difference
-// free, and either brake alone holds that.
+// free. Both brakes act on it, so both share the change, each in
+// proportion to its capacity: neither has to cancel the other alone, and
+// the hold is the same mirrored.
 constexpr double kOneModeShare = 1e-9;
 
 struct Brake {
@@ -303,6 +305,43 @@ struct Change {
     double right_nm = 0.0;
 };
 
+// Both held sides move as one: a change that brings the left side to rest
+// brings the right with it. Each brake takes a share of it in proportion
+// to its capacity, the way that slows the left side.
+Change one_mode_step(const Brake& left, const Brake& right, const RearSolution& at,
+                     const Slopes& per_left, const Slopes& per_right) noexcept {
+    const double per_share_rad_s =
+        std::abs(per_left.left) * left.capacity_nm + std::abs(per_right.left) * right.capacity_nm;
+    if (per_share_rad_s == 0.0) {
+        return {};
+    }
+    const double share = -at.left_rad_s / per_share_rad_s;
+    return {.left_nm = share * std::copysign(left.capacity_nm, per_left.left),
+            .right_nm = share * std::copysign(right.capacity_nm, per_right.left)};
+}
+
+// A step for both held sides that one brake cannot give: that brake goes
+// to its capacity, and the other side alone is brought to rest with it.
+Change within_capacity(const Brake& left, const Brake& right, const RearSolution& at,
+                       const Slopes& per_left, const Slopes& per_right,
+                       const Change& change) noexcept {
+    const double left_nm = left.torque_nm + change.left_nm;
+    const double right_nm = right.torque_nm + change.right_nm;
+    if (std::abs(left_nm) > left.capacity_nm && per_right.right != 0.0) {
+        const double left_change_nm =
+            std::clamp(left_nm, -left.capacity_nm, left.capacity_nm) - left.torque_nm;
+        return {.left_nm = left_change_nm,
+                .right_nm = (-at.right_rad_s - per_left.right * left_change_nm) / per_right.right};
+    }
+    if (std::abs(right_nm) > right.capacity_nm && per_left.left != 0.0) {
+        const double right_change_nm =
+            std::clamp(right_nm, -right.capacity_nm, right.capacity_nm) - right.torque_nm;
+        return {.left_nm = (-at.left_rad_s - per_right.left * right_change_nm) / per_left.left,
+                .right_nm = right_change_nm};
+    }
+    return change;
+}
+
 Change hold_step(const Brake& left, const Brake& right, const RearSolution& at,
                  const Slopes& per_left, const Slopes& per_right) noexcept {
     if (left.held && right.held) {
@@ -311,13 +350,15 @@ Change hold_step(const Brake& left, const Brake& right, const RearSolution& at,
         const double scale =
             std::abs(per_left.left * per_right.right) + std::abs(per_right.left * per_left.right);
         if (std::abs(determinant) > kOneModeShare * scale) {
-            return {
-                .left_nm = (-at.left_rad_s * per_right.right + at.right_rad_s * per_right.left) /
-                           determinant,
-                .right_nm = (-at.right_rad_s * per_left.left + at.left_rad_s * per_left.right) /
-                            determinant};
+            return within_capacity(
+                left, right, at, per_left, per_right,
+                {.left_nm = (-at.left_rad_s * per_right.right + at.right_rad_s * per_right.left) /
+                            determinant,
+                 .right_nm = (-at.right_rad_s * per_left.left + at.left_rad_s * per_left.right) /
+                             determinant});
         }
-        // One mode: the left brake alone brings it to rest (below).
+        return within_capacity(left, right, at, per_left, per_right,
+                               one_mode_step(left, right, at, per_left, per_right));
     }
     if (left.held && per_left.left != 0.0) {
         return {.left_nm = -at.left_rad_s / per_left.left};
