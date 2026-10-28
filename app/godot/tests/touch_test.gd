@@ -401,19 +401,26 @@ func _play_tilt(controls: DriveControls, run: TractorPullRun) -> void:
 		_tap(controls.gear_up)
 	_slide(THROTTLE_FINGER, controls.throttle_slider, true)
 	await _frames(PULL_FRAMES)
-	# Rolled 10° more to the left: 10° of the 25° that steer fully.
+	# A tremble of a degree steers nothing.
+	_gravity = _tilted(21.0)
+	_expect(controls.steering() == 0.0, "1° steers nothing: %s" % controls.steering())
+	# Rolled 10° more to the left: gently, well under 10° of the 35° that
+	# steer fully.
 	_gravity = _tilted(30.0)
-	_expect(absf(controls.steering() - 10.0 / TiltSteering.FULL_TILT_DEG) < 1e-6,
+	_expect(controls.steering() > 0.0 and controls.steering() < 10.0 / TiltSteering.FULL_TILT_DEG,
+			"10° more steers left, gently: %s" % controls.steering())
+	_expect(absf(controls.steering() - TiltSteering.shape(10.0)) < 1e-6,
 			"10° more steers left: %s" % controls.steering())
 	await _frames(STEER_FRAMES)
 	_expect(float(run.get_snapshot()["steering_rad"]) > 0.0, "the front wheels turn left: %s"
 			% run.get_snapshot()["steering_rad"])
 	# Lying flat the roll means nothing: the last steering holds.
 	_gravity = Vector3(0.0, 0.0, G_M_S2)
-	_expect(absf(controls.steering() - 10.0 / TiltSteering.FULL_TILT_DEG) < 1e-6,
+	_expect(absf(controls.steering() - TiltSteering.shape(10.0)) < 1e-6,
 			"flat: the steering holds")
 	# Past the full tilt to the right: full right.
 	_gravity = _tilted(-20.0)
+	_expect(TiltSteering.shape(-TiltSteering.FULL_TILT_DEG) == -1.0, "full tilt: full lock")
 	_expect(controls.steering() == -1.0, "rolled right past full: %s" % controls.steering())
 
 	# Lying flat at Pull, the first angle it is lifted to is straight ahead.
@@ -425,7 +432,7 @@ func _play_tilt(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(absf(controls.steering()) < 1e-6, "lifted to 20°: still straight ahead: %s"
 			% controls.steering())
 	_gravity = _tilted(30.0)
-	_expect(absf(controls.steering() - 10.0 / TiltSteering.FULL_TILT_DEG) < 1e-6,
+	_expect(absf(controls.steering() - TiltSteering.shape(10.0)) < 1e-6,
 			"then 10° more steers left: %s" % controls.steering())
 
 	# Back to the slider.
