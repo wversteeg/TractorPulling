@@ -22,7 +22,10 @@ const FONT_SIZE := 36
 		selected = value
 		queue_redraw()
 # Shows something, not to be tapped, drawn as a button (the gear in).
-@export var readout := false
+@export var readout := false:
+	set(value):
+		readout = value
+		release()
 # Shown, but not to be tapped (an upgrade the player cannot afford).
 @export var disabled := false:
 	set(value):

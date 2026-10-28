@@ -15,8 +15,11 @@
 # the top corner. All of them are multi-touch, so
 # both thumbs drive at once.
 #
-# "-" steps down to neutral and, where the gearbox has it, reverse (R);
-# "+" steps up. Between them the gear readout shows the gear in (N, R or
+# "-" steps down to neutral and, where the gearbox has it, reverse (R),
+# standing; under way it stops at the lowest gear the gearbox may go to
+# (set_gear), so a thumb cannot knock it out of gear mid-pull: once the
+# pull is over the gearbox's floor is gone and "-" reaches N again (the
+# keyboard and gamepad still select N at any time). "+" steps up. Between them the gear readout shows the gear in (N, R or
 # its number) and, while a change waits for the clutch, where it goes:
 # "5 › 7" on blue.
 #
@@ -197,7 +200,10 @@ func set_gear(wanted: int) -> void:
 # to it, on blue.
 func show_gear(gear_in: int) -> void:
 	var waiting := gear != gear_in
-	gear_readout.text = Hud.gear_name(gear_in) + (" › " + Hud.gear_name(gear) if waiting else "")
+	var text := Hud.gear_name(gear_in) + (" › " + Hud.gear_name(gear) if waiting else "")
+	if text == gear_readout.text and waiting == gear_readout.selected:
+		return
+	gear_readout.text = text
 	gear_readout.selected = waiting
 	gear_readout.queue_redraw()
 
