@@ -208,6 +208,8 @@ func _ready() -> void:
 	start_screen.event_requested.connect(func() -> void: _set_screen(Screen.EVENT))
 	start_screen.continue_requested.connect(show_start)
 	start_screen.new_season_requested.connect(_new_season)
+	start_screen.new_career_requested.connect(_new_season.bind(true))
+	settings_screen.new_career_requested.connect(_new_season.bind(true))
 	board.first_tapped.connect(_on_board_first)
 	board.second_tapped.connect(_on_board_second)
 	result_screen.again_requested.connect(_start_practice)
@@ -246,9 +248,12 @@ func _controls_path() -> String:
 	return pro_controls_path if pro else easy_controls_path
 
 
-func _new_season() -> void:
+# A new season; with `new_career` also a new career (the garage's start
+# money, nothing bought), else the career carries over.
+func _new_season(new_career: bool = false) -> void:
 	var seed := season_seed if season_seed >= 0 else randi()
-	var error := event.start_season(season_path, seed)
+	var error := event.start_career(season_path, seed) if new_career \
+			else event.start_season(season_path, seed)
 	_event_ready = false
 	if not error.is_empty():
 		push_error("cannot start the season: " + error)

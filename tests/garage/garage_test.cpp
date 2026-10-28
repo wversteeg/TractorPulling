@@ -45,8 +45,8 @@ Catalogue reference_catalogue() {
                      .level_count = 3};
     c.upgrades[4] = {.part = Part::kLoadDownshift,
                      .levels = {{{.value = 0.0, .cost_eur = 0},
-                                 {.value = 1.0, .cost_eur = 1800},
-                                 {.value = 2.0, .cost_eur = 2500}}},
+                                 {.value = 1.0, .cost_eur = 3000},
+                                 {.value = 2.0, .cost_eur = 1500}}},
                      .level_count = 3};
     c.count = 5;
     return c;

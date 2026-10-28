@@ -28,7 +28,7 @@ package "GDScript (app/godot/scripts)" {
     +driver : Callable, a scripted driver for tests
     +screen : Screen {START, SETTINGS, GARAGE, EVENT,\n  SETUP, PULLING, RESULT, EVENT_END, SEASON}
     +show_start(error)
-    -_new_season()
+    -_new_season(new_career)
     -_resume_season() : bool
     -_save_season()
     -_change_settings(pro, tilt)
@@ -160,22 +160,22 @@ package "GDScript (app/godot/scripts)" {
   }
   class StartScreen {
     +practice_button, garage_button, event_button : TouchButton
-    +continue_button, new_season_button : TouchButton
+    +continue_button, new_season_button, new_career_button : TouchButton
     +settings_button : GearButton
     +show_event(event, error)
     +show_choice(season)
     ..signals..
     practice_requested, event_requested, garage_requested,
     settings_requested, continue_requested,
-    new_season_requested
+    new_season_requested, new_career_requested
   }
   class SettingsScreen {
     +easy_button, pro_button : TouchButton
     +slider_button, tilt_button : TouchButton
-    +done_button : TouchButton
+    +new_career_button, done_button : TouchButton
     +show_settings(pro, tilt, tilt_available)
     ..signals..
-    changed(pro, tilt), done
+    changed(pro, tilt), done, new_career_requested
   }
   class GarageScreen {
     +buy_buttons : Array[TouchButton]

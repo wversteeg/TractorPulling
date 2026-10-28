@@ -74,7 +74,14 @@ func show_garage(garage: Dictionary, message: String = "") -> void:
 		button.disabled = int(line["next_cost_eur"]) > money
 		var index := i
 		button.tapped.connect(func() -> void: buy_requested.emit(index))
-		_table.add_child(button)
+		# In a slot of its own: a grid leaves hidden children out, so a
+		# hidden button (a part at its top level) would shift every cell
+		# after it one column along.
+		var slot := Control.new()
+		slot.custom_minimum_size = BUY_SIZE
+		button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		slot.add_child(button)
+		_table.add_child(slot)
 		buy_buttons.append(button)
 	if not message.is_empty():
 		_status.text = message

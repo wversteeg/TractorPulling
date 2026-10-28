@@ -10,10 +10,13 @@ participant "TractorPullRun" as Run
 Pull -> Pull : GameSettings.read(): the layout, the steering
 alt a season saved after an event (user://season.toml)
   Pull -> Event : resume_season(season, save)\n(drawn again for its seed, its events scored,\nthe career: money and upgrades)
-  Pull -> Screens : start screen: continue, or a new season?
+  Pull -> Screens : start screen: continue, a new season or a new career?
   alt New season
     Player -> Screens : New season
     Pull -> Event : start_season(season, new seed)\n(the career carries over)
+  else New career
+    Player -> Screens : New career
+    Pull -> Event : start_career(season, new seed)\n(the garage's start money, nothing bought)
   else Continue
     Player -> Screens : Continue
   end

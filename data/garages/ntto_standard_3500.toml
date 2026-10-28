@@ -21,7 +21,9 @@
 #   class requires catches it.
 # - load_downshift_gears: a powershift step that shifts down under load,
 #   the clutch in, once a pull (from the same make's range: the engine,
-#   clutch housing, gearbox and rear axle must be one make).
+#   clutch housing, gearbox and rear axle must be one make). The first
+#   step costs the most: one gear down under load, without losing the
+#   pull, is what saves most pulls; a second gear down helps less.
 #
 # Money in euros; each level's cost is from the level below. An event pays
 # by place (seasons/club_season.toml).
@@ -74,6 +76,6 @@ part = "load_downshift_gears"
 name = "Powershift"
 levels = [
     { value = 0.0, cost_eur = 0, label = "None: every shift with the clutch" },
-    { value = 1.0, cost_eur = 1800, label = "One gear down under load" },
-    { value = 2.0, cost_eur = 2500, label = "Two gears down under load" },
+    { value = 1.0, cost_eur = 3000, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 1500, label = "Two gears down under load" },
 ]

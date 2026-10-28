@@ -46,6 +46,7 @@ package "tp::godot_binding" {
     -tuning_ : vehicle::Tuning
     -career_ : optional<garage::Career>
     +start_season(season_path, seed) : String
+    +start_career(season_path, seed) : String
     +get_save() : String
     +resume_season(season_path, save) : String
     +get_season() : Dictionary
