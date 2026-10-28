@@ -66,6 +66,16 @@ TEST(FieldParams, RejectsNonsense) {
     v.rated_omega_rad_s = {.low = 0.0, .high = 250.0};
     EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder)
         << "a governor at standstill";
+    v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(500.0), .high = units::rpm_to_rad_s(600.0)};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kGovernorOutOfRange)
+        << "below idle";
+    rules::ClassRules faster = ntto_standard_3500();
+    faster.max_engine_speed_rad_s = units::rpm_to_rad_s(3200.0);
+    v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(2200.0), .high = units::rpm_to_rad_s(3000.0)};
+    EXPECT_EQ(validate(reference(), v, faster, 15), ParamError::kGovernorOutOfRange)
+        << "a high idle past the torque curve";
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), std::nullopt)
+        << "held to the class's 2700 rpm, the curve covers it";
     v = kVariation;
     v.fewest_load_downshift_gears = 1;
     v.most_load_downshift_gears = 0;

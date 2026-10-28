@@ -350,7 +350,7 @@ class's engine speed. Prizes are paid as an
 event is scored, once; upgrades are bought between events or before your
 first pull of one (`field::LiveSeason::player_may_change_tractor`). The
 money and the levels carry from season to season. The whole garage costs
-€ 20,900; a season of ten events pays € 3,200 at the back of the field and
+€ 20,500; a season of ten events pays € 3,200 at the back of the field and
 € 15,000 to a winner of every event.
 
 The pump decides which gear the tractor can get the sled moving in. The
@@ -384,8 +384,8 @@ best gear:
 |---|---|---|
 | new | 7th to 10th | 7th to 10th |
 | every part one level up (€ 6,700) | 6th to 8th | 5th to 8th |
-| halfway: two levels up (€ 14,200) | 3rd to 6th | 3rd to 6th |
-| fully upgraded (€ 20,900) | 1st | on the podium |
+| halfway: two levels up (€ 13,800) | 3rd to 6th | 3rd to 6th |
+| fully upgraded (€ 20,500) | 1st | on the podium |
 
 So a career starts at the back, climbs with every level and is on the
 podium once fully upgraded; halfway, it still has to beat a few strong

@@ -69,6 +69,10 @@ FieldError describe(field::ParamError error) {
             return {"event.pullers", "must be 1 to 32"};
         case ParamError::kReference:
             return {"event.driver", "the reference driver is invalid for the tractor"};
+        case ParamError::kGovernorOutOfRange:
+            return {"event.field.rated_rpm",
+                    "the reference engine cannot take it: above idle, and its unloaded speed "
+                    "within the torque curve"};
     }
     return {"event.field", "invalid"};
 }

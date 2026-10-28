@@ -79,6 +79,9 @@ enum class ParamError : std::uint8_t {
     kCountOutOfRange,
     /// The reference tractor, driver or class rules themselves.
     kReference,
+    /// A governor the reference engine cannot take: below its idle, or a
+    /// high idle past its torque curve.
+    kGovernorOutOfRange,
 };
 
 /// The first `count` pullers are the field; the rest are unused copies of

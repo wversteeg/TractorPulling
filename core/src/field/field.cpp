@@ -54,6 +54,22 @@ std::optional<vehicle::Params> with_torque_scale(const vehicle::Params& tractor,
     return out;
 }
 
+// `engine` with its governor at `rated_omega_rad_s`, held to the class's
+// unloaded engine speed; nothing if the engine cannot take it (below idle,
+// or a high idle past the torque curve).
+std::optional<engine::Params> with_governor(const engine::Params& engine, double rated_omega_rad_s,
+                                            const rules::ClassRules& class_rules) noexcept {
+    const double droop_rad_s = engine.high_idle_omega_rad_s - engine.rated_omega_rad_s;
+    std::optional<engine::Params> out = engine::with_rated_speed(
+        engine, std::min(rated_omega_rad_s, class_rules.max_engine_speed_rad_s - droop_rad_s));
+    if (out) {
+        // (limit - droop) + droop may land a rounding step above the limit.
+        out->high_idle_omega_rad_s =
+            std::min(out->high_idle_omega_rad_s, class_rules.max_engine_speed_rad_s);
+    }
+    return out;
+}
+
 // The reference with one draw of every varied value, within the class.
 std::optional<Puller> draw(const Puller& reference, const Variation& variation,
                            const rules::ClassRules& class_rules,
@@ -86,11 +102,7 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     // pitch and yaw inertias go with the mass; the balance stays.
     vehicle::Params governed = base;
     if (variation.rated_omega_rad_s.high > 0.0) {
-        const double droop_rad_s =
-            base.engine.high_idle_omega_rad_s - base.engine.rated_omega_rad_s;
-        const auto engine = engine::with_rated_speed(
-            base.engine,
-            std::min(rated_omega_rad_s, class_rules.max_engine_speed_rad_s - droop_rad_s));
+        const auto engine = with_governor(base.engine, rated_omega_rad_s, class_rules);
         if (!engine) {
             return std::nullopt;
         }
@@ -167,6 +179,13 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
     if (vehicle::validate(reference.tractor) || rules::validate(class_rules) ||
         driver::validate(reference.driver, gear_count)) {
         return ParamError::kReference;
+    }
+    // The engine takes every governor drawn: the range's ends are enough,
+    // since an engine valid at both is valid between.
+    const Range& rated = variation.rated_omega_rad_s;
+    if (rated.high > 0.0 && (!with_governor(reference.tractor.engine, rated.low, class_rules) ||
+                             !with_governor(reference.tractor.engine, rated.high, class_rules))) {
+        return ParamError::kGovernorOutOfRange;
     }
     return std::nullopt;
 }

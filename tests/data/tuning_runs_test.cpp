@@ -17,7 +17,7 @@ namespace tp::field {
 namespace {
 
 // The shipped light-class tractor, driven as the reference driver drives:
-// sixth gear, the clutch slipped in over 3 s.
+// fifth gear, the clutch slipped in over 3 s.
 const driver::Plan kDriver{
     .gear = 5, .select_gear_s = 0.5, .launch_s = 3.0, .clutch_slip_in_s = 3.0};
 

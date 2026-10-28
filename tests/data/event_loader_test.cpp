@@ -163,6 +163,9 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2500.0]", "rated_rpm = [0.0, 2500.0]"))
                   .find("rated_rpm above 0"),
               std::string::npos);
+    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2500.0]", "rated_rpm = [500.0, 600.0]"))
+                  .find("event.field.rated_rpm: the reference engine cannot take it"),
+              std::string::npos);
     EXPECT_NE(error_of(with("downshift_share = 0.9", "downshift_share = 1.2")).find("event.driver"),
               std::string::npos);
     EXPECT_NE(error_of(with("pullers = 10", "pullers = 1")).find("event.game.pullers"),
