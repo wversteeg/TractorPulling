@@ -20,6 +20,8 @@ extends SceneTree
 
 const SEASON := "res://tests/data/practice_season.toml"
 const SEED := 2026
+# The test garage's start money (tests/data/practice_garage.toml).
+const START_MONEY_EUR := 1000
 const PULLERS := 4
 const TAP_FINGER := 1
 const THROTTLE_FINGER := 0
@@ -55,6 +57,44 @@ func _initialize() -> void:
 		_shots = args[0]
 	root.add_child(_pull)
 	_play.call_deferred()
+
+
+# A new career: the garage's start money and nothing bought, in the game
+# and in the save, at the start of a season.
+func _check_new_career(event: TractorPullEvent, start: StartScreen, what: String) -> void:
+	var fresh := event.get_garage()
+	var nothing_bought := (fresh["upgrades"] as Array).all(
+			func(u: Dictionary) -> bool: return int(u["level"]) == 0)
+	_expect(start.visible and int(fresh["money_eur"]) == START_MONEY_EUR and nothing_bought
+			and int(event.get_season().get("scored", -1)) == 0, "%s: %s" % [what, fresh])
+	var saved := FileAccess.get_file_as_string(SAVE_PATH)
+	var levels := RegEx.create_from_string("level = (\\d+)").search_all(saved)
+	_expect(saved.contains("money_eur = %d\n" % START_MONEY_EUR) and not levels.is_empty()
+			and levels.all(func(m: RegExMatch) -> bool: return m.get_string(1) == "0"),
+			"%s, saved: %s" % [what, saved])
+
+
+# A part at its top level keeps the garage's columns: the row after it
+# starts in the first column, its Buy in the last.
+func _check_garage_columns(garage: GarageScreen) -> void:
+	var line := {"name": "Part", "label": "Now", "level": 0, "levels": 2,
+			"next_label": "", "next_cost_eur": 0}
+	var next := line.duplicate()
+	next["next_label"] = "Better"
+	next["next_cost_eur"] = 100
+	garage.show_garage({"money_eur": 1000, "can_buy": true, "upgrades": [line, next]})
+	await _frames(2)
+	var table: GridContainer = garage.get("_table")
+	var cells := table.get_children()
+	_expect(cells.size() == 2 * table.columns, "a cell for each column: %d" % cells.size())
+	if cells.size() == 2 * table.columns:
+		var first := cells[0] as Control
+		var below := cells[table.columns] as Control
+		var buy := cells[table.columns - 1] as Control
+		var buy_below := cells[2 * table.columns - 1] as Control
+		_expect(is_equal_approx(first.position.x, below.position.x)
+				and is_equal_approx(buy.position.x, buy_below.position.x),
+				"the columns line up after a part at its top level")
 
 
 func _expect(ok: bool, what: String) -> void:
@@ -174,7 +214,7 @@ func _play() -> void:
 	_tap(start.garage_button)
 	await _frames(2)
 	var stock := event.get_garage()
-	_expect(garage.visible and int(stock["money_eur"]) == 1000 and stock["can_buy"]
+	_expect(garage.visible and int(stock["money_eur"]) == START_MONEY_EUR and stock["can_buy"]
 			and garage.buy_buttons.size() == 1 and garage.buy_buttons[0].visible,
 			"the garage: %s" % stock)
 	await _shot("1c_garage")
@@ -186,6 +226,8 @@ func _play() -> void:
 			and bought["fully_upgraded"] and not garage.buy_buttons[0].visible,
 			"bought the powershift: %s" % bought)
 	_expect(event.buy_upgrade(0) == "top level", "nothing more to buy")
+	await _check_garage_columns(garage)
+	garage.show_garage(event.get_garage())
 	_tap(garage.done_button)
 	await _frames(2)
 	_expect(start.visible and not garage.visible, "back from the garage")
@@ -342,8 +384,9 @@ func _relaunch(standings: Array, tuning: Dictionary, garage: Dictionary) -> void
 	var start: StartScreen = pull.get("start_screen")
 	var event: TractorPullEvent = pull.get("event")
 	_expect(start.visible and start.continue_button.visible and start.new_season_button.visible
+			and start.new_career_button.visible
 			and not start.practice_button.visible and not start.settings_button.visible,
-			"continue or a new season")
+			"continue, a new season or a new career")
 	await _shot("7_continue")
 	_tap(start.continue_button)
 	await _frames(2)
@@ -360,6 +403,13 @@ func _relaunch(standings: Array, tuning: Dictionary, garage: Dictionary) -> void
 	pull = await _launch()
 	start = pull.get("start_screen")
 	event = pull.get("event")
+	# New career on the launch screen asks first; New season then still
+	# carries the career over.
+	_tap(start.new_career_button)
+	await _frames(2)
+	_expect(start.continue_button.visible and start.new_career_button.text.begins_with("Sure")
+			and event.get_garage()["upgrades"] == garage["upgrades"],
+			"a new career at launch asks first")
 	_tap(start.new_season_button)
 	await _frames(2)
 	info = event.get_event()
@@ -371,3 +421,24 @@ func _relaunch(standings: Array, tuning: Dictionary, garage: Dictionary) -> void
 	_expect(event.get_garage()["money_eur"] == garage["money_eur"]
 			and event.get_garage()["upgrades"] == garage["upgrades"],
 			"the career carries into the new season: %s" % event.get_garage())
+
+	# The launch choice again: New career on the second tap starts over.
+	start.show_choice(event.get_season())
+	_tap(start.new_career_button)
+	await _frames(1)
+	_tap(start.new_career_button)
+	await _frames(2)
+	_check_new_career(event, start, "a new career at launch")
+
+	# And from the settings, on the second tap, after buying a part again.
+	_expect(event.buy_upgrade(0).is_empty(), "a part bought again")
+	var settings: SettingsScreen = pull.get("settings_screen")
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.new_career_button)
+	await _frames(2)
+	_expect(settings.visible and int(event.get_garage()["upgrades"][0]["level"]) == 1,
+			"the first tap only asks")
+	_tap(settings.new_career_button)
+	await _frames(2)
+	_check_new_career(event, start, "a new career from the settings")

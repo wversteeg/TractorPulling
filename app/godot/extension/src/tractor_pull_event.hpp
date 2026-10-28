@@ -49,6 +49,10 @@ public:
     /// start money, nothing bought). Returns "" or what is wrong, naming the
     /// file and field.
     godot::String start_season(const godot::String& season_path, std::int64_t seed);
+    /// As start_season(), with a new career: the garage's start money and
+    /// nothing bought, whatever the career so far. If the season cannot be
+    /// started, the career so far stays.
+    godot::String start_career(const godot::String& season_path, std::int64_t seed);
     /// The season so far as save text (data::SeasonSave): the season file,
     /// its seed, the player's tuning and career and every event scored. An event being
     /// pulled is not in it: picked up again, it starts from its beginning.
