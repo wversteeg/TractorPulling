@@ -1,7 +1,8 @@
 # A panel with a table: the event as it goes (the pulls and the sled
 # operator's verdicts), the event's top ten and the season's. A title,
-# up to ten rows of columns (the player's highlighted), a
-# status line and up to two buttons; the game fills them in.
+# the rows of columns (the player's highlighted) in a list that scrolls
+# with a finger and follows the newest row, a status line and up to two
+# buttons; the game fills them in.
 class_name BoardScreen
 extends MenuPanel
 
@@ -11,7 +12,6 @@ signal second_tapped
 const BOARD_SIZE := Vector2(1000.0, 660.0)
 const TITLE_SIZE := 36
 const ROW_SIZE := 24
-const ROWS := 10
 const COLUMN_GAP := 28
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const PLAYER_COLOUR := Color(1.0, 0.8, 0.2)
@@ -22,7 +22,10 @@ var first_button: TouchButton
 var second_button: TouchButton
 var _title: Label
 var _table := GridContainer.new()
+var _scroll := ScrollContainer.new()
 var _status: Label
+# The list was at its end before the rows changed: it follows the newest.
+var _follow := true
 
 
 func _init() -> void:
@@ -34,8 +37,17 @@ func _ready() -> void:
 	_title = add_line(TITLE_SIZE)
 	_table.add_theme_constant_override("h_separation", COLUMN_GAP)
 	_table.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_table.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	add_item(_table)
+	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.add_child(_table)
+	var bar := _scroll.get_v_scroll_bar()
+	# The finger scrolls: the list follows the newest rows again once it is
+	# back at its end. New rows lengthen it: a list that follows goes along.
+	bar.value_changed.connect(func(_value: float) -> void: _follow = _at_end())
+	bar.changed.connect(func() -> void:
+		if _follow:
+			_scroll.scroll_vertical = int(bar.max_value))
+	add_item(_scroll)
 	_status = add_line(ROW_SIZE)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var row := add_button_row()
@@ -51,15 +63,14 @@ func set_title(text: String) -> void:
 	_title.text = text
 
 
-# `rows`: rows of the same number of columns (the last ROWS show); the
-# rows in `highlights` are the player's.
+# `rows`: rows of the same number of columns; the rows in `highlights` are
+# the player's. A list scrolled to its end stays there, showing the newest.
 func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = []) -> void:
 	for child in _table.get_children():
 		_table.remove_child(child)
 		child.queue_free()
-	var first := maxi(rows.size() - ROWS, 0)
 	_table.columns = maxi(rows[0].size(), 1) if not rows.is_empty() else 1
-	for i in range(first, rows.size()):
+	for i in rows.size():
 		for text in rows[i]:
 			var cell := Label.new()
 			cell.text = text
@@ -67,6 +78,11 @@ func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = [])
 			cell.add_theme_color_override("font_color",
 					PLAYER_COLOUR if highlights.has(i) else TEXT_COLOUR)
 			_table.add_child(cell)
+
+
+func _at_end() -> bool:
+	var bar := _scroll.get_v_scroll_bar()
+	return bar.value + bar.page >= bar.max_value - 1.0
 
 
 # The rows' cells as shown, for tests.

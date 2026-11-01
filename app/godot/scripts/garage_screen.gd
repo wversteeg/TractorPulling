@@ -1,7 +1,7 @@
 # The garage, from the start screen: the money the player has won and each
 # part of the tractor they can improve (TractorPullEvent.get_garage()),
-# with what it is now, what the next level is and what it costs. "Buy"
-# buys it; the game asks the extension, which holds the money and the
+# with what it is now and what the next level is, in a grid of fixed
+# columns; the button with the next level's price buys it; the game asks the extension, which holds the money and the
 # class's rules. During an event, once the player has pulled, the tractor
 # stays as it is.
 class_name GarageScreen
@@ -16,7 +16,12 @@ const LINE_SIZE := 24
 const ROW_SIZE := 21
 const COLUMN_GAP := 20
 # Six parts, each a row, fit the panel at this height.
-const BUY_SIZE := Vector2(110.0, 56.0)
+const BUY_SIZE := Vector2(180.0, 56.0)
+const BUY_FONT_SIZE := 26
+# The columns' widths [px]: the part, what it is now and the next level;
+# the price button is BUY_SIZE wide. Fixed, so the grid does not shift with
+# the texts: a longer one wraps onto a second line.
+const COLUMN_WIDTHS: Array[float] = [200.0, 330.0, 330.0]
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const DONE_COLOUR := Color(0.6, 0.85, 0.6)
 
@@ -62,13 +67,13 @@ func show_garage(garage: Dictionary, message: String = "") -> void:
 	for i in upgrades.size():
 		var line: Dictionary = upgrades[i]
 		var at_top: bool = String(line["next_label"]).is_empty()
-		_cell(line["name"])
-		_cell("%s  (%d/%d)" % [line["label"], int(line["level"]) + 1, line["levels"]])
-		_cell("top level" if at_top
-				else "%s: %s" % [line["next_label"], euros(int(line["next_cost_eur"]))],
+		_cell(line["name"], 0)
+		_cell("%s  (%d/%d)" % [line["label"], int(line["level"]) + 1, line["levels"]], 1)
+		_cell("top level" if at_top else "→ %s" % line["next_label"], 2,
 				DONE_COLOUR if at_top else TEXT_COLOUR)
 		var button := TouchButton.new()
-		button.text = "Buy"
+		button.text = euros(int(line["next_cost_eur"]))
+		button.font_size = BUY_FONT_SIZE
 		button.fires_on_release = true
 		button.custom_minimum_size = BUY_SIZE
 		button.visible = can_buy and not at_top
@@ -104,9 +109,11 @@ static func euros(amount: int) -> String:
 	return "%s€ %s%s" % ["-" if amount < 0 else "", digits, grouped]
 
 
-func _cell(text: String, colour: Color = TEXT_COLOUR) -> void:
+func _cell(text: String, column: int, colour: Color = TEXT_COLOUR) -> void:
 	var cell := Label.new()
 	cell.text = text
+	cell.custom_minimum_size = Vector2(COLUMN_WIDTHS[column], BUY_SIZE.y)
+	cell.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cell.add_theme_font_size_override("font_size", ROW_SIZE)
 	cell.add_theme_color_override("font_color", colour)
 	cell.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

@@ -15,6 +15,7 @@ const DISABLED_TEXT_COLOUR := Color(0.55, 0.55, 0.55)
 const FONT_SIZE := 36
 
 @export var text := ""
+@export var font_size := FONT_SIZE
 @export var fires_on_release := false
 # Shown picked, as one of a set of choices (the layout in the settings).
 @export var selected := false:
@@ -83,8 +84,8 @@ func _draw() -> void:
 		colour = SELECTED_COLOUR
 	draw_rect(Rect2(Vector2.ZERO, size), colour)
 	var font := get_theme_default_font()
-	var line := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE)
-	var at := Vector2((size.x - line.x) / 2.0, (size.y + font.get_ascent(FONT_SIZE)
-			- font.get_descent(FONT_SIZE)) / 2.0)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE,
+	var line := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	var at := Vector2((size.x - line.x) / 2.0, (size.y + font.get_ascent(font_size)
+			- font.get_descent(font_size)) / 2.0)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
 			DISABLED_TEXT_COLOUR if disabled else TEXT_COLOUR)
