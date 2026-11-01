@@ -64,7 +64,10 @@ func show_result(title: String, result: Dictionary, full_pull_m: float,
 	_speed.text = "%.1f s, top speed %.1f km/h" % [float(result["time_s"]),
 			float(result["top_speed_m_s"]) * KMH_PER_M_S]
 	var verdict := "" if entry.is_empty() else EventTexts.verdict(entry)
-	_verdict.text = "" if verdict.is_empty() else "The sled operator: " + verdict
+	if int(entry.get("moved_back", 0)) > 0:
+		_verdict.text = "You " + verdict
+	else:
+		_verdict.text = "" if verdict.is_empty() else "The sled operator: " + verdict
 	var practice := entry.is_empty()
 	again_button.visible = practice
 	menu_button.visible = practice

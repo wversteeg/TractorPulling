@@ -31,6 +31,10 @@ struct LogEntry {
     /// The deciding test puller for a decision, else -1.
     int deciding = -1;
     bool keep = false;
+    /// The puller of `pull` stopped short of the restart line and moved
+    /// this many places later instead of a pull (LiveEvent::defer_player);
+    /// 0 for a pull or a decision.
+    int moved_back = 0;
 };
 
 inline constexpr std::size_t kMaxLog = 160;

@@ -126,6 +126,34 @@ TEST(Turn, HooksOnInFrontOfTheSled) {
     EXPECT_TRUE(state.run.pull.hooked);
 }
 
+// A pull that stopped short of the restart line may be pulled again from
+// the start: the sled and the tractor back at the line, the chain on, the
+// turn at taking up the slack, the result gone. Past the line it may not.
+TEST(Turn, AShortPullMayBeRestarted) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    state.stage = Stage::kReleasing;
+    state.run.pull.hooked = true;
+    state.run.pull.sled.position_m += 12.0;
+    state.run.result = run::Result{.ending = run::Ending::kSpunOut, .distance_m = 12.0};
+    ASSERT_TRUE(may_restart(state));
+    restart(state, model);
+    const run::State fresh = run::start(model);
+    EXPECT_EQ(state.stage, Stage::kTakingUpSlack);
+    EXPECT_FALSE(state.run.result.has_value());
+    EXPECT_TRUE(state.run.pull.hooked);
+    EXPECT_EQ(state.run.pull.sled_mode, pull::SledMode::kHeld);
+    EXPECT_EQ(state.run.pull.sled.position_m, fresh.pull.sled.position_m);
+    EXPECT_EQ(state.run.pull.tractor.chassis.position_m, fresh.pull.tractor.chassis.position_m);
+    EXPECT_EQ(state.run.pull.tractor.driveline.gear, driveline::kNeutral);
+    EXPECT_EQ(state.run.steps, 0U);
+
+    state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = kRestartBefore_m};
+    EXPECT_FALSE(may_restart(state)) << "at the restart line";
+    state.run.result = run::Result{.ending = run::Ending::kOutOfBounds, .distance_m = 0.0};
+    EXPECT_FALSE(may_restart(state)) << "disqualified";
+}
+
 // The driver's side of the hook-up: creep forward in 1st until the slack
 // is taken up, then press the clutch and stand, putting `pulling_gear` in.
 vehicle::Input hook_up_input(const State& state, double t_s, int pulling_gear) {

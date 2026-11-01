@@ -159,6 +159,34 @@ bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
            std::abs(gap.across_m) <= kHookOffLine_m && turned_rad <= kHookTurned_rad;
 }
 
+bool may_restart(const State& state) noexcept {
+    const std::optional<run::Result>& result = state.run.result;
+    if (!result) {
+        return false;
+    }
+    const bool stopped = result->ending == run::Ending::kStalled ||
+                         result->ending == run::Ending::kSpunOut ||
+                         result->ending == run::Ending::kStopped;
+    return stopped && result->distance_m < kRestartBefore_m;
+}
+
+void restart(State& state, const pull::Model& model) noexcept {
+    if (!may_restart(state)) {
+        return;
+    }
+    // Pulled back by the officials: the tractor at the line on the chain as
+    // run::start has it, in neutral, its engine idling.
+    state.run = run::start(model);
+    state.ready_steps = 0;
+    state.sled_back = false;
+    if (state.from_the_parking) {
+        state.run.pull.sled_mode = pull::SledMode::kHeld;
+        state.stage = Stage::kTakingUpSlack;
+    } else {
+        state.stage = Stage::kPulling;
+    }
+}
+
 pull::Output step(State& state, const pull::Model& model, const run::Rules& rules,
                   const Parking& parking, vehicle::Input input, double dt_s) noexcept {
     pull::State& pull = state.run.pull;

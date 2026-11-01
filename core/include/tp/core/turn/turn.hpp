@@ -143,6 +143,21 @@ struct HitchToHook {
 pull::Output step(State& state, const pull::Model& model, const run::Rules& rules,
                   const Parking& parking, vehicle::Input input, double dt_s) noexcept;
 
+/// A pull that stops short of this may be pulled again from the start
+/// (restart()), after the NTTO's 100 ft rule [m].
+inline constexpr double kRestartBefore_m = 30.0;
+
+/// Whether the pull just ended may be restarted: it stopped (stalled, spun
+/// out or eased off: not a full pull, a disqualification or the time up)
+/// before kRestartBefore_m.
+[[nodiscard]] bool may_restart(const State& state) noexcept;
+
+/// The pull again from the start line, the track as the last pull left it:
+/// the sled and the tractor pulled back, the tractor in neutral, the chain
+/// on. From the parking the turn goes on from taking up the slack; at the
+/// line the pull starts again. Only when may_restart().
+void restart(State& state, const pull::Model& model) noexcept;
+
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(static_cast<std::uint64_t>(state.stage));
     run::hash_append(hash, state.run);

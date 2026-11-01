@@ -187,6 +187,23 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     return outcome;
 }
 
+int Event::defer(int places) noexcept {
+    const std::optional<Pull> pull = next();
+    if (!pull || pull->kind == PullKind::kPullOff || places <= 0) {
+        return 0;
+    }
+    const std::size_t to = std::min(head_ + static_cast<std::size_t>(places), queue_size_ - 1);
+    for (std::size_t i = head_; i < to; ++i) {
+        queue_[i] = queue_[i + 1];
+    }
+    queue_[to] = *pull;
+    if (pull->kind == PullKind::kTest && to > head_) {
+        queue_[to].kind = PullKind::kCompetition;
+        retest_next();
+    }
+    return static_cast<int>(to - head_);
+}
+
 void Event::retest_next() noexcept {
     if (head_ < queue_size_ && queue_[head_].kind == PullKind::kCompetition) {
         queue_[head_].kind = PullKind::kTest;

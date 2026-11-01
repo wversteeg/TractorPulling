@@ -24,6 +24,8 @@
 # walking ahead of the tractor, waves green while it is good and both wave
 # red the moment it is over: stop; the light on the full-pull gantry and
 # the HUD's show the same), the chain released by backing off,
+# (a pull that stops short of 30 m may be restarted from the line, pulled
+# again six places later at an event, or let count: RestartScreen)
 # and back to the bay along the return lane while the sled drives itself
 # back; the result screen comes once the tractor stands in its bay again.
 # The rivals wait in the bays behind. Without it (and with `autoplay`), a
@@ -99,6 +101,11 @@ const CHAIN_LYING_SHARE := 0.9
 # Where the stopping marker lies in front of the hook: a share of the
 # chain's length, where the hitch hooks on.
 const MARKER_SHARE := 0.6
+# A pull stopping short of this may be restarted (turn::kRestartBefore_m)
+# [m], or at an event pulled again this many places later
+# (event::kDeferPlaces).
+const RESTART_BEFORE_M := 30.0
+const EVENT_MOVE_BACK_PLACES := 6
 
 var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
@@ -117,6 +124,7 @@ var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
+var restart_screen := RestartScreen.new()
 var flagman := Flagman.new()
 var end_flagman := Flagman.new()
 var parked: Array[TractorView] = []
@@ -150,6 +158,11 @@ var _snapshot := {}
 var _framing := Vector3.ZERO
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
+# The pull stopped short of the restart line: the choice is shown (and the
+# run waits), or was made; the player chose to pull again later.
+var _choosing := false
+var _choice_made := false
+var _moved_back := false
 
 
 func _ready() -> void:
@@ -163,7 +176,7 @@ func _ready() -> void:
 	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
 	for node: Node in [hud, controls, start_screen, settings_screen, garage_screen, board,
-			setup_screen, result_screen]:
+			setup_screen, result_screen, restart_screen]:
 		layer.add_child(node)
 	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
@@ -212,6 +225,15 @@ func _ready() -> void:
 	settings_screen.new_career_requested.connect(_new_season.bind(true))
 	board.first_tapped.connect(_on_board_first)
 	board.second_tapped.connect(_on_board_second)
+	restart_screen.restart_requested.connect(func() -> void:
+		run.restart()
+		controls.reset()
+		_choice_made = false
+		_end_choice())
+	restart_screen.move_back_requested.connect(func() -> void:
+		_moved_back = true
+		_end_choice())
+	restart_screen.finish_requested.connect(_end_choice)
 	result_screen.again_requested.connect(_start_practice)
 	result_screen.menu_requested.connect(show_start)
 	result_screen.continue_requested.connect(func() -> void: _set_screen(Screen.EVENT))
@@ -385,6 +407,10 @@ func _build(error: String) -> bool:
 			dimensions["clutch_bite_pedal"])
 	controls.reset()
 	_time_s = 0.0
+	_choosing = false
+	_choice_made = false
+	_moved_back = false
+	restart_screen.visible = false
 	_show(0.0)
 	_framing = Vector3.ZERO
 	cameras.follow(tractor_view.global_position, 0.0, false,
@@ -427,6 +453,8 @@ func _set_screen(next: Screen) -> void:
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
 	result_screen.visible = screen == Screen.RESULT
+	restart_screen.visible = false
+	_choosing = false
 	controls.visible = screen == Screen.PULLING
 	hud.visible = screen in [Screen.PULLING, Screen.RESULT]
 	# Again and menu only for practice: an event's pull counts.
@@ -439,6 +467,7 @@ func _set_screen(next: Screen) -> void:
 	setup_screen.release_sliders()
 	board.release_buttons()
 	result_screen.release_buttons()
+	restart_screen.release_buttons()
 	controls.reset_fingers()
 	_ended_s = 0.0
 	_shown_log = -1
@@ -453,11 +482,12 @@ func _set_screen(next: Screen) -> void:
 
 
 func _process(delta: float) -> void:
-	if screen == Screen.PULLING:
+	if screen == Screen.PULLING and not _choosing:
 		_time_s += delta
 		_read_controls()
 		# The run alone turns the frame's time into its 1 ms steps.
 		run.advance(int(delta * NS_PER_S))
+		_offer_restart()
 		# Over once the pull has ended at the line, or the tractor is back
 		# in its bay after a whole turn.
 		if run.is_over() and not autoplay:
@@ -505,9 +535,34 @@ func _advance_rivals() -> void:
 			return
 
 
+# A pull that stopped short of the restart line: the run waits while the
+# player chooses (not for a scripted driver or autoplay: their pull counts).
+func _offer_restart() -> void:
+	if _choice_made or autoplay or driver.is_valid() or not run.may_restart():
+		return
+	_choice_made = true
+	_choosing = true
+	var result := run.get_result()
+	var ending: String = result.get("ending", "")
+	restart_screen.show_choice(String(ResultScreen.ENDINGS.get(ending, ending)), float(result.get("distance_m", 0.0)),
+			RESTART_BEFORE_M, 0 if practice else EVENT_MOVE_BACK_PLACES)
+	restart_screen.visible = true
+	controls.visible = false
+	controls.reset_fingers()
+
+
+func _end_choice() -> void:
+	_choosing = false
+	restart_screen.visible = false
+	restart_screen.release_buttons()
+	controls.visible = screen == Screen.PULLING
+
+
 func _show_result() -> void:
 	var entry := {}
-	if not practice:
+	if not practice and _moved_back:
+		entry = event.move_back()
+	if not practice and entry.is_empty():
 		entry = event.record_pull(run)
 	var full_pull_m: float = run.get_dimensions()["full_pull_line_m"]
 	result_screen.show_result(_title, run.get_result(), full_pull_m, entry)

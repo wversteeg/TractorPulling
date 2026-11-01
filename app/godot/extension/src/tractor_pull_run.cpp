@@ -337,6 +337,16 @@ bool TractorPullRun::is_over() const {
     return session_ && session_->over();
 }
 
+bool TractorPullRun::may_restart() const {
+    return session_ && session_->may_restart();
+}
+
+void TractorPullRun::restart() {
+    if (session_) {
+        session_->restart();
+    }
+}
+
 godot::Dictionary TractorPullRun::get_result() const {
     godot::Dictionary out;
     if (!session_) {
@@ -395,6 +405,8 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
     ClassDB::bind_method(D_METHOD("is_over"), &TractorPullRun::is_over);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
+    ClassDB::bind_method(D_METHOD("may_restart"), &TractorPullRun::may_restart);
+    ClassDB::bind_method(D_METHOD("restart"), &TractorPullRun::restart);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
 }
 

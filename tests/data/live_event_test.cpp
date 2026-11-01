@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -208,6 +209,40 @@ TEST(LiveEvent, WaitsForThePlayer) {
     EXPECT_EQ(live->turn(), LiveEvent::Turn::kRivals);
     EXPECT_EQ(live->log().back().pull.puller, player);
     EXPECT_EQ(live->log().back().gear, 5);
+}
+
+// The player stopped short of the restart line and moves back: the move is
+// logged, the rivals pull on, and the player is due again
+// event::kDeferPlaces pulls later (or last).
+TEST(LiveEvent, ThePlayerMayMoveBack) {
+    const EventSetup s = shipped();
+    const int player = s.order[0];
+    std::optional<LiveEvent> created = LiveEvent::create(
+        s.rules, s.venue, s.field, s.variation, s.pull_to_pull, s.running_order(), player, kSeed);
+    if (!created.has_value()) {
+        FAIL() << "the live event refused the setup";
+    }
+    auto live = std::make_unique<LiveEvent>(*created);
+    while (live->turn() == LiveEvent::Turn::kRivals) {
+        live->advance(kSlice);
+    }
+    ASSERT_EQ(live->turn(), LiveEvent::Turn::kPlayerPull);
+    // The first to pull, at most to the end of the order.
+    const int places = std::min(event::kDeferPlaces, live->puller_count() - 1);
+    EXPECT_EQ(live->defer_player(), places);
+    EXPECT_EQ(live->log().back().pull.puller, player);
+    EXPECT_EQ(live->log().back().moved_back, places);
+    EXPECT_EQ(live->turn(), LiveEvent::Turn::kRivals);
+    const std::size_t moved_at = live->log().size();
+    while (live->turn() == LiveEvent::Turn::kRivals) {
+        live->advance(kSlice);
+    }
+    ASSERT_EQ(live->turn(), LiveEvent::Turn::kPlayerPull);
+    int pulls_since = 0;
+    for (std::size_t i = moved_at; i < live->log().size(); ++i) {
+        pulls_since += live->log()[i].deciding < 0 ? 1 : 0;
+    }
+    EXPECT_EQ(pulls_since, places);
 }
 
 TEST(LiveEvent, RefusesWhatPlayEventWould) {

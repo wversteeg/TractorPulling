@@ -29,8 +29,12 @@ static func reach(entry: Dictionary) -> String:
 	return "%.2f m" % float(entry["reached_m"])
 
 
-# What the sled operator did after a test pull; "" for nothing.
+# What the sled operator did after a test pull, or that the puller moved
+# back to pull again later; "" for nothing.
 static func verdict(entry: Dictionary) -> String:
+	var moved: int = entry.get("moved_back", 0)
+	if moved > 0:
+		return "moves back %d place%s, pulls again later" % [moved, "" if moved == 1 else "s"]
 	var steps: int = entry.get("steps", 0)
 	match entry.get("change", "none"):
 		"lighter":
@@ -51,6 +55,8 @@ static func log_row(entry: Dictionary) -> PackedStringArray:
 				"keeps the test pull" if keeps else "pulls again", ""])
 	var kind: String = entry["kind"]
 	var what := pull_name(kind, entry["pull_off_round"]).to_lower()
+	if int(entry.get("moved_back", 0)) > 0:
+		return PackedStringArray([entry["name"], what, "stopped short", verdict(entry)])
 	return PackedStringArray([entry["name"], what, reach(entry), verdict(entry)])
 
 
