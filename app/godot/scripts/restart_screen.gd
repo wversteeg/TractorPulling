@@ -9,7 +9,7 @@ signal restart_requested
 signal move_back_requested
 signal finish_requested
 
-const RESTART_SIZE := Vector2(900.0, 420.0)
+const RESTART_SIZE := Vector2(900.0, 360.0)
 const TITLE_SIZE := 34
 const LINE_SIZE := 24
 const CHOICE_BUTTON := Vector2(250.0, 90.0)
@@ -29,7 +29,6 @@ func _ready() -> void:
 	super()
 	_title = add_line(TITLE_SIZE)
 	_line = add_line(LINE_SIZE)
-	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var row := add_button_row()
 	restart_button = add_button(row, "Restart")
 	move_back_button = add_button(row, "")
@@ -46,8 +45,6 @@ func _ready() -> void:
 # move (0: not at all, as in practice).
 func show_choice(ending: String, distance_m: float, restart_m: float, places: int) -> void:
 	_title.text = "%s at %.2f m" % [ending, distance_m]
-	_line.text = ("Short of %.0f m: restart from the line (the track as it is), "
-			% restart_m) + ("pull again %d places later, " % places if places > 0 else "") \
-			+ "or let this pull count."
+	_line.text = "Stopped before %.0f m" % restart_m
 	move_back_button.text = "%d places later" % places
 	move_back_button.visible = places > 0
