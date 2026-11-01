@@ -31,9 +31,9 @@ const FRONT_TOP := 184.0
 # The turn's line, short, along the top edge in the middle on a dark band:
 # between the pull's name on the left and the buttons on the right.
 const TURN_TOP := 8.0
-const TURN_WIDTH := 420.0
+const TURN_WIDTH := 380.0
 const TURN_PADDING := 6.0
-const TURN_FONT_SIZE := 24
+const TURN_FONT_SIZE := 22
 const TURN_COLOUR := Color(1.0, 0.95, 0.6)
 # Why the pull ended, large, in the middle under the top.
 const ENDING_TOP := 230.0
