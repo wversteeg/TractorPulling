@@ -235,8 +235,9 @@ TEST(Run, ANudgeInTheFirstCentimetresIsNotAStop) {
     state.pull.tractor.engine.running = false;
     step(state, model, kRules, {}, kDt_s);
     ASSERT_TRUE(state.result.has_value());
-    EXPECT_EQ(state.result->ending, Ending::kStalled);
-    EXPECT_NEAR(state.result->distance_m, nudged_m, 1e-12);
+    const Result result = state.result.value_or(Result{});
+    EXPECT_EQ(result.ending, Ending::kStalled);
+    EXPECT_NEAR(result.distance_m, nudged_m, 1e-12);
 }
 
 // Waiting at the start line is not a stop: the run only ends once the sled
