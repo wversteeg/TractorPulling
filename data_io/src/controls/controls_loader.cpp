@@ -35,6 +35,8 @@ FieldError describe(controls::ParamError error) {
             return {"easy.clutch_assist.min_throttle", "must be in [0, 1)"};
         case ParamError::kBrakeOffTheGasOutOfRange:
             return {"easy.brake_off_the_gas", "must be in [0, 1]"};
+        case ParamError::kSteerSideAccelNotPositive:
+            return {"easy.steer_side_accel_m_s2", "must be > 0"};
     }
     return {"easy", "invalid"};
 }
@@ -46,6 +48,8 @@ FieldError describe_pro(controls::ParamError error) {
             return {"pro.steer_dead_zone", "must be in [0, 1)"};
         case ParamError::kSteerRateNotPositive:
             return {"pro.steer_rate_per_s", "must be > 0"};
+        case ParamError::kSteerSideAccelNotPositive:
+            return {"pro.steer_side_accel_m_s2", "must be > 0"};
         case ParamError::kNotFinite:
         case ParamError::kSteerShareOutOfRange:
         case ParamError::kAssistTimeNotPositive:
@@ -64,13 +68,16 @@ Result<controls::EasyParams> read_easy(const toml::table& root, std::string_view
         .steer_dead_zone = reader.number("easy.steer_dead_zone"),
         .steer_rate_per_s = reader.number("easy.steer_rate_per_s"),
         .brake_off_the_gas = reader.number("easy.brake_off_the_gas"),
-        .clutch_assist = {
-            .engage_time_s = reader.number("easy.clutch_assist.engage_time_s"),
-            .release_time_s = reader.number("easy.clutch_assist.release_time_s"),
-            .guard_speed_share = reader.number("easy.clutch_assist.guard_speed_share"),
-            .guard_band_share = reader.number("easy.clutch_assist.guard_band_share"),
-            .min_throttle = reader.number("easy.clutch_assist.min_throttle"),
-        }};
+        .clutch_assist =
+            {
+                .engage_time_s = reader.number("easy.clutch_assist.engage_time_s"),
+                .release_time_s = reader.number("easy.clutch_assist.release_time_s"),
+                .guard_speed_share = reader.number("easy.clutch_assist.guard_speed_share"),
+                .guard_band_share = reader.number("easy.clutch_assist.guard_band_share"),
+                .min_throttle = reader.number("easy.clutch_assist.min_throttle"),
+            },
+        .steer_side_accel_m_s2 = reader.optional_number("easy.steer_side_accel_m_s2"),
+    };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
@@ -87,6 +94,7 @@ Result<controls::ProParams> read_pro(const toml::table& root, std::string_view s
     const controls::ProParams params{
         .steer_dead_zone = reader.number("pro.steer_dead_zone"),
         .steer_rate_per_s = reader.optional_number("pro.steer_rate_per_s"),
+        .steer_side_accel_m_s2 = reader.optional_number("pro.steer_side_accel_m_s2"),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

@@ -156,7 +156,7 @@ void Session::step(const Controls& controls) noexcept {
                                      .steering = controls.steering,
                                      .brake_left = controls.brake_left,
                                      .brake_right = controls.brake_right};
-        input_ = controls::pro(pro, pro_, assist_, tractor, dt_s);
+        input_ = controls::pro(pro, pro_, assist_, tractor, turn_.run.pull.tractor, dt_s);
     }
     output_ = turn::step(turn_, model_, rules_, parking_, input_, dt_s);
 }
