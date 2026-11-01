@@ -11,7 +11,7 @@ inline Params reference_params() {
         .frame_cg_ahead_of_wheels_m = 0.75,
         .frame_yaw_inertia_kg_m2 = 5000.0,
         .pan_ahead_of_wheels_m = 3.0,
-        .hook_ahead_of_wheels_m = 3.3,
+        .hook_ahead_of_wheels_m = 4.0,
         .hook_height_m = 0.45,
         .box_mass_kg = 1500.0,
         .box_start_ahead_of_wheels_m = 0.0,

@@ -282,13 +282,18 @@ void collect(State& state, const Params& params, double thrown_soil_m3_s, double
 /// own engine [m/s].
 inline constexpr double kDriveBack_m_s = 2.0;
 
-/// The sled after a pull, the chain off: it drives itself back, the pan
-/// lifted (the berm is dropped: the track keeps no soil), straight towards
-/// its start at
-/// `start_x_m` on the centre line at kDriveBack_m_s, the box running back
-/// with it. Returns true once it stands there, straight, ready for the
-/// next pull. Its velocity is negative while it drives.
-bool drive_back(State& state, double start_x_m, double dt_s) noexcept;
+/// How fast the operator runs the weight box back along the rails after a
+/// pull, the sled standing, before it drives back [m/s].
+inline constexpr double kBoxBack_m_s = 0.75;
+
+/// The sled after a pull, the chain off: the operator lowers the wheels
+/// (the push-down off) and runs the weight box back to its start at
+/// kBoxBack_m_s, the sled standing, so it drives back light; then it drives
+/// itself back, the pan lifted (the berm is dropped: the track keeps no
+/// soil), straight towards its start at `start_x_m` on the centre line at
+/// kDriveBack_m_s. Returns true once it stands there, straight, ready for
+/// the next pull. Its velocity is negative while it drives.
+bool drive_back(State& state, const Params& params, double start_x_m, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);

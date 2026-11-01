@@ -173,7 +173,7 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
             state.sled.yaw_rate_rad_s = 0.0;
             break;
         case SledMode::kDrivingBack:
-            sled::drive_back(state.sled, model.start_line_m(), dt_s);
+            sled::drive_back(state.sled, sled, model.start_line_m(), dt_s);
             break;
     }
     return out;

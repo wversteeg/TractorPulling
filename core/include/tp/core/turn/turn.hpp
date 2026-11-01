@@ -68,6 +68,13 @@ inline constexpr double kAtRest_m_s = 0.05;
 /// sled's line [m] and turned at most this far from it [rad].
 inline constexpr double kHookOffLine_m = 0.4;
 inline constexpr double kHookTurned_rad = 0.26;
+/// The sled's fenders either side of its hook stop a tractor backing into
+/// it: their faces stand this far behind the hook, and they reach this far
+/// either side of the sled's line and this deep [m]. Backing up, the rear
+/// tires stop against them (fenders()).
+inline constexpr double kFenderBehindHook_m = 0.1;
+inline constexpr double kFenderHalfSpan_m = 1.6;
+inline constexpr double kFenderDepth_m = 1.0;
 /// "Some force on the chain": the slack is taken up once the chain holds at
 /// least this tension [N].
 inline constexpr double kTakeUpTension_n = 1000.0;
@@ -131,6 +138,10 @@ struct HitchToHook {
 
 [[nodiscard]] HitchToHook hitch_to_hook(const pull::Model& model,
                                         const pull::State& state) noexcept;
+
+/// How close the hitch comes to the hook along the sled's line with the
+/// rear tires against the sled's fenders [m].
+[[nodiscard]] double fender_stop_m(const pull::Model& model) noexcept;
 
 /// Whether the chain hooks on now (see kHookOffLine_m).
 [[nodiscard]] bool hooks_on(const pull::Model& model, const pull::State& state) noexcept;

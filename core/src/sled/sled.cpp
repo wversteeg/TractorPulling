@@ -356,11 +356,28 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
     state.distance_m += velocity_m_s * dt_s;
 }
 
-bool drive_back(State& state, double start_x_m, double dt_s) noexcept {
+bool drive_back(State& state, const Params& params, double start_x_m, double dt_s) noexcept {
     state.berm_kg = 0.0;
+    state.velocity_m_s = 0.0;
     state.lateral_velocity_m_s = 0.0;
     state.yaw_rate_rad_s = 0.0;
     state.wheel_side_deflection_m = 0.0;
+    // The box and the push-down follow the sled's travel: past the box's
+    // stop the box stands at its end and the push-down comes off at once;
+    // then the travel winds back at the pace the box runs back.
+    state.distance_m = std::min(state.distance_m, params.box_travel_distance_m);
+    if (state.distance_m > 0.0) {
+        const double box_run_m =
+            params.box_end_ahead_of_wheels_m - params.box_start_ahead_of_wheels_m;
+        // A box that does not ride along the rails is back at once.
+        state.distance_m =
+            box_run_m > 0.0
+                ? std::max(state.distance_m -
+                               kBoxBack_m_s * dt_s * params.box_travel_distance_m / box_run_m,
+                           0.0)
+                : 0.0;
+        return false;
+    }
     const double remaining_m = state.position_m - start_x_m;
     const double step_m = kDriveBack_m_s * dt_s;
     if (remaining_m <= step_m) {
@@ -378,7 +395,6 @@ bool drive_back(State& state, double start_x_m, double dt_s) noexcept {
     state.velocity_m_s = -kDriveBack_m_s;
     state.lateral_position_m *= kept;
     state.heading_rad *= kept;
-    state.distance_m = std::max(state.distance_m - step_m, 0.0);
     return false;
 }
 

@@ -9,7 +9,9 @@
 # is in. In a whole turn, a line in the middle says what to do next: drive
 # to the sled and back up to it (how far the hitch still has to go, and
 # which way to steer), take up the slack, wait for the flag, back off to
-# release the chain, drive back to the bay. A lamp right of the bars
+# release the chain, drive back to the bay. After the pull the numbers keep
+# its distance (hold_distance) while the sled drives back, and the bar down
+# the track is empty again once the chain is off. A lamp right of the bars
 # repeats the officials' signal: green GO while the pull is good,
 # red STOP to wait or to stop (the pull is over: close the throttle). It
 # only shows the run's snapshot.
@@ -76,6 +78,8 @@ var _line_m := 100.0
 var _bar_m := 110.0
 var _omega_rad_s := 0.0
 var _sled_m := 0.0
+# The distance the numbers show: the pull's once it is over [m].
+var _held_m := 0.0
 var _pushdown_start_m := 0.0
 var _pushdown_full_m := 0.0
 var _pushdown := 0.0
@@ -163,13 +167,22 @@ func set_parking(bay: Vector2) -> void:
 	_parking = bay
 
 
+# The distance to show in the numbers this frame (the sled's, or the
+# pull's once it is over); set before show_snapshot().
+func hold_distance(distance_m: float) -> void:
+	_held_m = distance_m
+
+
 # `title` names the pull ("" none), `pro` whether to show the clutch.
 func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	_pro = pro
 	_pull.text = title
 	_omega_rad_s = s["engine_omega_rad_s"]
-	_sled_m = s["sled_x_m"]
-	_pushdown = s["pushdown"]
+	# The chain off after the pull: the bar starts again for the next one.
+	var chain_off: bool = s.get("stage", "pulling") in ["to_the_parking", "parked"] \
+			and not bool(s.get("chain_hooked", true))
+	_sled_m = 0.0 if chain_off else float(s["sled_x_m"])
+	_pushdown = 0.0 if chain_off else float(s["pushdown"])
 	if _pushdown <= 0.0:
 		_pushdown_label.text = ""
 	elif _pushdown < 1.0:
@@ -184,7 +197,7 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	var gear: int = s["gear"]
 	var text := "%s   %4.0f rpm   %4.1f km/h   %6.2f m" % [
 			gear_name(gear), _omega_rad_s * RPM_PER_RAD_S,
-			float(s["tractor_speed_m_s"]) * KMH_PER_M_S, _sled_m]
+			float(s["tractor_speed_m_s"]) * KMH_PER_M_S, _held_m]
 	if pro:
 		# The clutch as the run has it: 0 pressed, 100 % in.
 		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)

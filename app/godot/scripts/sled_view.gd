@@ -1,11 +1,14 @@
 # The sled, built in code from the run's sizes: two frame rails from the
 # rear wheels to the hook, the pan sliding on the track up front, the weight
 # box (an open tray stacked with weights) riding forward along the rails as
-# the sled advances, and the operator's platform at the back with a lamp on
-# a mast. The push-down shows: as it comes on, the rear wheels are lifted
-# off the track (drawn a little higher than the few centimetres a real sled
-# lifts them, to be seen from the tractor's seat) and the lamp turns from
-# green to red.
+# the sled advances, the hook on a drawbar ahead of the pan with a rubber
+# fender either side (the tractor's rear tires stop against them:
+# turn::kFenderBehindHook_m), and the operator's platform at the back with
+# a lamp on a mast. The push-down shows: as it comes on, the rear wheels are
+# lifted off the track (drawn a little higher than the few centimetres a
+# real sled lifts them, to be seen from the tractor's seat). The lamp is
+# green while the chain pulls on the hook, red once the sled has stopped
+# after the pull (until it drives back), and off otherwise.
 class_name SledView
 extends Node3D
 
@@ -15,8 +18,19 @@ const STEEL := Color(0.27, 0.25, 0.23)
 const DARK := Color(0.1, 0.1, 0.11)
 const TIRE := Color(0.08, 0.08, 0.08)
 const WEIGHT := Color(0.28, 0.29, 0.31)
-const LAMP_OFF := Color(0.2, 0.8, 0.2)
-const LAMP_ON := Color(1.0, 0.15, 0.1)
+const LAMP_GREEN := Color(0.2, 0.9, 0.25)
+const LAMP_RED := Color(1.0, 0.15, 0.1)
+const LAMP_DARK := Color(0.25, 0.25, 0.25)
+# The chain pulls on the hook: at least the tension that takes up the slack
+# (turn::kTakeUpTension_n) [N].
+const LAMP_TENSION_N := 1000.0
+# The fenders: their faces this far behind the hook (turn::
+# kFenderBehindHook_m), either side of the sled's line, where a tractor's
+# rear tires meet them; their size [m].
+const FENDER_BEHIND_HOOK_M := 0.1
+const FENDER_SIDE_M := 0.95
+const FENDER_SIZE_M := Vector3(0.55, 0.6, 0.18)
+const RUBBER := Color(0.06, 0.06, 0.06)
 # The sled's look: its width, its rails' height above the wheels' axle and
 # the weight box's size [m].
 const WIDTH_M := 2.4
@@ -92,6 +106,7 @@ func build(d: Dictionary) -> void:
 	add_child(ring)
 	_hook.position = TrackSpace.point(hook_ahead_m, 0.0, hook_height_m)
 	add_child(_hook)
+	_add_fenders(hook_ahead_m, hook_height_m)
 
 	# The pan: a wide steel plate on the track, its leading edge turned up,
 	# hung from the rails.
@@ -129,6 +144,26 @@ func build(d: Dictionary) -> void:
 	_build_box()
 	_build_platform(rail_z_m)
 	_show_pushdown(0.0)
+	_show_lamp(LAMP_DARK)
+
+
+# A cross beam behind the hook, and on each end a rubber fender facing the
+# tractor, at its rear tires' height.
+func _add_fenders(hook_ahead_m: float, hook_height_m: float) -> void:
+	var face_m := hook_ahead_m - FENDER_BEHIND_HOOK_M
+	var beam_m := face_m - FENDER_SIZE_M.z - 0.06
+	var beam := _painted(Vector3(2.0 * FENDER_SIDE_M + FENDER_SIZE_M.x, 0.12, 0.12), PAINT_DARK)
+	beam.position = TrackSpace.point(beam_m, 0.0, hook_height_m)
+	add_child(beam)
+	for side: float in [-1.0, 1.0]:
+		var fender := Art.box(Vector3(FENDER_SIZE_M.x, FENDER_SIZE_M.y, FENDER_SIZE_M.z), RUBBER,
+				0.95)
+		fender.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * FENDER_SIDE_M,
+				hook_height_m + 0.1)
+		add_child(fender)
+		var leg := Art.box(Vector3(0.1, hook_height_m + 0.1, 0.1), STEEL, 0.5, 0.5)
+		leg.position = TrackSpace.point(beam_m, side * FENDER_SIDE_M, (hook_height_m + 0.1) / 2.0)
+		add_child(leg)
 
 
 func _add_wheel(side_m: float, width_m: float) -> void:
@@ -252,6 +287,31 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 		spin.rotation.x = wrapf(_wheel_angle, -PI, PI)
 	_show_pushdown(s["pushdown"])
 	_show_berm(s["berm_m3"])
+	_show_lamp(lamp_colour(s))
+
+
+# The lamp: green while the chain pulls on the hook (taking up the slack,
+# waiting for the flag, the pull), red once the pull is over until the sled
+# drives back, off otherwise.
+static func lamp_colour(s: Dictionary) -> Color:
+	match s.get("stage", "pulling"):
+		"taking_up_slack", "waiting_for_the_flag", "pulling":
+			if float(s.get("chain_tension_n", 0.0)) >= LAMP_TENSION_N:
+				return LAMP_GREEN
+		"releasing", "to_the_parking", "parked":
+			if float(s.get("sled_speed_m_s", 0.0)) >= 0.0 and not bool(s.get("sled_back", false)):
+				return LAMP_RED
+	return LAMP_DARK
+
+
+func lamp_shown() -> Color:
+	return _lamp_material.albedo_color
+
+
+func _show_lamp(colour: Color) -> void:
+	_lamp_material.albedo_color = colour
+	_lamp_material.emission = colour
+	_lamp_material.emission_energy_multiplier = 0.0 if colour == LAMP_DARK else 2.0
 
 
 # The berm as a low mound across the pan, half a cylinder flattened to
@@ -266,9 +326,6 @@ func _show_berm(volume_m3: float) -> void:
 
 func _show_pushdown(share: float) -> void:
 	_wheels.position = TrackSpace.point(0.0, 0.0, share * WHEEL_LIFT_M)
-	var colour := LAMP_OFF.lerp(LAMP_ON, share)
-	_lamp_material.albedo_color = colour
-	_lamp_material.emission = colour
 
 
 static func _ring(radius_m: float, thickness_m: float) -> TorusMesh:

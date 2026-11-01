@@ -126,6 +126,33 @@ TEST(Turn, HooksOnInFrontOfTheSled) {
     EXPECT_TRUE(state.run.pull.hooked);
 }
 
+// Backing up too far, the rear tires stop against the sled's fenders: the
+// tractor stands there, its hitch where the fenders hold it, and the chain
+// hooks on. Beside the sled, or past the fenders' depth, they do not hold.
+TEST(Turn, TheFendersStopATractorBackingIntoTheSled) {
+    const pull::Model model = reference_model();
+    const double stop_m = fender_stop_m(model);
+    ASSERT_GT(stop_m, 0.0);
+    ASSERT_LT(stop_m, model.sled().chain.length_m);
+    State state = from_the_parking(model, kParking);
+    place_hitch(model, state.run.pull, stop_m - 0.05, 0.0);
+    state.run.pull.tractor.chassis.velocity_m_s = -1.0;
+    step(state, model, kRules, kParking, {}, kDt_s);
+    EXPECT_NEAR(hitch_to_hook(model, state.run.pull).along_m, stop_m, 1e-9);
+    EXPECT_EQ(state.run.pull.tractor.chassis.velocity_m_s, 0.0);
+    EXPECT_EQ(state.stage, Stage::kTakingUpSlack);
+
+    const auto held = [&](double along_m, double across_m) {
+        State beside = from_the_parking(model, kParking);
+        place_hitch(model, beside.run.pull, along_m, across_m);
+        beside.run.pull.tractor.chassis.velocity_m_s = -1.0;
+        step(beside, model, kRules, kParking, {}, kDt_s);
+        return beside.run.pull.tractor.chassis.velocity_m_s == 0.0;
+    };
+    EXPECT_FALSE(held(stop_m - 0.05, 1.1 * kFenderHalfSpan_m)) << "beside the sled";
+    EXPECT_FALSE(held(stop_m - 1.1 * kFenderDepth_m, 0.0)) << "past the fenders";
+}
+
 // The driver's side of the hook-up: creep forward in 1st until the slack
 // is taken up, then press the clutch and stand, putting `pulling_gear` in.
 vehicle::Input hook_up_input(const State& state, double t_s, int pulling_gear) {

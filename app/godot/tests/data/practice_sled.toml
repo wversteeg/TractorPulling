@@ -31,7 +31,7 @@ mobility_rate = 0.1
 relaxation_length_m = 0.55           # about the wheel's radius
 
 [sled.hook]
-ahead_of_wheels_m = 3.3
+ahead_of_wheels_m = 4.0               # on a drawbar ahead of the pan, fenders either side
 height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
 
 [sled.weight_box]
