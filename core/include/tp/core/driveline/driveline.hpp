@@ -95,8 +95,9 @@ struct State {
     double input_omega_rad_s = 0.0;
     /// Axle speed [rad/s].
     double output_omega_rad_s = 0.0;
-    /// Shifts under load so far in this pull.
-    int load_shifts = 0;
+    /// Gears shifted down under load so far in this pull, over one shift or
+    /// more: a step of load_downshift_gears may be taken a gear at a time.
+    int load_shift_gears = 0;
     /// Once the pull is under way (start_pull), the lowest gear the gearbox
     /// goes into with the clutch: the gear it pulls in, rising as it shifts
     /// up, so it never goes back down but by a shift under load. Neutral (0)
@@ -119,8 +120,10 @@ void end_pull(State& state) noexcept;
 [[nodiscard]] int lowest_gear(const State& state, const Params& params) noexcept;
 
 /// Whether the gearbox shifts from its gear now to gear `to` with the
-/// clutch in: down, to a gear (not neutral), at most load_downshift_gears,
-/// while this pull has load shifts left (load_shifts_per_pull).
+/// clutch in: down, to a gear (not neutral), at most load_downshift_gears
+/// at once and at most load_downshift_gears × load_shifts_per_pull gears in
+/// one pull. A step of two gears may be taken in two shifts of one, as a
+/// driver tapping down a gear at a time does.
 [[nodiscard]] bool shifts_under_load(const State& state, const Params& params, int to) noexcept;
 
 /// Shifts down under load, the clutch in (see shifts_under_load; nothing if
@@ -201,7 +204,7 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.gear)));
     hash.add(state.input_omega_rad_s);
     hash.add(state.output_omega_rad_s);
-    hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.load_shifts)));
+    hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.load_shift_gears)));
     hash.add(static_cast<std::uint64_t>(static_cast<std::int64_t>(state.floor_gear)));
 }
 

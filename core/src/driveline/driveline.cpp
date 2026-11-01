@@ -90,9 +90,11 @@ double overall_ratio(const Params& params, int gear) noexcept {
 
 bool shifts_under_load(const State& state, const Params& params, int to) noexcept {
     const int from = state.gear;
-    return to > kNeutral && to < from && from - to <= params.load_downshift_gears &&
-           static_cast<std::size_t>(from) <= ratios(params).size() &&
-           state.load_shifts < params.load_shifts_per_pull;
+    const int gears_left =
+        params.load_downshift_gears * params.load_shifts_per_pull - state.load_shift_gears;
+    return to > kNeutral && to < from &&
+           from - to <= std::min(params.load_downshift_gears, gears_left) &&
+           static_cast<std::size_t>(from) <= ratios(params).size();
 }
 
 void start_pull(State& state) noexcept {
@@ -103,14 +105,17 @@ void start_pull(State& state) noexcept {
 
 void end_pull(State& state) noexcept {
     state.floor_gear = kNeutral;
-    state.load_shifts = 0;
+    state.load_shift_gears = 0;
 }
 
 int lowest_gear(const State& state, const Params& params) noexcept {
     if (state.floor_gear == kNeutral) {
         return 1;
     }
-    const int by_load_shift = std::max(state.gear - params.load_downshift_gears, 1);
+    const int gears_left =
+        params.load_downshift_gears * params.load_shifts_per_pull - state.load_shift_gears;
+    const int by_load_shift =
+        std::max(state.gear - std::min(params.load_downshift_gears, gears_left), 1);
     return shifts_under_load(state, params, by_load_shift)
                ? std::min(by_load_shift, state.floor_gear)
                : state.floor_gear;
@@ -120,8 +125,8 @@ std::optional<double> shift_under_load(State& state, const Params& params, int g
     if (!shifts_under_load(state, params, gear)) {
         return std::nullopt;
     }
+    state.load_shift_gears += state.gear - gear;
     state.gear = gear;
-    ++state.load_shifts;
     if (state.floor_gear != kNeutral) {
         state.floor_gear = gear;
     }

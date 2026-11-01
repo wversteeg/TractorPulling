@@ -323,12 +323,12 @@ TEST(Driveline, EndingThePullFreesTheGears) {
     State state{.gear = kReverse};
     start_pull(state);
     EXPECT_EQ(state.floor_gear, kNeutral);
-    state = {.gear = 6, .load_shifts = 1};
+    state = {.gear = 6, .load_shift_gears = 1};
     start_pull(state);
     ASSERT_EQ(state.floor_gear, 6);
     end_pull(state);
     EXPECT_EQ(state.floor_gear, kNeutral);
-    EXPECT_EQ(state.load_shifts, 0);
+    EXPECT_EQ(state.load_shift_gears, 0);
     EXPECT_EQ(lowest_gear(state, params), 1);
 }
 
@@ -411,7 +411,7 @@ TEST(Driveline, ShiftsOneGearDownUnderLoad) {
     EXPECT_DOUBLE_EQ(impulse_nm_s.value_or(0.0),
                      params.input_inertia_kg_m2 * (state.input_omega_rad_s - 200.0));
     EXPECT_GT(impulse_nm_s.value_or(0.0), 0.0);
-    EXPECT_EQ(state.load_shifts, 1);
+    EXPECT_EQ(state.load_shift_gears, 1);
 
     Params two = params;
     two.load_downshift_gears = 2;
@@ -429,7 +429,7 @@ TEST(Driveline, ShiftsUnderLoadOnceAPull) {
     EXPECT_FALSE(shift_under_load(state, params, 4).has_value());
     EXPECT_FALSE(shift(state, params, 4, false));
     EXPECT_EQ(state.gear, 5);
-    EXPECT_EQ(state.load_shifts, 1);
+    EXPECT_EQ(state.load_shift_gears, 1);
     EXPECT_TRUE(shift(state, params, 4, true)) << "with the clutch pressed";
 
     Params twice = params;
@@ -443,6 +443,26 @@ TEST(Driveline, ShiftsUnderLoadOnceAPull) {
     Params never = params;
     never.load_shifts_per_pull = 0;
     EXPECT_FALSE(shifts_under_load_from(never, 6, 5));
+}
+
+// A two-gear step may be taken a gear at a time, as a thumb tapping "-"
+// does: two shifts of one, then no more; in one shift of two, alike.
+TEST(Driveline, ATwoGearStepTakesTwoTaps) {
+    Params two = reference_params();
+    two.load_downshift_gears = 2;
+    State tapped{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    tapped.floor_gear = 6;
+    EXPECT_EQ(lowest_gear(tapped, two), 4);
+    EXPECT_TRUE(shift_under_load(tapped, two, 5).has_value());
+    EXPECT_EQ(lowest_gear(tapped, two), 4) << "one gear of the step left";
+    EXPECT_TRUE(shift_under_load(tapped, two, 4).has_value());
+    EXPECT_EQ(tapped.load_shift_gears, 2);
+    EXPECT_FALSE(shifts_under_load(tapped, two, 3));
+    EXPECT_EQ(lowest_gear(tapped, two), 4);
+
+    State at_once{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    EXPECT_TRUE(shift_under_load(at_once, two, 4).has_value());
+    EXPECT_FALSE(shifts_under_load(at_once, two, 3));
 }
 
 // Engaging a gear synchronizes the two sides: momentum through the gears is

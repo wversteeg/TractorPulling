@@ -44,7 +44,7 @@ vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::
         const bool below =
             tractor.engine.omega_rad_s < plan.downshift_share * params.engine.rated_omega_rad_s;
         state.watching = state.watching || !below;
-        if (gearbox.load_shifts > 0) {
+        if (gearbox.load_shift_gears > 0) {
             in.gear = gearbox.gear;
         } else if (state.watching && below && tractor.engine.running &&
                    driveline::shifts_under_load(gearbox, params.driveline, gearbox.gear - 1)) {
