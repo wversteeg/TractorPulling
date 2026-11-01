@@ -12,7 +12,8 @@
 # steering (TiltSteering) the steering slider goes: tilting the phone
 # steers, straight ahead as it is held when the pull begins. Camera, restart
 # (the same pull again) and menu (back to the start screen) buttons sit in
-# the top corner. All of them are multi-touch, so
+# the top corner. The gas lever is drawn as a pedal, the gear buttons as a
+# shifter's keys (ShiftButton) and the camera button as a camera. All of them are multi-touch, so
 # both thumbs drive at once.
 #
 # "-" steps down to neutral and, where the gearbox has it, reverse (R),
@@ -76,11 +77,11 @@ var throttle_slider := TouchSlider.new()
 var clutch_slider := TouchSlider.new()
 var brake_left_slider := TouchSlider.new()
 var brake_right_slider := TouchSlider.new()
-var gear_up := TouchButton.new()
-var gear_down := TouchButton.new()
+var gear_up := ShiftButton.new()
+var gear_down := ShiftButton.new()
 # The gear in and the one asked for (show_gear): a readout, not a button.
 var gear_readout := TouchButton.new()
-var camera_button := TouchButton.new()
+var camera_button := CameraButton.new()
 var restart_button := TouchButton.new()
 var menu_button := TouchButton.new()
 
@@ -103,6 +104,7 @@ func _ready() -> void:
 	throttle_slider.colour = GAS_COLOUR
 	throttle_slider.label = "GAS"
 	throttle_slider.filled = true
+	throttle_slider.pedal = true
 	_place(throttle_slider, Vector2(1.0, 1.0), _right_column(0, SLIDER_THICKNESS, THROTTLE_LENGTH))
 
 	# Above the steering on the left: the clutch pedal, pressed (1) at the
@@ -130,14 +132,13 @@ func _ready() -> void:
 			Rect2(Vector2(MARGIN + SLIDER_THICKNESS + GAP, left_top - BRAKE_SIZE.y), BRAKE_SIZE))
 	_place(brake_right_slider, Vector2(1.0, 1.0), _right_column(1, BRAKE_SIZE.x, BRAKE_SIZE.y))
 
-	gear_down.text = "-"
-	gear_up.text = "+"
+	gear_down.up = false
+	gear_up.up = true
 	gear_readout.readout = true
 	show_gear(0)
 	for button: TouchButton in [gear_down, gear_up, gear_readout]:
 		add_child(button)
 
-	camera_button.text = "cam"
 	_place(camera_button, Vector2(1.0, 0.0), _top_row(0))
 	restart_button.text = "again"
 	restart_button.fires_on_release = true
