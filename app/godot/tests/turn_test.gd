@@ -113,7 +113,7 @@ func _play() -> void:
 		var stage: String = s["stage"]
 		if stage != stages.back():
 			stages.append(stage)
-		backing_up_told = backing_up_told or hud.turn_text(s).begins_with("Back up to the sled")
+		backing_up_told = backing_up_told or hud.turn_text(s).begins_with("Back up:")
 		told_to_stand = told_to_stand or hud.turn_text(s).begins_with("Chain tight")
 		if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
 			flag_red_before = flag_red_before and flagman.colour_name() == "red"

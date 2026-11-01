@@ -6,8 +6,8 @@
 # front tires still carry, against what they carry at rest (marked): the
 # pull takes weight off the front, and with none left the front is up and
 # the front wheels do not steer. In the pro layout also how far the clutch
-# is in. In a whole turn, a line along the top left, in the place of the
-# pull's name, says what to do next (it
+# is in. In a whole turn, a short line along the top in the middle says
+# what to do next (it
 # can be turned off in the settings: `guidance`): drive
 # to the sled and back up to it (how far the hitch still has to go, and
 # which way to steer), take up the slack, wait for the flag, back off to
@@ -28,11 +28,10 @@ const BAR_HEIGHT := 22.0
 const REV_TOP := 112.0
 const TRACK_TOP := 148.0
 const FRONT_TOP := 184.0
-# The turn's line, along the top edge from the left, on a dark band, in
-# the place of the pull's name (shown there when there is no line): as
-# wide as fits left of the buttons along the top right.
+# The turn's line, short, along the top edge in the middle on a dark band:
+# between the pull's name on the left and the buttons on the right.
 const TURN_TOP := 8.0
-const TURN_WIDTH := 760.0
+const TURN_WIDTH := 420.0
 const TURN_PADDING := 6.0
 const TURN_FONT_SIZE := 24
 const TURN_COLOUR := Color(1.0, 0.95, 0.6)
@@ -130,8 +129,11 @@ func _ready() -> void:
 	_pushdown_label.add_theme_color_override("font_color", PUSHDOWN_COLOUR)
 	_front.position = Vector2(BAR_LEFT + BAR_WIDTH + MARGIN / 2.0, FRONT_TOP - 6.0)
 	_front.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-	_turn.position = Vector2(MARGIN, TURN_TOP)
-	_turn.size.x = TURN_WIDTH
+	_turn.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_turn.offset_left = -TURN_WIDTH / 2.0
+	_turn.offset_right = TURN_WIDTH / 2.0
+	_turn.offset_top = TURN_TOP
+	_turn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_turn.clip_text = true
 	_turn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_turn.add_theme_font_size_override("font_size", TURN_FONT_SIZE)
@@ -211,7 +213,6 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)
 	_numbers.text = text
 	_turn.text = turn_text(s) if guidance else ""
-	_pull.visible = _turn.text.is_empty()
 	queue_redraw()
 
 
@@ -234,43 +235,43 @@ func turn_text(s: Dictionary) -> String:
 			var along: float = s["hitch_along_m"]
 			if along <= 0.0 or float(s["hitch_to_hook_m"]) \
 					> PAST_THE_SLED_CHAINS * _chain_m + PAST_THE_SLED_MARGIN_M:
-				return "Drive past the sled into the lane, then back up to it in R"
+				return "Drive past the sled, back up in R"
 			var to_go := maxf(float(s["hitch_to_hook_m"]) - _chain_m, 0.0)
 			var across: float = s["hitch_across_m"]
 			var steer := ""
 			if absf(across) > _steer_hint_m:
 				# Backing up, the tail goes the way the wheel is turned: a
 				# hitch left of the line wants the wheel to the right.
-				steer = "   steer %s" % ("right" if across > 0.0 else "left")
+				steer = " · steer %s" % ("right" if across > 0.0 else "left")
 			if to_go <= 0.0:
-				return "Stop: the chain goes on" + steer
-			return "Back up to the sled: %.1f m%s" % [to_go, steer]
+				return "Stop: chain goes on" + steer
+			return "Back up: %.1f m%s" % [to_go, steer]
 		"taking_up_slack":
-			return "Hooked on. Creep forward to take up the slack"
+			return "Creep forward: take up slack"
 		"waiting_for_the_flag":
 			if float(s.get("flag_progress", 0.0)) > 0.0:
-				return "Hold it there... the flag is coming"
+				return "Hold still..."
 			# The hitch's distance on the ground: a little short of the
 			# chain's span, which climbs to the hook.
 			if float(s["hitch_to_hook_m"]) < _chain_m - _taut_within_m:
-				return "Creep forward a little: the chain is not tight"
+				return "Creep forward: chain slack"
 			if _pro:
-				return "Chain tight: press the clutch, stand still in your pulling gear"
-			return "Chain tight: let go of the gas and stand still in your pulling gear"
+				return "Chain tight: clutch in, pick your gear"
+			return "Chain tight: off the gas, pick your gear"
 		"releasing":
 			# Backing off in reverse is what the red flag asks for now: gas
 			# in R is fine.
 			if int(s["gear"]) < 0:
-				return "Back off in R until the chain comes off"
+				return "Back off in R"
 			var rolling := float(s["tractor_speed_m_s"]) > STOPPED_M_S
 			if rolling or float(s["throttle"]) > THROTTLE_CLOSED:
-				return "Red flag: stop! Close the throttle"
-			return "Shift to R and back off to release the chain"
+				return "Red flag: stop!"
+			return "Shift to R, back off"
 		"to_the_parking":
 			if _parking == Vector2.INF:
 				return ""
 			var gap := Vector2(float(s["tractor_x_m"]), float(s["tractor_y_m"])) - _parking
-			return "Drive back to your bay: %.0f m" % gap.length()
+			return "Back to your bay: %.0f m" % gap.length()
 		"parked":
 			return "Parked" if _parking != Vector2.INF else ""
 	return ""
@@ -289,7 +290,8 @@ func _draw() -> void:
 		var font := _turn.get_theme_font("font")
 		var width := minf(font.get_string_size(_turn.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
 				TURN_FONT_SIZE).x, TURN_WIDTH)
-		var band := Rect2(_turn.position, Vector2(width, _turn.get_minimum_size().y))
+		var band := Rect2(_turn.position + Vector2((TURN_WIDTH - width) / 2.0, 0.0),
+				Vector2(width, _turn.get_minimum_size().y))
 		draw_rect(band.grow(TURN_PADDING), BACK_COLOUR)
 	# The officials' signal.
 	if _signal != "off":
