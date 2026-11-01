@@ -1,30 +1,36 @@
 # The settings, from the gear on the start screen: the control layout
 # (easy, with the clutch assist, or pro, every pedal on its own) and the
-# steering (the on-screen slider, or tilting the phone). Each tap applies
+# steering (the on-screen slider, or tilting the phone) and the guidance
+# (the HUD's line on what to do next in a turn, on or off). Each tap applies
 # at once; the game keeps them on the device (GameSettings). "New career"
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure.
 class_name SettingsScreen
 extends MenuPanel
 
-signal changed(pro: bool, tilt: bool)
+signal changed(pro: bool, tilt: bool, guidance: bool)
 signal done
 signal new_career_requested
 
-const SETTINGS_SIZE := Vector2(820.0, 600.0)
+const SETTINGS_SIZE := Vector2(820.0, 680.0)
 const TITLE_SIZE := 36
 const LINE_SIZE := 26
 const HINT_SIZE := 20
+# Lower than the other screens' buttons: four rows fit the screen's height.
+const SETTING_BUTTON_SIZE := Vector2(200.0, 70.0)
 
 var easy_button: TouchButton
 var pro_button: TouchButton
 var slider_button: TouchButton
 var tilt_button: TouchButton
+var guidance_on_button: TouchButton
+var guidance_off_button: TouchButton
 var new_career_button: TouchButton
 var done_button: TouchButton
 var _hint: Label
 var _pro := false
 var _tilt := false
+var _guidance := true
 var _tilt_available := true
 # The first tap on "New career" made: the next one starts it.
 var _career_asked := false
@@ -45,6 +51,10 @@ func _ready() -> void:
 	var steering := add_button_row()
 	slider_button = add_button(steering, "slider")
 	tilt_button = add_button(steering, "tilt")
+	add_line(LINE_SIZE).text = "Guidance"
+	var guidance := add_button_row()
+	guidance_on_button = add_button(guidance, "on")
+	guidance_off_button = add_button(guidance, "off")
 	_hint = add_line(HINT_SIZE)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# New career beside Done: the panel keeps its height.
@@ -52,30 +62,38 @@ func _ready() -> void:
 	new_career_button = add_button(go, "New career")
 	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
 	done_button = add_button(go, "Done")
-	easy_button.tapped.connect(func() -> void: _pick(false, _tilt))
-	pro_button.tapped.connect(func() -> void: _pick(true, _tilt))
-	slider_button.tapped.connect(func() -> void: _pick(_pro, false))
-	tilt_button.tapped.connect(func() -> void: _pick(_pro, true))
+	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
+			guidance_on_button, guidance_off_button, done_button]:
+		button.custom_minimum_size = SETTING_BUTTON_SIZE
+	new_career_button.custom_minimum_size.y = SETTING_BUTTON_SIZE.y
+	easy_button.tapped.connect(func() -> void: _pick(false, _tilt, _guidance))
+	pro_button.tapped.connect(func() -> void: _pick(true, _tilt, _guidance))
+	slider_button.tapped.connect(func() -> void: _pick(_pro, false, _guidance))
+	tilt_button.tapped.connect(func() -> void: _pick(_pro, true, _guidance))
+	guidance_on_button.tapped.connect(func() -> void: _pick(_pro, _tilt, true))
+	guidance_off_button.tapped.connect(func() -> void: _pick(_pro, _tilt, false))
 	done_button.tapped.connect(func() -> void: done.emit())
 	new_career_button.tapped.connect(_ask_new_career)
 
 
 # Shows the settings as they are; `tilt_available` whether the device can
 # steer by tilting.
-func show_settings(pro: bool, tilt: bool, tilt_available: bool) -> void:
+func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool = true) -> void:
 	_pro = pro
 	_tilt = tilt
+	_guidance = guidance
 	_tilt_available = tilt_available
 	_career_asked = false
 	_show()
 
 
-func _pick(pro: bool, tilt: bool) -> void:
+func _pick(pro: bool, tilt: bool, guidance: bool) -> void:
 	_pro = pro
 	_tilt = tilt
+	_guidance = guidance
 	_career_asked = false
 	_show()
-	changed.emit(pro, tilt)
+	changed.emit(pro, tilt, guidance)
 
 
 func _show() -> void:
@@ -83,6 +101,8 @@ func _show() -> void:
 	pro_button.selected = _pro
 	slider_button.selected = not _tilt
 	tilt_button.selected = _tilt
+	guidance_on_button.selected = _guidance
+	guidance_off_button.selected = not _guidance
 	new_career_button.text = "Sure? Tap again" if _career_asked else "New career"
 	if _career_asked:
 		_hint.text = "A new career starts over: the garage's start money, nothing bought."

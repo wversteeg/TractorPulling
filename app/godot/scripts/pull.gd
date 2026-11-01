@@ -177,7 +177,8 @@ func _ready() -> void:
 			show_start())
 	start_screen.practice_requested.connect(func() -> void: _show_setup(true))
 	start_screen.settings_requested.connect(func() -> void:
-		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available())
+		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available(),
+				hud.guidance)
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.done.connect(show_start)
@@ -221,6 +222,7 @@ func _ready() -> void:
 		var settings := GameSettings.read(settings_path)
 		pro = settings.pro
 		tilt = settings.tilt
+		hud.guidance = settings.guidance
 		if not _resume_season():
 			_new_season()
 
@@ -233,12 +235,14 @@ func _start_autoplay() -> void:
 
 
 # The settings picked, kept on the device for the next launch.
-func _change_settings(is_pro: bool, by_tilt: bool) -> void:
+func _change_settings(is_pro: bool, by_tilt: bool, guidance: bool) -> void:
 	pro = is_pro
 	tilt = by_tilt
+	hud.guidance = guidance
 	var settings := GameSettings.new()
 	settings.pro = pro
 	settings.tilt = tilt
+	settings.guidance = guidance
 	var error := settings.write(settings_path)
 	if error != OK:
 		push_warning("cannot keep the settings: %s" % error_string(error))
@@ -676,6 +680,12 @@ func _show(delta: float) -> void:
 		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * _chain_m * MARKER_SHARE
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
+	var over := stage in ["releasing", "to_the_parking", "parked"]
+	var result := run.get_result() if over else {}
+	var full_pull_m := float(run.get_dimensions().get("full_pull_line_m", 100.0)) if over \
+			else _full_pull_m
+	hud.show_ending(ResultScreen.ending_text(result, full_pull_m),
+			ResultScreen.ending_name(result, full_pull_m) == "full_pull")
 
 
 # The officials' signal from the run's stage: "green" while the pull is
