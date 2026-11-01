@@ -332,9 +332,12 @@ func _show_setup(for_practice: bool) -> void:
 
 
 # The next run is the whole turn from the player's bay, or the pull alone.
+# Each event lays its parking out in its own way (VenueView.PARKINGS).
 func _place_parking() -> void:
 	if whole_turn and not autoplay:
-		run.set_parking(VenueView.PLAYER_BAY_X_M, VenueView.PARKING_RIGHT_OF_LANE_M)
+		venue_view.set_parking_layout(int(event.get_event().get("index", 0)))
+		var bay: Vector3 = venue_view.bays()[0]
+		run.set_parking(bay.x, bay.y, bay.z)
 	else:
 		run.clear_parking()
 
@@ -398,10 +401,10 @@ func _build_turn(dimensions: Dictionary) -> void:
 	var turn: bool = run.get_snapshot().get("stage", "pulling") != "pulling"
 	_whole_turn = turn
 	_chain_m = dimensions["chain_length_m"]
-	var bay_y_m := -(lane_m / 2.0 + VenueView.PARKING_RIGHT_OF_LANE_M)
+	var bays := venue_view.bays()
 	# Built for the first whole turn only: a pull from the line has none.
 	if parked.is_empty() and turn:
-		for i in VenueView.RIVAL_BAYS_X_M.size():
+		for i in VenueView.RIVAL_BAYS:
 			var rival := TractorView.new()
 			rival.paint = RIVAL_PAINTS[i % RIVAL_PAINTS.size()]
 			rival.paint_dark = rival.paint.darkened(0.4)
@@ -410,13 +413,15 @@ func _build_turn(dimensions: Dictionary) -> void:
 			rival.build(dimensions)
 			parked.append(rival)
 	for i in parked.size():
-		parked[i].position = TrackSpace.point(VenueView.RIVAL_BAYS_X_M[i], bay_y_m, 0.0)
+		var bay := bays[i + 1]
+		parked[i].position = TrackSpace.point(bay.x, -(lane_m / 2.0 + bay.y), 0.0)
+		parked[i].rotation.y = bay.z
 		parked[i].visible = turn
 	flagman.stand(TrackSpace.point(FLAGMAN_X_M, lane_m / 2.0 - FLAGMAN_IN_M, 0.0),
 			TrackSpace.point(0.0, 0.0, 0.0))
 	_full_pull_m = dimensions["full_pull_line_m"]
 	_left_m = lane_m / 2.0 - FLAGMAN_IN_M
-	hud.set_parking(Vector2(VenueView.PLAYER_BAY_X_M, bay_y_m) if turn else Vector2.INF)
+	hud.set_parking(Vector2(bays[0].x, -(lane_m / 2.0 + bays[0].y)) if turn else Vector2.INF)
 
 
 func _set_screen(next: Screen) -> void:

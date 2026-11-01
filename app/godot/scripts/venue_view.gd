@@ -1,5 +1,7 @@
 # Where the pull takes place, around the track TrackView draws: a summer
-# sky, grass, the prepared clay strip, a fence with straw bales along each
+# sky, grass, the prepared clay strip (the lane only, from just behind the
+# sled: grass beside it, where the tractors drive back), the parking behind
+# the start line on the right (laid out per event: PARKINGS), a fence with straw bales along each
 # side, a covered grandstand full of people on the left and a standing crowd
 # behind the fence on the right, distance boards every 10 m, a banner over
 # the full-pull line and a scoreboard showing how far the sled has got;
@@ -53,7 +55,6 @@ const FIELDS := 18
 const FIELD_LIFT_M := 0.15
 const FIELD_TRIES := 20
 const GRASS_Y_M := -0.06
-const STRIP_MARGIN_M := 3.0
 const RUN_UP_M := 40.0
 const OVERRUN_M := 30.0
 # On the right, between the lane and the bales, room to drive back to the
@@ -64,14 +65,32 @@ const RETURN_LANE_M := 6.0
 # How far past the lane's edges the fields stay clear: the stands, banks
 # and tents are inside, on the right past the return lane [m].
 const FIELDS_CLEAR_OF_LANE_M := 30.0 + RETURN_LANE_M
-# The parking: its bays' middle right of the lane's right-hand chalk line,
-# the player's bay and the rivals' behind it, down the track from the start
-# line (behind it) [m]. The player's tractor leaves from its bay and comes
-# back to it (TractorPullRun.set_parking).
-const PARKING_RIGHT_OF_LANE_M := 6.0
-const PLAYER_BAY_X_M := -12.0
-const RIVAL_BAYS_X_M: Array[float] = [-19.0, -26.0, -33.0]
-const BAY_SIZE_M := Vector2(6.0, 4.0)
+# The parkings, one per event in turn (set_parking_layout): the bays'
+# rear axles right of the lane's right-hand chalk line ("right"), down the
+# track from the start line ("xs", behind it: the player's bay first, the
+# rivals' after it), which way the tractors face there ("heading", 0 down
+# the track, turned left towards the lane) and the ground ("gravel", or
+# "grass" with stakes at the bays' corners) [m, rad]. The player's tractor
+# leaves from its bay and comes back to it (TractorPullRun.set_parking).
+const PARKINGS: Array[Dictionary] = [
+	{"right": 8.0, "heading": PI / 2.0, "xs": [-12.0, -16.5, -21.0, -25.5], "ground": "gravel"},
+	{"right": 7.5, "heading": PI / 3.0, "xs": [-13.0, -18.0, -23.0, -28.0], "ground": "grass"},
+	{"right": 10.0, "heading": PI / 2.0, "xs": [-16.0, -20.5, -25.0, -29.5], "ground": "grass"},
+]
+const RIVAL_BAYS := 3
+# A bay: as deep as a tractor is long, as wide as one with room to climb
+# down [m].
+const BAY_SIZE_M := Vector2(5.0, 4.0)
+# The parking's ground: behind the start line from here to the run-up's
+# end, out from the lane's right-hand chalk line between these [m].
+const PARKING_FRONT_X_M := -3.0
+const PARKING_FROM_LANE_M := Vector2(1.0, 15.0)
+const GRAVEL_DARK := Color(0.42, 0.4, 0.37)
+const GRAVEL_LIGHT := Color(0.66, 0.63, 0.58)
+# The clay strip: from this far behind the start line (just behind the
+# sled), this far past each chalk line [m].
+const CLAY_BEHIND_START_M := 5.0
+const CLAY_PAST_LANE_M := 1.5
 # The signal light's lamps on the full-pull gantry.
 const LAMP_RADIUS_M := 0.22
 const LAMP_RED := Color(1.0, 0.12, 0.08)
@@ -127,6 +146,10 @@ var _line: Node3D
 # y across) and the circle it turns in (z) [m].
 var _fields: Array[Vector3] = []
 var _random := RandomNumberGenerator.new()
+# The parking laid out now (PARKINGS), and the node that draws it.
+var _parking_layout := 0
+var _parking: Node3D = null
+var _parking_built := -1
 
 
 func build(d: Dictionary) -> void:
@@ -151,6 +174,15 @@ func build(d: Dictionary) -> void:
 		_add_scenery(length_m, lane_m)
 		_add_farmland(length_m, lane_m)
 		_add_horizon(length_m)
+		_parking = null
+		_parking_built = -1
+	if _parking_built != _parking_layout:
+		if _parking != null:
+			_parking.free()
+		_parking = Node3D.new()
+		add_child(_parking)
+		_add_parking(_parking, lane_m)
+		_parking_built = _parking_layout
 	if full_pull_m != _full_pull_m:
 		if _line != null:
 			_line.free()
@@ -159,6 +191,25 @@ func build(d: Dictionary) -> void:
 		_add_banner(_line, full_pull_m, lane_m)
 		_add_scoreboard(_line, full_pull_m, lane_m)
 		_full_pull_m = full_pull_m
+
+
+# The parking for the next build (an event's: PARKINGS, in turn).
+func set_parking_layout(index: int) -> void:
+	_parking_layout = posmod(index, PARKINGS.size())
+
+
+func parking_layout() -> Dictionary:
+	return PARKINGS[_parking_layout]
+
+
+# The bays: x down the track, right of the lane's right-hand chalk line,
+# and the heading the tractors face [m, m, rad]; the player's first.
+func bays() -> Array[Vector3]:
+	var layout := parking_layout()
+	var out: Array[Vector3] = []
+	for x_m: float in layout["xs"]:
+		out.append(Vector3(x_m, layout["right"], layout["heading"]))
+	return out
 
 
 # Where the banner over the full-pull line stands, along the track [m].
@@ -240,10 +291,10 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	_quiet(field)
 	add_child(field)
 
-	var strip_length_m := RUN_UP_M + length_m + OVERRUN_M
+	var strip_length_m := CLAY_BEHIND_START_M + length_m + OVERRUN_M
 	var clay_material := StandardMaterial3D.new()
 	clay_material.albedo_texture = Art.ground_texture(CLAY_DARK, CLAY_LIGHT, 0.05, 11)
-	var strip_width_m := lane_m + 2.0 * (BALES_OUT_M - 0.5) + RETURN_LANE_M
+	var strip_width_m := lane_m + 2.0 * CLAY_PAST_LANE_M
 	# Clods catch the low sun: a fine normal map over the colour.
 	clay_material.normal_enabled = true
 	clay_material.normal_texture = Art.ground_normal(0.06, 12, 5.0)
@@ -253,28 +304,56 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	var clay := PlaneMesh.new()
 	clay.size = Vector2(strip_width_m, strip_length_m)
 	var strip := Art.instance(clay, clay_material)
-	# Wider on the right, for the return lane and the parking.
-	strip.position = TrackSpace.point(length_m + OVERRUN_M - strip_length_m / 2.0,
-			-RETURN_LANE_M / 2.0, -0.03)
+	strip.position = TrackSpace.point(length_m + OVERRUN_M - strip_length_m / 2.0, 0.0, -0.03)
 	_quiet(strip)
 	add_child(strip)
-	_add_bays(lane_m)
 
 
-# The parking's bays behind the start line: white lines on the clay, the
-# player's and the rivals'.
-func _add_bays(lane_m: float) -> void:
-	var y_m := -(lane_m / 2.0 + PARKING_RIGHT_OF_LANE_M)
+# The parking behind the start line on the right: gravel with white lines
+# between the bays, or the field's grass with a stake at each bay's corner.
+func _add_parking(parent: Node3D, lane_m: float) -> void:
+	var layout := parking_layout()
+	var edge_m := lane_m / 2.0
+	if layout["ground"] == "gravel":
+		var gravel_material := StandardMaterial3D.new()
+		gravel_material.albedo_texture = Art.ground_texture(GRAVEL_DARK, GRAVEL_LIGHT, 0.2, 5)
+		gravel_material.normal_enabled = true
+		gravel_material.normal_texture = Art.ground_normal(0.3, 6, 3.0)
+		gravel_material.roughness = 1.0
+		var size := Vector2(PARKING_FROM_LANE_M.y - PARKING_FROM_LANE_M.x,
+				PARKING_FRONT_X_M + RUN_UP_M)
+		gravel_material.uv1_scale = Vector3(size.x / 4.0, size.y / 4.0, 1.0)
+		var plane := PlaneMesh.new()
+		plane.size = size
+		var gravel := Art.instance(plane, gravel_material)
+		gravel.position = TrackSpace.point(PARKING_FRONT_X_M - size.y / 2.0,
+				-(edge_m + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y) / 2.0), -0.035)
+		parent.add_child(_quiet(gravel))
+	# Each bay's sides: along the tractor's heading, half a bay either side
+	# of its middle, which is half a bay ahead of the rear axle.
+	var heading: float = layout["heading"]
+	var ahead := Vector2(cos(heading), sin(heading))
+	var left := Vector2(-ahead.y, ahead.x)
 	var lines: Array[Transform3D] = []
-	var bays: Array[float] = [PLAYER_BAY_X_M]
-	bays.append_array(RIVAL_BAYS_X_M)
-	for x_m in bays:
+	var stakes: Array[Transform3D] = []
+	for bay in bays():
+		var rear := Vector2(bay.x, -(edge_m + bay.y))
+		var middle := rear + ahead * (BAY_SIZE_M.x / 2.0 - 1.0)
 		for side: float in [-1.0, 1.0]:
-			lines.append(Transform3D(Basis(),
-					TrackSpace.point(x_m, y_m + side * BAY_SIZE_M.y / 2.0, -0.02)))
-	var line := BoxMesh.new()
-	line.size = Vector3(0.12, 0.02, BAY_SIZE_M.x)
-	add_child(_quiet(Art.many(line, lines, Art.material(Color(0.95, 0.95, 0.9), 0.9))))
+			var line_at := middle + left * side * BAY_SIZE_M.y / 2.0
+			lines.append(Transform3D(Basis(Vector3.UP, heading),
+					TrackSpace.point(line_at.x, line_at.y, -0.02)))
+			for end: float in [-1.0, 1.0]:
+				var stake_at := line_at + ahead * end * BAY_SIZE_M.x / 2.0
+				stakes.append(Transform3D(Basis(), TrackSpace.point(stake_at.x, stake_at.y, 0.25)))
+	if layout["ground"] == "gravel":
+		var line := BoxMesh.new()
+		line.size = Vector3(0.12, 0.02, BAY_SIZE_M.x)
+		parent.add_child(_quiet(Art.many(line, lines, Art.material(Color(0.95, 0.95, 0.9), 0.9))))
+	else:
+		var stake := BoxMesh.new()
+		stake.size = Vector3(0.06, 0.5, 0.06)
+		parent.add_child(_quiet(Art.many(stake, stakes, Art.material(Color(0.95, 0.5, 0.1), 0.8))))
 
 
 # How much further out the venue stands beside the lane on `side` (-1 right,
@@ -284,7 +363,8 @@ static func past_lane_m(side: float) -> float:
 
 
 func _add_fence(length_m: float, lane_m: float, side: float) -> void:
-	var from_m := -RUN_UP_M
+	# On the right the parking is open to the lane: the fence starts past it.
+	var from_m := -RUN_UP_M if side > 0.0 else PARKING_FRONT_X_M
 	var to_m := length_m + OVERRUN_M
 	var posts: Array[Transform3D] = []
 	var x_m := from_m

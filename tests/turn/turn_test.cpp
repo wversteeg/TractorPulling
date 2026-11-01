@@ -80,6 +80,29 @@ TEST(Parking, MustBeBesideTheTrack) {
               ParamError::kNotFinite);
 }
 
+// Turned square to the track, facing the lane, the tractor's length reaches
+// towards it: its nose must stay out too.
+TEST(Parking, TurnedTowardsTheLaneKeepsItsNoseOut) {
+    constexpr double kHalfWidth_m = 1.2;
+    constexpr double kLength_m = 2.5;
+    constexpr double kFacingLeft_rad = std::numbers::pi / 2.0;
+    EXPECT_FALSE(validate({.x_m = -12.0, .y_m = -8.6, .heading_rad = kFacingLeft_rad}, kRules,
+                          kHalfWidth_m, kLength_m));
+    EXPECT_EQ(validate({.x_m = -12.0, .y_m = -8.4, .heading_rad = kFacingLeft_rad}, kRules,
+                       kHalfWidth_m, kLength_m),
+              ParamError::kInTheLane);
+    // Facing away from the lane, only its width counts.
+    EXPECT_FALSE(validate({.x_m = -12.0, .y_m = -6.1, .heading_rad = -kFacingLeft_rad}, kRules,
+                          kHalfWidth_m, kLength_m));
+}
+
+TEST(Turn, StartsTurnedAsTheParking) {
+    const pull::Model model = reference_model();
+    const Parking turned{.x_m = -12.0, .y_m = -10.0, .heading_rad = std::numbers::pi / 2.0};
+    const State state = from_the_parking(model, turned);
+    EXPECT_DOUBLE_EQ(state.run.pull.tractor.chassis.heading_rad, turned.heading_rad);
+}
+
 TEST(Turn, StartsInTheParking) {
     const pull::Model model = reference_model();
     const State state = from_the_parking(model, kParking);
