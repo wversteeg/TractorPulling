@@ -20,7 +20,7 @@ std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venu
                                            std::uint64_t seed) noexcept {
     if (running_order.size() != static_cast<std::size_t>(field.count) || player < 0 ||
         player >= field.count ||
-        run::validate(field::pull_rules(rules, venue, rules.full_pull_m))) {
+        run::validate(field::trial_pull_rules(rules, venue, rules.full_pull_m))) {
         return std::nullopt;
     }
     const std::optional<event::Event> event =
@@ -120,7 +120,7 @@ void LiveEvent::start_next() noexcept {
     if (choosing_) {
         Puller trying = field_.pullers[static_cast<std::size_t>(trial_puller_)];
         trying.driver.gear = trial_gear_;
-        start_job(trying, venue_.sled, field::pull_rules(rules_, venue_, rules_.full_pull_m));
+        start_job(trying, venue_.sled, field::trial_pull_rules(rules_, venue_, rules_.full_pull_m));
         return;
     }
     if (event_.decision_due().has_value()) {

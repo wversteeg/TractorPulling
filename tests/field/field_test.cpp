@@ -100,8 +100,6 @@ TEST(FieldParams, RejectsNonsense) {
     EXPECT_FALSE(generate(bad, kVariation, ntto_standard_3500(), 15, 1).has_value());
 }
 
-// Every puller may compete in the class, even where the ranges reach past
-// its limits: power and weight are clamped to them.
 // NTTO: a competition pull or a re-pull ends at today's full-pull line, a
 // full pull; a test pull (which may move the line) and a pull-off (the
 // floating finish) run on until the sled stops, up to the maximum distance.
@@ -123,9 +121,13 @@ TEST(PullRules, OnlyTestPullsAndPullOffsRunPastTheLine) {
         EXPECT_EQ(r.track_length_m, 130.0);
         EXPECT_EQ(r.full_pull_line_m, 100.0);
     }
-    EXPECT_EQ(pull_rules(rules, venue, 100.0).track_length_m, 130.0);
-    EXPECT_EQ(pull_rules(rules, venue, 100.0).lane_width_m, 12.0);
+    // A gear trial runs on, to see how far each gear goes.
+    EXPECT_EQ(trial_pull_rules(rules, venue, 100.0).track_length_m, 130.0);
+    EXPECT_EQ(trial_pull_rules(rules, venue, 100.0).lane_width_m, 12.0);
 }
+
+// Every puller may compete in the class, even where the ranges reach past
+// its limits: power and weight are clamped to them.
 
 TEST(Field, EveryPullerMayCompete) {
     const Field field = field_of(event::kMaxPullers, 7);

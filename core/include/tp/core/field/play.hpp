@@ -62,9 +62,9 @@ inline constexpr std::uint64_t kPullStream = 0x9e3779b97f4a7c15ULL;
 /// A pull that runs until the sled stops (the floating finish, up to the
 /// rules' maximum distance); the chalk lines count up to today's full-pull
 /// line, `full_pull_m`. For trying a tractor's gears, which looks for how far
-/// each would go.
-[[nodiscard]] run::Rules pull_rules(const event::Rules& rules, const Venue& venue,
-                                    double full_pull_m) noexcept;
+/// each would go; a pull at the event takes pull_rules().
+[[nodiscard]] run::Rules trial_pull_rules(const event::Rules& rules, const Venue& venue,
+                                          double full_pull_m) noexcept;
 
 /// A pull of `kind` at the event (NTTO rules): a competition pull or a
 /// re-pull ends at today's full-pull line, `full_pull_m`, a full pull; a

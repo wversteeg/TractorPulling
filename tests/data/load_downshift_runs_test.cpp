@@ -110,7 +110,7 @@ RivalPull rival_pull(int gear, double share) {
     sled::Params sled = event.sled;
     sled.knives.count = kPullOffKnives;
     const field::Venue venue = data::venue(sled, track);
-    const run::Rules rules = field::pull_rules(event.rules, venue, event.rules.full_pull_m);
+    const run::Rules rules = field::trial_pull_rules(event.rules, venue, event.rules.full_pull_m);
     field::Puller puller = event.reference;
     puller.driver.gear = gear;
     puller.driver.downshift_share = share;
