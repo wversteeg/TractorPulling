@@ -5,8 +5,8 @@
 namespace tp::career {
 
 std::optional<ParamError> validate(const Ladder& ladder) noexcept {
-    if (ladder.classes < 1 || ladder.classes > kMaxClasses) {
-        return ParamError::kClassCountOutOfRange;
+    if (ladder.rungs < 1 || ladder.rungs > kMaxRungs) {
+        return ParamError::kRungCountOutOfRange;
     }
     // A place no field has would open nothing.
     if (ladder.promotion_place < 1 || ladder.promotion_place > event::kMaxPullers) {
@@ -16,14 +16,22 @@ std::optional<ParamError> validate(const Ladder& ladder) noexcept {
 }
 
 bool valid(const Progress& progress, const Ladder& ladder) noexcept {
-    return progress.class_index >= 0 && progress.class_index <= progress.unlocked &&
-           progress.unlocked < ladder.classes;
+    return progress.rung >= 0 && progress.rung <= progress.unlocked &&
+           progress.unlocked < ladder.rungs;
+}
+
+std::optional<Progress> starting_at(const Ladder& ladder, int rung) noexcept {
+    const Progress start{.rung = rung, .unlocked = rung};
+    if (!valid(start, ladder)) {
+        return std::nullopt;
+    }
+    return start;
 }
 
 bool finish_season(Progress& progress, const Ladder& ladder, int championship_place) noexcept {
     const bool earned = championship_place >= 1 && championship_place <= ladder.promotion_place;
-    const int above = progress.class_index + 1;
-    if (!earned || above >= ladder.classes || above <= progress.unlocked) {
+    const int above = progress.rung + 1;
+    if (!earned || above >= ladder.rungs || above <= progress.unlocked) {
         return false;
     }
     progress.unlocked = above;
@@ -41,14 +49,14 @@ bool finish_season(Progress& progress, const Ladder& ladder,
 }
 
 bool may_move_up(const Progress& progress) noexcept {
-    return progress.unlocked > progress.class_index;
+    return progress.unlocked > progress.rung;
 }
 
 bool move_up(Progress& progress) noexcept {
     if (!may_move_up(progress)) {
         return false;
     }
-    ++progress.class_index;
+    ++progress.rung;
     return true;
 }
 
