@@ -97,6 +97,22 @@ func _check_garage_columns(garage: GarageScreen) -> void:
 				"the columns line up after a part at its top level")
 
 
+# More rows than fit: all of them in the list, which shows the newest; a
+# table opens at its top.
+func _check_board_scrolls(board: BoardScreen) -> void:
+	var rows: Array[PackedStringArray] = []
+	for i in 30:
+		rows.append(PackedStringArray(["Puller %d" % i, "pull", "%d m" % i, ""]))
+	board.visible = true
+	board.set_rows(rows)
+	await _frames(3)
+	_expect(board.row_count() == 30 and board.at_end(), "every row, the newest in view")
+	board.set_rows(rows, PackedInt32Array(), false)
+	await _frames(3)
+	_expect(not board.at_end(), "a table opens at its top")
+	board.visible = false
+
+
 func _expect(ok: bool, what: String) -> void:
 	if not ok:
 		printerr("FAILED: ", what)
@@ -227,6 +243,7 @@ func _play() -> void:
 			"bought the powershift: %s" % bought)
 	_expect(event.buy_upgrade(0) == "top level", "nothing more to buy")
 	await _check_garage_columns(garage)
+	await _check_board_scrolls(_pull.get("board"))
 	garage.show_garage(event.get_garage())
 	_tap(garage.done_button)
 	await _frames(2)
