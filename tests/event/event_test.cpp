@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <functional>
 #include <limits>
@@ -93,6 +94,12 @@ TEST(EventRules, RejectsNonsense) {
     EXPECT_EQ(with([](Rules& r) { r.repull_after_pulls = 2; }), ParamError::kTurnsOutOfOrder);
     EXPECT_EQ(with([](Rules& r) { r.step_m = 0.0; }), ParamError::kStepNotPositive);
     EXPECT_EQ(with([](Rules& r) { r.max_steps_per_change = 0; }), ParamError::kMaxStepsNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.strong_full_pull_from = 1.2; }),
+              ParamError::kOperatorJudgementOutOfRange);
+    EXPECT_EQ(with([](Rules& r) { r.trouble_share = 1.0; }),
+              ParamError::kOperatorJudgementOutOfRange);
+    EXPECT_EQ(with([](Rules& r) { r.trouble_share = std::nan(""); }),
+              ParamError::kOperatorJudgementOutOfRange);
 }
 
 TEST(Event, RejectsABadRunningOrder) {
@@ -349,6 +356,10 @@ TEST(Event, AfterAChangeOnlyAClearMissChangesItAgain) {
     Event again = make(6);
     ASSERT_EQ(again.record(80.0).change, SledChange::kLighter);
     EXPECT_EQ(again.record(70.0).change, SledChange::kLighter) << "20 m short";
+    // A full pull is a full pull, however soon after a change.
+    Event full = make(6);
+    ASSERT_EQ(full.record(80.0).change, SledChange::kLighter);
+    EXPECT_EQ(full.record(110.5).change, SledChange::kHeavier);
 }
 
 // A test puller who re-pulls pulls again after the 6th pull; one who keeps

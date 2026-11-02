@@ -122,6 +122,13 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.variation.fewest_load_downshift_gears, 0);
     EXPECT_EQ(definition.variation.most_load_downshift_gears, 1);
     EXPECT_EQ(definition.track.rules.track_length_m, 100.0);
+    EXPECT_EQ(definition.rules.strong_full_pull_from, 0.8);
+    EXPECT_EQ(definition.rules.trouble_share, 0.6);
+    // Left out, the operator judges every pull alike.
+    const auto plain =
+        parse_event(with("trouble_share = 0.6\n", ""), "event.toml", kEvent.parent_path());
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_FALSE(plain.value().rules.trouble_share.has_value());
 }
 
 TEST(EventLoader, RejectsNonsense) {
@@ -173,6 +180,9 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("\"Wim\"]", "\"\"]")).find("event.game.rival_names"),
               std::string::npos);
     EXPECT_NE(error_of(with(", \"Wim\"]", "]")).find("event.game.rival_names"), std::string::npos);
+    EXPECT_NE(error_of(with("trouble_share = 0.6", "trouble_share = 1.5"))
+                  .find("event.rules: need strong_full_pull_from 0 to 1"),
+              std::string::npos);
     EXPECT_NE(error_of(with("seed = 2026", "seed = -1")).find("event.seed: must not be negative"),
               std::string::npos);
     EXPECT_NE(error_of(with("../sleds/light_class.toml", "../sleds/missing.toml"))

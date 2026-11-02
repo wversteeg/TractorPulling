@@ -13,15 +13,12 @@ namespace {
 // How quickly the operator's step estimate follows what they see, and the
 // range they keep it in, as shares of the rule of thumb.
 constexpr double kLearningRate = 0.5;
-// After a change, a test pull changes the sled again only when it misses by
-// more than this share of a step.
-constexpr double kRetestMarginSteps = 0.5;
 constexpr double kLowestStepShare = 0.25;
 constexpr double kHighestStepShare = 6.0;
+// After a change, a short test pull changes the sled again only when it
+// misses by more than this share of a step.
+constexpr double kRetestMarginSteps = 0.5;
 
-// Lighter by `steps`: the operator takes knives out first (quick to do);
-// once there are none left, the push-down moves later instead, a step's
-// worth each.
 // A lighter step: a pull-off step's knives out, and the push-down a step's
 // worth later. Knives alone barely lengthen a pull; with the push-down each
 // step is worth about what the operator reckons a step is.
@@ -219,14 +216,14 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
         outcome.change = SledChange::kLineExtended;
         return outcome;
     }
-    // After a change the operator changes the sled again only if this test
+    // After a change a short test pull changes the sled again only if it
     // misses by more than half a step, where another step would come closer:
-    // the first change is usually enough.
+    // the first change is usually enough. A full pull is a full pull.
     const double margin_m = changes_ > 0 ? kRetestMarginSteps * step_estimate_m_ : 0.0;
     // What the strongest would reach on this sled: a weak tractor's short
     // test pull may still leave the sled right for the field.
     const double strongest_m = reached_m + gap_to_strongest_m(puller);
-    if (reached_m >= line_m_ + margin_m) {
+    if (reached_m >= line_m_) {
         if (rules_.strong_full_pull_from && strength(puller) >= *rules_.strong_full_pull_from) {
             // One of the strongest pulled it the whole way: as meant.
             return outcome;

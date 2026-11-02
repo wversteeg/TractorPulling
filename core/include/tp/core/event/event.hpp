@@ -147,6 +147,10 @@ public:
     /// starts (their gear trials) [m]: the operator weighs their test pulls
     /// by it. Unknown pullers count as the field's middle.
     void expect(int puller, double expected_m) noexcept;
+    /// What expect() was told for `puller` [m]; 0 when unknown.
+    [[nodiscard]] double expected_m(int puller) const noexcept {
+        return puller >= 0 && puller < count_ ? expected_m_[static_cast<std::size_t>(puller)] : 0.0;
+    }
 
     /// The next pull, or nothing when the event is over or a decision is
     /// due.

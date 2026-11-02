@@ -103,6 +103,9 @@ public:
         return event_.standings();
     }
     [[nodiscard]] double full_pull_m() const noexcept { return event_.full_pull_m(); }
+    /// How far the sled operator expects `puller` to pull (their gear
+    /// trials, the player's too) [m]; 0 before their trials.
+    [[nodiscard]] double expected_m(int puller) const noexcept { return event_.expected_m(puller); }
 
 private:
     /// A scripted pull in progress: a gear trial or a pull at the event.

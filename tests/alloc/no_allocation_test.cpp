@@ -266,7 +266,6 @@ TEST(NoAllocation, AnEventWithAPlayer) {
                              .sled_target_m = 94.0,
                              .step_m = 5.0,
                              .max_steps_per_change = 4,
-
                              .strong_full_pull_from = std::nullopt,
                              .trouble_share = std::nullopt};
     const field::Venue venue{.track = track::testing::reference_params(),
