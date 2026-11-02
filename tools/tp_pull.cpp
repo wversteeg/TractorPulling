@@ -775,6 +775,8 @@ int check(const tp::vehicle::Params& tractor, const tp::rules::ClassRules& rules
         report_rule("PTO power", tp::units::w_to_metric_hp(tp::rules::pto_power_w(tractor)),
                     tp::units::w_to_metric_hp(*rules.max_pto_power_w), "hp",
                     result.too_much_pto_power);
+    } else {
+        std::cout << "ok    PTO power: no limit in this class\n";
     }
     report_rule("unloaded engine speed", rad_s_to_rpm(tractor.engine.high_idle_omega_rad_s),
                 rad_s_to_rpm(rules.max_engine_speed_rad_s), "rpm", result.engine_speed_too_high);

@@ -9,14 +9,16 @@
 namespace tp::rules {
 
 std::optional<ParamError> validate(const ClassRules& rules) noexcept {
-    // A class without a PTO power limit checks the others alone.
-    const double pto_w = rules.max_pto_power_w.value_or(1.0);
-    const std::array limits = {rules.max_mass_kg, pto_w, rules.max_engine_speed_rad_s,
+    const std::array limits = {rules.max_mass_kg, rules.max_engine_speed_rad_s,
                                rules.max_hitch_height_m};
-    if (!std::ranges::all_of(limits, [](double v) { return std::isfinite(v); })) {
+    const auto finite = [](double v) { return std::isfinite(v); };
+    const auto not_positive = [](double v) { return v <= 0.0; };
+    // A class without a PTO power limit checks the others alone.
+    const std::optional<double>& pto_w = rules.max_pto_power_w;
+    if (!std::ranges::all_of(limits, finite) || (pto_w && !finite(*pto_w))) {
         return ParamError::kNotFinite;
     }
-    if (std::ranges::any_of(limits, [](double v) { return v <= 0.0; })) {
+    if (std::ranges::any_of(limits, not_positive) || (pto_w && not_positive(*pto_w))) {
         return ParamError::kLimitNotPositive;
     }
     return std::nullopt;

@@ -30,6 +30,8 @@ TEST(ClassRulesParams, RejectsNonsense) {
     rules = ntto_standard_3500();
     rules.max_pto_power_w = std::nan("");
     EXPECT_EQ(validate(rules), ParamError::kNotFinite);
+    rules.max_pto_power_w = 0.0;
+    EXPECT_EQ(validate(rules), ParamError::kLimitNotPositive);
 }
 
 // A class that limits the engine's build (Sport and up) sets no PTO power

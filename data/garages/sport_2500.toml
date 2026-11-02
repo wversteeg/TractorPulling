@@ -10,7 +10,8 @@
 #   4 l farm engine's 90 hp, through the pump, injectors, a bigger turbo
 #   behind the class's 55 mm inlet, the manifold, head and cam.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
-#   cut puller tires (allowed from Sport on).
+#   cut 24.5" puller tires (cut tires allowed from Sport on); the tire's
+#   size stays as tires/sport_rear.toml has it.
 # - ballast_kg: weights up to the class's 2500 kg with the driver.
 # - hitch_height_m: the drawbar, up to the class's 0.5 m.
 # - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
@@ -49,7 +50,7 @@ levels = [
     { value = 0.94, cost_eur = 1450, label = "Puller tires" },
     { value = 0.95, cost_eur = 1700, label = "Puller tires, cut" },
     { value = 0.96, cost_eur = 1950, label = "Wide puller tires, cut" },
-    { value = 0.97, cost_eur = 2200, label = "800 mm puller tires, cut" },
+    { value = 0.97, cost_eur = 2200, label = "24.5\" puller tires, hand cut" },
 ]
 
 [[garage.upgrades]]

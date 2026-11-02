@@ -78,7 +78,7 @@ TEST(ClassRulesLoader, RejectsNonsense) {
                   .find("class.toml: class: all limits must be > 0"),
               std::string::npos);
     EXPECT_NE(error_of(with("max_pto_power_hp = 110.0", "max_pto_power_hp = \"lots\""))
-                  .find("class.max_pto_power_hp"),
+                  .find("class.toml: class.max_pto_power_hp: missing or not a number"),
               std::string::npos);
     EXPECT_NE(error_of(with("max_hitch_height_m = 0.5", "max_hitch_height_m = nan"))
                   .find("class: all limits must be finite"),
