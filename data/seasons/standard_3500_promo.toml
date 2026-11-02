@@ -1,0 +1,55 @@
+# The NTTO standard class, 3.5 t, at promo (promoniveau), the middle level of
+# the career (careers/tractor_path.toml): ten events, each on its own
+# track, as the club season. The pullers stay the same all season.
+
+[season]
+event = "../events/standard_3500_promo.toml"   # the class and this level's field
+seed = 3102                             # the field and every event's draws
+points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+# Prize money per place at every event [EUR]; the class's garage costs
+# € 20,800 (garages/standard_3500.toml). Each level pays more than the one
+# below: a steady climber wins belofte with about half the garage bought,
+# promo with 70 % and top with all of it. A disqualified pull earns
+# nothing.
+prize_money_eur = [1500, 1150, 950, 800, 690, 600, 520, 460, 410, 360]
+garage = "../garages/standard_3500.toml"   # one tractor for the class's levels
+
+[[season.events]]
+name = "Spring opener, watered start"
+track = "../tracks/watered_start.toml"
+
+[[season.events]]
+name = "Firm loam"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Rainy day, covered heavy clay"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Sandy clay"
+track = "../tracks/sandy_clay.toml"
+
+[[season.events]]
+name = "Summer, dry hard clay"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Clay-sand"
+track = "../tracks/ideal_clay_sand.toml"
+
+[[season.events]]
+name = "Dry hard clay again"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Firm loam, late summer"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Autumn, covered heavy clay"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Final, clay-sand"
+track = "../tracks/ideal_clay_sand.toml"

@@ -91,6 +91,7 @@ std::optional<event::Standing> read_standing(const toml::node& node) {
 
 constexpr std::int64_t kBeforeTheGarage = 1;
 constexpr std::int64_t kBeforeTheClasses = 2;
+constexpr std::int64_t kBeforeTheLevels = 3;
 
 // The career (version 2 on) into `career`; the error if it is broken.
 std::optional<LoadError> read_career(const toml::table& root, std::string_view source,
@@ -100,6 +101,10 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
     if (version > kBeforeTheClasses) {
         career.class_name = reader.text("career.class");
         career.unlocked_class = reader.text("career.unlocked");
+    }
+    if (version > kBeforeTheLevels) {
+        career.level_name = reader.text("career.level");
+        career.unlocked_level = reader.text("career.unlocked_level");
     }
     if (reader.error()) {
         return reader.error();
@@ -214,7 +219,9 @@ std::string write_season_save(const SeasonSave& save) {
     out += "\n[career]\n";
     out += "money_eur = " + std::to_string(career.money_eur) + "\n";
     out += "class = " + toml_string(career.class_name) + "\n";
+    out += "level = " + toml_string(career.level_name) + "\n";
     out += "unlocked = " + toml_string(career.unlocked_class) + "\n";
+    out += "unlocked_level = " + toml_string(career.unlocked_level) + "\n";
     out += "upgrades = [\n";
     for (const SavedUpgrade& upgrade : career.upgrades) {
         out += "    { name = " + toml_string(upgrade.name) +

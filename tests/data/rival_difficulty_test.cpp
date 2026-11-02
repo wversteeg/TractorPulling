@@ -7,9 +7,11 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -23,18 +25,28 @@ constexpr std::array<std::uint64_t, 3> kSeeds{1, 2, 3};
 constexpr int kGamePullers = 10;
 constexpr std::int64_t kSlice = 1'000'000;
 
-data::SeasonDefinition club_season() {
-    auto season =
-        data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" / "club_season.toml");
+data::SeasonDefinition season_named(const char* file) {
+    auto season = data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" / file);
     if (!season) {
         throw std::runtime_error(season.error().message);
     }
     return season.value();
 }
 
+data::SeasonDefinition club_season() {
+    return season_named("club_season.toml");
+}
+
 // Where the player ends at the first event with this career's tractor,
 // driving as the reference driver does and always in their best gear.
-int place(const data::SeasonDefinition& d, const garage::Career& career, std::uint64_t seed) {
+// The pulling gears the player tries: the field's (`lowest` 0), or these.
+struct Gears {
+    int lowest = 0;
+    int highest = 0;
+};
+
+int place(const data::SeasonDefinition& d, const garage::Career& career, std::uint64_t seed,
+          Gears gears = {}) {
     const data::EventDefinition& e = d.event;
     const std::optional<LiveSeason> created =
         LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull,
@@ -61,9 +73,11 @@ int place(const data::SeasonDefinition& d, const garage::Career& career, std::ui
                 break;
             case LiveEvent::Turn::kPlayerPull: {
                 const track::Params& track = event.venue().track;
-                player.driver.gear = best_gear(player, event.sled(), track, e.variation.lowest_gear,
-                                               e.variation.highest_gear, event.pull_rules())
-                                         .value_or(e.reference.driver.gear);
+                const int lowest = gears.lowest > 0 ? gears.lowest : e.variation.lowest_gear;
+                const int highest = gears.lowest > 0 ? gears.highest : e.variation.highest_gear;
+                player.driver.gear =
+                    best_gear(player, event.sled(), track, lowest, highest, event.pull_rules())
+                        .value_or(e.reference.driver.gear);
                 event.record_player(run_pull(player, event.sled(), track, event.pull_rules())
                                         .value_or(run::Result{}),
                                     player.driver.gear);
@@ -133,6 +147,57 @@ TEST(RivalDifficulty, ANewTractorStartsAtTheBackAndAFullyUpgradedOneIsOnThePodiu
                       "halfway");
         expect_within(place(d, full, seed), kOnThePodium, seed, "fully upgraded");
     }
+}
+
+// Every part bought to `share` of its levels (0 new, 1 fully upgraded),
+// rounded to the nearest level.
+garage::Career share_up(const garage::Catalogue& catalogue, double share) {
+    garage::Career career = garage::new_career(catalogue);
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        const int top = static_cast<int>(catalogue.upgrades[i].level_count) - 1;
+        career.levels[i] = static_cast<int>(std::lround(share * top));
+    }
+    return career;
+}
+
+// The career's three levels of the standard class (docs/career.md), one
+// tractor and garage for all three: a new tractor finishes around last in
+// belofte and about half the garage wins it; belofte's winner starts near
+// the back of promo and about two thirds wins it; promo's winner is in the
+// second half at top, and only a fully upgraded tractor wins there. The
+// player picks their best of the pulling gears, as in the game.
+constexpr Gears kPullingGears{.lowest = 5, .highest = 7};
+
+struct Expectation {
+    double share = 0.0;
+    Places places;
+};
+
+void expect_level(const char* file, std::initializer_list<Expectation> expectations) {
+    const data::SeasonDefinition d = season_named(file);
+    for (const Expectation& x : expectations) {
+        for (const std::uint64_t seed : kSeeds) {
+            const int at = place(d, share_up(d.garage.catalogue, x.share), seed, kPullingGears);
+            EXPECT_GE(at, x.places.best) << file << ", share " << x.share << ", seed " << seed;
+            EXPECT_LE(at, x.places.worst) << file << ", share " << x.share << ", seed " << seed;
+        }
+    }
+}
+
+TEST(RivalDifficulty, ANewTractorIsAroundLastInBelofteAndHalfTheGarageWinsIt) {
+    expect_level("standard_3500_belofte.toml", {{.share = 0.0, .places = {.best = 7, .worst = 10}},
+                                                {.share = 0.5, .places = {.best = 1, .worst = 2}}});
+}
+
+TEST(RivalDifficulty, BeloftesWinnerStartsAtTheBackOfPromoAndTwoThirdsWinIt) {
+    expect_level("standard_3500_promo.toml", {{.share = 0.35, .places = {.best = 6, .worst = 10}},
+                                              {.share = 0.7, .places = {.best = 1, .worst = 2}}});
+}
+
+TEST(RivalDifficulty, OnlyAFullyUpgradedTractorWinsAtTop) {
+    expect_level("standard_3500_top.toml", {{.share = 0.7, .places = {.best = 4, .worst = 8}},
+                                            {.share = 0.85, .places = {.best = 1, .worst = 3}},
+                                            {.share = 1.0, .places = {.best = 1, .worst = 1}}});
 }
 
 }  // namespace

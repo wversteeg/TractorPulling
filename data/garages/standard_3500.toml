@@ -1,0 +1,92 @@
+# The career's garage for the NTTO standard class, 3.5 t: what a puller
+# may improve on a stock farm tractor and stay in the class (NTTO
+# technical rules, chapter 13; docs/career.md). The same parts as the club
+# season's garage (ntto_standard_3500.toml), from the same first level to
+# the same top, in finer stages: there is something to buy after nearly
+# every event. Each level sets the part's value outright; each cost is
+# from the level below. See ntto_standard_3500.toml for what each part
+# does.
+#
+# The three levels of the class (belofte, promo, top; seasons/
+# standard_3500_*.toml) share this garage: one tractor climbs them. The
+# whole garage costs € 20,800. Their fields and prize money are set so
+# that a player who climbs steadily wins belofte with about half of it
+# bought, promo with about 70 %, and top fully upgraded: about one to two
+# seasons a level (tests/data/rival_difficulty_test.cpp).
+
+[garage]
+start_money_eur = 1000
+
+[[garage.upgrades]]
+part = "engine_torque"
+name = "Injection pump"
+levels = [
+    { value = 0.80, cost_eur = 0, label = "Worn pump and injectors" },
+    { value = 0.84, cost_eur = 400, label = "Injectors cleaned" },
+    { value = 0.87, cost_eur = 500, label = "New injectors" },
+    { value = 0.90, cost_eur = 600, label = "Pump timing set" },
+    { value = 0.92, cost_eur = 700, label = "Pump overhauled" },
+    { value = 0.95, cost_eur = 800, label = "Pump calibrated" },
+    { value = 0.98, cost_eur = 900, label = "Turbo overhauled" },
+    { value = 1.0, cost_eur = 1000, label = "Maker's figures, 84 hp" },
+]
+
+[[garage.upgrades]]
+part = "rear_traction"
+name = "Rear tires"
+levels = [
+    { value = 0.86, cost_eur = 0, label = "Worn tires" },
+    { value = 0.88, cost_eur = 300, label = "Used tires, good tread" },
+    { value = 0.90, cost_eur = 400, label = "New farm tires" },
+    { value = 0.91, cost_eur = 500, label = "Farm tires, wider" },
+    { value = 0.92, cost_eur = 600, label = "Deep-tread tires" },
+    { value = 0.93, cost_eur = 700, label = "Deep-tread, matched pair" },
+    { value = 0.94, cost_eur = 800, label = "Wider deep-tread tires" },
+    { value = 0.95, cost_eur = 900, label = "Widest deep-tread tires" },
+]
+
+[[garage.upgrades]]
+part = "ballast_kg"
+name = "Weights"
+levels = [
+    { value = 100.0, cost_eur = 0, label = "100 kg of weights" },
+    { value = 150.0, cost_eur = 200, label = "150 kg of weights" },
+    { value = 200.0, cost_eur = 200, label = "200 kg of weights" },
+    { value = 250.0, cost_eur = 250, label = "250 kg of weights" },
+    { value = 300.0, cost_eur = 250, label = "300 kg of weights" },
+    { value = 350.0, cost_eur = 300, label = "350 kg of weights" },
+    { value = 400.0, cost_eur = 300, label = "400 kg, the class's 3500 kg" },
+]
+
+[[garage.upgrades]]
+part = "hitch_height_m"
+name = "Drawbar"
+levels = [
+    { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
+    { value = 0.41, cost_eur = 300, label = "Drawbar raised, 0.41 m" },
+    { value = 0.42, cost_eur = 300, label = "Drawbar raised, 0.42 m" },
+    { value = 0.43, cost_eur = 400, label = "Drawbar raised, 0.43 m" },
+    { value = 0.45, cost_eur = 500, label = "Pulling hitch, 0.45 m" },
+    { value = 0.47, cost_eur = 700, label = "Pulling hitch, 0.47 m" },
+    { value = 0.50, cost_eur = 900, label = "Pulling hitch, 0.50 m" },
+]
+
+[[garage.upgrades]]
+part = "load_downshift_gears"
+name = "Powershift"
+levels = [
+    { value = 0.0, cost_eur = 0, label = "None: shift with the clutch" },
+    { value = 1.0, cost_eur = 3000, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 1500, label = "Two gears down under load" },
+]
+
+[[garage.upgrades]]
+part = "rated_rpm"
+name = "Governor"
+levels = [
+    { value = 2200.0, cost_eur = 0, label = "Stock, 2200 rpm" },
+    { value = 2275.0, cost_eur = 500, label = "Turned up, 2275 rpm" },
+    { value = 2350.0, cost_eur = 600, label = "Turned up, 2350 rpm" },
+    { value = 2425.0, cost_eur = 700, label = "Turned up, 2425 rpm" },
+    { value = 2500.0, cost_eur = 800, label = "2500 rpm, 2700 unloaded" },
+]

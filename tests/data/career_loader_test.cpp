@@ -13,7 +13,7 @@ namespace {
 
 const std::filesystem::path kCareers = std::filesystem::path{TP_DATA_DIR} / "careers";
 
-// Two classes on the shipped season, as a ladder to climb.
+// Two classes on the shipped season, the first at two levels: three rungs.
 constexpr std::string_view kTwoClasses = R"(
 [career]
 name = "Test path"
@@ -21,11 +21,14 @@ promotion_place = 1
 
 [[career.classes]]
 name = "Low"
-season = "../seasons/club_season.toml"
+levels = [
+    { name = "Belofte", season = "../seasons/club_season.toml" },
+    { name = "Top", season = "../seasons/club_season.toml" },
+]
 
 [[career.classes]]
 name = "High"
-season = "../seasons/club_season.toml"
+levels = [{ name = "Belofte", season = "../seasons/club_season.toml" }]
 )";
 
 std::string with(std::string_view from, std::string_view to) {
@@ -54,20 +57,30 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
     const CareerDefinition& career = result.value();
     EXPECT_EQ(career.name, "Tractor path");
     EXPECT_EQ(career.ladder.promotion_place, 1);
-    ASSERT_EQ(career.ladder.classes, 1);
-    ASSERT_EQ(career.classes.size(), 1U);
-    EXPECT_EQ(career.classes[0].name, "Standard 3.5 t");
-    // The season's path is resolved, ready to load.
-    EXPECT_TRUE(load_season(career.classes[0].season, read_from_disk).ok());
+    ASSERT_EQ(career.ladder.rungs, 3);
+    ASSERT_EQ(career.rungs.size(), 3U);
+    for (const CareerRung& rung : career.rungs) {
+        EXPECT_EQ(rung.class_name, "Standard 3.5 t");
+        // The season's path is resolved, ready to load.
+        EXPECT_TRUE(load_season(rung.season, read_from_disk).ok()) << rung.season;
+    }
+    EXPECT_EQ(career.rungs[0].level_name, "Belofte");
+    EXPECT_EQ(career.rungs[1].level_name, "Promo");
+    EXPECT_EQ(career.rungs[2].level_name, "Top");
 }
 
-TEST(CareerLoader, LoadsTheClassesInOrder) {
+TEST(CareerLoader, LoadsEachClassesLevelsInTurn) {
     const auto result = parse(kTwoClasses);
     ASSERT_TRUE(result.ok()) << result.error().message;
-    ASSERT_EQ(result.value().ladder.classes, 2);
-    EXPECT_EQ(result.value().classes[0].name, "Low");
-    EXPECT_EQ(result.value().classes[1].name, "High");
-    EXPECT_NE(result.value().classes[1].season.find("seasons/club_season.toml"), std::string::npos);
+    const CareerDefinition& career = result.value();
+    ASSERT_EQ(career.ladder.rungs, 3);
+    EXPECT_EQ(career.rungs[0].class_name, "Low");
+    EXPECT_EQ(career.rungs[0].level_name, "Belofte");
+    EXPECT_EQ(career.rungs[1].class_name, "Low");
+    EXPECT_EQ(career.rungs[1].level_name, "Top");
+    EXPECT_EQ(career.rungs[2].class_name, "High");
+    EXPECT_EQ(career.rungs[2].level_name, "Belofte");
+    EXPECT_NE(career.rungs[2].season.find("seasons/club_season.toml"), std::string::npos);
 }
 
 TEST(CareerLoader, RefusesAPromotionPlaceNoFieldHas) {
@@ -86,28 +99,37 @@ TEST(CareerLoader, RefusesMissingFields) {
     EXPECT_NE(error_of(with("name = \"High\"\n", "")).find("career.classes"), std::string::npos);
     EXPECT_NE(error_of(with("name = \"High\"", "name = \"\"")).find("career.classes"),
               std::string::npos);
+    EXPECT_NE(error_of(with("levels = [{ name = \"Belofte\", season = "
+                            "\"../seasons/club_season.toml\" }]",
+                            "levels = []"))
+                  .find("needs its levels"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("{ name = \"Top\", season", "{ season")).find("career.classes.levels"),
+              std::string::npos);
 }
 
-TEST(CareerLoader, RefusesNoClassesAndTooMany) {
+TEST(CareerLoader, RefusesNoClassesAndTooManyRungs) {
     const std::string none = "[career]\nname = \"x\"\npromotion_place = 1\n";
     EXPECT_NE(error_of(none).find("career.classes"), std::string::npos);
     std::string many = none;
-    for (int i = 0; i <= career::kMaxClasses; ++i) {
+    for (int i = 0; i <= career::kMaxRungs; ++i) {
         many += "[[career.classes]]\nname = \"c" + std::to_string(i) +
-                "\"\nseason = \"../seasons/club_season.toml\"\n";
+                "\"\nlevels = [{ name = \"Top\", season = \"../seasons/club_season.toml\" }]\n";
     }
-    EXPECT_NE(error_of(many).find("career.classes"), std::string::npos);
+    EXPECT_NE(error_of(many).find("levels in all"), std::string::npos);
 }
 
-TEST(CareerLoader, RefusesAClassNameUsedTwice) {
+TEST(CareerLoader, RefusesANameUsedTwice) {
     EXPECT_NE(error_of(with("name = \"High\"", "name = \"Low\"")).find("used twice"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("{ name = \"Top\"", "{ name = \"Belofte\"")).find("used twice in"),
               std::string::npos);
 }
 
 TEST(CareerLoader, PassesOnASeasonsOwnError) {
     const std::string message =
-        error_of(with("name = \"High\"\nseason = \"../seasons/club_season.toml\"",
-                      "name = \"High\"\nseason = \"../seasons/missing.toml\""));
+        error_of(with(R"(levels = [{ name = "Belofte", season = "../seasons/club_season.toml" }])",
+                      R"(levels = [{ name = "Belofte", season = "../seasons/missing.toml" }])"));
     EXPECT_NE(message.find("missing.toml"), std::string::npos) << message;
 }
 

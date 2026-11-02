@@ -12,8 +12,8 @@
 
 namespace tp::garage {
 
-inline constexpr std::size_t kMaxUpgrades = 8;
-inline constexpr std::size_t kMaxLevels = 6;
+inline constexpr std::size_t kMaxUpgrades = 16;
+inline constexpr std::size_t kMaxLevels = 12;
 
 /// What an upgrade changes on the tractor. Each level sets the part's value
 /// outright, so the levels of different parts never interact:
