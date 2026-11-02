@@ -475,6 +475,9 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
+	cameras.show_hitch(framing_hitch(_snapshot), float(_snapshot.get("hitch_to_hook_m", 0.0)),
+			float(_snapshot.get("sled_heading_rad", 0.0)))
+	cameras.set_reversing(int(_snapshot.get("gear", 0)) < 0)
 	cameras.follow(_camera_target(delta), delta, true,
 			float(_snapshot.get("tractor_heading_rad", 0.0)), _close_behind())
 
@@ -485,10 +488,7 @@ func _process(delta: float) -> void:
 # offset from the tractor is eased, so the tractor itself is not lagged.
 func _camera_target(delta: float) -> Vector3:
 	var wanted := Vector3.ZERO
-	var hitch := framing_hitch(_snapshot)
-	cameras.show_hitch(hitch, float(_snapshot.get("hitch_to_hook_m", 0.0)))
-	cameras.set_reversing(int(_snapshot.get("gear", 0)) < 0)
-	if hitch:
+	if framing_hitch(_snapshot):
 		var middle := (tractor_view.hitch_position() + sled_view.hook_position()) / 2.0
 		wanted = middle - tractor_view.global_position
 	_framing = _framing.lerp(wanted, 1.0 - exp(-FRAMING_RATE_PER_S * delta))

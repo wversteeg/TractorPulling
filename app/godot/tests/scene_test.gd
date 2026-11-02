@@ -201,3 +201,41 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 		cameras.next()
 	_expect(cameras.view == CameraRig.View.CHASE and seen.has(cameras.cab),
 			"next() goes round every view, the cab too")
+	_check_hitch_camera(cameras)
+
+
+# The hitch from the side while it meets the hook, back to the view picked
+# after; a tap dismisses it to the view picked; never from the cab. In
+# reverse the cab camera looks back, and ahead again after.
+func _check_hitch_camera(cameras: CameraRig) -> void:
+	var near := {"stage": "to_the_sled", "hitch_to_hook_m": 3.0, "hitch_along_m": 2.0,
+			"hitch_across_m": 0.3, "gear": -1}
+	_expect(_pull.framing_hitch(near), "backing up to the hook: framed")
+	near["gear"] = 3
+	near["hitch_across_m"] = 4.0
+	_expect(not _pull.framing_hitch(near), "passing beside the sled: not framed")
+	near["hitch_along_m"] = -1.0
+	near["gear"] = -1
+	_expect(not _pull.framing_hitch(near), "behind the hook: not framed")
+	_expect(_pull.framing_hitch({"stage": "releasing", "gear": -1})
+			and not _pull.framing_hitch({"stage": "releasing", "gear": 2}),
+			"backing off in R after the pull: framed")
+
+	var picked := cameras.view
+	cameras.show_hitch(true, 3.0, 0.0)
+	_expect(cameras.showing_hitch() and cameras.current_camera().is_current(), "the hitch shown")
+	cameras.next()
+	_expect(not cameras.showing_hitch() and cameras.view == picked, "a tap: back to the view picked")
+	cameras.show_hitch(false)
+	cameras.show_hitch(true, 3.0, 0.0)
+	_expect(cameras.showing_hitch(), "wanted again: shown again")
+	cameras.show_hitch(false)
+	_expect(not cameras.showing_hitch() and cameras.view == picked, "off: the view picked")
+	var ahead := cameras.cab.position
+	cameras.set_reversing(true)
+	cameras.follow(Vector3.ZERO, 0.0, false)
+	_expect(is_equal_approx(cameras.cab.rotation.y, PI), "reversing: the cab looks back")
+	cameras.set_reversing(false)
+	cameras.follow(Vector3.ZERO, 0.0, false)
+	_expect(cameras.cab.position.is_equal_approx(ahead) and is_zero_approx(cameras.cab.rotation.y),
+			"the cab looks ahead again")

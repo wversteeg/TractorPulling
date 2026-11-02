@@ -20,7 +20,8 @@ const OVERHEAD_OFFSET := Vector3(-8.0, 0.0, 40.0)
 # parking is, away from the grandstand), low, so the hitch and the hook
 # show apart; farther out the farther apart they are, so both stay in view
 # [m, m per m apart].
-const HITCH_OFFSET := Vector3(0.0, -6.0, 2.2)
+const HITCH_OUT_M := 6.0
+const HITCH_UP_M := 2.2
 const HITCH_BACK_PER_M := 0.9
 # How fast the cab camera turns to look back in reverse, and forward again
 # [1/s].
@@ -62,18 +63,21 @@ var cab: Camera3D = null:
 		cab = value
 		if cab != null:
 			_cab_ahead = cab.position
+			_cab_ahead_rotation = cab.rotation
 var _time_s := 0.0
 # Reversing: the cab camera looks back (set_reversing).
 var _reversing := false
 var _cab_turn := 0.0
 # Where the cab camera looks ahead from, on the tractor.
 var _cab_ahead := Vector3.ZERO
+var _cab_ahead_rotation := Vector3.ZERO
 # The hitch camera is wanted now (show_hitch), and the player has not
 # switched it away since.
 var _hitch_wanted := false
 var _hitch_dismissed := false
 var _hitch_camera := Camera3D.new()
 var _hitch_apart_m := 0.0
+var _hitch_heading_rad := 0.0
 var _close_heading_rad := 0.0
 # The rig's own cameras, by View. The cab's slot holds one never placed or
 # shown: the cab view is the tractor's camera (`cab`).
@@ -97,8 +101,11 @@ func _ready() -> void:
 
 func next() -> void:
 	if showing_hitch():
-		# The tap dismisses the hitch camera: on to the next view, not past it.
+		# The tap dismisses the hitch camera: back to the view picked.
 		_hitch_dismissed = true
+		current_camera().make_current()
+		return
+	# From the cab, while the hitch is wanted, the next view is the hitch's.
 	view = ((view + 1) % View.size()) as View
 	if view == View.CAB and cab == null:
 		view = ((view + 1) % View.size()) as View
@@ -112,10 +119,12 @@ func current_camera() -> Camera3D:
 
 
 # The hitch from the side, while `wanted` (the hitch meeting the hook,
-# `apart_m` from it); not from the cab, nor once the player has switched it
-# away. Off again, the view picked comes back.
-func show_hitch(wanted: bool, apart_m: float = 0.0) -> void:
+# `apart_m` from it, square to the sled's heading `heading_rad`); not from
+# the cab, nor once the player has switched it away. Off again, the view
+# picked comes back.
+func show_hitch(wanted: bool, apart_m: float = 0.0, heading_rad: float = 0.0) -> void:
 	_hitch_apart_m = apart_m
+	_hitch_heading_rad = heading_rad
 	if not wanted:
 		_hitch_dismissed = false
 	if wanted == _hitch_wanted:
@@ -165,9 +174,9 @@ func follow(target: Vector3, delta: float, smooth: bool = true, heading_rad: flo
 	_places[View.SIDE] = target + TrackSpace.point(SIDE_OFFSET.x, SIDE_OFFSET.y, SIDE_OFFSET.z)
 	_places[View.OVERHEAD] = target + TrackSpace.point(OVERHEAD_OFFSET.x, OVERHEAD_OFFSET.y,
 			OVERHEAD_OFFSET.z)
-	var out_m := HITCH_OFFSET.y - HITCH_BACK_PER_M * _hitch_apart_m
-	var hitch_place := target + TrackSpace.point(0.0, out_m, HITCH_OFFSET.z) \
-			.rotated(Vector3.UP, _close_heading_rad)
+	var out_m := HITCH_OUT_M + HITCH_BACK_PER_M * _hitch_apart_m
+	var hitch_place := target + TrackSpace.point(0.0, -out_m, HITCH_UP_M) \
+			.rotated(Vector3.UP, _hitch_heading_rad)
 	_hitch_camera.global_position = _hitch_camera.global_position.lerp(hitch_place, weight)
 	_hitch_camera.look_at(target, Vector3.UP)
 	_cab_turn = lerpf(_cab_turn, 1.0 if _reversing else 0.0,
@@ -189,4 +198,5 @@ func _turn_cab() -> void:
 		return
 	cab.position = _cab_ahead + TrackSpace.point(CAB_BACK_SHIFT.x, CAB_BACK_SHIFT.y,
 			CAB_BACK_SHIFT.z) * _cab_turn
-	cab.rotation = Vector3(CAB_BACK_PITCH_RAD * _cab_turn, PI * _cab_turn, 0.0)
+	cab.rotation = _cab_ahead_rotation + Vector3(CAB_BACK_PITCH_RAD * _cab_turn, PI * _cab_turn,
+			0.0)
