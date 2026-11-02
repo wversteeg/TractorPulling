@@ -408,7 +408,7 @@ and a class opened stays open, so the start screen offers "Move up" before
 the next season's first pull too. Your one tractor goes with you: the money
 and every upgrade carry up, by the upgrade's name, into the new class's
 garage. The tractor path holds the standard 3.5 t class for now; Sport
-2.6 and 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
+2.5 and 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
 Stock and Super Stock follow, each with its NTTO and ETPC rules
 ([docs/career.md](docs/career.md)).
 

@@ -11,7 +11,7 @@ namespace tp::career {
 namespace {
 
 // The tractor path as it will be (docs/career.md): Standard 3.5 t, Sport
-// 2.6 and 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
+// 2.5 and 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
 // Stock and Super Stock; the championship wins a class.
 constexpr Ladder kTractorPath{.classes = 9, .promotion_place = 1};
 

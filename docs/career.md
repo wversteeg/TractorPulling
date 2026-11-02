@@ -37,7 +37,7 @@ here were checked by eye.
 | # | Class | Section | Weight (2026) |
 |---|---|---|---|
 | 1 | Standard 3.5 t (standaardklasse) | Farmstock | 3500 kg |
-| 2 | Sport 2.6 t (sportklasse) | Farmstock | 2600 kg |
+| 2 | Sport 2.5 t (sportklasse) | Farmstock | 2500 kg (the NTTO pulls 2600 kg) |
 | 3 | Sport 4.5 t | Farmstock | 4500 kg |
 | 4 | Supersport 3.4 t (super-sportklasse) | Farmstock | 3400 kg |
 | 5 | Supersport 3.6 t | Farmstock | 3600 kg |
@@ -51,7 +51,7 @@ order of the engine each allows, then the Grand National classes that
 still pull a farm tractor.
 
 **Every class has its own tractor (game choice).** The weight goes up and
-down along the way (3.5, 2.6, 4.5, 3.4, 3.6, 4.5, then 3.5 t), and each
+down along the way (3.5, 2.5, 4.5, 3.4, 3.6, 4.5, then 3.5 t), and each
 class allows a different engine, so no one tractor climbs the whole
 ladder. Moving up a class means a new tractor for that class, built from
 its base (each class's season names it), and **parts of the old one can
@@ -103,13 +103,14 @@ H13 and NTTO 2026:
 - A safety cab or a roll bar.
 - Stock tractor: only safety modifications.
 
-### 2. Sport 2.6 t
+### 2. Sport 2.5 t
 
-The NTTO pulls Sport at 2600 kg (NTTO 2026); the rulebooks write their
-lightest Sport limits for **2500 kg** (ETPC 2.1, NTTO 2018 15.B.1). The
-limits below are those, to confirm for 2600 kg:
+The rulebooks write their lightest Sport class for **2500 kg** (ETPC 2.1,
+NTTO 2018 15.B.1); the NTTO pulls it at 2600 kg in 2026 (NTTO 2026), with
+no published rules of its own. The game pulls it at 2500 kg, by the
+rulebooks (game choice):
 
-- 2600 kg; hitch as Sport 4.5 t.
+- 2500 kg; hitch as Sport 4.5 t.
 - Engine: at most **4 cylinders, turbocharged, 2 valves a cylinder, 4000
   cm³** (NTTO 2018 15.B.1).
 - One turbo, its inlet at most **55 mm** or an air restrictor of 55 mm
@@ -268,15 +269,41 @@ The NTTO splits a class into levels, each its own competition:
 
 - Farmstock classes in 2026: **topniveau**, **promoniveau** and
   **beloftenniveau** (ntto.nl, 2026 standings: Sport 4.5 t and
-  Supersport 3.6 t have all three; Sport 2.6 t, Supersport 3.4 and 4.5 t
-  top and promo).
+  Supersport 3.6 t have all three; Sport at 2600 kg, Supersport 3.4 and
+  4.5 t top and promo).
 - Pro Stocks (NTTO 2018 art. 1.16): **group I and group II**. A new
   machine starts in group II. The **winner of group II moves up** to group
   I and **12th of group I moves down**. Nobody moves up or down by choice,
   and group I is filled up to 12 from group II.
 
-A game choice for later: a class's seasons could start at the lowest
-level, with the same promotion as Pro Stock groups.
+### In the game (game choice)
+
+Every class is pulled at three levels, **belofte**, **promo** and
+**top**, each a season with its own field of rivals, on the class's one
+tractor:
+
+- A new tractor (every part at its first stage) finishes **around last in
+  belofte**; a **fully upgraded** one **wins at top**. Promo sits between:
+  the fields are set so that each level wants about a third more of the
+  garage than the one below.
+- Winning a level's championship opens the level above; winning top opens
+  the next class's belofte. The player is asked whether to move up or
+  stay, as for a class. No relegation (for now).
+- Within a class the tractor stays as it is; a new class is a new tractor
+  (see "Every class has its own tractor").
+- The NTTO's standard class has no levels and Pro Stock has groups II and
+  I: the game uses the three Farmstock levels for every class alike.
+
+## Upgrades (game choice)
+
+The garage offers more stages per part than today's three or four, so
+there is something to buy after nearly every event, and more parts in the
+classes that allow more: the standard class's stock tractor allows little
+(pump, tires, weights, drawbar, governor, powershift), Sport adds the
+turbo and its restrictor, the intercooler and the gearing, Supersport the
+head and valves, the fuel pump and water injection, and the Grand
+National classes the most (the turbo stages in Super Stock). The garage's
+limits (`garage::kMaxUpgrades`, `garage::kMaxLevels`) grow to fit.
 
 ## Real distances (ntto.nl)
 
