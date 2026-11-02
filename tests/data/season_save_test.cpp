@@ -23,7 +23,7 @@ SeasonSave example() {
                               .level_name = "Promo",
                               .unlocked_class = R"(Super "stock")",
                               .unlocked_level = "Belofte",
-                              .seasons_on_level = 3,
+                              .seasons_on_level = 2,
                               .title_on_level = true};
     save.events = {
         {{.puller = 2, .place = 1},
@@ -55,7 +55,7 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
     EXPECT_EQ(career.unlocked_class, R"(Super "stock")");
     EXPECT_EQ(career.level_name, "Promo");
     EXPECT_EQ(career.unlocked_level, "Belofte");
-    EXPECT_EQ(career.seasons_on_level, 3);
+    EXPECT_EQ(career.seasons_on_level, 2);
     EXPECT_TRUE(career.title_on_level);
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
@@ -188,6 +188,9 @@ TEST(SeasonSave, RefusesNonsense) {
         std::string::npos);
     EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = -1\ntitle_on_level = false\n")
                   .find("career.seasons_on_level"),
+              std::string::npos);
+    EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = 11\ntitle_on_level = false\n")
+                  .find("career.seasons_on_level: must be 0 to 10"),
               std::string::npos);
     EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = 1\n").find("career.title_on_level"),
               std::string::npos);

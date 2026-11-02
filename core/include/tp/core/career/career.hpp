@@ -36,7 +36,8 @@ enum class ParamError : std::uint8_t {
 
 /// How far a career has climbed: the rung the player pulls on, and the
 /// highest rung a season has opened; the seasons finished on the player's
-/// rung, and whether one of them was won. A rung opened stays open, so a
+/// rung (counted up to the ladder's min_seasons, all that matters), and
+/// whether one of them was won. A rung opened stays open, so a
 /// player who stays to defend a title may still move up later. Plain data:
 /// it is saved with the career.
 struct Progress {

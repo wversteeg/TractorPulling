@@ -1,5 +1,7 @@
 #include "tp/data/season/season_save.hpp"
 
+#include "tp/core/career/career.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <iomanip>
@@ -116,9 +118,10 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
     if (career.money_eur < 0) {
         return detail::make_error(source, "career.money_eur", "must be 0 or more");
     }
-    constexpr std::int64_t kMaxSeasons = 1000;
-    if (seasons < 0 || seasons > kMaxSeasons) {
-        return detail::make_error(source, "career.seasons_on_level", "must be 0 or more");
+    // career::finish_season counts no further than the ladder's minimum.
+    if (seasons < 0 || seasons > career::kMaxMinSeasons) {
+        return detail::make_error(source, "career.seasons_on_level",
+                                  "must be 0 to " + std::to_string(career::kMaxMinSeasons));
     }
     if (!title) {
         return detail::make_error(source, "career.title_on_level", "must be true or false");

@@ -2,6 +2,8 @@
 
 #include "tp/core/event/event.hpp"
 
+#include <algorithm>
+
 namespace tp::career {
 
 std::optional<ParamError> validate(const Ladder& ladder) noexcept {
@@ -33,7 +35,9 @@ std::optional<Progress> starting_at(const Ladder& ladder, int rung) noexcept {
 
 bool finish_season(Progress& progress, const Ladder& ladder, int championship_place) noexcept {
     const bool earned = championship_place >= 1 && championship_place <= ladder.promotion_place;
-    ++progress.seasons;
+    // Only whether the rung has had its minimum counts: the count stops
+    // there, so a player who stays for good keeps a small number to save.
+    progress.seasons = std::min(progress.seasons + 1, ladder.min_seasons);
     progress.title = progress.title || earned;
     const int above = progress.rung + 1;
     if (!progress.title || progress.seasons < ladder.min_seasons || above >= ladder.rungs ||

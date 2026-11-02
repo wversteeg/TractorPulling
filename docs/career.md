@@ -77,11 +77,12 @@ Money carries over as it is.
 This is step 3 (real parts) of the plan. Until then, step 2 carries the
 garage's upgrade levels by name from one class's garage to the next.
 
-A season won opens the next class (`tp::career`, `promotion_place = 1`);
-the player chooses to move up or stay.
+Each class is pulled at three levels, belofte, promo and top (see
+"Levels within a class"): a season won opens the next level, and top the
+next class (`tp::career`, `promotion_place = 1`, at least `min_seasons`
+on a level); the player chooses to move up or stay.
 
-Not in the game (yet): the NTTO's own levels within a class (see
-"Levels" below) and the heavier standard classes.
+Not in the game: the heavier standard classes.
 
 ## The classes (rules)
 
