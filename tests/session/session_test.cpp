@@ -161,7 +161,8 @@ TEST(Session, IsTheRunSteppedByHand) {
                                      .gear = controls.gear,
                                      .steering = controls.steering};
         run::step(by_hand, Inspector::model(session), kRules,
-                  controls::pro(pro, setup.pro, steering, tractor, kDt_s), kDt_s);
+                  controls::pro(pro, setup.pro, steering, tractor, by_hand.pull.tractor, kDt_s),
+                  kDt_s);
         session.advance(controls, kStep_ns);
         most_steering = std::max(most_steering, steering.steering);
 

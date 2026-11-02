@@ -13,9 +13,11 @@ inline constexpr EasyParams kReferenceEasy{.steer_share = 0.6,
                                                              .release_time_s = 0.3,
                                                              .guard_speed_share = 0.6,
                                                              .guard_band_share = 0.1,
-                                                             .min_throttle = 0.05}};
+                                                             .min_throttle = 0.05},
+                                           .steer_side_accel_m_s2 = 2.5};
 
 // Mirrors data/controls/pro.toml.
-inline constexpr ProParams kReferencePro{.steer_dead_zone = 0.03, .steer_rate_per_s = 1.5};
+inline constexpr ProParams kReferencePro{
+    .steer_dead_zone = 0.03, .steer_rate_per_s = 1.5, .steer_side_accel_m_s2 = 3.0};
 
 }  // namespace tp::controls::testing
