@@ -345,10 +345,44 @@ func _check_career() -> void:
 	_expect(error.is_empty() and renamed.get_career()["rung"] == 0
 			and renamed.get_garage()["money_eur"] == garage["money_eur"],
 			"a class the career no longer has is its first rung: %s" % error)
+	_check_upgrades_cross_garages()
+
 	var promo := won.replace("level = \"Belofte\"", "level = \"Promo\"")
 	error = renamed.resume_career(promo.replace("level = \"Promo\"", "level = \"Gone\""))
 	_expect(error.is_empty() and renamed.get_career()["rung"] == 0,
 			"a level the class no longer has is its first: %s" % renamed.get_career())
+
+
+# Moving up a class carries the upgrades into the class's own garage by
+# name: the lower class's garage (tests/data/practice_garage_low.toml) has
+# the powershift and the governor, the upper's the drawbar and the
+# powershift, second. The powershift keeps its level, the governor is left
+# behind, the new drawbar starts at its first, and the money stays.
+func _check_upgrades_cross_garages() -> void:
+	var low := TractorPullEvent.new()
+	low.load_career(LADDER)
+	_expect(low.new_career(11).is_empty() and low.buy_upgrade(0).is_empty()
+			and low.buy_upgrade(1).is_empty(), "the powershift and the governor bought")
+	var bought := low.get_garage()
+	_expect(bought["upgrades"].size() == 2 and bought["upgrades"][0]["name"] == "Powershift"
+			and bought["upgrades"][0]["level"] == 1 and bought["upgrades"][1]["name"] == "Governor"
+			and bought["upgrades"][1]["level"] == 1, "the lower garage: %s" % bought)
+	var save := low.get_save().replace("\nlevel = \"Belofte\"", "\nlevel = \"Promo\"") \
+			.replace("unlocked = \"Practice\"", "unlocked = \"Practice, a class up\"")
+	var up := TractorPullEvent.new()
+	up.load_career(LADDER)
+	var error := up.resume_career(save)
+	_expect(error.is_empty() and up.get_career()["rung"] == 1 and up.get_career()["can_move_up"],
+			"on promo with the class above open: %s %s" % [error, up.get_career()])
+	error = up.move_up(12)
+	var garage := up.get_garage()
+	_expect(error.is_empty() and up.get_career()["class_name"] == "Practice, a class up",
+			"moved up a class: %s" % error)
+	_expect(garage["upgrades"].size() == 2 and garage["upgrades"][0]["name"] == "Drawbar"
+			and garage["upgrades"][0]["level"] == 0 and garage["upgrades"][1]["name"] == "Powershift"
+			and garage["upgrades"][1]["level"] == 1 and garage["money_eur"] == bought["money_eur"],
+			"the upper garage, the powershift carried by name: %s" % garage)
+	_expect(not up.get_save().contains("Governor"), "the governor left behind")
 
 
 # The player's tuning: as built at first, each setting held to its range,

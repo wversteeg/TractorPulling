@@ -1,0 +1,17 @@
+# The practice season (practice_season.toml) with the test ladder's upper
+# class's garage (practice_ladder.toml).
+
+[season]
+event = "practice_event.toml"
+seed = 2026
+points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+prize_money_eur = [700, 500, 400, 320, 260, 220, 190, 160, 140, 120]
+garage = "practice_garage_up.toml"
+
+[[season.events]]
+name = "Practice, watered start"
+track = "../../data/tracks/watered_start.toml"
+
+[[season.events]]
+name = "Practice, firm loam"
+track = "../../data/tracks/firm_loam.toml"

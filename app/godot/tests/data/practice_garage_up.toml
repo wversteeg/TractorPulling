@@ -1,0 +1,21 @@
+# The test ladder's upper class's garage (practice_ladder.toml): see
+# practice_garage_low.toml.
+
+[garage]
+start_money_eur = 1000
+
+[[garage.upgrades]]
+part = "hitch_height_m"
+name = "Drawbar"
+levels = [
+    { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
+    { value = 0.45, cost_eur = 300, label = "Pulling hitch, 0.45 m" },
+]
+
+[[garage.upgrades]]
+part = "load_downshift_gears"
+name = "Powershift"
+levels = [
+    { value = 1.0, cost_eur = 0, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 600, label = "Two gears down under load" },
+]
