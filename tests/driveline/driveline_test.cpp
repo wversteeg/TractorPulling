@@ -463,6 +463,26 @@ TEST(Driveline, ATwoGearStepTakesTwoTaps) {
     State at_once{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
     EXPECT_TRUE(shift_under_load(at_once, two, 4).has_value());
     EXPECT_FALSE(shifts_under_load(at_once, two, 3));
+
+    // Two steps a pull: four gears in all, at most two at once.
+    Params twice = two;
+    twice.load_shifts_per_pull = 2;
+    State four{.gear = 7, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    EXPECT_FALSE(shifts_under_load(four, twice, 4)) << "three at once";
+    EXPECT_TRUE(shift_under_load(four, twice, 5).has_value());
+    EXPECT_TRUE(shift_under_load(four, twice, 4).has_value());
+    EXPECT_TRUE(shift_under_load(four, twice, 3).has_value());
+    EXPECT_FALSE(shifts_under_load(four, twice, 2));
+
+    // None a pull: not even one gear.
+    Params none = two;
+    none.load_shifts_per_pull = 0;
+    EXPECT_FALSE(shifts_under_load_from(none, 6, 5));
+
+    // A new pull starts with the whole step again.
+    end_pull(tapped);
+    EXPECT_EQ(tapped.load_shift_gears, 0);
+    EXPECT_TRUE(shifts_under_load(tapped, two, 3));
 }
 
 // Engaging a gear synchronizes the two sides: momentum through the gears is

@@ -38,7 +38,8 @@ vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::
                               : 0.0;
     }
     // A gear down once, as the sled pulls the engine down: after it, the
-    // gear that went in stays (under way the gearbox goes no lower).
+    // gear that went in stays (under way the gearbox goes no lower). A
+    // scripted driver takes one gear of a two-gear step, never the second.
     if (in.clutch_pedal == 0.0 && plan.downshift_share > 0.0) {
         const driveline::State& gearbox = tractor.driveline;
         const bool below =

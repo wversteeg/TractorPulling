@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <span>
 
 namespace tp::driveline {
@@ -88,10 +89,22 @@ double overall_ratio(const Params& params, int gear) noexcept {
     return gears[static_cast<std::size_t>(gear) - 1] * params.final_drive_ratio;
 }
 
+namespace {
+
+// The gears this pull may still shift down under load: the steps' worth
+// less those shifted, counted wide so a huge shifts-per-pull cannot overflow.
+int load_shift_gears_left(const State& state, const Params& params) noexcept {
+    const std::int64_t budget = static_cast<std::int64_t>(params.load_downshift_gears) *
+                                static_cast<std::int64_t>(params.load_shifts_per_pull);
+    const std::int64_t left = budget - state.load_shift_gears;
+    return static_cast<int>(std::clamp<std::int64_t>(left, 0, params.load_downshift_gears));
+}
+
+}  // namespace
+
 bool shifts_under_load(const State& state, const Params& params, int to) noexcept {
     const int from = state.gear;
-    const int gears_left =
-        params.load_downshift_gears * params.load_shifts_per_pull - state.load_shift_gears;
+    const int gears_left = load_shift_gears_left(state, params);
     return to > kNeutral && to < from &&
            from - to <= std::min(params.load_downshift_gears, gears_left) &&
            static_cast<std::size_t>(from) <= ratios(params).size();
@@ -112,8 +125,7 @@ int lowest_gear(const State& state, const Params& params) noexcept {
     if (state.floor_gear == kNeutral) {
         return 1;
     }
-    const int gears_left =
-        params.load_downshift_gears * params.load_shifts_per_pull - state.load_shift_gears;
+    const int gears_left = load_shift_gears_left(state, params);
     const int by_load_shift =
         std::max(state.gear - std::min(params.load_downshift_gears, gears_left), 1);
     return shifts_under_load(state, params, by_load_shift)

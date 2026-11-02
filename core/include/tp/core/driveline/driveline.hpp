@@ -36,8 +36,9 @@ inline constexpr double kDirectionChangeAtRest_rad_s = 0.1;
 ///
 /// Gears change with the clutch pressed, except that some gearboxes shift a
 /// gear or two down under load, the clutch in (a powershift step, worked by
-/// clutch packs inside the gearbox): load_downshift_gears says how many,
-/// and load_shifts_per_pull how often in one pull.
+/// clutch packs inside the gearbox): load_downshift_gears says how many at
+/// once, and load_shifts_per_pull how many such steps' worth of gears one
+/// pull allows, taken a gear or more at a time.
 /// The packs' slip is taken as the main clutch's (see shift_under_load).
 struct Params {
     /// Gearbox ratios, 1st first; strictly decreasing.
@@ -61,9 +62,10 @@ struct Params {
     /// How many gears down the gearbox shifts under load, the clutch in: 0
     /// for none, below gear_count.
     int load_downshift_gears = 0;
-    /// How many shifts under load one pull allows: after them the gear goes
-    /// up with the clutch pressed, and under way never down. 0 or more;
-    /// without a step (load_downshift_gears 0) it does nothing.
+    /// How many steps' worth of gears (load_downshift_gears each) one pull
+    /// may shift down under load, in shifts of a gear or more: after them
+    /// the gear goes up with the clutch pressed, and under way never down.
+    /// 0 or more; without a step (load_downshift_gears 0) it does nothing.
     int load_shifts_per_pull = 1;
 };
 
