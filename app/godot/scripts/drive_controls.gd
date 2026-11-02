@@ -1,20 +1,22 @@
 # The driver's controls on a phone, for either layout. Both have a steering
-# slider under the left thumb (it springs back to straight ahead), a hand
-# throttle under the right (moved like a lever, it stays where it is left,
-# as a tractor's does) and gear buttons beside it. The pro layout adds, on
-# the left above the steering, a clutch slider (it stays where it is left
-# too, so a thumb can slip the clutch in and leave it) and the left brake,
-# and on the right beside the throttle the right brake (the brakes spring
-# back to off): each side's brake under its own thumb. Every control has
-# its own colour and label (GAS green, CLUTCH blue, BRAKE red, STEER white),
-# so they are told apart at a glance. The clutch slider marks where the
-# clutch slips (set_clutch_range), with a line where it bites. With tilt
-# steering (TiltSteering) the steering slider goes: tilting the phone
-# steers, straight ahead as it is held when the pull begins. Camera, restart
-# (the same pull again) and menu (back to the start screen) buttons sit in
-# the top corner. The gas lever is drawn as a pedal, the gear buttons as a
-# shifter's keys (ShiftButton) and the camera button as a camera. All of
-# them are multi-touch, so both thumbs drive at once.
+# slider (it springs back to straight ahead; its thumb a steering wheel), a
+# hand throttle under the right thumb (moved like a lever, it stays where it
+# is left, as a tractor's does) and gear buttons beside it. The pro layout
+# mirrors the right side on the left: the clutch in the corner as the
+# throttle (it stays where it is left too, so a thumb can slip the clutch
+# in and leave it) and the left brake beside it as the right brake beside
+# the throttle (the brakes spring back to off): each side's brake under its
+# own thumb, the steering between them in the bottom middle. Outside the
+# pull the run works both brakes together (session::Controls). Every
+# control has its own colour and label (GAS green, CLUTCH blue, BRAKE red,
+# STEER white), so they are told apart at a glance; the pedals are drawn as
+# pedals. The clutch slider marks where the clutch slips (set_clutch_range),
+# with a line where it bites. With tilt steering (TiltSteering) the
+# steering slider goes: tilting the phone steers, straight ahead as it is
+# held when the pull begins. Camera, restart (the same pull again) and menu
+# (back to the start screen) buttons sit in the top corner. The gear
+# buttons are drawn as a shifter's keys (ShiftButton) and the camera button
+# as a camera. All of them are multi-touch, so both thumbs drive at once.
 #
 # "-" steps down to neutral and, where the gearbox has it, reverse (R),
 # standing; under way it stops at the lowest gear the gearbox may go to
@@ -46,7 +48,6 @@ const SLIDER_THICKNESS := 130.0
 const STEERING_LENGTH := 480.0
 const THROTTLE_LENGTH := 440.0
 const BRAKE_SIZE := Vector2(110.0, 300.0)
-const CLUTCH_HEIGHT := 320.0
 const STEER_COLOUR := Color(0.92, 0.92, 0.92, 0.9)
 const GAS_COLOUR := Color(0.3, 0.85, 0.35, 0.9)
 const CLUTCH_COLOUR := Color(0.3, 0.6, 1.0, 0.9)
@@ -96,8 +97,8 @@ func _ready() -> void:
 	steering_slider.springs_back = true
 	steering_slider.colour = STEER_COLOUR
 	steering_slider.label = "STEER"
-	_place(steering_slider, Vector2(0.0, 1.0),
-			Rect2(MARGIN, -MARGIN - SLIDER_THICKNESS, STEERING_LENGTH, SLIDER_THICKNESS))
+	steering_slider.wheel = true
+	add_child(steering_slider)
 
 	throttle_slider.vertical = true
 	throttle_slider.relative = true
@@ -107,18 +108,18 @@ func _ready() -> void:
 	throttle_slider.pedal = true
 	_place(throttle_slider, Vector2(1.0, 1.0), _right_column(0, SLIDER_THICKNESS, THROTTLE_LENGTH))
 
-	# Above the steering on the left: the clutch pedal, pressed (1) at the
-	# top and released (in) at the bottom, which starts pressed so a new
-	# pull does not lurch away; and the left brake beside it.
-	var left_top := -MARGIN - SLIDER_THICKNESS - GAP
+	# On the left as the throttle and the right brake on the right, mirrored:
+	# the clutch pedal in the corner, pressed (1) at the top and released
+	# (in) at the bottom, which starts pressed so a new pull does not lurch
+	# away; and the left brake beside it.
 	clutch_slider.vertical = true
 	clutch_slider.relative = true
 	clutch_slider.rest_value = 1.0
 	clutch_slider.colour = CLUTCH_COLOUR
 	clutch_slider.label = "CLUTCH"
 	clutch_slider.filled = true
-	_place(clutch_slider, Vector2(0.0, 1.0),
-			Rect2(MARGIN, left_top - CLUTCH_HEIGHT, SLIDER_THICKNESS, CLUTCH_HEIGHT))
+	clutch_slider.pedal = true
+	_place(clutch_slider, Vector2(0.0, 1.0), _left_column(0, SLIDER_THICKNESS, THROTTLE_LENGTH))
 
 	# The brakes: off at the bottom, full at the top, off again when let go;
 	# the left one beside the clutch, the right one beside the throttle.
@@ -126,10 +127,10 @@ func _ready() -> void:
 		slider.vertical = true
 		slider.springs_back = true
 		slider.colour = BRAKE_COLOUR
+		slider.pedal = true
 	brake_left_slider.label = "BRAKE L"
 	brake_right_slider.label = "BRAKE R"
-	_place(brake_left_slider, Vector2(0.0, 1.0),
-			Rect2(Vector2(MARGIN + SLIDER_THICKNESS + GAP, left_top - BRAKE_SIZE.y), BRAKE_SIZE))
+	_place(brake_left_slider, Vector2(0.0, 1.0), _left_column(1, BRAKE_SIZE.x, BRAKE_SIZE.y))
 	_place(brake_right_slider, Vector2(1.0, 1.0), _right_column(1, BRAKE_SIZE.x, BRAKE_SIZE.y))
 
 	gear_down.up = false
@@ -162,6 +163,23 @@ func set_layout(is_pro: bool) -> void:
 	for slider: TouchSlider in [clutch_slider, brake_left_slider, brake_right_slider]:
 		slider.visible = pro
 		slider.release()
+	# The steering: in the easy layout in the bottom left corner; in the pro
+	# layout in the bottom middle, between the left brake and the gear
+	# buttons, stretching with the screen.
+	if pro:
+		var left_m := MARGIN + SLIDER_THICKNESS + GAP + BRAKE_SIZE.x + GAP
+		var right_m := MARGIN + 2.0 * (SLIDER_THICKNESS + GAP) + BUTTON_SIZE + GAP
+		steering_slider.anchor_left = 0.0
+		steering_slider.anchor_right = 1.0
+		steering_slider.anchor_top = 1.0
+		steering_slider.anchor_bottom = 1.0
+		steering_slider.offset_left = left_m
+		steering_slider.offset_right = -right_m
+		steering_slider.offset_top = -MARGIN - SLIDER_THICKNESS
+		steering_slider.offset_bottom = -MARGIN
+	else:
+		_anchor(steering_slider, Vector2(0.0, 1.0),
+				Rect2(MARGIN, -MARGIN - SLIDER_THICKNESS, STEERING_LENGTH, SLIDER_THICKNESS))
 	var column := 2 if pro else 1
 	_anchor(gear_down, Vector2(1.0, 1.0), _right_column(column, BUTTON_SIZE, BUTTON_SIZE))
 	_anchor(gear_up, Vector2(1.0, 1.0),
@@ -311,6 +329,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _right_column(column: int, size_x: float, height: float, lift: float = 0.0) -> Rect2:
 	var right := -MARGIN - column * (SLIDER_THICKNESS + GAP)
 	return Rect2(right - size_x, -MARGIN - lift - height, size_x, height)
+
+
+# As _right_column, mirrored: from the left edge (0 the leftmost).
+func _left_column(column: int, size_x: float, height: float, lift: float = 0.0) -> Rect2:
+	var left := MARGIN + column * (SLIDER_THICKNESS + GAP)
+	return Rect2(left, -MARGIN - lift - height, size_x, height)
 
 
 # A place in the row of small buttons along the top, from the right edge.

@@ -78,7 +78,9 @@ struct Controls {
     /// range; in the easy layout its last stretch brakes the inner rear
     /// wheels.
     double steering = 0.0;
-    /// 0 to 1.
+    /// 0 to 1. Outside the pull (getting to the sled, waiting for the flag,
+    /// releasing the chain, going back) the pedals are latched: the harder
+    /// pressed brakes both sides; in the pull each brakes its own side.
     double brake_left = 0.0;
     double brake_right = 0.0;
 };

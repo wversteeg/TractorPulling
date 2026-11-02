@@ -163,6 +163,7 @@ func _play() -> void:
 	_expect(lamp_red, "the sled's lamp red once the pull is over")
 	_expect(distance_held, "the pull's distance held while the sled drives back")
 	_expect(ending_told, "told why the pull ended")
+	_expect(hud.ending_shown().is_empty(), "the ending's line gone by the time the tractor is back")
 	_expect(backing_up_told, "told how far to back up")
 	_expect(flag_red_before and flag_green_pulling, "red before the pull, green in it")
 	_expect(chain_on_while_hooked, "the chain on from hooking to releasing")

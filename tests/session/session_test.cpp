@@ -371,6 +371,24 @@ TEST(Session, StandsStillOnceTheRunHasEnded) {
     EXPECT_EQ(session.previous().sled_x_m, session.current().sled_x_m);
 }
 
+// Outside the pull the pro layout's brakes are latched: one pedal brakes
+// both sides. In the pull each brakes its own.
+TEST(Session, TheBrakesWorkTogetherOutsideThePull) {
+    session::Setup setup = reference_setup(Layout::kPro);
+    setup.parking = turn::Parking{.x_m = -15.0, .y_m = -10.0};
+    Session session = make(setup);
+    session.advance({.brake_left = 0.7}, kStep_ns);
+    const vehicle::Input turn = Inspector::last_input(session);
+    EXPECT_EQ(turn.brake_left, 0.7);
+    EXPECT_EQ(turn.brake_right, 0.7);
+
+    Session at_the_line = make(reference_setup(Layout::kPro));
+    at_the_line.advance({.brake_left = 0.7}, kStep_ns);
+    const vehicle::Input pull = Inspector::last_input(at_the_line);
+    EXPECT_EQ(pull.brake_left, 0.7);
+    EXPECT_EQ(pull.brake_right, 0.0);
+}
+
 // A pull that stopped short of the restart line, restarted: the same
 // controls from then on give the same pull as a new session's, and it may
 // not be restarted again.
