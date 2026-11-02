@@ -92,7 +92,7 @@ TEST(Driver, ShiftsDownOnceAsTheSledPullsTheEngineDown) {
     EXPECT_EQ(gear_at(20.0, 0.91), 6);
     EXPECT_EQ(gear_at(25.0, 0.89), 5) << "lugging";
     tractor.driveline.gear = 5;
-    tractor.driveline.load_shifts = 1;
+    tractor.driveline.load_shift_gears = 1;
     EXPECT_EQ(gear_at(26.0, 0.8), 5) << "once";
     EXPECT_EQ(gear_at(27.0, 1.0), 5) << "and no shift back up";
 

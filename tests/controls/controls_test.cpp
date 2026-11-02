@@ -549,7 +549,7 @@ TEST(ClutchAssist, ShiftsDownUnderLoadOnceAPull) {
         });
     EXPECT_FALSE(r.shift_refused);
     EXPECT_EQ(r.state.pull.tractor.driveline.gear, 5) << "one gear down, no more";
-    EXPECT_EQ(r.state.pull.tractor.driveline.load_shifts, 1);
+    EXPECT_EQ(r.state.pull.tractor.driveline.load_shift_gears, 1);
     EXPECT_EQ(least_engaged_first, 1.0) << "the first: the clutch stays in";
     EXPECT_EQ(least_engaged_second, 1.0) << "the second: not taken, the clutch stays in";
 }
