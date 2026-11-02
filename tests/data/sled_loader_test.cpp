@@ -156,6 +156,25 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_DOUBLE_EQ(result.value().wheel_cornering.limit, 0.7);
     EXPECT_DOUBLE_EQ(result.value().wheel_cornering.mobility_rate, 0.12);
     EXPECT_DOUBLE_EQ(result.value().wheel_cornering.relaxation_length_m, 0.45);
+    // Without a [sled.fenders] table: no fenders.
+    EXPECT_EQ(result.value().fenders.half_span_m, 0.0);
+}
+
+// Fenders, when given, are read and checked.
+TEST(SledLoader, ReadsAndChecksTheFenders) {
+    const std::string with_fenders = std::string{kValidSled} +
+                                     "\n[sled.fenders]\nbehind_hook_m = 0.1\n"
+                                     "half_span_m = 1.0\ndepth_m = 1.0\n";
+    const auto result = parse_sled(with_fenders, "sled.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().fenders.behind_hook_m, 0.1);
+    EXPECT_DOUBLE_EQ(result.value().fenders.half_span_m, 1.0);
+    EXPECT_DOUBLE_EQ(result.value().fenders.depth_m, 1.0);
+    const std::string no_depth = std::string{kValidSled} + "\n[sled.fenders]\nhalf_span_m = 1.0\n";
+    const auto refused = parse_sled(no_depth, "sled.toml");
+    ASSERT_FALSE(refused.ok());
+    EXPECT_NE(refused.error().message.find("sled.fenders:"), std::string::npos)
+        << refused.error().message;
 }
 
 TEST(SledLoader, RejectsNonsenseValues) {

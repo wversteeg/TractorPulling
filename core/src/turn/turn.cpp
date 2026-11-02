@@ -182,12 +182,15 @@ void release(State& state, const pull::Model& model) noexcept {
 
 }  // namespace
 
-double fender_stop_m(const pull::Model& model) noexcept {
-    const vehicle::Params& tractor = model.tractor().params();
+double fender_stop_m(const vehicle::Params& tractor, const sled::Fenders& fenders) noexcept {
     // The rear tires' backs are a tire's radius behind the axle, the hitch
     // its own distance behind it.
     return tractor.rear_tire.size.radius_m - tractor.chassis.hitch_behind_rear_axle_m -
-           model.sled().fenders.behind_hook_m;
+           fenders.behind_hook_m;
+}
+
+double fender_stop_m(const pull::Model& model) noexcept {
+    return fender_stop_m(model.tractor().params(), model.sled().fenders);
 }
 
 bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {

@@ -149,6 +149,8 @@ struct HitchToHook {
 /// rear tires against the sled's fenders (sled::Fenders) [m]: a tire's
 /// radius behind the axle, less the hitch's distance behind it and the
 /// fenders' behind the hook.
+[[nodiscard]] double fender_stop_m(const vehicle::Params& tractor,
+                                   const sled::Fenders& fenders) noexcept;
 [[nodiscard]] double fender_stop_m(const pull::Model& model) noexcept;
 
 /// Whether the chain hooks on now (see kHookOffLine_m).

@@ -29,11 +29,6 @@ struct Knives {
     double width_m = 0.0;
 };
 
-/// Soil the tractor's rear tires throw back piles up in front of the pan,
-/// which has to push it along: a berm. It grows with what the tires throw
-/// (more when they spin, even with the sled standing still) and spills off
-/// to the sides as the sled moves, so over a pull it builds up and then
-/// levels off.
 /// Rubber fenders either side of the hook, which a tractor backing up to
 /// the sled stops against with its rear tires (turn::fender_stop_m): their
 /// faces this far behind the hook, stopping a hitch this far either side of
@@ -45,6 +40,11 @@ struct Fenders {
     double depth_m = 0.0;
 };
 
+/// Soil the tractor's rear tires throw back piles up in front of the pan,
+/// which has to push it along: a berm. It grows with what the tires throw
+/// (more when they spin, even with the sled standing still) and spills off
+/// to the sides as the sled moves, so over a pull it builds up and then
+/// levels off.
 struct Berm {
     /// Share of the thrown soil that lands in front of the pan.
     double collected_share = 0.0;

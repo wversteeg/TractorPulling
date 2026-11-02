@@ -55,9 +55,7 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     }
     if (setup.parking && setup.sled.fenders.half_span_m > 0.0) {
         // The pull alone starts hooked on: the fenders matter only backing up.
-        const double stop_m = setup.tractor.rear_tire.size.radius_m -
-                              setup.tractor.chassis.hitch_behind_rear_axle_m -
-                              setup.sled.fenders.behind_hook_m;
+        const double stop_m = turn::fender_stop_m(setup.tractor, setup.sled.fenders);
         if (stop_m <= 0.0 || stop_m >= setup.sled.chain.length_m) {
             return SetupError::kFenders;
         }
