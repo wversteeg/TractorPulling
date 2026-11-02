@@ -295,6 +295,17 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_tap(settings.pro_button)
 	_expect(settings.pro_button.selected and not settings.easy_button.selected, "pro picked")
 	_expect(GameSettings.read(SETTINGS_PATH).pro, "pro kept in the settings file")
+	# Guidance off, kept in the file, and back on; a file without it reads on.
+	_tap(settings.guidance_off_button)
+	_expect(settings.guidance_off_button.selected and not GameSettings.read(SETTINGS_PATH).guidance
+			and not (_pull.get("hud") as Hud).guidance, "guidance off, kept in the settings file")
+	_tap(settings.guidance_on_button)
+	_expect(GameSettings.read(SETTINGS_PATH).guidance, "guidance on again")
+	var old_file := ConfigFile.new()
+	old_file.set_value(GameSettings.SECTION, "pro", true)
+	old_file.save("user://touch_test_old_settings.cfg")
+	_expect(GameSettings.read("user://touch_test_old_settings.cfg").guidance,
+			"a settings file without the guidance reads it on")
 	_tap(settings.done_button)
 	await _frames(2)
 	_expect(start.visible and not settings.visible, "done: back to the start screen")

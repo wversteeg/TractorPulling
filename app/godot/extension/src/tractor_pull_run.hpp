@@ -102,7 +102,9 @@ public:
     /// restart() pulls it again from the start line.
     [[nodiscard]] bool may_restart() const;
     void restart();
-    /// {ending, distance_m, time_s, top_speed_m_s} once finished, else {}.
+    /// {ending, distance_m, time_s, top_speed_m_s, full_pull} once finished,
+    /// else {}. full_pull: the sled got past the full-pull line, not out of
+    /// bounds (at an event the run goes on past it until the sled stops).
     [[nodiscard]] godot::Dictionary get_result() const;
     /// The replay hash (session::Session::hash) as 16 hex digits, the way
     /// `tp_pull run --hash` prints it.

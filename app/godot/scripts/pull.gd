@@ -156,6 +156,8 @@ var _snapshot := {}
 var _framing := Vector3.ZERO
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
+# The HUD shows why the pull ended.
+var _ended_shown := false
 # The pull stopped short of the restart line: the choice is shown (and the
 # run waits), or was made; the player chose to pull again later.
 var _choosing := false
@@ -188,7 +190,8 @@ func _ready() -> void:
 			show_start())
 	start_screen.practice_requested.connect(func() -> void: _show_setup(true))
 	start_screen.settings_requested.connect(func() -> void:
-		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available())
+		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available(),
+				hud.guidance)
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.done.connect(show_start)
@@ -241,6 +244,7 @@ func _ready() -> void:
 		var settings := GameSettings.read(settings_path)
 		pro = settings.pro
 		tilt = settings.tilt
+		hud.guidance = settings.guidance
 		if not _resume_season():
 			_new_season()
 
@@ -253,12 +257,14 @@ func _start_autoplay() -> void:
 
 
 # The settings picked, kept on the device for the next launch.
-func _change_settings(is_pro: bool, by_tilt: bool) -> void:
+func _change_settings(is_pro: bool, by_tilt: bool, guidance: bool) -> void:
 	pro = is_pro
 	tilt = by_tilt
+	hud.guidance = guidance
 	var settings := GameSettings.new()
 	settings.pro = pro
 	settings.tilt = tilt
+	settings.guidance = guidance
 	var error := settings.write(settings_path)
 	if error != OK:
 		push_warning("cannot keep the settings: %s" % error_string(error))
@@ -586,8 +592,7 @@ func _show_result() -> void:
 		entry = event.move_back()
 	if not practice and entry.is_empty():
 		entry = event.record_pull(run)
-	var full_pull_m: float = run.get_dimensions()["full_pull_line_m"]
-	result_screen.show_result(_title, run.get_result(), full_pull_m, entry)
+	result_screen.show_result(_title, run.get_result(), entry)
 	_set_screen(Screen.RESULT)
 
 
@@ -753,6 +758,13 @@ func _show(delta: float) -> void:
 		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * _chain_m * MARKER_SHARE
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
+	# Why the pull ended, read once as it ends (and cleared for a new run).
+	var over := stage in ["releasing", "to_the_parking", "parked"]
+	if over != _ended_shown:
+		_ended_shown = over
+		var result := run.get_result() if over else {}
+		hud.show_ending(ResultScreen.ending_text(result),
+				ResultScreen.ending_name(result) == "full_pull")
 
 
 # The officials' signal from the run's stage: "green" while the pull is
