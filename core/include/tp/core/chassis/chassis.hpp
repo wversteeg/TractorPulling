@@ -84,6 +84,14 @@ struct Ballast {
 /// side forces shift no load between left and right; pitch and yaw do not
 /// couple.
 
+/// What protects the driver if the tractor rolls over: the class rules ask
+/// for one (a farm cab in the standard classes, a roll bar or a roll cage
+/// from Sport on). Its mass is in the chassis's; the simulation draws it.
+enum class Protection : std::uint8_t {
+    kCab,
+    kRollBar,
+};
+
 struct Params {
     /// Whole tractor, wheels included [kg].
     double mass_kg = 0.0;
@@ -110,6 +118,7 @@ struct Params {
     Contact front_tires;
     WheelieBar wheelie_bar;
     Ballast ballast;
+    Protection protection = Protection::kCab;
 };
 
 /// The wheelie bar must touch down before the tractor pitches this far

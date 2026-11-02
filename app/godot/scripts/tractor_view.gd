@@ -34,6 +34,12 @@ const HOOD_TOP_M := 0.65          # above the rear axle
 const HOOD_PAST_FRONT_AXLE_M := 0.3
 const CAB_ROOF_M := 1.75          # above the rear axle
 const CAB_HALF_DEPTH_M := 0.55
+# A pulling tractor's roll bar: a hoop behind the seat, clear of the
+# driver's helmet, above the rear axle and behind it [m].
+const ROLL_BAR_TOP_M := 1.62
+const ROLL_BAR_BEHIND_M := 0.36
+const ROLL_BAR_BRACE_BEHIND_M := 0.8
+const ROLL_BAR_TUBE_M := 0.035
 # The cab camera: at the seated driver's eyes, a little in front of the
 # face so the head does not fill the view, above the rear axle [m]; and
 # its near plane, close enough for the steering wheel [m].
@@ -126,7 +132,7 @@ func _build_body(d: Dictionary) -> void:
 	add_child(_body)
 	_add_driveline(wheelbase_m, rear_track_m, front_track_m, axle_height_m)
 	_add_hood(wheelbase_m)
-	_add_cab(rear_track_m)
+	_add_cab(rear_track_m, d.get("protection", "cab") == "roll_bar")
 	_add_fenders(rear_track_m, rear_width_m)
 	_add_hitch_and_bar(d, axle_height_m, rear_track_m)
 
@@ -218,13 +224,49 @@ func _add_hood(wheelbase_m: float) -> void:
 		_body.add_child(lamp)
 
 
-# The cab frame (four posts and a roof), the floor, the seat, the steering
-# wheel and the driver.
-func _add_cab(rear_track_m: float) -> void:
+# The floor, the seat, the steering wheel and the driver, in a cab frame
+# (four posts, a roof and a screen) or, for a pulling tractor, open behind
+# a roll bar.
+func _add_cab(rear_track_m: float, roll_bar: bool) -> void:
 	var half_width_m := rear_track_m / 2.0 - 0.35
 	var floor := Art.box(Vector3(2.0 * half_width_m, 0.06, 2.0 * CAB_HALF_DEPTH_M), IRON)
 	floor.position = TrackSpace.point(0.15, 0.0, 0.35)
 	_body.add_child(floor)
+	if roll_bar:
+		_add_roll_bar(half_width_m)
+	else:
+		_add_cab_frame(half_width_m)
+	_add_seat_and_driver()
+
+
+# A hoop of tube behind the seat, braced back to the frame.
+func _add_roll_bar(half_width_m: float) -> void:
+	var bar_half_width_m := half_width_m - 0.1
+	var x_m := -ROLL_BAR_BEHIND_M
+	var height_m := ROLL_BAR_TOP_M - 0.35
+	for side: float in [-1.0, 1.0]:
+		var post := Art.cylinder(ROLL_BAR_TUBE_M, height_m, paint, 10)
+		post.material_override = Art.paint(paint)
+		post.position = TrackSpace.point(x_m, side * bar_half_width_m, 0.35 + height_m / 2.0)
+		_body.add_child(post)
+		# The brace: from two thirds up the post back down to the frame.
+		var from := Vector3(x_m, side * bar_half_width_m, 0.35 + height_m * 0.66)
+		var to := Vector3(-ROLL_BAR_BRACE_BEHIND_M, side * bar_half_width_m, 0.38)
+		var brace := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, (to - from).length(), paint, 8)
+		brace.material_override = Art.paint(paint)
+		brace.position = TrackSpace.point((from.x + to.x) / 2.0, from.y, (from.z + to.z) / 2.0)
+		# Tilted in the tractor's x-z plane, about TrackSpace's sideways axis.
+		brace.rotation.x = atan2(to.x - from.x, from.z - to.z)
+		_body.add_child(brace)
+	var top := Art.cylinder(ROLL_BAR_TUBE_M, 2.0 * bar_half_width_m + 2.0 * ROLL_BAR_TUBE_M,
+			paint, 10)
+	top.material_override = Art.paint(paint)
+	top.rotation.z = PI / 2.0
+	top.position = TrackSpace.point(x_m, 0.0, ROLL_BAR_TOP_M)
+	_body.add_child(top)
+
+
+func _add_cab_frame(half_width_m: float) -> void:
 	for x_m: float in [0.15 - CAB_HALF_DEPTH_M, 0.15 + CAB_HALF_DEPTH_M]:
 		for side: float in [-1.0, 1.0]:
 			var post := Art.box(Vector3(0.07, CAB_ROOF_M - 0.35, 0.07), FRAME, 0.4)
@@ -245,6 +287,9 @@ func _add_cab(rear_track_m: float) -> void:
 			HOOD_TOP_M + (CAB_ROOF_M - HOOD_TOP_M) / 2.0)
 	screen.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_body.add_child(screen)
+
+
+func _add_seat_and_driver() -> void:
 	var seat := Art.box(Vector3(0.45, 0.1, 0.45), FRAME, 0.7)
 	seat.position = TrackSpace.point(-0.05, 0.0, 0.62)
 	_body.add_child(seat)

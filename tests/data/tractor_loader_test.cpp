@@ -263,6 +263,25 @@ TEST(TractorLoader, RejectsNonsenseChassisValues) {
               std::string::npos);
 }
 
+// What the driver sits in: a farm cab unless the tractor says otherwise
+// (the Sport classes and up pull with a roll bar).
+TEST(TractorLoader, ReadsTheProtection) {
+    const auto farm = load_tractor(kDataDir / "tractors/farm_stock_light.toml");
+    ASSERT_TRUE(farm.ok()) << farm.error().message;
+    EXPECT_EQ(farm.value().chassis.protection, chassis::Protection::kCab);
+    const auto sport = load_tractor(kDataDir / "tractors/sport_2500.toml");
+    ASSERT_TRUE(sport.ok()) << sport.error().message;
+    EXPECT_EQ(sport.value().chassis.protection, chassis::Protection::kRollBar);
+
+    const auto unsaid = parse_tractor(kTractor, "tractor.toml", kDataDir);
+    ASSERT_TRUE(unsaid.ok()) << unsaid.error().message;
+    EXPECT_EQ(unsaid.value().chassis.protection, chassis::Protection::kCab);
+    EXPECT_NE(error_of(with("hitch_behind_rear_axle_m = 0.4",
+                            "hitch_behind_rear_axle_m = 0.4\nprotection = \"tent\""))
+                  .find("tractor.chassis.protection: must be \"cab\" or \"roll_bar\""),
+              std::string::npos);
+}
+
 TEST(TractorLoader, ReadsTheBallast) {
     const auto result = load_tractor(std::string{TP_DATA_DIR} + "/tractors/farm_stock_light.toml");
     ASSERT_TRUE(result.ok()) << result.error().message;

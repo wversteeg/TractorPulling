@@ -20,6 +20,14 @@ package "tp::chassis" {
     +front_tires : Contact
     +wheelie_bar : WheelieBar
     +ballast : Ballast
+    +protection : Protection
+  }
+  enum Protection {
+    kCab
+    kRollBar
+    --
+    what the driver sits in;
+    drawn by the game only
   }
   class Ballast <<struct>> {
     +mass_kg : double
@@ -98,6 +106,7 @@ package "tp::chassis" {
   Params *-- Contact : front_tires
   Params *-- WheelieBar
   Params *-- Ballast
+  Params *-- Protection
   WheelieBar *-- Contact
   ChassisFns ..> Params
   ChassisFns ..> State

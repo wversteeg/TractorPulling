@@ -284,6 +284,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["front_tire_width_m"] = tractor.front_tire.section_width_m;
     out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
     out["hitch_height_m"] = chassis.hitch_height_m;
+    out["protection"] = chassis.protection == chassis::Protection::kRollBar ? "roll_bar" : "cab";
     out["wheelie_bar_behind_rear_axle_m"] = chassis.wheelie_bar.behind_rear_axle_m;
     out["wheelie_bar_tip_height_m"] = chassis.wheelie_bar.tip_height_m;
     // The weights as the puller set them, for drawing: how much, and where

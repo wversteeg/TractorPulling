@@ -156,7 +156,17 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
                     reader.number("tractor.chassis.wheelie_bar.rolling_resistance_coefficient"),
             },
         .ballast = read_ballast(reader),
+        .protection = chassis::Protection::kCab,
     };
+    // A farm cab unless the tractor says otherwise.
+    if (reader.has("tractor.chassis.protection")) {
+        const std::string protection = reader.text("tractor.chassis.protection");
+        if (protection == "roll_bar") {
+            chassis.protection = chassis::Protection::kRollBar;
+        } else if (protection != "cab") {
+            reader.fail("tractor.chassis.protection", R"(must be "cab" or "roll_bar")");
+        }
+    }
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
