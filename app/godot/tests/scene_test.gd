@@ -208,21 +208,34 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 # after; a tap dismisses it to the view picked; never from the cab. In
 # reverse the cab camera looks back, and ahead again after.
 func _check_hitch_camera(cameras: CameraRig) -> void:
+	var chain_m := 1.15
 	var near := {"stage": "to_the_sled", "hitch_to_hook_m": 2.0, "hitch_along_m": 2.0,
 			"hitch_across_m": 0.3, "gear": -1}
-	_expect(_pull.framing_hitch(near, 1.15), "the last metre to the hook: framed")
+	_expect(_pull.framing_hitch(near, chain_m), "the last metre to the hook: framed")
 	near["hitch_to_hook_m"] = 4.0
-	_expect(not _pull.framing_hitch(near, 1.15), "further out: the view behind to steer by")
+	_expect(not _pull.framing_hitch(near, chain_m), "further out: the view behind to steer by")
 	near["hitch_to_hook_m"] = 2.0
 	near["gear"] = 3
 	near["hitch_across_m"] = 4.0
-	_expect(not _pull.framing_hitch(near, 1.15), "passing beside the sled: not framed")
+	_expect(not _pull.framing_hitch(near, chain_m), "passing beside the sled: not framed")
 	near["hitch_along_m"] = -1.0
 	near["gear"] = -1
-	_expect(not _pull.framing_hitch(near, 1.15), "behind the hook: not framed")
-	_expect(_pull.framing_hitch({"stage": "releasing", "gear": -1}, 1.15)
-			and not _pull.framing_hitch({"stage": "releasing", "gear": 2}, 1.15),
+	_expect(not _pull.framing_hitch(near, chain_m), "behind the hook: not framed")
+	_expect(_pull.framing_hitch({"stage": "releasing", "gear": -1}, chain_m)
+			and not _pull.framing_hitch({"stage": "releasing", "gear": 2}, chain_m),
 			"backing off in R after the pull: framed")
+
+	# The following cameras look back while the tractor drives backwards off
+	# the chain, keep looking back while it barely moves, and never on it.
+	var off := {"chain_hooked": false, "tractor_speed_m_s": -1.0}
+	_expect(_pull.driving_back(off, false), "backing off the chain: looking back")
+	off["tractor_speed_m_s"] = -0.1
+	_expect(_pull.driving_back(off, true) and not _pull.driving_back(off, false),
+			"barely moving: as before")
+	off["tractor_speed_m_s"] = 1.0
+	_expect(not _pull.driving_back(off, true), "forwards: looking ahead")
+	_expect(not _pull.driving_back({"chain_hooked": true, "tractor_speed_m_s": -1.0}, true),
+			"on the chain (releasing): never")
 
 	var picked := cameras.view
 	cameras.show_hitch(true, 3.0, 0.0)

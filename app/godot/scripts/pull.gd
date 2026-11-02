@@ -583,13 +583,20 @@ static func framing_hitch(s: Dictionary, chain_m: float) -> bool:
 # round while it drives backwards off the chain (backing up to the sled, or
 # into its bay), so they look the way it goes.
 func _follow_heading() -> float:
+	_driving_back = driving_back(_snapshot, _driving_back)
 	var heading := float(_snapshot.get("tractor_heading_rad", 0.0))
-	var speed := float(_snapshot.get("tractor_speed_m_s", 0.0))
-	if not _snapshot.get("chain_hooked", true) and speed < -DRIVING_BACK_M_S:
-		_driving_back = true
-	elif speed > DRIVING_BACK_M_S or _snapshot.get("chain_hooked", true):
-		_driving_back = false
 	return heading + PI if _driving_back else heading
+
+
+# Whether the tractor drives backwards off the chain, from the snapshot and
+# whether it did before: faster than DRIVING_BACK_M_S backwards it does,
+# this fast forwards it does not, and between it keeps what it was; on the
+# chain never.
+static func driving_back(s: Dictionary, before: bool) -> bool:
+	var speed := float(s.get("tractor_speed_m_s", 0.0))
+	if s.get("chain_hooked", true) or speed > DRIVING_BACK_M_S:
+		return false
+	return before or speed < -DRIVING_BACK_M_S
 
 
 # What the close camera stands behind: the sled's rear while it is on the
