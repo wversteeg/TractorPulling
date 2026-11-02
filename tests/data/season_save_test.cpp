@@ -18,7 +18,13 @@ SeasonSave example() {
     save.tuning = {.ballast_position = 0.35, .rear_tire_pressure_bar = 0.75};
     save.career = SavedCareer{.money_eur = 1234,
                               .upgrades = {{.name = "Injection pump", .level = 2},
-                                           {.name = R"(The "big" tires)", .level = 0}}};
+                                           {.name = R"(The "big" tires)", .level = 0}},
+                              .class_name = "Sport",
+                              .level_name = "Promo",
+                              .unlocked_class = R"(Super "stock")",
+                              .unlocked_level = "Belofte",
+                              .seasons_on_level = 2,
+                              .title_on_level = true};
     save.events = {
         {{.puller = 2, .place = 1},
          {.puller = 0, .place = 2},
@@ -45,6 +51,12 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
     EXPECT_EQ(career.upgrades[0].level, 2);
     EXPECT_EQ(career.upgrades[1].name, R"(The "big" tires)");
     EXPECT_EQ(career.upgrades[1].level, 0);
+    EXPECT_EQ(career.class_name, "Sport");
+    EXPECT_EQ(career.unlocked_class, R"(Super "stock")");
+    EXPECT_EQ(career.level_name, "Promo");
+    EXPECT_EQ(career.unlocked_level, "Belofte");
+    EXPECT_EQ(career.seasons_on_level, 2);
+    EXPECT_TRUE(career.title_on_level);
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
         ASSERT_EQ(back.events[e].size(), save.events[e].size()) << e;
@@ -100,11 +112,41 @@ TEST(SeasonSave, ReadsASaveFromBeforeTheGarage) {
     EXPECT_FALSE(read.value().career.has_value());
 }
 
+// A version 2 save's career is in the career's first class.
+TEST(SeasonSave, ReadsASaveFromBeforeTheClasses) {
+    std::string version_2 = kHead;
+    version_2.replace(0, 11, "version = 2");
+    const Result<SeasonSave> read =
+        parse_season_save(version_2 + "[career]\nmoney_eur = 5\n", "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    ASSERT_TRUE(read.value().career.has_value());
+    const SavedCareer career = read.value().career.value_or(SavedCareer{});
+    EXPECT_EQ(career.money_eur, 5);
+    EXPECT_EQ(career.class_name, "");
+    EXPECT_EQ(career.unlocked_class, "");
+}
+
+// A version 3 save's career is at its classes' first levels.
+TEST(SeasonSave, ReadsASaveFromBeforeTheLevels) {
+    std::string version_3 = kHead;
+    version_3.replace(0, 11, "version = 3");
+    const Result<SeasonSave> read = parse_season_save(
+        version_3 + "[career]\nmoney_eur = 5\nclass = \"Sport\"\nunlocked = \"Sport\"\n",
+        "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    const SavedCareer career = read.value().career.value_or(SavedCareer{});
+    EXPECT_EQ(career.class_name, "Sport");
+    EXPECT_EQ(career.level_name, "");
+    EXPECT_EQ(career.unlocked_level, "");
+    EXPECT_EQ(career.seasons_on_level, 0);
+    EXPECT_FALSE(career.title_on_level);
+}
+
 TEST(SeasonSave, RefusesNonsense) {
     EXPECT_EQ(error_of(kHead), "");
     std::string other_version = kHead;
-    other_version.replace(0, 11, "version = 3");
-    EXPECT_NE(error_of(other_version).find("season.toml: version: must be 1 or 2"),
+    other_version.replace(0, 11, "version = 5");
+    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 4"),
               std::string::npos)
         << error_of(other_version);
     std::string version_2 = kHead;
@@ -118,6 +160,40 @@ TEST(SeasonSave, RefusesNonsense) {
             << career << ": " << error_of(version_2 + career);
     }
     EXPECT_EQ(error_of(version_2 + "[career]\nmoney_eur = 5\n"), "");
+    // Version 3 names the player's class and the highest one open.
+    std::string version_3 = kHead;
+    version_3.replace(0, 11, "version = 3");
+    EXPECT_NE(
+        error_of(version_3 + "[career]\nmoney_eur = 5\nunlocked = \"\"\n").find("career.class"),
+        std::string::npos);
+    EXPECT_NE(
+        error_of(version_3 + "[career]\nmoney_eur = 5\nclass = \"\"\n").find("career.unlocked"),
+        std::string::npos);
+    EXPECT_EQ(error_of(version_3 + "[career]\nmoney_eur = 5\nclass = \"\"\nunlocked = \"\"\n"), "");
+    // Version 4 adds the levels.
+    std::string version_4 = kHead;
+    version_4.replace(0, 11, "version = 4");
+    const std::string classes = "[career]\nmoney_eur = 5\nclass = \"\"\nunlocked = \"\"\n";
+    const std::string seasons = "seasons_on_level = 1\ntitle_on_level = false\n";
+    EXPECT_NE(
+        error_of(version_4 + classes + "unlocked_level = \"\"\n" + seasons).find("career.level"),
+        std::string::npos);
+    EXPECT_NE(
+        error_of(version_4 + classes + "level = \"\"\n" + seasons).find("career.unlocked_level"),
+        std::string::npos);
+    const std::string levels = classes + "level = \"\"\nunlocked_level = \"\"\n";
+    EXPECT_EQ(error_of(version_4 + levels + seasons), "");
+    EXPECT_NE(
+        error_of(version_4 + levels + "title_on_level = false\n").find("career.seasons_on_level"),
+        std::string::npos);
+    EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = -1\ntitle_on_level = false\n")
+                  .find("career.seasons_on_level"),
+              std::string::npos);
+    EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = 11\ntitle_on_level = false\n")
+                  .find("career.seasons_on_level: must be 0 to 10"),
+              std::string::npos);
+    EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = 1\n").find("career.title_on_level"),
+              std::string::npos);
     std::string bad_seed = kHead;
     bad_seed.replace(bad_seed.find("\"7\""), 3, "\"-7\"");
     EXPECT_NE(error_of(bad_seed).find("seed"), std::string::npos) << error_of(bad_seed);

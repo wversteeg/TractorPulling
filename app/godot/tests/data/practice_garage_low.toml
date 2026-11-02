@@ -1,0 +1,24 @@
+# The test ladder's lower class's garage (practice_ladder.toml): the
+# powershift and the governor. The class above's garage
+# (practice_garage_up.toml) drops the governor, offers the powershift
+# second and a new drawbar first, so moving up carries what the two share,
+# by name.
+
+[garage]
+start_money_eur = 1000
+
+[[garage.upgrades]]
+part = "load_downshift_gears"
+name = "Powershift"
+levels = [
+    { value = 1.0, cost_eur = 0, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 600, label = "Two gears down under load" },
+]
+
+[[garage.upgrades]]
+part = "rated_rpm"
+name = "Governor"
+levels = [
+    { value = 2200.0, cost_eur = 0, label = "Stock, 2200 rpm" },
+    { value = 2350.0, cost_eur = 200, label = "Turned up, 2350 rpm" },
+]

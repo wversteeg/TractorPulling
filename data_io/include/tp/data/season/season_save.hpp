@@ -12,9 +12,11 @@
 
 namespace tp::data {
 
-/// The save format's version. Version 1 (before the garage) is read too,
-/// as a career that has not begun; any other is refused.
-inline constexpr std::int64_t kSeasonSaveVersion = 2;
+/// The save format's version. Older ones are read too: version 1 (before
+/// the garage) as a career that has not begun, version 2 (before the
+/// career's classes) as a career on its first rung, version 3 (before the
+/// levels) at the first level of its classes. Any other is refused.
+inline constexpr std::int64_t kSeasonSaveVersion = 4;
 
 /// An upgrade's level, by the garage's name for it (data::UpgradeText), so
 /// that a save outlives a garage file whose order changes.
@@ -23,11 +25,25 @@ struct SavedUpgrade {
     int level = 0;
 };
 
-/// The player's career: their money and what they have bought. It carries
-/// from season to season.
+/// The player's career: their money, what they have bought, and how far up
+/// the career's ladder (data::CareerRung) they are, by the classes' and
+/// levels' names so that a save outlives a career file whose order
+/// changes. It carries from season to season.
 struct SavedCareer {
     std::int64_t money_eur = 0;
     std::vector<SavedUpgrade> upgrades;
+    /// The class and level the player pulls at; "" for the career's first
+    /// class (a version 2 save, or a season played without a career file)
+    /// or the class's first level (a version 3 save).
+    std::string class_name;
+    std::string level_name;
+    /// The highest class and level a season has opened, "" as above.
+    std::string unlocked_class;
+    std::string unlocked_level;
+    /// The seasons finished at the player's level, and whether one was won
+    /// (career::Progress); none in a save from before version 4.
+    int seasons_on_level = 0;
+    bool title_on_level = false;
 };
 
 /// A season saved between events, to pick up on the next launch: which
@@ -55,8 +71,11 @@ struct SeasonSave {
 /// A save from TOML text; `source_name` names it in error messages. Refuses
 /// another version, a missing field, a tuning that is not a number in range
 /// (a ballast position from 0 to 1, a pressure of 0 or more), standings
-/// without a puller or a place, and (version 2) a career without its money
-/// (0 or more) or with an upgrade without a name or a level (0 or more).
+/// without a puller or a place, (version 2 on) a career without its money
+/// (0 or more) or with an upgrade without a name or a level (0 or more),
+/// (version 3 on) a career without its class and the class unlocked, and
+/// (version 4) without their levels, its seasons there (0 or more) or
+/// whether one was won.
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

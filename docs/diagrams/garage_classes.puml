@@ -28,18 +28,18 @@ package "tp::garage" {
   }
   class Upgrade <<struct>> {
     +part : Part
-    +levels : array<Level, 6>
+    +levels : array<Level, 12>
     +level_count : size_t
   }
   class Catalogue <<struct>> {
-    +upgrades : array<Upgrade, 8>
+    +upgrades : array<Upgrade, 16>
     +count : size_t
     +start_money_eur : int64
     +offer() : span<const Upgrade>
   }
   class Career <<struct>> {
     +money_eur : int64
-    +levels : array<int, 8>
+    +levels : array<int, 16>
   }
   class "garage functions" as GarageFns <<free functions>> {
     +validate(const Catalogue&, const vehicle::Params&, const rules::ClassRules&) : optional<ParamError>

@@ -1,9 +1,11 @@
 #pragma once
 
+#include "tp/core/career/career.hpp"
 #include "tp/core/field/live_season.hpp"
 #include "tp/core/garage/garage.hpp"
 #include "tp/core/session/session.hpp"
 #include "tp/core/vehicle/tuning.hpp"
+#include "tp/data/career/career_loader.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/season/season_save.hpp"
 
@@ -43,6 +45,40 @@ class TractorPullEvent : public godot::RefCounted {
     GDCLASS(TractorPullEvent, godot::RefCounted)
 
 public:
+    /// Loads a career (data/careers/: its classes, each at its levels, each
+    /// level a rung with its season) for the methods below, on its first
+    /// rung; no season is started. Returns "" or what is wrong, naming the
+    /// file and field.
+    godot::String load_career(const godot::String& career_path);
+    /// {name, rungs, rung, class_name, level_name, unlocked, next_class,
+    /// next_level, next_is_new_class, can_move_up, seasons, min_seasons,
+    /// title} of the loaded career:
+    /// every rung's "class · level" lowest first, the index of the player's
+    /// rung and its class and level, the index of the highest rung open,
+    /// the rung above's class and level ("" at the top) and whether it is
+    /// another class, whether move_up() would move the player now, the
+    /// seasons finished on the player's rung, the ladder's minimum there,
+    /// and whether one was won. {} without a career.
+    [[nodiscard]] godot::Dictionary get_career() const;
+    /// A new career: the first rung, the garage's start money and nothing
+    /// bought, and its season drawn for `seed`. "" or what is wrong; the
+    /// career so far stays then.
+    godot::String new_career(std::int64_t seed);
+    /// As new_career(), starting on rung `rung` with it the highest open
+    /// (career::starting_at), for testing a class without climbing to it.
+    godot::String new_career_at(std::int64_t rung, std::int64_t seed);
+    /// A new season on the player's rung, drawn for `seed`; money and
+    /// upgrades carry over. "" or what is wrong.
+    godot::String new_season(std::int64_t seed);
+    /// As resume_season(), for the loaded career: the save's class and
+    /// level (by name; a class the career no longer has is its first rung, a
+    /// level its class's first) and its season.
+    godot::String resume_career(const godot::String& save);
+    /// Moves the player up to the rung their titles have opened (career::
+    /// move_up) and starts its season, drawn for `seed`; money and upgrades
+    /// carry over, by the upgrades' names. Only between seasons: with the
+    /// season over, or before the player's first pull in it. "" or why not.
+    godot::String move_up(std::int64_t seed);
     /// Loads a season (res:// paths work) and draws its field for `seed`, a
     /// new season. The player's career (money and upgrades) carries over
     /// from the season before; the first season starts one (the garage's
@@ -119,7 +155,9 @@ public:
 
     /// Scores the finished event in the championship and pays the player
     /// their prize (get_event_prize()); false if it is not finished or
-    /// already scored.
+    /// already scored. The last event of a season in the career's class
+    /// counts the season (career::finish_season): a title opens the class
+    /// above.
     bool score_event();
     /// What the event being pulled pays the player for their place so far
     /// [EUR] (garage::prize_eur); 0 before an event.
@@ -173,6 +211,15 @@ private:
     /// before the tuning.
     [[nodiscard]] vehicle::Params player_tractor() const;
 
+    /// The season of the player's rung in the loaded career; "" without
+    /// one.
+    [[nodiscard]] std::string class_season() const;
+    /// Whether the season is the career's and the player has not pulled in
+    /// it yet, or it is over: a class may change.
+    [[nodiscard]] bool between_seasons() const;
+
+    std::optional<data::CareerDefinition> career_definition_;
+    career::Progress progress_;
     std::optional<data::SeasonDefinition> definition_;
     /// The season file and seed start_season() was given, for get_save().
     std::string season_path_;

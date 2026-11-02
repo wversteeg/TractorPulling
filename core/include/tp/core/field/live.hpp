@@ -65,7 +65,9 @@ public:
     /// The player's pull, while turn() is kPlayerPull.
     [[nodiscard]] std::optional<event::Pull> pending_pull() const noexcept;
     /// The sled and run rules for the next pull: the event's sled as it is
-    /// now, and a run that goes on past the line until the sled stops.
+    /// now, and a run that ends at the full-pull line, or goes on past it
+    /// until the sled stops for a test pull or a pull-off (field::
+    /// pull_rules); a practice pull, with none due, as a competition pull.
     [[nodiscard]] const sled::Params& sled() const noexcept { return event_.sled(); }
     /// Where the event is pulled: the track's ground for the player's run.
     [[nodiscard]] const Venue& venue() const noexcept { return venue_; }

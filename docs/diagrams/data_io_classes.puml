@@ -84,11 +84,24 @@ package "tp::data" {
     +load_season(path, read) : Result<SeasonDefinition>
     +parse_season(text, source, base_directory, read) : Result<SeasonDefinition>
   }
+  class CareerDefinition <<struct>> {
+    +name : string
+    +ladder : career::Ladder
+    +rungs : vector<CareerRung{class_name, level_name, season}>
+  }
+  class "career_loader" as CareerLoader <<free functions>> {
+    +load_career(path, read) : Result<CareerDefinition>
+    +parse_career(text, source, base_directory, read) : Result<CareerDefinition>
+    --
+    each class's levels in turn, each level's season
+    loaded once to check it; its path kept, resolved
+    from the career file
+  }
   class SeasonSave <<struct>> {
     +season : string
     +seed : uint64
     +tuning : vehicle::Tuning
-    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>}>
+    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n class_name, level_name,\n unlocked_class, unlocked_level, seasons_on_level, title_on_level}>
     +events : vector<vector<event::Standing>>
   }
   class GarageDefinition <<struct>> {
@@ -100,7 +113,7 @@ package "tp::data" {
     +load_garage(path, read) : Result<GarageDefinition>
   }
   class "season_save" as SeasonSaveFns <<free functions>> {
-    +kSeasonSaveVersion = 2 (1 read too: no career)
+    +kSeasonSaveVersion = 4 (1 read too: no career;\n2: the first rung; 3: the classes' first levels)
     +write_season_save(const SeasonSave&) : string
     +parse_season_save(text, source) : Result<SeasonSave>
     --
@@ -148,6 +161,9 @@ package "tp::data" {
   SeasonDefinition *-- GarageDefinition
   GarageLoader ..> GarageDefinition
   SeasonLoader ..> GarageLoader : then garage::validate\nagainst the event's tractor and class
+  CareerLoader ..> CareerDefinition
+  CareerLoader ..> SeasonLoader : every class's season
+  CareerLoader ..> Files : resolve, read
   SeasonSaveFns ..> SeasonSave
   SeasonSaveFns ..> Result : returns
   TractorLoader ..> Loaders : components

@@ -448,9 +448,17 @@ for the big features; they are repeated at the end for completeness.
 - **Ballast at the centre of gravity's height.** Weights bought sit where
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
-- **One career, no resale.** The career carries from season to season with
-  no way to start it over from the game, and an upgrade cannot be sold or
-  taken back. Prize money is paid by place only: no start money for
+- **One class on the ladder.** The tractor path's career has only the
+  standard 3.5 t class (its three levels) so far; the classes above come
+  a class at a time (docs/career.md).
+- **No relegation.** A level or class, once reached, is kept; the NTTO's
+  Pro Stocks relegate group I's twelfth to group II.
+- **The first powershift step can cost a little.** In 5th, one gear down
+  under load ends a standard-class pull about 0.5 m shorter than none
+  (93.0 against 93.5 m in the levels' tuning): 5th to 4th is a big step
+  (see "What a big step does"). A player who buys it gains nothing in 5th
+  until the tractor pulls 6th.
+- **No resale.** An upgrade cannot be sold or taken back. Prize money is paid by place only: no start money for
   everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
 - **The rivals do not upgrade.** Their tractors are drawn once for the
   season around the reference tractor.

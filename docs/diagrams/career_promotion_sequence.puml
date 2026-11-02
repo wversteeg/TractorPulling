@@ -1,0 +1,37 @@
+@startuml career_promotion_sequence
+title A season won, and the move up a level or a class (the game)
+skinparam sequenceMessageAlign center
+
+actor Player
+participant "pull.gd" as Game
+participant "TractorPullEvent" as Event
+participant "field::LiveSeason" as Season
+participant "tp::career" as Career
+
+Game -> Event : load_career(career_path) (at launch)
+Event -> Event : data::load_career: the rungs (each class's\nlevels), each season checked
+Game -> Event : resume_career(save) or new_season(seed)
+Event -> Event : start_season(the rung's season)
+
+== the season's last event ==
+Game -> Event : score_event()
+Event -> Season : score_event(prizes, career)
+Season --> Event : scored, the season over
+Event -> Career : finish_season(progress, ladder,\nstandings, kPlayer)
+Career --> Event : the rung above opened (a title)
+Game -> Event : get_career()
+Event --> Game : can_move_up, next_class, next_level,\nnext_is_new_class
+Game -> Player : the season's board: "Up to <level or class>"\nor "Stay in <level>"
+
+alt Move up
+  Player -> Game : Move up
+  Game -> Event : move_up(seed)
+  Event -> Career : move_up(progress)
+  Event -> Event : start_season(the rung above's season):\nmoney and upgrades carried, by name
+else Stay
+  Player -> Game : Stay
+  Game -> Event : new_season(seed)
+  note right : the rung above stays open; the start\nscreen offers "Move up" until the\nseason's first pull, and the board\nasks again after the season
+end
+Game -> Game : save (version 4: the class and level,\nand the highest opened, by name)
+@enduml

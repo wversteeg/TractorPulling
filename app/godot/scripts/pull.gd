@@ -1,4 +1,5 @@
-# The game: a season of events, each on its own track, against nine
+# The game: a career (data/careers/: a ladder of classes, each with its
+# season) of seasons of events, each on its own track, against nine
 # scripted rivals (TractorPullEvent, the C++ extension, holds them and the
 # rules). The start screen shows the event to come; "Practice" is a free
 # pull on its track, "Event" goes to the event's board, where the rivals'
@@ -12,7 +13,11 @@
 # they pull (a run, TractorPullRun, stepped by each frame's time and drawn
 # from its blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its top ten, then the season's; then the next event, or a new
-# season after the last. The season is saved after every event (and the
+# season after the last. A won championship opens the level above (or,
+# at top, the next class) once the level has had the career's minimum
+# seasons: the season's board then asks whether to move up or stay and
+# defend the title (and the start screen offers it until the next season's
+# first pull). The season is saved after every event (and the
 # tuning on every pull): at the next launch the start screen offers to
 # continue it, at the next event (an event left halfway starts again), or
 # to start a new one.
@@ -41,7 +46,7 @@ extends Node3D
 
 enum Screen { START, SETTINGS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
 
-@export var season_path := "res://data/seasons/club_season.toml"
+@export var career_path := "res://data/careers/tractor_path.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
 # for a new one at every launch.
 @export var season_seed := -1
@@ -199,7 +204,7 @@ func _ready() -> void:
 	start_screen.practice_requested.connect(func() -> void: _show_setup(true))
 	start_screen.settings_requested.connect(func() -> void:
 		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available(),
-				hud.guidance)
+				hud.guidance, event.get_career().get("rungs", PackedStringArray()))
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.done.connect(show_start)
@@ -230,8 +235,10 @@ func _ready() -> void:
 	start_screen.event_requested.connect(func() -> void: _set_screen(Screen.EVENT))
 	start_screen.continue_requested.connect(show_start)
 	start_screen.new_season_requested.connect(_new_season)
+	start_screen.move_up_requested.connect(_move_up)
 	start_screen.new_career_requested.connect(_new_season.bind(true))
-	settings_screen.new_career_requested.connect(_new_season.bind(true))
+	settings_screen.new_career_requested.connect(func(rung: int) -> void:
+		_new_season(true, rung))
 	board.first_tapped.connect(_on_board_first)
 	board.second_tapped.connect(_on_board_second)
 	restart_screen.restart_requested.connect(func() -> void:
@@ -253,7 +260,12 @@ func _ready() -> void:
 		pro = settings.pro
 		tilt = settings.tilt
 		hud.guidance = settings.guidance
-		if not _resume_season():
+		var error := event.load_career(career_path)
+		if not error.is_empty():
+			push_error("cannot load the career: " + error)
+			start_screen.show_event({}, error)
+			_set_screen(Screen.START)
+		elif not _resume_season():
 			_new_season()
 
 
@@ -282,12 +294,28 @@ func _controls_path() -> String:
 	return pro_controls_path if pro else easy_controls_path
 
 
-# A new season; with `new_career` also a new career (the garage's start
-# money, nothing bought), else the career carries over.
-func _new_season(new_career: bool = false) -> void:
-	var seed := season_seed if season_seed >= 0 else randi()
-	var error := event.start_career(season_path, seed) if new_career \
-			else event.start_season(season_path, seed)
+func _seed() -> int:
+	return season_seed if season_seed >= 0 else randi()
+
+
+# A new season on the player's rung (a class at a level); with
+# `new_career` also a new career on rung `rung` (the first, unless the
+# settings picked another for testing; the garage's start money, nothing
+# bought), else the career carries over.
+func _new_season(new_career: bool = false, rung: int = 0) -> void:
+	var seed := _seed()
+	var error := event.new_career_at(rung, seed) if new_career else event.new_season(seed)
+	_season_started(error, seed)
+
+
+# The class a title opened, and a new season in it; money and upgrades
+# carry over.
+func _move_up() -> void:
+	var seed := _seed()
+	_season_started(event.move_up(seed), seed)
+
+
+func _season_started(error: String, seed: int) -> void:
 	_event_ready = false
 	if not error.is_empty():
 		push_error("cannot start the season: " + error)
@@ -308,7 +336,7 @@ func _new_season(new_career: bool = false) -> void:
 func _resume_season() -> bool:
 	if save_path.is_empty() or not FileAccess.file_exists(save_path):
 		return false
-	var error := event.resume_season(season_path, FileAccess.get_file_as_string(save_path))
+	var error := event.resume_career(FileAccess.get_file_as_string(save_path))
 	if not error.is_empty():
 		push_warning("cannot continue the saved season: " + error)
 		return false
@@ -349,7 +377,7 @@ func show_start(error: String = "") -> void:
 		_event_ready = error.is_empty()
 	if not error.is_empty():
 		push_error("cannot start the event: " + error)
-	start_screen.show_event(event.get_event(), error)
+	start_screen.show_event(event.get_event(), error, event.get_career())
 	_set_screen(Screen.START)
 
 
@@ -732,8 +760,26 @@ func _show_season() -> void:
 		var champion: Dictionary = standings[0]
 		status = "You are the champion!" if int(champion["puller"]) == 0 \
 				else "%s is the champion." % champion["name"]
-	board.set_status(status)
-	board.set_buttons("New season" if over else "Next event")
+	var career := event.get_career()
+	var next: String = career.get("next_class", "") if career.get("next_is_new_class", false) \
+			else career.get("next_level", "")
+	var to_go: int = int(career.get("min_seasons", 0)) - int(career.get("seasons", 0))
+	if over and not career.get("can_move_up", false) and career.get("title", false) \
+			and not next.is_empty() and to_go > 0:
+		# A title before the level's last required season: the level above
+		# opens after it.
+		status += " %s opens after %s here." % [next,
+				"another season" if to_go == 1 else "%d more seasons" % to_go]
+		board.set_buttons("New season")
+	elif over and career.get("can_move_up", false):
+		if career["next_is_new_class"]:
+			status += " The %s class is open to you." % career["next_class"]
+		else:
+			status += " %s is open to you." % career["next_level"]
+		board.set_buttons("Up to %s" % next, "Stay in %s" % career["level_name"])
+	else:
+		board.set_buttons("New season" if over else "Next event")
+	board.set_status(status.strip_edges())
 
 
 func _on_board_first() -> void:
@@ -751,15 +797,20 @@ func _on_board_first() -> void:
 		Screen.EVENT_END:
 			_set_screen(Screen.SEASON)
 		Screen.SEASON:
-			if event.get_season().get("over", false):
-				_new_season()
-			else:
+			if not event.get_season().get("over", false):
 				show_start()
+			elif event.get_career().get("can_move_up", false):
+				_move_up()
+			else:
+				_new_season()
 
 
 func _on_board_second() -> void:
 	if screen == Screen.EVENT and event.get_event().get("turn", "") == "player_decision":
 		event.decide(false)
+	elif screen == Screen.SEASON and event.get_season().get("over", false):
+		# Staying to defend the title: the class above stays open.
+		_new_season()
 
 
 func _read_controls() -> void:

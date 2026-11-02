@@ -1,0 +1,11 @@
+# The practice season as a career of one class at one level, for the
+# scene's tests.
+
+[career]
+name = "Practice path"
+promotion_place = 1
+min_seasons = 1
+
+[[career.classes]]
+name = "Practice"
+levels = [{ name = "Belofte", season = "practice_season.toml" }]

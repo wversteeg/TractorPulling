@@ -1,0 +1,18 @@
+# Two classes on the practice season, the first at two levels, for the
+# tests that move up a level and a class; each class has its own garage.
+
+[career]
+name = "Practice ladder"
+promotion_place = 1
+min_seasons = 1
+
+[[career.classes]]
+name = "Practice"
+levels = [
+    { name = "Belofte", season = "practice_season_low.toml" },
+    { name = "Promo", season = "practice_season_low.toml" },
+]
+
+[[career.classes]]
+name = "Practice, a class up"
+levels = [{ name = "Belofte", season = "practice_season_up.toml" }]

@@ -1,6 +1,7 @@
 include(GoogleTest)
 
 add_executable(tp_core_tests
+    career/career_test.cpp
     chassis/chassis_test.cpp
     clutch/clutch_engine_test.cpp
     clutch/clutch_test.cpp
@@ -48,6 +49,7 @@ gtest_discover_tests(tp_alloc_tests DISCOVERY_MODE PRE_TEST)
 
 if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
+        data/career_loader_test.cpp
         data/class_rules_loader_test.cpp
         data/clutch_loader_test.cpp
         data/controls_loader_test.cpp

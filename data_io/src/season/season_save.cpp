@@ -1,5 +1,7 @@
 #include "tp/data/season/season_save.hpp"
 
+#include "tp/core/career/career.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <iomanip>
@@ -89,17 +91,43 @@ std::optional<event::Standing> read_standing(const toml::node& node) {
                            .disqualified = *disqualified};
 }
 
-// Version 2's career into `career`; the error if it is broken.
+constexpr std::int64_t kBeforeTheGarage = 1;
+constexpr std::int64_t kBeforeTheClasses = 2;
+constexpr std::int64_t kBeforeTheLevels = 3;
+
+// The career (version 2 on) into `career`; the error if it is broken.
 std::optional<LoadError> read_career(const toml::table& root, std::string_view source,
-                                     SavedCareer& career) {
+                                     std::int64_t version, SavedCareer& career) {
     detail::Reader reader{root, source};
     career.money_eur = reader.integer("career.money_eur");
+    if (version > kBeforeTheClasses) {
+        career.class_name = reader.text("career.class");
+        career.unlocked_class = reader.text("career.unlocked");
+    }
+    std::int64_t seasons = 0;
+    std::optional<bool> title = false;
+    if (version > kBeforeTheLevels) {
+        career.level_name = reader.text("career.level");
+        career.unlocked_level = reader.text("career.unlocked_level");
+        seasons = reader.integer("career.seasons_on_level");
+        title = root.at_path("career.title_on_level").value<bool>();
+    }
     if (reader.error()) {
         return reader.error();
     }
     if (career.money_eur < 0) {
         return detail::make_error(source, "career.money_eur", "must be 0 or more");
     }
+    // career::finish_season counts no further than the ladder's minimum.
+    if (seasons < 0 || seasons > career::kMaxMinSeasons) {
+        return detail::make_error(source, "career.seasons_on_level",
+                                  "must be 0 to " + std::to_string(career::kMaxMinSeasons));
+    }
+    if (!title) {
+        return detail::make_error(source, "career.title_on_level", "must be true or false");
+    }
+    career.seasons_on_level = static_cast<int>(seasons);
+    career.title_on_level = *title;
     const toml::node_view<const toml::node> upgrades = root.at_path("career.upgrades");
     if (!upgrades) {
         return std::nullopt;
@@ -135,15 +163,14 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
-    constexpr std::int64_t kBeforeTheGarage = 1;
-    if (version != kSeasonSaveVersion && version != kBeforeTheGarage) {
+    if (version < kBeforeTheGarage || version > kSeasonSaveVersion) {
         return detail::make_error(source, "version",
-                                  "must be " + std::to_string(kBeforeTheGarage) + " or " +
+                                  "must be from " + std::to_string(kBeforeTheGarage) + " to " +
                                       std::to_string(kSeasonSaveVersion));
     }
-    if (version == kSeasonSaveVersion) {
+    if (version > kBeforeTheGarage) {
         SavedCareer career;
-        if (const std::optional<LoadError> error = read_career(root, source, career)) {
+        if (const std::optional<LoadError> error = read_career(root, source, version, career)) {
             return *error;
         }
         save.career = std::move(career);
@@ -207,6 +234,12 @@ std::string write_season_save(const SeasonSave& save) {
     const SavedCareer career = save.career.value_or(SavedCareer{});
     out += "\n[career]\n";
     out += "money_eur = " + std::to_string(career.money_eur) + "\n";
+    out += "class = " + toml_string(career.class_name) + "\n";
+    out += "level = " + toml_string(career.level_name) + "\n";
+    out += "unlocked = " + toml_string(career.unlocked_class) + "\n";
+    out += "unlocked_level = " + toml_string(career.unlocked_level) + "\n";
+    out += "seasons_on_level = " + std::to_string(career.seasons_on_level) + "\n";
+    out += std::string{"title_on_level = "} + (career.title_on_level ? "true" : "false") + "\n";
     out += "upgrades = [\n";
     for (const SavedUpgrade& upgrade : career.upgrades) {
         out += "    { name = " + toml_string(upgrade.name) +

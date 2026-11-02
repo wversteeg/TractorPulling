@@ -40,11 +40,20 @@ package "tp::godot_binding" {
     +event_pull() : optional<PullKey>
   }
   class TractorPullEvent {
+    -career_definition_ : optional<data::CareerDefinition>
+    -progress_ : career::Progress
     -definition_ : optional<data::SeasonDefinition>
     -names_ : vector<string>
     -season_ : unique_ptr<field::LiveSeason>
     -tuning_ : vehicle::Tuning
     -career_ : optional<garage::Career>
+    +load_career(career_path) : String
+    +get_career() : Dictionary
+    +new_career(seed) : String
+    +new_career_at(rung, seed) : String
+    +new_season(seed) : String
+    +resume_career(save) : String
+    +move_up(seed) : String
     +start_season(season_path, seed) : String
     +start_career(season_path, seed) : String
     +get_save() : String
@@ -87,9 +96,10 @@ package "tp::godot_binding" {
 
 package "core and data_io (see their class diagrams)" {
   class "session::Session / Setup /\nControls / Snapshot / blend()" as Session
-  class "data::load_tractor / load_sled /\nload_track / load_control_layout /\nload_season (path, ReadFile)" as Loaders
+  class "data::load_tractor / load_sled /\nload_track / load_control_layout /\nload_season / load_career (path, ReadFile)" as Loaders
   class "data::run_setup(tractor, class_sled, track)\ndata::run_setup(tractor, LiveEvent)\ndata::venue(class_sled, track)" as RunSetup
   class "field::LiveSeason / LiveEvent" as Live
+  class "career::Progress / finish_season()\n/ move_up() / starting_at()" as Career
   class "vehicle::Tuning / tuned()\nchassis::rear_axle_share()" as Tuning
 }
 
@@ -103,7 +113,8 @@ Register ..> TractorPullRun : registers
 Register ..> TractorPullEvent : registers
 TractorPullEvent *-- Live
 TractorPullEvent *-- Tuning : the player's,\nfor the season
-TractorPullEvent ..> Loaders : load_season
+TractorPullEvent ..> Loaders : load_season, load_career
+TractorPullEvent *-- Career : the player's rung;\na title opens the next
 TractorPullEvent ..> RunSetup : venues, the player's Setup
 TractorPullRun ..> TractorPullEvent : setup_event_pull,\nsetup_practice
 TractorPullEvent ..> TractorPullRun : record_pull reads\nthe result
@@ -113,7 +124,7 @@ TractorPullRun ..> RunSetup : the run's Setup
 TractorPullRun ..> Files : the ReadFile
 Files ..> FileAccess : res://, user://
 Scripts ..> TractorPullRun : new(), setup, set_controls,\nadvance per frame, get_snapshot,\nget_dimensions at setup
-Scripts ..> TractorPullEvent : a season at launch,\nthe rivals in slices per frame,\nthe boards
+Scripts ..> TractorPullEvent : the career and a season at launch,\nthe rivals in slices per frame,\nthe boards
 note bottom of TractorPullRun
   holds no game rules: everything goes through tp::session
   and field::LiveSeason (the player is puller 0, "You");
