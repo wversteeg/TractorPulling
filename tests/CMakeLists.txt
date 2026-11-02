@@ -1,6 +1,7 @@
 include(GoogleTest)
 
 add_executable(tp_core_tests
+    career/career_test.cpp
     chassis/chassis_test.cpp
     clutch/clutch_engine_test.cpp
     clutch/clutch_test.cpp
