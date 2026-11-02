@@ -53,6 +53,13 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     if (setup.parking && turn::validate(*setup.parking, setup.rules, footprint)) {
         return SetupError::kParking;
     }
+    if (setup.parking && setup.sled.fenders.half_span_m > 0.0) {
+        // The pull alone starts hooked on: the fenders matter only backing up.
+        const double stop_m = turn::fender_stop_m(setup.tractor, setup.sled.fenders);
+        if (stop_m <= 0.0 || stop_m >= setup.sled.chain.length_m) {
+            return SetupError::kFenders;
+        }
+    }
     if (!make_clock(setup)) {
         return SetupError::kMaxStepsPerFrame;
     }

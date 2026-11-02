@@ -52,6 +52,9 @@ enum class SetupError : std::uint8_t {
     kEasyControls,
     kProControls,
     kParking,
+    /// The sled's fenders stop this tractor's hitch where the chain cannot
+    /// hook on: at or behind the hook, or out of the chain's reach.
+    kFenders,
     kMaxStepsPerFrame,
 };
 

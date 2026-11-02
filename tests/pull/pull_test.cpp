@@ -235,8 +235,9 @@ TEST(Pull, AHeldSledStaysPut) {
     EXPECT_LT(run.state.tractor.chassis.position_m - start.tractor.chassis.position_m, 0.1);
 }
 
-// After a pull, off the chain, the sled drives itself back: straight to
-// the start line, at its own speed, the box back where it starts.
+// After a pull, off the chain, the operator runs the box back first, the
+// sled standing; then the sled drives itself back: straight to the start
+// line, at its own speed.
 TEST(Pull, TheSledDrivesItselfBack) {
     Driver run;
     run.drive(6, false, 20.0);
@@ -246,9 +247,27 @@ TEST(Pull, TheSledDrivesItselfBack) {
     run.state.sled_mode = SledMode::kDrivingBack;
     run.state.sled.lateral_position_m = 0.4;
     run.state.sled.heading_rad = 0.05;
+    const sled::Params& sled = run.model.sled();
+    const double box_at_m =
+        sled.box_start_ahead_of_wheels_m +
+        (sled.box_end_ahead_of_wheels_m - sled.box_start_ahead_of_wheels_m) *
+            std::min(run.state.sled.distance_m / sled.box_travel_distance_m, 1.0);
+    const double box_back_s = (box_at_m - sled.box_start_ahead_of_wheels_m) / sled::kBoxBack_m_s;
+    ASSERT_GT(box_back_s, 0.1);
     double previous_m = run.state.sled.position_m;
+    double previous_travel_m = run.state.sled.distance_m;
     int steps = 0;
     const vehicle::Input idle{};
+    // The box first: the sled stands while its travel winds back.
+    while (run.state.sled.distance_m > 0.0 && steps < 100000) {
+        step(run.state, run.model, idle, kDt_s);
+        ASSERT_EQ(run.state.sled.position_m, previous_m);
+        ASSERT_LT(run.state.sled.distance_m, previous_travel_m);
+        previous_travel_m = run.state.sled.distance_m;
+        ++steps;
+    }
+    EXPECT_NEAR(steps * kDt_s, box_back_s, 0.01);
+    steps = 0;
     while (run.state.sled.position_m > run.model.start_line_m() && steps < 100000) {
         step(run.state, run.model, idle, kDt_s);
         ASSERT_LT(run.state.sled.position_m, previous_m);
@@ -351,7 +370,7 @@ TEST(Pull, IsDeterministic) {
 
 // Regression hash; must match on every compiler, build type and platform.
 TEST(Pull, MatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x0fa7583ec5f47901ULL);
+    EXPECT_EQ(pull_hash(), 0x960136aa69a34344ULL);
 }
 
 }  // namespace

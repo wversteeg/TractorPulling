@@ -145,6 +145,14 @@ struct HitchToHook {
 [[nodiscard]] HitchToHook hitch_to_hook(const pull::Model& model,
                                         const pull::State& state) noexcept;
 
+/// How close the hitch comes to the hook along the sled's line with the
+/// rear tires against the sled's fenders (sled::Fenders) [m]: a tire's
+/// radius behind the axle, less the hitch's distance behind it and the
+/// fenders' behind the hook.
+[[nodiscard]] double fender_stop_m(const vehicle::Params& tractor,
+                                   const sled::Fenders& fenders) noexcept;
+[[nodiscard]] double fender_stop_m(const pull::Model& model) noexcept;
+
 /// Whether the chain hooks on now (see kHookOffLine_m).
 [[nodiscard]] bool hooks_on(const pull::Model& model, const pull::State& state) noexcept;
 

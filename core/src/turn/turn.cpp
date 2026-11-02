@@ -96,6 +96,26 @@ bool parked(const pull::Model& model, const pull::State& state, const Parking& p
     return stands(state) && std::sqrt(dx_m * dx_m + dy_m * dy_m) <= kParkedWithin_m;
 }
 
+// Backing up to the sled, the rear tires stop against its fenders: the
+// tractor stands there, as against a wall. Only its speed along is
+// stopped: the wheels may spin on, and a turn in progress is not.
+void stop_at_the_fenders(pull::State& state, const pull::Model& model) noexcept {
+    const sled::Fenders& fenders = model.sled().fenders;
+    const HitchToHook gap = hitch_to_hook(model, state);
+    const double stop_m = fender_stop_m(model);
+    chassis::State& body = state.tractor.chassis;
+    if (fenders.half_span_m <= 0.0 || body.velocity_m_s >= 0.0 ||
+        std::abs(gap.across_m) > fenders.half_span_m || gap.along_m >= stop_m ||
+        gap.along_m < stop_m - fenders.depth_m) {
+        return;
+    }
+    const math::SinCos sled = math::sin_cos_any(state.sled.heading_rad);
+    const double back_out_m = stop_m - gap.along_m;
+    body.position_m += back_out_m * sled.cos;
+    body.lateral_position_m += back_out_m * sled.sin;
+    body.velocity_m_s = 0.0;
+}
+
 // Outside the pull the driver starts a stalled engine again, the clutch
 // pressed or the gear out, as a real one would before driving on.
 void restart_if_stalled(pull::State& state, const pull::Model& model,
@@ -161,6 +181,17 @@ void release(State& state, const pull::Model& model) noexcept {
 }
 
 }  // namespace
+
+double fender_stop_m(const vehicle::Params& tractor, const sled::Fenders& fenders) noexcept {
+    // The rear tires' backs are a tire's radius behind the axle, the hitch
+    // its own distance behind it.
+    return tractor.rear_tire.size.radius_m - tractor.chassis.hitch_behind_rear_axle_m -
+           fenders.behind_hook_m;
+}
+
+double fender_stop_m(const pull::Model& model) noexcept {
+    return fender_stop_m(model.tractor().params(), model.sled().fenders);
+}
 
 bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
     const HitchToHook gap = hitch_to_hook(model, state);
@@ -239,6 +270,7 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
 
     switch (state.stage) {
         case Stage::kToTheSled:
+            stop_at_the_fenders(pull, model);
             if (hooks_on(model, pull)) {
                 pull.hooked = true;
                 state.stage = Stage::kTakingUpSlack;
