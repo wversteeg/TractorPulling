@@ -105,7 +105,9 @@ int load_shift_gears_left(const State& state, const Params& params) noexcept {
 bool shifts_under_load(const State& state, const Params& params, int to) noexcept {
     const int from = state.gear;
     const int gears_left = load_shift_gears_left(state, params);
-    return to > kNeutral && to < from &&
+    // Only in a pull under way (start_pull): off the pull, every change
+    // needs the clutch pressed.
+    return state.floor_gear != kNeutral && to > kNeutral && to < from &&
            from - to <= std::min(params.load_downshift_gears, gears_left) &&
            static_cast<std::size_t>(from) <= ratios(params).size();
 }

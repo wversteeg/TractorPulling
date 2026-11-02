@@ -79,6 +79,7 @@ TEST(Driver, ShiftsDownOnceAsTheSledPullsTheEngineDown) {
     vehicle::State tractor;
     tractor.engine.running = true;
     tractor.driveline.gear = 6;
+    driveline::start_pull(tractor.driveline);
     State state;
     const auto gear_at = [&](double t_s, double share_of_rated) {
         tractor.engine.omega_rad_s = share_of_rated * rated_rad_s;

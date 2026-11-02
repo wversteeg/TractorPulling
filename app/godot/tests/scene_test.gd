@@ -212,6 +212,9 @@ func _check_hitch_camera(cameras: CameraRig) -> void:
 	var near := {"stage": "to_the_sled", "hitch_to_hook_m": 2.0, "hitch_along_m": 2.0,
 			"hitch_across_m": 0.3, "gear": -1}
 	_expect(_pull.framing_hitch(near, chain_m), "the last metre to the hook: framed")
+	near["gear"] = 1
+	_expect(not _pull.framing_hitch(near, chain_m), "driving forwards in front of it: not framed")
+	near["gear"] = -1
 	near["hitch_to_hook_m"] = 4.0
 	_expect(not _pull.framing_hitch(near, chain_m), "further out: the view behind to steer by")
 	near["hitch_to_hook_m"] = 2.0
@@ -236,6 +239,15 @@ func _check_hitch_camera(cameras: CameraRig) -> void:
 	_expect(not _pull.driving_back(off, true), "forwards: looking ahead")
 	_expect(not _pull.driving_back({"chain_hooked": true, "tractor_speed_m_s": -1.0}, true),
 			"on the chain (releasing): never")
+
+	# The sled's lamp stays green from the slack taken up through the pull,
+	# though the chain eases while the tractor waits for the flag.
+	_expect(SledView.lamp_colour({"stage": "waiting_for_the_flag", "chain_tension_n": 200.0},
+			1000.0) == SledView.LAMP_GREEN
+			and SledView.lamp_colour({"stage": "pulling", "chain_tension_n": 0.0}, 1000.0)
+			== SledView.LAMP_GREEN
+			and SledView.lamp_colour({"stage": "taking_up_slack", "chain_tension_n": 200.0},
+			1000.0) == SledView.LAMP_DARK, "the lamp green from the slack taken up")
 
 	var picked := cameras.view
 	cameras.show_hitch(true, 3.0, 0.0)

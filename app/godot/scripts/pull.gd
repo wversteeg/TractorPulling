@@ -569,9 +569,10 @@ func _camera_target(delta: float) -> Vector3:
 static func framing_hitch(s: Dictionary, chain_m: float) -> bool:
 	match s.get("stage", ""):
 		"to_the_sled":
-			# In front of the hook on its line, not driving past it beside
-			# the sled.
-			return float(s["hitch_to_hook_m"]) < chain_m + HITCH_SIDE_VIEW_M \
+			# Backing up in R, in front of the hook on its line: not driving
+			# forwards in front of it, nor past it beside the sled.
+			return int(s["gear"]) < 0 \
+					and float(s["hitch_to_hook_m"]) < chain_m + HITCH_SIDE_VIEW_M \
 					and float(s["hitch_along_m"]) > 0.0 \
 					and absf(float(s["hitch_across_m"])) < HITCH_ON_LINE_M
 		"releasing":
