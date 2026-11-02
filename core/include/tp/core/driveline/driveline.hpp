@@ -122,7 +122,8 @@ void end_pull(State& state) noexcept;
 [[nodiscard]] int lowest_gear(const State& state, const Params& params) noexcept;
 
 /// Whether the gearbox shifts from its gear now to gear `to` with the
-/// clutch in: down, to a gear (not neutral), at most load_downshift_gears
+/// clutch in: only in a pull under way (start_pull), down, to a gear (not
+/// neutral), at most load_downshift_gears
 /// at once and at most load_downshift_gears × load_shifts_per_pull gears in
 /// one pull. A step of two gears may be taken in two shifts of one, as a
 /// driver tapping down a gear at a time does.

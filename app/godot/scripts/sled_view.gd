@@ -290,14 +290,17 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 	_show_lamp(lamp_colour(s, lamp_tension_n))
 
 
-# The lamp: green while the chain pulls on the hook (taking up the slack,
-# waiting for the flag, the pull) with at least `tension_n`, red once the
-# pull is over until the sled drives back, off otherwise.
+# The lamp: green once the chain pulls on the hook with at least
+# `tension_n` while the slack is taken up, and from then on through waiting
+# for the flag and the pull, however the chain eases; red once the pull is
+# over until the sled drives back, off otherwise.
 static func lamp_colour(s: Dictionary, tension_n: float) -> Color:
 	match s.get("stage", "pulling"):
-		"taking_up_slack", "waiting_for_the_flag", "pulling":
+		"taking_up_slack":
 			if float(s.get("chain_tension_n", 0.0)) >= tension_n:
 				return LAMP_GREEN
+		"waiting_for_the_flag", "pulling":
+			return LAMP_GREEN
 		"releasing", "to_the_parking", "parked":
 			if float(s.get("sled_speed_m_s", 0.0)) >= 0.0 and not bool(s.get("sled_back", false)):
 				return LAMP_RED

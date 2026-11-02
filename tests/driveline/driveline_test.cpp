@@ -383,7 +383,9 @@ TEST(Driveline, UnderWayGoesDownOnlyUnderLoad) {
 }
 
 bool shifts_under_load_from(const Params& params, int from, int to) {
-    return shifts_under_load(State{.gear = from}, params, to);
+    State pulling{.gear = from};
+    start_pull(pulling);
+    return shifts_under_load(pulling, params, to);
 }
 
 // The reference gearbox shifts one gear down under load, the clutch in;
@@ -399,6 +401,7 @@ TEST(Driveline, ShiftsOneGearDownUnderLoad) {
     EXPECT_FALSE(shifts_under_load_from(params, 9, 8)) << "from a gear it does not have";
     const double axle_rad_s = 200.0 / 55.0;
     State state{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = axle_rad_s};
+    start_pull(state);
     EXPECT_FALSE(shift_under_load(state, params, 4));
     EXPECT_FALSE(shift_under_load(state, params, 7));
     EXPECT_FALSE(shift(state, params, 5, false)) << "shift() wants the clutch out";
@@ -424,17 +427,22 @@ TEST(Driveline, ShiftsOneGearDownUnderLoad) {
 TEST(Driveline, ShiftsUnderLoadOnceAPull) {
     const Params params = reference_params();
     State state{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    start_pull(state);
     ASSERT_TRUE(shift_under_load(state, params, 5).has_value());
     EXPECT_FALSE(shifts_under_load(state, params, 4));
     EXPECT_FALSE(shift_under_load(state, params, 4).has_value());
     EXPECT_FALSE(shift(state, params, 4, false));
     EXPECT_EQ(state.gear, 5);
     EXPECT_EQ(state.load_shift_gears, 1);
+    // Off the pull a gear goes down with the clutch pressed, never under load.
+    end_pull(state);
+    EXPECT_FALSE(shifts_under_load(state, params, 4)) << "off the pull";
     EXPECT_TRUE(shift(state, params, 4, true)) << "with the clutch pressed";
 
     Params twice = params;
     twice.load_shifts_per_pull = 2;
     State again{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    start_pull(again);
     EXPECT_TRUE(shift_under_load(again, twice, 5).has_value());
     EXPECT_TRUE(shift_under_load(again, twice, 4).has_value());
     EXPECT_FALSE(shift_under_load(again, twice, 3).has_value());
@@ -451,6 +459,7 @@ TEST(Driveline, ATwoGearStepTakesTwoTaps) {
     Params two = reference_params();
     two.load_downshift_gears = 2;
     State tapped{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    start_pull(tapped);
     tapped.floor_gear = 6;
     EXPECT_EQ(lowest_gear(tapped, two), 4);
     EXPECT_TRUE(shift_under_load(tapped, two, 5).has_value());
@@ -461,6 +470,8 @@ TEST(Driveline, ATwoGearStepTakesTwoTaps) {
     EXPECT_EQ(lowest_gear(tapped, two), 4);
 
     State at_once{.gear = 6, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+
+    start_pull(at_once);
     EXPECT_TRUE(shift_under_load(at_once, two, 4).has_value());
     EXPECT_FALSE(shifts_under_load(at_once, two, 3));
 
@@ -468,6 +479,7 @@ TEST(Driveline, ATwoGearStepTakesTwoTaps) {
     Params twice = two;
     twice.load_shifts_per_pull = 2;
     State four{.gear = 7, .input_omega_rad_s = 200.0, .output_omega_rad_s = 200.0 / 55.0};
+    start_pull(four);
     EXPECT_FALSE(shifts_under_load(four, twice, 4)) << "three at once";
     EXPECT_TRUE(shift_under_load(four, twice, 5).has_value());
     EXPECT_TRUE(shift_under_load(four, twice, 4).has_value());
@@ -482,6 +494,8 @@ TEST(Driveline, ATwoGearStepTakesTwoTaps) {
     // A new pull starts with the whole step again.
     end_pull(tapped);
     EXPECT_EQ(tapped.load_shift_gears, 0);
+    EXPECT_FALSE(shifts_under_load(tapped, two, 3)) << "off the pull: with the clutch only";
+    start_pull(tapped);
     EXPECT_TRUE(shifts_under_load(tapped, two, 3));
 }
 
