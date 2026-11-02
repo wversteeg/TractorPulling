@@ -1,0 +1,9 @@
+# The practice season as a career of one class, for the scene's tests.
+
+[career]
+name = "Practice path"
+promotion_place = 1
+
+[[career.classes]]
+name = "Practice"
+season = "practice_season.toml"

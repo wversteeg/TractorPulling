@@ -1,9 +1,11 @@
 #pragma once
 
+#include "tp/core/career/career.hpp"
 #include "tp/core/field/live_season.hpp"
 #include "tp/core/garage/garage.hpp"
 #include "tp/core/session/session.hpp"
 #include "tp/core/vehicle/tuning.hpp"
+#include "tp/data/career/career_loader.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/season/season_save.hpp"
 
@@ -43,6 +45,31 @@ class TractorPullEvent : public godot::RefCounted {
     GDCLASS(TractorPullEvent, godot::RefCounted)
 
 public:
+    /// Loads a career (data/careers/: its classes, each with its season) for
+    /// the methods below, at its first class; no season is started. Returns
+    /// "" or what is wrong, naming the file and field.
+    godot::String load_career(const godot::String& career_path);
+    /// {name, classes, class, class_name, unlocked, next_class,
+    /// can_move_up} of the loaded career: the class names lowest first, the
+    /// index and name of the player's class, the index of the highest class
+    /// open, the name of the class above ("" at the top), and whether
+    /// move_up() would move the player now. {} without a career.
+    [[nodiscard]] godot::Dictionary get_career() const;
+    /// A new career: the first class, the garage's start money and nothing
+    /// bought, and the first class's season drawn for `seed`. "" or what is
+    /// wrong; the career so far stays then.
+    godot::String new_career(std::int64_t seed);
+    /// A new season in the player's class, drawn for `seed`; money and
+    /// upgrades carry over. "" or what is wrong.
+    godot::String new_season(std::int64_t seed);
+    /// As resume_season(), for the loaded career: the save's class (by name;
+    /// one the career no longer has is its first class) and its season.
+    godot::String resume_career(const godot::String& save);
+    /// Moves the player up to the class their titles have opened (career::
+    /// move_up) and starts its season, drawn for `seed`; money and upgrades
+    /// carry over, by the upgrades' names. Only between seasons: with the
+    /// season over, or before the player's first pull in it. "" or why not.
+    godot::String move_up(std::int64_t seed);
     /// Loads a season (res:// paths work) and draws its field for `seed`, a
     /// new season. The player's career (money and upgrades) carries over
     /// from the season before; the first season starts one (the garage's
@@ -119,7 +146,9 @@ public:
 
     /// Scores the finished event in the championship and pays the player
     /// their prize (get_event_prize()); false if it is not finished or
-    /// already scored.
+    /// already scored. The last event of a season in the career's class
+    /// counts the season (career::finish_season): a title opens the class
+    /// above.
     bool score_event();
     /// What the event being pulled pays the player for their place so far
     /// [EUR] (garage::prize_eur); 0 before an event.
@@ -173,6 +202,15 @@ private:
     /// before the tuning.
     [[nodiscard]] vehicle::Params player_tractor() const;
 
+    /// The season of the player's class in the loaded career; "" without
+    /// one.
+    [[nodiscard]] std::string class_season() const;
+    /// Whether the season is the career's and the player has not pulled in
+    /// it yet, or it is over: a class may change.
+    [[nodiscard]] bool between_seasons() const;
+
+    std::optional<data::CareerDefinition> career_definition_;
+    career::Progress progress_;
     std::optional<data::SeasonDefinition> definition_;
     /// The season file and seed start_season() was given, for get_save().
     std::string season_path_;

@@ -5,7 +5,9 @@
 # corner opens the settings. At launch, with a season saved, it first asks
 # whether to continue it, start a new season (the career, money and
 # upgrades, carries over) or a new career (show_choice), which starts over
-# on a second tap: the first asks to be sure.
+# on a second tap: the first asks to be sure. With a class above opened by
+# a title and nothing pulled in the season yet, "Move up" takes the player
+# there (the season board asks first, at the end of the season that won it).
 class_name StartScreen
 extends MenuPanel
 
@@ -16,6 +18,7 @@ signal settings_requested
 signal continue_requested
 signal new_season_requested
 signal new_career_requested
+signal move_up_requested
 
 const TITLE_SIZE := 44
 const LINE_SIZE := 28
@@ -36,6 +39,7 @@ var garage_button: TouchButton
 var continue_button: TouchButton
 var new_season_button: TouchButton
 var new_career_button: TouchButton
+var move_up_button: TouchButton
 var settings_button := GearButton.new()
 var _event: Label
 var _name: Label
@@ -61,7 +65,9 @@ func _ready() -> void:
 	new_career_button = add_button(choice, "New career")
 	new_season_button = add_button(choice, "New season")
 	continue_button = add_button(choice, "Continue")
-	for button: TouchButton in [new_career_button, new_season_button, continue_button]:
+	move_up_button = add_button(choice, "Move up")
+	for button: TouchButton in [new_career_button, new_season_button, continue_button,
+			move_up_button]:
 		button.custom_minimum_size = CHOICE_BUTTON_SIZE
 	_error = add_line(LINE_SIZE)
 	practice_button.tapped.connect(func() -> void: practice_requested.emit())
@@ -70,6 +76,7 @@ func _ready() -> void:
 	continue_button.tapped.connect(func() -> void: continue_requested.emit())
 	new_season_button.tapped.connect(func() -> void: new_season_requested.emit())
 	new_career_button.tapped.connect(_ask_new_career)
+	move_up_button.tapped.connect(func() -> void: move_up_requested.emit())
 	settings_button.fires_on_release = true
 	settings_button.anchor_left = 1.0
 	settings_button.anchor_right = 1.0
@@ -87,14 +94,18 @@ func release_buttons() -> void:
 
 
 # `event` is TractorPullEvent.get_event() for the event to come; `error`
-# what went wrong setting it up, if anything.
-func show_event(event: Dictionary, error: String) -> void:
+# what went wrong setting it up, if anything; `career`
+# TractorPullEvent.get_career(), {} without one.
+func show_event(event: Dictionary, error: String, career: Dictionary = {}) -> void:
+	var in_class := "%s  ·  " % career["class_name"] if career.has("class_name") else ""
 	if event.is_empty():
-		_event.text = ""
+		_event.text = in_class.trim_suffix("  ·  ")
 		_name.text = ""
 	else:
-		_event.text = "Event %d of %d" % [int(event["index"]) + 1, event["count"]]
+		_event.text = "%sEvent %d of %d" % [in_class, int(event["index"]) + 1, event["count"]]
 		_name.text = event["name"]
+	var can_move_up: bool = error.is_empty() and career.get("can_move_up", false)
+	move_up_button.visible = can_move_up
 	practice_button.visible = error.is_empty()
 	event_button.visible = error.is_empty()
 	garage_button.visible = error.is_empty()
@@ -117,6 +128,7 @@ func show_choice(season: Dictionary) -> void:
 	continue_button.visible = true
 	new_season_button.visible = true
 	new_career_button.visible = true
+	move_up_button.visible = false
 	_career_asked = false
 	new_career_button.text = "New career"
 	# The settings wait for the choice.

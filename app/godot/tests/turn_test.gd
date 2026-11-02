@@ -41,7 +41,7 @@ func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
 	_pull.set("settings_path", SETTINGS_PATH)
-	_pull.set("season_path", "res://tests/data/practice_season.toml")
+	_pull.set("career_path", "res://tests/data/practice_career.toml")
 	_pull.set("save_path", "")
 	root.add_child(_pull)
 	_play.call_deferred()

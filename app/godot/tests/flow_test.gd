@@ -18,7 +18,8 @@
 #   godot --fixed-fps 60 --path app/godot --script res://tests/flow_test.gd [-- /tmp/shots]
 extends SceneTree
 
-const SEASON := "res://tests/data/practice_season.toml"
+const CAREER := "res://tests/data/practice_career.toml"
+const LADDER := "res://tests/data/practice_ladder.toml"
 const SEED := 2026
 # The test garage's start money (tests/data/practice_garage.toml).
 const START_MONEY_EUR := 1000
@@ -44,7 +45,7 @@ var _shots := ""
 func _initialize() -> void:
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
-	_pull.set("season_path", SEASON)
+	_pull.set("career_path", CAREER)
 	_pull.set("season_seed", SEED)
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
 	_pull.set("settings_path", SETTINGS_PATH)
@@ -388,18 +389,53 @@ func _play() -> void:
 			"the next event: %s" % info)
 
 	await _relaunch(event.get_season_standings(), event.get_tuning(), event.get_garage())
+	await _check_move_up()
 
 	print("flow test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
 
 
-# The pull scene again, as at the next launch, on the same save.
-func _launch() -> Node:
+# A title opened the class above (a save that says so: a season won, and
+# the app closed on the season's board): launched again, the new season's
+# start screen offers to move up, which starts the class above's season
+# with the money and upgrades carried up.
+func _check_move_up() -> void:
+	var saved := FileAccess.get_file_as_string(SAVE_PATH)
+	_expect(saved.contains("class = \"Practice\"") and saved.contains("unlocked = \"Practice\""),
+			"the save names the class: %s" % saved)
+	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	file.store_string(saved.replace("unlocked = \"Practice\"",
+			"unlocked = \"Practice, a class up\""))
+	file.close()
+	var pull := await _launch(LADDER)
+	var start: StartScreen = pull.get("start_screen")
+	var event: TractorPullEvent = pull.get("event")
+	var garage := event.get_garage()
+	_expect(start.visible and start.move_up_button.visible and start.event_button.visible,
+			"the class above to move up to")
+	await _shot("8_move_up")
+	_tap(start.move_up_button)
+	await _frames(2)
+	var career := event.get_career()
+	_expect(career.get("class", -1) == 1 and not career.get("can_move_up", true),
+			"moved up: %s" % career)
+	_expect(start.visible and not start.move_up_button.visible
+			and int(event.get_season().get("scored", -1)) == 0
+			and int(event.get_event().get("index", -1)) == 0, "the class above's first event")
+	_expect(event.get_garage()["money_eur"] == garage["money_eur"]
+			and event.get_garage()["upgrades"] == garage["upgrades"], "the career carried up")
+	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("class = \"Practice, a class up\""),
+			"saved in the class above")
+
+
+# The pull scene again, as at the next launch, on the same save; with
+# another career file if `career` is given.
+func _launch(career: String = CAREER) -> Node:
 	_pull.queue_free()
 	await _frames(2)
 	var scene: PackedScene = load("res://scenes/pull.tscn")
 	_pull = scene.instantiate()
-	_pull.set("season_path", SEASON)
+	_pull.set("career_path", career)
 	_pull.set("season_seed", SEED + 1)
 	_pull.set("settings_path", SETTINGS_PATH)
 	_pull.set("save_path", SAVE_PATH)

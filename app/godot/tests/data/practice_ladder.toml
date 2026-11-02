@@ -1,0 +1,13 @@
+# Two classes on the practice season, for the tests that move up a class.
+
+[career]
+name = "Practice ladder"
+promotion_place = 1
+
+[[career.classes]]
+name = "Practice"
+season = "practice_season.toml"
+
+[[career.classes]]
+name = "Practice, a class up"
+season = "practice_season.toml"

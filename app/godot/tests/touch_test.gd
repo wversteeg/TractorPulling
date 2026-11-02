@@ -42,7 +42,7 @@ func _initialize() -> void:
 	_pull.set("settings_path", SETTINGS_PATH)
 	# The reference tractor as it is, with its powershift step (the club
 	# season's garage starts the player without it).
-	_pull.set("season_path", "res://tests/data/practice_season.toml")
+	_pull.set("career_path", "res://tests/data/practice_career.toml")
 	# A new season, whatever this machine has saved, and nothing saved.
 	_pull.set("save_path", "")
 	# A pull from the start line: the whole turn is turn_test.gd's.

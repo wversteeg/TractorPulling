@@ -20,6 +20,7 @@ const TRACK := "res://data/tracks/ideal_clay_sand.toml"
 const EASY := "res://data/controls/easy.toml"
 const PRO := "res://data/controls/pro.toml"
 const SEASON := "res://data/seasons/club_season.toml"
+const LADDER := "res://tests/data/practice_ladder.toml"
 # The garage's starting tractor's rear axle share at rest, weights halfway.
 const REAR_SHARE := 0.616
 
@@ -46,6 +47,7 @@ func _init() -> void:
 	_check_parking()
 	_check_event()
 	_check_career_outlives_a_save()
+	_check_career()
 	if not args.has_all(["gear", "stick", "brake-right"]):
 		printerr("needs --gear=N --stick=S --brake-right=B after --")
 		_failures += 1
@@ -248,6 +250,75 @@ func _check_career_outlives_a_save() -> void:
 	var garage := later.get_garage()
 	_expect(garage["money_eur"] == bought["money_eur"] and garage["upgrades"] == bought["upgrades"],
 			"the career carried into it: %s" % garage)
+
+
+# The career (TractorPullEvent.load_career): its classes and a new career
+# in the first. The save names the player's class and the highest one open;
+# a save whose title opened the class above lets the player move up between
+# seasons (not once the season is under way), with the money and upgrades
+# carried up. A save of a class the career no longer has is in its first.
+func _check_career() -> void:
+	var event := TractorPullEvent.new()
+	_expect(event.get_career().is_empty() and event.new_season(7) == "no career"
+			and event.move_up(7) == "no career", "no career yet")
+	_expect(not event.load_career("res://tests/data/missing.toml").is_empty(), "a missing career")
+	var error := event.load_career(LADDER)
+	_expect(error.is_empty(), "the career: " + error)
+	var career := event.get_career()
+	_expect(career.get("name", "") == "Practice ladder"
+			and career["classes"] == PackedStringArray(["Practice", "Practice, a class up"])
+			and career["class"] == 0 and career["class_name"] == "Practice"
+			and career["unlocked"] == 0 and career["next_class"] == "Practice, a class up"
+			and not career["can_move_up"], "at the first class: %s" % career)
+	_expect(event.new_career(7).is_empty() and event.get_season().get("events", 0) == 2,
+			"the first class's season")
+	_expect(event.move_up(7) == "no class above is open", "nothing open to move up to")
+	_expect(event.buy_upgrade(0).is_empty(), "a part bought")
+	var garage := event.get_garage()
+	var save := event.get_save()
+	_expect(save.contains("version = 3") and save.contains("class = \"Practice\"")
+			and save.contains("unlocked = \"Practice\""), "the save names the class: %s" % save)
+	var won := save.replace("unlocked = \"Practice\"", "unlocked = \"Practice, a class up\"")
+
+	# Once the season is under way, the class waits for the next.
+	var during := TractorPullEvent.new()
+	during.load_career(LADDER)
+	error = during.resume_career(won + "\n[[events]]\nstandings = [\n"
+			+ "    { puller = 0, place = 1, disqualified = false },\n"
+			+ "    { puller = 1, place = 2, disqualified = false },\n"
+			+ "    { puller = 2, place = 3, disqualified = false },\n"
+			+ "    { puller = 3, place = 4, disqualified = false },\n]\n")
+	_expect(error.is_empty() and during.get_season().get("scored", 0) == 1, "resumed: " + error)
+	_expect(not during.get_career()["can_move_up"] and during.move_up(8) == "not during a season"
+			and during.get_career()["class"] == 0, "not during a season: %s" % during.get_career())
+
+	var later := TractorPullEvent.new()
+	later.load_career(LADDER)
+	error = later.resume_career(won)
+	_expect(error.is_empty(), "resumed: " + error)
+	career = later.get_career()
+	_expect(career["class"] == 0 and career["unlocked"] == 1 and career["can_move_up"],
+			"may move up before the season's first pull: %s" % career)
+	error = later.move_up(8)
+	_expect(error.is_empty(), "moved up: " + error)
+	career = later.get_career()
+	_expect(career["class"] == 1 and career["class_name"] == "Practice, a class up"
+			and career["next_class"] == "" and not career["can_move_up"]
+			and later.get_season().get("scored", -1) == 0, "in the class above: %s" % career)
+	_expect(later.get_garage()["money_eur"] == garage["money_eur"]
+			and later.get_garage()["upgrades"] == garage["upgrades"],
+			"money and upgrades carried up: %s" % later.get_garage())
+	_expect(later.get_save().contains("class = \"Practice, a class up\""), "saved a class up")
+	_expect(later.move_up(9) == "no class above is open", "no class above the top")
+	_expect(later.new_career(10).is_empty() and later.get_career()["class"] == 0
+			and later.get_career()["unlocked"] == 0, "a new career: %s" % later.get_career())
+
+	var renamed := TractorPullEvent.new()
+	renamed.load_career(LADDER)
+	error = renamed.resume_career(save.replace("class = \"Practice\"", "class = \"Gone\""))
+	_expect(error.is_empty() and renamed.get_career()["class"] == 0
+			and renamed.get_garage()["money_eur"] == garage["money_eur"],
+			"a class the career no longer has is its first: %s" % error)
 
 
 # The player's tuning: as built at first, each setting held to its range,
