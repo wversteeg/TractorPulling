@@ -161,12 +161,18 @@ bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
 
 bool may_restart(const State& state) noexcept {
     const std::optional<run::Result>& result = state.run.result;
-    if (!result) {
+    const bool just_stopped =
+        state.from_the_parking ? state.stage == Stage::kReleasing : state.stage == Stage::kParked;
+    if (!result || !just_stopped || state.restarts >= kMaxRestarts) {
         return false;
     }
+    // A sled nudged less than the stop counts from stands until the time is
+    // up (run::kStopCountsFrom_m): a stop too.
+    const bool nudged =
+        result->ending == run::Ending::kTimedOut && result->distance_m < run::kStopCountsFrom_m;
     const bool stopped = result->ending == run::Ending::kStalled ||
                          result->ending == run::Ending::kSpunOut ||
-                         result->ending == run::Ending::kStopped;
+                         result->ending == run::Ending::kStopped || nudged;
     return stopped && result->distance_m < kRestartBefore_m;
 }
 
@@ -179,6 +185,7 @@ void restart(State& state, const pull::Model& model) noexcept {
     state.run = run::start(model);
     state.ready_steps = 0;
     state.sled_back = false;
+    ++state.restarts;
     if (state.from_the_parking) {
         state.run.pull.sled_mode = pull::SledMode::kHeld;
         state.stage = Stage::kTakingUpSlack;

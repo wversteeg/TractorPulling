@@ -312,6 +312,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;
     out["full_pull_line_m"] = rules.full_pull_line_m;
+    out["restart_before_m"] = turn::kRestartBefore_m;
     const engine::Params& engine = tractor.engine;
     out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
     out["rated_omega_rad_s"] = engine.rated_omega_rad_s;

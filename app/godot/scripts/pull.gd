@@ -101,11 +101,6 @@ const CHAIN_LYING_SHARE := 0.9
 # Where the stopping marker lies in front of the hook: a share of the
 # chain's length, where the hitch hooks on.
 const MARKER_SHARE := 0.6
-# A pull stopping short of this may be restarted (turn::kRestartBefore_m)
-# [m], or at an event pulled again this many places later
-# (event::kDeferPlaces).
-const RESTART_BEFORE_M := 30.0
-const EVENT_MOVE_BACK_PLACES := 6
 
 var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
@@ -545,7 +540,8 @@ func _offer_restart() -> void:
 	var result := run.get_result()
 	var ending: String = result.get("ending", "")
 	restart_screen.show_choice(String(ResultScreen.ENDINGS.get(ending, ending)), float(result.get("distance_m", 0.0)),
-			RESTART_BEFORE_M, 0 if practice else EVENT_MOVE_BACK_PLACES)
+			float(run.get_dimensions()["restart_before_m"]),
+			0 if practice else int(event.get_event().get("move_back_places", 0)))
 	restart_screen.visible = true
 	controls.visible = false
 	controls.reset_fingers()

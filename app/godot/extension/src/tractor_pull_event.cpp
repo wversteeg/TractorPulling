@@ -235,6 +235,9 @@ godot::Dictionary TractorPullEvent::get_event() const {
         out["pull_kind"] = kind_name(pull->kind);
         out["pull_off_round"] = pull->pull_off_round;
     }
+    // A pull stopped short of the restart line may move this many places
+    // later (move_back()), if it may at all.
+    out["move_back_places"] = event.may_defer_player() ? event::kDeferPlaces : 0;
     return out;
 }
 

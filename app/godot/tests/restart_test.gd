@@ -1,7 +1,7 @@
 # A pull that stops short of 30 m offers the restart choice (RestartScreen):
 # a scripted driver pulls a few metres and lifts off, then lets go of the
 # controls; the run waits for the choice, "Restart" puts the sled and the
-# tractor back at the line for the pull again, and "Finish" lets it count.
+# tractor back at the line for the pull again; a second short stop counts.
 # Run: godot --headless --fixed-fps 30 --path app/godot --script res://tests/restart_test.gd
 extends SceneTree
 
@@ -69,19 +69,17 @@ func _play() -> void:
 	var s := run.get_snapshot()
 	_expect(not restart.visible and run.get_result().is_empty() and float(s["sled_x_m"]) == 0.0
 			and int(s["gear"]) == 0, "restarted at the line in neutral: %s" % s)
-	# Pull and stop again: this time let it count.
+	# Pull and stop again: one restart a pull, so no choice now.
 	_time_s = 0.0
 	_pull.set("driver", _drive)
 	frame = 0
-	while frame < MAX_FRAMES and not run.may_restart():
+	while frame < MAX_FRAMES and run.get_result().is_empty():
 		await process_frame
 		frame += 1
 	_pull.set("driver", Callable())
 	await process_frame
 	await process_frame
-	_expect(restart.visible, "the choice again")
-	restart.finish_requested.emit()
-	await process_frame
-	_expect(not restart.visible and not run.get_result().is_empty(), "finished: the pull counts")
+	_expect(not restart.visible and not run.may_restart() and not run.get_result().is_empty(),
+			"stopped short again: one restart only, the pull counts")
 	print("restart test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)

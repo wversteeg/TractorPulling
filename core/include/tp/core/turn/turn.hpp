@@ -111,6 +111,8 @@ struct State {
     std::uint64_t ready_steps = 0;
     /// The sled stands back at the start line after the pull.
     bool sled_back = false;
+    /// Times the pull has been restarted (restart()).
+    std::uint8_t restarts = 0;
 };
 
 /// The pull alone: hooked at the start line, the green flag already waved.
@@ -146,10 +148,13 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
 /// A pull that stops short of this may be pulled again from the start
 /// (restart()), after the NTTO's 100 ft rule [m].
 inline constexpr double kRestartBefore_m = 30.0;
+/// How often one pull may be restarted.
+inline constexpr std::uint8_t kMaxRestarts = 1;
 
 /// Whether the pull just ended may be restarted: it stopped (stalled, spun
-/// out or eased off: not a full pull, a disqualification or the time up)
-/// before kRestartBefore_m.
+/// out or eased off, or the time ran out on a sled barely nudged) before
+/// kRestartBefore_m, the chain still on (just after the stop), and it has
+/// not been restarted kMaxRestarts times yet.
 [[nodiscard]] bool may_restart(const State& state) noexcept;
 
 /// The pull again from the start line, the track as the last pull left it:
@@ -164,6 +169,7 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.from_the_parking);
     hash.add(state.ready_steps);
     hash.add(state.sled_back);
+    hash.add(static_cast<std::uint64_t>(state.restarts));
 }
 
 }  // namespace tp::turn

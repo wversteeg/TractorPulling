@@ -148,6 +148,17 @@ TEST(Turn, AShortPullMayBeRestarted) {
     EXPECT_EQ(state.run.pull.tractor.driveline.gear, driveline::kNeutral);
     EXPECT_EQ(state.run.steps, 0U);
 
+    // Once only.
+    state.stage = Stage::kReleasing;
+    state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = 5.0};
+    EXPECT_FALSE(may_restart(state)) << "restarted once already";
+    state.restarts = 0;
+    EXPECT_TRUE(may_restart(state));
+    state.stage = Stage::kToTheParking;
+    EXPECT_FALSE(may_restart(state)) << "the chain off: too late";
+    state.stage = Stage::kReleasing;
+    state.run.result = run::Result{.ending = run::Ending::kTimedOut, .distance_m = 0.1};
+    EXPECT_TRUE(may_restart(state)) << "a nudged sled that stood until the time ran out";
     state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = kRestartBefore_m};
     EXPECT_FALSE(may_restart(state)) << "at the restart line";
     state.run.result = run::Result{.ending = run::Ending::kOutOfBounds, .distance_m = 0.0};

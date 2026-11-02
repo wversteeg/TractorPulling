@@ -150,9 +150,11 @@ public:
     /// Moves the pull next() names `places` later in the running order (at
     /// most to its end), for a puller who stopped short of the restart line
     /// and takes a later turn instead (turn::kRestartBefore_m). A test
-    /// pull's puller hands the test to the pull that is now next. Not in a
-    /// pull-off; returns the places moved.
+    /// pull's puller hands the test to the pull that is now next. Once per
+    /// puller, not in a pull-off; returns the places moved.
     int defer(int places) noexcept;
+    /// Whether defer() would move the next pull at all.
+    [[nodiscard]] bool may_defer() const noexcept;
     /// The test puller whose keep-or-re-pull decision is due.
     [[nodiscard]] std::optional<int> decision_due() const noexcept;
     /// What a sensible puller would choose: keep a full pull, or a test pull
@@ -178,6 +180,8 @@ private:
         bool may_keep = false;
         int test_pull_number = 0;
         bool decision_pending = false;
+        /// Moved later in the order once already (defer()).
+        bool deferred = false;
     };
 
     static constexpr std::size_t kMaxQueue = std::size_t{3} * kMaxPullers;
