@@ -9,7 +9,7 @@
 namespace tp::career {
 
 /// The most classes a career's ladder holds.
-inline constexpr int kMaxClasses = 8;
+inline constexpr int kMaxClasses = 12;
 
 /// The classes a career climbs, lowest first, and what opens the next one:
 /// a season in a class finished at `promotion_place` or better (1: the

@@ -34,17 +34,25 @@ relying on a detail. The weights and hitch heights are the 2026 ones.
 | # | Class | Section | Weight (2026) |
 |---|---|---|---|
 | 1 | Standard 3.5 t (standaardklasse) | Farmstock | 3500 kg |
-| 2 | Sport 4.5 t (sportklasse) | Farmstock | 4500 kg |
-| 3 | Supersport 4.5 t (super-sportklasse) | Farmstock | 4500 kg |
-| 4 | Pro Stock | Grand National | 3500 kg |
-| 5 | Limited Super Stock | Grand National | 3500 kg |
-| 6 | Super Stock | Grand National | 3500 kg |
+| 2 | Sport 2.6 t (sportklasse) | Farmstock | 2600 kg |
+| 3 | Sport 4.5 t | Farmstock | 4500 kg |
+| 4 | Supersport 3.4 t (super-sportklasse) | Farmstock | 3400 kg |
+| 5 | Supersport 3.6 t | Farmstock | 3600 kg |
+| 6 | Supersport 4.5 t | Farmstock | 4500 kg |
+| 7 | Pro Stock | Grand National | 3500 kg |
+| 8 | Limited Super Stock | Grand National | 3500 kg |
+| 9 | Super Stock | Grand National | 3500 kg |
 
-Why these: the player keeps one tractor. Sport and Supersport are pulled
-at 4.5 t (also 2.6 t for Sport, 3.4 and 3.6 t for Supersport), and 4.5 t
-lets the same tractor go from Sport to Supersport without a rebuild. Pro
-Stock drops back to 3.5 t with far more power: the big rebuild, where the
-tractor becomes a Grand National machine.
+Every Farmstock class the NTTO pulls in 2026 above the standard class, in
+order of the engine each allows, then the Grand National classes that
+still pull a farm tractor.
+
+The weight goes up and down along the way (3.5, 2.6, 4.5, 3.4, 3.6, 4.5,
+then 3.5 t): no one farm tractor ballasts from 2.6 to 4.5 t. So the
+player's tractor is the class's tractor as their career has built it: each
+class's season names its reference tractor, and the money and upgrades
+carry over by name (as step 2 does). Moving up is a rebuild, small within
+a weight, large where the weight or the class's engine changes.
 
 A season won opens the next class (`tp::career`, `promotion_place = 1`);
 the player chooses to move up or stay.
@@ -72,7 +80,26 @@ H13 and NTTO 2026:
 - A safety cab or a roll bar.
 - Stock tractor: only safety modifications.
 
-### 2. Sport 4.5 t
+### 2. Sport 2.6 t
+
+The NTTO pulls Sport at 2600 kg (NTTO 2026); the rulebooks write their
+lightest Sport limits for **2500 kg** (ETPC 2.1, NTTO 2018 15.B.1). The
+limits below are those, to confirm for 2600 kg:
+
+- 2600 kg; hitch as Sport 4.5 t.
+- Engine: at most **4 cylinders, turbocharged, 2 valves a cylinder, 4000
+  cm³** (NTTO 2018 15.B.1).
+- One turbo, its inlet at most **55 mm** or an air restrictor of 55 mm
+  (ETPC 2.2.1, 2500 kg). **No intercooler** in the 2500 kg class (ETPC
+  2.2.2).
+- 2700 rpm (3200 with the Level 3 frame and clutch), diesel, no
+  four-wheel drive, as Sport 4.5 t.
+- Under 3000 kg: wheelbase at most **2600 mm**, nothing more than **3500
+  mm** ahead of the rear axle (ETPC 1.3.1).
+- Tires and roll-over protection as Sport 4.5 t (a lighter roll bar: 60 ×
+  60 × 4 mm up to 2500 kg, ETPC 2.5.2).
+
+### 3. Sport 4.5 t
 
 ETPC FS 2026, Level 2 (current), and NTTO 2018 ch. 15 (the NTTO's own):
 
@@ -91,7 +118,10 @@ ETPC FS 2026, Level 2 (current), and NTTO 2018 ch. 15 (the NTTO's own):
 - Diesel only. No overhead camshafts unless the engine came with them.
 - **No four-wheel drive** (NTTO 2018 15.B.18).
 - Wheelbase at most 2900 mm; nothing more than 4000 mm ahead of the rear
-  axle's centre line, weights included (NTTO 2018 15.B.19).
+  axle's centre line, weights included (NTTO 2018 15.B.19; ETPC 1.3.1
+  for tractors over 3000 kg).
+- The hood and grille where the maker put them, the sheet metal of stock
+  length in its stock place (ETPC 1.3.2, Sport and Supersport).
 - Tires: rubber, no duals, **at most 30.5" (800 mm) wide on a 32" rim, or
   up to 710 mm wide on a 42" rim**; cut tires and puller tires allowed
   (ETPC 1.2.5).
@@ -99,7 +129,30 @@ ETPC FS 2026, Level 2 (current), and NTTO 2018 ch. 15 (the NTTO's own):
   ROP or ETPC roll bar (ETPC 2.5.2). **A cab is no longer needed.**
 - Wheelie bars mandatory.
 
-### 3. Supersport 4.5 t
+### 4. Supersport 3.4 t
+
+ETPC FS 2026, Level 3:
+
+- 3400 kg; hitch as Sport.
+- Engine (ETPC 3.2.1): at most **4 cylinders**, one of **5500 cm³ with 2
+  valves a cylinder at 2700 rpm**, **5000 cm³ with 4 valves at 2700 rpm**
+  or **4600 cm³ with 4 valves at 3200 rpm**.
+- Turbo, intercooler and water injection (in front of the compressor) as
+  Supersport 4.5 t; free water injection only at 4.5 t.
+- Over 3000 kg: wheelbase at most 2900 mm, 4000 mm ahead (ETPC 1.3.1).
+  (The NTTO's 2018 rules held the 3400 kg class to 2600 and 3500 mm.)
+- Frame, roll cage, clutch and tires as Supersport 4.5 t.
+
+### 5. Supersport 3.6 t
+
+ETPC FS 2026, Level 3:
+
+- 3600 kg; hitch as Sport.
+- Engine (ETPC 3.2.1): at most **6 cylinders**, **7000 cm³ at 2700 rpm**
+  or **6063 cm³ at 3200 rpm**, 4 valves a cylinder.
+- Everything else as Supersport 3.4 t.
+
+### 6. Supersport 4.5 t
 
 ETPC FS 2026, Level 3, and NTTO 2018 ch. 16:
 
@@ -122,7 +175,7 @@ ETPC FS 2026, Level 3, and NTTO 2018 ch. 16:
 - The OEM clutch housing, gearbox and rear axle housings; the look of the
   farm tractor stays.
 
-### 4. Pro Stock
+### 7. Pro Stock
 
 NTTO 2018 ch. 5 (the Grand National rules; check against the current
 ETPC main rulebook):
@@ -146,7 +199,7 @@ ETPC main rulebook):
 - The NTTO pulls Pro Stocks in two groups (I and II) with promotion and
   relegation (see "Levels").
 
-### 5. Limited Super Stock
+### 8. Limited Super Stock
 
 NTTO 2018 ch. 4 ("light superstocks"; the 2026 class is called Limited
 Superstocks):
@@ -159,7 +212,7 @@ Superstocks):
 - Hood and grille where the maker put them; frame, hitch and roll cage as
   Pro Stock.
 
-### 6. Super Stock
+### 9. Super Stock
 
 NTTO 2018 ch. 3:
 
@@ -184,8 +237,9 @@ rulebook.
 The NTTO splits a class into levels, each its own competition:
 
 - Farmstock classes in 2026: **topniveau**, **promoniveau** and
-  **beloftenniveau** (ntto.nl, 2026 standings: Sport 4.5 t has all three,
-  Supersport 4.5 t top and promo).
+  **beloftenniveau** (ntto.nl, 2026 standings: Sport 4.5 t and
+  Supersport 3.6 t have all three; Sport 2.6 t, Supersport 3.4 and 4.5 t
+  top and promo).
 - Pro Stocks (NTTO 2018 art. 1.16): **group I and group II**. A new
   machine starts in group II. The **winner of group II moves up** to group
   I and **12th of group I moves down**. Nobody moves up or down by choice,

@@ -19,7 +19,7 @@ package "tp::career" {
     +unlocked : int
   }
   class "career functions" as CareerFns <<free functions>> {
-    +kMaxClasses = 8
+    +kMaxClasses = 12
     +validate(const Ladder&) : optional<ParamError>
     +valid(const Progress&, const Ladder&) : bool
     +finish_season(Progress&, const Ladder&, championship_place) : bool
