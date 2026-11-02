@@ -111,6 +111,7 @@ func _play() -> void:
 	var lamp_red := true
 	var distance_held := true
 	var sled: SledView = _pull.get("sled_view")
+	var ending_told := false
 	var ahead_of_the_tractor := true
 	var full_pull_m: float = dimensions["full_pull_line_m"]
 	for frame in MAX_FRAMES:
@@ -119,7 +120,7 @@ func _play() -> void:
 		var stage: String = s["stage"]
 		if stage != stages.back():
 			stages.append(stage)
-		backing_up_told = backing_up_told or hud.turn_text(s).begins_with("Back up to the sled")
+		backing_up_told = backing_up_told or hud.turn_text(s).begins_with("Back up:")
 		told_to_stand = told_to_stand or hud.turn_text(s).begins_with("Chain tight")
 		if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
 			flag_red_before = flag_red_before and flagman.colour_name() == "red"
@@ -148,7 +149,8 @@ func _play() -> void:
 			red_to_stop = red_to_stop and flagman.colour_name() == "red" and flagman.raised() \
 					and end_flagman.colour_name() == "red" and end_flagman.raised() \
 					and venue.signal_shown() == "red" and hud.signal_shown() == "red"
-			told_to_stop = told_to_stop or hud.turn_text(s).begins_with("Red flag: stop!")
+			told_to_stop = told_to_stop or hud.turn_text(s).begins_with("Red flag")
+			ending_told = ending_told or not hud.ending_shown().is_empty()
 		if stage != "parked" and result.visible:
 			result_too_soon = true
 		if stage == "parked" and result.visible:
@@ -160,6 +162,7 @@ func _play() -> void:
 	_expect(lamp_green, "the sled's lamp green while the chain pulls")
 	_expect(lamp_red, "the sled's lamp red once the pull is over")
 	_expect(distance_held, "the pull's distance held while the sled drives back")
+	_expect(ending_told, "told why the pull ended")
 	_expect(backing_up_told, "told how far to back up")
 	_expect(flag_red_before and flag_green_pulling, "red before the pull, green in it")
 	_expect(chain_on_while_hooked, "the chain on from hooking to releasing")
@@ -196,6 +199,20 @@ func _check_steer_hint(hud: Hud) -> void:
 	_expect(hud.turn_text(waiting).begins_with("Creep forward"), "a short chain: creep forward")
 	waiting["hitch_to_hook_m"] = _chain_m - 0.02
 	_expect(hud.turn_text(waiting).begins_with("Chain tight"), "a tight chain: stand ready")
+	# After the pull, gas in reverse backs off to release the chain: not a
+	# red flag to stop.
+	var releasing := {"stage": "releasing", "gear": -1, "tractor_speed_m_s": -0.5,
+			"throttle": 0.6}
+	_expect(hud.turn_text(releasing).begins_with("Back off in R"), "reversing: back off")
+	releasing["gear"] = 3
+	releasing["tractor_speed_m_s"] = 0.5
+	_expect(hud.turn_text(releasing).begins_with("Red flag: stop!"), "rolling on: stop")
+	hud.guidance = false
+	hud.show_snapshot({"stage": "releasing", "gear": -1, "tractor_speed_m_s": 0.0,
+			"throttle": 0.0, "engine_omega_rad_s": 80.0, "sled_x_m": 50.0, "pushdown": 0.0,
+			"front_axle_load_n": 1000.0, "clutch_pedal": 1.0}, "", false)
+	_expect(hud.get("_turn").text.is_empty(), "no guidance when it is turned off")
+	hud.guidance = true
 
 
 # The keyboard's minus key: reverse from neutral only, as the touch "-".

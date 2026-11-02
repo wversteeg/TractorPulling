@@ -6,15 +6,18 @@
 # front tires still carry, against what they carry at rest (marked): the
 # pull takes weight off the front, and with none left the front is up and
 # the front wheels do not steer. In the pro layout also how far the clutch
-# is in. In a whole turn, a line in the middle says what to do next: drive
+# is in. In a whole turn, a short line along the top in the middle says
+# what to do next (it
+# can be turned off in the settings: `guidance`): drive
 # to the sled and back up to it (how far the hitch still has to go, and
 # which way to steer), take up the slack, wait for the flag, back off to
 # release the chain, drive back to the bay. After the pull the numbers keep
 # its distance (hold_distance) while the sled drives back, and the bar down
 # the track is empty again once the chain is off. A lamp right of the bars
 # repeats the officials' signal: green GO while the pull is good,
-# red STOP to wait or to stop (the pull is over: close the throttle). It
-# only shows the run's snapshot.
+# red STOP to wait or to stop (the pull is over: close the throttle). Once
+# the pull is over, a large line under it says why it ended (show_ending):
+# what to change for the next pull. It only shows the run's snapshot.
 class_name Hud
 extends Control
 
@@ -27,9 +30,18 @@ const BAR_HEIGHT := 22.0
 const REV_TOP := 112.0
 const TRACK_TOP := 148.0
 const FRONT_TOP := 184.0
-# The turn's line, under the top edge in the middle.
-const TURN_TOP := 250.0
+# The turn's line, short, along the top edge in the middle on a dark band:
+# between the pull's name on the left and the buttons on the right.
+const TURN_TOP := 8.0
+const TURN_WIDTH := 380.0
+const TURN_PADDING := 6.0
+const TURN_FONT_SIZE := 22
 const TURN_COLOUR := Color(1.0, 0.95, 0.6)
+# Why the pull ended, large, in the middle under the top.
+const ENDING_TOP := 230.0
+const ENDING_FONT_SIZE := 40
+const ENDING_COLOUR := Color(1.0, 0.45, 0.3)
+const FULL_PULL_COLOUR := Color(0.4, 1.0, 0.45)
 # Backing up: off the sled's line by more than this share of how far off
 # the chain still goes on (turn::kHookOffLine_m), it says which way to steer.
 const STEER_HINT_SHARE := 0.6
@@ -88,7 +100,10 @@ var _front_rest_n := 1.0
 var _front_n := 0.0
 var _front := Label.new()
 var _turn := Label.new()
+var _ending := Label.new()
 var _lamp := Label.new()
+# The turn's line is shown (the settings' guidance).
+var guidance := true
 # The officials' signal: "green", "red" or "off".
 var _signal := "off"
 var _chain_m := 1.0
@@ -105,11 +120,11 @@ var _parking := Vector2.INF
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn, _lamp]:
+	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn, _ending, _lamp]:
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
 		label.add_theme_constant_override("outline_size", OUTLINE)
 		add_child(label)
-	_pull.position = Vector2(MARGIN, MARGIN)
+	_pull.position = Vector2(MARGIN, TURN_TOP)
 	_pull.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
 	_numbers.position = Vector2(MARGIN, MARGIN + 34.0)
 	_numbers.add_theme_font_size_override("font_size", FONT_SIZE)
@@ -118,12 +133,20 @@ func _ready() -> void:
 	_pushdown_label.add_theme_color_override("font_color", PUSHDOWN_COLOUR)
 	_front.position = Vector2(BAR_LEFT + BAR_WIDTH + MARGIN / 2.0, FRONT_TOP - 6.0)
 	_front.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
-	_turn.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_turn.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_turn.offset_left = -TURN_WIDTH / 2.0
+	_turn.offset_right = TURN_WIDTH / 2.0
 	_turn.offset_top = TURN_TOP
-	_turn.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_turn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_turn.add_theme_font_size_override("font_size", FONT_SIZE)
+	_turn.clip_text = true
+	_turn.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_turn.add_theme_font_size_override("font_size", TURN_FONT_SIZE)
 	_turn.add_theme_color_override("font_color", TURN_COLOUR)
+	_ending.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_ending.offset_top = ENDING_TOP
+	_ending.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_ending.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ending.add_theme_font_size_override("font_size", ENDING_FONT_SIZE)
 	_lamp.position = Vector2(LAMP_CENTRE.x - LAMP_LABEL_WIDTH / 2.0, LAMP_CENTRE.y + LAMP_RADIUS + 4.0)
 	_lamp.size.x = LAMP_LABEL_WIDTH
 	_lamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -206,8 +229,20 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 		# The clutch as the run has it: 0 pressed, 100 % in.
 		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)
 	_numbers.text = text
-	_turn.text = turn_text(s)
+	_turn.text = turn_text(s) if guidance else ""
 	queue_redraw()
+
+
+# Why the pull ended (ResultScreen.ending_text()), "" while it is on;
+# `full_pull` shows it in green.
+func show_ending(text: String, full_pull: bool = false) -> void:
+	_ending.text = text
+	_ending.add_theme_color_override("font_color",
+			FULL_PULL_COLOUR if full_pull else ENDING_COLOUR)
+
+
+func ending_shown() -> String:
+	return _ending.text
 
 
 # What to do next in a whole turn, from the snapshot; "" during the pull.
@@ -217,39 +252,43 @@ func turn_text(s: Dictionary) -> String:
 			var along: float = s["hitch_along_m"]
 			if along <= 0.0 or float(s["hitch_to_hook_m"]) \
 					> PAST_THE_SLED_CHAINS * _chain_m + PAST_THE_SLED_MARGIN_M:
-				return "Drive past the sled into the lane, then back up to it in R"
+				return "Drive past the sled, back up in R"
 			var to_go := maxf(float(s["hitch_to_hook_m"]) - _chain_m, 0.0)
 			var across: float = s["hitch_across_m"]
 			var steer := ""
 			if absf(across) > _steer_hint_m:
 				# Backing up, the tail goes the way the wheel is turned: a
 				# hitch left of the line wants the wheel to the right.
-				steer = "   steer %s" % ("right" if across > 0.0 else "left")
+				steer = " · steer %s" % ("right" if across > 0.0 else "left")
 			if to_go <= 0.0:
-				return "Stop: the chain goes on" + steer
-			return "Back up to the sled: %.1f m%s" % [to_go, steer]
+				return "Stop: chain goes on" + steer
+			return "Back up: %.1f m%s" % [to_go, steer]
 		"taking_up_slack":
-			return "Hooked on. Creep forward to take up the slack"
+			return "Creep forward: take up slack"
 		"waiting_for_the_flag":
 			if float(s.get("flag_progress", 0.0)) > 0.0:
-				return "Hold it there... the flag is coming"
+				return "Hold still..."
 			# The hitch's distance on the ground: a little short of the
 			# chain's span, which climbs to the hook.
 			if float(s["hitch_to_hook_m"]) < _chain_m - _taut_within_m:
-				return "Creep forward a little: the chain is not tight"
+				return "Creep forward: chain slack"
 			if _pro:
-				return "Chain tight: press the clutch, stand still in your pulling gear"
-			return "Chain tight: let go of the gas and stand still in your pulling gear"
+				return "Chain tight: clutch in, gear in, hold"
+			return "Chain tight: off the gas, gear in, hold"
 		"releasing":
+			# Backing off in reverse is what the red flag asks for now: gas
+			# in R is fine.
+			if int(s["gear"]) < 0:
+				return "Back off in R"
 			var rolling := float(s["tractor_speed_m_s"]) > STOPPED_M_S
 			if rolling or float(s["throttle"]) > THROTTLE_CLOSED:
-				return "Red flag: stop! Close the throttle"
-			return "Back off in R to release the chain"
+				return "Red flag: stop!" if rolling else "Red flag: off the gas!"
+			return "Shift to R, back off"
 		"to_the_parking":
 			if _parking == Vector2.INF:
 				return ""
 			var gap := Vector2(float(s["tractor_x_m"]), float(s["tractor_y_m"])) - _parking
-			return "Drive back to your bay: %.0f m" % gap.length()
+			return "Back to your bay: %.0f m" % gap.length()
 		"parked":
 			return "Parked" if _parking != Vector2.INF else ""
 	return ""
@@ -263,6 +302,14 @@ static func gear_name(gear: int) -> String:
 
 
 func _draw() -> void:
+	# The band behind the turn's line.
+	if not _turn.text.is_empty():
+		var font := _turn.get_theme_font("font")
+		var width := minf(font.get_string_size(_turn.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				TURN_FONT_SIZE).x, TURN_WIDTH)
+		var band := Rect2(_turn.position + Vector2((TURN_WIDTH - width) / 2.0, 0.0),
+				Vector2(width, _turn.get_minimum_size().y))
+		draw_rect(band.grow(TURN_PADDING), BACK_COLOUR)
 	# The officials' signal.
 	if _signal != "off":
 		draw_circle(LAMP_CENTRE, LAMP_RADIUS + 5.0, BACK_COLOUR)
