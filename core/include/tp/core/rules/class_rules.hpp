@@ -13,8 +13,10 @@ namespace tp::rules {
 struct ClassRules {
     /// The whole tractor as weighed, driver included [kg].
     double max_mass_kg = 0.0;
-    /// Measured at the PTO shaft [W].
-    double max_pto_power_w = 0.0;
+    /// Measured at the PTO shaft [W]; none where the class limits the
+    /// engine's build instead (Sport and up: cylinders, displacement, the
+    /// turbo's air inlet).
+    std::optional<double> max_pto_power_w;
     /// Unloaded engine speed: the governed high idle [rad/s].
     double max_engine_speed_rad_s = 0.0;
     /// Hitch point above the ground [m]. It may also never be above the rear

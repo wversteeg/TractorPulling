@@ -32,6 +32,19 @@ TEST(ClassRulesParams, RejectsNonsense) {
     EXPECT_EQ(validate(rules), ParamError::kNotFinite);
 }
 
+// A class that limits the engine's build (Sport and up) sets no PTO power
+// limit: any power passes, the other limits still hold.
+TEST(ClassRules, NoPtoPowerLimitPassesAnyPower) {
+    ClassRules rules = ntto_standard_3500();
+    rules.max_pto_power_w.reset();
+    EXPECT_FALSE(validate(rules));
+    vehicle::Params tractor = reference_params();
+    tractor.pto_efficiency = 1.0;
+    tractor.engine = engine::with_torque_scale(tractor.engine, 3.0).value_or(tractor.engine);
+    EXPECT_FALSE(check(rules, tractor).too_much_pto_power);
+    EXPECT_TRUE(check(ntto_standard_3500(), tractor).too_much_pto_power);
+}
+
 // The reference light farm-stock tractor is built for this class.
 TEST(ClassRules, ReferenceTractorCompetesInTheNttoStandardClass) {
     const Compliance compliance = check(ntto_standard_3500(), reference_params());

@@ -25,23 +25,24 @@ bool range_valid(const Range& range) noexcept {
 // found by bisection.
 std::optional<vehicle::Params> with_torque_scale(const vehicle::Params& tractor, double scale,
                                                  const rules::ClassRules& class_rules) noexcept {
+    const std::optional<double> limit_w = class_rules.max_pto_power_w;
     const auto power_w = [&](double s) {
         vehicle::Params t = tractor;
         const auto engine = engine::with_torque_scale(tractor.engine, s);
         if (!engine) {
-            return class_rules.max_pto_power_w * 2.0;
+            return limit_w.value_or(0.0) * 2.0;
         }
         t.engine = *engine;
         return rules::pto_power_w(t);
     };
     double allowed = scale;
-    if (power_w(scale) > class_rules.max_pto_power_w) {
+    if (limit_w && power_w(scale) > *limit_w) {
         constexpr int kBisections = 60;
         double low = 0.0;
         double high = scale;
         for (int i = 0; i < kBisections; ++i) {
             const double mid = 0.5 * (low + high);
-            (power_w(mid) <= class_rules.max_pto_power_w ? low : high) = mid;
+            (power_w(mid) <= *limit_w ? low : high) = mid;
         }
         allowed = low;
     }
