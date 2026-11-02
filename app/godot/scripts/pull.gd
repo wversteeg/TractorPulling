@@ -567,7 +567,7 @@ func _show_event_end() -> void:
 				mine.append(rows.size())
 		if rows.size() < TOP:
 			rows.append(EventTexts.standing_row(line))
-	board.set_rows(rows, mine)
+	board.set_rows(rows, mine, false)
 	var prize := event.get_event_prize()
 	board.set_status("You placed %d of %d%s." % [place, info.get("pullers", 0),
 			" and won %s" % GarageScreen.euros(prize) if prize > 0 else ""])
@@ -590,7 +590,7 @@ func _show_season() -> void:
 		if int(line["puller"]) == 0:
 			mine.append(rows.size())
 		rows.append(EventTexts.season_row(line))
-	board.set_rows(rows, mine)
+	board.set_rows(rows, mine, false)
 	var status := ""
 	if over and not standings.is_empty():
 		var champion: Dictionary = standings[0]

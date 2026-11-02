@@ -1,9 +1,10 @@
 # The garage, from the start screen: the money the player has won and each
 # part of the tractor they can improve (TractorPullEvent.get_garage()),
 # with what it is now and what the next level is, in a grid of fixed
-# columns; the button with the next level's price buys it; the game asks the extension, which holds the money and the
-# class's rules. During an event, once the player has pulled, the tractor
-# stays as it is.
+# columns; the button with the next level's price buys it. The game asks
+# the extension, which holds the money and the class's rules. During an
+# event, once the player has pulled, the tractor stays as it is: the prices
+# show, their buttons greyed.
 class_name GarageScreen
 extends MenuPanel
 
@@ -69,15 +70,15 @@ func show_garage(garage: Dictionary, message: String = "") -> void:
 		var at_top: bool = String(line["next_label"]).is_empty()
 		_cell(line["name"], 0)
 		_cell("%s  (%d/%d)" % [line["label"], int(line["level"]) + 1, line["levels"]], 1)
-		_cell("top level" if at_top else "→ %s" % line["next_label"], 2,
+		_cell("top level" if at_top else "next: %s" % line["next_label"], 2,
 				DONE_COLOUR if at_top else TEXT_COLOUR)
 		var button := TouchButton.new()
 		button.text = euros(int(line["next_cost_eur"]))
 		button.font_size = BUY_FONT_SIZE
 		button.fires_on_release = true
 		button.custom_minimum_size = BUY_SIZE
-		button.visible = can_buy and not at_top
-		button.disabled = int(line["next_cost_eur"]) > money
+		button.visible = not at_top
+		button.disabled = not can_buy or int(line["next_cost_eur"]) > money
 		var index := i
 		button.tapped.connect(func() -> void: buy_requested.emit(index))
 		# In a slot of its own: a grid leaves hidden children out, so a

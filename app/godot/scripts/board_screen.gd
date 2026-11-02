@@ -64,8 +64,14 @@ func set_title(text: String) -> void:
 
 
 # `rows`: rows of the same number of columns; the rows in `highlights` are
-# the player's. A list scrolled to its end stays there, showing the newest.
-func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = []) -> void:
+# the player's. A list (`newest_last`, as the event's pulls) scrolled to its
+# end stays there, showing the newest; a table (the standings) opens at its
+# top.
+func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = [],
+		newest_last: bool = true) -> void:
+	if not newest_last:
+		_follow = false
+		_scroll.scroll_vertical = 0
 	for child in _table.get_children():
 		_table.remove_child(child)
 		child.queue_free()
@@ -78,6 +84,11 @@ func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = [])
 			cell.add_theme_color_override("font_color",
 					PLAYER_COLOUR if highlights.has(i) else TEXT_COLOUR)
 			_table.add_child(cell)
+
+
+# The list shows its last row, for tests.
+func at_end() -> bool:
+	return _at_end()
 
 
 func _at_end() -> bool:
