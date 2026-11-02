@@ -5,6 +5,8 @@ render_mode cull_disabled;
 
 uniform vec4 colour : source_color = vec4(0.9, 0.2, 0.15, 1.0);
 uniform float phase = 0.0;
+// Above 0, a black-and-white chequered flag this many squares long.
+uniform float chequers = 0.0;
 
 void vertex() {
 	float free_share = UV.x;
@@ -16,6 +18,12 @@ void vertex() {
 void fragment() {
 	// Folds catch the light: darker in the troughs.
 	float fold = 0.85 + 0.15 * sin(TIME * 5.0 - UV.x * 7.0 + phase);
-	ALBEDO = colour.rgb * fold;
+	vec3 base = colour.rgb;
+	if (chequers > 0.0) {
+		// Square checks: the cloth is two thirds as high as it is long.
+		float squares = floor(UV.x * chequers) + floor(UV.y * chequers * 2.0 / 3.0);
+		base = mod(squares, 2.0) < 0.5 ? vec3(0.95) : vec3(0.05);
+	}
+	ALBEDO = base * fold;
 	ROUGHNESS = 0.9;
 }

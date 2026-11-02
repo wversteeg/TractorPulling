@@ -129,16 +129,18 @@ const FLAGS: Array[Color] = [Color(0.85, 0.12, 0.1), Color(0.95, 0.95, 0.95),
 		Color(0.1, 0.3, 0.7), Color(0.95, 0.6, 0.1)]
 const FLAG_SIZE_M := Vector2(1.6, 1.0)
 const FLAG_POLE_M := 2.4
-# The officials' flags beside the lane: a yellow TEST flag at the start
-# line for a test pull, and in a pull-off a black-and-white chequered flag
-# where the best of the round so far stopped. Their poles' height and the
-# cloth's size, in from the lane's left edge [m].
-const OFFICIAL_FLAG_POLE_M := 2.6
-const OFFICIAL_FLAG_SIZE_M := Vector2(1.2, 0.8)
-const OFFICIAL_FLAG_OUT_M := 1.5
-const OFFICIAL_FLAG_CLOTH_M := 0.02
+# The officials' flags beside the lane, waving: a yellow TEST flag down
+# the track from the start line for a test pull, where the driver sees it
+# from the cab, and a black-and-white chequered flag at the full-pull line,
+# or in a pull-off where the best of the round so far stopped. Their poles'
+# height, the cloth's size, how far out from the lane's left edge and how
+# far down the track the TEST flag stands [m]; the chequers along it.
+const OFFICIAL_FLAG_POLE_M := 3.2
+const OFFICIAL_FLAG_SIZE_M := Vector2(1.6, 1.05)
+const OFFICIAL_FLAG_OUT_M := 2.5
+const TEST_FLAG_AT_M := 15.0
 const TEST_FLAG := Color(1.0, 0.85, 0.1)
-const CHEQUERS := 6
+const CHEQUERS := 6.0
 # How excited the crowd is before a pull, and from where along the track
 # it starts to cheer (a share of the full-pull line).
 const CALM := 0.15
@@ -813,12 +815,12 @@ func show_flags(test_pull: bool, best_m: float) -> void:
 	_test_pull = test_pull
 	_best_m = best_m
 	if not is_instance_valid(_test_flag):
-		_test_flag = _official_flag(_flag_cloth(TEST_FLAG), "TEST")
+		_test_flag = _official_flag(TEST_FLAG, 0.0, "TEST")
 	if not is_instance_valid(_best_flag):
-		_best_flag = _official_flag(_chequered_cloth(), "")
+		_best_flag = _official_flag(Color.WHITE, CHEQUERS, "")
 	var side_m := _lane_m / 2.0 + OFFICIAL_FLAG_OUT_M
 	_test_flag.visible = test_pull
-	_test_flag.position = TrackSpace.point(0.0, side_m, 0.0)
+	_test_flag.position = TrackSpace.point(TEST_FLAG_AT_M, side_m, 0.0)
 	_best_flag.visible = best_m >= 0.0
 	_best_flag.position = TrackSpace.point(maxf(best_m, 0.0), side_m, 0.0)
 
@@ -834,42 +836,33 @@ func best_flag_at_m() -> float:
 	return -_best_flag.position.z
 
 
-# A pole with `cloth` flying from its top along the track, and `text` on it.
-func _official_flag(cloth: Material, text: String) -> Node3D:
+# A pole with a waving cloth flying from its top down the track (in
+# `colour`, or chequered with `chequers` squares along it), and `text` on it
+# facing the lane.
+func _official_flag(colour: Color, chequers: float, text: String) -> Node3D:
 	var flag := Node3D.new()
-	var pole := Art.cylinder(0.03, OFFICIAL_FLAG_POLE_M, STEEL, 8, 0.4, 0.6)
+	var pole := Art.cylinder(0.035, OFFICIAL_FLAG_POLE_M, STEEL, 8, 0.4, 0.6)
 	pole.position = Vector3(0.0, OFFICIAL_FLAG_POLE_M / 2.0, 0.0)
 	flag.add_child(_quiet(pole))
-	# A thin board of cloth square to the lane, so the driver sees it, off
-	# the pole's top down the track.
-	var cloth_mesh := BoxMesh.new()
-	cloth_mesh.size = Vector3(OFFICIAL_FLAG_CLOTH_M, OFFICIAL_FLAG_SIZE_M.y,
-			OFFICIAL_FLAG_SIZE_M.x)
-	var face := Art.instance(cloth_mesh, cloth)
+	var cloth := PlaneMesh.new()
+	cloth.size = OFFICIAL_FLAG_SIZE_M
+	cloth.subdivide_width = 12
+	cloth.subdivide_depth = 4
+	cloth.orientation = PlaneMesh.FACE_Z
+	var material := ShaderMaterial.new()
+	material.shader = FLAG_SHADER
+	material.set_shader_parameter("colour", colour)
+	material.set_shader_parameter("chequers", chequers)
+	var face := Art.instance(cloth, material)
+	# Turned to face the lane; its pole edge at the pole.
+	face.rotation.y = PI / 2.0
 	face.position = Vector3(0.0, OFFICIAL_FLAG_POLE_M - OFFICIAL_FLAG_SIZE_M.y / 2.0,
 			-OFFICIAL_FLAG_SIZE_M.x / 2.0)
 	flag.add_child(_quiet(face))
 	if not text.is_empty():
-		var label := Art.label(text, 64, Color.BLACK, TEST_FLAG)
-		label.position = face.position + Vector3(OFFICIAL_FLAG_CLOTH_M, 0.0, 0.0)
+		var label := Art.label(text, 56, Color.BLACK, colour)
+		label.position = face.position + Vector3(0.12, 0.0, 0.25)
 		label.rotation.y = PI / 2.0
 		flag.add_child(label)
 	add_child(flag)
 	return flag
-
-
-static func _flag_cloth(colour: Color) -> Material:
-	return Art.material(colour, 0.9)
-
-
-# Black and white squares, sharp at any distance.
-static func _chequered_cloth() -> Material:
-	var image := Image.create(CHEQUERS, CHEQUERS * 2 / 3, false, Image.FORMAT_RGB8)
-	for x in image.get_width():
-		for y in image.get_height():
-			image.set_pixel(x, y, Color.WHITE if (x + y) % 2 == 0 else Color.BLACK)
-	var m := StandardMaterial3D.new()
-	m.albedo_texture = ImageTexture.create_from_image(image)
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	m.roughness = 0.9
-	return m

@@ -383,8 +383,12 @@ func _start_event_pull() -> void:
 			info.get("pull_off_round", 0)), info.get("name", "")]
 	_place_parking()
 	if _build(run.setup_event_pull(event, _controls_path())):
-		venue_view.show_flags(info.get("pull_kind", "") == "test",
-				best_in_pull_off(event.get_log(0), int(info.get("pull_off_round", 0))))
+		# The chequered flag: at the full-pull line, in a pull-off at the
+		# round's best so far.
+		var round := int(info.get("pull_off_round", 0))
+		var chequered_m := best_in_pull_off(event.get_log(0), round) if round > 0 \
+				else float(info.get("full_pull_m", run.get_dimensions()["full_pull_line_m"]))
+		venue_view.show_flags(info.get("pull_kind", "") == "test", chequered_m)
 		_set_screen(Screen.PULLING)
 
 
@@ -412,8 +416,9 @@ func _build(error: String) -> bool:
 		child.queue_free()
 	track_view.build(dimensions)
 	venue_view.build(dimensions)
-	# The officials' flags only for an event's pull (_start_event_pull).
-	venue_view.show_flags(false, -1.0)
+	# The chequered flag at the full-pull line; an event's pull sets the
+	# flags again (_start_event_pull).
+	venue_view.show_flags(false, float(dimensions["full_pull_line_m"]))
 	# A new pull on a prepared track: the last pull's marks are gone.
 	track_marks.build(dimensions)
 	# The tractor moves its weights to the tuning on every pull; the rest of
