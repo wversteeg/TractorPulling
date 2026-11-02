@@ -36,12 +36,16 @@ const PEDAL_RUBBER := Color(0.12, 0.12, 0.12, 0.95)
 const PEDAL_RIB := Color(0.32, 0.32, 0.32, 0.95)
 const PEDAL_RIBS := 5
 const PEDAL_RIM := 4
+# The ribs: inset this far inside the rim, this thick [px].
+const PEDAL_RIB_INSET := 6.0
+const PEDAL_RIB_WIDTH := 5.0
 
 @export var colour := Color(0.95, 0.95, 0.95, 0.85)
 @export var label := ""
 # The track filled from the start end up to the thumb (a lever's travel).
 @export var filled := false
-# Drawn as a pedal: a rounded track and a ribbed rubber pad for a thumb.
+# Drawn as a pedal (vertical sliders): a rounded track and a ribbed rubber
+# pad for a thumb.
 @export var pedal := false
 
 @export var vertical := false
@@ -63,6 +67,10 @@ var _finger := -1
 # a relative slide.
 var _grab_share := 0.0
 var _grab_value := 0.0
+# The pedal's rounded shapes, made once.
+var _pedal_track := StyleBoxFlat.new()
+var _pedal_fill := StyleBoxFlat.new()
+var _pedal_pad := StyleBoxFlat.new()
 
 
 func _ready() -> void:
@@ -154,10 +162,9 @@ func _slide_to(global_point: Vector2) -> void:
 
 func _draw() -> void:
 	if pedal:
-		var track := StyleBoxFlat.new()
-		track.bg_color = TRACK_COLOUR
-		track.set_corner_radius_all(PEDAL_CORNER)
-		draw_style_box(track, Rect2(Vector2.ZERO, size))
+		_pedal_track.bg_color = TRACK_COLOUR
+		_pedal_track.set_corner_radius_all(PEDAL_CORNER)
+		draw_style_box(_pedal_track, Rect2(Vector2.ZERO, size))
 	else:
 		draw_rect(Rect2(Vector2.ZERO, size), TRACK_COLOUR)
 	var share := inverse_lerp(start_value, end_value, value)
@@ -166,7 +173,11 @@ func _draw() -> void:
 	if vertical:
 		var thumb := size.y * THUMB_SHARE
 		var y := (1.0 - share) * (size.y - thumb)
-		if filled:
+		if filled and pedal:
+			_pedal_fill.bg_color = fill
+			_pedal_fill.set_corner_radius_all(PEDAL_CORNER)
+			draw_style_box(_pedal_fill, Rect2(0.0, y, size.x, size.y - y))
+		elif filled:
 			draw_rect(Rect2(0.0, y, size.x, size.y - y), fill)
 		_draw_band()
 		if pedal:
@@ -189,16 +200,15 @@ func _draw() -> void:
 # The pedal's pad at `rect`: black rubber with ribs across it, rimmed in
 # `rim` (the control's colour, or the held colour).
 func _draw_pedal(rect: Rect2, rim: Color) -> void:
-	var pad := StyleBoxFlat.new()
-	pad.bg_color = PEDAL_RUBBER
-	pad.set_corner_radius_all(PEDAL_CORNER)
-	pad.set_border_width_all(PEDAL_RIM)
-	pad.border_color = rim
-	draw_style_box(pad, rect)
-	var inset := rect.grow(-2.0 * PEDAL_RIM - 6.0)
+	_pedal_pad.bg_color = PEDAL_RUBBER
+	_pedal_pad.set_corner_radius_all(PEDAL_CORNER)
+	_pedal_pad.set_border_width_all(PEDAL_RIM)
+	_pedal_pad.border_color = rim
+	draw_style_box(_pedal_pad, rect)
+	var inset := rect.grow(-2.0 * PEDAL_RIM - PEDAL_RIB_INSET)
 	for i in PEDAL_RIBS:
 		var y := inset.position.y + inset.size.y * (i + 0.5) / PEDAL_RIBS
-		draw_line(Vector2(inset.position.x, y), Vector2(inset.end.x, y), PEDAL_RIB, 5.0)
+		draw_line(Vector2(inset.position.x, y), Vector2(inset.end.x, y), PEDAL_RIB, PEDAL_RIB_WIDTH)
 
 
 # The marked stretch, over the fill and under the thumb.

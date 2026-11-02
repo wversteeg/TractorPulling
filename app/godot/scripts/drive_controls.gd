@@ -13,8 +13,8 @@
 # steers, straight ahead as it is held when the pull begins. Camera, restart
 # (the same pull again) and menu (back to the start screen) buttons sit in
 # the top corner. The gas lever is drawn as a pedal, the gear buttons as a
-# shifter's keys (ShiftButton) and the camera button as a camera. All of them are multi-touch, so
-# both thumbs drive at once.
+# shifter's keys (ShiftButton) and the camera button as a camera. All of
+# them are multi-touch, so both thumbs drive at once.
 #
 # "-" steps down to neutral and, where the gearbox has it, reverse (R),
 # standing; under way it stops at the lowest gear the gearbox may go to

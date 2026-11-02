@@ -13,6 +13,11 @@ const SELECTED_COLOUR := Color(0.2, 0.45, 0.8, 0.85)
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const DISABLED_TEXT_COLOUR := Color(0.55, 0.55, 0.55)
 const FONT_SIZE := 36
+# An icon button's key: its corners' radius (a share of its smaller side)
+# and a thin light rim.
+const KEY_CORNER_SHARE := 0.18
+const KEY_BORDER := 3
+const KEY_BORDER_COLOUR := Color(1.0, 1.0, 1.0, 0.35)
 
 @export var text := ""
 @export var fires_on_release := false
@@ -33,6 +38,8 @@ const FONT_SIZE := 36
 		release()
 
 var _finger := -1
+# The rounded key icon buttons draw (draw_key), made once.
+var _key := StyleBoxFlat.new()
 
 
 func _ready() -> void:
@@ -88,3 +95,23 @@ func _draw() -> void:
 			- font.get_descent(FONT_SIZE)) / 2.0)
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE,
 			DISABLED_TEXT_COLOUR if disabled else TEXT_COLOUR)
+
+
+# The rounded key behind an icon button (ShiftButton, CameraButton), in
+# the button's colour: held, picked or at rest.
+func draw_key() -> void:
+	var colour := COLOUR
+	if _finger >= 0:
+		colour = HELD_COLOUR
+	elif selected:
+		colour = SELECTED_COLOUR
+	_key.bg_color = colour
+	_key.set_corner_radius_all(int(minf(size.x, size.y) * KEY_CORNER_SHARE))
+	_key.set_border_width_all(KEY_BORDER)
+	_key.border_color = KEY_BORDER_COLOUR
+	draw_style_box(_key, Rect2(Vector2.ZERO, size))
+
+
+# An icon's colour: greyed while the button is disabled.
+func icon_colour(colour: Color) -> Color:
+	return DISABLED_TEXT_COLOUR if disabled else colour
