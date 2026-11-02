@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <functional>
 #include <limits>
+#include <span>
 #include <vector>
 
 #include "../sled/reference_sled.hpp"
@@ -312,36 +313,33 @@ TEST(Event, TheOperatorWeighsATestPullByItsTractor) {
     rules.strong_full_pull_from = 0.8;
     rules.trouble_share = 0.6;
     const std::vector<int> order = in_order(6);
-    const auto made = [&] {
-        std::optional<Event> event = Event::create(rules, sled::testing::reference_params(), order);
+    // Puller 0 the weakest, 5 the strongest: 20 m apart.
+    const auto made = [&](std::span<const int> running_order) {
+        std::optional<Event> event =
+            Event::create(rules, sled::testing::reference_params(), running_order);
         if (!event) {
             std::abort();
         }
-        // Puller 0 the weakest, 5 the strongest: 10 m apart.
+        Event out = *event;
         for (int i = 0; i < 6; ++i) {
-            event->expect(i, 80.0 + 4.0 * i);
+            out.expect(i, 80.0 + 4.0 * i);
         }
-        return *event;
+        return out;
     };
-    Event weak = made();
+    Event weak = made(order);
     EXPECT_EQ(weak.record(82.0).change, SledChange::kNone)
         << "82 m by the weakest: the strongest would get 102 m";
-    Event weak_short = made();
+    Event weak_short = made(order);
     EXPECT_EQ(weak_short.record(66.0).change, SledChange::kLighter)
         << "the strongest would get only 86 m";
 
     std::vector<int> strongest_first = order;
     std::swap(strongest_first[0], strongest_first[5]);
-    std::optional<Event> strong =
-        Event::create(rules, sled::testing::reference_params(), strongest_first);
-    ASSERT_TRUE(strong);
-    for (int i = 0; i < 6; ++i) {
-        strong->expect(i, 80.0 + 4.0 * i);
-    }
-    EXPECT_EQ(strong->record(112.0).change, SledChange::kNone)
+    Event strong = made(strongest_first);
+    EXPECT_EQ(strong.record(112.0).change, SledChange::kNone)
         << "the strongest's full pull: the sled is right";
 
-    Event trouble = made();
+    Event trouble = made(order);
     EXPECT_EQ(trouble.record(40.0).change, SledChange::kTroubleSuspected)
         << "40 m where 80 m was expected";
     EXPECT_EQ(next_of(trouble).kind, PullKind::kTest) << "the next puller tests";
