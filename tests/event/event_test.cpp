@@ -135,6 +135,29 @@ TEST(Event, FirstPullIsATestPull) {
     EXPECT_EQ(event.standings()[0].distance_m, 95.0);
 }
 
+// A puller who stopped short of the restart line pulls again a few places
+// later; as the test puller, they hand the test to the next puller.
+TEST(Event, ADeferredPullerPullsLater) {
+    Event event = make(10);
+    EXPECT_EQ(event.defer(kDeferPlaces), kDeferPlaces);
+    EXPECT_EQ(next_of(event).puller, 1);
+    EXPECT_EQ(next_of(event).kind, PullKind::kTest) << "the next puller tests the sled";
+    for (int puller = 1; puller <= kDeferPlaces; ++puller) {
+        ASSERT_EQ(next_of(event).puller, puller);
+        event.record(95.0);
+        if (const std::optional<int> due = event.decision_due()) {
+            event.decide(true);
+        }
+    }
+    EXPECT_EQ(next_of(event).puller, 0);
+    EXPECT_EQ(next_of(event).kind, PullKind::kCompetition);
+    // At the end of the order there is nowhere further back to go.
+    Event last = make(2);
+    last.record(80.0);
+    EXPECT_EQ(last.defer(kDeferPlaces), 0);
+    EXPECT_EQ(next_of(last).puller, 1);
+}
+
 // A disqualified test pull says nothing about the sled: it stays, the next
 // puller tests it, and the test puller keeps 0 m without a decision.
 TEST(Event, DisqualifiedTestPullLeavesTheSled) {

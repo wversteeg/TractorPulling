@@ -106,6 +106,12 @@ public:
     /// (get_log()), or {} if no pull of the player's is due or the run is
     /// not finished.
     godot::Dictionary record_pull(const godot::Ref<TractorPullRun>& run);
+    /// The player's pull stopped short of the restart line: instead of
+    /// recording it, they pull again event::kDeferPlaces later (field::
+    /// LiveEvent::defer_player). The log entry for the move, or {} if the
+    /// player is not due or could not move back (the last to pull, a
+    /// pull-off).
+    godot::Dictionary move_back();
     /// What a sensible test puller would do, while the player decides.
     [[nodiscard]] bool get_suggested_keep() const;
     /// The player's keep (true) or re-pull (false), while it is due.

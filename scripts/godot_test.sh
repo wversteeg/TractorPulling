@@ -5,7 +5,8 @@
 # binding passes the controls and the time to tp::session unchanged. The
 # GDScript also checks the binding's edges (run_test.gd), and the pull
 # scene draws the run where it is (scene_test.gd), takes the touch controls
-# (touch_test.gd) and plays an event's flow (flow_test.gd).
+# (touch_test.gd), plays an event's flow (flow_test.gd) and offers a short
+# pull's restart (restart_test.gd).
 #
 #   scripts/godot_test.sh <godot binary> [build directory, default build/godot]
 #
@@ -122,6 +123,8 @@ play --fixed-fps 60 --script res://tests/flow_test.gd
 # Headless: drawn by a software renderer its thousands of frames would take
 # far too long.
 play_headless --fixed-fps 15 --script res://tests/turn_test.gd
+# A pull stopped short of 30 m: the restart choice.
+play_headless --fixed-fps 30 --script res://tests/restart_test.gd
 
 play --script res://tests/run_test.gd -- --gear="${gear}" --stick="${stick}" \
     --brake-right="${brake_right}"

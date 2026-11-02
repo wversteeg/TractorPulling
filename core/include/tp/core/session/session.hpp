@@ -196,6 +196,12 @@ public:
     [[nodiscard]] const std::optional<run::Result>& result() const noexcept {
         return turn_.run.result;
     }
+    /// The pull stopped short of turn::kRestartBefore_m: restart() may pull
+    /// it again from the start.
+    [[nodiscard]] bool may_restart() const noexcept { return turn::may_restart(turn_); }
+    /// The pull again from the start line (turn::restart), the controls'
+    /// assist as at the start; nothing unless may_restart().
+    void restart() noexcept;
     /// The turn is over: the pull ended (at the line), or the tractor
     /// stands in the parking again.
     [[nodiscard]] bool over() const noexcept { return turn_.stage == turn::Stage::kParked; }
@@ -215,6 +221,8 @@ private:
     Session(const pull::Model& model, const Setup& setup, const FixedStepClock& clock) noexcept;
 
     void step(const Controls& controls) noexcept;
+    /// The output and both snapshots as the state stands, before any step.
+    void show_at_rest() noexcept;
     [[nodiscard]] Snapshot snapshot() const noexcept;
 
     pull::Model model_;

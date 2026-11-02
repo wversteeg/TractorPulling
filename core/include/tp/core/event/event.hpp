@@ -12,6 +12,9 @@ namespace tp::event {
 
 inline constexpr int kMaxPullers = 32;
 inline constexpr int kMaxPullOffRounds = 5;
+/// How many places later a puller who stopped short of the restart line
+/// pulls again, if they choose to (Event::defer).
+inline constexpr int kDeferPlaces = 6;
 
 /// A pulling class's competition rules (after the NTTO's) and the sled
 /// operator's rule of thumb. Distances are where the sled stops, measured
@@ -144,6 +147,14 @@ public:
     /// 0 m (no keep-or-re-pull).
     Outcome record_disqualified() noexcept;
 
+    /// Moves the pull next() names `places` later in the running order (at
+    /// most to its end), for a puller who stopped short of the restart line
+    /// and takes a later turn instead (turn::kRestartBefore_m). A test
+    /// pull's puller hands the test to the pull that is now next. Once per
+    /// puller, not in a pull-off; returns the places moved.
+    int defer(int places) noexcept;
+    /// Whether defer() would move the next pull at all.
+    [[nodiscard]] bool may_defer() const noexcept;
     /// The test puller whose keep-or-re-pull decision is due.
     [[nodiscard]] std::optional<int> decision_due() const noexcept;
     /// What a sensible puller would choose: keep a full pull, or a test pull
@@ -169,6 +180,8 @@ private:
         bool may_keep = false;
         int test_pull_number = 0;
         bool decision_pending = false;
+        /// Moved later in the order once already (defer()).
+        bool deferred = false;
     };
 
     static constexpr std::size_t kMaxQueue = std::size_t{3} * kMaxPullers;

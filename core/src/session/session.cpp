@@ -128,8 +128,13 @@ Session::Session(const pull::Model& model, const Setup& setup, const FixedStepCl
       assist_(),
       input_(),
       output_() {
+    show_at_rest();
+}
+
+void Session::show_at_rest() noexcept {
     // Before the first step the weight box stands where it starts, and the
     // tractor stands on its tires at rest.
+    output_ = {};
     output_.sled.box_ahead_of_wheels_m = model_.sled().box_start_ahead_of_wheels_m;
     output_.tractor.axle_loads = chassis::axle_loads_at_rest(model_.tractor().params().chassis);
     current_ = snapshot();
@@ -149,6 +154,16 @@ Frame Session::advance(const Controls& controls, std::int64_t elapsed_ns) noexce
         current_ = snapshot();
     }
     return {.steps = time.steps, .dropped_ns = time.dropped_ns};
+}
+
+void Session::restart() noexcept {
+    if (!may_restart()) {
+        return;
+    }
+    turn::restart(turn_, model_);
+    assist_ = {};
+    input_ = {};
+    show_at_rest();
 }
 
 void Session::step(const Controls& controls) noexcept {

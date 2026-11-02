@@ -187,6 +187,32 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     return outcome;
 }
 
+bool Event::may_defer() const noexcept {
+    const std::optional<Pull> pull = next();
+    // Not the last to pull: there is nowhere later to go.
+    return pull && pull->kind != PullKind::kPullOff && head_ + 1 < queue_size_ &&
+           !entries_[static_cast<std::size_t>(pull->puller)].deferred;
+}
+
+int Event::defer(int places) noexcept {
+    const std::optional<Pull> pull = next();
+    if (!may_defer() || !pull || places <= 0) {
+        return 0;
+    }
+    entries_[static_cast<std::size_t>(pull->puller)].deferred = true;
+    // queue_size_ - 1 is safe: next() named a pull, so the queue has one.
+    const std::size_t to = std::min(head_ + static_cast<std::size_t>(places), queue_size_ - 1);
+    for (std::size_t i = head_; i < to; ++i) {
+        queue_[i] = queue_[i + 1];
+    }
+    queue_[to] = *pull;
+    if (pull->kind == PullKind::kTest && to > head_) {
+        queue_[to].kind = PullKind::kCompetition;
+        retest_next();
+    }
+    return static_cast<int>(to - head_);
+}
+
 void Event::retest_next() noexcept {
     if (head_ < queue_size_ && queue_[head_].kind == PullKind::kCompetition) {
         queue_[head_].kind = PullKind::kTest;
