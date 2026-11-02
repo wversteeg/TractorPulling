@@ -208,17 +208,20 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 # after; a tap dismisses it to the view picked; never from the cab. In
 # reverse the cab camera looks back, and ahead again after.
 func _check_hitch_camera(cameras: CameraRig) -> void:
-	var near := {"stage": "to_the_sled", "hitch_to_hook_m": 3.0, "hitch_along_m": 2.0,
+	var near := {"stage": "to_the_sled", "hitch_to_hook_m": 2.0, "hitch_along_m": 2.0,
 			"hitch_across_m": 0.3, "gear": -1}
-	_expect(_pull.framing_hitch(near), "backing up to the hook: framed")
+	_expect(_pull.framing_hitch(near, 1.15), "the last metre to the hook: framed")
+	near["hitch_to_hook_m"] = 4.0
+	_expect(not _pull.framing_hitch(near, 1.15), "further out: the view behind to steer by")
+	near["hitch_to_hook_m"] = 2.0
 	near["gear"] = 3
 	near["hitch_across_m"] = 4.0
-	_expect(not _pull.framing_hitch(near), "passing beside the sled: not framed")
+	_expect(not _pull.framing_hitch(near, 1.15), "passing beside the sled: not framed")
 	near["hitch_along_m"] = -1.0
 	near["gear"] = -1
-	_expect(not _pull.framing_hitch(near), "behind the hook: not framed")
-	_expect(_pull.framing_hitch({"stage": "releasing", "gear": -1})
-			and not _pull.framing_hitch({"stage": "releasing", "gear": 2}),
+	_expect(not _pull.framing_hitch(near, 1.15), "behind the hook: not framed")
+	_expect(_pull.framing_hitch({"stage": "releasing", "gear": -1}, 1.15)
+			and not _pull.framing_hitch({"stage": "releasing", "gear": 2}, 1.15),
 			"backing off in R after the pull: framed")
 
 	var picked := cameras.view
