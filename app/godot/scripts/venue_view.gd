@@ -161,6 +161,9 @@ var _fields: Array[Vector3] = []
 var _random := RandomNumberGenerator.new()
 var _test_flag: Node3D = null
 var _best_flag: Node3D = null
+# What the flags show (show_flags), kept for a rebuild.
+var _test_pull := false
+var _best_m := -1.0
 var _lane_m := 12.0
 # The parking laid out now (PARKINGS), and the node that draws it.
 var _parking_layout := 0
@@ -200,6 +203,8 @@ func build(d: Dictionary) -> void:
 		_add_parking(_parking, lane_m)
 		_parking_built = _parking_layout
 	_lane_m = lane_m
+	# A rebuild freed the flags: up again as they were.
+	show_flags(_test_pull, _best_m)
 	if full_pull_m != _full_pull_m:
 		if _line != null:
 			_line.free()
@@ -805,6 +810,8 @@ static func _quiet_all(root: Node) -> void:
 # The test flag at the start line for a test pull, and the chequered flag
 # at `best_m` down the track in a pull-off (none below 0).
 func show_flags(test_pull: bool, best_m: float) -> void:
+	_test_pull = test_pull
+	_best_m = best_m
 	if not is_instance_valid(_test_flag):
 		_test_flag = _official_flag(_flag_cloth(TEST_FLAG), "TEST")
 	if not is_instance_valid(_best_flag):
