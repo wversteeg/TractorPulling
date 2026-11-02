@@ -253,6 +253,9 @@ int LiveEvent::defer_player() noexcept {
         return 0;
     }
     LogEntry* entry = next_entry();
+    if (entry == nullptr) {
+        return moved;
+    }
     entry->pull = *pull;
     entry->moved_back = moved;
     entry->full_pull_m = event_.full_pull_m();
