@@ -134,13 +134,13 @@ func _play() -> void:
 			ahead_of_the_tractor = ahead_of_the_tractor and official_m >= 80.0 - 1e-3 \
 					and official_m <= full_pull_m + 1e-3 \
 					and (official_m > float(s["tractor_x_m"]) or official_m >= full_pull_m - 1e-3)
-		if stage == "pulling" and float(s["chain_tension_n"]) >= SledView.LAMP_TENSION_N:
+		if stage == "pulling" and float(s["chain_tension_n"]) >= sled.lamp_tension_n:
 			lamp_green = lamp_green and sled.lamp_shown() == SledView.LAMP_GREEN
 		if stage == "releasing":
 			lamp_red = lamp_red and sled.lamp_shown() == SledView.LAMP_RED
 		if stage == "to_the_parking" and float(s["sled_speed_m_s"]) < 0.0:
 			# The sled drives back: the pull's distance stays on the boards.
-			distance_held = distance_held and hud.get("_held_m") == run.get_result()["distance_m"]
+			distance_held = distance_held and hud.distance_shown() == run.get_result()["distance_m"]
 		if stage == "releasing":
 			red_to_stop = red_to_stop and flagman.colour_name() == "red" and flagman.raised() \
 					and end_flagman.colour_name() == "red" and end_flagman.raised() \

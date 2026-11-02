@@ -76,6 +76,8 @@ const char* describe(session::SetupError error) {
             return "invalid pro controls";
         case session::SetupError::kParking:
             return "the parking must be beside the track, out of the lane";
+        case session::SetupError::kFenders:
+            return "the sled's fenders stop this tractor out of the chain's reach";
         case session::SetupError::kMaxStepsPerFrame:
             return "invalid steps per frame";
     }
@@ -312,6 +314,8 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;
     out["full_pull_line_m"] = rules.full_pull_line_m;
+    out["fender_behind_hook_m"] = setup_->sled.fenders.behind_hook_m;
+    out["take_up_tension_n"] = turn::kTakeUpTension_n;
     const engine::Params& engine = tractor.engine;
     out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
     out["rated_omega_rad_s"] = engine.rated_omega_rad_s;

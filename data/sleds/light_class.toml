@@ -39,6 +39,14 @@ relaxation_length_m = 0.55           # about the wheel's radius
 ahead_of_wheels_m = 4.0               # on a drawbar ahead of the pan, fenders either side
 height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
 
+# Rubber fenders either side of the drawbar: a tractor backing up stops
+# with its rear tires against them (their faces 0.1 m behind the hook),
+# with its hitch within 1 m of the sled's line, up to 1 m past them.
+[sled.fenders]
+behind_hook_m = 0.1
+half_span_m = 1.0
+depth_m = 1.0
+
 [sled.weight_box]
 mass_kg = 1500.0
 start_ahead_of_wheels_m = 0.0        # over the rear wheels

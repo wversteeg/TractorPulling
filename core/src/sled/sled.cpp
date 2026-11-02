@@ -140,6 +140,12 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (!makes_heavier(params.pull_off_step, params.knives)) {
         return ParamError::kPullOffStepNotHeavier;
     }
+    const Fenders& fenders = params.fenders;
+    if (!std::isfinite(fenders.behind_hook_m) || !std::isfinite(fenders.half_span_m) ||
+        !std::isfinite(fenders.depth_m) || fenders.behind_hook_m < 0.0 ||
+        fenders.half_span_m < 0.0 || (fenders.half_span_m > 0.0 && fenders.depth_m <= 0.0)) {
+        return ParamError::kFendersInvalid;
+    }
     return std::nullopt;
 }
 

@@ -173,6 +173,10 @@ func hold_distance(distance_m: float) -> void:
 	_held_m = distance_m
 
 
+func distance_shown() -> float:
+	return _held_m
+
+
 # `title` names the pull ("" none), `pro` whether to show the clutch.
 func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	_pro = pro

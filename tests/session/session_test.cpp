@@ -111,6 +111,20 @@ TEST(Session, ValidatesItsSetup) {
     setup = reference_setup(Layout::kPro);
     setup.max_steps_per_frame = 0;
     EXPECT_EQ(validate(setup), SetupError::kMaxStepsPerFrame);
+
+    // Fenders that would stop the hitch behind the hook: the chain could
+    // never go on in a whole turn. The pull alone starts hooked on.
+    setup = reference_setup(Layout::kPro);
+    setup.sled.fenders.behind_hook_m = 2.0;
+    EXPECT_FALSE(validate(setup));
+    setup.parking = turn::Parking{.x_m = -15.0, .y_m = -10.0};
+    EXPECT_EQ(validate(setup), SetupError::kFenders);
+    setup.sled.fenders.half_span_m = 0.0;
+    EXPECT_FALSE(validate(setup)) << "no fenders";
+
+    setup = reference_setup(Layout::kPro);
+    setup.sled.fenders.depth_m = 0.0;
+    EXPECT_EQ(validate(setup), SetupError::kSled);
 }
 
 // The easy layout's parameters only matter when the easy layout is played.

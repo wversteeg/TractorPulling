@@ -34,6 +34,17 @@ struct Knives {
 /// (more when they spin, even with the sled standing still) and spills off
 /// to the sides as the sled moves, so over a pull it builds up and then
 /// levels off.
+/// Rubber fenders either side of the hook, which a tractor backing up to
+/// the sled stops against with its rear tires (turn::fender_stop_m): their
+/// faces this far behind the hook, stopping a hitch this far either side of
+/// the sled's line and up to this deep past the faces [m]. No span, no
+/// fenders.
+struct Fenders {
+    double behind_hook_m = 0.0;
+    double half_span_m = 0.0;
+    double depth_m = 0.0;
+};
+
 struct Berm {
     /// Share of the thrown soil that lands in front of the pan.
     double collected_share = 0.0;
@@ -128,6 +139,7 @@ struct Params {
     /// One pull-off step, about 5 m of pull on this class's sled; a pull-off
     /// may take several.
     Adjustment pull_off_step;
+    Fenders fenders;
 };
 
 enum class ParamError : std::uint8_t {
@@ -153,6 +165,7 @@ enum class ParamError : std::uint8_t {
     kChainInvalid,
     /// The pull-off step would not make the sled heavier.
     kPullOffStepNotHeavier,
+    kFendersInvalid,
 };
 
 inline constexpr int kMaxWheels = 8;
@@ -286,9 +299,10 @@ inline constexpr double kDriveBack_m_s = 2.0;
 /// pull, the sled standing, before it drives back [m/s].
 inline constexpr double kBoxBack_m_s = 0.75;
 
-/// The sled after a pull, the chain off: the operator lowers the wheels
-/// (the push-down off) and runs the weight box back to its start at
-/// kBoxBack_m_s, the sled standing, so it drives back light; then it drives
+/// The sled after a pull, the chain off: the operator runs the weight box
+/// back to its start at kBoxBack_m_s, the sled standing, so it drives back
+/// light (the push-down eases off with the box, and at once past where the
+/// box stops); then it drives
 /// itself back, the pan lifted (the berm is dropped: the track keeps no
 /// soil), straight towards its start at `start_x_m` on the centre line at
 /// kDriveBack_m_s. Returns true once it stands there, straight, ready for

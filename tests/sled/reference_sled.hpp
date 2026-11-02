@@ -38,6 +38,7 @@ inline Params reference_params() {
                           .knives = 1,
                           .knife_depth_m = 0.0,
                           .pushdown_earlier_m = 0.0},
+        .fenders = {.behind_hook_m = 0.1, .half_span_m = 1.0, .depth_m = 1.0},
     };
 }
 

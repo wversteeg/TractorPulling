@@ -149,8 +149,9 @@ TEST(Turn, TheFendersStopATractorBackingIntoTheSled) {
         step(beside, model, kRules, kParking, {}, kDt_s);
         return beside.run.pull.tractor.chassis.velocity_m_s == 0.0;
     };
-    EXPECT_FALSE(held(stop_m - 0.05, 1.1 * kFenderHalfSpan_m)) << "beside the sled";
-    EXPECT_FALSE(held(stop_m - 1.1 * kFenderDepth_m, 0.0)) << "past the fenders";
+    const sled::Fenders& fenders = model.sled().fenders;
+    EXPECT_FALSE(held(stop_m - 0.05, 1.1 * fenders.half_span_m)) << "beside the sled";
+    EXPECT_FALSE(held(stop_m - 1.1 * fenders.depth_m, 0.0)) << "past the fenders";
 }
 
 // The driver's side of the hook-up: creep forward in 1st until the slack

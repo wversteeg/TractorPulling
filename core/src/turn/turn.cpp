@@ -86,13 +86,16 @@ bool parked(const pull::Model& model, const pull::State& state, const Parking& p
 }
 
 // Backing up to the sled, the rear tires stop against its fenders: the
-// tractor stands there, as against a wall, its wheels free to spin.
+// tractor stands there, as against a wall. Only its speed along is
+// stopped: the wheels may spin on, and a turn in progress is not.
 void stop_at_the_fenders(pull::State& state, const pull::Model& model) noexcept {
+    const sled::Fenders& fenders = model.sled().fenders;
     const HitchToHook gap = hitch_to_hook(model, state);
     const double stop_m = fender_stop_m(model);
     chassis::State& body = state.tractor.chassis;
-    if (body.velocity_m_s >= 0.0 || std::abs(gap.across_m) > kFenderHalfSpan_m ||
-        gap.along_m >= stop_m || gap.along_m < stop_m - kFenderDepth_m) {
+    if (fenders.half_span_m <= 0.0 || body.velocity_m_s >= 0.0 ||
+        std::abs(gap.across_m) > fenders.half_span_m || gap.along_m >= stop_m ||
+        gap.along_m < stop_m - fenders.depth_m) {
         return;
     }
     const math::SinCos sled = math::sin_cos_any(state.sled.heading_rad);
@@ -173,7 +176,7 @@ double fender_stop_m(const pull::Model& model) noexcept {
     // The rear tires' backs are a tire's radius behind the axle, the hitch
     // its own distance behind it.
     return tractor.rear_tire.size.radius_m - tractor.chassis.hitch_behind_rear_axle_m -
-           kFenderBehindHook_m;
+           model.sled().fenders.behind_hook_m;
 }
 
 bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {

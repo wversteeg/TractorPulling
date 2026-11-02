@@ -2,8 +2,8 @@
 # rear wheels to the hook, the pan sliding on the track up front, the weight
 # box (an open tray stacked with weights) riding forward along the rails as
 # the sled advances, the hook on a drawbar ahead of the pan with a rubber
-# fender either side (the tractor's rear tires stop against them:
-# turn::kFenderBehindHook_m), and the operator's platform at the back with
+# fender either side (the tractor's rear tires stop against them: the
+# sled's fenders, sled::Fenders), and the operator's platform at the back with
 # a lamp on a mast. The push-down shows: as it comes on, the rear wheels are
 # lifted off the track (drawn a little higher than the few centimetres a
 # real sled lifts them, to be seen from the tractor's seat). The lamp is
@@ -21,13 +21,9 @@ const WEIGHT := Color(0.28, 0.29, 0.31)
 const LAMP_GREEN := Color(0.2, 0.9, 0.25)
 const LAMP_RED := Color(1.0, 0.15, 0.1)
 const LAMP_DARK := Color(0.25, 0.25, 0.25)
-# The chain pulls on the hook: at least the tension that takes up the slack
-# (turn::kTakeUpTension_n) [N].
-const LAMP_TENSION_N := 1000.0
-# The fenders: their faces this far behind the hook (turn::
-# kFenderBehindHook_m), either side of the sled's line, where a tractor's
-# rear tires meet them; their size [m].
-const FENDER_BEHIND_HOOK_M := 0.1
+# The fenders: either side of the sled's line, where a tractor's rear tires
+# meet them; their size [m]. How far behind the hook their faces are comes
+# with the run's sizes.
 const FENDER_SIDE_M := 0.95
 const FENDER_SIZE_M := Vector3(0.55, 0.6, 0.18)
 const RUBBER := Color(0.06, 0.06, 0.06)
@@ -60,6 +56,9 @@ var _wheel_angle := 0.0
 # The berm: loose soil heaped in front of the pan's lip.
 var _berm := MeshInstance3D.new()
 var _berm_ahead_m := 1.0
+# The chain pulls on the hook: at least the tension that takes up the slack
+# (the run's take_up_tension_n) [N].
+var lamp_tension_n := 1000.0
 
 
 # As TractorView's: parts never added to the tree are freed here.
@@ -106,7 +105,8 @@ func build(d: Dictionary) -> void:
 	add_child(ring)
 	_hook.position = TrackSpace.point(hook_ahead_m, 0.0, hook_height_m)
 	add_child(_hook)
-	_add_fenders(hook_ahead_m, hook_height_m)
+	lamp_tension_n = d["take_up_tension_n"]
+	_add_fenders(hook_ahead_m, hook_height_m, d["fender_behind_hook_m"])
 
 	# The pan: a wide steel plate on the track, its leading edge turned up,
 	# hung from the rails.
@@ -149,8 +149,8 @@ func build(d: Dictionary) -> void:
 
 # A cross beam behind the hook, and on each end a rubber fender facing the
 # tractor, at its rear tires' height.
-func _add_fenders(hook_ahead_m: float, hook_height_m: float) -> void:
-	var face_m := hook_ahead_m - FENDER_BEHIND_HOOK_M
+func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: float) -> void:
+	var face_m := hook_ahead_m - behind_hook_m
 	var beam_m := face_m - FENDER_SIZE_M.z - 0.06
 	var beam := _painted(Vector3(2.0 * FENDER_SIDE_M + FENDER_SIZE_M.x, 0.12, 0.12), PAINT_DARK)
 	beam.position = TrackSpace.point(beam_m, 0.0, hook_height_m)
@@ -287,16 +287,16 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 		spin.rotation.x = wrapf(_wheel_angle, -PI, PI)
 	_show_pushdown(s["pushdown"])
 	_show_berm(s["berm_m3"])
-	_show_lamp(lamp_colour(s))
+	_show_lamp(lamp_colour(s, lamp_tension_n))
 
 
 # The lamp: green while the chain pulls on the hook (taking up the slack,
-# waiting for the flag, the pull), red once the pull is over until the sled
-# drives back, off otherwise.
-static func lamp_colour(s: Dictionary) -> Color:
+# waiting for the flag, the pull) with at least `tension_n`, red once the
+# pull is over until the sled drives back, off otherwise.
+static func lamp_colour(s: Dictionary, tension_n: float) -> Color:
 	match s.get("stage", "pulling"):
 		"taking_up_slack", "waiting_for_the_flag", "pulling":
-			if float(s.get("chain_tension_n", 0.0)) >= LAMP_TENSION_N:
+			if float(s.get("chain_tension_n", 0.0)) >= tension_n:
 				return LAMP_GREEN
 		"releasing", "to_the_parking", "parked":
 			if float(s.get("sled_speed_m_s", 0.0)) >= 0.0 and not bool(s.get("sled_back", false)):
