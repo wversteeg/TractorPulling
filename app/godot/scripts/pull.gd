@@ -92,12 +92,17 @@ const FLAGMAN_X_M := 9.0
 const FLAGMAN_IN_M := 1.5
 const END_FLAGMAN_FROM_M := 80.0
 const END_FLAGMAN_AHEAD_M := 12.0
-# Backing up to the sled, the cameras frame the hitch and the hook from
-# this close [m], and how fast they turn to them and back [1/s].
-const HITCH_FRAMING_M := 12.0
+# The side view of the hitch only the last metre before the chain goes on:
+# further out the driver needs the view behind to steer [m].
+const HITCH_SIDE_VIEW_M := 1.0
+# Faster than this backwards, the cameras that follow the tractor's
+# heading look the way it drives; this fast forwards, ahead again [m/s].
+const DRIVING_BACK_M_S := 0.2
 # Closer to the sled's line than this the hitch is lined up with the hook,
 # not passing beside the sled [m].
 const HITCH_ON_LINE_M := 2.0
+# How fast the cameras turn to frame the hitch and the hook, and back
+# [1/s].
 const FRAMING_RATE_PER_S := 2.0
 # Off the hitch, the chain lies on the track this share of its length.
 const CHAIN_LYING_SHARE := 0.9
@@ -158,6 +163,9 @@ var _framing := Vector3.ZERO
 var _ended_s := 0.0
 # The HUD shows why the pull ended.
 var _ended_shown := false
+# Driving backwards off the chain: the following cameras look back
+# (_follow_heading).
+var _driving_back := false
 # The pull stopped short of the restart line: the choice is shown (and the
 # run waits), or was made; the player chose to pull again later.
 var _choosing := false
@@ -444,6 +452,7 @@ func _build(error: String) -> bool:
 	restart_screen.visible = false
 	_show(0.0)
 	_framing = Vector3.ZERO
+	_driving_back = false
 	cameras.follow(tractor_view.global_position, 0.0, false,
 			float(_snapshot.get("tractor_heading_rad", 0.0)), _close_behind())
 	return true
@@ -534,11 +543,11 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
-	cameras.show_hitch(framing_hitch(_snapshot), float(_snapshot.get("hitch_to_hook_m", 0.0)),
+	cameras.show_hitch(framing_hitch(_snapshot, _chain_m),
+			float(_snapshot.get("hitch_to_hook_m", 0.0)),
 			float(_snapshot.get("sled_heading_rad", 0.0)))
 	cameras.set_reversing(int(_snapshot.get("gear", 0)) < 0)
-	cameras.follow(_camera_target(delta), delta, true,
-			float(_snapshot.get("tractor_heading_rad", 0.0)), _close_behind())
+	cameras.follow(_camera_target(delta), delta, true, _follow_heading(), _close_behind())
 
 
 # What the cameras follow: the tractor, or while the hitch meets the hook
@@ -547,26 +556,47 @@ func _process(delta: float) -> void:
 # offset from the tractor is eased, so the tractor itself is not lagged.
 func _camera_target(delta: float) -> Vector3:
 	var wanted := Vector3.ZERO
-	if framing_hitch(_snapshot):
+	if framing_hitch(_snapshot, _chain_m):
 		var middle := (tractor_view.hitch_position() + sled_view.hook_position()) / 2.0
 		wanted = middle - tractor_view.global_position
 	_framing = _framing.lerp(wanted, 1.0 - exp(-FRAMING_RATE_PER_S * delta))
 	return tractor_view.global_position + _framing
 
 
-# The hitch meets the hook: backing up to the sled close to it, or after
-# the pull backing off in reverse to release the chain.
-static func framing_hitch(s: Dictionary) -> bool:
+# The hitch meets the hook: backing up to the sled, the last metre before
+# the chain (`chain_m` long) goes on, or after the pull backing off in
+# reverse to release the chain.
+static func framing_hitch(s: Dictionary, chain_m: float) -> bool:
 	match s.get("stage", ""):
 		"to_the_sled":
-			# In front of the hook, backing towards it or on its line: not
-			# driving past it beside the sled.
-			return float(s["hitch_to_hook_m"]) < HITCH_FRAMING_M \
+			# In front of the hook on its line, not driving past it beside
+			# the sled.
+			return float(s["hitch_to_hook_m"]) < chain_m + HITCH_SIDE_VIEW_M \
 					and float(s["hitch_along_m"]) > 0.0 \
-					and (int(s["gear"]) < 0 or absf(float(s["hitch_across_m"])) < HITCH_ON_LINE_M)
+					and absf(float(s["hitch_across_m"])) < HITCH_ON_LINE_M
 		"releasing":
 			return int(s["gear"]) < 0
 	return false
+
+
+# The heading the following cameras look along: the tractor's, turned
+# round while it drives backwards off the chain (backing up to the sled, or
+# into its bay), so they look the way it goes.
+func _follow_heading() -> float:
+	_driving_back = driving_back(_snapshot, _driving_back)
+	var heading := float(_snapshot.get("tractor_heading_rad", 0.0))
+	return heading + PI if _driving_back else heading
+
+
+# Whether the tractor drives backwards off the chain, from the snapshot and
+# whether it did before: faster than DRIVING_BACK_M_S backwards it does,
+# this fast forwards it does not, and between it keeps what it was; on the
+# chain never.
+static func driving_back(s: Dictionary, before: bool) -> bool:
+	var speed := float(s.get("tractor_speed_m_s", 0.0))
+	if s.get("chain_hooked", true) or speed > DRIVING_BACK_M_S:
+		return false
+	return before or speed < -DRIVING_BACK_M_S
 
 
 # What the close camera stands behind: the sled's rear while it is on the
