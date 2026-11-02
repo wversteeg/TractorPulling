@@ -1,6 +1,7 @@
 #include "tp/core/controls/controls.hpp"
 
 #include "tp/core/clutch/clutch.hpp"
+#include "tp/core/math/trig.hpp"
 
 #include <algorithm>
 #include <array>
@@ -144,8 +145,13 @@ double steering_share_at_speed(const vehicle::Params& tractor, double speed_m_s,
     if (!side_accel_m_s2 || speed_sq <= 0.0) {
         return 1.0;
     }
-    const double angle_rad = std::atan(tractor.chassis.wheelbase_m * *side_accel_m_s2 / speed_sq);
-    return std::min(angle_rad / tractor.steering.max_angle_rad, 1.0);
+    // The turn's curvature is tan(angle) / wheelbase: the share of full
+    // lock's tan that asks for the limit. tan grows faster than its angle,
+    // so that share of the angle asks for no more. The core's own sine and
+    // cosine, not the platform's atan: the same bits everywhere.
+    const math::SinCos lock = math::sin_cos_any(tractor.steering.max_angle_rad);
+    const double wanted_tan = tractor.chassis.wheelbase_m * *side_accel_m_s2 / speed_sq;
+    return std::min(wanted_tan * lock.cos / lock.sin, 1.0);
 }
 
 vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& state,

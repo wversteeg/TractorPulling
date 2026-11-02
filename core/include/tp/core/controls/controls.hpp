@@ -137,9 +137,9 @@ constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept
 }
 
 /// How much of the steering's range the control turns the wheels through at
-/// `speed_m_s`, 0 to 1: all of it slowly; faster, only as far as asks for
-/// `side_accel_m_s2` of sideways acceleration on a steady turn (the turn's
-/// radius wheelbase / tan(angle)). Without a limit, all of it.
+/// `speed_m_s`, 0 to 1: all of it slowly; faster, a share that asks for at
+/// most `side_accel_m_s2` of sideways acceleration on a steady turn (the
+/// turn's radius wheelbase / tan(angle)). Without a limit, all of it.
 [[nodiscard]] double steering_share_at_speed(const vehicle::Params& tractor, double speed_m_s,
                                              std::optional<double> side_accel_m_s2) noexcept;
 
