@@ -18,6 +18,7 @@ constexpr std::string_view kTwoClasses = R"(
 [career]
 name = "Test path"
 promotion_place = 1
+min_seasons = 2
 
 [[career.classes]]
 name = "Low"
@@ -57,6 +58,7 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
     const CareerDefinition& career = result.value();
     EXPECT_EQ(career.name, "Tractor path");
     EXPECT_EQ(career.ladder.promotion_place, 1);
+    EXPECT_EQ(career.ladder.min_seasons, 2);
     ASSERT_EQ(career.ladder.rungs, 3);
     ASSERT_EQ(career.rungs.size(), 3U);
     for (const CareerRung& rung : career.rungs) {
@@ -92,6 +94,13 @@ TEST(CareerLoader, RefusesAPromotionPlaceNoFieldHas) {
               std::string::npos);
 }
 
+TEST(CareerLoader, RefusesMinimumSeasonsOutOfRange) {
+    EXPECT_NE(error_of(with("min_seasons = 2", "min_seasons = 0")).find("career.min_seasons"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("min_seasons = 2", "min_seasons = 11")).find("career.min_seasons"),
+              std::string::npos);
+}
+
 TEST(CareerLoader, RefusesMissingFields) {
     EXPECT_NE(error_of(with("name = \"Test path\"\n", "")).find("career.name"), std::string::npos);
     EXPECT_NE(error_of(with("promotion_place = 1\n", "")).find("career.promotion_place"),
@@ -109,7 +118,7 @@ TEST(CareerLoader, RefusesMissingFields) {
 }
 
 TEST(CareerLoader, RefusesNoClassesAndTooManyRungs) {
-    const std::string none = "[career]\nname = \"x\"\npromotion_place = 1\n";
+    const std::string none = "[career]\nname = \"x\"\npromotion_place = 1\nmin_seasons = 1\n";
     EXPECT_NE(error_of(none).find("career.classes"), std::string::npos);
     std::string many = none;
     for (int i = 0; i <= career::kMaxRungs; ++i) {

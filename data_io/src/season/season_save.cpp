@@ -102,9 +102,13 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
         career.class_name = reader.text("career.class");
         career.unlocked_class = reader.text("career.unlocked");
     }
+    std::int64_t seasons = 0;
+    std::optional<bool> title = false;
     if (version > kBeforeTheLevels) {
         career.level_name = reader.text("career.level");
         career.unlocked_level = reader.text("career.unlocked_level");
+        seasons = reader.integer("career.seasons_on_level");
+        title = root.at_path("career.title_on_level").value<bool>();
     }
     if (reader.error()) {
         return reader.error();
@@ -112,6 +116,15 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
     if (career.money_eur < 0) {
         return detail::make_error(source, "career.money_eur", "must be 0 or more");
     }
+    constexpr std::int64_t kMaxSeasons = 1000;
+    if (seasons < 0 || seasons > kMaxSeasons) {
+        return detail::make_error(source, "career.seasons_on_level", "must be 0 or more");
+    }
+    if (!title) {
+        return detail::make_error(source, "career.title_on_level", "must be true or false");
+    }
+    career.seasons_on_level = static_cast<int>(seasons);
+    career.title_on_level = *title;
     const toml::node_view<const toml::node> upgrades = root.at_path("career.upgrades");
     if (!upgrades) {
         return std::nullopt;
@@ -222,6 +235,8 @@ std::string write_season_save(const SeasonSave& save) {
     out += "level = " + toml_string(career.level_name) + "\n";
     out += "unlocked = " + toml_string(career.unlocked_class) + "\n";
     out += "unlocked_level = " + toml_string(career.unlocked_level) + "\n";
+    out += "seasons_on_level = " + std::to_string(career.seasons_on_level) + "\n";
+    out += std::string{"title_on_level = "} + (career.title_on_level ? "true" : "false") + "\n";
     out += "upgrades = [\n";
     for (const SavedUpgrade& upgrade : career.upgrades) {
         out += "    { name = " + toml_string(upgrade.name) +

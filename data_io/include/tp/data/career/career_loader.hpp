@@ -31,7 +31,8 @@ struct CareerDefinition {
 
 /// A career from TOML text; `source_name` names it in error messages, and
 /// the season files it names are read through `read`, relative to
-/// `base_directory`. Refuses a ladder career::validate refuses, a class
+/// `base_directory`. Refuses a ladder career::validate refuses (its
+/// promotion place and minimum seasons on a rung), a class
 /// without a name or levels, a level without a name or a season, a class
 /// name used twice or a level name twice in a class, and any season that
 /// does not load (with that season's own message).

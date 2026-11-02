@@ -66,6 +66,7 @@ Result<CareerDefinition> read_career(const toml::table& root, std::string_view s
     CareerDefinition definition;
     definition.name = reader.text("career.name");
     const std::int64_t promotion_place = reader.integer("career.promotion_place");
+    const std::int64_t min_seasons = reader.integer("career.min_seasons");
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
@@ -92,8 +93,14 @@ Result<CareerDefinition> read_career(const toml::table& root, std::string_view s
     definition.ladder = {.rungs = static_cast<int>(std::min<std::size_t>(
                              definition.rungs.size(), std::numeric_limits<int>::max())),
                          .promotion_place = static_cast<int>(std::clamp<std::int64_t>(
-                             promotion_place, 0, std::numeric_limits<int>::max()))};
+                             promotion_place, 0, std::numeric_limits<int>::max())),
+                         .min_seasons = static_cast<int>(std::clamp<std::int64_t>(
+                             min_seasons, 0, std::numeric_limits<int>::max()))};
     if (const std::optional<career::ParamError> error = career::validate(definition.ladder)) {
+        if (*error == career::ParamError::kMinSeasonsOutOfRange) {
+            return detail::make_error(source, "career.min_seasons",
+                                      "must be 1 to " + std::to_string(career::kMaxMinSeasons));
+        }
         if (*error == career::ParamError::kRungCountOutOfRange) {
             return detail::make_error(
                 source, "career.classes",

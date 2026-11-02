@@ -40,6 +40,10 @@ struct SavedCareer {
     /// The highest class and level a season has opened, "" as above.
     std::string unlocked_class;
     std::string unlocked_level;
+    /// The seasons finished at the player's level, and whether one was won
+    /// (career::Progress); none in a save from before version 4.
+    int seasons_on_level = 0;
+    bool title_on_level = false;
 };
 
 /// A season saved between events, to pick up on the next launch: which
@@ -70,7 +74,8 @@ struct SeasonSave {
 /// without a puller or a place, (version 2 on) a career without its money
 /// (0 or more) or with an upgrade without a name or a level (0 or more),
 /// (version 3 on) a career without its class and the class unlocked, and
-/// (version 4) without their levels.
+/// (version 4) without their levels, its seasons there (0 or more) or
+/// whether one was won.
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

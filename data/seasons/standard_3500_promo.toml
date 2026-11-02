@@ -7,11 +7,10 @@ event = "../events/standard_3500_promo.toml"   # the class and this level's fiel
 seed = 3102                             # the field and every event's draws
 points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # Prize money per place at every event [EUR]; the class's garage costs
-# € 20,800 (garages/standard_3500.toml). Each level pays more than the one
-# below: a steady climber wins belofte with about half the garage bought,
-# promo with 70 % and top with all of it. A disqualified pull earns
-# nothing.
-prize_money_eur = [1500, 1150, 950, 800, 690, 600, 520, 460, 410, 360]
+# € 40,000 (garages/standard_3500.toml). Each level pays 30 % more than
+# the one below, so a level takes about two to three seasons of buying as
+# you earn. A disqualified pull earns nothing.
+prize_money_eur = [1300, 1010, 830, 700, 610, 520, 440, 390, 350, 300]
 garage = "../garages/standard_3500.toml"   # one tractor for the class's levels
 
 [[season.events]]

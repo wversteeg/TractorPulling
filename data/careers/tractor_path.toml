@@ -5,8 +5,10 @@
 # share the class's garage.
 #
 # Winning a level's championship opens the next level, and winning top
-# the next class's belofte; the player is asked whether to move up or stay
-# and defend the title, and what is opened stays open. Money and upgrades
+# the next class's belofte, once the player has pulled at least
+# `min_seasons` seasons on the level (a title in the first season opens it
+# after the second); the player is asked whether to move up or stay and
+# defend the title, and what is opened stays open. Money and upgrades
 # carry over, by the upgrade's name.
 #
 # Only the standard class is here yet. Sport 2.5 and 4.5 t, Supersport
@@ -16,6 +18,7 @@
 [career]
 name = "Tractor path"
 promotion_place = 1   # the championship won
+min_seasons = 2       # at least two seasons on every level: six a class
 
 [[career.classes]]
 name = "Standard 3.5 t"
