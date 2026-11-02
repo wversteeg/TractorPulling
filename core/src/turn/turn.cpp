@@ -11,7 +11,7 @@
 namespace tp::turn {
 
 std::optional<ParamError> validate(const Parking& parking, const run::Rules& rules,
-                                   double half_width_m, double length_m) noexcept {
+                                   const Footprint& footprint) noexcept {
     if (!std::isfinite(parking.x_m) || !std::isfinite(parking.y_m) ||
         !std::isfinite(parking.heading_rad)) {
         return ParamError::kNotFinite;
@@ -20,8 +20,8 @@ std::optional<ParamError> validate(const Parking& parking, const run::Rules& rul
     // all past the chalk line on the parking's side.
     const math::SinCos heading = math::sin_cos_any(parking.heading_rad);
     const double side = parking.y_m < 0.0 ? -1.0 : 1.0;
-    for (const double ahead_m : {0.0, length_m}) {
-        for (const double left_m : {-half_width_m, half_width_m}) {
+    for (const double ahead_m : {-footprint.behind_m, footprint.ahead_m}) {
+        for (const double left_m : {-footprint.half_width_m, footprint.half_width_m}) {
             const double y_m = parking.y_m + ahead_m * heading.sin + left_m * heading.cos;
             if (side * y_m < 0.5 * rules.lane_width_m) {
                 return ParamError::kInTheLane;

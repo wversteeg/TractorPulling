@@ -71,29 +71,31 @@ void place_span(const pull::Model& model, pull::State& state, double span_m) {
 
 // The whole tractor beside the lane, out to its tires' outer edges.
 TEST(Parking, MustBeBesideTheTrack) {
-    constexpr double kHalfWidth_m = 1.2;
-    EXPECT_FALSE(validate(kParking, kRules, kHalfWidth_m));
-    EXPECT_FALSE(validate({.x_m = 0.0, .y_m = 7.2}, kRules, kHalfWidth_m));
-    EXPECT_EQ(validate({.x_m = 0.0, .y_m = 7.1}, kRules, kHalfWidth_m), ParamError::kInTheLane);
-    EXPECT_EQ(validate({.x_m = 0.0, .y_m = -5.9}, kRules, 0.0), ParamError::kInTheLane);
-    EXPECT_EQ(validate({.x_m = std::nan(""), .y_m = -10.0}, kRules, kHalfWidth_m),
-              ParamError::kNotFinite);
+    constexpr Footprint kWide{.half_width_m = 1.2};
+    EXPECT_FALSE(validate(kParking, kRules, kWide));
+    EXPECT_FALSE(validate({.x_m = 0.0, .y_m = 7.2}, kRules, kWide));
+    EXPECT_EQ(validate({.x_m = 0.0, .y_m = 7.1}, kRules, kWide), ParamError::kInTheLane);
+    EXPECT_EQ(validate({.x_m = 0.0, .y_m = -5.9}, kRules, {}), ParamError::kInTheLane);
+    EXPECT_EQ(validate({.x_m = std::nan(""), .y_m = -10.0}, kRules, kWide), ParamError::kNotFinite);
 }
 
-// Turned square to the track, facing the lane, the tractor's length reaches
-// towards it: its nose must stay out too.
-TEST(Parking, TurnedTowardsTheLaneKeepsItsNoseOut) {
-    constexpr double kHalfWidth_m = 1.2;
-    constexpr double kLength_m = 2.5;
+// Turned square to the track, the tractor's length reaches across it:
+// facing the lane its front tires must stay out, facing away its rear
+// tires.
+TEST(Parking, TurnedItsWholeLengthStaysOut) {
+    constexpr Footprint kTractor{.half_width_m = 1.2, .behind_m = 0.8, .ahead_m = 2.9};
     constexpr double kFacingLeft_rad = std::numbers::pi / 2.0;
-    EXPECT_FALSE(validate({.x_m = -12.0, .y_m = -8.6, .heading_rad = kFacingLeft_rad}, kRules,
-                          kHalfWidth_m, kLength_m));
-    EXPECT_EQ(validate({.x_m = -12.0, .y_m = -8.4, .heading_rad = kFacingLeft_rad}, kRules,
-                       kHalfWidth_m, kLength_m),
-              ParamError::kInTheLane);
-    // Facing away from the lane, only its width counts.
-    EXPECT_FALSE(validate({.x_m = -12.0, .y_m = -6.1, .heading_rad = -kFacingLeft_rad}, kRules,
-                          kHalfWidth_m, kLength_m));
+    EXPECT_FALSE(
+        validate({.x_m = -12.0, .y_m = -9.0, .heading_rad = kFacingLeft_rad}, kRules, kTractor));
+    EXPECT_EQ(
+        validate({.x_m = -12.0, .y_m = -8.8, .heading_rad = kFacingLeft_rad}, kRules, kTractor),
+        ParamError::kInTheLane);
+    EXPECT_FALSE(
+        validate({.x_m = -12.0, .y_m = -6.9, .heading_rad = -kFacingLeft_rad}, kRules, kTractor));
+    EXPECT_EQ(
+        validate({.x_m = -12.0, .y_m = -6.1, .heading_rad = -kFacingLeft_rad}, kRules, kTractor),
+        ParamError::kInTheLane)
+        << "the rear tires in the lane";
 }
 
 TEST(Turn, StartsTurnedAsTheParking) {

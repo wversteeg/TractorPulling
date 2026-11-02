@@ -81,6 +81,9 @@ const RIVAL_BAYS := 3
 # A bay: as deep as a tractor is long, as wide as one with room to climb
 # down [m].
 const BAY_SIZE_M := Vector2(5.0, 4.0)
+# A bay starts this far behind the tractor's rear axle: room for the rear
+# tires [m].
+const BAY_BEHIND_REAR_AXLE_M := 1.0
 # The parking's ground: behind the start line from here to the run-up's
 # end, out from the lane's right-hand chalk line between these [m].
 const PARKING_FRONT_X_M := -3.0
@@ -330,7 +333,7 @@ func _add_parking(parent: Node3D, lane_m: float) -> void:
 				-(edge_m + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y) / 2.0), -0.035)
 		parent.add_child(_quiet(gravel))
 	# Each bay's sides: along the tractor's heading, half a bay either side
-	# of its middle, which is half a bay ahead of the rear axle.
+	# of its middle, which is half a bay ahead of the bay's back.
 	var heading: float = layout["heading"]
 	var ahead := Vector2(cos(heading), sin(heading))
 	var left := Vector2(-ahead.y, ahead.x)
@@ -338,7 +341,7 @@ func _add_parking(parent: Node3D, lane_m: float) -> void:
 	var stakes: Array[Transform3D] = []
 	for bay in bays():
 		var rear := Vector2(bay.x, -(edge_m + bay.y))
-		var middle := rear + ahead * (BAY_SIZE_M.x / 2.0 - 1.0)
+		var middle := rear + ahead * (BAY_SIZE_M.x / 2.0 - BAY_BEHIND_REAR_AXLE_M)
 		for side: float in [-1.0, 1.0]:
 			var line_at := middle + left * side * BAY_SIZE_M.y / 2.0
 			lines.append(Transform3D(Basis(Vector3.UP, heading),
