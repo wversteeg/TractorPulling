@@ -64,6 +64,9 @@ FieldError describe(sled::ParamError error) {
             return {"sled.wheels.count", "must be 1 to 8"};
         case ParamError::kChainInvalid:
             return {"sled.chain", "length and stiffness must be > 0, damping >= 0"};
+        case ParamError::kFendersInvalid:
+            return {"sled.fenders",
+                    "behind_hook_m and half_span_m must be >= 0, depth_m > 0 with a span"};
         case ParamError::kPullOffStepNotHeavier:
             return {"sled.pull_off_step",
                     "must make the sled heavier: values >= 0, at least one > 0"};
@@ -115,6 +118,13 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
                 .knives = 0,  // checked below
                 .knife_depth_m = reader.number("sled.pull_off_step.knife_depth_m"),
                 .pushdown_earlier_m = reader.number("sled.pull_off_step.pushdown_earlier_m"),
+            },
+        // Optional: a sled without fenders lets a tractor back up to its hook.
+        .fenders =
+            {
+                .behind_hook_m = reader.optional_number("sled.fenders.behind_hook_m").value_or(0.0),
+                .half_span_m = reader.optional_number("sled.fenders.half_span_m").value_or(0.0),
+                .depth_m = reader.optional_number("sled.fenders.depth_m").value_or(0.0),
             },
     };
     if (const std::optional<LoadError>& error = reader.error()) {

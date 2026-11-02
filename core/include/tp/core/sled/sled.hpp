@@ -29,6 +29,17 @@ struct Knives {
     double width_m = 0.0;
 };
 
+/// Rubber fenders either side of the hook, which a tractor backing up to
+/// the sled stops against with its rear tires (turn::fender_stop_m): their
+/// faces this far behind the hook, stopping a hitch this far either side of
+/// the sled's line and up to this deep past the faces [m]. No span, no
+/// fenders.
+struct Fenders {
+    double behind_hook_m = 0.0;
+    double half_span_m = 0.0;
+    double depth_m = 0.0;
+};
+
 /// Soil the tractor's rear tires throw back piles up in front of the pan,
 /// which has to push it along: a berm. It grows with what the tires throw
 /// (more when they spin, even with the sled standing still) and spills off
@@ -128,6 +139,7 @@ struct Params {
     /// One pull-off step, about 5 m of pull on this class's sled; a pull-off
     /// may take several.
     Adjustment pull_off_step;
+    Fenders fenders;
 };
 
 enum class ParamError : std::uint8_t {
@@ -153,6 +165,7 @@ enum class ParamError : std::uint8_t {
     kChainInvalid,
     /// The pull-off step would not make the sled heavier.
     kPullOffStepNotHeavier,
+    kFendersInvalid,
 };
 
 inline constexpr int kMaxWheels = 8;
@@ -282,13 +295,19 @@ void collect(State& state, const Params& params, double thrown_soil_m3_s, double
 /// own engine [m/s].
 inline constexpr double kDriveBack_m_s = 2.0;
 
-/// The sled after a pull, the chain off: it drives itself back, the pan
-/// lifted (the berm is dropped: the track keeps no soil), straight towards
-/// its start at
-/// `start_x_m` on the centre line at kDriveBack_m_s, the box running back
-/// with it. Returns true once it stands there, straight, ready for the
-/// next pull. Its velocity is negative while it drives.
-bool drive_back(State& state, double start_x_m, double dt_s) noexcept;
+/// How fast the operator runs the weight box back along the rails after a
+/// pull, the sled standing, before it drives back [m/s].
+inline constexpr double kBoxBack_m_s = 0.75;
+
+/// The sled after a pull, the chain off: the operator runs the weight box
+/// back to its start at kBoxBack_m_s, the sled standing, so it drives back
+/// light (the push-down eases off with the box, and at once past where the
+/// box stops); then it drives
+/// itself back, the pan lifted (the berm is dropped: the track keeps no
+/// soil), straight towards its start at `start_x_m` on the centre line at
+/// kDriveBack_m_s. Returns true once it stands there, straight, ready for
+/// the next pull. Its velocity is negative while it drives.
+bool drive_back(State& state, const Params& params, double start_x_m, double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);

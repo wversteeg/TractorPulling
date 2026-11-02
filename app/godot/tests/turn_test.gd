@@ -107,6 +107,10 @@ func _play() -> void:
 	var green_while_pulling := true
 	var red_to_stop := true
 	var told_to_stop := false
+	var lamp_green := true
+	var lamp_red := true
+	var distance_held := true
+	var sled: SledView = _pull.get("sled_view")
 	var ending_told := false
 	var ahead_of_the_tractor := true
 	var full_pull_m: float = dimensions["full_pull_line_m"]
@@ -134,6 +138,13 @@ func _play() -> void:
 			ahead_of_the_tractor = ahead_of_the_tractor and official_m >= 80.0 - 1e-3 \
 					and official_m <= full_pull_m + 1e-3 \
 					and (official_m > float(s["tractor_x_m"]) or official_m >= full_pull_m - 1e-3)
+		if stage == "pulling" and float(s["chain_tension_n"]) >= sled.lamp_tension_n:
+			lamp_green = lamp_green and sled.lamp_shown() == SledView.LAMP_GREEN
+		if stage == "releasing":
+			lamp_red = lamp_red and sled.lamp_shown() == SledView.LAMP_RED
+		if stage == "to_the_parking" and float(s["sled_speed_m_s"]) < 0.0:
+			# The sled drives back: the pull's distance stays on the boards.
+			distance_held = distance_held and hud.distance_shown() == run.get_result()["distance_m"]
 		if stage == "releasing":
 			red_to_stop = red_to_stop and flagman.colour_name() == "red" and flagman.raised() \
 					and end_flagman.colour_name() == "red" and end_flagman.raised() \
@@ -148,6 +159,9 @@ func _play() -> void:
 	_expect(stages == ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling",
 			"releasing", "to_the_parking", "parked"], "every stage in order: %s" % [stages])
 	_expect(told_to_stand, "told to stand ready for the flag")
+	_expect(lamp_green, "the sled's lamp green while the chain pulls")
+	_expect(lamp_red, "the sled's lamp red once the pull is over")
+	_expect(distance_held, "the pull's distance held while the sled drives back")
 	_expect(ending_told, "told why the pull ended")
 	_expect(backing_up_told, "told how far to back up")
 	_expect(flag_red_before and flag_green_pulling, "red before the pull, green in it")

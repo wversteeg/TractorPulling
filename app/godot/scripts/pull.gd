@@ -734,7 +734,13 @@ func _show(delta: float) -> void:
 	controls.show_gear(s["gear"])
 	tractor_view.show_snapshot(s, delta)
 	sled_view.show_snapshot(s, delta)
-	venue_view.show_distance(s["sled_x_m"])
+	# After the pull its distance stays on the boards while the sled drives
+	# back, until the turn is over.
+	var pulled_m: float = s["sled_x_m"]
+	if s.get("stage", "pulling") in ["releasing", "to_the_parking", "parked"]:
+		pulled_m = float(run.get_result().get("distance_m", pulled_m))
+	venue_view.show_distance(pulled_m)
+	hud.hold_distance(pulled_m)
 	track_marks.show_snapshot(s)
 	# The cameras shake with the work: the throttle, more as the tires slip.
 	cameras.rumble = clampf(RUMBLE_PER_THROTTLE * float(s["throttle"])
