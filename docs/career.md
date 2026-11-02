@@ -284,12 +284,21 @@ tractor:
 
 - A new tractor (every part at its first stage) finishes **around last in
   belofte**; a **fully upgraded** one **wins at top**. For the standard
-  class, about half the garage wins belofte and 70 % promo, and promo's
-  winner starts in top's second half (tests/data/
-  rival_difficulty_test.cpp).
-- Winning a level's championship opens the level above; winning top opens
-  the next class's belofte. The player is asked whether to move up or
-  stay, as for a class. No relegation (for now).
+  class, belofte is won once the tractor pulls 6th (about 45 % of the
+  garage's stages), promo with about 75 %, and promo's winner starts near
+  the back at top (tests/data/rival_difficulty_test.cpp).
+- **At least two seasons on every level, so six a class or more.**
+  Winning a level's championship opens the level above (winning top the
+  next class's belofte) once the level has had two seasons; a title in
+  the first season opens it after the second (`min_seasons` in the career
+  file, `career::Ladder`). The player is asked whether to move up or
+  stay. No relegation (for now).
+- The money is set so that the rule rarely has to hold anyone back: the
+  standard class's garage costs € 40,000, each part's stages dearer as
+  they go, and each level pays 30 % more than the one below. A player who
+  buys as they earn needs about three seasons for belofte and two for
+  promo and top: about seven a class (an estimate from the measured
+  places; playing will tell).
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
 - The NTTO's standard class has no levels and Pro Stock has groups II and

@@ -101,7 +101,7 @@ package "tp::data" {
     +season : string
     +seed : uint64
     +tuning : vehicle::Tuning
-    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n class_name, level_name,\n unlocked_class, unlocked_level}>
+    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n class_name, level_name,\n unlocked_class, unlocked_level, seasons_on_level, title_on_level}>
     +events : vector<vector<event::Standing>>
   }
   class GarageDefinition <<struct>> {

@@ -13,13 +13,17 @@ package "tp::career" {
   class Ladder <<struct>> {
     +rungs : int
     +promotion_place : int
+    +min_seasons : int
   }
   class Progress <<struct>> {
     +rung : int
     +unlocked : int
+    +seasons : int
+    +title : bool
   }
   class "career functions" as CareerFns <<free functions>> {
     +kMaxRungs = 36
+    +kMaxMinSeasons = 10
     +validate(const Ladder&) : optional<ParamError>
     +valid(const Progress&, const Ladder&) : bool
     +starting_at(const Ladder&, rung) : optional<Progress>
@@ -36,7 +40,9 @@ CareerFns ..> MaxPullers : a promotion place\na field can have
 note bottom of Progress
   a rung is a class at one of its levels (belofte, promo, top).
   A season finished at promotion_place or better (1: the title)
-  opens the rung above; the player is asked whether to move up.
+  opens the rung above once the rung has had min_seasons seasons
+  (a title in the first opens it after the last of them); the
+  player is asked whether to move up.
   A rung opened stays open: a player who stays to defend the
   title may move up after a later season. starting_at() starts a
   career on any rung, for testing. Which rung is which (season,
