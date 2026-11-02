@@ -383,7 +383,23 @@ func _start_event_pull() -> void:
 			info.get("pull_off_round", 0)), info.get("name", "")]
 	_place_parking()
 	if _build(run.setup_event_pull(event, _controls_path())):
+		venue_view.show_flags(info.get("pull_kind", "") == "test",
+				best_in_pull_off(event.get_log(0), int(info.get("pull_off_round", 0))))
 		_set_screen(Screen.PULLING)
+
+
+# The best distance pulled so far in pull-off round `pull_off_round` (from
+# the event's log), where the chequered flag stands; -1 for none or outside
+# a pull-off.
+static func best_in_pull_off(log: Array, pull_off_round: int) -> float:
+	var best := -1.0
+	if pull_off_round <= 0:
+		return best
+	for entry: Dictionary in log:
+		if entry.get("kind", "") == "pull_off" and int(entry.get("pull_off_round", 0)) \
+				== pull_off_round and not entry.get("disqualified", false):
+			best = maxf(best, float(entry.get("reached_m", -1.0)))
+	return best
 
 
 # Builds the views for the run just set up, if `error` is ""; false if not.
@@ -396,6 +412,8 @@ func _build(error: String) -> bool:
 		child.queue_free()
 	track_view.build(dimensions)
 	venue_view.build(dimensions)
+	# The officials' flags only for an event's pull (_start_event_pull).
+	venue_view.show_flags(false, -1.0)
 	# A new pull on a prepared track: the last pull's marks are gone.
 	track_marks.build(dimensions)
 	# The tractor moves its weights to the tuning on every pull; the rest of

@@ -43,6 +43,8 @@ static func verdict(entry: Dictionary) -> String:
 			return "sled heavier, %d step%s" % [steps, "" if steps == 1 else "s"]
 		"line_extended":
 			return "line to %.0f m" % float(entry["full_pull_m"])
+		"trouble":
+			return "sled kept: tractor trouble?"
 	return ""
 
 

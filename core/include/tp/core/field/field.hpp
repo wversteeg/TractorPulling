@@ -114,9 +114,21 @@ struct Field {
                                                  const rules::ClassRules& class_rules,
                                                  int count) noexcept;
 
+/// A puller's best gear on a sled and how far it got there [m].
+struct GearTrial {
+    int gear = 0;
+    double distance_m = 0.0;
+};
+
 /// The gear among `lowest` to `highest` that takes `puller` furthest on this
 /// sled and track: what a driver who reads the track right picks. Runs a
 /// pull per gear; for setup, not inside a frame.
+[[nodiscard]] std::optional<GearTrial> best_gear_trial(const Puller& puller,
+                                                       const sled::Params& sled,
+                                                       const track::Params& track, int lowest,
+                                                       int highest,
+                                                       const run::Rules& rules) noexcept;
+/// best_gear_trial()'s gear.
 [[nodiscard]] std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
                                            const track::Params& track, int lowest, int highest,
                                            const run::Rules& rules) noexcept;

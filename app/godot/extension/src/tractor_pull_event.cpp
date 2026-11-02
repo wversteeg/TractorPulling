@@ -58,6 +58,8 @@ const char* change_name(event::SledChange change) {
             return "lighter";
         case event::SledChange::kHeavier:
             return "heavier";
+        case event::SledChange::kTroubleSuspected:
+            return "trouble";
     }
     return "unknown";
 }

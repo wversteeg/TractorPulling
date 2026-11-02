@@ -61,14 +61,16 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
     Field today = field;
     for (int i = 0; i < field.count; ++i) {
         Puller& puller = today.pullers[static_cast<std::size_t>(i)];
-        const std::optional<int> best =
-            best_gear(puller, venue.sled, venue.track, variation.lowest_gear,
-                      variation.highest_gear, pull_rules(rules, venue, rules.full_pull_m));
+        const std::optional<GearTrial> best =
+            best_gear_trial(puller, venue.sled, venue.track, variation.lowest_gear,
+                            variation.highest_gear, pull_rules(rules, venue, rules.full_pull_m));
         if (!best) {
             return std::nullopt;
         }
+        // The sled operator reckons with how far each tractor should pull.
+        played.event.expect(i, best->distance_m);
         puller.driver.gear =
-            guess_gear(puller, *best, variation.lowest_gear, variation.highest_gear, guesses);
+            guess_gear(puller, best->gear, variation.lowest_gear, variation.highest_gear, guesses);
         played.gears[static_cast<std::size_t>(i)] = puller.driver.gear;
     }
 

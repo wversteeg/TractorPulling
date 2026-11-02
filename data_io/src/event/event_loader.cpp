@@ -43,6 +43,8 @@ FieldError describe(event::ParamError error) {
             return {"event.rules.step_m", "must be > 0"};
         case ParamError::kMaxStepsNotPositive:
             return {"event.rules.max_steps_per_change", "must be >= 1"};
+        case ParamError::kOperatorJudgementOutOfRange:
+            return {"event.rules", "need strong_full_pull_from 0 to 1 and 0 <= trouble_share < 1"};
         case ParamError::kSled:
             return {"event.sled", "invalid"};
         case ParamError::kRunningOrder:
@@ -122,6 +124,8 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .step_m = reader.number("event.rules.step_m"),
         .max_steps_per_change =
             static_cast<int>(reader.integer("event.rules.max_steps_per_change")),
+        .strong_full_pull_from = reader.optional_number("event.rules.strong_full_pull_from"),
+        .trouble_share = reader.optional_number("event.rules.trouble_share"),
     };
     const driver::Plan driver{
         .gear = static_cast<int>(gear),

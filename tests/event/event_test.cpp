@@ -24,7 +24,9 @@ constexpr Rules kRules{.full_pull_m = 100.0,
                        .repull_after_pulls = 5,
                        .sled_target_m = 90.0,
                        .step_m = 5.0,
-                       .max_steps_per_change = 4};
+                       .max_steps_per_change = 4,
+                       .strong_full_pull_from = std::nullopt,
+                       .trouble_share = std::nullopt};
 
 std::vector<int> in_order(int count) {
     std::vector<int> order(static_cast<std::size_t>(count));
@@ -281,14 +283,72 @@ TEST(Event, ShortTestPullMakesTheSledLighter) {
     EXPECT_EQ(next_of(event).kind, PullKind::kTest);
 }
 
-// With no knives left, the operator lightens with a later push-down.
-TEST(Event, LighteningPastTheKnivesMovesThePushdown) {
+// A lighter step takes a knife out and moves the push-down a step later;
+// with no knives left, only the push-down moves.
+TEST(Event, ALighterStepTakesAKnifeAndMovesThePushdown) {
     sled::Params sled = sled::testing::reference_params();
     sled.knives.count = 1;
     Event event = make(4, sled);
-    event.record(75.0);  // 3 steps: one knife, then 10 m later push-down
+    const Outcome outcome = event.record(75.0);  // 3 steps: 15 m short of 90 m
+    ASSERT_EQ(outcome.change, SledChange::kLighter);
+    EXPECT_EQ(outcome.steps, 3);
     EXPECT_EQ(knives(event), 0);
-    EXPECT_EQ(event.sled().pushdown_start_m, sled.pushdown_start_m + 10.0);
+    EXPECT_EQ(event.sled().pushdown_start_m, sled.pushdown_start_m + outcome.steps * kRules.step_m);
+}
+
+// The operator weighs a test pull by who pulled it: a weak tractor's short
+// pull leaves the sled when the strongest would still reach the target; a
+// full pull by one of the strongest leaves the sled; far short of what a
+// tractor should do is trouble with the tractor, and the next one tests.
+TEST(Event, TheOperatorWeighsATestPullByItsTractor) {
+    Rules rules = kRules;
+    rules.strong_full_pull_from = 0.8;
+    rules.trouble_share = 0.6;
+    const std::vector<int> order = in_order(6);
+    const auto made = [&] {
+        std::optional<Event> event = Event::create(rules, sled::testing::reference_params(), order);
+        if (!event) {
+            std::abort();
+        }
+        // Puller 0 the weakest, 5 the strongest: 10 m apart.
+        for (int i = 0; i < 6; ++i) {
+            event->expect(i, 80.0 + 4.0 * i);
+        }
+        return *event;
+    };
+    Event weak = made();
+    EXPECT_EQ(weak.record(82.0).change, SledChange::kNone)
+        << "82 m by the weakest: the strongest would get 102 m";
+    Event weak_short = made();
+    EXPECT_EQ(weak_short.record(66.0).change, SledChange::kLighter)
+        << "the strongest would get only 86 m";
+
+    std::vector<int> strongest_first = order;
+    std::swap(strongest_first[0], strongest_first[5]);
+    std::optional<Event> strong =
+        Event::create(rules, sled::testing::reference_params(), strongest_first);
+    ASSERT_TRUE(strong);
+    for (int i = 0; i < 6; ++i) {
+        strong->expect(i, 80.0 + 4.0 * i);
+    }
+    EXPECT_EQ(strong->record(112.0).change, SledChange::kNone)
+        << "the strongest's full pull: the sled is right";
+
+    Event trouble = made();
+    EXPECT_EQ(trouble.record(40.0).change, SledChange::kTroubleSuspected)
+        << "40 m where 80 m was expected";
+    EXPECT_EQ(next_of(trouble).kind, PullKind::kTest) << "the next puller tests";
+}
+
+// After one change, the next test changes the sled again only if it
+// misses by more than half a step.
+TEST(Event, AfterAChangeOnlyAClearMissChangesItAgain) {
+    Event event = make(6);
+    ASSERT_EQ(event.record(80.0).change, SledChange::kLighter);
+    EXPECT_EQ(event.record(88.0).change, SledChange::kNone) << "2 m short of 90 m";
+    Event again = make(6);
+    ASSERT_EQ(again.record(80.0).change, SledChange::kLighter);
+    EXPECT_EQ(again.record(70.0).change, SledChange::kLighter) << "20 m short";
 }
 
 // A test puller who re-pulls pulls again after the 6th pull; one who keeps

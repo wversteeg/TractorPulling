@@ -113,6 +113,24 @@ func _check_board_scrolls(board: BoardScreen) -> void:
 	board.visible = false
 
 
+# The TEST flag for a test pull; in a pull-off the chequered flag at the
+# round's best so far (not a disqualified pull, not another round's).
+func _check_officials_flags(venue: VenueView) -> void:
+	var log: Array = [
+		{"kind": "pull_off", "pull_off_round": 1, "reached_m": 96.5, "disqualified": false},
+		{"kind": "pull_off", "pull_off_round": 1, "reached_m": 99.0, "disqualified": true},
+		{"kind": "pull_off", "pull_off_round": 2, "reached_m": 98.0, "disqualified": false},
+		{"kind": "competition", "pull_off_round": 0, "reached_m": 100.0, "disqualified": false},
+	]
+	_expect(is_equal_approx(_pull.best_in_pull_off(log, 1), 96.5)
+			and _pull.best_in_pull_off(log, 0) < 0.0, "the pull-off round's best")
+	venue.show_flags(true, 96.5)
+	_expect(venue.test_flag_shown() and is_equal_approx(venue.best_flag_at_m(), 96.5),
+			"the TEST flag and the chequered flag at 96.5 m")
+	venue.show_flags(false, -1.0)
+	_expect(not venue.test_flag_shown() and venue.best_flag_at_m() < 0.0, "no flags")
+
+
 func _expect(ok: bool, what: String) -> void:
 	if not ok:
 		printerr("FAILED: ", what)
@@ -244,6 +262,7 @@ func _play() -> void:
 	_expect(event.buy_upgrade(0) == "top level", "nothing more to buy")
 	await _check_garage_columns(garage)
 	await _check_board_scrolls(_pull.get("board"))
+	_check_officials_flags(_pull.get("venue_view"))
 	garage.show_garage(event.get_garage())
 	_tap(garage.done_button)
 	await _frames(2)
