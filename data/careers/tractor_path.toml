@@ -11,9 +11,10 @@
 # defend the title, and what is opened stays open. Money and upgrades
 # carry over, by the upgrade's name.
 #
-# Only the standard class is here yet. Sport 2.5 and 4.5 t, Supersport
-# 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super Stock and Super Stock
-# follow, a class at a time, each with its NTTO and ETPC rules.
+# Standard 3.5 t and Sport 2.5 t so far. Sport 4.5 t, Supersport 3.4, 3.6
+# and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a class
+# at a time, each with its NTTO and ETPC rules. Sport 2.5 t, an
+# introduction to the Sport classes, has only promo and top.
 
 [career]
 name = "Tractor path"
@@ -26,4 +27,11 @@ levels = [
     { name = "Belofte", season = "../seasons/standard_3500_belofte.toml" },
     { name = "Promo", season = "../seasons/standard_3500_promo.toml" },
     { name = "Top", season = "../seasons/standard_3500_top.toml" },
+]
+
+[[career.classes]]
+name = "Sport 2.5 t"
+levels = [
+    { name = "Promo", season = "../seasons/sport_2500_promo.toml" },
+    { name = "Top", season = "../seasons/sport_2500_top.toml" },
 ]

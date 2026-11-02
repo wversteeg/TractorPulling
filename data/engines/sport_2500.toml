@@ -1,0 +1,35 @@
+# The Sport 2.5 t class's engine (NTTO/ETPC Sport, 2500 kg; docs/career.md):
+# a four-cylinder turbo diesel of at most 4.0 l with two valves a cylinder,
+# its turbo's air inlet at most 55 mm, no intercooler, 2700 rpm unloaded.
+# The rules set no power: this is an estimate from them. 4.0 l at 2700 rpm
+# breathes about 0.09 m³/s; at about 3 bar absolute without an intercooler
+# that is about 0.19 kg of air a second, burnt rich (air to fuel about 18)
+# about 175 kW. The curve below is the fully built engine, about 220 hp
+# (162 kW) at 2600 rpm: 55 hp a litre, for pulls of seconds. The garage
+# (garages/sport_2500.toml) starts it at about 41 % of this torque, a
+# stock 4 l farm engine's 90 hp, and builds it up.
+# Speeds are in rpm and converted to rad/s on load.
+
+[engine]
+inertia_kg_m2 = 1.0      # crankshaft and a light flywheel
+idle_rpm = 800
+rated_rpm = 2500         # the governor as built; the garage sets it
+high_idle_rpm = 2700     # the class's unloaded limit
+stall_rpm = 450
+
+[engine.friction]
+constant_nm = 14.0
+viscous_nm_per_1000_rpm = 8.0
+
+# The turbo: a big one for the 55 mm inlet, little boost low down.
+[engine.turbo]
+na_torque_fraction = 0.5
+time_constant_s = 1.0
+boost_onset_rpm = 1100
+full_boost_rpm = 1800
+
+# Full-load torque at full boost: peak 655 N·m at 2000 rpm, 162 kW (220 hp)
+# at 2600 rpm; past the rated speed the engine's own fall-off.
+[engine.torque_curve]
+rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3000]
+torque_nm = [300,  360,  440,  540,  610,  650,  655,  645,  625,  595,  550,  500]

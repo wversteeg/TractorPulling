@@ -1,0 +1,18 @@
+# The Sport 2.5 t tractor's driveline: a farm gearbox geared up for the
+# built engine, its pulling gears (5th to 7th) at about 13 to 18 km/h at
+# 2600 rpm on the 0.78 m rear tires (tires/sport_rear.toml). No powershift:
+# the Sport classes pull in one gear on wheelspin.
+
+[driveline]
+final_drive_ratio = 22.0       # bevel gear and final reduction together
+efficiency = 0.90              # all meshes, applied in the direction power flows
+input_inertia_kg_m2 = 0.05     # clutch disc, input shaft, countershaft
+output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tires
+
+[driveline.gearbox]
+ratios = [15.0, 9.0, 5.0, 3.2, 2.6, 2.2, 1.9, 1.0]     # 1st to 8th
+reverse = 12.0                 # ~2.5 km/h at 2200 rpm, ~1 km/h at idle
+
+[driveline.drag]                # churning and bearings, on the input shaft
+constant_nm = 2.0
+viscous_nm_per_1000_rpm = 1.05  # ~0.01 N·m per rad/s

@@ -4,9 +4,12 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace tp::data {
 namespace {
@@ -59,16 +62,24 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
     EXPECT_EQ(career.name, "Tractor path");
     EXPECT_EQ(career.ladder.promotion_place, 1);
     EXPECT_EQ(career.ladder.min_seasons, 2);
-    ASSERT_EQ(career.ladder.rungs, 3);
-    ASSERT_EQ(career.rungs.size(), 3U);
+    // Standard 3.5 t at belofte, promo and top; Sport 2.5 t at promo and top.
+    ASSERT_EQ(career.ladder.rungs, 5);
+    ASSERT_EQ(career.rungs.size(), 5U);
     for (const CareerRung& rung : career.rungs) {
-        EXPECT_EQ(rung.class_name, "Standard 3.5 t");
         // The season's path is resolved, ready to load.
         EXPECT_TRUE(load_season(rung.season, read_from_disk).ok()) << rung.season;
     }
-    EXPECT_EQ(career.rungs[0].level_name, "Belofte");
-    EXPECT_EQ(career.rungs[1].level_name, "Promo");
-    EXPECT_EQ(career.rungs[2].level_name, "Top");
+    const std::array<std::pair<std::string_view, std::string_view>, 5> expected{{
+        {"Standard 3.5 t", "Belofte"},
+        {"Standard 3.5 t", "Promo"},
+        {"Standard 3.5 t", "Top"},
+        {"Sport 2.5 t", "Promo"},
+        {"Sport 2.5 t", "Top"},
+    }};
+    for (std::size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(career.rungs[i].class_name, expected[i].first) << i;
+        EXPECT_EQ(career.rungs[i].level_name, expected[i].second) << i;
+    }
 }
 
 TEST(CareerLoader, LoadsEachClassesLevelsInTurn) {

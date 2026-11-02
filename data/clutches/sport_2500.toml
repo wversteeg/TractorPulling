@@ -1,0 +1,10 @@
+# The Sport 2.5 t tractor's clutch: an uprated single plate for the built
+# engine's 655 N·m peak (engines/sport_2500.toml), about 1.5 times it.
+
+[clutch]
+static_torque_capacity_nm = 1000.0
+kinetic_ratio = 0.8                 # sliding friction / static friction
+
+[clutch.engagement]
+pedal    = [0.0, 0.3, 0.45, 0.55, 0.7, 1.0]
+fraction = [1.0, 1.0, 0.6,  0.15, 0.0, 0.0]

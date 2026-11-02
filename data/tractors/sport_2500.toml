@@ -1,0 +1,68 @@
+# The Sport 2.5 t class's tractor (docs/career.md): a small farm tractor
+# built for pulling, no cab but a roll bar, its engine, clutch and gears
+# uprated (engines/, clutches/, drivelines/sport_2500.toml) and puller
+# tires (tires/sport_rear.toml). Within the class: 2500 kg with the driver,
+# a wheelbase under 2.6 m, nothing more than 3.5 m ahead of the rear axle,
+# the hitch at most 0.5 m high and at least 0.45 m behind the axle. The
+# garage (garages/sport_2500.toml) builds it from a stock tractor.
+
+[tractor]
+engine = "../engines/sport_2500.toml"
+clutch = "../clutches/sport_2500.toml"
+driveline = "../drivelines/sport_2500.toml"
+rear_tire = "../tires/sport_rear.toml"
+rear_tire_count = 2
+pto_efficiency = 0.9              # crankshaft to PTO
+
+# One of the two unpowered front tires (10.0-20 class).
+[tractor.front_tire]
+radius_m = 0.45
+section_width_m = 0.25
+section_height_m = 0.22
+deflection_m = 0.022
+
+[tractor.steering]
+max_angle_deg = 40.0
+
+[tractor.steering.cornering]
+stiffness_per_rad = 5.0
+limit = 0.7
+mobility_rate = 0.1
+relaxation_length_m = 0.45        # about the tire's radius
+
+[tractor.brakes]
+max_torque_nm = 6000.0            # per side, at the wheels
+
+# Body points are measured with the tractor level. The rear axle height is
+# the rear tire's radius.
+[tractor.chassis]
+mass_kg = 2500.0                  # with the driver and all 300 kg of weights
+wheelbase_m = 2.2                 # the class allows 2.6 m
+cg_ahead_of_rear_axle_m = 0.88    # 60 % of the weight on the rear axle at rest
+cg_height_m = 0.9
+pitch_inertia_kg_m2 = 1600.0      # about the centre of gravity; m k², k ≈ 0.8 m
+yaw_inertia_kg_m2 = 3300.0        # about the centre of gravity; m (l² + w²) / 12, 3.4 m by 2.0 m
+rear_track_m = 1.75
+front_track_m = 1.5
+hitch_height_m = 0.5              # the class's limit, not above the rear axle
+hitch_behind_rear_axle_m = 0.45   # the class's shortest drawbar
+
+# Weights the puller moves before a pull: from the rear wheels to the front
+# bracket, 2.8 m ahead of the rear axle (the class allows 3.5 m).
+[tractor.chassis.ballast]
+mass_kg = 300.0
+rear_ahead_of_rear_axle_m = -0.3
+front_ahead_of_rear_axle_m = 2.8
+position = 0.5
+
+[tractor.chassis.front_tires]
+stiffness_n_per_m = 300000.0
+damping_n_s_per_m = 4500.0        # about 15 % of critical in pitch
+
+# Mandatory; the tip touches down at about 7° nose-up.
+[tractor.chassis.wheelie_bar]
+behind_rear_axle_m = 1.2
+tip_height_m = 0.15
+stiffness_n_per_m = 2.0e6
+damping_n_s_per_m = 40000.0
+rolling_resistance_coefficient = 0.05
