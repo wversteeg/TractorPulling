@@ -4,13 +4,14 @@
 # (the HUD's line on what to do next in a turn, on or off). Each tap applies
 # at once; the game keeps them on the device (GameSettings). "New career"
 # starts over, the garage's start money and nothing bought, on a second
-# tap: the first asks to be sure.
+# tap: the first asks to be sure. "Start" (for testing a class) picks the
+# rung of the career's ladder, a class at a level, the new career starts on.
 class_name SettingsScreen
 extends MenuPanel
 
 signal changed(pro: bool, tilt: bool, guidance: bool)
 signal done
-signal new_career_requested
+signal new_career_requested(rung: int)
 
 const SETTINGS_SIZE := Vector2(820.0, 680.0)
 const TITLE_SIZE := 36
@@ -26,6 +27,7 @@ var tilt_button: TouchButton
 var guidance_on_button: TouchButton
 var guidance_off_button: TouchButton
 var new_career_button: TouchButton
+var start_button: TouchButton
 var done_button: TouchButton
 var _hint: Label
 var _pro := false
@@ -34,6 +36,12 @@ var _guidance := true
 var _tilt_available := true
 # The first tap on "New career" made: the next one starts it.
 var _career_asked := false
+# The career's rungs ("class · level", TractorPullEvent.get_career()) and
+# the one a new career starts on.
+var _rungs := PackedStringArray()
+var _start_rung := 0
+# The last tap was on "Start": the hint names the rung.
+var _start_shown := false
 
 
 func _init() -> void:
@@ -61,9 +69,10 @@ func _ready() -> void:
 	var go := add_button_row()
 	new_career_button = add_button(go, "New career")
 	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
+	start_button = add_button(go, "Start: 1")
 	done_button = add_button(go, "Done")
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
-			guidance_on_button, guidance_off_button, done_button]:
+			guidance_on_button, guidance_off_button, start_button, done_button]:
 		button.custom_minimum_size = SETTING_BUTTON_SIZE
 	new_career_button.custom_minimum_size.y = SETTING_BUTTON_SIZE.y
 	easy_button.tapped.connect(func() -> void: _pick(false, _tilt, _guidance))
@@ -74,16 +83,34 @@ func _ready() -> void:
 	guidance_off_button.tapped.connect(func() -> void: _pick(_pro, _tilt, false))
 	done_button.tapped.connect(func() -> void: done.emit())
 	new_career_button.tapped.connect(_ask_new_career)
+	start_button.tapped.connect(_next_start)
 
 
 # Shows the settings as they are; `tilt_available` whether the device can
-# steer by tilting.
-func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool = true) -> void:
+# steer by tilting; `rungs` the career's rungs, lowest first.
+func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool = true,
+		rungs := PackedStringArray()) -> void:
 	_pro = pro
 	_tilt = tilt
 	_guidance = guidance
 	_tilt_available = tilt_available
+	_rungs = rungs
+	_start_rung = clampi(_start_rung, 0, maxi(rungs.size() - 1, 0))
 	_career_asked = false
+	_start_shown = false
+	_show()
+
+
+# The rung a new career starts on, from "Start".
+func start_rung() -> int:
+	return _start_rung
+
+
+# The next rung up, round to the first after the top.
+func _next_start() -> void:
+	_start_rung = 0 if _rungs.is_empty() else (_start_rung + 1) % _rungs.size()
+	_career_asked = false
+	_start_shown = true
 	_show()
 
 
@@ -92,6 +119,7 @@ func _pick(pro: bool, tilt: bool, guidance: bool) -> void:
 	_tilt = tilt
 	_guidance = guidance
 	_career_asked = false
+	_start_shown = false
 	_show()
 	changed.emit(pro, tilt, guidance)
 
@@ -104,8 +132,14 @@ func _show() -> void:
 	guidance_on_button.selected = _guidance
 	guidance_off_button.selected = not _guidance
 	new_career_button.text = "Sure? Tap again" if _career_asked else "New career"
+	start_button.text = "Start: %d" % (_start_rung + 1)
+	var start_at := _rungs[_start_rung] if _start_rung < _rungs.size() else ""
 	if _career_asked:
-		_hint.text = "A new career starts over: the garage's start money, nothing bought."
+		_hint.text = "A new career starts over: the garage's start money, nothing bought%s." \
+				% ("" if _start_rung == 0 else ", at " + start_at)
+		return
+	if _start_shown:
+		_hint.text = "For testing: a new career starts at %s." % start_at
 		return
 	if _tilt:
 		_hint.text = ("Hold the phone like a steering wheel. However you hold it when you "
@@ -120,7 +154,8 @@ func _ask_new_career() -> void:
 	if _career_asked:
 		_career_asked = false
 		_show()
-		new_career_requested.emit()
+		new_career_requested.emit(_start_rung)
 		return
 	_career_asked = true
+	_start_shown = false
 	_show()

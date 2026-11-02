@@ -395,37 +395,56 @@ func _play() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
-# A title opened the class above (a save that says so: a season won, and
+# A title opened the level above (a save that says so: a season won, and
 # the app closed on the season's board): launched again, the new season's
-# start screen offers to move up, which starts the class above's season
-# with the money and upgrades carried up.
+# start screen offers to move up, which starts the level above's season
+# with the money and upgrades carried up. Then the settings' "Start" (for
+# testing a class) starts a new career a class up.
 func _check_move_up() -> void:
 	var saved := FileAccess.get_file_as_string(SAVE_PATH)
-	_expect(saved.contains("class = \"Practice\"") and saved.contains("unlocked = \"Practice\""),
-			"the save names the class: %s" % saved)
+	_expect(saved.contains("class = \"Practice\"") and saved.contains("unlocked_level = \"Belofte\""),
+			"the save names the class and level: %s" % saved)
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	file.store_string(saved.replace("unlocked = \"Practice\"",
-			"unlocked = \"Practice, a class up\""))
+	file.store_string(saved.replace("unlocked_level = \"Belofte\"", "unlocked_level = \"Promo\""))
 	file.close()
 	var pull := await _launch(LADDER)
 	var start: StartScreen = pull.get("start_screen")
 	var event: TractorPullEvent = pull.get("event")
 	var garage := event.get_garage()
 	_expect(start.visible and start.move_up_button.visible and start.event_button.visible,
-			"the class above to move up to")
+			"the level above to move up to")
 	await _shot("8_move_up")
 	_tap(start.move_up_button)
 	await _frames(2)
 	var career := event.get_career()
-	_expect(career.get("class", -1) == 1 and not career.get("can_move_up", true),
-			"moved up: %s" % career)
+	_expect(career.get("rung", -1) == 1 and career.get("level_name", "") == "Promo"
+			and not career.get("can_move_up", true), "moved up: %s" % career)
 	_expect(start.visible and not start.move_up_button.visible
 			and int(event.get_season().get("scored", -1)) == 0
-			and int(event.get_event().get("index", -1)) == 0, "the class above's first event")
+			and int(event.get_event().get("index", -1)) == 0, "the level above's first event")
 	_expect(event.get_garage()["money_eur"] == garage["money_eur"]
 			and event.get_garage()["upgrades"] == garage["upgrades"], "the career carried up")
-	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("class = \"Practice, a class up\""),
-			"saved in the class above")
+	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("level = \"Promo\""),
+			"saved on the level above")
+
+	var settings: SettingsScreen = pull.get("settings_screen")
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.start_button)
+	await _frames(1)
+	_tap(settings.start_button)
+	await _frames(1)
+	_expect(settings.start_rung() == 2 and settings.start_button.text == "Start: 3",
+			"the settings pick the third rung: %s" % settings.start_button.text)
+	await _shot("9_start_at")
+	_tap(settings.new_career_button)
+	await _frames(1)
+	_tap(settings.new_career_button)
+	await _frames(2)
+	career = event.get_career()
+	_expect(career.get("rung", -1) == 2 and career.get("class_name", "") == "Practice, a class up"
+			and int(event.get_garage().get("money_eur", -1)) == START_MONEY_EUR,
+			"a new career a class up: %s" % career)
 
 
 # The pull scene again, as at the next launch, on the same save; with

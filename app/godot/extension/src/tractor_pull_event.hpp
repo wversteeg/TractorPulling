@@ -45,27 +45,34 @@ class TractorPullEvent : public godot::RefCounted {
     GDCLASS(TractorPullEvent, godot::RefCounted)
 
 public:
-    /// Loads a career (data/careers/: its classes, each with its season) for
-    /// the methods below, at its first class; no season is started. Returns
-    /// "" or what is wrong, naming the file and field.
+    /// Loads a career (data/careers/: its classes, each at its levels, each
+    /// level a rung with its season) for the methods below, on its first
+    /// rung; no season is started. Returns "" or what is wrong, naming the
+    /// file and field.
     godot::String load_career(const godot::String& career_path);
-    /// {name, classes, class, class_name, unlocked, next_class,
-    /// can_move_up} of the loaded career: the class names lowest first, the
-    /// index and name of the player's class, the index of the highest class
-    /// open, the name of the class above ("" at the top), and whether
-    /// move_up() would move the player now. {} without a career.
+    /// {name, rungs, rung, class_name, level_name, unlocked, next_class,
+    /// next_level, next_is_new_class, can_move_up} of the loaded career:
+    /// every rung's "class · level" lowest first, the index of the player's
+    /// rung and its class and level, the index of the highest rung open,
+    /// the rung above's class and level ("" at the top) and whether it is
+    /// another class, and whether move_up() would move the player now. {}
+    /// without a career.
     [[nodiscard]] godot::Dictionary get_career() const;
-    /// A new career: the first class, the garage's start money and nothing
-    /// bought, and the first class's season drawn for `seed`. "" or what is
-    /// wrong; the career so far stays then.
+    /// A new career: the first rung, the garage's start money and nothing
+    /// bought, and its season drawn for `seed`. "" or what is wrong; the
+    /// career so far stays then.
     godot::String new_career(std::int64_t seed);
-    /// A new season in the player's class, drawn for `seed`; money and
+    /// As new_career(), starting on rung `rung` with it the highest open
+    /// (career::starting_at), for testing a class without climbing to it.
+    godot::String new_career_at(std::int64_t rung, std::int64_t seed);
+    /// A new season on the player's rung, drawn for `seed`; money and
     /// upgrades carry over. "" or what is wrong.
     godot::String new_season(std::int64_t seed);
-    /// As resume_season(), for the loaded career: the save's class (by name;
-    /// one the career no longer has is its first class) and its season.
+    /// As resume_season(), for the loaded career: the save's class and
+    /// level (by name; a class the career no longer has is its first rung, a
+    /// level its class's first) and its season.
     godot::String resume_career(const godot::String& save);
-    /// Moves the player up to the class their titles have opened (career::
+    /// Moves the player up to the rung their titles have opened (career::
     /// move_up) and starts its season, drawn for `seed`; money and upgrades
     /// carry over, by the upgrades' names. Only between seasons: with the
     /// season over, or before the player's first pull in it. "" or why not.
@@ -202,7 +209,7 @@ private:
     /// before the tuning.
     [[nodiscard]] vehicle::Params player_tractor() const;
 
-    /// The season of the player's class in the loaded career; "" without
+    /// The season of the player's rung in the loaded career; "" without
     /// one.
     [[nodiscard]] std::string class_season() const;
     /// Whether the season is the career's and the player has not pulled in

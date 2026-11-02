@@ -97,7 +97,8 @@ func release_buttons() -> void:
 # what went wrong setting it up, if anything; `career`
 # TractorPullEvent.get_career(), {} without one.
 func show_event(event: Dictionary, error: String, career: Dictionary = {}) -> void:
-	var in_class := "%s  ·  " % career["class_name"] if career.has("class_name") else ""
+	var in_class := "%s · %s  ·  " % [career["class_name"], career["level_name"]] \
+			if career.has("class_name") else ""
 	if event.is_empty():
 		_event.text = in_class.trim_suffix("  ·  ")
 		_name.text = ""

@@ -203,7 +203,7 @@ func _ready() -> void:
 	start_screen.practice_requested.connect(func() -> void: _show_setup(true))
 	start_screen.settings_requested.connect(func() -> void:
 		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available(),
-				hud.guidance)
+				hud.guidance, event.get_career().get("rungs", PackedStringArray()))
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.done.connect(show_start)
@@ -236,7 +236,8 @@ func _ready() -> void:
 	start_screen.new_season_requested.connect(_new_season)
 	start_screen.move_up_requested.connect(_move_up)
 	start_screen.new_career_requested.connect(_new_season.bind(true))
-	settings_screen.new_career_requested.connect(_new_season.bind(true))
+	settings_screen.new_career_requested.connect(func(rung: int) -> void:
+		_new_season(true, rung))
 	board.first_tapped.connect(_on_board_first)
 	board.second_tapped.connect(_on_board_second)
 	restart_screen.restart_requested.connect(func() -> void:
@@ -296,12 +297,13 @@ func _seed() -> int:
 	return season_seed if season_seed >= 0 else randi()
 
 
-# A new season in the player's class; with `new_career` also a new career
-# (the first class, the garage's start money, nothing bought), else the
-# career carries over.
-func _new_season(new_career: bool = false) -> void:
+# A new season on the player's rung (a class at a level); with
+# `new_career` also a new career on rung `rung` (the first, unless the
+# settings picked another for testing; the garage's start money, nothing
+# bought), else the career carries over.
+func _new_season(new_career: bool = false, rung: int = 0) -> void:
 	var seed := _seed()
-	var error := event.new_career(seed) if new_career else event.new_season(seed)
+	var error := event.new_career_at(rung, seed) if new_career else event.new_season(seed)
 	_season_started(error, seed)
 
 
@@ -759,8 +761,12 @@ func _show_season() -> void:
 				else "%s is the champion." % champion["name"]
 	var career := event.get_career()
 	if over and career.get("can_move_up", false):
-		status += " The %s class is open to you." % career["next_class"]
-		board.set_buttons("Move up", "Stay in %s" % career["class_name"])
+		if career["next_is_new_class"]:
+			status += " The %s class is open to you." % career["next_class"]
+		else:
+			status += " %s is open to you." % career["next_level"]
+		board.set_buttons("Up to %s" % (career["next_class"] if career["next_is_new_class"]
+				else career["next_level"]), "Stay in %s" % career["level_name"])
 	else:
 		board.set_buttons("New season" if over else "Next event")
 	board.set_status(status.strip_edges())

@@ -1,4 +1,5 @@
-# Two classes on the practice season, for the tests that move up a class.
+# Two classes on the practice season, the first at two levels, for the
+# tests that move up a level and a class.
 
 [career]
 name = "Practice ladder"
@@ -6,8 +7,11 @@ promotion_place = 1
 
 [[career.classes]]
 name = "Practice"
-season = "practice_season.toml"
+levels = [
+    { name = "Belofte", season = "practice_season.toml" },
+    { name = "Promo", season = "practice_season.toml" },
+]
 
 [[career.classes]]
 name = "Practice, a class up"
-season = "practice_season.toml"
+levels = [{ name = "Belofte", season = "practice_season.toml" }]
