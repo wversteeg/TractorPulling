@@ -135,7 +135,7 @@ func _play() -> void:
 			red_to_stop = red_to_stop and flagman.colour_name() == "red" and flagman.raised() \
 					and end_flagman.colour_name() == "red" and end_flagman.raised() \
 					and venue.signal_shown() == "red" and hud.signal_shown() == "red"
-			told_to_stop = told_to_stop or hud.turn_text(s).begins_with("Red flag: stop!")
+			told_to_stop = told_to_stop or hud.turn_text(s).begins_with("Red flag")
 			ending_told = ending_told or not hud.ending_shown().is_empty()
 		if stage != "parked" and result.visible:
 			result_too_soon = true

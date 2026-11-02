@@ -150,6 +150,8 @@ var _snapshot := {}
 var _framing := Vector3.ZERO
 # Since the run ended, while the pull's last moments stay in view.
 var _ended_s := 0.0
+# The HUD shows why the pull ended.
+var _ended_shown := false
 
 
 func _ready() -> void:
@@ -513,8 +515,7 @@ func _show_result() -> void:
 	var entry := {}
 	if not practice:
 		entry = event.record_pull(run)
-	var full_pull_m: float = run.get_dimensions()["full_pull_line_m"]
-	result_screen.show_result(_title, run.get_result(), full_pull_m, entry)
+	result_screen.show_result(_title, run.get_result(), entry)
 	_set_screen(Screen.RESULT)
 
 
@@ -680,12 +681,13 @@ func _show(delta: float) -> void:
 		hitch_marker.position = Vector3(hook.x, 0.01, hook.z) + forward * _chain_m * MARKER_SHARE
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
+	# Why the pull ended, read once as it ends (and cleared for a new run).
 	var over := stage in ["releasing", "to_the_parking", "parked"]
-	var result := run.get_result() if over else {}
-	var full_pull_m := float(run.get_dimensions().get("full_pull_line_m", 100.0)) if over \
-			else _full_pull_m
-	hud.show_ending(ResultScreen.ending_text(result, full_pull_m),
-			ResultScreen.ending_name(result, full_pull_m) == "full_pull")
+	if over != _ended_shown:
+		_ended_shown = over
+		var result := run.get_result() if over else {}
+		hud.show_ending(ResultScreen.ending_text(result),
+				ResultScreen.ending_name(result) == "full_pull")
 
 
 # The officials' signal from the run's stage: "green" while the pull is

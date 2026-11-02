@@ -57,15 +57,14 @@ func _ready() -> void:
 	continue_button.tapped.connect(func() -> void: continue_requested.emit())
 
 
-# `title` names the pull, `result` is the run's get_result() and
-# `full_pull_m` the line it was pulled to. `entry` is the event's log entry
-# for the pull (TractorPullEvent.record_pull()), or {} for a practice pull.
-func show_result(title: String, result: Dictionary, full_pull_m: float,
-		entry: Dictionary) -> void:
+# `title` names the pull, `result` is the run's get_result(). `entry` is
+# the event's log entry for the pull (TractorPullEvent.record_pull()), or {}
+# for a practice pull.
+func show_result(title: String, result: Dictionary, entry: Dictionary) -> void:
 	var distance_m: float = result["distance_m"]
 	_pull.text = title
 	_distance.text = "%.2f m" % distance_m
-	var ending := ending_name(result, full_pull_m)
+	var ending := ending_name(result)
 	_ending.text = ENDINGS.get(ending, ending)
 	_ending.add_theme_color_override("font_color",
 			FULL_PULL_COLOUR if ending == "full_pull" else ENDING_COLOUR)
@@ -79,19 +78,15 @@ func show_result(title: String, result: Dictionary, full_pull_m: float,
 	continue_button.visible = not practice
 
 
-# How the run ended (TractorPullRun.get_result()): a run at an event goes on
-# past the line until the sled stops, so a full pull there is judged by the
-# distance.
-static func ending_name(result: Dictionary, full_pull_m: float) -> String:
-	var ending: String = result.get("ending", "")
-	if ending != "out_of_bounds" and float(result.get("distance_m", 0.0)) >= full_pull_m:
-		return "full_pull"
-	return ending
+# How the run ended (TractorPullRun.get_result()): a full pull, as the run
+# judges it, or why the sled stopped.
+static func ending_name(result: Dictionary) -> String:
+	return "full_pull" if result.get("full_pull", false) else String(result.get("ending", ""))
 
 
 # The line that says how the run ended, "" while it is on.
-static func ending_text(result: Dictionary, full_pull_m: float) -> String:
+static func ending_text(result: Dictionary) -> String:
 	if result.is_empty():
 		return ""
-	var ending := ending_name(result, full_pull_m)
+	var ending := ending_name(result)
 	return String(ENDINGS.get(ending, ending))

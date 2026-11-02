@@ -98,7 +98,9 @@ public:
     /// The turn is over: the pull at the line has ended, or after a turn
     /// from the parking the tractor stands there again.
     [[nodiscard]] bool is_over() const;
-    /// {ending, distance_m, time_s, top_speed_m_s} once finished, else {}.
+    /// {ending, distance_m, time_s, top_speed_m_s, full_pull} once finished,
+    /// else {}. full_pull: the sled got past the full-pull line, not out of
+    /// bounds (at an event the run goes on past it until the sled stops).
     [[nodiscard]] godot::Dictionary get_result() const;
     /// The replay hash (session::Session::hash) as 16 hex digits, the way
     /// `tp_pull run --hash` prints it.

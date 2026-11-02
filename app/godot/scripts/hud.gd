@@ -256,8 +256,8 @@ func turn_text(s: Dictionary) -> String:
 			if float(s["hitch_to_hook_m"]) < _chain_m - _taut_within_m:
 				return "Creep forward: chain slack"
 			if _pro:
-				return "Chain tight: clutch in, pick your gear"
-			return "Chain tight: off the gas, pick your gear"
+				return "Chain tight: clutch in, gear in, hold"
+			return "Chain tight: off the gas, gear in, hold"
 		"releasing":
 			# Backing off in reverse is what the red flag asks for now: gas
 			# in R is fine.
@@ -265,7 +265,7 @@ func turn_text(s: Dictionary) -> String:
 				return "Back off in R"
 			var rolling := float(s["tractor_speed_m_s"]) > STOPPED_M_S
 			if rolling or float(s["throttle"]) > THROTTLE_CLOSED:
-				return "Red flag: stop!"
+				return "Red flag: stop!" if rolling else "Red flag: off the gas!"
 			return "Shift to R, back off"
 		"to_the_parking":
 			if _parking == Vector2.INF:
