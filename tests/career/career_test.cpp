@@ -131,6 +131,51 @@ TEST(Career, StartsOnAnyRungForTesting) {
     EXPECT_FALSE(starting_at(kTractorPath, -1).has_value());
 }
 
+// A ladder that asks two seasons on every rung (the tractor path's).
+constexpr Ladder kTwoSeasons{.rungs = 27, .promotion_place = 1, .min_seasons = 2};
+
+TEST(Career, ValidatesTheMinimumSeasons) {
+    EXPECT_FALSE(validate(kTwoSeasons));
+    EXPECT_EQ(validate(Ladder{.rungs = 3, .promotion_place = 1, .min_seasons = 0}),
+              ParamError::kMinSeasonsOutOfRange);
+    EXPECT_EQ(validate(Ladder{.rungs = 3, .promotion_place = 1, .min_seasons = kMaxMinSeasons + 1}),
+              ParamError::kMinSeasonsOutOfRange);
+}
+
+TEST(Career, ATitleInTheFirstSeasonOpensTheRungAfterTheSecond) {
+    Progress p;
+    EXPECT_FALSE(finish_season(p, kTwoSeasons, 1));
+    EXPECT_TRUE(p.title);
+    EXPECT_EQ(p.seasons, 1);
+    EXPECT_FALSE(may_move_up(p));
+    // The second season opens it, whatever its place.
+    EXPECT_TRUE(finish_season(p, kTwoSeasons, 6));
+    EXPECT_TRUE(may_move_up(p));
+}
+
+TEST(Career, NoTitleNoRungHoweverManySeasons) {
+    Progress p;
+    for (int season = 0; season < 5; ++season) {
+        EXPECT_FALSE(finish_season(p, kTwoSeasons, 2));
+    }
+    EXPECT_EQ(p.seasons, 5);
+    EXPECT_FALSE(p.title);
+    // A title in a later season opens it at once.
+    EXPECT_TRUE(finish_season(p, kTwoSeasons, 1));
+}
+
+TEST(Career, MovingUpStartsTheNewRungsSeasonsAfresh) {
+    Progress p;
+    finish_season(p, kTwoSeasons, 1);
+    ASSERT_TRUE(finish_season(p, kTwoSeasons, 1));
+    ASSERT_TRUE(move_up(p));
+    EXPECT_EQ(p.seasons, 0);
+    EXPECT_FALSE(p.title);
+    EXPECT_FALSE(finish_season(p, kTwoSeasons, 1));
+    EXPECT_TRUE(finish_season(p, kTwoSeasons, 1));
+    EXPECT_EQ(p.unlocked, 2);
+}
+
 TEST(Career, AOneRungLadderNeverPromotes) {
     const Ladder one{.rungs = 1, .promotion_place = 1};
     Progress p;
