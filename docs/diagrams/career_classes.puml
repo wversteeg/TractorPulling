@@ -1,5 +1,5 @@
 @startuml career_classes
-title Career (tp::career): the ladder of classes and the titles that climb it
+title Career (tp::career): the ladder of rungs (a class at a level) and the titles that climb it
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -11,17 +11,18 @@ package "other components" {
 
 package "tp::career" {
   class Ladder <<struct>> {
-    +classes : int
+    +rungs : int
     +promotion_place : int
   }
   class Progress <<struct>> {
-    +class_index : int
+    +rung : int
     +unlocked : int
   }
   class "career functions" as CareerFns <<free functions>> {
-    +kMaxClasses = 12
+    +kMaxRungs = 36
     +validate(const Ladder&) : optional<ParamError>
     +valid(const Progress&, const Ladder&) : bool
+    +starting_at(const Ladder&, rung) : optional<Progress>
     +finish_season(Progress&, const Ladder&, championship_place) : bool
     +finish_season(Progress&, const Ladder&, span<const season::Standing>, player) : bool
     +may_move_up(const Progress&) : bool
@@ -33,10 +34,12 @@ package "tp::career" {
 CareerFns ..> SeasonStanding : the player's place\nin the championship
 CareerFns ..> MaxPullers : a promotion place\na field can have
 note bottom of Progress
-  a season finished at promotion_place or better (1: the title)
-  opens the class above; the player is asked whether to move up.
-  A class opened stays open: a player who stays to defend the
-  title may move up after a later season. Which class is which
-  (season, garage, rules) is the data's (data/careers/)
+  a rung is a class at one of its levels (belofte, promo, top).
+  A season finished at promotion_place or better (1: the title)
+  opens the rung above; the player is asked whether to move up.
+  A rung opened stays open: a player who stays to defend the
+  title may move up after a later season. starting_at() starts a
+  career on any rung, for testing. Which rung is which (season,
+  garage, rules) is the data's (data/careers/)
 end note
 @enduml

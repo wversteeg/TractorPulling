@@ -50,6 +50,7 @@ package "tp::godot_binding" {
     +load_career(career_path) : String
     +get_career() : Dictionary
     +new_career(seed) : String
+    +new_career_at(rung, seed) : String
     +new_season(seed) : String
     +resume_career(save) : String
     +move_up(seed) : String
@@ -98,7 +99,7 @@ package "core and data_io (see their class diagrams)" {
   class "data::load_tractor / load_sled /\nload_track / load_control_layout /\nload_season / load_career (path, ReadFile)" as Loaders
   class "data::run_setup(tractor, class_sled, track)\ndata::run_setup(tractor, LiveEvent)\ndata::venue(class_sled, track)" as RunSetup
   class "field::LiveSeason / LiveEvent" as Live
-  class "career::Progress / finish_season()\n/ move_up()" as Career
+  class "career::Progress / finish_season()\n/ move_up() / starting_at()" as Career
   class "vehicle::Tuning / tuned()\nchassis::rear_axle_share()" as Tuning
 }
 
@@ -113,7 +114,7 @@ Register ..> TractorPullEvent : registers
 TractorPullEvent *-- Live
 TractorPullEvent *-- Tuning : the player's,\nfor the season
 TractorPullEvent ..> Loaders : load_season, load_career
-TractorPullEvent *-- Career : the player's class;\na title opens the next
+TractorPullEvent *-- Career : the player's rung;\na title opens the next
 TractorPullEvent ..> RunSetup : venues, the player's Setup
 TractorPullRun ..> TractorPullEvent : setup_event_pull,\nsetup_practice
 TractorPullEvent ..> TractorPullRun : record_pull reads\nthe result

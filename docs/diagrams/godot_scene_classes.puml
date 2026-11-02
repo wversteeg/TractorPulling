@@ -175,10 +175,11 @@ package "GDScript (app/godot/scripts)" {
   class SettingsScreen {
     +easy_button, pro_button : TouchButton
     +slider_button, tilt_button : TouchButton
-    +new_career_button, done_button : TouchButton
-    +show_settings(pro, tilt, tilt_available)
+    +new_career_button, start_button, done_button : TouchButton
+    +show_settings(pro, tilt, tilt_available, guidance, rungs)
+    +start_rung() : int
     ..signals..
-    changed(pro, tilt), done, new_career_requested
+    changed(pro, tilt), done, new_career_requested(rung)
   }
   class GarageScreen {
     +buy_buttons : Array[TouchButton]

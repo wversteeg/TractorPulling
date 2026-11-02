@@ -400,17 +400,23 @@ player drives less evenly than the script, and picks the gear themselves.
 
 ### The career
 
-A career is a ladder of classes (`data/careers/tractor_path.toml`,
-`tp::career`), each pulling its own season. Winning a class's championship
-opens the class above (`promotion_place`, a shared title counts): the
-season's board then asks whether to move up or stay and defend the title,
-and a class opened stays open, so the start screen offers "Move up" before
-the next season's first pull too. Your one tractor goes with you: the money
-and every upgrade carry up, by the upgrade's name, into the new class's
-garage. The tractor path holds the standard 3.5 t class for now; Sport
-2.5 and 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
-Stock and Super Stock follow, each with its NTTO and ETPC rules
-([docs/career.md](docs/career.md)).
+A career is a ladder (`data/careers/tractor_path.toml`, `tp::career`,
+[docs/career.md](docs/career.md)): classes, each pulled at three levels,
+belofte, promo and top, each level a season with its own field of rivals.
+The standard 3.5 t class's levels share one tractor and its garage
+(`data/garages/standard_3500.toml`, the club garage's parts in finer
+stages): a new tractor finishes around last in belofte, about half the
+garage wins it, about 70 % wins promo, and only a fully upgraded tractor
+wins top (`RivalDifficulty`). Winning a level's championship opens the
+next level, and winning top the next class (`promotion_place`, a shared
+title counts): the season's board then asks whether to move up or stay
+and defend the title, and what is opened stays open, so the start screen
+offers "Move up" before the next season's first pull too. The money and
+every upgrade carry up, by the upgrade's name. For testing a class, the
+settings' "Start" picks the rung a new career starts on. The tractor path
+holds the standard class for now; Sport 2.5 and 4.5 t, Supersport 3.4,
+3.6 and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a
+class at a time, each with its NTTO and ETPC rules.
 
 ### Playing a run from a game
 
@@ -458,8 +464,9 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 `app/godot` in Godot 4.7 and play it.
 
 The game plays a career (`data/careers/tractor_path.toml`, see "The
-career") of seasons; the first is `data/seasons/club_season.toml`, the club
-class on ten tracks, against nine scripted rivals, named in `club_pull.toml`'s
+career") of seasons; the first is `data/seasons/standard_3500_belofte.toml`,
+the standard class's lowest level on ten tracks, against nine scripted
+rivals, named in `club_pull.toml`'s
 `[event.game]`. The season is saved after every event, with your tuning
 and your career, its class too (`user://season.toml`, `tp::data::SeasonSave`): at the
 next launch the start screen asks whether to continue it, at the next

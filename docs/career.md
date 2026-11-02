@@ -283,9 +283,10 @@ Every class is pulled at three levels, **belofte**, **promo** and
 tractor:
 
 - A new tractor (every part at its first stage) finishes **around last in
-  belofte**; a **fully upgraded** one **wins at top**. Promo sits between:
-  the fields are set so that each level wants about a third more of the
-  garage than the one below.
+  belofte**; a **fully upgraded** one **wins at top**. For the standard
+  class, about half the garage wins belofte and 70 % promo, and promo's
+  winner starts in top's second half (tests/data/
+  rival_difficulty_test.cpp).
 - Winning a level's championship opens the level above; winning top opens
   the next class's belofte. The player is asked whether to move up or
   stay, as for a class. No relegation (for now).
@@ -295,6 +296,13 @@ tractor:
   I: the game uses the three Farmstock levels for every class alike.
 
 ## Upgrades (game choice)
+
+**No powershift from Supersport on.** The standard and Sport classes may
+shift down under load (the garage's powershift step). The more powerful
+classes, from Supersport up, do not: they pull in one gear and rely on
+wheelspin, the driver working the throttle to keep the tires spinning at
+their best slip. Their garages offer no powershift, and their tractors'
+drivelines have none.
 
 The garage offers more stages per part than today's three or four, so
 there is something to buy after nearly every event, and more parts in the
