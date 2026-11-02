@@ -19,6 +19,11 @@ steer_rate_per_s = 1.5
 # tractor and holds it, so it stands still behind the sled and at the red
 # flag; a brief lift in the pull barely brakes.
 brake_off_the_gas = 1.0
+# Speed-sensitive steering: the whole steering travel asks for at most
+# this sideways acceleration on a steady turn, so at a pull's speed most of
+# the lock is there and at road speed (gear 7 or 8) a small move steers a
+# little, not round [m/s²].
+steer_side_accel_m_s2 = 2.5
 
 [easy.clutch_assist]
 engage_time_s = 2.0       # fully out to fully in while the engine holds speed

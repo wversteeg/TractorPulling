@@ -83,6 +83,11 @@ struct EasyParams {
     /// brakes never fight the engine. 0 to 1.
     double brake_off_the_gas = 0.0;
     ClutchAssist clutch_assist;
+    /// Speed-sensitive steering: the most sideways acceleration the whole
+    /// steering travel asks for (steering_at_speed()), so a thumb's small
+    /// move at speed does not throw the tractor round; none steers alike at
+    /// every speed [m/s²].
+    std::optional<double> steer_side_accel_m_s2;
 };
 
 /// The pro layout's steering, shaped as the easy layout's: a dead zone in
@@ -94,6 +99,8 @@ struct ProParams {
     double steer_dead_zone = 0.0;
     /// Shares of the travel per second; none follows the control at once.
     std::optional<double> steer_rate_per_s;
+    /// As EasyParams::steer_side_accel_m_s2 [m/s²].
+    std::optional<double> steer_side_accel_m_s2;
 };
 
 enum class ParamError : std::uint8_t {
@@ -105,6 +112,7 @@ enum class ParamError : std::uint8_t {
     kGuardOutOfRange,
     kMinThrottleOutOfRange,
     kBrakeOffTheGasOutOfRange,
+    kSteerSideAccelNotPositive,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const EasyParams& params) noexcept;
@@ -128,14 +136,23 @@ constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept
     hash.add(state.steering);
 }
 
+/// How much of the steering's range the control turns the wheels through at
+/// `speed_m_s`, 0 to 1: all of it slowly; faster, a share that asks for at
+/// most `side_accel_m_s2` of sideways acceleration on a steady turn (the
+/// turn's radius wheelbase / tan(angle)). Without a limit, all of it.
+[[nodiscard]] double steering_share_at_speed(const vehicle::Params& tractor, double speed_m_s,
+                                             std::optional<double> side_accel_m_s2) noexcept;
+
 /// The vehicle's input for the pro layout, the steering as the control is.
 [[nodiscard]] vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexcept;
 
 /// The vehicle's input for the pro layout with its steering shaped by
-/// `params` (dead zone and rate), advancing the steering in `state` by
-/// `dt_s`. With the default ProParams it is pro(input, tractor).
+/// `params` (dead zone, rate and speed: `vehicle` is the tractor's state
+/// before this step), advancing the steering in `state` by `dt_s`. With the
+/// default ProParams it is pro(input, tractor).
 [[nodiscard]] vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& state,
-                                 const vehicle::Params& tractor, double dt_s) noexcept;
+                                 const vehicle::Params& tractor, const vehicle::State& vehicle,
+                                 double dt_s) noexcept;
 
 /// The vehicle's input for the easy layout, before this step of the
 /// vehicle: reads the tractor's state (engine speed, gear in) and advances
