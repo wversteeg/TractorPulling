@@ -12,6 +12,15 @@ run::Rules pull_rules(const event::Rules& rules, const Venue& venue, double full
             .full_pull_line_m = full_pull_m};
 }
 
+run::Rules pull_rules(const event::Rules& rules, const Venue& venue, double full_pull_m,
+                      event::PullKind kind) noexcept {
+    run::Rules out = pull_rules(rules, venue, full_pull_m);
+    if (kind == event::PullKind::kCompetition || kind == event::PullKind::kRepull) {
+        out.track_length_m = full_pull_m;
+    }
+    return out;
+}
+
 std::uint64_t log_hash(std::span<const LogEntry> log) noexcept {
     // Integers as their 64-bit two's complement, so -1 hashes the same
     // everywhere.
@@ -90,8 +99,8 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         }
         const Puller puller = on_this_pull(today.pullers[static_cast<std::size_t>(pull->puller)],
                                            pull_to_pull, pulls);
-        const std::optional<run::Result> result =
-            run_pull(puller, ev.sled(), venue.track, pull_rules(rules, venue, ev.full_pull_m()));
+        const std::optional<run::Result> result = run_pull(
+            puller, ev.sled(), venue.track, pull_rules(rules, venue, ev.full_pull_m(), pull->kind));
         if (!result) {
             return std::nullopt;
         }

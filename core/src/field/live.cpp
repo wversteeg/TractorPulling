@@ -72,7 +72,11 @@ LiveEvent::Turn LiveEvent::turn() const noexcept {
 }
 
 run::Rules LiveEvent::pull_rules() const noexcept {
-    return field::pull_rules(rules_, venue_, event_.full_pull_m());
+    // A practice pull, with no pull of the event's due, ends at the line as
+    // a competition pull does.
+    const std::optional<event::Pull> next = event_.next();
+    return field::pull_rules(rules_, venue_, event_.full_pull_m(),
+                             next ? next->kind : event::PullKind::kCompetition);
 }
 
 int LiveEvent::gear(int puller) const noexcept {

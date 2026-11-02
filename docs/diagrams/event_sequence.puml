@@ -13,7 +13,7 @@ loop until finished()
     Event -> Event : keep: the test pull counts;\nre-pull: queued after the 6th pull
   else next() is a pull
     Caller -> Event : next(), sled(), full_pull_m()
-    Caller -> Run : run the puller (a little different each pull)\non sled() until the sled stops or reaches max_distance_m
+    Caller -> Run : run the puller (a little different each pull)\non sled() until the sled stops, or reaches the full-pull line\n(a competition pull or re-pull) or max_distance_m (a test pull or pull-off)
     Run --> Caller : where it stopped, and how it ended
     alt a tractor tire touched a chalk line
       Caller -> Event : record_disqualified()

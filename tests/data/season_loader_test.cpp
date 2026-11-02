@@ -143,7 +143,7 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
     EXPECT_LT(awarded, 2 * table_total + 20);
     EXPECT_EQ(standings[0].place, 1);
     EXPECT_GE(standings[0].points, standings[1].points);
-    EXPECT_EQ(hash.value(), 0x2dae5787b7ed46cbULL);
+    EXPECT_EQ(hash.value(), 0x77cb8b176cf67cc0ULL);
 }
 
 }  // namespace

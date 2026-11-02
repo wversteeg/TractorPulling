@@ -90,6 +90,7 @@ package "tp::field" {
     +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
     +pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
+    +pull_rules(const event::Rules&, const Venue&, full_pull_m, event::PullKind) : run::Rules
     +kPullStream : uint64
     +event_seed(season_seed, number) : uint64
     +log_hash(span<const LogEntry>) : uint64
