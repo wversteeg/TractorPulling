@@ -1,0 +1,144 @@
+@startuml sled_classes
+title Sled (tp::sled): weight box, pan and push-down on soil
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "soil::Surface" as Surface
+  class "tire::Size\n+ towed_rolling_resistance()" as Tire
+}
+
+package "tp::sled" {
+  class Params <<struct>> {
+    +frame_mass_kg : double
+    +frame_cg_ahead_of_wheels_m : double
+    +frame_yaw_inertia_kg_m2 : double
+    +pan_ahead_of_wheels_m : double
+    +hook_ahead_of_wheels_m, hook_height_m : double
+    +box_mass_kg : double
+    +box_start / box_end_ahead_of_wheels_m : double
+    +box_travel_distance_m : double
+    +pushdown_start_m, pushdown_ramp_m : double
+    +pan_friction_coefficient : double
+    +pan_area_m2 : double
+    +pan_plough_coefficient : double
+    +knives : Knives
+    +berm : Berm
+    +wheel : tire::Size
+    +wheel_cornering : tire::Cornering
+    +wheel_count : int
+    +chain : Chain
+    +pull_off_step : Adjustment
+  }
+  class Knives <<struct>> {
+    +count : int
+    +depth_m : double
+    +width_m : double
+  }
+  class Berm <<struct>> {
+    +collected_share : double
+    +spill_distance_m : double
+    +friction_coefficient : double
+  }
+  class Adjustment <<struct>> {
+    +box_mass_kg : double
+    +knives : int
+    +knife_depth_m : double
+    +pushdown_earlier_m : double
+  }
+  class Chain <<struct>> {
+    +length_m : double
+    +stiffness_n_per_m : double
+    +damping_n_s_per_m : double
+  }
+  class Conditions <<struct>> {
+    +pushdown_start_m : optional<double>
+  }
+  class Ground <<struct>> {
+    +pan : soil::Surface
+    +wheels : soil::Surface
+  }
+  class State <<struct>> {
+    +position_m : double
+    +velocity_m_s : double
+    +distance_m : double
+    +berm_kg : double
+    +lateral_position_m : double
+    +heading_rad : double
+    +lateral_velocity_m_s : double
+    +yaw_rate_rad_s : double
+    +wheel_side_deflection_m : double
+  }
+  class HookForce <<struct>> {
+    +forward_n : double
+    +up_n : double
+    +side_n : double
+  }
+  class Hook <<struct>> {
+    +x_m, y_m, z_m : double
+    +velocity_x_m_s, velocity_y_m_s : double
+  }
+  class Loads <<struct>> {
+    +pan_n, wheels_n : double
+    +box_ahead_of_wheels_m : double
+    +pushdown : double
+    +pan_friction : double
+    +knives_n : double
+    +berm_n : double
+    +resistance_n : double
+  }
+  class Prediction <<struct>> {
+    +free_velocity_m_s : double
+    +velocity_per_n : double
+  }
+  enum ParamError
+  class "sled functions" as SledFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +total_mass_kg(const Params&) : double
+    +with_conditions(const Params&, const Conditions&) : Params
+    +adjusted(const Params&, const Adjustment&, times = 1) : Params
+    +heavier(const Params&, steps = 1) : Params
+    +loads(const Params&, const State&, const HookForce&, const Ground&) : Loads
+    +hook(const Params&, const State&) : Hook
+    +predict(const State&, const Params&, resistance_n, dt_s) : Prediction
+    +advance_lateral(State&, const Params&, const Loads&, hook_side_n,\n      const soil::Surface& wheel_ground, dt_s)
+    +advance(State&, const Prediction&, forward_n, dt_s)
+    +collect(State&, const Params&, thrown_soil_m3_s, dt_s)
+    +drive_back(State&, start_x_m, dt_s) : bool
+    +kDriveBack_m_s : double = 2
+    +hash_append(Fnv1a&, const State&)
+  }
+  Params *-- Chain
+  Params *-- Knives
+  Params *-- Berm
+  Params *-- Adjustment : pull_off_step
+  SledFns ..> Adjustment
+  SledFns ..> Params
+  SledFns ..> State
+  SledFns ..> HookForce
+  SledFns ..> Hook
+  SledFns ..> Conditions
+  SledFns ..> Ground
+  SledFns ..> Loads
+  SledFns ..> Prediction
+  SledFns ..> ParamError
+}
+note bottom of SledFns
+  pan = (W_frame x_frame + W_box x_box - F_up x_hook + F_fwd h_hook) / x_pan
+  the box moves forward with the distance travelled;
+  the push-down moves the wheels' share onto the pan over its ramp;
+  pan friction μ = μ_pan (1 + plough · p / CI), p = pan load / pan area;
+  knives = 0.2 · min(CI, 2 MPa) · count · width · depth (while the pan carries load);
+  berm: dM = share · ρ · thrown · dt, spilling M · v dt / spill distance; drag μ_berm · M · g;
+  resistance = μ pan + knives + berm + towed rolling (Brixius) wheels, holding but never pulling back;
+  with_conditions(): the day's push-down;
+  adjusted(): the operator's change; heavier(): the pull-off sled, some steps heavier
+  sideways, a trailer on the chain: hook pull, rear wheels' side grip
+  (relaxation length), pan friction against its sliding direction,
+  implicit; sliding forward, the pan resists sideways weakly: the dog-tail
+end note
+Params *-- Tire
+Ground *-- Surface
+SledFns ..> Tire
+@enduml

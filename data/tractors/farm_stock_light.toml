@@ -1,0 +1,76 @@
+# Reference light 2WD farm-stock tractor (NTTO standard class, 3.5 t): the
+# components it is built from (paths relative to this file) and its chassis.
+
+[tractor]
+engine = "../engines/farm_stock_light.toml"
+clutch = "../clutches/farm_stock_light.toml"
+driveline = "../drivelines/farm_stock_light.toml"
+rear_tire = "../tires/pulling_rear.toml"
+rear_tire_count = 2
+pto_efficiency = 0.9              # crankshaft to PTO; class power limits apply at the PTO
+
+# One of the two unpowered front tires (11.2-24 class); its size sets their
+# rolling resistance on the track's soil: about 0.06 on the reference track.
+[tractor.front_tire]
+radius_m = 0.5
+section_width_m = 0.28
+section_height_m = 0.25
+deflection_m = 0.025
+
+# The front wheels' steering, and the front tires' side grip (see
+# tp::tire::Cornering). Starting values to tune, in the range measured for
+# agricultural tires on firm soil: side force builds at about 0.09 of the
+# load per degree of slip angle and tops out at about 0.7 of it.
+[tractor.steering]
+max_angle_deg = 40.0              # each way; at most 45
+
+[tractor.steering.cornering]
+stiffness_per_rad = 5.0           # side force per unit of load per rad of slip angle
+limit = 0.7                       # side force per unit of load at most
+mobility_rate = 0.1               # as for traction: soft ground grips less
+relaxation_length_m = 0.5         # about the tire's radius
+
+# One brake per rear side, each on its own pedal: farm tractors steer
+# tight turns with them. Full pedal can lock one side's wheels on firm
+# ground with the tractor at rest.
+[tractor.brakes]
+max_torque_nm = 8000.0            # per side, at the wheels
+
+# Body points are measured with the tractor level. The rear axle height is
+# the rear tire's radius.
+[tractor.chassis]
+mass_kg = 3500.0                  # whole tractor, wheels included
+wheelbase_m = 2.4
+cg_ahead_of_rear_axle_m = 0.96    # 60 % of the weight on the rear axle at rest
+cg_height_m = 1.0
+pitch_inertia_kg_m2 = 2800.0      # about the centre of gravity; m k², k ≈ 0.9 m
+yaw_inertia_kg_m2 = 5500.0        # about the centre of gravity; m (l² + w²) / 12, 3.9 m by 2.2 m
+rear_track_m = 1.9                # between the rear tires' centres
+front_track_m = 1.6               # between the front tires' centres
+hitch_height_m = 0.5              # NTTO: at most 0.5 m, not above the rear axle
+hitch_behind_rear_axle_m = 0.4
+
+# Weights the puller moves before a pull (part of mass_kg above): from the
+# rear wheels' weights behind the axle to the front weight bracket ahead of
+# the front axle. The centre of gravity above is with them halfway; at
+# either end the rear axle carries about 68 % or 52 % of the weight. More
+# on the rear grips harder but lifts the nose sooner.
+[tractor.chassis.ballast]
+mass_kg = 400.0
+rear_ahead_of_rear_axle_m = -0.35   # behind the rear axle
+front_ahead_of_rear_axle_m = 3.1    # on the front bracket, 0.7 m ahead of the front axle
+position = 0.5                      # as built: 0 rearmost, 1 foremost
+
+# Both front tires together, as one spring-damper below the front axle.
+[tractor.chassis.front_tires]
+stiffness_n_per_m = 400000.0
+damping_n_s_per_m = 6000.0        # about 15 % of critical in pitch
+
+# Mandatory in the NTTO standard classes. Starting values to tune: the tip
+# touches down at about 7° nose-up.
+[tractor.chassis.wheelie_bar]
+behind_rear_axle_m = 1.3
+tip_height_m = 0.15
+stiffness_n_per_m = 2.0e6         # steel bar on skids
+damping_n_s_per_m = 50000.0       # about 30 % of critical in pitch
+rolling_resistance_coefficient = 0.05

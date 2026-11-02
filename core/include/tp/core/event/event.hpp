@@ -1,0 +1,267 @@
+#pragma once
+
+#include "tp/core/sled/sled.hpp"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <span>
+
+namespace tp::event {
+
+inline constexpr int kMaxPullers = 32;
+inline constexpr int kMaxPullOffRounds = 5;
+/// How many places later a puller who stopped short of the restart line
+/// pulls again, if they choose to (Event::defer).
+inline constexpr int kDeferPlaces = 6;
+
+/// A pulling class's competition rules (after the NTTO's) and the sled
+/// operator's rule of thumb. Distances are where the sled stops, measured
+/// from the start line [m].
+struct Rules {
+    /// The full-pull line.
+    double full_pull_m = 0.0;
+    /// The line moves here when a test pull stops between the two; the sled
+    /// then stays as it is.
+    double extended_full_pull_m = 0.0;
+    /// A pull past the line stops here at the latest.
+    double max_distance_m = 0.0;
+    /// Places in the pull-off: every full pull, filled up with the best
+    /// runs from `qualifying_distance_m` on.
+    int pull_off_places = 0;
+    double qualifying_distance_m = 0.0;
+    /// A test puller who may keep the test pull decides once this many
+    /// more pulls are done, and re-pulls after this many more (counting the
+    /// test pull as the first, the NTTO's 3rd and 6th pull).
+    int decide_after_pulls = 0;
+    int repull_after_pulls = 0;
+    /// A test pull stopping short of this makes the operator lighten the
+    /// sled. The operator judges what the strongest puller would reach: the
+    /// test pull plus how much further the strongest is expected to get
+    /// than its puller (Event::expect).
+    double sled_target_m = 0.0;
+    /// The operator's rule of thumb at the start of the day: what one sled
+    /// step is worth [m]. They learn better from each change they make.
+    double step_m = 0.0;
+    /// Most steps the operator changes the sled by at once, after a test
+    /// pull or for a pull-off.
+    int max_steps_per_change = 0;
+    /// A full pull by a puller this strong (a share of the field, 0 the
+    /// weakest, 1 the strongest) leaves the sled as it is: the strongest
+    /// are meant to pull it the whole way. None: every full pull test
+    /// makes the sled heavier.
+    std::optional<double> strong_full_pull_from;
+    /// A test pull short of this share of what its puller was expected to
+    /// reach says the tractor had trouble, not that the sled is too heavy:
+    /// the sled stays, and the next puller tests it. None: off.
+    std::optional<double> trouble_share;
+};
+
+enum class ParamError : std::uint8_t {
+    kNotFinite,
+    kDistancesOutOfOrder,
+    kPlacesOutOfRange,
+    kTurnsOutOfOrder,
+    kStepNotPositive,
+    kMaxStepsNotPositive,
+    kOperatorJudgementOutOfRange,
+    kSled,
+    kRunningOrder,
+};
+
+[[nodiscard]] std::optional<ParamError> validate(const Rules& rules) noexcept;
+
+enum class PullKind : std::uint8_t {
+    /// The first pull of the event, and the first after every change to the
+    /// sled: the sled operator judges the sled by it.
+    kTest,
+    kCompetition,
+    /// A test puller pulling again on the changed sled.
+    kRepull,
+    kPullOff,
+};
+
+/// The next pull: who pulls, and what kind of pull it is.
+struct Pull {
+    /// Index into the field.
+    int puller = 0;
+    PullKind kind = PullKind::kCompetition;
+    /// 1 for the first pull-off, 0 in the main round.
+    int pull_off_round = 0;
+};
+
+/// What the sled operator made of a test pull.
+enum class SledChange : std::uint8_t {
+    kNone,
+    /// The test pull stopped between the full-pull line and the extended
+    /// line: the line moves, the sled stays.
+    kLineExtended,
+    kLighter,
+    kHeavier,
+    /// The test pull fell far short of what its puller was expected to
+    /// reach (Rules::trouble_share): the sled stays, the next puller tests.
+    kTroubleSuspected,
+};
+
+struct Outcome {
+    SledChange change = SledChange::kNone;
+    /// Sled steps for kLighter and kHeavier.
+    int steps = 0;
+};
+
+/// A puller's place in the standings. The official distance is capped at
+/// the full-pull line.
+struct Standing {
+    int puller = 0;
+    /// 1 is the winner; equal results share a place.
+    int place = 0;
+    double distance_m = 0.0;
+    bool full_pull = false;
+    /// A tractor tire touched a chalk line in the counting pull: 0 m,
+    /// behind every pull that counts.
+    bool disqualified = false;
+    /// Pull-off rounds pulled, and the official distance in the last one.
+    int pull_off_rounds = 0;
+    double pull_off_distance_m = 0.0;
+};
+
+/// One class at an event, pull by pull: the running order, test pulls and
+/// the sled operator, test pullers keeping or re-pulling, the full-pull
+/// line, qualifying for the pull-off and the pull-offs.
+///
+/// A front end (or the tools' scripted pullers) asks next() who pulls, runs
+/// that pull on sled() until the sled stops or reaches max_distance_m, and
+/// hands record() where it stopped, or record_disqualified() when a tractor
+/// tire touched a chalk line. When a test puller's decision is due,
+/// next() waits for decide(). Plain data; no allocation.
+class Event {
+public:
+    /// `running_order` lists the field's pullers (0 to count - 1), each
+    /// once, in the order they pull.
+    [[nodiscard]] static std::optional<Event> create(const Rules& rules,
+                                                     const sled::Params& class_sled,
+                                                     std::span<const int> running_order) noexcept;
+
+    /// How far `puller` is expected to pull the class's sled as the event
+    /// starts (their gear trials) [m]: the operator weighs their test pulls
+    /// by it. Unknown pullers count as the field's middle.
+    void expect(int puller, double expected_m) noexcept;
+    /// What expect() was told for `puller` [m]; 0 when unknown.
+    [[nodiscard]] double expected_m(int puller) const noexcept {
+        return puller >= 0 && puller < count_ ? expected_m_[static_cast<std::size_t>(puller)] : 0.0;
+    }
+
+    /// The next pull, or nothing when the event is over or a decision is
+    /// due.
+    [[nodiscard]] std::optional<Pull> next() const noexcept;
+
+    /// The sled and full-pull line for the next pull.
+    [[nodiscard]] const sled::Params& sled() const noexcept { return sled_; }
+    [[nodiscard]] double full_pull_m() const noexcept { return line_m_; }
+    /// What the operator now reckons one sled step is worth [m].
+    [[nodiscard]] double step_estimate_m() const noexcept { return step_estimate_m_; }
+
+    /// Records where the sled stopped in the pull next() named, and what the
+    /// operator does about it if it was a test pull.
+    Outcome record(double reached_m) noexcept;
+    /// Records the pull next() named as disqualified: it counts 0 m. A
+    /// disqualified test pull says nothing about the sled, so the operator
+    /// leaves it and the next puller tests it; the test puller keeps the
+    /// 0 m (no keep-or-re-pull).
+    Outcome record_disqualified() noexcept;
+
+    /// Moves the pull next() names `places` later in the running order (at
+    /// most to its end), for a puller who stopped short of the restart line
+    /// and takes a later turn instead (turn::kRestartBefore_m). A test
+    /// pull's puller hands the test to the pull that is now next. Once per
+    /// puller, not in a pull-off; returns the places moved.
+    int defer(int places) noexcept;
+    /// Whether defer() would move the next pull at all.
+    [[nodiscard]] bool may_defer() const noexcept;
+    /// The test puller whose keep-or-re-pull decision is due.
+    [[nodiscard]] std::optional<int> decision_due() const noexcept;
+    /// What a sensible puller would choose: keep a full pull, or a test pull
+    /// no one has beaten, in a test pull or a counting one.
+    [[nodiscard]] bool suggested_keep() const noexcept;
+    void decide(bool keep) noexcept;
+
+    [[nodiscard]] bool finished() const noexcept;
+
+    [[nodiscard]] int puller_count() const noexcept { return count_; }
+    /// The standings so far, best first.
+    [[nodiscard]] std::span<const Standing> standings() noexcept;
+
+private:
+    struct Entry {
+        bool pulled = false;
+        double reached_m = 0.0;
+        bool disqualified = false;
+        int pull_off_rounds = 0;
+        double pull_off_reached_m = 0.0;
+        bool tested = false;
+        double test_reached_m = 0.0;
+        bool may_keep = false;
+        int test_pull_number = 0;
+        bool decision_pending = false;
+        /// Moved later in the order once already (defer()).
+        bool deferred = false;
+    };
+
+    static constexpr std::size_t kMaxQueue = std::size_t{3} * kMaxPullers;
+
+    Event(const Rules& rules, const sled::Params& class_sled,
+          std::span<const int> running_order) noexcept;
+
+    void insert(std::size_t position, const Pull& pull) noexcept;
+    void schedule_repull(int puller) noexcept;
+    Outcome record_pull(double reached_m, bool disqualified) noexcept;
+    Outcome judge_test(int puller, double reached_m) noexcept;
+    /// After a change to the sled, or a test pull that showed nothing: the
+    /// next pull tests the sled.
+    void retest_next() noexcept;
+    /// What the last change did, seen in this test pull.
+    void learn(double reached_m) noexcept;
+    [[nodiscard]] int steps_for(double distance_m) const noexcept;
+    /// After a pull or a decision: a decision now due, or the next round.
+    void advance() noexcept;
+    void start_pull_off() noexcept;
+    [[nodiscard]] double official(double reached_m) const noexcept;
+    /// Where `puller` stands in the field by expected distance: 0 the
+    /// weakest, 1 the strongest, 0.5 when unknown.
+    [[nodiscard]] double strength(int puller) const noexcept;
+    /// How much further the field's strongest is expected to pull than
+    /// `puller` [m]; 0 when unknown.
+    [[nodiscard]] double gap_to_strongest_m(int puller) const noexcept;
+
+    Rules rules_;
+    sled::Params sled_;
+    double line_m_ = 0.0;
+    int count_ = 0;
+    std::array<int, kMaxPullers> order_{};
+    std::array<Entry, kMaxPullers> entries_{};
+    std::array<Pull, kMaxQueue> queue_{};
+    std::size_t queue_size_ = 0;
+    std::size_t head_ = 0;
+    /// Pulls done so far.
+    int completed_ = 0;
+    int pull_off_round_ = 0;
+    std::optional<int> pending_decision_;
+    double step_estimate_m_ = 0.0;
+    /// Steps of the last change, heavier positive, and the test pull before
+    /// it; 0 once a test pull has shown its effect.
+    int last_change_steps_ = 0;
+    double last_test_m_ = 0.0;
+    /// Changes made to the sled so far (a test after one is judged more
+    /// loosely), and the steps made heavier less those made lighter.
+    int changes_ = 0;
+    int net_steps_ = 0;
+    /// Each puller's expected distance (expect()), 0 for unknown [m].
+    std::array<double, kMaxPullers> expected_m_{};
+    std::array<Standing, kMaxPullers> standings_{};
+};
+
+/// The field's pullers in a random order for `seed`.
+[[nodiscard]] std::array<int, kMaxPullers> running_order(int count, std::uint64_t seed) noexcept;
+
+}  // namespace tp::event

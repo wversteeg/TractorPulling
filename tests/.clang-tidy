@@ -1,0 +1,13 @@
+---
+# GoogleTest and Google Benchmark macros define globals and owning pointers
+# by design; these checks only produce noise on test code.
+InheritParentConfig: true
+Checks: >
+  -cert-err58-cpp,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-special-member-functions,
+  -misc-use-anonymous-namespace,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-naming
+...

@@ -1,0 +1,11 @@
+---
+# Google Benchmark's `for (auto _ : state)` idiom and registration macros
+# trip these checks by design.
+InheritParentConfig: true
+Checks: >
+  -cert-err58-cpp,
+  -clang-analyzer-deadcode.DeadStores,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -misc-use-anonymous-namespace,
+  -readability-identifier-naming
+...

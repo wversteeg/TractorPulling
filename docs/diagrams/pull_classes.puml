@@ -1,0 +1,91 @@
+@startuml pull_classes
+title Pull (tp::pull): the tractor, the chain and the sled
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "vehicle::Params / Model / State\n+ Input, Output" as Vehicle
+  class "sled::Params / State\n+ Chain, Loads, HookForce" as Sled
+  class "chassis::Drawbar / Hitch" as Chassis
+  class "track::Params / Model" as Track
+}
+
+package "tp::pull" {
+  class Params <<struct>> {
+    +tractor : vehicle::Params
+    +sled : sled::Params
+    +track : track::Params
+  }
+  class Model {
+    -tractor_ : vehicle::Model
+    -sled_ : sled::Params
+    -track_ : track::Model
+    -start_line_m_ : double
+    +{static} create(const Params&) : optional<Model>
+    +tractor() : const vehicle::Model&
+    +sled() : const sled::Params&
+    +track() : const track::Model&
+    +start_line_m() : double
+  }
+  class State <<struct>> {
+    +tractor : vehicle::State
+    +sled : sled::State
+    +hooked : bool = true
+    +sled_mode : SledMode
+  }
+  enum SledMode {
+    kOnTheChain
+    kHeld
+    kDrivingBack
+  }
+  class ChainEnd <<struct>> {
+    +x_m, y_m, z_m : double
+    +velocity_x_m_s, velocity_y_m_s, velocity_z_m_s : double
+  }
+  class ChainForce <<struct>> {
+    +tension_n : double
+    +direction_x, direction_y, direction_z : double
+  }
+  class Output <<struct>> {
+    +tractor : vehicle::Output
+    +sled : sled::Loads
+    +chain : ChainForce
+  }
+  enum ParamError {
+    kTractor
+    kSled
+    kTrack
+  }
+  class "pull functions" as PullFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +chain_force(const sled::Chain&, hitch, hook : ChainEnd) : ChainForce
+    +initial_state(const Model&) : State
+    +step(State&, const Model&, const vehicle::Input&, dt_s) : Output
+    +hitch_end(const Model&, const State&) : ChainEnd
+    +hook_end(const Model&, const State&) : ChainEnd
+    +hash_append(Fnv1a&, const State&)
+  }
+  Model *-- Params
+  State *-- SledMode
+  PullFns ..> Model
+  PullFns ..> State
+  PullFns ..> ChainEnd
+  PullFns ..> ChainForce
+  PullFns ..> Output
+  PullFns ..> ParamError
+}
+Params *-- Vehicle
+Params *-- Sled
+Params *-- Track
+PullFns ..> Chassis : hitch(), Drawbar
+note bottom of PullFns
+  the chain pulls only when stretched, along its own line:
+  backwards and down/up on the tractor's hitch,
+  forwards and up/down on the sled's hook;
+  the tractor feels it in its body frame (pull, lift, side);
+  the sled follows the tractor's line sideways (hook behind the hitch);
+  unhooked the chain pulls neither end; a held sled stands still;
+  one driving back goes its own way (sled::drive_back)
+end note
+@enduml

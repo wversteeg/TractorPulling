@@ -1,0 +1,150 @@
+@startuml core_classes
+title Simulation core (tp::core): shared types and the engine
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+  package "tp::coupling" {
+    class ShaftPrediction <<struct>> {
+      +free_omega_next_rad_s : double
+      +omega_per_torque : double
+      +omega_per_negative_torque : double
+    }
+  }
+
+  package "tp::math" {
+    class CurvePoint <<struct>> {
+      +x : double
+      +y : double
+    }
+    enum CurveError {
+      kTooFewPoints
+      kTooManyPoints
+      kNotFinite
+      kNotStrictlyIncreasing
+    }
+    class Curve {
+      +{static} kMaxPoints = 16
+      -points_ : array<CurvePoint, 16>
+      -size_ : size_t
+      +{static} validate(span<const CurvePoint>) : optional<CurveError>
+      +{static} create(span<const CurvePoint>) : optional<Curve>
+      +evaluate(x : double) : double
+      +slope(x : double) : double
+      +min_x() / max_x() / max_y() : double
+    }
+    Curve *-- "2..16" CurvePoint
+    Curve ..> CurveError
+    class SinCos <<struct>> {
+      +sin : double
+      +cos : double
+    }
+    class "trig" as Trig <<free functions>> {
+      +{static} kSinCosMaxAngle_rad = π/4
+      +sin_cos(angle_rad) : SinCos
+      +sin_cos_any(angle_rad) : SinCos, |angle| ≤ π
+    }
+    Trig ..> SinCos
+    note bottom of Trig
+      fixed polynomials, + and × only:
+      bit-identical on every platform
+    end note
+    class "exp" as Exp <<free functions>> {
+      +exp(x) : double
+    }
+    note bottom of Exp
+      range reduction by ln 2, Taylor to 1/13!,
+      2^k via the exponent bits: no libm
+    end note
+  }
+
+  package "tp::engine" {
+    class Params <<struct>> {
+      +full_load_torque_nm : Curve
+      +inertia_kg_m2
+      +idle / rated / high_idle_omega_rad_s
+      +stall_omega_rad_s
+      +friction_torque_nm
+      +viscous_friction_nm_s_rad
+      +na_torque_fraction
+      +turbo_time_constant_s
+      +boost_onset / full_boost_omega_rad_s
+    }
+    class State <<struct>> {
+      +omega_rad_s : double
+      +boost : double
+      +running : bool
+    }
+    class Input <<struct>> {
+      +throttle : double
+      +load_torque_nm : double
+    }
+    class Output <<struct>> {
+      +fuel : double
+      +combustion_torque_nm : double
+      +friction_torque_nm : double
+    }
+    enum ParamError
+    class Prediction <<struct>> {
+      +output : Output
+      +boost_next : double
+      +omega_rad_s, drive_torque_nm,
+       dt_over_inertia, viscous_divisor
+    }
+    class "engine functions" as EngineFns <<free functions>> {
+      +validate(const Params&) : optional<ParamError>
+      +with_torque_scale(const Params&, scale) : optional<Params>
+      +with_rated_speed(const Params&, rated_omega_rad_s) : optional<Params>
+      +initial_state(const Params&) : State
+      +max_net_power_w(const Params&) : double
+      +full_fuel_omega_rad_s(const Params&, throttle) : double
+      +predict(const State&, const Params&, throttle, dt_s) : Prediction
+      +shaft_prediction(const Prediction&) : ShaftPrediction
+      +advance(State&, const Params&, const Prediction&, load_torque_nm)
+      +step(State&, const Params&, const Input&, dt_s) : Output
+      +hash_append(Fnv1a&, const State&)
+    }
+    Prediction *-- Output
+    EngineFns ..> Prediction
+    Params *-- Curve
+    EngineFns ..> Params
+    EngineFns ..> State
+    EngineFns ..> Input
+    EngineFns ..> Output
+    EngineFns ..> ParamError
+  }
+
+
+  EngineFns ..> ShaftPrediction
+
+  package "tp::hash" {
+    class Fnv1a {
+      -hash_ : uint64
+      +add(uint64 | double | bool)
+      +value() : uint64
+    }
+  }
+  EngineFns ..> Fnv1a
+
+  package "tp (time)" {
+    class FixedStepClock {
+      -step_ns_ : int64
+      -max_steps_per_advance_ : uint32
+      -accumulated_ns_ : int64
+      +{static} create(Config) : optional<FixedStepClock>
+      +advance(elapsed_ns : int64) : Advance
+      +alpha() : double
+      +reset()
+    }
+  }
+
+  package "tp::units" {
+    class "conversions" as Units <<free functions>> {
+      +rpm_to_rad_s(rpm) : double
+      +rad_s_to_rpm(omega_rad_s) : double
+      +rad_to_deg(angle_rad) / deg_to_rad(angle_deg) : double
+      +metric_hp_to_w(hp) / w_to_metric_hp(power_w) : double
+    }
+  }
+
+@enduml

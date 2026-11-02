@@ -1,0 +1,97 @@
+# The garage for the NTTO standard class, 3.5 t: what a puller may improve
+# on a stock farm tractor and stay in the class (NTTO technical rules,
+# chapter 13; check the current year's rulebook before changing them).
+#
+# The player's tractor is the event's reference tractor
+# (tractors/farm_stock_light.toml) with every part at its first level: an
+# older tractor bought cheap. Each level sets the part's value outright;
+# the top levels take it to the class's limits:
+#
+# - engine_torque: the full-load torque, as a share of the reference
+#   engine's. The rules want a stock engine (a replacement turbo only to the
+#   original's specification), so this is a worn pump and injectors brought
+#   back to the maker's figures, up to the class's 85 hp at the PTO. The
+#   torque low down decides which gear the tractor can get the sled moving
+#   in: a worn pump 5th, a better one 6th, the maker's figures 7th.
+# - rated_rpm: the governor's rated speed, the unloaded speed 200 rpm above
+#   it, up to the class's 2700 rpm. The engine keeps its power to a higher
+#   speed, so the tractor pulls faster in the same gear; the peak power,
+#   which the class limits, stays the pump's.
+# - rear_traction: the rear tires' traction limit. Any rubber tire of any
+#   size (within 100 cm wide a side); no steel lugs, no cut or regrooved
+#   tread.
+# - ballast_kg: the weights the puller moves before a pull, up to the
+#   class's 3500 kg with the driver.
+# - hitch_height_m: the drawbar's height, at most 0.5 m and never above the
+#   rear axle's centre. Higher lifts the nose sooner: the wheelie bar the
+#   class requires catches it.
+# - load_downshift_gears: a powershift step that shifts down under load,
+#   the clutch in, once a pull (from the same make's range: the engine,
+#   clutch housing, gearbox and rear axle must be one make). The first
+#   step costs the most: one gear down under load, without losing the
+#   pull, is what saves most pulls; a second gear down helps less. Two
+#   gears may be taken at once or a gear at a time.
+#
+# Money in euros; each level's cost is from the level below. An event pays
+# by place (seasons/club_season.toml).
+
+[garage]
+start_money_eur = 1000
+
+[[garage.upgrades]]
+part = "engine_torque"
+name = "Injection pump"
+levels = [
+    { value = 0.80, cost_eur = 0, label = "Worn pump and injectors" },
+    { value = 0.87, cost_eur = 900, label = "New injectors" },
+    { value = 0.92, cost_eur = 1400, label = "Pump overhauled" },
+    { value = 1.0, cost_eur = 2000, label = "Maker's figures, 84 hp" },
+]
+
+[[garage.upgrades]]
+part = "rear_traction"
+name = "Rear tires"
+levels = [
+    { value = 0.86, cost_eur = 0, label = "Worn tires" },
+    { value = 0.90, cost_eur = 800, label = "New farm tires" },
+    { value = 0.92, cost_eur = 1500, label = "Deep-tread tires" },
+    { value = 0.95, cost_eur = 2200, label = "Wider deep-tread tires" },
+]
+
+[[garage.upgrades]]
+part = "ballast_kg"
+name = "Weights"
+levels = [
+    { value = 100.0, cost_eur = 0, label = "100 kg of weights" },
+    { value = 200.0, cost_eur = 400, label = "200 kg of weights" },
+    { value = 300.0, cost_eur = 400, label = "300 kg of weights" },
+    { value = 400.0, cost_eur = 500, label = "400 kg, the class's 3500 kg" },
+]
+
+[[garage.upgrades]]
+part = "hitch_height_m"
+name = "Drawbar"
+levels = [
+    { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
+    { value = 0.42, cost_eur = 400, label = "Drawbar raised, 0.42 m" },
+    { value = 0.43, cost_eur = 500, label = "Drawbar raised again, 0.43 m" },
+    { value = 0.50, cost_eur = 2000, label = "Pulling hitch, 0.50 m" },
+]
+
+[[garage.upgrades]]
+part = "load_downshift_gears"
+name = "Powershift"
+levels = [
+    { value = 0.0, cost_eur = 0, label = "None: shift with the clutch" },
+    { value = 1.0, cost_eur = 3000, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 1500, label = "Two gears down under load" },
+]
+
+[[garage.upgrades]]
+part = "rated_rpm"
+name = "Governor"
+levels = [
+    { value = 2200.0, cost_eur = 0, label = "Stock, 2200 rpm" },
+    { value = 2350.0, cost_eur = 1200, label = "Turned up, 2350 rpm" },
+    { value = 2500.0, cost_eur = 1800, label = "2500 rpm, 2700 unloaded" },
+]

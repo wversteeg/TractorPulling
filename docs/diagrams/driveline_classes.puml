@@ -1,0 +1,74 @@
+@startuml driveline_classes
+title Driveline (tp::driveline): gearbox, final drive and axle
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::coupling (see core_classes)" {
+  class ShaftPrediction <<struct>> {
+    +free_omega_next_rad_s : double
+    +omega_per_torque : double
+    +omega_per_negative_torque : double
+  }
+}
+package "tp::hash (see core_classes)" {
+  class Fnv1a
+}
+
+package "tp::driveline" {
+  class Params <<struct>> {
+    +gear_ratios : array<double, 16>
+    +gear_count : size_t
+    +reverse_ratio : double, 0 = none
+    +final_drive_ratio : double
+    +efficiency : double
+    +input_inertia_kg_m2 : double
+    +output_inertia_kg_m2 : double
+    +drag_torque_nm : double
+    +viscous_drag_nm_s_rad : double
+    +load_downshift_gears : int
+    +load_shifts_per_pull : int
+  }
+  class State <<struct>> {
+    +gear : int, 0 = neutral, -1 = kReverse
+    +input_omega_rad_s : double
+    +output_omega_rad_s : double
+    +load_shifts : int
+    +floor_gear : int
+  }
+  class Prediction <<struct>> {
+    +ratio : double, negative in reverse
+    +direction : double, 1 or -1
+    +efficiency : double
+    +free_input_rad_s, input_per_nm : double
+    +free_output_rad_s, output_per_nm : double
+  }
+  class Response <<struct>> {
+    +free_input_rad_s, input_per_clutch(_negative), input_per_axle
+    +free_axle_rad_s, axle_per_clutch(_negative), axle_per_axle
+  }
+  enum ParamError
+  class "driveline functions" as DrivelineFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +overall_ratio(const Params&, gear) : double
+    +shifts_under_load(const State&, const Params&, to) : bool
+    +shift_under_load(State&, const Params&, gear) : optional<double>
+    +shift(State&, const Params&, gear, clutch_disengaged) : bool
+    +start_pull(State&)
+    +end_pull(State&)
+    +lowest_gear(const State&, const Params&) : int
+    +predict(const State&, const Params&, axle_load_torque_nm, dt_s,\n      direction = 1) : Prediction
+    +input_shaft(const Prediction&) : ShaftPrediction
+    +response(const Prediction&) : Response
+    +advance(State&, const Prediction&, clutch_torque_nm, axle_torque_nm = 0)
+    +hash_append(Fnv1a&, const State&)
+  }
+  DrivelineFns ..> Params
+  DrivelineFns ..> State
+  DrivelineFns ..> Prediction
+  DrivelineFns ..> Response
+  DrivelineFns ..> ParamError
+}
+DrivelineFns ..> ShaftPrediction : for the clutch
+DrivelineFns ..> Fnv1a
+@enduml

@@ -1,0 +1,42 @@
+@startuml load_component_sequence
+title Loading a component definition from data/ (engine, clutch, ...)
+autonumber
+participant "tp_pull\n(or a front end)" as App
+participant "data::load_<component>" as Load
+participant "detail::load_file_with /\nparse_with" as Parse
+participant "ReadFile\n(the front end's,\nor read_from_disk)" as Read
+participant "toml++" as Toml
+participant "detail::Reader" as Reader
+participant "math::Curve" as Curve
+participant "<component>::validate" as Validate
+
+App -> Load : load_engine("res://data/engines/x.toml", read)
+note right of App : a tractor, event or season loads the files it names\nthe same way: resolve(directory_of(its path), name)
+Load -> Parse : load_file_with(path, read, read_<component>)
+Parse -> Read : read(path)
+Read --> Parse : optional<string>
+alt cannot open
+  Parse --> App : LoadError "path: cannot open file"
+end
+Parse -> Toml : parse(text, source_name)
+alt syntax error
+  Toml --> Parse : throws parse_error
+  Parse --> App : LoadError "file:line:col: description"
+end
+Toml --> Parse : toml::table
+Parse -> Load : read_<component>(table, source)
+Load -> Reader : curve("engine.torque_curve", "rpm", "torque_nm", rpm to rad/s)
+Reader -> Curve : validate(points), create(points)
+Reader --> Load : optional<Curve>
+Load -> Reader : number("engine.idle_rpm"), ...
+Reader --> Load : values (first problem remembered)
+alt missing field, wrong type or invalid curve
+  Load --> App : LoadError "file: field: reason"
+end
+Load -> Load : convert to SI, build Params
+Load -> Validate : validate(params)
+alt ParamError
+  Load --> App : LoadError "file: field: rule"
+end
+Load --> App : Result<Params>
+@enduml

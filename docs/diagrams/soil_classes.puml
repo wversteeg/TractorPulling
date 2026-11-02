@@ -1,0 +1,44 @@
+@startuml soil_classes
+title Soil (tp::soil): from what a track is made of to how it behaves
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::math (see core_classes)" {
+  class "exp(x)" as Exp <<free function>>
+}
+
+package "tp::soil" {
+  class Composition <<struct>> {
+    +clay_fraction : double, 0 sand .. 1 clay
+    +moisture : double, kg water / kg dry soil
+    +compaction : double, 0 loose .. 1 rolled
+  }
+  class Surface <<struct>> {
+    +cone_index_pa : double
+    +grip_factor : double
+    +spin_fall_off : double
+  }
+  enum ParamError {
+    kNotFinite
+    kClayFractionOutOfRange
+    kMoistureOutOfRange
+    kCompactionOutOfRange
+  }
+  class "soil functions" as SoilFns <<free functions>> {
+    +{static} kMaxMoisture = 0.5
+    +validate(const Composition&) : optional<ParamError>
+    +surface(const Composition&) : Surface
+  }
+  SoilFns ..> Composition
+  SoilFns ..> Surface
+  SoilFns ..> ParamError
+}
+SoilFns ..> Exp
+note bottom of SoilFns
+  strength: sand peaks near 8 % moisture, clay weakens as it gets wetter;
+  compaction raises both; mixed by clay fraction
+  grip: dust on dry clay, a slick film above clay's plastic limit
+  fall-off: base + sand digging + wet clay smearing
+end note
+@enduml

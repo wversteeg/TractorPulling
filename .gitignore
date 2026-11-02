@@ -66,3 +66,8 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Project
+.cache/
+compile_commands.json
+CMakeUserPresets.json

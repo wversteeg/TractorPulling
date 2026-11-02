@@ -1,0 +1,375 @@
+@startuml godot_scene_classes
+title The pull scene (app/godot/scenes/pull.tscn): a season's events against the rivals, at a club venue
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Godot 4.7" {
+  class Node3D
+  class SceneTree
+  class Control
+}
+
+package "GDScript (app/godot/scripts)" {
+  class "pull.gd" as Pull {
+    +season_path : String
+    +season_seed : int
+    +autoplay : bool
+    +whole_turn : bool = true
+    +settings_path : String
+    +save_path : String
+    +pro, tilt : bool
+    +practice : bool
+    +run : TractorPullRun
+    +event : TractorPullEvent
+    +flagman, end_flagman : Flagman
+    +parked : Array[TractorView]
+    +hitch_marker : MeshInstance3D
+    +driver : Callable, a scripted driver for tests
+    +screen : Screen {START, SETTINGS, GARAGE, EVENT,\n  SETUP, PULLING, RESULT, EVENT_END, SEASON}
+    +show_start(error)
+    -_new_season(new_career)
+    -_resume_season() : bool
+    -_save_season()
+    -_change_settings(pro, tilt)
+    -_show_setup(for_practice)
+    -_start_practice()
+    -_start_event_pull()
+    -_place_parking()
+    -_build(error) : bool
+    -_build_turn(dimensions)
+    -_camera_target(delta) : Vector3
+    -_show_officials(snapshot, delta)
+    +{static} signal_for(snapshot, turn) : String
+    -_set_screen(screen)
+    -_process(delta)
+    -_advance_rivals()
+    -_show_result()
+    -_show_event(), _show_event_end(), _show_season()
+    -_read_controls()
+    -_show(delta)
+  }
+  class TrackView {
+    +build(dimensions)
+  }
+  class TractorView {
+    +paint, paint_dark, driver_shirt : Color
+    +build(dimensions)
+    +show_snapshot(snapshot, delta)
+    +hitch_position() : Vector3
+    +cab_camera() : Camera3D
+  }
+  class SledView {
+    +build(dimensions)
+    +show_snapshot(snapshot, delta)
+    +hook_position() : Vector3
+    +rear_position() : Vector3
+  }
+  class VenueView {
+    +RETURN_LANE_M, PARKING_RIGHT_OF_LANE_M
+    +PLAYER_BAY_X_M, RIVAL_BAYS_X_M
+    +build(dimensions)
+    +show_distance(sled_m)
+    +excitement() : float
+    +banner_at_m() : float
+    +{static} environment() : WorldEnvironment
+    +{static} past_lane_m(side) : float
+    +show_signal(signal) : the gantry's light
+    +signal_shown() : String
+  }
+  class Flagman {
+    +stand(at, facing)
+    +show_signal(green, raise, wave, delta)
+    +colour_name() : String
+    +raised() : bool
+  }
+  class TrackMarks {
+    +build(dimensions)
+    +show_snapshot(snapshot)
+    +point_counts() : Vector3i
+  }
+  class People <<static>> {
+    +{static} standing() : ArrayMesh
+    +{static} seated() : ArrayMesh
+    +{static} material(shirt, skin) : ShaderMaterial
+    +{static} one(seated, shirt) : MeshInstance3D
+  }
+  class Art <<static>> {
+    +{static} material(colour, roughness, metallic) : StandardMaterial3D
+    +{static} box(size, colour), cylinder(...), sphere(...)
+    +{static} axle_cylinder(radius_m, width_m, colour)
+    +{static} many(mesh, transforms, material, colours, custom) : MultiMeshInstance3D
+    +{static} label(text, size_px, colour, outline) : Label3D
+    +{static} ground_texture(dark, light, frequency, seed) : NoiseTexture2D
+    +{static} ground_normal(frequency, seed, strength) : NoiseTexture2D
+    +{static} paint(colour, roughness) : StandardMaterial3D
+    +{static} puff_mesh(size_m) : QuadMesh
+    +{static} torus_across(radius_m, thickness_m) : Mesh
+    +{static} tire(spin, radius_m, width_m, colour)
+    +{static} rim(spin, radius_m, width_m, outward, bolts, colour)
+    +{static} append_coloured(tool, mesh, at, colour)
+  }
+  class KenneyModels <<static>> {
+    +{static} scene(path) : Node3D
+  }
+  class Trees <<static>> {
+    +{static} pine() : ArrayMesh
+    +{static} broadleaf() : ArrayMesh
+    +{static} many(mesh, places, random, smallest, largest) : MultiMeshInstance3D
+  }
+  class ChainView {
+    +show_between(hitch, hook, tension_n)
+  }
+  class DriveControls {
+    +gear : int
+    +lowest_gear : int
+    +gear_count : int
+    +has_reverse : bool
+    +pro, tilt : bool
+    +tilt_steering : TiltSteering
+    +throttle() : float
+    +clutch() : float
+    +brake_left(), brake_right() : float
+    +steering() : float
+    +set_layout(pro)
+    +set_steering(by_tilt)
+    +set_clutch_range(full_grip_pedal, bite_pedal)
+    +set_gear(gear)
+    +show_gear(gear_in)
+    +reset()
+    +reset_fingers()
+    ..signals..
+    camera_requested, restart_requested,
+    menu_requested
+  }
+  class Hud {
+    +build(dimensions)
+    +set_parking(bay)
+    +show_snapshot(snapshot, title, pro)
+    +turn_text(snapshot) : String
+    +show_signal(signal) : the lamp on the HUD
+    +signal_shown() : String
+    +{static} gear_name(gear) : String
+  }
+  class MenuPanel {
+    +panel_size : Vector2
+    +add_line(font_size) : Label
+    +add_item(control)
+    +add_button_row() : HBoxContainer
+    +add_button(row, text) : TouchButton
+    +release_buttons()
+  }
+  class StartScreen {
+    +practice_button, garage_button, event_button : TouchButton
+    +continue_button, new_season_button, new_career_button : TouchButton
+    +settings_button : GearButton
+    +show_event(event, error)
+    +show_choice(season)
+    ..signals..
+    practice_requested, event_requested, garage_requested,
+    settings_requested, continue_requested,
+    new_season_requested, new_career_requested
+  }
+  class SettingsScreen {
+    +easy_button, pro_button : TouchButton
+    +slider_button, tilt_button : TouchButton
+    +new_career_button, done_button : TouchButton
+    +show_settings(pro, tilt, tilt_available)
+    ..signals..
+    changed(pro, tilt), done, new_career_requested
+  }
+  class GarageScreen {
+    +buy_buttons : Array[TouchButton]
+    +done_button : TouchButton
+    +show_garage(garage, message)
+    +{static} euros(amount) : String
+    ..signals..
+    buy_requested(index), done
+  }
+  class GameSettings {
+    +pro, tilt : bool
+    +{static} read(path) : GameSettings
+    +write(path) : Error
+  }
+  class TiltSteering {
+    +gravity : Callable
+    +available() : bool
+    +centre()
+    +steering() : float
+    +{static} shape(tilt_deg) : float
+  }
+  class GearButton
+  class SetupScreen {
+    +ballast_slider, pressure_slider : TouchSlider
+    +pull_button, back_button : TouchButton
+    +show_setup(title, tuning, pro, tilt)
+    +show_values(tuning)
+    +release_sliders()
+    ..signals..
+    tuning_changed(ballast_position, pressure_bar),
+    pull_requested, back_requested
+  }
+  class ResultScreen {
+    +again_button, menu_button : TouchButton
+    +continue_button : TouchButton
+    +show_result(title, result, full_pull_m, entry)
+    ..signals..
+    again_requested, menu_requested,
+    continue_requested
+  }
+  class BoardScreen {
+    +first_button, second_button : TouchButton
+    +set_title(text)
+    +set_rows(rows, highlights)
+    +row_count() : int
+    +set_status(text)
+    +status() : String
+    +set_buttons(first, second)
+    ..signals..
+    first_tapped, second_tapped
+  }
+  class EventTexts <<static>> {
+    +{static} pull_name(kind, pull_off_round) : String
+    +{static} reach(entry) : String
+    +{static} verdict(entry) : String
+    +{static} log_row(entry) : PackedStringArray
+    +{static} standing_row(line) : PackedStringArray
+    +{static} season_row(line) : PackedStringArray
+  }
+  class TouchSlider {
+    +vertical, springs_back, relative : bool
+    +start_value, end_value, rest_value : float
+    +colour : Color
+    +label : String
+    +filled : bool
+    +value : float
+    +has_band : bool
+    +band_from, band_to, mark : float
+    +set_band(from_value, to_value, mark_value)
+    +clear_band()
+    +position_of(value) : float
+    +is_held() : bool
+    +release()
+  }
+  class TouchButton {
+    +text : String
+    +fires_on_release : bool
+    +selected : bool
+    +readout : bool
+    +disabled : bool
+    +is_held() : bool
+    +release()
+    ..signals..
+    tapped
+  }
+  class CameraRig {
+    +view : View {CHASE, CLOSE, CAB, SIDE, OVERHEAD}
+    +next()
+    +rumble : float
+    +cab : Camera3D
+    +current_camera() : Camera3D
+    +follow(target, delta, smooth, heading_rad, sled_rear)
+  }
+  class TrackSpace <<static>> {
+    +{static} point(x_m, y_m, z_m) : Vector3
+  }
+  class Graybox <<static>> {
+    +{static} box(size, colour) : MeshInstance3D
+    +{static} wheel(radius_m, width_m, colour) : MeshInstance3D
+  }
+}
+
+package "tests (scripts/godot_test.sh)" {
+  class "scene_test.gd" as SceneTest
+  class "screenshots.gd" as Shots
+  class "touch_test.gd" as TouchTest
+  class "flow_test.gd" as FlowTest
+  class "turn_test.gd" as TurnTest
+}
+
+class "TractorPullRun\n(see godot_classes)" as Run
+class "TractorPullEvent\n(see godot_classes)" as Event
+
+Node3D <|-- Pull
+Node3D <|-- TrackView
+Node3D <|-- TractorView
+Node3D <|-- SledView
+Node3D <|-- ChainView
+Node3D <|-- VenueView
+Node3D <|-- TrackMarks
+Node3D <|-- CameraRig
+Node3D <|-- Flagman
+Pull *-- Run
+Pull *-- Event
+Pull *-- TrackView
+Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky, hills
+Pull *-- TrackMarks : ruts and the pan's band,\ncleared each pull
+Pull *-- TractorView
+Pull *-- "3" TractorView : the rivals in their bays\n(a whole turn)
+Pull *-- "2" Flagman : at the start and down the track:\ngreen while the pull is good, red to stop
+Pull *-- SledView
+Pull *-- ChainView
+Pull *-- CameraRig
+Pull *-- DriveControls : the easy or pro layout's controls
+DriveControls *-- "5" TouchSlider : steering (slider steering), hand throttle;\npro: clutch (its slipping range marked),\ntwo brakes
+DriveControls *-- "6" TouchButton : gear +/- (R below N), N,\ncamera, again, menu
+Pull *-- Hud
+Pull *-- StartScreen
+Pull *-- SettingsScreen : from the start screen's gear
+Pull *-- GarageScreen : from the start screen
+MenuPanel <|-- GarageScreen
+Pull ..> GameSettings : read at the start,\nwritten on a change
+StartScreen *-- GearButton
+TouchButton <|-- GearButton
+MenuPanel <|-- SettingsScreen
+DriveControls *-- TiltSteering : steering by tilt,\ncentred at the pull's start
+Pull *-- ResultScreen
+Pull *-- SetupScreen : before every pull
+MenuPanel <|-- SetupScreen
+SetupScreen *-- "2" TouchSlider : weights,\ntire pressure
+Pull *-- BoardScreen : the event, its top ten,\nthe season's
+Pull ..> EventTexts
+ResultScreen ..> EventTexts : the operator's verdict
+MenuPanel <|-- StartScreen
+MenuPanel <|-- ResultScreen
+MenuPanel <|-- BoardScreen
+Control <|-- MenuPanel
+Control <|-- Hud
+MenuPanel ..> TouchButton
+Control <|-- DriveControls
+Control <|-- TouchSlider
+Control <|-- TouchButton
+TrackView ..> TrackSpace
+TractorView ..> TrackSpace
+SledView ..> TrackSpace
+TrackView ..> Graybox
+TractorView ..> Art
+SledView ..> Art
+ChainView ..> Art
+VenueView ..> Art
+VenueView ..> TrackSpace
+VenueView ..> KenneyModels : CC0 models (assets/kenney):\ntents, barn, clouds
+VenueView ..> Trees : copses and\nthe tree line
+VenueView ..> People : the crowd, one\nMultiMesh a pose
+TractorView ..> People : the driver
+CameraRig ..> TractorView : the cab camera, at the driver's eyes
+Flagman ..> People : the official
+SledView ..> People : the operator
+TrackMarks ..> TrackSpace
+SceneTree <|-- SceneTest
+SceneTree <|-- Shots
+SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot
+Shots ..> Pull : autoplay, a PNG per camera
+SceneTree <|-- TouchTest
+TouchTest ..> DriveControls : simulated fingers\n(push_input) and a simulated\nmotion sensor (tilt)
+SceneTree <|-- FlowTest
+SceneTree <|-- TurnTest
+TurnTest ..> Pull : headless, a scripted driver: the whole turn\nfrom the bay to the sled and back
+FlowTest ..> Pull : a practice season (tests/data):\nstart, settings, practice, the event with its rivals,\nthe top tens, next event; launched again:\ncontinue, new season
+note bottom of Pull
+  draws the blended snapshot and hands the run the controls;
+  who pulls next and the standings are the event's (TractorPullEvent);
+  no physics or rules: TrackSpace only turns track
+  coordinates (x down the track, y left, z up) into Godot's
+end note
+@enduml

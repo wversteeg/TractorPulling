@@ -1,0 +1,181 @@
+@startuml field_classes
+title Driver and field (tp::driver, tp::field): the competitors
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "vehicle::Params / Input" as Vehicle
+  class "rules::ClassRules\n+ check(), pto_power_w()" as Rules
+  class "math::SplitMix64" as Random
+  class "pull + run" as Run
+  class "garage::Career\n+ prize_eur()" as Garage
+}
+
+package "tp::driver" {
+  class Plan <<struct>> {
+    +gear : int
+    +select_gear_s : double
+    +launch_s : double
+    +clutch_slip_in_s : double
+    +downshift_share : double
+  }
+  class "State" as DriverState <<struct>> {
+    +watching : bool
+  }
+  class "driver functions" as DriverFns <<free functions>> {
+    +validate(const Plan&, gear_count) : optional<ParamError>
+    +input(const Plan&, State&, t_s, const vehicle::State&, const vehicle::Params&) : vehicle::Input
+  }
+  DriverFns ..> Plan
+  DriverFns ..> DriverState
+}
+
+package "tp::field" {
+  class Puller <<struct>> {
+    +tractor : vehicle::Params
+    +driver : driver::Plan
+    +track_reading : double
+  }
+  class PullToPull <<struct>> {
+    +grip_share : double
+    +clutch_slip_in_s : double
+  }
+  class Venue <<struct>> {
+    +track : track::Params
+    +sled : sled::Params
+    +max_duration_s : double
+    +lane_width_m : double
+  }
+  class LogEntry <<struct>> {
+    +pull : event::Pull
+    +reached_m : double
+    +disqualified : bool
+    +outcome : event::Outcome
+    +gear : int
+    +full_pull_m, knives, pushdown_start_m
+    +deciding : int, keep : bool
+  }
+  class PlayedEvent <<struct>> {
+    +event : event::Event
+    +log : array<LogEntry, 160>
+    +gears : array<int, 32>
+    +entries() : span<const LogEntry>
+  }
+  class Range <<struct>> {
+    +low, high : double
+  }
+  class Variation <<struct>> {
+    +torque_scale : Range
+    +mass_kg : Range
+    +traction_limit : Range
+    +lowest_gear, highest_gear : int
+    +clutch_slip_in_s : Range
+    +track_reading : Range
+    +downshift_share : Range
+    +hitch_height_m : Range
+    +fewest_load_downshift_gears, most_load_downshift_gears : int
+    +rated_omega_rad_s : Range
+  }
+  class Field <<struct>> {
+    +pullers : array<Puller, 32>
+    +count : int
+  }
+  class "field functions" as FieldFns <<free functions>> {
+    +validate(reference, variation, rules, count) : optional<ParamError>
+    +generate(reference, variation, rules, count, seed) : optional<Field>
+    +run_pull(const Puller&, const sled::Params&, const track::Params&,\n      const run::Rules&) : optional<run::Result>
+    +best_gear(const Puller&, sled, track, lowest, highest, const run::Rules&) : optional<int>
+    +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
+    +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
+    +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
+    +pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
+    +kPullStream : uint64
+    +event_seed(season_seed, number) : uint64
+    +log_hash(span<const LogEntry>) : uint64
+  }
+  enum "LiveEvent::Turn" as Turn {
+    kRivals
+    kPlayerPull
+    kPlayerDecision
+    kFinished
+    kFailed
+  }
+  class LiveEvent {
+    +{static} create(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, player, seed) : optional<LiveEvent>
+    +turn() : Turn
+    +advance(max_steps) : int64
+    +pending_pull() : optional<event::Pull>
+    +sled() : const sled::Params&
+    +pull_rules() : run::Rules
+    +record_player(const run::Result&, gear) : event::Outcome
+    +suggested_keep() : bool
+    +decide_player(keep)
+    +player(), puller_count(), gear(puller) : int
+    +log() : span<const LogEntry>
+    +standings() : span<const event::Standing>
+    +full_pull_m() : double
+    --
+    -event_ : event::Event
+    -guesses_, pulls_ : SplitMix64
+    -job_ : optional<Job{model, state, plan, driver, rules}>
+    -log_ : array<LogEntry, 160>
+  }
+  class LiveSeason {
+    +{static} kPlayer = 0
+    +{static} create(rules, reference, variation, class_rules, pull_to_pull,\n      points, pullers, events, seed) : optional<LiveSeason>
+    +start_event(const Venue&) : bool
+    +event() : LiveEvent*
+    +score_event() : bool
+    +score_event(span<const int64> prize_by_place, garage::Career&) : bool
+    +player_standing() : optional<event::Standing>
+    +player_may_change_tractor() : bool
+    +add_pulled_event(standings) : bool
+    +event_standings(number) : span<const event::Standing>
+    +events_scored(), event_count(), events_started() : int
+    +over() : bool
+    +puller_count() : int
+    +player() : const Puller&
+    +standings() : span<const season::Standing>
+    --
+    -field_ : Field (the player the reference)
+    -championship_ : season::Championship
+    -results_ : each scored event's standings
+    -event_ : optional<LiveEvent>
+  }
+  LiveSeason *-- LiveEvent
+  LiveSeason ..> FieldFns : generate, event_seed
+  LiveEvent ..> Turn
+  LiveEvent *-- Field
+  LiveEvent *-- LogEntry
+  LiveEvent ..> FieldFns : the same draws\nas play_event
+  Puller *-- Plan
+  Variation *-- Range
+  Field *-- Puller
+  FieldFns ..> Variation
+  FieldFns ..> Field
+  FieldFns ..> PullToPull
+  FieldFns ..> Venue
+  FieldFns ..> PlayedEvent
+  PlayedEvent *-- LogEntry
+}
+Puller *-- Vehicle
+DriverFns ..> Vehicle
+FieldFns ..> Rules : every puller\nmay compete
+FieldFns ..> Random
+FieldFns ..> Run : run_pull runs\na whole pull
+LiveSeason ..> Garage : pays the\nplayer's prize
+note bottom of FieldFns
+  each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
+  torque tuned down to the class's PTO limit (bisection), mass capped at its limit;
+  pitch inertia follows the mass; the same seed gives the same field everywhere;
+  at each event every driver guesses a gear (the best as often as they read the track),
+  and every pull differs a little in grip and clutch timing
+end note
+note right of LiveEvent
+  play_event with one puller the player: the rivals'
+  gear trials and pulls run in slices of at most
+  max_steps 1 ms steps (a game spreads them over its
+  frames) and stop when the player is due; no allocation
+end note
+@enduml

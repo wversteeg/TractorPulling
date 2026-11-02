@@ -1,0 +1,13 @@
+# The flow test's garage: the reference tractor as it is, and one upgrade
+# to buy with the start money.
+
+[garage]
+start_money_eur = 1000
+
+[[garage.upgrades]]
+part = "load_downshift_gears"
+name = "Powershift"
+levels = [
+    { value = 1.0, cost_eur = 0, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 600, label = "Two gears down under load" },
+]

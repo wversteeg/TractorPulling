@@ -1,0 +1,42 @@
+# Large rear tractor tire (18.4-38 class) on a prepared pulling track. The
+# Brixius model turns the track's cone index and the tire's size and load
+# into a mobility number; the traction curve's coefficients are tuned for a
+# pulling tire, which grips harder and bites at less slip than Brixius'
+# field tires (0.88, 0.1, 7.5). On the reference track (moist, rolled clay
+# and sand) traction peaks at μ ≈ 0.91 near 28 % slip and full wheelspin
+# keeps about 80 % of it. With this grip the light class pulls on engine
+# torque in its pulling gears (6 and 7) and spins out in the low gears.
+
+[tire]
+radius_m = 0.8                     # rolling radius
+section_width_m = 0.47
+section_height_m = 0.4
+deflection_m = 0.05                # sidewall deflection at working load
+wheel_inertia_kg_m2 = 30.0         # wheel, rim and tire about the axle
+min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
+
+[tire.traction]
+limit = 0.93                       # μ on very strong ground at full bite
+mobility_rate = 0.1                # how fast grip reaches the limit with Bn
+slip_rate = 18.0                   # how fast grip builds with slip
+
+# The inflation pressure the puller sets before a pull (see
+# tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
+# that grips better on soft ground, but lets the lugs squirm, which costs
+# grip on firm ground; harder than the reference only shrinks the
+# footprint. deflection_m above is at the reference pressure.
+[tire.pressure]
+reference_bar = 1.0
+min_bar = 0.5
+max_bar = 1.6
+lug_squirm = 0.5                   # traction limit lost per unit of extra deflection / section height
+
+# Side grip (see tp::tire::Cornering). Starting values to tune: a big lugged
+# tire builds side force a little more slowly than the front tires and
+# holds a bit more of its load sideways. Traction uses up side grip, and a
+# spinning tire has almost none.
+[tire.cornering]
+stiffness_per_rad = 4.0            # side force per unit of load per rad of slip angle
+limit = 0.8                        # side force per unit of load at most
+mobility_rate = 0.1                # as for traction: soft ground grips less
+relaxation_length_m = 0.8          # about the tire's radius

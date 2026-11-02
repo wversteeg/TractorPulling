@@ -1,0 +1,108 @@
+@startuml tire_classes
+title Tire (tp::tire): traction, side grip and motion resistance on soil (Brixius)
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::soil (see soil_classes)" {
+  class Surface <<struct>> {
+    +cone_index_pa : double
+    +grip_factor : double
+    +spin_fall_off : double
+  }
+}
+
+package "tp::tire" {
+  class Size <<struct>> {
+    +radius_m : double
+    +section_width_m : double
+    +section_height_m : double
+    +deflection_m : double
+  }
+  class TractionCurve <<struct>> {
+    +limit : double
+    +mobility_rate : double
+    +slip_rate : double
+  }
+  class Cornering <<struct>> {
+    +stiffness_per_rad : double
+    +limit : double
+    +mobility_rate : double
+    +relaxation_length_m : double
+  }
+  class Footing <<struct>> {
+    +mobility_number : double
+    +root_mobility : double
+    +full_bite : double
+  }
+  class SideGrip <<struct>> {
+    +stiffness_n_per_m : double
+    +limit_n : double
+  }
+  class Params <<struct>> {
+    +size : Size
+    +traction : TractionCurve
+    +cornering : Cornering
+    +wheel_inertia_kg_m2 : double
+    +min_reference_speed_m_s : double
+    +pressure : Pressure
+  }
+  class Pressure <<struct>> {
+    +reference_bar : double
+    +min_bar, max_bar : double
+    +lug_squirm : double
+    --
+    δ = δ_ref p_ref / p; limit loses
+    lug_squirm max(δ - δ_ref, 0) / h
+  }
+  class Traction <<struct>> {
+    +force_n : double
+    +force_per_slip_speed : double
+    +slip_ratio : double
+    +full_bite : double
+  }
+  enum ParamError
+  class "tire functions" as TireFns <<free functions>> {
+    +validate(const Size&) : optional<ParamError>
+    +validate(const Cornering&) : optional<ParamError>
+    +validate(const Params&) : optional<ParamError>
+    +at_pressure(const Params&, pressure_bar) : Params
+    +mobility_number(const Size&, load_n, const Surface&) : double
+    +slip_ratio(const Params&, wheel_m_s, ground_m_s) : double
+    +traction(const Params&, wheel_m_s, ground_m_s, load_n, const Surface&) : Traction
+    +driven_rolling_resistance(const Size&, load_n, slip_ratio, const Surface&) : double
+    +towed_rolling_resistance(const Size&, load_n, const Surface&) : double
+    +thrown_soil_m3_s(const Size&, load_n, slip_ratio, wheel_m_s, const Surface&) : double
+    +full_bite(const Params&, load_n, const Surface&) : double
+    +footing(const Params&, load_n, const Surface&) : Footing
+    +traction / driven_rolling_resistance / thrown_soil_m3_s / side_grip\n      on a Footing: the same results, worked out once per step
+    +side_grip(const Size&, const Cornering&, load_n, const Surface&) : SideGrip
+    +with_traction(SideGrip, traction_n, full_bite_n, slip_ratio) : SideGrip
+    +side_force_n(const SideGrip&, deflection_m) : double
+    +relax_deflection_m(const SideGrip&, const Cornering&, deflection_m,\n      lateral_m_s, rolling_m_s, min_rolling_m_s, dt_s) : double
+  }
+  Params *-- Size
+  Params *-- TractionCurve
+  Params *-- Cornering
+  Params *-- Pressure
+  TireFns ..> SideGrip
+  TireFns ..> Footing
+  TireFns ..> Params
+  TireFns ..> Traction
+  TireFns ..> ParamError
+  TireFns ..> Surface
+}
+note bottom of TireFns
+  Bn = CI b d / W · (1 + 5 δ/h) / (1 + 3 b/d)
+  μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²)
+  driven: 1/Bn + 0.5 |s| / √Bn;  towed: 1/Bn + 0.04
+  thrown soil: width · diameter · driven resistance · |wheel surface speed|
+  side grip: C = stiffness · g m W, F_max = limit · g m W, m = 1 - e^(-rate Bn);
+  patch deflection d: F = -(C/σ) d, d' = v_lat - |v_roll| d / σ (implicit), slides at F_max;
+  traction uses it up: F_max · √(1 - (F_x / full bite)²) · (1 - |s|)
+end note
+note bottom of Traction
+  force over a step = force_n + force_per_slip_speed * change in slip speed
+  (linearly implicit; slope >= 0, so explicit beyond the peak)
+end note
+@enduml

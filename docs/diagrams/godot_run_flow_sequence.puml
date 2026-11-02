@@ -1,0 +1,85 @@
+@startuml godot_run_flow_sequence
+title The game's flow: a season's event against the rivals, then the top tens
+autonumber
+actor Player
+participant "pull.gd" as Pull
+participant "StartScreen / SettingsScreen /\nGarageScreen / BoardScreen /\nResultScreen" as Screens
+participant "TractorPullEvent" as Event
+participant "TractorPullRun" as Run
+
+Pull -> Pull : GameSettings.read(): the layout, the steering
+alt a season saved after an event (user://season.toml)
+  Pull -> Event : resume_season(season, save)\n(drawn again for its seed, its events scored,\nthe career: money and upgrades)
+  Pull -> Screens : start screen: continue, a new season or a new career?
+  alt New season
+    Player -> Screens : New season
+    Pull -> Event : start_season(season, new seed)\n(the career carries over)
+  else New career
+    Player -> Screens : New career
+    Pull -> Event : start_career(season, new seed)\n(the garage's start money, nothing bought)
+  else Continue
+    Player -> Screens : Continue
+  end
+else none
+  Pull -> Event : start_season(season, new seed)
+end
+Pull -> Pull : save: get_save()
+Pull -> Event : start_event()
+Pull -> Screens : start screen: get_event() (name, n of count)
+loop each frame on the start screen and the board
+  Pull -> Event : advance(slices of steps, ~6 ms a frame)\nwhile the turn is the rivals'
+end
+opt the gear: Settings
+  Player -> Screens : easy / pro, slider / tilt
+  Pull -> Pull : GameSettings.write()
+end
+opt Garage (before the player's first pull of the event)
+  Pull -> Screens : get_garage(): the money, each part's level\nand the next one's cost
+  loop each Buy
+    Player -> Screens : Buy
+    Pull -> Event : buy_upgrade(index)\n(garage::buy; the tractor is garage::equipped)
+    Pull -> Pull : save: get_save()
+  end
+end
+opt Practice
+  Player -> Screens : Practice
+  Pull -> Screens : the setup screen (as below), Pull
+  Pull -> Run : setup_practice(event, controls)
+  note right of Pull : a free pull; again and menu work
+end
+Player -> Screens : Event
+loop until get_event().turn is "finished"
+  Pull -> Screens : the board: get_log() rows,\nwhat is up next
+  alt turn "player_pull"
+    Player -> Screens : Pull
+    Pull -> Screens : the setup screen: get_tuning()
+    loop while the player slides the weights or the pressure
+      Pull -> Event : set_tuning(ballast_position, pressure_bar)
+    end
+    Player -> Screens : easy or pro, Pull
+    Pull -> Run : setup_event_pull(event, controls)\n(the tuned tractor)\n(the sled as the operator has set it)
+    loop every frame while pulling
+      Pull -> Run : set_controls(...), advance(frame time)
+    end
+    Pull -> Event : record_pull(run)
+    Event --> Pull : the log entry: the operator's verdict
+    Pull -> Screens : result screen; Continue
+  else turn "player_decision"
+    Player -> Screens : Keep or Pull again
+    Pull -> Event : decide(keep)
+  end
+end
+Player -> Screens : Results
+Pull -> Screens : the event's top ten: get_standings(),\nthe prize: get_event_prize()
+Player -> Screens : Season
+Pull -> Event : score_event() (pays the prize)
+Pull -> Pull : save: get_save() (kept once the season is over,\nfor its career)
+Pull -> Screens : the season's top ten: get_season_standings()
+alt more events
+  Player -> Screens : Next event
+  Pull -> Event : start_event()
+else the season is over
+  Player -> Screens : New season
+  Pull -> Event : start_season(season, new seed)
+end
+@enduml

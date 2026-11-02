@@ -1,0 +1,276 @@
+# A slider for one finger of a multi-touch screen: the finger that lands on
+# it holds it, wherever it slides, until it lifts, so other fingers work the
+# other controls at the same time. Godot's own sliders follow the one
+# emulated mouse, so two thumbs could not drive at once.
+#
+# `value` runs from `start_value` at the left (or bottom) end to
+# `end_value` at the right (or top). With `springs_back` it returns to
+# `rest_value` when the finger lifts, like a steering wheel let go;
+# without, it stays where it was left, like a hand throttle. A `relative`
+# slider is grabbed where its thumb is: a touch does not move it, only the
+# finger's slide does, as a lever is moved, so a tap to nudge the throttle
+# does not throw it open. Otherwise it jumps to where the finger lands.
+#
+# Each control has its own `colour` and `label`, so a thumb finds the
+# throttle, the clutch and the brakes apart at a glance. set_band() marks a
+# stretch of the travel (where the clutch slips) and a line in it (where it
+# bites), at the thumb's middle for those values.
+class_name TouchSlider
+extends Control
+
+const TRACK_COLOUR := Color(0.1, 0.1, 0.1, 0.45)
+const HELD_COLOUR := Color(1.0, 0.95, 0.75, 0.95)
+const LABEL_COLOUR := Color(0.95, 0.95, 0.95, 0.9)
+const THUMB_SHARE := 0.22  # of the slider's length
+const LABEL_SIZE := 22
+# The track behind the thumb, filled to where it is in the control's colour
+# at this strength, so how far a lever is open shows from afar.
+const FILL_ALPHA := 0.35
+const BAND_COLOUR := Color(1.0, 1.0, 1.0, 0.25)
+const MARK_COLOUR := Color(1.0, 0.95, 0.75, 0.95)
+const MARK_WIDTH := 4.0
+# The pedal look: the corners' radius and the pad's rubber, its ribs and
+# its rim in the control's colour.
+const PEDAL_CORNER := 18
+const PEDAL_RUBBER := Color(0.12, 0.12, 0.12, 0.95)
+const PEDAL_RIB := Color(0.32, 0.32, 0.32, 0.95)
+const PEDAL_RIBS := 5
+const PEDAL_RIM := 4
+# The ribs: inset this far inside the rim, this thick [px].
+const PEDAL_RIB_INSET := 6.0
+const PEDAL_RIB_WIDTH := 5.0
+# The steering wheel: its rim's thickness and colour, the hub's share of
+# the wheel's radius, and how far it turns at the ends of the travel [rad].
+const WHEEL_RIM := 9.0
+const WHEEL_DARK := Color(0.12, 0.12, 0.12, 0.95)
+const WHEEL_HUB_SHARE := 0.22
+const WHEEL_TURN_RAD := PI / 2.0
+const WHEEL_LABEL_INSET := 16.0
+
+@export var colour := Color(0.95, 0.95, 0.95, 0.85)
+@export var label := ""
+# The track filled from the start end up to the thumb (a lever's travel).
+@export var filled := false
+# Drawn as a pedal (vertical sliders): a rounded track and a ribbed rubber
+# pad for a thumb.
+@export var pedal := false
+# Drawn as a steering wheel (horizontal sliders): a rounded track and a
+# wheel for a thumb, turned the way it steers.
+@export var wheel := false
+
+@export var vertical := false
+@export var start_value := 0.0
+@export var end_value := 1.0
+@export var rest_value := 0.0
+@export var springs_back := false
+@export var relative := false
+
+var value := 0.0
+# The marked stretch of the travel and its line, as values; none without.
+var has_band := false
+var band_from := 0.0
+var band_to := 0.0
+var mark := 0.0
+# The finger holding the slider, -1 for none.
+var _finger := -1
+# Where the finger landed along the slider (0 to 1) and the value then, for
+# a relative slide.
+var _grab_share := 0.0
+var _grab_value := 0.0
+# The pedal's rounded shapes, made once.
+var _pedal_track := StyleBoxFlat.new()
+var _pedal_fill := StyleBoxFlat.new()
+var _pedal_pad := StyleBoxFlat.new()
+
+
+func _ready() -> void:
+	value = rest_value
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+# Marks the travel from `from_value` to `to_value`, and a line at
+# `mark_value`.
+func set_band(from_value: float, to_value: float, mark_value: float) -> void:
+	has_band = true
+	band_from = from_value
+	band_to = to_value
+	mark = mark_value
+	queue_redraw()
+
+
+func clear_band() -> void:
+	has_band = false
+	queue_redraw()
+
+
+# Where the thumb's middle is along the slider at `at_value`, from the
+# start end (the bottom of a vertical slider) [px].
+func position_of(at_value: float) -> float:
+	var length := size.y if vertical else size.x
+	var thumb := length * THUMB_SHARE
+	return inverse_lerp(start_value, end_value, at_value) * (length - thumb) + thumb / 2.0
+
+
+func is_held() -> bool:
+	return _finger >= 0
+
+
+# Touches come in through _input, not _gui_input: each finger is followed
+# by its index, whichever control it is over now.
+func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+	var touch := event as InputEventScreenTouch
+	if touch != null:
+		if touch.pressed and _finger < 0 and get_global_rect().has_point(touch.position):
+			_finger = touch.index
+			_grab_share = _share_at(touch.position)
+			_grab_value = value
+			if not relative:
+				_slide_to(touch.position)
+			queue_redraw()
+			get_viewport().set_input_as_handled()
+		elif not touch.pressed and touch.index == _finger:
+			release()
+			get_viewport().set_input_as_handled()
+		return
+	var drag := event as InputEventScreenDrag
+	if drag != null and drag.index == _finger:
+		_slide_to(drag.position)
+		get_viewport().set_input_as_handled()
+
+
+# Lets go of a held finger without a release, as when the app loses focus.
+func release() -> void:
+	_finger = -1
+	if springs_back:
+		value = rest_value
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		release()
+
+
+# How far along the slider a point is: 0 at the start end, 1 at the other,
+# beyond them off the ends.
+func _share_at(global_point: Vector2) -> float:
+	var local := global_point - global_position
+	if vertical:
+		return 1.0 - local.y / size.y
+	return local.x / size.x
+
+
+func _slide_to(global_point: Vector2) -> void:
+	var share := _share_at(global_point)
+	if relative:
+		share += inverse_lerp(start_value, end_value, _grab_value) - _grab_share
+	value = lerpf(start_value, end_value, clampf(share, 0.0, 1.0))
+	queue_redraw()
+
+
+func _draw() -> void:
+	if pedal or wheel:
+		_pedal_track.bg_color = TRACK_COLOUR
+		_pedal_track.set_corner_radius_all(PEDAL_CORNER)
+		draw_style_box(_pedal_track, Rect2(Vector2.ZERO, size))
+	else:
+		draw_rect(Rect2(Vector2.ZERO, size), TRACK_COLOUR)
+	var share := inverse_lerp(start_value, end_value, value)
+	var thumb_colour := HELD_COLOUR if is_held() else colour
+	var fill := Color(colour, FILL_ALPHA)
+	if vertical:
+		var thumb := size.y * THUMB_SHARE
+		var y := (1.0 - share) * (size.y - thumb)
+		if filled and pedal:
+			_pedal_fill.bg_color = fill
+			_pedal_fill.set_corner_radius_all(PEDAL_CORNER)
+			draw_style_box(_pedal_fill, Rect2(0.0, y, size.x, size.y - y))
+		elif filled:
+			draw_rect(Rect2(0.0, y, size.x, size.y - y), fill)
+		_draw_band()
+		if pedal:
+			_draw_pedal(Rect2(0.0, y, size.x, thumb), thumb_colour)
+		else:
+			draw_rect(Rect2(0.0, y, size.x, thumb), thumb_colour)
+	else:
+		var thumb := size.x * THUMB_SHARE
+		var x := share * (size.x - thumb)
+		if filled:
+			draw_rect(Rect2(0.0, 0.0, x + thumb, size.y), fill)
+		_draw_band()
+		if wheel:
+			_draw_wheel(Vector2(x + thumb / 2.0, size.y / 2.0),
+					minf(thumb, size.y) / 2.0 - WHEEL_RIM, thumb_colour)
+		else:
+			draw_rect(Rect2(x, 0.0, thumb, size.y), thumb_colour)
+	if has_band:
+		var at := position_of(mark)
+		_draw_across(at - MARK_WIDTH / 2.0, at + MARK_WIDTH / 2.0, MARK_COLOUR)
+	_draw_label()
+
+
+# The pedal's pad at `rect`: black rubber with ribs across it, rimmed in
+# `rim` (the control's colour, or the held colour).
+func _draw_pedal(rect: Rect2, rim: Color) -> void:
+	_pedal_pad.bg_color = PEDAL_RUBBER
+	_pedal_pad.set_corner_radius_all(PEDAL_CORNER)
+	_pedal_pad.set_border_width_all(PEDAL_RIM)
+	_pedal_pad.border_color = rim
+	draw_style_box(_pedal_pad, rect)
+	var inset := rect.grow(-2.0 * PEDAL_RIM - PEDAL_RIB_INSET)
+	for i in PEDAL_RIBS:
+		var y := inset.position.y + inset.size.y * (i + 0.5) / PEDAL_RIBS
+		draw_line(Vector2(inset.position.x, y), Vector2(inset.end.x, y), PEDAL_RIB, PEDAL_RIB_WIDTH)
+
+
+# A steering wheel at `centre`, `radius` to its rim's middle: a rim in
+# `rim_colour`, three spokes and a hub, turned as far as the slider steers
+# (left, the start value, turns it anticlockwise).
+func _draw_wheel(centre: Vector2, radius: float, rim_colour: Color) -> void:
+	var middle := (start_value + end_value) / 2.0
+	var half := absf(end_value - start_value) / 2.0
+	var turn := (value - middle) / half * WHEEL_TURN_RAD * signf(start_value - end_value) \
+			if half > 0.0 else 0.0
+	draw_circle(centre, radius + WHEEL_RIM / 2.0, WHEEL_DARK)
+	draw_arc(centre, radius, 0.0, TAU, 40, rim_colour, WHEEL_RIM, true)
+	for spoke: float in [PI / 2.0, PI / 2.0 + TAU / 3.0, PI / 2.0 - TAU / 3.0]:
+		var towards := Vector2.from_angle(spoke - turn)
+		draw_line(centre, centre + towards * radius, rim_colour, WHEEL_RIM * 0.6, true)
+	draw_circle(centre, radius * WHEEL_HUB_SHARE, rim_colour)
+
+
+# The marked stretch, over the fill and under the thumb.
+func _draw_band() -> void:
+	if has_band:
+		_draw_across(position_of(band_from), position_of(band_to), BAND_COLOUR)
+
+
+# A stretch across the slider, from `from_px` to `to_px` along it (from the
+# start end).
+func _draw_across(from_px: float, to_px: float, fill_colour: Color) -> void:
+	var low := minf(from_px, to_px)
+	var high := maxf(from_px, to_px)
+	if vertical:
+		draw_rect(Rect2(0.0, size.y - high, size.x, high - low), fill_colour)
+	else:
+		draw_rect(Rect2(low, 0.0, high - low, size.y), fill_colour)
+
+
+# The label across the track's far end (the top of a vertical slider), in
+# a dark outline so it reads over the thumb too.
+func _draw_label() -> void:
+	if label.is_empty():
+		return
+	var font := get_theme_default_font()
+	var text_size := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE)
+	var at := Vector2((size.x - text_size.x) / 2.0, font.get_ascent(LABEL_SIZE) + 6.0)
+	if not vertical:
+		at.y = (size.y + font.get_ascent(LABEL_SIZE) - font.get_descent(LABEL_SIZE)) / 2.0
+		if wheel:
+			# Clear of the wheel in the middle: at the slider's left end.
+			at.x = WHEEL_LABEL_INSET
+	draw_string_outline(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 6,
+			Color.BLACK)
+	draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, LABEL_COLOUR)

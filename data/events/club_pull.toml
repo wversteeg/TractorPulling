@@ -1,0 +1,75 @@
+# A club pulling event: one NTTO standard 3.5 t class of 15 pullers on the
+# reference track. The pullers are the reference tractor and driver, each a
+# little different; the running order and the field come from the seed.
+
+[event]
+class = "../classes/ntto_standard_3500.toml"
+tractor = "../tractors/farm_stock_light.toml"   # the reference the field varies
+sled = "../sleds/light_class.toml"
+track = "../tracks/ideal_clay_sand.toml"
+pullers = 15
+seed = 2026
+
+# The reference driver: neutral, the gear in at 0.5 s, rev up, then the
+# clutch up over 3 s from 3 s; a gear down under load once the sled pulls
+# the engine below 90 % of its rated speed (0 would never shift).
+[event.driver]
+gear = 6
+select_gear_s = 0.5
+launch_s = 3.0
+clutch_slip_in_s = 3.0
+downshift_share = 0.9
+
+# How the pullers differ. Power, engine speed and weight are kept within
+# the class. The field spans what the garage offers (data/garages), a step
+# above it: its weakest tractors are about a new career's with a level or
+# two bought, its best about a fully upgraded one. So a new tractor starts
+# at the back (8th to 10th of ten), one with every part a level up 5th to
+# 8th, halfway 3rd to 6th, and a fully upgraded one on the podium
+# (tests/data/rival_difficulty_test.cpp). Each driver
+# picks a gear between `gears` for the day's track: the best one as often
+# as their track_reading says, otherwise one off. Each shifts down at their
+# own engine speed, if their powershift can. And no two pulls are the same:
+# the spot on the track and the driver's timing differ a little.
+[event.field]
+torque_scale = [0.84, 1.03]
+mass_kg = [3200.0, 3550.0]
+traction_limit = [0.83, 0.95]
+hitch_height_m = [0.38, 0.50]          # farm drawbars up to the class's 0.5 m
+load_downshift_gears = [0, 1]          # gears down under load: none or one
+rated_rpm = [2200.0, 2500.0]           # governors as the garage's, to the class's 2700 unloaded
+gears = [5, 7]                         # the pulling gears; the weakest engines start in 5th
+clutch_slip_in_s = [2.0, 4.0]
+track_reading = [0.5, 0.95]
+downshift_share = [0.82, 0.95]         # of the rated speed, as the driver above
+pull_to_pull_grip_share = 0.01         # +- 1 % grip
+pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s
+
+# The NTTO's competition rules and the sled operator's rule of thumb.
+[event.rules]
+full_pull_m = 100.0
+extended_full_pull_m = 110.0     # when a test pull stops between the two
+max_distance_m = 130.0           # a pull past the line stops here at the latest
+pull_off_places = 4              # full pulls, filled up with the best...
+qualifying_distance_m = 90.0     # ...from 90 m on
+decide_after_pulls = 2           # the test puller decides after the 3rd pull
+repull_after_pulls = 5           # and re-pulls after the 6th
+sled_target_m = 98.0             # what the strongest should reach: the best come close to a full pull
+step_m = 8.0                     # rule of thumb: a sled step is worth about 8 m (learnt better on the day)
+max_steps_per_change = 4         # at most this many steps at once
+# The operator weighs a test pull by who pulled it (each tractor's gear
+# trials say how far it should get): the sled goes lighter when the
+# strongest would stop short of sled_target_m (the test pull plus how much
+# further the strongest gets), so a weak tractor's 80 m may be fine; a full
+# pull by one of the strongest fifth leaves the sled; a pull short of 60 %
+# of what the tractor should do is trouble with the tractor, and the next
+# puller tests. After a change, the next test changes the sled only if it
+# misses by more than a step.
+strong_full_pull_from = 0.8
+trouble_share = 0.6
+
+# The event in the game: the player and nine scripted rivals, drawn from the
+# field as above.
+[event.game]
+pullers = 10
+rival_names = ["Henk", "Gerrit", "Annemiek", "Bert", "Klaas", "Marieke", "Dirk", "Anouk", "Wim"]

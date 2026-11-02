@@ -1,0 +1,354 @@
+#include "tp/core/run/run.hpp"
+
+#include "tp/core/hash/fnv1a.hpp"
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <cstdlib>
+
+#include "../sled/reference_sled.hpp"
+#include "../track/reference_track.hpp"
+#include "../vehicle/reference_vehicle.hpp"
+
+namespace tp::run {
+namespace {
+
+constexpr double kDt_s = 0.001;
+constexpr Rules kRules{.track_length_m = 100.0,
+                       .max_duration_s = 120.0,
+                       .lane_width_m = 12.0,
+                       .full_pull_line_m = 100.0};
+
+pull::Model model_with(const sled::Params& sled,
+                       const track::Params& track = track::testing::reference_params()) {
+    const auto model = pull::Model::create(
+        {.tractor = vehicle::testing::reference_params(), .sled = sled, .track = track});
+    if (!model) {
+        std::abort();
+    }
+    return *model;
+}
+
+// A sled the reference tractor pulls the whole track: the push-down is out
+// of reach.
+sled::Params light_sled() {
+    sled::Params sled = sled::testing::reference_params();
+    sled.pushdown_start_m = 1000.0;
+    return sled;
+}
+
+// The scripted driver: idle in neutral, select the gear, rev up with the
+// clutch pressed, slip it in over 3 s (or dump it) and pull at full
+// throttle; optionally back off at `lift_at_s`: throttle closed, clutch
+// pressed.
+struct Driver {
+    int gear = 6;
+    bool dump = false;
+    double lift_at_s = 1e9;
+    // Right brake pedal and front wheel angle from the launch on.
+    double brake_right = 0.0;
+    double steering_rad = 0.0;
+
+    [[nodiscard]] vehicle::Input input(double t_s) const {
+        vehicle::Input in{.throttle = t_s < 0.5 || t_s >= lift_at_s ? 0.0 : 1.0,
+                          .clutch_pedal = 1.0,
+                          .gear = t_s < 0.5 ? driveline::kNeutral : gear};
+        if (t_s >= 3.0) {
+            in.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
+            in.brake_right = brake_right;
+            in.steering_rad = steering_rad;
+        }
+        if (t_s >= lift_at_s) {
+            in.clutch_pedal = 1.0;
+        }
+        return in;
+    }
+};
+
+struct Outcome {
+    State state;
+    Result result;
+    double distance_when_engine_stopped_m = -1.0;
+};
+
+// The loop that drives a run always ends with a result.
+Result result_of(const State& state) {
+    if (!state.result) {
+        std::abort();
+    }
+    return *state.result;
+}
+
+Outcome drive(const pull::Model& model, const Driver& driver, const Rules& rules = kRules) {
+    Outcome outcome{.state = start(model), .result = {}};
+    State& state = outcome.state;
+    for (int i = 0; !state.result; ++i) {
+        step(state, model, rules, driver.input(i * kDt_s), kDt_s);
+        if (!state.pull.tractor.engine.running && outcome.distance_when_engine_stopped_m < 0.0) {
+            outcome.distance_when_engine_stopped_m = state.pull.sled.distance_m;
+        }
+    }
+    outcome.result = result_of(state);
+    return outcome;
+}
+
+TEST(RunRules, RejectsNonsense) {
+    EXPECT_EQ(validate(kRules), std::nullopt);
+    const auto with = [](auto mutate) {
+        Rules r = kRules;
+        mutate(r);
+        return validate(r);
+    };
+    EXPECT_EQ(with([](Rules& r) { r.track_length_m = 0.0; }), ParamError::kTrackLengthNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.max_duration_s = 0.0; }), ParamError::kMaxDurationNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.track_length_m = std::nan(""); }), ParamError::kNotFinite);
+    EXPECT_EQ(with([](Rules& r) { r.lane_width_m = 0.0; }), ParamError::kLaneWidthNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.full_pull_line_m = -1.0; }),
+              ParamError::kFullPullLineNotPositive);
+    EXPECT_EQ(with([](Rules& r) { r.full_pull_line_m = r.track_length_m + 1.0; }),
+              ParamError::kFullPullLinePastTrackEnd);
+}
+
+// In its pulling gear the engine stalls after the push-down; the run ends
+// where the sled comes to rest, a little beyond where the engine died.
+TEST(Run, PullingGearEndsWithAStall) {
+    const Outcome outcome = drive(model_with(sled::testing::reference_params()), {.gear = 6});
+    const Result& result = outcome.result;
+    EXPECT_EQ(result.ending, Ending::kStalled);
+    EXPECT_GT(result.distance_m, sled::testing::reference_params().pushdown_start_m);
+    EXPECT_LT(result.distance_m, kRules.track_length_m);
+    EXPECT_GE(result.distance_m, outcome.distance_when_engine_stopped_m);
+    EXPECT_NEAR(result.distance_m, outcome.state.pull.sled.distance_m, 1e-9);
+    EXPECT_EQ(outcome.state.pull.sled.velocity_m_s, 0.0);
+}
+
+TEST(Run, LowGearEndsSpinningOut) {
+    const Outcome outcome = drive(model_with(sled::testing::reference_params()), {.gear = 4});
+    EXPECT_EQ(outcome.result.ending, Ending::kSpunOut);
+    EXPECT_TRUE(outcome.state.pull.tractor.engine.running);
+}
+
+// With the right side braked to a stop, the open differential spins the
+// left side alone: still a spin-out, though only one side slips.
+TEST(Run, OneSideSpinningIsASpinOut) {
+    const Outcome outcome =
+        drive(model_with(sled::testing::reference_params()), {.gear = 3, .brake_right = 1.0});
+    EXPECT_EQ(outcome.result.ending, Ending::kSpunOut);
+    EXPECT_TRUE(outcome.state.pull.tractor.engine.running);
+}
+
+// ---- The lane
+
+// A tractor at the line, a rear tire's outer edge on the chalk.
+pull::State at_line(const pull::Model& model, double along_m, double rear_tire_offset_m = 0.0) {
+    pull::State state = pull::initial_state(model);
+    const vehicle::Params& tractor = model.tractor().params();
+    const double rear_edge_m =
+        0.5 * (tractor.chassis.rear_track_m + tractor.rear_tire.size.section_width_m);
+    state.tractor.chassis.position_m = model.start_line_m() + along_m;
+    state.tractor.chassis.lateral_position_m =
+        0.5 * kRules.lane_width_m - rear_edge_m + rear_tire_offset_m;
+    return state;
+}
+
+TEST(Lane, ATireOnTheChalkBeforeTheFullPullLineIsOut) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    EXPECT_TRUE(touches_line(model, at_line(model, 50.0), kRules));
+    EXPECT_FALSE(touches_line(model, at_line(model, 50.0, -0.01), kRules));
+    // Past the full-pull line it may.
+    EXPECT_FALSE(touches_line(model, at_line(model, 100.5), kRules));
+    // On the right-hand line too.
+    pull::State right = at_line(model, 50.0);
+    right.tractor.chassis.lateral_position_m = -right.tractor.chassis.lateral_position_m;
+    EXPECT_TRUE(touches_line(model, right, kRules));
+}
+
+// Turned in the lane, the front tires reach out further than the rear.
+TEST(Lane, AFrontTireCountsToo) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    pull::State state = at_line(model, 50.0, -0.05);
+    EXPECT_FALSE(touches_line(model, state, kRules));
+    state.tractor.chassis.heading_rad = 0.2;
+    EXPECT_TRUE(touches_line(model, state, kRules));
+}
+
+// The sled may swing across the line; only the tractor's tires count.
+TEST(Lane, TheSledMayCrossTheLine) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    pull::State state = pull::initial_state(model);
+    state.sled.lateral_position_m = 10.0;
+    EXPECT_FALSE(touches_line(model, state, kRules));
+}
+
+// Steering steadily to one side, the tractor leaves the lane: the pull is
+// disqualified and counts 0 m.
+TEST(Run, LeavingTheLaneIsOutOfBounds) {
+    const Outcome outcome =
+        drive(model_with(sled::testing::reference_params()), {.gear = 6, .steering_rad = 0.05});
+    EXPECT_EQ(outcome.result.ending, Ending::kOutOfBounds);
+    EXPECT_EQ(outcome.result.distance_m, 0.0);
+    EXPECT_GT(outcome.state.pull.sled.distance_m, 5.0);
+}
+
+// A pull that turns is measured down the track, not along the sled's
+// path: turning, it travels further than it pulls.
+TEST(Run, ATurningPullIsMeasuredDownTheTrack) {
+    Rules wide = kRules;
+    wide.lane_width_m = 1000.0;
+    const pull::Model model = model_with(sled::testing::reference_params());
+    const Outcome outcome =
+        drive(model, {.gear = 6, .lift_at_s = 15.0, .steering_rad = 0.05}, wide);
+    const sled::State& sled = outcome.state.pull.sled;
+    EXPECT_EQ(outcome.result.ending, Ending::kStopped);
+    EXPECT_EQ(outcome.result.distance_m, sled.position_m - model.start_line_m());
+    EXPECT_GT(std::abs(sled.heading_rad), 0.05);
+    EXPECT_LT(outcome.result.distance_m, sled.distance_m - 0.1);
+}
+
+// Lifting off mid-track: the sled drags to a halt with the engine running
+// and the tires gripping, and that first stop ends the run.
+TEST(Run, BackingOffEndsTheRunAtTheFirstStop) {
+    const Outcome outcome =
+        drive(model_with(sled::testing::reference_params()), {.gear = 6, .lift_at_s = 15.0});
+    EXPECT_EQ(outcome.result.ending, Ending::kStopped);
+    EXPECT_TRUE(outcome.state.pull.tractor.engine.running);
+    EXPECT_LT(outcome.result.distance_m, 50.0);
+}
+
+// A sled nudged a few centimetres with the tractor still able to pull (the
+// jolt of the launch) has not stopped: the run goes on. Stalled there, it
+// has.
+TEST(Run, ANudgeInTheFirstCentimetresIsNotAStop) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    State state = start(model);
+    const double nudged_m = 0.5 * kStopCountsFrom_m;
+    state.pull.sled.position_m += nudged_m;
+    state.pull.sled.distance_m = nudged_m;
+    for (int i = 0; i < 2000; ++i) {
+        step(state, model, kRules, {}, kDt_s);
+    }
+    EXPECT_FALSE(state.result.has_value());
+    state.pull.tractor.engine.running = false;
+    step(state, model, kRules, {}, kDt_s);
+    ASSERT_TRUE(state.result.has_value());
+    const Result result = state.result.value_or(Result{});
+    EXPECT_EQ(result.ending, Ending::kStalled);
+    EXPECT_NEAR(result.distance_m, nudged_m, 1e-12);
+}
+
+// Waiting at the start line is not a stop: the run only ends once the sled
+// has moved.
+TEST(Run, WaitingAtTheStartIsNotAStop) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    State state = start(model);
+    for (int i = 0; i < 5000; ++i) {
+        step(state, model, kRules, {.throttle = 0.5}, kDt_s);
+    }
+    EXPECT_FALSE(state.result.has_value());
+}
+
+// A full pull ends at the end of the track; the pull-off sled stops the
+// same tractor short of it.
+TEST(Run, FullPullThenPullOffOnAHeavierSled) {
+    sled::Params sled = light_sled();
+    const Outcome full = drive(model_with(sled), {.gear = 6});
+    EXPECT_EQ(full.result.ending, Ending::kFullPull);
+    EXPECT_EQ(full.result.distance_m, kRules.track_length_m);
+
+    // Two steps: the box 1 t heavier, four more knives, the push-down back
+    // on the track at 80 m.
+    sled.pull_off_step = {.box_mass_kg = 500.0,
+                          .knives = 2,
+                          .knife_depth_m = 0.0,
+                          .pushdown_earlier_m = (sled.pushdown_start_m - 80.0) / 2.0};
+    const Outcome pull_off = drive(model_with(sled::heavier(sled, 2)), {.gear = 6});
+    EXPECT_NE(pull_off.result.ending, Ending::kFullPull);
+    EXPECT_LT(pull_off.result.distance_m, kRules.track_length_m);
+}
+
+// The reference track, watered from 30 m on: the wet stretch is softer and
+// slicker, so the tires lose their grip and the sled ploughs harder there.
+track::Params wet_from_30_m() {
+    constexpr std::array<math::CurvePoint, 2> kMoisture = {{{28.0, 0.14}, {32.0, 0.25}}};
+    track::Params track = track::testing::reference_params();
+    const auto moisture = math::Curve::create(kMoisture);
+    if (!moisture) {
+        std::abort();
+    }
+    track.moisture_along_m = *moisture;
+    return track;
+}
+
+// The same tractor and sled get less far once the track turns wet under
+// them. On the slick clay even the pulling gear, which stalls the engine on
+// the dry track, ends in wheelspin: grip, not torque, limits the pull.
+TEST(Run, AWetStretchEndsTheRunSooner) {
+    for (const int gear : {4, 6}) {
+        const sled::Params sled = sled::testing::reference_params();
+        const Outcome dry = drive(model_with(sled), {.gear = gear});
+        const Outcome wet = drive(model_with(sled, wet_from_30_m()), {.gear = gear});
+        EXPECT_LT(wet.result.distance_m, dry.result.distance_m - 5.0) << "gear " << gear;
+        EXPECT_GT(wet.result.distance_m, 30.0) << "gear " << gear;
+        EXPECT_EQ(wet.result.ending, Ending::kSpunOut) << "gear " << gear;
+    }
+}
+
+TEST(Run, TimesOutAsASafetyNet) {
+    const Outcome outcome = drive(model_with(sled::testing::reference_params()), {.gear = 4},
+                                  {.track_length_m = 100.0,
+                                   .max_duration_s = 10.0,
+                                   .lane_width_m = 12.0,
+                                   .full_pull_line_m = 100.0});
+    EXPECT_EQ(outcome.result.ending, Ending::kTimedOut);
+    EXPECT_EQ(outcome.result.time_s, 10.0);
+}
+
+// Once the run has ended nothing moves any more.
+TEST(Run, NothingMovesAfterTheEnd) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    Outcome outcome = drive(model, {.gear = 6});
+    State& state = outcome.state;
+    const State frozen = state;
+    for (int i = 0; i < 1000; ++i) {
+        step(state, model, kRules, {.throttle = 1.0, .clutch_pedal = 0.0, .gear = 6}, kDt_s);
+    }
+    hash::Fnv1a before;
+    hash_append(before, frozen);
+    hash::Fnv1a after;
+    hash_append(after, state);
+    EXPECT_EQ(before.value(), after.value());
+}
+
+std::uint64_t run_hash(Result& result) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    const Driver driver{.gear = 6};
+    State state = start(model);
+    hash::Fnv1a hash;
+    for (int i = 0; !state.result; ++i) {
+        step(state, model, kRules, driver.input(i * kDt_s), kDt_s);
+        hash_append(hash, state);
+    }
+    result = result_of(state);
+    return hash.value();
+}
+
+// A replay: the same inputs give the same run, bit for bit, and the same
+// result to the last digit, on every compiler, build type and platform.
+TEST(Run, ReplayMatchesRegression) {
+    Result result;
+    const std::uint64_t hash = run_hash(result);
+    Result again;
+    EXPECT_EQ(run_hash(again), hash);
+    EXPECT_EQ(again.distance_m, result.distance_m);
+    EXPECT_EQ(hash, 0xbbb2990027b7e5ccULL);
+    // 91.96253693857432 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.6fd9a34881798p+6);
+    EXPECT_EQ(result.ending, Ending::kStalled);
+}
+
+}  // namespace
+}  // namespace tp::run

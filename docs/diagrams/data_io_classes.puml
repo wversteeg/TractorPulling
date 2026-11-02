@@ -1,0 +1,193 @@
+@startuml data_io_classes
+title Data loading (tp::data): may throw internally, allocates, never used in the step
+hide empty members
+top to bottom direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::data" {
+  class LoadError <<struct>> {
+    +message : string
+  }
+  class "Result<T>" as Result {
+    -value_ : variant<T, LoadError>
+    +ok() : bool
+    +value() : const T&
+    +error() : const LoadError&
+  }
+  class "files" as Files <<free functions>> {
+    +ReadFile = function<optional<string>(const string& path)>
+    +read_from_disk(path) : optional<string>
+    +directory_of(path) : string
+    +resolve(base_directory, relative) : string
+    --
+    '/'-separated paths; a front end supplies its own ReadFile
+    (Godot's res://); ".." folded by name, a root or scheme kept
+  }
+  class "component loaders" as Loaders <<free functions>> {
+    +load_engine(path, read) / parse_engine(text, source) : Result<engine::Params>
+    +load_clutch(path, read) / parse_clutch(text, source) : Result<clutch::Params>
+    +load_easy_controls(path, read) / parse_easy_controls(text, source) : Result<controls::EasyParams>
+    +load_pro_controls(path, read) / parse_pro_controls(text, source) : Result<controls::ProParams>
+    +load_control_layout(path, read) / parse_control_layout(text, source) : Result<ControlLayout>
+    +load_driveline(path, read) / parse_driveline(text, source) : Result<driveline::Params>
+    +load_tire(path, read) / parse_tire(text, source) : Result<tire::Params>
+    +load_class_rules(path, read) / parse_class_rules(text, source) : Result<rules::ClassRules>
+    +load_sled(path, read) / parse_sled(text, source) : Result<sled::Params>
+    +load_track(path, read) / parse_track(text, source) : Result<Track>
+    --
+    each: read fields, convert to SI, build Params,
+    <component>::validate(), name the field on error;
+    each load_x(filesystem::path) is load_x(path, read_from_disk)
+  }
+  class Track <<struct>> {
+    +rules : run::Rules
+    +ground : track::Params, soil and profile
+    +sled : sled::Conditions, the day's push-down
+  }
+  class EventDefinition <<struct>> {
+    +class_rules : rules::ClassRules
+    +rules : event::Rules
+    +reference : field::Puller
+    +variation : field::Variation
+    +pull_to_pull : field::PullToPull
+    +pullers : int
+    +seed : uint64
+    +sled : sled::Params
+    +track : Track
+    +game : GameField
+  }
+  class GameField <<struct>> {
+    +pullers : int
+    +rival_names : vector<string>
+    --
+    the event in the game: the player
+    and the named scripted rivals
+  }
+  EventDefinition *-- GameField
+  class "event_loader" as EventLoader <<free functions>> {
+    +load_event(path, read) : Result<EventDefinition>
+    +parse_event(text, source, base_directory, read) : Result<EventDefinition>
+    --
+    loads the class, tractor, sled and track it names
+    relative to the event file, then validates the rules and field
+  }
+  class SeasonDefinition <<struct>> {
+    +event : EventDefinition
+    +points : season::Points
+    +prize_money_eur : vector<int64>
+    +garage : GarageDefinition
+    +rounds : vector<SeasonRound{name, Track}>
+    +seed : uint64
+  }
+  class "season_loader" as SeasonLoader <<free functions>> {
+    +load_season(path, read) : Result<SeasonDefinition>
+    +parse_season(text, source, base_directory, read) : Result<SeasonDefinition>
+  }
+  class SeasonSave <<struct>> {
+    +season : string
+    +seed : uint64
+    +tuning : vehicle::Tuning
+    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>}>
+    +events : vector<vector<event::Standing>>
+  }
+  class GarageDefinition <<struct>> {
+    +catalogue : garage::Catalogue
+    +texts : vector<UpgradeText{name, level_labels}>
+  }
+  class "garage_loader" as GarageLoader <<free functions>> {
+    +parse_garage(text, source) : Result<GarageDefinition>
+    +load_garage(path, read) : Result<GarageDefinition>
+  }
+  class "season_save" as SeasonSaveFns <<free functions>> {
+    +kSeasonSaveVersion = 2 (1 read too: no career)
+    +write_season_save(const SeasonSave&) : string
+    +parse_season_save(text, source) : Result<SeasonSave>
+    --
+    TOML; per event only the puller, place and
+    disqualification (what the championship scores)
+  }
+  class "run_setup" as RunSetup <<free functions>> {
+    +run_setup(tractor, class_sled, track, pull_offs = 0) : session::Setup
+    +run_setup(tractor, const field::LiveEvent&) : session::Setup
+    +venue(class_sled, track) : field::Venue
+    --
+    the class sled with the track's conditions, made heavier one step
+    per pull-off; the track's ground and rules; the pro layout.
+    tp_pull and the Godot binding both start their runs from it.
+    At a live event: the event's sled as the operator has set it,
+    a run past the line until the sled stops
+  }
+  RunSetup ..> Track
+  class ControlLayout <<struct>> {
+    +layout : session::Layout
+    +easy : controls::EasyParams
+    +pro : controls::ProParams
+    --
+    a controls file's [easy] or [pro] table
+  }
+  Loaders ..> ControlLayout
+  class "tractor_loader" as TractorLoader <<free functions>> {
+    +load_tractor(path, read) : Result<vehicle::Params>
+    +parse_tractor(text, source, base_directory, read) : Result<vehicle::Params>
+    --
+    reads the chassis, front tire size, PTO efficiency and the component paths,
+    loads each component relative to the tractor file,
+    then vehicle::validate()
+  }
+  Result o-- LoadError
+  Loaders ..> Result : returns
+  Loaders ..> Track
+  EventLoader ..> EventDefinition
+  EventLoader ..> Loaders : components
+  EventLoader ..> TractorLoader
+  EventDefinition *-- Track
+  SeasonLoader ..> SeasonDefinition
+  SeasonLoader ..> EventLoader
+  SeasonDefinition *-- EventDefinition
+  SeasonDefinition *-- GarageDefinition
+  GarageLoader ..> GarageDefinition
+  SeasonLoader ..> GarageLoader : then garage::validate\nagainst the event's tractor and class
+  SeasonSaveFns ..> SeasonSave
+  SeasonSaveFns ..> Result : returns
+  TractorLoader ..> Loaders : components
+  Loaders ..> Files : read
+  TractorLoader ..> Files : resolve, read
+  EventLoader ..> Files : resolve, read
+  SeasonLoader ..> Files : resolve, read
+  TractorLoader ..> Result : returns
+}
+
+package "tp::data::detail (internal)" {
+  class Reader {
+    +number(dotted_path) : double
+    +integer(dotted_path) : int64
+    +text(dotted_path) : string
+    +numbers(dotted_path) : vector<double>
+    +curve(table, x_key, y_key, x_to_si) : optional<Curve>
+    +error() : optional<LoadError>
+  }
+  class "toml_reader" as TomlFns <<free functions>> {
+    +parse_with<T>(text, source, loader) : Result<T>
+    +load_file_with<T>(path, read, loader) : Result<T>
+    +make_error(source, field, reason) : LoadError
+  }
+}
+Loaders ..> TomlFns
+Loaders ..> Reader
+
+package "tp::core (see the component class diagrams)" {
+  class "<component>::Params\n+ <component>::validate()" as CoreParams <<struct>>
+  class "math::Curve" as Curve
+}
+
+package "third party" {
+  class "toml++" as Toml <<library>>
+}
+
+TomlFns ..> Toml : parse
+Reader ..> Curve : create
+Loaders ..> CoreParams : builds, validates
+TractorLoader ..> Reader
+TractorLoader ..> CoreParams : vehicle::Params
+@enduml

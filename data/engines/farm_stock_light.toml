@@ -1,0 +1,31 @@
+# Light farm-stock class (NTTO standard 3.5 t): four-cylinder turbo diesel,
+# about 68 kW (93 hp) net at the crankshaft, which is about 84 hp at the PTO,
+# within the class's 85 hp limit.
+# Speeds are in rpm and converted to rad/s on load.
+
+[engine]
+inertia_kg_m2 = 1.2      # crankshaft and flywheel
+idle_rpm = 800           # governed speed at zero throttle
+rated_rpm = 2200         # full fuel at full throttle from here down
+high_idle_rpm = 2400     # governed no-load speed at full throttle
+stall_rpm = 450
+
+[engine.friction]
+constant_nm = 15.0
+viscous_nm_per_1000_rpm = 8.4
+
+[engine.turbo]
+na_torque_fraction = 0.65   # torque without boost, as a fraction of full-load
+time_constant_s = 0.8
+boost_onset_rpm = 1000
+full_boost_rpm = 1600
+
+# Full-load torque at full boost. Peak 400 N·m at 1400 rpm; net power peaks
+# at about 68 kW near 2000 rpm. Past the rated speed the curve is what the
+# engine gives at full fuel there, under 10 % below the peak power up to
+# 2500 rpm: a governor set higher (the garage's) gives about the same power
+# at a higher speed. It reaches past the class's 2700 rpm unloaded, for
+# that governor.
+[engine.torque_curve]
+rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800]
+torque_nm = [279,  335,  381,  400,  395,  381,  358,  316,  290,  266,  238]

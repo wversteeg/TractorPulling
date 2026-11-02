@@ -1,0 +1,509 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LLVM_VERSION: 18
+  # The pinned Godot, for the extension's test and the exports. The SHA-512s
+  # are from the release's SHA512-SUMS.txt.
+  GODOT_VERSION: 4.7.2-stable
+  GODOT_SHA512: 9aa00f7a605200940bce3027a567b782f49bd8e940dd06ae9e987bd65aee1b1467edd56ed84fcdcbdd44354bf613bdbb4e5d2913e925850368e150c59ed54c65
+  TEMPLATES_SHA512: ca4d71c4d7b81dfc15d1a98baa07534aa95b03fdda78a0075b06672e1648d2e5f40980c9adc28d23e1b92e732ee7bf3461997aa804af74ec2fcd7a93ccb84079
+
+jobs:
+  build-test:
+    name: ${{ matrix.compiler }} ${{ matrix.preset }}${{ matrix.arch == 'arm64' && ' arm64' || '' }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        preset: [debug, release]
+        arch: [x86-64]
+        include:
+          - compiler: clang
+            preset: asan-ubsan
+            arch: x86-64
+          # The regression hashes in the tests are fixed values: passing them
+          # on ARM shows the simulation is bit-identical across platforms.
+          - compiler: gcc
+            preset: release
+            arch: arm64
+          - compiler: clang
+            preset: release
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build libclang-rt-${LLVM_VERSION}-dev
+
+      - name: Select compiler
+        run: |
+          if [ "${{ matrix.compiler }}" = gcc ]; then
+            echo "CXX=g++" >> "$GITHUB_ENV"
+          else
+            echo "CXX=clang++-${LLVM_VERSION}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.preset }} -DTP_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+      # The speed budget (docs/performance.md): on the ARM runner, the
+      # benchmarks it is set on must stay within bench/speed_budget.toml.
+      - name: Check the speed budget
+        if: matrix.arch == 'arm64'
+        run: |
+          ./build/${{ matrix.preset }}/bench/core_bench \
+            --benchmark_filter="$(scripts/check_speed_budget.py --filter)" \
+            --benchmark_repetitions=5 --benchmark_report_aggregates_only=true \
+            --benchmark_out=bench.json --benchmark_out_format=json
+          scripts/check_speed_budget.py bench.json ci_arm64
+
+      - name: Run engine dyno
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull engine-dyno
+          data/engines/farm_stock_light.toml -o dyno.csv
+
+      - name: Check the tractor against its class
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull check
+          data/tractors/farm_stock_light.toml data/classes/ntto_standard_3500.toml
+
+      - name: Run on the sled on every track in the usable gears
+        run: |
+          for track in data/tracks/*.toml; do
+            for gear in 4 5 6 7; do
+              for mode in "" --dump; do
+                ./build/${{ matrix.preset }}/tools/tp_pull run \
+                  data/tractors/farm_stock_light.toml data/sleds/light_class.toml \
+                  "$track" --gear $gear $mode -o run.csv
+              done
+            done
+          done
+
+      - name: Compare the tracks
+        run: >
+          ./build/${{ matrix.preset }}/tools/tp_pull compare-tracks
+          data/tractors/farm_stock_light.toml data/sleds/light_class.toml
+          data/tracks/*.toml --gear 6
+
+      - name: Run the club event
+        run: ./build/${{ matrix.preset }}/tools/tp_pull event data/events/club_pull.toml
+
+      - name: Run the club season
+        run: ./build/${{ matrix.preset }}/tools/tp_pull season data/seasons/club_season.toml
+
+      - name: Run pulls in every gear
+        run: |
+          for gear in 1 2 3 4 5 6 7 8; do
+            for mode in "" --dump; do
+              ./build/${{ matrix.preset }}/tools/tp_pull pull \
+                data/tractors/farm_stock_light.toml --gear $gear $mode -o pull.csv
+            done
+          done
+
+  # The Android NDK build: the same code with the NDK's clang, libc++ and
+  # bionic. Both ABIs build; the x86_64 build runs its tests on an emulator
+  # at the oldest Android we support (API 24), so the regression hashes are
+  # checked on Android's own runtime. (Determinism on ARM is checked by the
+  # Linux arm64 jobs: GitHub's runners cannot emulate an ARM phone quickly.)
+  android:
+    name: android ${{ matrix.abi }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64, x86_64]
+    env:
+      # The NDK the latest Godot builds its Android export with.
+      NDK_VERSION: 29.0.14206865
+      API_LEVEL: 24
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja and the NDK
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
+            --install "ndk;${NDK_VERSION}"
+          echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: cmake --preset android-${{ matrix.abi }}
+
+      - name: Build
+        run: cmake --build --preset android-${{ matrix.abi }}
+
+      # The library must have the name tractor_pulling.gdextension lists.
+      - name: Build the Godot extension
+        run: |
+          cmake --preset godot-android-${{ matrix.abi }}
+          cmake --build --preset godot-android-${{ matrix.abi }}
+          library="libtp_godot.android.template_debug.${{ matrix.abi }}.so"
+          test -f "app/godot/bin/${library}"
+          grep -q "res://bin/${library}" app/godot/tractor_pulling.gdextension
+
+      # For the export job.
+      - name: Keep the Godot extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-android-${{ matrix.abi }}
+          path: app/godot/bin/libtp_godot.android.template_debug.${{ matrix.abi }}.so
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+      # The same event on the host, for the emulator's output to match.
+      - name: Run the club event on the host
+        if: matrix.abi == 'x86_64'
+        run: |
+          cmake --preset release -DTP_BUILD_TESTS=OFF -DTP_BUILD_BENCHMARKS=OFF
+          cmake --build --preset release --target tp_pull
+          ./build/release/tools/tp_pull event data/events/club_pull.toml > build/host_event.txt
+
+      - name: Enable KVM for the emulator
+        if: matrix.abi == 'x86_64'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Test on an emulator
+        if: matrix.abi == 'x86_64'
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          arch: x86_64
+          target: default
+          disable-animations: true
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          # The benchmarks on the emulator only test the script: the phone
+          # budget is for an ARM phone (scripts/android_bench.sh by hand).
+          script: |
+            scripts/android_test.sh build/android-x86_64 build/host_event.txt
+            scripts/android_bench.sh build/android-x86_64
+
+  # The Godot extension (app/godot/extension) on the desktop: built against
+  # godot-cpp and played in the pinned Godot, with a software renderer. The scripted run must
+  # end in the same state hash as tp_pull's (scripts/godot_test.sh).
+  godot:
+    name: godot
+    runs-on: ubuntu-24.04
+    # A hung Godot fails the job instead of holding a runner for hours.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # Xvfb and Mesa: Godot runs the test with a real (software) renderer,
+      # whose driver brings libraries a headless run never loads.
+      - name: Install Ninja, Xvfb and Mesa
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build xvfb libgl1-mesa-dri
+
+      - name: Configure
+        run: cmake --preset godot
+
+      - name: Build
+        run: cmake --build --preset godot
+
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  godot.zip" | sha512sum --check
+          unzip -q godot.zip
+
+      - name: Play runs through the extension
+        run: scripts/godot_test.sh "./Godot_v${GODOT_VERSION}_linux.x86_64"
+
+      # Linux's results, for the Windows build to match (windows-game).
+      - name: Run tp_pull's platform runs
+        run: scripts/platform_runs.sh build/godot/tools/tp_pull > platform_runs_linux.txt
+
+      # For the export and windows-game jobs.
+      - name: Keep the extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-linux
+          path: app/godot/bin/libtp_godot.linux.template_debug.x86_64.so
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+      - name: Keep the platform runs
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-runs-linux
+          path: platform_runs_linux.txt
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+  # The Godot extension and tp_pull for Windows, cross-compiled with
+  # MinGW-w64 as Godot builds its own Windows releases.
+  windows-build:
+    name: windows build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja and MinGW-w64
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build g++-mingw-w64-x86-64-posix
+
+      - name: Build
+        run: |
+          cmake --preset godot-windows
+          cmake --build --preset godot-windows
+
+      - name: Keep the extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-windows
+          path: app/godot/bin/libtp_godot.windows.template_debug.x86_64.dll
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+      - name: Keep tp_pull
+        uses: actions/upload-artifact@v4
+        with:
+          name: tp-pull-windows
+          path: build/godot-windows/tools/tp_pull.exe
+          # Kept a few days, for re-running the jobs that use it.
+          retention-days: 3
+
+  # The game exported: a debug APK for phones and the emulator, and the
+  # Windows desktop game, as artifacts to download from the run
+  # (scripts/godot_export.sh), from the extension the godot, android and
+  # windows-build jobs built.
+  export:
+    name: export
+    needs: [godot, android, windows-build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build
+
+      # The project as the godot preset's build leaves it, but for the
+      # libraries: data/ copied in and the extension listed.
+      - name: Prepare the project
+        run: |
+          cmake --preset godot
+          cmake --build --preset godot --target tp_godot_data
+
+      # One library per artifact: Linux (the editor loads it to export),
+      # Android arm64 and x86_64, and Windows.
+      - name: Collect the extension
+        uses: actions/download-artifact@v4
+        with:
+          pattern: extension-*
+          path: app/godot/bin
+          merge-multiple: true
+
+      - name: Download Godot
+        run: |
+          curl -fsSL -o godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          echo "${GODOT_SHA512}  godot.zip" | sha512sum --check
+          unzip -q godot.zip
+
+      # Godot looks for templates in a directory named after its version
+      # (4.7.2-stable: 4.7.2.stable).
+      - name: Find the templates directory
+        run: echo "TEMPLATES_DIR=${HOME}/.local/share/godot/export_templates/${GODOT_VERSION/-/.}" >> "$GITHUB_ENV"
+
+      # The templates come in one 1.3 GB archive; only the four files the
+      # exports use are kept, cached by Godot's version and the file list
+      # (bump the suffix when the list changes).
+      - name: Cache the export templates
+        id: templates
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TEMPLATES_DIR }}
+          key: godot-export-templates-${{ env.GODOT_VERSION }}-v1
+
+      - name: Download the export templates
+        if: steps.templates.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL -o templates.tpz \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          echo "${TEMPLATES_SHA512}  templates.tpz" | sha512sum --check
+          unzip -q templates.tpz templates/version.txt templates/android_debug.apk \
+            templates/windows_debug_x86_64.exe templates/windows_debug_x86_64_console.exe
+          mkdir -p "${TEMPLATES_DIR}"
+          mv templates/* "${TEMPLATES_DIR}/"
+          rm templates.tpz
+
+      - name: Export
+        run: |
+          export ANDROID_HOME="${ANDROID_SDK_ROOT}"
+          export JAVA_HOME="${JAVA_HOME_17_X64}"
+          scripts/godot_export.sh "./Godot_v${GODOT_VERSION}_linux.x86_64" build/export
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-android
+          path: build/export/tractor_pulling.apk
+          retention-days: 30
+
+      - name: Upload the Windows game
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-windows
+          path: build/export/windows/
+          retention-days: 30
+
+  # On Windows: the exported game starts (its season loaded through the
+  # extension, a few hundred frames without a display, no errors), and the
+  # Windows tp_pull gives Linux's results, line for line: the scripted runs'
+  # state hashes and a whole event.
+  windows-game:
+    name: windows game
+    needs: [export, godot]
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tractor-pulling-windows
+          path: game
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tp-pull-windows
+          path: tp_pull
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: platform-runs-linux
+          path: linux
+
+      - name: Start the game
+        run: |
+          timeout 300 game/TractorPulling.console.exe --headless --quit-after 600 2>&1 | tee game.log
+          grep -qE '^A season of [0-9]+ events, [0-9]+ pullers' game.log || {
+            echo "the game did not start its season" >&2
+            exit 1
+          }
+          if grep -q 'ERROR' game.log; then
+            echo "the game hit an error" >&2
+            exit 1
+          fi
+
+      - name: Match Linux's results
+        run: |
+          scripts/platform_runs.sh tp_pull/tp_pull.exe > platform_runs_windows.txt
+          diff --strip-trailing-cr linux/platform_runs_linux.txt platform_runs_windows.txt
+          echo "the same results on Windows as on Linux"
+
+  clang-tidy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ninja-build clang-tidy-${LLVM_VERSION}
+
+      - name: Configure
+        env:
+          CXX: clang++-${{ env.LLVM_VERSION }}
+        run: cmake --preset debug
+
+      - name: Run clang-tidy
+        run: >
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug
+          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
+          "$PWD/(core|data_io|tests|tools|bench)/"
+
+      # The Godot extension needs godot-cpp's generated headers, so it gets
+      # its own build tree.
+      - name: Configure the Godot extension
+        env:
+          CXX: clang++-${{ env.LLVM_VERSION }}
+        run: |
+          cmake --preset godot
+          cmake --build --preset godot --target generate_bindings
+
+      - name: Run clang-tidy on the Godot extension
+        run: >
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/godot
+          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
+          "$PWD/app/godot/extension/"
+
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang-format-${LLVM_VERSION}
+
+      - name: Check formatting
+        run: git ls-files '*.cpp' '*.hpp' | xargs clang-format-${LLVM_VERSION} --dry-run -Werror
+
+  diagrams:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check rendered diagrams match their sources
+        run: scripts/render_diagrams.sh --check
+
+  # Shows changed diagrams as images in the PR conversation. Skipped for PRs
+  # from forks, whose token cannot write comments.
+  diagram-preview:
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Post or update the diagram preview comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/post_diagram_preview.sh

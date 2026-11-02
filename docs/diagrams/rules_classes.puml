@@ -1,0 +1,48 @@
+@startuml rules_classes
+title Class rules (tp::rules): may a tractor compete in a pulling class?
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "tp::rules" {
+  class ClassRules <<struct>> {
+    +max_mass_kg : double
+    +max_pto_power_w : double
+    +max_engine_speed_rad_s : double
+    +max_hitch_height_m : double
+  }
+  class Compliance <<struct>> {
+    +too_heavy : bool
+    +too_much_pto_power : bool
+    +engine_speed_too_high : bool
+    +hitch_too_high : bool
+    +hitch_above_rear_axle : bool
+    +ok() : bool
+  }
+  enum ParamError {
+    kNotFinite
+    kLimitNotPositive
+  }
+  class "rules functions" as RulesFns <<free functions>> {
+    +validate(const ClassRules&) : optional<ParamError>
+    +pto_power_w(const vehicle::Params&) : double
+    +check(const ClassRules&, const vehicle::Params&) : Compliance
+  }
+  RulesFns ..> ClassRules
+  RulesFns ..> Compliance
+  RulesFns ..> ParamError
+}
+
+package "tp::vehicle / tp::engine" {
+  class "vehicle::Params\n+ pto_efficiency" as Tractor <<struct>>
+  class "engine::max_net_power_w()" as EnginePower <<free function>>
+}
+
+RulesFns ..> Tractor : reads mass, hitch,\nhigh idle, PTO efficiency
+RulesFns ..> EnginePower : PTO power =\nnet peak × PTO efficiency
+note bottom of ClassRules
+  competition rules, not physics: loaded from data/classes/,
+  checked at setup (never in the step); upgrades change
+  tractor parameters, which must stay within the class
+end note
+@enduml

@@ -1,0 +1,130 @@
+@startuml vehicle_classes
+title Vehicle (tp::vehicle): the whole tractor and the chain solve
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "components (see their class diagrams)" {
+  class "engine::Params / State" as Engine
+  class "clutch::Params / State" as Clutch
+  class "driveline::Params / State\n+ Response" as Driveline
+  class "tire::Params / Size / Cornering\n+ Traction, SideGrip" as Tire
+  class "soil::Surface" as Surface
+  class "chassis::Params / State\n+ AxleLoads" as Chassis
+}
+
+package "tp::vehicle" {
+  class Params <<struct>> {
+    +engine : engine::Params
+    +clutch : clutch::Params
+    +driveline : driveline::Params
+    +rear_tire : tire::Params
+    +rear_tire_count : int
+    +front_tire : tire::Size
+    +steering : Steering
+    +brakes : Brakes
+    +chassis : chassis::Params
+    +pto_efficiency : double
+  }
+  class Steering <<struct>> {
+    +max_angle_rad : double
+    +front_tires : tire::Cornering
+  }
+  class Brakes <<struct>> {
+    +max_torque_nm : double
+  }
+  class Model {
+    -params_ : Params
+    -driveline_ : driveline::Params, rear wheels on the axle
+    +{static} create(const Params&) : optional<Model>
+    +params() : const Params&
+    +driveline() : const driveline::Params&
+  }
+  class State <<struct>> {
+    +engine : engine::State
+    +clutch : clutch::State
+    +driveline : driveline::State
+    +chassis : chassis::State
+    +differential_rad_s : double
+    +front_side_deflection_m : double
+    +rear_left_side_deflection_m : double
+    +rear_right_side_deflection_m : double
+  }
+  class Input <<struct>> {
+    +throttle : double
+    +clutch_pedal : double
+    +gear : int, -1 = reverse
+    +steering_rad : double
+    +brake_left, brake_right : double
+    +pull_on : bool = true
+  }
+  class RearWheels <<struct>> {
+    +slip_ratio : double
+    +tire_force_n : double
+    +brake_torque_nm : double
+  }
+  class Ground <<struct>> {
+    +rear : soil::Surface
+    +front : soil::Surface
+  }
+  class Output <<struct>> {
+    +engine : engine::Output
+    +clutch_torque_nm, clutch_slip_rad_s, clutch_slip_power_w
+    +tire_force_n (held pull at a standstill), slip_ratio (sides' mean)
+    +rear_left, rear_right : RearWheels
+    +rear_rolling_resistance, front_rolling_resistance
+    +thrown_soil_m3_s
+    +axle_loads : AxleLoads
+    +front_side_force_n, rear_side_force_n
+    +shift_refused : bool
+  }
+  class TireLine <<struct>> {
+    +force_n, force_per_slip_speed
+    +slip_speed_m_s, radius_m
+  }
+  class ChainSolution <<struct>> {
+    +clutch_torque_nm : double
+    +tire_force_n : double
+  }
+  class Tuning <<struct>> {
+    +ballast_position : double
+    +rear_tire_pressure_bar : double
+    --
+    set by the puller before a pull
+  }
+  class "tuning functions" as TuningFns <<free functions>> {
+    +as_built(const Params&) : Tuning
+    +tuned(const Params&, const Tuning&) : Params
+    --
+    chassis::with_ballast_at and
+    tire::at_pressure on the rear tires
+  }
+  TuningFns ..> Tuning
+  TuningFns ..> Params
+  class "vehicle functions" as VehicleFns <<free functions>> {
+    +validate(const Params&) : optional<ParamError>
+    +initial_state(const Model&) : State
+    +travel_direction(const State&) : double
+    +step(State&, const Model&, const Input&, const Ground&,\n      const chassis::Drawbar&, dt_s) : Output
+    +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
+    +hash_append(Fnv1a&, const State&)
+  }
+  Model *-- Params
+  Params *-- Steering
+  Params *-- Brakes
+  Output *-- RearWheels
+  VehicleFns ..> Model
+  VehicleFns ..> State
+  VehicleFns ..> Input
+  VehicleFns ..> Ground
+  VehicleFns ..> Output
+  VehicleFns ..> TireLine
+  VehicleFns ..> ChainSolution
+}
+Params *-- Engine
+Params *-- Clutch
+Params *-- Driveline
+Params *-- Tire
+Params *-- Chassis
+Ground *-- Surface
+@enduml

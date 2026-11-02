@@ -1,0 +1,11 @@
+# Single-plate dry clutch for the light farm-stock class.
+
+[clutch]
+static_torque_capacity_nm = 650.0   # ~1.5x the engine's 430 N·m peak torque
+kinetic_ratio = 0.8                 # sliding friction / static friction
+
+# Fraction of capacity against pedal travel (0 = released, 1 = fully pressed):
+# free play to 30 %, bite around 55 %, fully open from 70 %.
+[clutch.engagement]
+pedal    = [0.0, 0.3, 0.45, 0.55, 0.7, 1.0]
+fraction = [1.0, 1.0, 0.6,  0.15, 0.0, 0.0]

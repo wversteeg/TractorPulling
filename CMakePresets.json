@@ -1,0 +1,140 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 25, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "inherits": "base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "asan-ubsan",
+      "displayName": "Debug with AddressSanitizer and UBSan",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TP_ENABLE_SANITIZERS": "ON",
+        "TP_BUILD_BENCHMARKS": "OFF"
+      }
+    },
+    {
+      "name": "godot",
+      "displayName": "Godot extension for the desktop editor, and tp_pull",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF"
+      }
+    },
+    {
+      "name": "android-base",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "$env{ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ANDROID_PLATFORM": "android-24",
+        "ANDROID_STL": "c++_static",
+        "TP_DATA_DIR": "/data/local/tmp/tp/data"
+      }
+    },
+    {
+      "name": "android-arm64",
+      "displayName": "Android arm64-v8a (phones), release",
+      "inherits": "android-base",
+      "cacheVariables": { "ANDROID_ABI": "arm64-v8a" }
+    },
+    {
+      "name": "android-x86_64",
+      "displayName": "Android x86_64 (emulator), release",
+      "inherits": "android-base",
+      "cacheVariables": { "ANDROID_ABI": "x86_64" }
+    },
+    {
+      "name": "godot-android-base",
+      "hidden": true,
+      "inherits": "android-base",
+      "cacheVariables": {
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF",
+        "TP_BUILD_TOOLS": "OFF"
+      }
+    },
+    {
+      "name": "godot-android-arm64",
+      "displayName": "Godot extension for Android arm64-v8a (phones)",
+      "inherits": "godot-android-base",
+      "cacheVariables": { "ANDROID_ABI": "arm64-v8a" }
+    },
+    {
+      "name": "godot-android-x86_64",
+      "displayName": "Godot extension for Android x86_64 (emulator)",
+      "inherits": "godot-android-base",
+      "cacheVariables": { "ANDROID_ABI": "x86_64" }
+    },
+    {
+      "name": "godot-windows",
+      "displayName": "Godot extension and tp_pull for Windows x86-64 (MinGW-w64, from Linux)",
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/mingw-w64-x86_64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "debug", "configurePreset": "debug" },
+    { "name": "release", "configurePreset": "release" },
+    { "name": "asan-ubsan", "configurePreset": "asan-ubsan" },
+    { "name": "android-arm64", "configurePreset": "android-arm64" },
+    { "name": "android-x86_64", "configurePreset": "android-x86_64" },
+    { "name": "godot", "configurePreset": "godot" },
+    { "name": "godot-android-arm64", "configurePreset": "godot-android-arm64" },
+    { "name": "godot-android-x86_64", "configurePreset": "godot-android-x86_64" },
+    { "name": "godot-windows", "configurePreset": "godot-windows" }
+  ],
+  "testPresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    { "name": "debug", "inherits": "base", "configurePreset": "debug" },
+    { "name": "release", "inherits": "base", "configurePreset": "release" },
+    {
+      "name": "asan-ubsan",
+      "inherits": "base",
+      "configurePreset": "asan-ubsan",
+      "environment": {
+        "ASAN_OPTIONS": "detect_leaks=1:strict_string_checks=1:detect_stack_use_after_return=1",
+        "UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"
+      }
+    }
+  ]
+}
