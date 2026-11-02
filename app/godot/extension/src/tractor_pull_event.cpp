@@ -235,6 +235,9 @@ godot::Dictionary TractorPullEvent::get_event() const {
         out["pull_kind"] = kind_name(pull->kind);
         out["pull_off_round"] = pull->pull_off_round;
     }
+    // A pull stopped short of the restart line may move this many places
+    // later (move_back()), if it may at all.
+    out["move_back_places"] = event.may_defer_player() ? event::kDeferPlaces : 0;
     return out;
 }
 
@@ -313,6 +316,7 @@ godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e, double line_
     out["change"] = change_name(e.outcome.change);
     out["steps"] = e.outcome.steps;
     out["full_pull_m"] = e.full_pull_m;
+    out["moved_back"] = e.moved_back;
     return out;
 }
 
@@ -394,6 +398,18 @@ godot::Dictionary TractorPullEvent::record_pull(const godot::Ref<TractorPullRun>
     const double line_before_m = event.full_pull_m();
     event.record_player(*result, session->current().gear);
     return entry(event.log().back(), line_before_m);
+}
+
+godot::Dictionary TractorPullEvent::move_back() {
+    if (!season_ || season_->event() == nullptr) {
+        return {};
+    }
+    field::LiveEvent& event = *season_->event();
+    const double line_m = event.full_pull_m();
+    if (event.defer_player() == 0) {
+        return {};
+    }
+    return entry(event.log().back(), line_m);
 }
 
 bool TractorPullEvent::get_suggested_keep() const {
@@ -528,6 +544,7 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_log_size"), &TractorPullEvent::get_log_size);
     ClassDB::bind_method(D_METHOD("get_standings"), &TractorPullEvent::get_standings);
     ClassDB::bind_method(D_METHOD("record_pull", "run"), &TractorPullEvent::record_pull);
+    ClassDB::bind_method(D_METHOD("move_back"), &TractorPullEvent::move_back);
     ClassDB::bind_method(D_METHOD("get_suggested_keep"), &TractorPullEvent::get_suggested_keep);
     ClassDB::bind_method(D_METHOD("decide", "keep"), &TractorPullEvent::decide);
     ClassDB::bind_method(D_METHOD("score_event"), &TractorPullEvent::score_event);

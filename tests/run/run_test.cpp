@@ -219,6 +219,27 @@ TEST(Run, BackingOffEndsTheRunAtTheFirstStop) {
     EXPECT_LT(outcome.result.distance_m, 50.0);
 }
 
+// A sled nudged a few centimetres with the tractor still able to pull (the
+// jolt of the launch) has not stopped: the run goes on. Stalled there, it
+// has.
+TEST(Run, ANudgeInTheFirstCentimetresIsNotAStop) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    State state = start(model);
+    const double nudged_m = 0.5 * kStopCountsFrom_m;
+    state.pull.sled.position_m += nudged_m;
+    state.pull.sled.distance_m = nudged_m;
+    for (int i = 0; i < 2000; ++i) {
+        step(state, model, kRules, {}, kDt_s);
+    }
+    EXPECT_FALSE(state.result.has_value());
+    state.pull.tractor.engine.running = false;
+    step(state, model, kRules, {}, kDt_s);
+    ASSERT_TRUE(state.result.has_value());
+    const Result result = state.result.value_or(Result{});
+    EXPECT_EQ(result.ending, Ending::kStalled);
+    EXPECT_NEAR(result.distance_m, nudged_m, 1e-12);
+}
+
 // Waiting at the start line is not a stop: the run only ends once the sled
 // has moved.
 TEST(Run, WaitingAtTheStartIsNotAStop) {

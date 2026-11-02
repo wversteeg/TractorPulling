@@ -68,12 +68,13 @@ func _play() -> void:
 	var dimensions := run.get_dimensions()
 	_chain_m = dimensions["chain_length_m"]
 	var lane_m: float = dimensions["lane_width_m"]
-	_bay = Vector2(VenueView.PLAYER_BAY_X_M, -(lane_m / 2.0 + VenueView.PARKING_RIGHT_OF_LANE_M))
+	var venue: VenueView = _pull.get("venue_view")
+	var bay: Vector3 = venue.bays()[0]
+	_bay = Vector2(bay.x, -(lane_m / 2.0 + bay.y))
 	var s := run.get_snapshot()
 	var parked: Array[TractorView] = _pull.get("parked")
 	var flagman: Flagman = _pull.get("flagman")
 	var end_flagman: Flagman = _pull.get("end_flagman")
-	var venue: VenueView = _pull.get("venue_view")
 	var marker: MeshInstance3D = _pull.get("hitch_marker")
 	var hud: Hud = _pull.get("hud")
 	var result: ResultScreen = _pull.get("result_screen")
@@ -82,7 +83,9 @@ func _play() -> void:
 	_expect(s["stage"] == "to_the_sled"
 			and Vector2(s["tractor_x_m"], s["tractor_y_m"]).distance_to(_bay) < 1e-6,
 			"starts in its bay: %s" % s)
-	_expect(parked.size() == VenueView.RIVAL_BAYS_X_M.size()
+	_expect(is_equal_approx(float(s["tractor_heading_rad"]), bay.z),
+			"turned in its bay as the parking is laid out: %s" % s)
+	_expect(parked.size() == VenueView.RIVAL_BAYS
 			and parked.all(func(t: TractorView) -> bool: return t.visible),
 			"the rivals wait in their bays")
 	_expect(flagman.visible and flagman.colour_name() == "red", "the official holds the red flag")
@@ -222,9 +225,11 @@ func _drive(s: Dictionary) -> Array:
 	match stage:
 		"to_the_sled":
 			if _path.is_empty() and gear != REVERSE:
-				# Out of the bay along the return lane, into the lane past the sled.
-				_follow_path([Vector2(0.0, _bay.y), Vector2(8.0, _bay.y + 3.0),
-						Vector2(14.0, -3.0), Vector2(19.0, 0.0), Vector2(24.0, 0.0)])
+				# Out of the bay towards the lane, down the track beside it
+				# past the sled, and into the lane.
+				_follow_path([Vector2(_bay.x, _bay.y + 3.0), Vector2(_bay.x + 6.0, -9.0),
+						Vector2(8.0, -8.0), Vector2(14.0, -3.0), Vector2(19.0, 0.0),
+						Vector2(24.0, 0.0)])
 			if gear != REVERSE:
 				if at.x < 23.0:
 					return _follow(s, 3, false, 0.6)
@@ -261,8 +266,8 @@ func _drive(s: Dictionary) -> Array:
 				for i in 9:
 					var a := PI * i / 8.0
 					_home.append(Vector2(x0 + 3.0 + 5.0 * sin(a), -5.0 + 5.0 * cos(a)))
-				_home.append(Vector2(x0, _bay.y))
-				_home.append(Vector2(0.0, _bay.y))
+				_home.append(Vector2(x0, -9.0))
+				_home.append(Vector2(_bay.x + 6.0, -9.0))
 				_home.append(_bay)
 				_follow_path(_home)
 			if gear != 3 and absf(speed) > 0.01:

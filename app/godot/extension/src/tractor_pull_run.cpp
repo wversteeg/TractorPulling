@@ -168,7 +168,8 @@ godot::String TractorPullRun::start(session::Setup setup, const godot::String& c
         // Right of the lane: y is negative, past the right-hand chalk line.
         setup.parking =
             turn::Parking{.x_m = parking_->x_m,
-                          .y_m = -(0.5 * setup.rules.lane_width_m + parking_->right_of_lane_m)};
+                          .y_m = -(0.5 * setup.rules.lane_width_m + parking_->right_of_lane_m),
+                          .heading_rad = parking_->heading_rad};
     }
     if (!controls_path.is_empty()) {
         const auto controls = data::load_control_layout(to_std(controls_path), read);
@@ -189,9 +190,10 @@ godot::String TractorPullRun::start(session::Setup setup, const godot::String& c
     return session_ ? godot::String{} : godot::String{"inconsistent tractor, sled or track"};
 }
 
-void TractorPullRun::set_parking(double x_m, double right_of_lane_m) {
+void TractorPullRun::set_parking(double x_m, double right_of_lane_m, double heading_rad) {
     // Kept as given; start() places it beside the setup's lane.
-    parking_ = ParkingBesideLane{.x_m = x_m, .right_of_lane_m = right_of_lane_m};
+    parking_ = ParkingBesideLane{
+        .x_m = x_m, .right_of_lane_m = right_of_lane_m, .heading_rad = heading_rad};
 }
 
 void TractorPullRun::clear_parking() {
@@ -312,6 +314,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;
     out["full_pull_line_m"] = rules.full_pull_line_m;
+    out["restart_before_m"] = turn::kRestartBefore_m;
     const engine::Params& engine = tractor.engine;
     out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
     out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
@@ -335,6 +338,16 @@ bool TractorPullRun::is_finished() const {
 
 bool TractorPullRun::is_over() const {
     return session_ && session_->over();
+}
+
+bool TractorPullRun::may_restart() const {
+    return session_ && session_->may_restart();
+}
+
+void TractorPullRun::restart() {
+    if (session_) {
+        session_->restart();
+    }
 }
 
 godot::Dictionary TractorPullRun::get_result() const {
@@ -383,8 +396,8 @@ void TractorPullRun::_bind_methods() {
                          &TractorPullRun::setup_event_pull);
     ClassDB::bind_method(D_METHOD("setup_practice", "event", "controls_path"),
                          &TractorPullRun::setup_practice);
-    ClassDB::bind_method(D_METHOD("set_parking", "x_m", "right_of_lane_m"),
-                         &TractorPullRun::set_parking);
+    ClassDB::bind_method(D_METHOD("set_parking", "x_m", "right_of_lane_m", "heading_rad"),
+                         &TractorPullRun::set_parking, DEFVAL(0.0));
     ClassDB::bind_method(D_METHOD("clear_parking"), &TractorPullRun::clear_parking);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
                                   "brake_left", "brake_right"),
@@ -397,6 +410,8 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
     ClassDB::bind_method(D_METHOD("is_over"), &TractorPullRun::is_over);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
+    ClassDB::bind_method(D_METHOD("may_restart"), &TractorPullRun::may_restart);
+    ClassDB::bind_method(D_METHOD("restart"), &TractorPullRun::restart);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
 }
 

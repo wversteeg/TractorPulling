@@ -71,13 +71,38 @@ void place_span(const pull::Model& model, pull::State& state, double span_m) {
 
 // The whole tractor beside the lane, out to its tires' outer edges.
 TEST(Parking, MustBeBesideTheTrack) {
-    constexpr double kHalfWidth_m = 1.2;
-    EXPECT_FALSE(validate(kParking, kRules, kHalfWidth_m));
-    EXPECT_FALSE(validate({.x_m = 0.0, .y_m = 7.2}, kRules, kHalfWidth_m));
-    EXPECT_EQ(validate({.x_m = 0.0, .y_m = 7.1}, kRules, kHalfWidth_m), ParamError::kInTheLane);
-    EXPECT_EQ(validate({.x_m = 0.0, .y_m = -5.9}, kRules, 0.0), ParamError::kInTheLane);
-    EXPECT_EQ(validate({.x_m = std::nan(""), .y_m = -10.0}, kRules, kHalfWidth_m),
-              ParamError::kNotFinite);
+    constexpr Footprint kWide{.half_width_m = 1.2};
+    EXPECT_FALSE(validate(kParking, kRules, kWide));
+    EXPECT_FALSE(validate({.x_m = 0.0, .y_m = 7.2}, kRules, kWide));
+    EXPECT_EQ(validate({.x_m = 0.0, .y_m = 7.1}, kRules, kWide), ParamError::kInTheLane);
+    EXPECT_EQ(validate({.x_m = 0.0, .y_m = -5.9}, kRules, {}), ParamError::kInTheLane);
+    EXPECT_EQ(validate({.x_m = std::nan(""), .y_m = -10.0}, kRules, kWide), ParamError::kNotFinite);
+}
+
+// Turned square to the track, the tractor's length reaches across it:
+// facing the lane its front tires must stay out, facing away its rear
+// tires.
+TEST(Parking, TurnedItsWholeLengthStaysOut) {
+    constexpr Footprint kTractor{.half_width_m = 1.2, .behind_m = 0.8, .ahead_m = 2.9};
+    constexpr double kFacingLeft_rad = std::numbers::pi / 2.0;
+    EXPECT_FALSE(
+        validate({.x_m = -12.0, .y_m = -9.0, .heading_rad = kFacingLeft_rad}, kRules, kTractor));
+    EXPECT_EQ(
+        validate({.x_m = -12.0, .y_m = -8.8, .heading_rad = kFacingLeft_rad}, kRules, kTractor),
+        ParamError::kInTheLane);
+    EXPECT_FALSE(
+        validate({.x_m = -12.0, .y_m = -6.9, .heading_rad = -kFacingLeft_rad}, kRules, kTractor));
+    EXPECT_EQ(
+        validate({.x_m = -12.0, .y_m = -6.1, .heading_rad = -kFacingLeft_rad}, kRules, kTractor),
+        ParamError::kInTheLane)
+        << "the rear tires in the lane";
+}
+
+TEST(Turn, StartsTurnedAsTheParking) {
+    const pull::Model model = reference_model();
+    const Parking turned{.x_m = -12.0, .y_m = -10.0, .heading_rad = std::numbers::pi / 2.0};
+    const State state = from_the_parking(model, turned);
+    EXPECT_DOUBLE_EQ(state.run.pull.tractor.chassis.heading_rad, turned.heading_rad);
 }
 
 TEST(Turn, StartsInTheParking) {
@@ -124,6 +149,45 @@ TEST(Turn, HooksOnInFrontOfTheSled) {
     step(state, model, kRules, kParking, {}, kDt_s);
     EXPECT_EQ(state.stage, Stage::kTakingUpSlack);
     EXPECT_TRUE(state.run.pull.hooked);
+}
+
+// A pull that stopped short of the restart line may be pulled again from
+// the start: the sled and the tractor back at the line, the chain on, the
+// turn at taking up the slack, the result gone. Past the line it may not.
+TEST(Turn, AShortPullMayBeRestarted) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    state.stage = Stage::kReleasing;
+    state.run.pull.hooked = true;
+    state.run.pull.sled.position_m += 12.0;
+    state.run.result = run::Result{.ending = run::Ending::kSpunOut, .distance_m = 12.0};
+    ASSERT_TRUE(may_restart(state));
+    restart(state, model);
+    const run::State fresh = run::start(model);
+    EXPECT_EQ(state.stage, Stage::kTakingUpSlack);
+    EXPECT_FALSE(state.run.result.has_value());
+    EXPECT_TRUE(state.run.pull.hooked);
+    EXPECT_EQ(state.run.pull.sled_mode, pull::SledMode::kHeld);
+    EXPECT_EQ(state.run.pull.sled.position_m, fresh.pull.sled.position_m);
+    EXPECT_EQ(state.run.pull.tractor.chassis.position_m, fresh.pull.tractor.chassis.position_m);
+    EXPECT_EQ(state.run.pull.tractor.driveline.gear, driveline::kNeutral);
+    EXPECT_EQ(state.run.steps, 0U);
+
+    // Once only.
+    state.stage = Stage::kReleasing;
+    state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = 5.0};
+    EXPECT_FALSE(may_restart(state)) << "restarted once already";
+    state.restarts = 0;
+    EXPECT_TRUE(may_restart(state));
+    state.stage = Stage::kToTheParking;
+    EXPECT_FALSE(may_restart(state)) << "the chain off: too late";
+    state.stage = Stage::kReleasing;
+    state.run.result = run::Result{.ending = run::Ending::kTimedOut, .distance_m = 0.1};
+    EXPECT_TRUE(may_restart(state)) << "a nudged sled that stood until the time ran out";
+    state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = kRestartBefore_m};
+    EXPECT_FALSE(may_restart(state)) << "at the restart line";
+    state.run.result = run::Result{.ending = run::Ending::kOutOfBounds, .distance_m = 0.0};
+    EXPECT_FALSE(may_restart(state)) << "disqualified";
 }
 
 // The driver's side of the hook-up: creep forward in 1st until the slack

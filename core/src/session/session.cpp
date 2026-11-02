@@ -43,10 +43,14 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     if (setup.layout == Layout::kPro && controls::validate(setup.pro)) {
         return SetupError::kProControls;
     }
-    // The whole tractor beside the lane: its rear tires' outer edges.
-    const double half_width_m =
-        0.5 * (setup.tractor.chassis.rear_track_m + setup.tractor.rear_tire.size.section_width_m);
-    if (setup.parking && turn::validate(*setup.parking, setup.rules, half_width_m)) {
+    // The whole tractor beside the lane: its rear tires' outer edges, from
+    // the rear tires' back to the front tires' front.
+    const turn::Footprint footprint{
+        .half_width_m = 0.5 * (setup.tractor.chassis.rear_track_m +
+                               setup.tractor.rear_tire.size.section_width_m),
+        .behind_m = setup.tractor.rear_tire.size.radius_m,
+        .ahead_m = setup.tractor.chassis.wheelbase_m + setup.tractor.front_tire.radius_m};
+    if (setup.parking && turn::validate(*setup.parking, setup.rules, footprint)) {
         return SetupError::kParking;
     }
     if (!make_clock(setup)) {
@@ -115,8 +119,13 @@ Session::Session(const pull::Model& model, const Setup& setup, const FixedStepCl
       assist_(),
       input_(),
       output_() {
+    show_at_rest();
+}
+
+void Session::show_at_rest() noexcept {
     // Before the first step the weight box stands where it starts, and the
     // tractor stands on its tires at rest.
+    output_ = {};
     output_.sled.box_ahead_of_wheels_m = model_.sled().box_start_ahead_of_wheels_m;
     output_.tractor.axle_loads = chassis::axle_loads_at_rest(model_.tractor().params().chassis);
     current_ = snapshot();
@@ -138,6 +147,16 @@ Frame Session::advance(const Controls& controls, std::int64_t elapsed_ns) noexce
     return {.steps = time.steps, .dropped_ns = time.dropped_ns};
 }
 
+void Session::restart() noexcept {
+    if (!may_restart()) {
+        return;
+    }
+    turn::restart(turn_, model_);
+    assist_ = {};
+    input_ = {};
+    show_at_rest();
+}
+
 void Session::step(const Controls& controls) noexcept {
     if (over() && !turn_.from_the_parking) {
         // Over: nothing moves, and the last step's output stays.
@@ -156,7 +175,7 @@ void Session::step(const Controls& controls) noexcept {
                                      .steering = controls.steering,
                                      .brake_left = controls.brake_left,
                                      .brake_right = controls.brake_right};
-        input_ = controls::pro(pro, pro_, assist_, tractor, dt_s);
+        input_ = controls::pro(pro, pro_, assist_, tractor, turn_.run.pull.tractor, dt_s);
     }
     output_ = turn::step(turn_, model_, rules_, parking_, input_, dt_s);
 }

@@ -11,12 +11,22 @@
 namespace tp::turn {
 
 std::optional<ParamError> validate(const Parking& parking, const run::Rules& rules,
-                                   double half_width_m) noexcept {
-    if (!std::isfinite(parking.x_m) || !std::isfinite(parking.y_m)) {
+                                   const Footprint& footprint) noexcept {
+    if (!std::isfinite(parking.x_m) || !std::isfinite(parking.y_m) ||
+        !std::isfinite(parking.heading_rad)) {
         return ParamError::kNotFinite;
     }
-    if (std::abs(parking.y_m) < 0.5 * rules.lane_width_m + half_width_m) {
-        return ParamError::kInTheLane;
+    // The footprint's four corners, across the track from the centre line,
+    // all past the chalk line on the parking's side.
+    const math::SinCos heading = math::sin_cos_any(parking.heading_rad);
+    const double side = parking.y_m < 0.0 ? -1.0 : 1.0;
+    for (const double ahead_m : {-footprint.behind_m, footprint.ahead_m}) {
+        for (const double left_m : {-footprint.half_width_m, footprint.half_width_m}) {
+            const double y_m = parking.y_m + ahead_m * heading.sin + left_m * heading.cos;
+            if (side * y_m < 0.5 * rules.lane_width_m) {
+                return ParamError::kInTheLane;
+            }
+        }
     }
     return std::nullopt;
 }
@@ -40,6 +50,7 @@ State from_the_parking(const pull::Model& model, const Parking& parking) noexcep
     pull.sled_mode = pull::SledMode::kHeld;
     pull.tractor.chassis.position_m = model.start_line_m() + parking.x_m;
     pull.tractor.chassis.lateral_position_m = parking.y_m;
+    pull.tractor.chassis.heading_rad = parking.heading_rad;
     return state;
 }
 
@@ -157,6 +168,41 @@ bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
         state.tractor.chassis.heading_rad - state.sled.heading_rad, 2.0 * std::numbers::pi));
     return stands(state) && gap.along_m > 0.0 && gap.distance_m <= model.sled().chain.length_m &&
            std::abs(gap.across_m) <= kHookOffLine_m && turned_rad <= kHookTurned_rad;
+}
+
+bool may_restart(const State& state) noexcept {
+    const std::optional<run::Result>& result = state.run.result;
+    const bool just_stopped =
+        state.from_the_parking ? state.stage == Stage::kReleasing : state.stage == Stage::kParked;
+    if (!result || !just_stopped || state.restarts >= kMaxRestarts) {
+        return false;
+    }
+    // A sled nudged less than the stop counts from stands until the time is
+    // up (run::kStopCountsFrom_m): a stop too.
+    const bool nudged =
+        result->ending == run::Ending::kTimedOut && result->distance_m < run::kStopCountsFrom_m;
+    const bool stopped = result->ending == run::Ending::kStalled ||
+                         result->ending == run::Ending::kSpunOut ||
+                         result->ending == run::Ending::kStopped || nudged;
+    return stopped && result->distance_m < kRestartBefore_m;
+}
+
+void restart(State& state, const pull::Model& model) noexcept {
+    if (!may_restart(state)) {
+        return;
+    }
+    // Pulled back by the officials: the tractor at the line on the chain as
+    // run::start has it, in neutral, its engine idling.
+    state.run = run::start(model);
+    state.ready_steps = 0;
+    state.sled_back = false;
+    ++state.restarts;
+    if (state.from_the_parking) {
+        state.run.pull.sled_mode = pull::SledMode::kHeld;
+        state.stage = Stage::kTakingUpSlack;
+    } else {
+        state.stage = Stage::kPulling;
+    }
 }
 
 pull::Output step(State& state, const pull::Model& model, const run::Rules& rules,

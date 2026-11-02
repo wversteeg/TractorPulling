@@ -286,6 +286,10 @@ for the big features; they are repeated at the end for completeness.
   physically, but a beginner may read it as the game failing them. The
   easy front end could not count a stop before the sled has really moved,
   or hint at a lower gear.
+- **Speed-sensitive steering's model.** The limit takes the forward speed
+  and a kinematic steady turn; it ignores sideways sliding, and scales the
+  easy layout's inner brake as the wheels rather than against the same
+  sideways limit.
 - **Steering back to centre.** The steering returns to straight ahead at
   the same rate it turns. A real tractor's wheels self-centre faster under
   way (caster); a separate return rate could follow.

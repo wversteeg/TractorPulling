@@ -1,6 +1,7 @@
 #include "tp/core/controls/controls.hpp"
 
 #include "tp/core/clutch/clutch.hpp"
+#include "tp/core/math/trig.hpp"
 
 #include <algorithm>
 #include <array>
@@ -74,6 +75,20 @@ double steering_after(double dead_zone, std::optional<double> rate_per_s, double
     return std::clamp(past_dead_zone, steering - max_change, steering + max_change);
 }
 
+// A speed-sensitive steering's limit, where there is one, must be positive.
+std::optional<ParamError> validate_side_accel(std::optional<double> side_accel_m_s2) noexcept {
+    if (!side_accel_m_s2) {
+        return std::nullopt;
+    }
+    if (!std::isfinite(*side_accel_m_s2)) {
+        return ParamError::kNotFinite;
+    }
+    if (*side_accel_m_s2 <= 0.0) {
+        return ParamError::kSteerSideAccelNotPositive;
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const EasyParams& params) noexcept {
@@ -107,7 +122,7 @@ std::optional<ParamError> validate(const EasyParams& params) noexcept {
     if (params.brake_off_the_gas < 0.0 || params.brake_off_the_gas > 1.0) {
         return ParamError::kBrakeOffTheGasOutOfRange;
     }
-    return std::nullopt;
+    return validate_side_accel(params.steer_side_accel_m_s2);
 }
 
 std::optional<ParamError> validate(const ProParams& params) noexcept {
@@ -121,15 +136,33 @@ std::optional<ParamError> validate(const ProParams& params) noexcept {
     if (rate_per_s <= 0.0) {
         return ParamError::kSteerRateNotPositive;
     }
-    return std::nullopt;
+    return validate_side_accel(params.steer_side_accel_m_s2);
+}
+
+double steering_share_at_speed(const vehicle::Params& tractor, double speed_m_s,
+                               std::optional<double> side_accel_m_s2) noexcept {
+    const double speed_sq = speed_m_s * speed_m_s;
+    if (!side_accel_m_s2 || speed_sq <= 0.0) {
+        return 1.0;
+    }
+    // The turn's curvature is tan(angle) / wheelbase: the share of full
+    // lock's tan that asks for the limit. tan grows faster than its angle,
+    // so that share of the angle asks for no more. The core's own sine and
+    // cosine, not the platform's atan: the same bits everywhere.
+    const math::SinCos lock = math::sin_cos_any(tractor.steering.max_angle_rad);
+    const double wanted_tan = tractor.chassis.wheelbase_m * *side_accel_m_s2 / speed_sq;
+    return std::min(wanted_tan * lock.cos / lock.sin, 1.0);
 }
 
 vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& state,
-                   const vehicle::Params& tractor, double dt_s) noexcept {
+                   const vehicle::Params& tractor, const vehicle::State& vehicle,
+                   double dt_s) noexcept {
     state.steering = steering_after(params.steer_dead_zone, params.steer_rate_per_s, state.steering,
                                     signed_unit(input.steering), dt_s);
     ProInput shaped = input;
-    shaped.steering = state.steering;
+    shaped.steering =
+        state.steering * steering_share_at_speed(tractor, vehicle.chassis.velocity_m_s,
+                                                 params.steer_side_accel_m_s2);
     return pro(shaped, tractor);
 }
 
@@ -173,11 +206,17 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     // rear wheels on the inside of the turn.
     assist.steering = steering_after(params.steer_dead_zone, params.steer_rate_per_s,
                                      assist.steering, signed_unit(input.steering), dt_s);
+    // At speed the wheels and the inner brake reach only so far
+    // (steering_share_at_speed): a brake that turns a tractor at a walk
+    // spins it at speed. The brake is scaled as the wheels are, a simple
+    // cap: its own turn is not modelled against the sideways limit.
     const double steering = assist.steering;
     const double travel = std::abs(steering);
-    const double wheels = std::min(travel / params.steer_share, 1.0);
+    const double at_speed =
+        steering_share_at_speed(tractor, state.chassis.velocity_m_s, params.steer_side_accel_m_s2);
+    const double wheels = std::min(travel / params.steer_share, 1.0) * at_speed;
     const double brake = travel > params.steer_share
-                             ? (travel - params.steer_share) / (1.0 - params.steer_share)
+                             ? at_speed * (travel - params.steer_share) / (1.0 - params.steer_share)
                              : 0.0;
     const bool left = steering > 0.0;
     // Off the gas both brakes hold, once the clutch is out: they never fight

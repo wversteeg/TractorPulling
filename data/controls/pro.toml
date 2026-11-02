@@ -11,3 +11,7 @@ steer_dead_zone = 0.03
 # second, as a driver turns the wheel: lock to lock in 1.3 s. Without it
 # the steering follows the control at once.
 steer_rate_per_s = 1.5
+# Speed-sensitive steering, as the easy layout's but a little sharper:
+# the whole steering travel asks for at most this sideways acceleration
+# on a steady turn [m/s²].
+steer_side_accel_m_s2 = 3.0

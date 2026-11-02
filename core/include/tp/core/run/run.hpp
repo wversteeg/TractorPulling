@@ -60,9 +60,15 @@ struct Result {
     double top_speed_m_s = 0.0;
 };
 
+/// Before the sled has pulled this far, a stop with the engine running and
+/// the tires gripping (the jolt of the launch, or the driver easing off) does
+/// not end the run: the tractor may pull on [m].
+inline constexpr double kStopCountsFrom_m = 0.5;
+
 /// A run: the pull, its clock, and its result once it has ended. Before the
 /// sled first moves the run is waiting for the launch; after that, the
-/// first time the sled stops (or reaches the end of the track) ends it.
+/// first time the sled stops (or reaches the end of the track) ends it,
+/// except an Ending::kStopped stop in the first kStopCountsFrom_m.
 struct State {
     pull::State pull;
     /// Steps since the start; the run's clock is steps × dt, exact where a

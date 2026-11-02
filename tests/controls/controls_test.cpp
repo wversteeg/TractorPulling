@@ -124,6 +124,11 @@ TEST(ControlsParams, RejectsNonsense) {
               ParamError::kBrakeOffTheGasOutOfRange);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.engage_time_s = std::nan(""); }),
               ParamError::kNotFinite);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2 = 0.0; }),
+              ParamError::kSteerSideAccelNotPositive);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2 = std::nan(""); }),
+              ParamError::kNotFinite);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2.reset(); }), std::nullopt);
 }
 
 TEST(ControlsParams, ProReferenceAndDefaultAreValid) {
@@ -145,6 +150,10 @@ TEST(ControlsParams, RejectsProNonsense) {
               ParamError::kSteerRateNotPositive);
     EXPECT_EQ(with([](ProParams& p) { p.steer_rate_per_s = HUGE_VAL; }), ParamError::kNotFinite);
     EXPECT_EQ(with([](ProParams& p) { p.steer_dead_zone = std::nan(""); }), ParamError::kNotFinite);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_side_accel_m_s2 = -1.0; }),
+              ParamError::kSteerSideAccelNotPositive);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_side_accel_m_s2 = HUGE_VAL; }),
+              ParamError::kNotFinite);
 }
 
 // Pro with its default parameters steers as the control is: the same input
@@ -154,13 +163,58 @@ TEST(Pro, DefaultParamsSteerAsTheControlIs) {
     for (const double steering : {0.0, 0.02, -0.3, 1.0, 5.0}) {
         AssistState state;
         const ProInput in{.throttle = 0.5, .clutch_pedal = 0.25, .gear = 3, .steering = steering};
-        const vehicle::Input shaped = pro(in, ProParams{}, state, tractor, kDt_s);
+        const vehicle::Input shaped = pro(in, ProParams{}, state, tractor, vehicle::State{}, kDt_s);
         const vehicle::Input plain = pro(in, tractor);
         EXPECT_EQ(shaped.steering_rad, plain.steering_rad) << steering;
         EXPECT_EQ(shaped.throttle, plain.throttle);
         EXPECT_EQ(shaped.clutch_pedal, plain.clutch_pedal);
         EXPECT_EQ(state.steering, std::clamp(steering, -1.0, 1.0));
     }
+}
+
+// Speed-sensitive steering: the whole lock at a standstill and at a walk;
+// faster, only the angle that asks for the set sideways acceleration on a
+// steady turn, shrinking with speed. Without a limit, the whole lock.
+TEST(Steering, ReachesLessFarAtSpeed) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    constexpr double kSideAccel_m_s2 = 2.5;
+    EXPECT_EQ(steering_share_at_speed(tractor, 0.0, kSideAccel_m_s2), 1.0);
+    EXPECT_EQ(steering_share_at_speed(tractor, 1.0, kSideAccel_m_s2), 1.0);
+    EXPECT_EQ(steering_share_at_speed(tractor, 9.0, std::nullopt), 1.0);
+    double previous = 1.0;
+    for (const double speed_m_s : {3.0, 5.0, 7.0, 9.0}) {
+        const double share = steering_share_at_speed(tractor, speed_m_s, kSideAccel_m_s2);
+        EXPECT_LE(share, previous);
+        previous = share;
+        // At full travel the turn's sideways acceleration is the limit, or
+        // less where the whole lock asks for less.
+        const double angle_rad = share * tractor.steering.max_angle_rad;
+        const double side_m_s2 =
+            speed_m_s * speed_m_s * std::tan(angle_rad) / tractor.chassis.wheelbase_m;
+        EXPECT_LE(side_m_s2, kSideAccel_m_s2 + 1e-9) << speed_m_s;
+    }
+    EXPECT_LT(previous, 0.25) << "at road speed a small share of the lock";
+    // Backing up counts the same as driving forwards.
+    EXPECT_EQ(steering_share_at_speed(tractor, -9.0, kSideAccel_m_s2), previous);
+
+    // Both layouts turn the wheels by it, the easy one's inner brake too.
+    vehicle::State fast;
+    fast.chassis.velocity_m_s = 9.0;
+    AssistState pro_state{.steering = 1.0};
+    const vehicle::Input pro_in =
+        pro({.steering = 1.0}, testing::kReferencePro, pro_state, tractor, fast, kDt_s);
+    EXPECT_NEAR(
+        pro_in.steering_rad,
+        tractor.steering.max_angle_rad *
+            steering_share_at_speed(tractor, 9.0, testing::kReferencePro.steer_side_accel_m_s2),
+        1e-12);
+    AssistState easy_state{.steering = 1.0};
+    const vehicle::Input easy_in = easy({.throttle = 1.0, .steering = 1.0}, testing::kReferenceEasy,
+                                        easy_state, tractor, fast, kDt_s);
+    const double easy_share =
+        steering_share_at_speed(tractor, 9.0, testing::kReferenceEasy.steer_side_accel_m_s2);
+    EXPECT_NEAR(easy_in.steering_rad, tractor.steering.max_angle_rad * easy_share, 1e-12);
+    EXPECT_NEAR(easy_in.brake_left, easy_share, 1e-12);
 }
 
 // Pro with a dead zone and a rate: a thumb resting in the middle steers
@@ -175,7 +229,7 @@ TEST(Pro, ShapesTheSteeringLikeTheEasyLayout) {
         vehicle::Input in;
         for (int i = 0; i < static_cast<int>(std::lround(held_s / kDt_s)); ++i) {
             in = pro({.throttle = 1.0, .clutch_pedal = 0.0, .steering = steering}, params, state,
-                     tractor, kDt_s);
+                     tractor, vehicle::State{}, kDt_s);
         }
         return in;
     };
@@ -549,7 +603,7 @@ TEST(ClutchAssist, ShiftsDownUnderLoadOnceAPull) {
         });
     EXPECT_FALSE(r.shift_refused);
     EXPECT_EQ(r.state.pull.tractor.driveline.gear, 5) << "one gear down, no more";
-    EXPECT_EQ(r.state.pull.tractor.driveline.load_shifts, 1);
+    EXPECT_EQ(r.state.pull.tractor.driveline.load_shift_gears, 1);
     EXPECT_EQ(least_engaged_first, 1.0) << "the first: the clutch stays in";
     EXPECT_EQ(least_engaged_second, 1.0) << "the second: not taken, the clutch stays in";
 }
@@ -660,9 +714,9 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x614b3dca82447bcfULL);
-    // 91.41159988569794 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.6da57a70c070ap+6);
+    EXPECT_EQ(hash, 0x39c6d6bb07f4228eULL);
+    // 91.41602628157254 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.6daa02cb2685bp+6);
     EXPECT_EQ(result.ending, run::Ending::kStopped);
 }
 
