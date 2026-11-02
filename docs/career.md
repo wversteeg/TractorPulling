@@ -249,9 +249,15 @@ ETPC 2026, chapter 3 and chapter 12:
   valves a cylinder** unless the model came with 4; a diesel may be
   converted to two stroke.
 - **Up to three stages of boost with at most four turbos.**
-- Diesel or alcohol (the rules set the shielding for alcohol tractors).
-- **The hood and grille of the original length** where the maker put
-  them: still a recognisable tractor.
+- Fuel: the class sets no limit of its own, so the general rule holds
+  (ETPC 2026 ch. 2.L): **alcohol (methanol), diesel**, petrol or aviation
+  and turbine fuel; no oxygen carriers or combustion accelerators. Water
+  injection allowed. Turbocharged alcohol tractors need a stainless
+  firewall.
+- **The hood and grille where the maker put them**, sheet metal of stock
+  length matching the engine's make, and the stock look kept (ch. 3.B);
+  the grille may be opened for air but not removed (ch. 3.A.13). The
+  chassis stays stock from the back of the engine block to the rear.
 - Tires: at most **30.5" or 800/65 wide**, a 32" rim over 24.5" wide, at
   most 5400 mm round at 0.7 bar and 788 mm of tread.
 - Frame, hitch and roll cage as Pro Stock.
