@@ -1,6 +1,7 @@
 # Loads data/ definitions into core parameter structs. Kept out of core: it
 # parses files, allocates and reports errors as strings.
 add_library(tp_data STATIC
+    src/career/career_loader.cpp
     src/clutch/clutch_loader.cpp
     src/controls/controls_loader.cpp
     src/common/toml_reader.cpp

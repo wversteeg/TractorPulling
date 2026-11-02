@@ -13,8 +13,9 @@
 namespace tp::data {
 
 /// The save format's version. Version 1 (before the garage) is read too,
-/// as a career that has not begun; any other is refused.
-inline constexpr std::int64_t kSeasonSaveVersion = 2;
+/// as a career that has not begun, and version 2 (before the career's
+/// classes) as a career in its first class; any other is refused.
+inline constexpr std::int64_t kSeasonSaveVersion = 3;
 
 /// An upgrade's level, by the garage's name for it (data::UpgradeText), so
 /// that a save outlives a garage file whose order changes.
@@ -23,11 +24,18 @@ struct SavedUpgrade {
     int level = 0;
 };
 
-/// The player's career: their money and what they have bought. It carries
+/// The player's career: their money, what they have bought, and how far up
+/// the career's classes (data::CareerClass) they are, by the classes' names
+/// so that a save outlives a career file whose order changes. It carries
 /// from season to season.
 struct SavedCareer {
     std::int64_t money_eur = 0;
     std::vector<SavedUpgrade> upgrades;
+    /// The class the player pulls in; "" for the career's first (a version
+    /// 2 save, or a season played without a career file).
+    std::string class_name;
+    /// The highest class a season has opened; "" for the career's first.
+    std::string unlocked_class;
 };
 
 /// A season saved between events, to pick up on the next launch: which
@@ -55,8 +63,9 @@ struct SeasonSave {
 /// A save from TOML text; `source_name` names it in error messages. Refuses
 /// another version, a missing field, a tuning that is not a number in range
 /// (a ballast position from 0 to 1, a pressure of 0 or more), standings
-/// without a puller or a place, and (version 2) a career without its money
-/// (0 or more) or with an upgrade without a name or a level (0 or more).
+/// without a puller or a place, (version 2 on) a career without its money
+/// (0 or more) or with an upgrade without a name or a level (0 or more),
+/// and (version 3) a career without its class and the class unlocked.
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

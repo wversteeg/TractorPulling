@@ -89,11 +89,18 @@ std::optional<event::Standing> read_standing(const toml::node& node) {
                            .disqualified = *disqualified};
 }
 
-// Version 2's career into `career`; the error if it is broken.
+constexpr std::int64_t kBeforeTheGarage = 1;
+constexpr std::int64_t kBeforeTheClasses = 2;
+
+// The career (version 2 on) into `career`; the error if it is broken.
 std::optional<LoadError> read_career(const toml::table& root, std::string_view source,
-                                     SavedCareer& career) {
+                                     std::int64_t version, SavedCareer& career) {
     detail::Reader reader{root, source};
     career.money_eur = reader.integer("career.money_eur");
+    if (version > kBeforeTheClasses) {
+        career.class_name = reader.text("career.class");
+        career.unlocked_class = reader.text("career.unlocked");
+    }
     if (reader.error()) {
         return reader.error();
     }
@@ -135,15 +142,14 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
-    constexpr std::int64_t kBeforeTheGarage = 1;
-    if (version != kSeasonSaveVersion && version != kBeforeTheGarage) {
+    if (version < kBeforeTheGarage || version > kSeasonSaveVersion) {
         return detail::make_error(source, "version",
-                                  "must be " + std::to_string(kBeforeTheGarage) + " or " +
+                                  "must be from " + std::to_string(kBeforeTheGarage) + " to " +
                                       std::to_string(kSeasonSaveVersion));
     }
-    if (version == kSeasonSaveVersion) {
+    if (version > kBeforeTheGarage) {
         SavedCareer career;
-        if (const std::optional<LoadError> error = read_career(root, source, career)) {
+        if (const std::optional<LoadError> error = read_career(root, source, version, career)) {
             return *error;
         }
         save.career = std::move(career);
@@ -207,6 +213,8 @@ std::string write_season_save(const SeasonSave& save) {
     const SavedCareer career = save.career.value_or(SavedCareer{});
     out += "\n[career]\n";
     out += "money_eur = " + std::to_string(career.money_eur) + "\n";
+    out += "class = " + toml_string(career.class_name) + "\n";
+    out += "unlocked = " + toml_string(career.unlocked_class) + "\n";
     out += "upgrades = [\n";
     for (const SavedUpgrade& upgrade : career.upgrades) {
         out += "    { name = " + toml_string(upgrade.name) +

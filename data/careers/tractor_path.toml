@@ -1,0 +1,19 @@
+# The tractor path: one farm tractor, kept and rebuilt, from the NTTO
+# standard class up through the classes that still pull a recognisable
+# tractor (all two-wheel drive in the NTTO's rules). Each class pulls its
+# own season (data/seasons/), with its field, sled, garage and prizes.
+#
+# Winning a class's championship opens the class above; the player is
+# asked whether to move up or stay and defend the title, and a class
+# opened stays open. Money and upgrades carry over, by the upgrade's name.
+#
+# Only the standard class is here yet: Sport, Supersport, Pro Stock,
+# Limited Super Stock and Super Stock follow, each with its NTTO rules.
+
+[career]
+name = "Tractor path"
+promotion_place = 1   # the championship won
+
+[[career.classes]]
+name = "Standard 3.5 t"
+season = "../seasons/club_season.toml"
