@@ -20,14 +20,17 @@ This note keeps two things apart:
 | NTTO 2026 | NTTO wedstrijdreglement ([powerweekend.nl](https://www.powerweekend.nl/wp-content/uploads/Wedtrijdreglement_NTTO_2026.pdf)) | 2026-01 | weights and hitch heights of every class; competition rules |
 | NTTO H13 | NTTO reglement, hoofdstuk 13: Farmstocks standaardklasse ([pullingdays.nl](https://www.pullingdays.nl/media/2025-08/NTTO-Reglement-Hoofdstuk-13.pdf)) | 2025 | the standard classes |
 | ETPC FS 2026 | ETPC Farmstock Rulebook ([tractorpulling.com](https://tractorpulling.com/wp-content/uploads/2026/02/ETPC-FS-Rulebook-2026.pdf)) | 2026-01, valid to 2029-01-01 | Level 1 Farm, Level 2 Sport, Level 3 Supersport |
+| ETPC 2026 | ETPC Rulebook 2026 ([tractorpulling.com](https://tractorpulling.com/wp-content/uploads/2026/07/ETPC-Rulebook-2026.pdf)); limits set for 2026–2028 | 2026 | weights, hitches, tires and engines of Pro Stock, Limited Super Stock, Super Stock |
+| ETPC letters | Pro Stock turbo clarification ([22 June 2026](https://tractorpulling.com/wp-content/uploads/2026/06/ETPC-TS-letter-Pro-Stock-Turbo-clarification-Final-update.pdf)), Limited Super Stock restrictor ([15 January 2026](https://tractorpulling.com/wp-content/uploads/2026/01/ETPC-information-letter-restrictors-LSS-.pdf)), [changes for 2026](https://tractorpulling.com/wp-content/uploads/2026/02/ETPC-Rulebook-changes-for-2026.pdf) | 2026 | details of the above |
 | NTTO 2018 | NTTO reglement, all chapters ([pullinggastel.nl](https://pullinggastel.nl/wp-content/uploads/2018/04/NTTO_reglement_2018-04-18.pdf)) | 2018-01 | Superstocks (ch. 3), Light Superstocks (ch. 4), Prostocks (ch. 5), Sport (ch. 15), Supersport (ch. 16) |
 | ntto.nl | [www.ntto.nl](https://www.ntto.nl): the 2026 classes, standings and every pull's result | 2026 | which classes are pulled, real distances |
 
 The NTTO does not publish its technical rules on ntto.nl (questions go to
-its TVM commission). The Grand National classes' rules (Pro Stock, Limited
-Super Stock, Super Stock) come from the **2018** NTTO rulebook, the newest
-full one found: check them against the current ETPC main rulebook before
-relying on a detail. The weights and hitch heights are the 2026 ones.
+its TVM commission). The Grand National classes follow the ETPC Rulebook
+2026; the Farmstock classes the ETPC Farmstock Rulebook 2026 and, for
+what it leaves to the NTTO, the 2018 NTTO rulebook (the newest full one
+found). The ETPC Rulebook 2026 is a scanned PDF, read by OCR: its figures
+here were checked by eye.
 
 ## The ladder (game choice)
 
@@ -47,12 +50,32 @@ Every Farmstock class the NTTO pulls in 2026 above the standard class, in
 order of the engine each allows, then the Grand National classes that
 still pull a farm tractor.
 
-The weight goes up and down along the way (3.5, 2.6, 4.5, 3.4, 3.6, 4.5,
-then 3.5 t): no one farm tractor ballasts from 2.6 to 4.5 t. So the
-player's tractor is the class's tractor as their career has built it: each
-class's season names its reference tractor, and the money and upgrades
-carry over by name (as step 2 does). Moving up is a rebuild, small within
-a weight, large where the weight or the class's engine changes.
+**Every class has its own tractor (game choice).** The weight goes up and
+down along the way (3.5, 2.6, 4.5, 3.4, 3.6, 4.5, then 3.5 t), and each
+class allows a different engine, so no one tractor climbs the whole
+ladder. Moving up a class means a new tractor for that class, built from
+its base (each class's season names it), and **parts of the old one can
+move across** where they fit and the new class allows them:
+
+- **Wheels and tires**: the same rims and tires, while within the new
+  class's limits: 30.5" / 800 mm on 32" (710 mm on 42") from Sport to
+  Supersport and in Super Stock, but at most 650/75R32 (635 mm of tread)
+  in Pro Stock and Limited Super Stock.
+- **The rolling frame and safety parts**: the safety frame, roll bar or
+  cage, wheelie bars, the hitch, the clutch protection (the Sport,
+  Supersport and Pro Stock frame rules are much alike).
+- **Engine parts**: the turbo, fuel pump, intercooler, while the new
+  class's limits allow them (a 4.8" turbo is legal in Supersport, not in
+  Sport's 68 mm inlet).
+- **Weights**: ballast bought, as far as the new class's weight needs it.
+
+What cannot move is what makes the class: the engine block and its
+displacement, the base tractor's chassis. The garage then shows each part
+as fitting the tractor, legal in the class, or legal but a poor choice.
+Money carries over as it is.
+
+This is step 3 (real parts) of the plan. Until then, step 2 carries the
+garage's upgrade levels by name from one class's garage to the next.
 
 A season won opens the next class (`tp::career`, `promotion_place = 1`);
 the player chooses to move up or stay.
@@ -177,60 +200,61 @@ ETPC FS 2026, Level 3, and NTTO 2018 ch. 16:
 
 ### 7. Pro Stock
 
-NTTO 2018 ch. 5 (the Grand National rules; check against the current
-ETPC main rulebook):
+ETPC 2026, chapter 4 and chapter 12 (limits), and the June 2026 turbo
+letter:
 
-- **3500 kg**; hitch at most 500 mm (NTTO 2026).
-- Engine: at most **8364 cm³ (510 ci)**, **7374 cm³ (450 ci)** with a
-  multi-valve head; an OEM farm-type head on the original block of the
-  same make.
-- **One turbo, one stage**: compressor wheel at most **127 mm (5")**,
-  housing inlet 128.8 mm; turbine wheel at most 132.1 mm (5.2").
-- Intercooler and water injection allowed.
-- **Diesel only**; alcohol forbidden. One fuel pump, size free.
+- **3500 kg**; hitch at most 500 mm high, at least 450 mm long.
+- **No four-wheel drive** (ETPC 2026 ch. 2.S.1, all these classes).
+- Engine: at most **8364 cm³ (510 ci)**, down to 2 % smaller; an OEM
+  agricultural head of the engine's make, **2 valves a cylinder** (more
+  only where the make sold it so), no overhead cams. Steel recast or
+  billet heads to OEM dimensions allowed.
+- **One stage, one turbo**: compressor wheel at most **129.5 mm (5.1")**,
+  turbine wheel at most **133.4 mm (5.25")**; all air through a 132.3 mm
+  opening.
+- **Diesel only**; alcohol forbidden. Intercooler and water injection
+  allowed. One fuel pump of any size, one element a cylinder (common rail
+  allowed).
 - Only tractors sold as front-wheel-steered farm tractors. The OEM clutch
   housing, gearbox, rear axle and final drives (planetaries stay).
-  Component chassis allowed within the ETPC, with conditions.
-- **The hood and grille where the maker put them; the tractor's stock
-  look stays.** A newer model's sheet metal is allowed with permission.
+  Component chassis allowed, with conditions.
+- **The hood and grille where the maker put them; the stock look stays.**
 - Wheelbase at most 2900 mm (or the original, if longer); nothing more
   than 4000 mm ahead of the rear axle.
 - A safety frame; the hitch and roll cage part of the frame.
+- Tires: rims at most **38"**; at most **650/75R32, 620/75R34 or
+  580/70R38**, at most 5334 mm round at 0.7 bar and **635 mm (25") of
+  tread**: narrower than Supersport's.
 - The NTTO pulls Pro Stocks in two groups (I and II) with promotion and
   relegation (see "Levels").
 
 ### 8. Limited Super Stock
 
-NTTO 2018 ch. 4 ("light superstocks"; the 2026 class is called Limited
-Superstocks):
+ETPC 2026, chapter 8 and chapter 12, and the January 2026 restrictor
+letter:
 
-- **3500 kg**; hitch at most 500 mm (NTTO 2026).
-- Engine: **diesel 8364 cm³ (510 ci)**, or **methanol 7600 cm³ (466 ci)**
-  with 2 valves a cylinder or **7000 cm³ (427 ci)** with 4.
-- **One turbo, one stage**, the compressor housing's inlet at most
-  **110 mm**. Intercooler allowed.
-- Hood and grille where the maker put them; frame, hitch and roll cage as
-  Pro Stock.
+- **3500 kg**; hitch as Pro Stock.
+- Engine: **methanol only**, at most **7636 cm³ (466 ci)**.
+- **One stage, one turbo** of free size, all air through an **ETPC-made
+  100 mm restrictor** at most 100 mm ahead of the compressor wheel (from
+  2026; it limits the power).
+- Chassis, look, frame and tires as Pro Stock.
 
 ### 9. Super Stock
 
-NTTO 2018 ch. 3:
+ETPC 2026, chapter 3 and chapter 12:
 
-- **3500 kg**; hitch at most 500 mm (NTTO 2026).
-- Engine: at most **10650 cm³ (650 ci)**; a diesel may be converted to two
-  stroke.
+- **3500 kg**; hitch as Pro Stock.
+- Engine: at most **10650 cm³ (650 ci)**, the block an OEM part; **2
+  valves a cylinder** unless the model came with 4; a diesel may be
+  converted to two stroke.
 - **Up to three stages of boost with at most four turbos.**
 - Diesel or alcohol (the rules set the shielding for alcohol tractors).
 - **The hood and grille of the original length** where the maker put
   them: still a recognisable tractor.
+- Tires: at most **30.5" or 800/65 wide**, a 32" rim over 24.5" wide, at
+  most 5400 mm round at 0.7 bar and 788 mm of tread.
 - Frame, hitch and roll cage as Pro Stock.
-
-### Tires in the Grand National classes
-
-NTTO 2018 ch. 2 lists, for the classes it covers, at most 30.5" or
-800/65 wide, and rims up to 38" (650/75R32, 620/75R34, 580/70R38). Which of
-these apply to Pro Stock and the Super Stocks needs the current ETPC main
-rulebook.
 
 ## Levels within a class (rules)
 
@@ -266,7 +290,8 @@ garage with the class's upgrades, and a season. Beyond what the core has:
 - Class rules today check mass, PTO power, engine speed and hitch height
   (`rules::ClassRules`). Sport and up limit the **engine's build** instead
   of its power: cylinders, displacement, valves, turbos and their size,
-  fuel. These need to become class limits too.
+  air restrictors, fuel. These need to become class limits too, so the
+  garage can tell whether a part moved from another tractor is legal.
 - No class above Standard limits power directly. Each class's engine data
   needs a believable torque curve for its limits (a 7 l Sport engine at
   2700 rpm, a 10.6 l three-stage Super Stock), estimated, not from the
