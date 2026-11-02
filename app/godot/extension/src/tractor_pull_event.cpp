@@ -130,6 +130,9 @@ godot::Dictionary TractorPullEvent::get_career() const {
     out["next_level"] = top ? godot::String{} : to_godot(rungs[above].level_name);
     out["next_is_new_class"] = !top && rungs[above].class_name != here.class_name;
     out["can_move_up"] = career::may_move_up(progress_) && between_seasons();
+    out["seasons"] = progress_.seasons;
+    out["min_seasons"] = career_definition_->ladder.min_seasons;
+    out["title"] = progress_.title;
     return out;
 }
 
@@ -196,11 +199,13 @@ godot::String TractorPullEvent::resume_career(const godot::String& save) {
     if (const std::optional<data::SavedCareer>& career = parsed.value().career) {
         const career::Progress saved{
             .rung = index_of(career->class_name, career->level_name),
-            .unlocked = index_of(career->unlocked_class, career->unlocked_level)};
+            .unlocked = index_of(career->unlocked_class, career->unlocked_level),
+            .seasons = career->seasons_on_level,
+            .title = career->title_on_level};
         if (career::valid(saved, career_definition_->ladder)) {
             progress_ = saved;
         } else {
-            progress_ = {.rung = saved.rung, .unlocked = saved.rung};
+            progress_ = {.rung = saved.rung, .unlocked = saved.rung, .seasons = 0, .title = false};
         }
     }
     return resume_season(to_godot(class_season()), save);
@@ -296,7 +301,9 @@ godot::String TractorPullEvent::get_save() const {
                                  .class_name = {},
                                  .level_name = {},
                                  .unlocked_class = {},
-                                 .unlocked_level = {}};
+                                 .unlocked_level = {},
+                                 .seasons_on_level = 0,
+                                 .title_on_level = false};
         if (career_definition_) {
             const std::vector<data::CareerRung>& rungs = career_definition_->rungs;
             const data::CareerRung& here = rungs.at(static_cast<std::size_t>(progress_.rung));
@@ -305,6 +312,8 @@ godot::String TractorPullEvent::get_save() const {
             career.level_name = here.level_name;
             career.unlocked_class = open.class_name;
             career.unlocked_level = open.level_name;
+            career.seasons_on_level = progress_.seasons;
+            career.title_on_level = progress_.title;
         }
         const std::vector<data::UpgradeText>& texts = definition_->garage.texts;
         for (std::size_t i = 0; i < texts.size(); ++i) {

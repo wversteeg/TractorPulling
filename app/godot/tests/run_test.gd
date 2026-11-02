@@ -286,6 +286,16 @@ func _check_career() -> void:
 			and save.contains("unlocked_level = \"Belofte\""),
 			"the save names the class and level: %s" % save)
 	var won := save.replace("unlocked_level = \"Belofte\"", "unlocked_level = \"Promo\"")
+	_expect(save.contains("seasons_on_level = 0") and save.contains("title_on_level = false")
+			and career["seasons"] == 0 and career["min_seasons"] == 1 and not career["title"],
+			"no season yet on the rung: %s" % career)
+	var titled := TractorPullEvent.new()
+	titled.load_career(LADDER)
+	error = titled.resume_career(save.replace("seasons_on_level = 0", "seasons_on_level = 1")
+			.replace("title_on_level = false", "title_on_level = true"))
+	_expect(error.is_empty() and titled.get_career()["seasons"] == 1 and titled.get_career()["title"]
+			and titled.get_save().contains("title_on_level = true"),
+			"a season and a title on the rung, saved: %s" % titled.get_career())
 
 	# Once the season is under way, the level waits for the next.
 	var during := TractorPullEvent.new()

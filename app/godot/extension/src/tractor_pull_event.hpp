@@ -51,12 +51,14 @@ public:
     /// file and field.
     godot::String load_career(const godot::String& career_path);
     /// {name, rungs, rung, class_name, level_name, unlocked, next_class,
-    /// next_level, next_is_new_class, can_move_up} of the loaded career:
+    /// next_level, next_is_new_class, can_move_up, seasons, min_seasons,
+    /// title} of the loaded career:
     /// every rung's "class · level" lowest first, the index of the player's
     /// rung and its class and level, the index of the highest rung open,
     /// the rung above's class and level ("" at the top) and whether it is
-    /// another class, and whether move_up() would move the player now. {}
-    /// without a career.
+    /// another class, whether move_up() would move the player now, the
+    /// seasons finished on the player's rung, the ladder's minimum there,
+    /// and whether one was won. {} without a career.
     [[nodiscard]] godot::Dictionary get_career() const;
     /// A new career: the first rung, the garage's start money and nothing
     /// bought, and its season drawn for `seed`. "" or what is wrong; the

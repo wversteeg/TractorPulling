@@ -13,10 +13,11 @@
 # they pull (a run, TractorPullRun, stepped by each frame's time and drawn
 # from its blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its top ten, then the season's; then the next event, or a new
-# season after the last. A won championship opens the class above: the
-# season's board then asks whether to move up or stay and defend the
-# title (and the start screen offers it until the next season's first
-# pull). The season is saved after every event (and the
+# season after the last. A won championship opens the level above (or,
+# at top, the next class) once the level has had the career's minimum
+# seasons: the season's board then asks whether to move up or stay and
+# defend the title (and the start screen offers it until the next season's
+# first pull). The season is saved after every event (and the
 # tuning on every pull): at the next launch the start screen offers to
 # continue it, at the next event (an event left halfway starts again), or
 # to start a new one.
@@ -760,13 +761,22 @@ func _show_season() -> void:
 		status = "You are the champion!" if int(champion["puller"]) == 0 \
 				else "%s is the champion." % champion["name"]
 	var career := event.get_career()
-	if over and career.get("can_move_up", false):
+	var next: String = career.get("next_class", "") if career.get("next_is_new_class", false) \
+			else career.get("next_level", "")
+	var to_go: int = int(career.get("min_seasons", 0)) - int(career.get("seasons", 0))
+	if over and not career.get("can_move_up", false) and career.get("title", false) \
+			and not next.is_empty() and to_go > 0:
+		# A title before the level's last required season: the level above
+		# opens after it.
+		status += " %s opens after %s here." % [next,
+				"another season" if to_go == 1 else "%d more seasons" % to_go]
+		board.set_buttons("New season")
+	elif over and career.get("can_move_up", false):
 		if career["next_is_new_class"]:
 			status += " The %s class is open to you." % career["next_class"]
 		else:
 			status += " %s is open to you." % career["next_level"]
-		board.set_buttons("Up to %s" % (career["next_class"] if career["next_is_new_class"]
-				else career["next_level"]), "Stay in %s" % career["level_name"])
+		board.set_buttons("Up to %s" % next, "Stay in %s" % career["level_name"])
 	else:
 		board.set_buttons("New season" if over else "Next event")
 	board.set_status(status.strip_edges())

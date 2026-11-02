@@ -4,6 +4,7 @@
 [career]
 name = "Practice path"
 promotion_place = 1
+min_seasons = 1
 
 [[career.classes]]
 name = "Practice"
