@@ -43,11 +43,13 @@ enum class Stage : std::uint8_t {
 
 /// Where the tractor waits for its turn and comes back to: its rear axle's
 /// middle on the track, x down the track from the start line and y to the
-/// left of the centre line (negative: right of it), facing down the track
-/// [m].
+/// left of the centre line (negative: right of it) [m], and which way it
+/// faces there: 0 down the track, positive turned left [rad]. Coming back,
+/// the tractor is parked once it stands near the spot, however it faces.
 struct Parking {
     double x_m = 0.0;
     double y_m = 0.0;
+    double heading_rad = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -56,10 +58,19 @@ enum class ParamError : std::uint8_t {
     kInTheLane,
 };
 
-/// A parking must keep a tractor `half_width_m` wide each side of its
-/// middle out of the lane.
+/// The tractor's outline on the ground, from the middle of its rear axle:
+/// how far it reaches each side, behind the rear axle (the rear tires) and
+/// ahead of it (to the front tires' front) [m].
+struct Footprint {
+    double half_width_m = 0.0;
+    double behind_m = 0.0;
+    double ahead_m = 0.0;
+};
+
+/// A parking must keep the tractor's `footprint` out of the lane, on the
+/// parking's side of it.
 [[nodiscard]] std::optional<ParamError> validate(const Parking& parking, const run::Rules& rules,
-                                                 double half_width_m) noexcept;
+                                                 const Footprint& footprint) noexcept;
 
 /// Slower than this the tractor stands [m/s].
 inline constexpr double kAtRest_m_s = 0.05;
