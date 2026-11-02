@@ -40,6 +40,9 @@ const TURN_COLOUR := Color(1.0, 0.95, 0.6)
 # Why the pull ended, large, in the middle under the top.
 const ENDING_TOP := 230.0
 const ENDING_FONT_SIZE := 40
+# How long it stays, and how long it takes to fade out at the end [s].
+const ENDING_SHOWN_S := 4.0
+const ENDING_FADE_S := 1.0
 const ENDING_COLOUR := Color(1.0, 0.45, 0.3)
 const FULL_PULL_COLOUR := Color(0.4, 1.0, 0.45)
 # Backing up: off the sled's line by more than this share of how far off
@@ -101,6 +104,7 @@ var _front_n := 0.0
 var _front := Label.new()
 var _turn := Label.new()
 var _ending := Label.new()
+var _ending_left_s := 0.0
 var _lamp := Label.new()
 # The turn's line is shown (the settings' guidance).
 var guidance := true
@@ -239,6 +243,19 @@ func show_ending(text: String, full_pull: bool = false) -> void:
 	_ending.text = text
 	_ending.add_theme_color_override("font_color",
 			FULL_PULL_COLOUR if full_pull else ENDING_COLOUR)
+	_ending_left_s = ENDING_SHOWN_S if not text.is_empty() else 0.0
+	_ending.modulate.a = 1.0
+
+
+# The ending's line goes after ENDING_SHOWN_S, fading out over its last
+# ENDING_FADE_S: it is not needed on the way back to the bay.
+func _process(delta: float) -> void:
+	if _ending_left_s <= 0.0:
+		return
+	_ending_left_s -= delta
+	_ending.modulate.a = clampf(_ending_left_s / ENDING_FADE_S, 0.0, 1.0)
+	if _ending_left_s <= 0.0:
+		_ending.text = ""
 
 
 func ending_shown() -> String:

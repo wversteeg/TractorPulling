@@ -39,6 +39,13 @@ const PEDAL_RIM := 4
 # The ribs: inset this far inside the rim, this thick [px].
 const PEDAL_RIB_INSET := 6.0
 const PEDAL_RIB_WIDTH := 5.0
+# The steering wheel: its rim's thickness and colour, the hub's share of
+# the wheel's radius, and how far it turns at the ends of the travel [rad].
+const WHEEL_RIM := 9.0
+const WHEEL_DARK := Color(0.12, 0.12, 0.12, 0.95)
+const WHEEL_HUB_SHARE := 0.22
+const WHEEL_TURN_RAD := PI / 2.0
+const WHEEL_LABEL_INSET := 16.0
 
 @export var colour := Color(0.95, 0.95, 0.95, 0.85)
 @export var label := ""
@@ -47,6 +54,9 @@ const PEDAL_RIB_WIDTH := 5.0
 # Drawn as a pedal (vertical sliders): a rounded track and a ribbed rubber
 # pad for a thumb.
 @export var pedal := false
+# Drawn as a steering wheel (horizontal sliders): a rounded track and a
+# wheel for a thumb, turned the way it steers.
+@export var wheel := false
 
 @export var vertical := false
 @export var start_value := 0.0
@@ -161,7 +171,7 @@ func _slide_to(global_point: Vector2) -> void:
 
 
 func _draw() -> void:
-	if pedal:
+	if pedal or wheel:
 		_pedal_track.bg_color = TRACK_COLOUR
 		_pedal_track.set_corner_radius_all(PEDAL_CORNER)
 		draw_style_box(_pedal_track, Rect2(Vector2.ZERO, size))
@@ -190,7 +200,11 @@ func _draw() -> void:
 		if filled:
 			draw_rect(Rect2(0.0, 0.0, x + thumb, size.y), fill)
 		_draw_band()
-		draw_rect(Rect2(x, 0.0, thumb, size.y), thumb_colour)
+		if wheel:
+			_draw_wheel(Vector2(x + thumb / 2.0, size.y / 2.0),
+					minf(thumb, size.y) / 2.0 - WHEEL_RIM, thumb_colour)
+		else:
+			draw_rect(Rect2(x, 0.0, thumb, size.y), thumb_colour)
 	if has_band:
 		var at := position_of(mark)
 		_draw_across(at - MARK_WIDTH / 2.0, at + MARK_WIDTH / 2.0, MARK_COLOUR)
@@ -209,6 +223,22 @@ func _draw_pedal(rect: Rect2, rim: Color) -> void:
 	for i in PEDAL_RIBS:
 		var y := inset.position.y + inset.size.y * (i + 0.5) / PEDAL_RIBS
 		draw_line(Vector2(inset.position.x, y), Vector2(inset.end.x, y), PEDAL_RIB, PEDAL_RIB_WIDTH)
+
+
+# A steering wheel at `centre`, `radius` to its rim's middle: a rim in
+# `rim_colour`, three spokes and a hub, turned as far as the slider steers
+# (left, the start value, turns it anticlockwise).
+func _draw_wheel(centre: Vector2, radius: float, rim_colour: Color) -> void:
+	var middle := (start_value + end_value) / 2.0
+	var half := absf(end_value - start_value) / 2.0
+	var turn := (value - middle) / half * WHEEL_TURN_RAD * signf(start_value - end_value) \
+			if half > 0.0 else 0.0
+	draw_circle(centre, radius + WHEEL_RIM / 2.0, WHEEL_DARK)
+	draw_arc(centre, radius, 0.0, TAU, 40, rim_colour, WHEEL_RIM, true)
+	for spoke: float in [PI / 2.0, PI / 2.0 + TAU / 3.0, PI / 2.0 - TAU / 3.0]:
+		var towards := Vector2.from_angle(spoke - turn)
+		draw_line(centre, centre + towards * radius, rim_colour, WHEEL_RIM * 0.6, true)
+	draw_circle(centre, radius * WHEEL_HUB_SHARE, rim_colour)
 
 
 # The marked stretch, over the fill and under the thumb.
@@ -238,6 +268,9 @@ func _draw_label() -> void:
 	var at := Vector2((size.x - text_size.x) / 2.0, font.get_ascent(LABEL_SIZE) + 6.0)
 	if not vertical:
 		at.y = (size.y + font.get_ascent(LABEL_SIZE) - font.get_descent(LABEL_SIZE)) / 2.0
+		if wheel:
+			# Clear of the wheel in the middle: at the slider's left end.
+			at.x = WHEEL_LABEL_INSET
 	draw_string_outline(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, 6,
 			Color.BLACK)
 	draw_string(font, at, label, HORIZONTAL_ALIGNMENT_LEFT, -1, LABEL_SIZE, LABEL_COLOUR)

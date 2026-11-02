@@ -183,6 +183,14 @@ void Session::step(const Controls& controls) noexcept {
                                      .brake_left = controls.brake_left,
                                      .brake_right = controls.brake_right};
         input_ = controls::pro(pro, pro_, assist_, tractor, turn_.run.pull.tractor, dt_s);
+        // Outside the pull the pedals are latched together, as on a road
+        // tractor: either brakes both. In the pull they are each side's, to
+        // steer the tractor on the track.
+        if (turn_.stage != turn::Stage::kPulling) {
+            const double both = std::max(input_.brake_left, input_.brake_right);
+            input_.brake_left = both;
+            input_.brake_right = both;
+        }
     }
     output_ = turn::step(turn_, model_, rules_, parking_, input_, dt_s);
 }
