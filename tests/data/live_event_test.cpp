@@ -201,6 +201,8 @@ TEST(LiveEvent, WaitsForThePlayer) {
     EXPECT_EQ(live->pull_rules().track_length_m, s.rules.max_distance_m);
     EXPECT_EQ(live->pull_rules().full_pull_line_m, s.rules.full_pull_m);
     EXPECT_EQ(live->sled().knives.count, s.venue.sled.knives.count);
+    // The player's tractor was tried too: the operator knows what to expect.
+    EXPECT_GT(live->expected_m(player), 0.0);
 
     // A short test pull: the operator lightens the sled, and the rivals go on.
     const event::Outcome outcome =

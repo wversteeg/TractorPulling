@@ -267,6 +267,10 @@ for the big features; they are repeated at the end for completeness.
   and the board before the first pull.
 - **Pull-offs between several tractors.** A pull-off is run per tractor; the
   ranking of several full pullers on the pull-off sled is not modelled.
+- **The operator's expectations.** Each tractor's expected distance comes
+  from its gear trials on the class's sled, which stop at the event's
+  maximum distance: several tractors reaching it tie, and the gap to the
+  strongest is then underestimated.
 
 ## Controls
 

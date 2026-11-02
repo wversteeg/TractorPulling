@@ -15,18 +15,16 @@ namespace {
 constexpr double kLearningRate = 0.5;
 constexpr double kLowestStepShare = 0.25;
 constexpr double kHighestStepShare = 6.0;
+// After a change, a short test pull changes the sled again only when it
+// misses by more than this share of a step.
+constexpr double kRetestMarginSteps = 0.5;
 
-// Lighter by `steps`: the operator takes knives out first (quick to do);
-// once there are none left, the push-down moves later instead, a step's
-// worth each.
+// A lighter step: a pull-off step's knives out, and the push-down a step's
+// worth later. Knives alone barely lengthen a pull; with the push-down each
+// step is worth about what the operator reckons a step is.
 sled::Params lighter(const sled::Params& sled, int steps, double step_m) noexcept {
     const sled::Adjustment& step = sled.pull_off_step;
-    if (step.knives <= 0) {
-        return sled::adjusted(sled, step, -steps);
-    }
-    const int knife_steps = std::min(steps, sled.knives.count / step.knives);
-    const sled::Params fewer_knives = sled::adjusted(sled, step, -knife_steps);
-    return sled::adjusted(fewer_knives, {.pushdown_earlier_m = -step_m}, steps - knife_steps);
+    return sled::adjusted(sled, {.knives = step.knives, .pushdown_earlier_m = step_m}, -steps);
 }
 
 bool running_order_valid(std::span<const int> order) noexcept {
@@ -71,6 +69,12 @@ std::optional<ParamError> validate(const Rules& rules) noexcept {
     if (rules.max_steps_per_change < 1) {
         return ParamError::kMaxStepsNotPositive;
     }
+    const double strong = rules.strong_full_pull_from.value_or(0.0);
+    const double trouble = rules.trouble_share.value_or(0.0);
+    if (!std::isfinite(strong) || !std::isfinite(trouble) || strong < 0.0 || strong > 1.0 ||
+        trouble < 0.0 || trouble >= 1.0) {
+        return ParamError::kOperatorJudgementOutOfRange;
+    }
     return std::nullopt;
 }
 
@@ -96,6 +100,39 @@ Event::Event(const Rules& rules, const sled::Params& class_sled,
     }
     queue_size_ = running_order.size();
     step_estimate_m_ = rules.step_m;
+}
+
+void Event::expect(int puller, double expected_m) noexcept {
+    if (puller >= 0 && puller < count_ && std::isfinite(expected_m) && expected_m > 0.0) {
+        expected_m_[static_cast<std::size_t>(puller)] = expected_m;
+    }
+}
+
+double Event::strength(int puller) const noexcept {
+    constexpr double kMiddle = 0.5;
+    const double mine = expected_m_[static_cast<std::size_t>(puller)];
+    if (mine <= 0.0) {
+        return kMiddle;
+    }
+    int known = 0;
+    int below = 0;
+    for (int i = 0; i < count_; ++i) {
+        const double theirs = expected_m_[static_cast<std::size_t>(i)];
+        if (theirs > 0.0) {
+            ++known;
+            below += theirs < mine ? 1 : 0;
+        }
+    }
+    return known < 2 ? kMiddle : static_cast<double>(below) / static_cast<double>(known - 1);
+}
+
+double Event::gap_to_strongest_m(int puller) const noexcept {
+    const double mine = expected_m_[static_cast<std::size_t>(puller)];
+    if (mine <= 0.0) {
+        return 0.0;
+    }
+    const double strongest = *std::ranges::max_element(expected_m_);
+    return strongest - mine;
 }
 
 std::optional<Pull> Event::next() const noexcept {
@@ -159,8 +196,19 @@ void Event::learn(double reached_m) noexcept {
 Outcome Event::judge_test(int puller, double reached_m) noexcept {
     Entry& entry = entries_[static_cast<std::size_t>(puller)];
     entry.may_keep = true;
-    learn(reached_m);
     Outcome outcome;
+    // Far short of what this tractor was expected to pull (on the sled as
+    // it is now: each step heavier is worth a step less): trouble with the
+    // tractor, not a sled too heavy. The next puller tests the sled.
+    const double expected_m = expected_m_[static_cast<std::size_t>(puller)];
+    if (rules_.trouble_share && expected_m > 0.0 &&
+        reached_m < *rules_.trouble_share *
+                        (expected_m - static_cast<double>(net_steps_) * step_estimate_m_)) {
+        outcome.change = SledChange::kTroubleSuspected;
+        retest_next();
+        return outcome;
+    }
+    learn(reached_m);
     const bool standard_line = line_m_ == rules_.full_pull_m;
     if (standard_line && reached_m >= rules_.full_pull_m &&
         reached_m < rules_.extended_full_pull_m) {
@@ -168,21 +216,34 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
         outcome.change = SledChange::kLineExtended;
         return outcome;
     }
+    // After a change a short test pull changes the sled again only if it
+    // misses by more than half a step, where another step would come closer:
+    // the first change is usually enough. A full pull is a full pull.
+    const double margin_m = changes_ > 0 ? kRetestMarginSteps * step_estimate_m_ : 0.0;
+    // What the strongest would reach on this sled: a weak tractor's short
+    // test pull may still leave the sled right for the field.
+    const double strongest_m = reached_m + gap_to_strongest_m(puller);
     if (reached_m >= line_m_) {
-        // Too easy: heavier, so that a pull like this stops at the line.
-        outcome = {.change = SledChange::kHeavier, .steps = steps_for(reached_m - line_m_)};
+        if (rules_.strong_full_pull_from && strength(puller) >= *rules_.strong_full_pull_from) {
+            // One of the strongest pulled it the whole way: as meant.
+            return outcome;
+        }
+        // Too easy: heavier, so that the strongest stops at the line.
+        outcome = {.change = SledChange::kHeavier, .steps = steps_for(strongest_m - line_m_)};
         sled_ = sled::heavier(sled_, outcome.steps);
         entry.may_keep = false;
         schedule_repull(puller);
-    } else if (reached_m < rules_.sled_target_m) {
+    } else if (strongest_m < rules_.sled_target_m - margin_m) {
         outcome = {.change = SledChange::kLighter,
-                   .steps = steps_for(rules_.sled_target_m - reached_m)};
+                   .steps = steps_for(rules_.sled_target_m - strongest_m)};
         sled_ = lighter(sled_, outcome.steps, rules_.step_m);
     } else {
         return outcome;
     }
     last_test_m_ = reached_m;
     last_change_steps_ = outcome.change == SledChange::kHeavier ? outcome.steps : -outcome.steps;
+    net_steps_ += last_change_steps_;
+    ++changes_;
     retest_next();
     return outcome;
 }

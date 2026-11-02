@@ -110,12 +110,9 @@ std::int64_t LiveEvent::advance(std::int64_t max_steps) noexcept {
 }
 
 void LiveEvent::start_next() noexcept {
-    if (choosing_ && trial_puller_ == player_) {
-        // The player picks their own gear: no trials, but the guess is
-        // still drawn, so the rivals' draws are play_event's.
-        choose(variation_.lowest_gear);
-        return;
-    }
+    // The player's tractor is tried too, as play_event tries every
+    // puller's: the sled operator reckons with how far it should pull. The
+    // player picks their own gear; the guess drawn for them goes unused.
     if (choosing_) {
         Puller trying = field_.pullers[static_cast<std::size_t>(trial_puller_)];
         trying.driver.gear = trial_gear_;
@@ -184,6 +181,7 @@ void LiveEvent::finish_trial(double reached_m) noexcept {
 // As guess_gear after best_gear, for the puller being tried; then the next.
 void LiveEvent::choose(int best) noexcept {
     const auto at = static_cast<std::size_t>(trial_puller_);
+    event_.expect(trial_puller_, best_m_);
     const int guess = guess_gear(field_.pullers[at], best, variation_.lowest_gear,
                                  variation_.highest_gear, guesses_);
     field_.pullers[at].driver.gear = guess;

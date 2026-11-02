@@ -37,7 +37,9 @@ struct Rules {
     int decide_after_pulls = 0;
     int repull_after_pulls = 0;
     /// A test pull stopping short of this makes the operator lighten the
-    /// sled.
+    /// sled. The operator judges what the strongest puller would reach: the
+    /// test pull plus how much further the strongest is expected to get
+    /// than its puller (Event::expect).
     double sled_target_m = 0.0;
     /// The operator's rule of thumb at the start of the day: what one sled
     /// step is worth [m]. They learn better from each change they make.
@@ -45,6 +47,15 @@ struct Rules {
     /// Most steps the operator changes the sled by at once, after a test
     /// pull or for a pull-off.
     int max_steps_per_change = 0;
+    /// A full pull by a puller this strong (a share of the field, 0 the
+    /// weakest, 1 the strongest) leaves the sled as it is: the strongest
+    /// are meant to pull it the whole way. None: every full pull test
+    /// makes the sled heavier.
+    std::optional<double> strong_full_pull_from;
+    /// A test pull short of this share of what its puller was expected to
+    /// reach says the tractor had trouble, not that the sled is too heavy:
+    /// the sled stays, and the next puller tests it. None: off.
+    std::optional<double> trouble_share;
 };
 
 enum class ParamError : std::uint8_t {
@@ -54,6 +65,7 @@ enum class ParamError : std::uint8_t {
     kTurnsOutOfOrder,
     kStepNotPositive,
     kMaxStepsNotPositive,
+    kOperatorJudgementOutOfRange,
     kSled,
     kRunningOrder,
 };
@@ -87,6 +99,9 @@ enum class SledChange : std::uint8_t {
     kLineExtended,
     kLighter,
     kHeavier,
+    /// The test pull fell far short of what its puller was expected to
+    /// reach (Rules::trouble_share): the sled stays, the next puller tests.
+    kTroubleSuspected,
 };
 
 struct Outcome {
@@ -127,6 +142,15 @@ public:
     [[nodiscard]] static std::optional<Event> create(const Rules& rules,
                                                      const sled::Params& class_sled,
                                                      std::span<const int> running_order) noexcept;
+
+    /// How far `puller` is expected to pull the class's sled as the event
+    /// starts (their gear trials) [m]: the operator weighs their test pulls
+    /// by it. Unknown pullers count as the field's middle.
+    void expect(int puller, double expected_m) noexcept;
+    /// What expect() was told for `puller` [m]; 0 when unknown.
+    [[nodiscard]] double expected_m(int puller) const noexcept {
+        return puller >= 0 && puller < count_ ? expected_m_[static_cast<std::size_t>(puller)] : 0.0;
+    }
 
     /// The next pull, or nothing when the event is over or a decision is
     /// due.
@@ -203,6 +227,12 @@ private:
     void advance() noexcept;
     void start_pull_off() noexcept;
     [[nodiscard]] double official(double reached_m) const noexcept;
+    /// Where `puller` stands in the field by expected distance: 0 the
+    /// weakest, 1 the strongest, 0.5 when unknown.
+    [[nodiscard]] double strength(int puller) const noexcept;
+    /// How much further the field's strongest is expected to pull than
+    /// `puller` [m]; 0 when unknown.
+    [[nodiscard]] double gap_to_strongest_m(int puller) const noexcept;
 
     Rules rules_;
     sled::Params sled_;
@@ -222,6 +252,12 @@ private:
     /// it; 0 once a test pull has shown its effect.
     int last_change_steps_ = 0;
     double last_test_m_ = 0.0;
+    /// Changes made to the sled so far (a test after one is judged more
+    /// loosely), and the steps made heavier less those made lighter.
+    int changes_ = 0;
+    int net_steps_ = 0;
+    /// Each puller's expected distance (expect()), 0 for unknown [m].
+    std::array<double, kMaxPullers> expected_m_{};
     std::array<Standing, kMaxPullers> standings_{};
 };
 

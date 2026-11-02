@@ -110,7 +110,9 @@ struct Places {
 
 constexpr Places kNew{.best = 7, .worst = 10};
 constexpr Places kOneLevelUp{.best = 5, .worst = 8};
-constexpr Places kHalfway{.best = 3, .worst = 6};
+// The sled operator judges by the strongest, so the field finishes close
+// together: halfway may reach second on a good day.
+constexpr Places kHalfway{.best = 2, .worst = 6};
 constexpr Places kOnThePodium{.best = 1, .worst = 3};
 // Halfway: every part at its second level of three or four.
 constexpr int kHalfwayLevels = 2;

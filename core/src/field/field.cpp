@@ -242,7 +242,15 @@ namespace tp::field {
 std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
                              const track::Params& track, int lowest, int highest,
                              const run::Rules& rules) noexcept {
-    std::optional<int> best;
+    const std::optional<GearTrial> trial =
+        best_gear_trial(puller, sled, track, lowest, highest, rules);
+    return trial ? std::optional<int>{trial->gear} : std::nullopt;
+}
+
+std::optional<GearTrial> best_gear_trial(const Puller& puller, const sled::Params& sled,
+                                         const track::Params& track, int lowest, int highest,
+                                         const run::Rules& rules) noexcept {
+    std::optional<GearTrial> best;
     double best_m = -1.0;
     for (int gear = lowest; gear <= highest; ++gear) {
         Puller trying = puller;
@@ -254,7 +262,7 @@ std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
         // On a tie the higher gear: it gets there quicker.
         if (result->distance_m >= best_m) {
             best_m = result->distance_m;
-            best = gear;
+            best = GearTrial{.gear = gear, .distance_m = best_m};
         }
     }
     return best;

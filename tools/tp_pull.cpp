@@ -584,6 +584,10 @@ void report_change(const tp::field::LogEntry& entry) {
                       << " knives, push-down at " << entry.pushdown_start_m
                       << " m; the next puller tests it\n";
             return;
+        case tp::event::SledChange::kTroubleSuspected:
+            std::cout << "      operator: far short for this tractor, sled kept; the next "
+                         "puller tests it\n";
+            return;
     }
 }
 

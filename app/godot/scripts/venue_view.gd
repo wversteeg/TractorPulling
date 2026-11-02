@@ -129,6 +129,18 @@ const FLAGS: Array[Color] = [Color(0.85, 0.12, 0.1), Color(0.95, 0.95, 0.95),
 		Color(0.1, 0.3, 0.7), Color(0.95, 0.6, 0.1)]
 const FLAG_SIZE_M := Vector2(1.6, 1.0)
 const FLAG_POLE_M := 2.4
+# The officials' flags beside the lane, waving: a yellow TEST flag down
+# the track from the start line for a test pull, where the driver sees it
+# from the cab, and a black-and-white chequered flag at the full-pull line,
+# or in a pull-off where the best of the round so far stopped. Their poles'
+# height, the cloth's size, how far out from the lane's left edge and how
+# far down the track the TEST flag stands [m]; the chequers along it.
+const OFFICIAL_FLAG_POLE_M := 3.2
+const OFFICIAL_FLAG_SIZE_M := Vector2(1.6, 1.05)
+const OFFICIAL_FLAG_OUT_M := 2.5
+const TEST_FLAG_AT_M := 15.0
+const TEST_FLAG := Color(1.0, 0.85, 0.1)
+const CHEQUERS := 6.0
 # How excited the crowd is before a pull, and from where along the track
 # it starts to cheer (a share of the full-pull line).
 const CALM := 0.15
@@ -149,6 +161,12 @@ var _line: Node3D
 # y across) and the circle it turns in (z) [m].
 var _fields: Array[Vector3] = []
 var _random := RandomNumberGenerator.new()
+var _test_flag: Node3D = null
+var _best_flag: Node3D = null
+# What the flags show (show_flags), kept for a rebuild.
+var _test_pull := false
+var _best_m := -1.0
+var _lane_m := 12.0
 # The parking laid out now (PARKINGS), and the node that draws it.
 var _parking_layout := 0
 var _parking: Node3D = null
@@ -186,6 +204,9 @@ func build(d: Dictionary) -> void:
 		add_child(_parking)
 		_add_parking(_parking, lane_m)
 		_parking_built = _parking_layout
+	_lane_m = lane_m
+	# A rebuild freed the flags: up again as they were.
+	show_flags(_test_pull, _best_m)
 	if full_pull_m != _full_pull_m:
 		if _line != null:
 			_line.free()
@@ -786,3 +807,62 @@ static func _quiet(node: GeometryInstance3D) -> GeometryInstance3D:
 static func _quiet_all(root: Node) -> void:
 	for node in root.find_children("*", "GeometryInstance3D", true, false):
 		_quiet(node as GeometryInstance3D)
+
+
+# The test flag at the start line for a test pull, and the chequered flag
+# at `best_m` down the track in a pull-off (none below 0).
+func show_flags(test_pull: bool, best_m: float) -> void:
+	_test_pull = test_pull
+	_best_m = best_m
+	if not is_instance_valid(_test_flag):
+		_test_flag = _official_flag(TEST_FLAG, 0.0, "TEST")
+	if not is_instance_valid(_best_flag):
+		_best_flag = _official_flag(Color.WHITE, CHEQUERS, "")
+	var side_m := _lane_m / 2.0 + OFFICIAL_FLAG_OUT_M
+	_test_flag.visible = test_pull
+	_test_flag.position = TrackSpace.point(TEST_FLAG_AT_M, side_m, 0.0)
+	_best_flag.visible = best_m >= 0.0
+	_best_flag.position = TrackSpace.point(maxf(best_m, 0.0), side_m, 0.0)
+
+
+func test_flag_shown() -> bool:
+	return is_instance_valid(_test_flag) and _test_flag.visible
+
+
+# Where the chequered flag stands along the track [m]; -1 when not shown.
+func best_flag_at_m() -> float:
+	if not is_instance_valid(_best_flag) or not _best_flag.visible:
+		return -1.0
+	return -_best_flag.position.z
+
+
+# A pole with a waving cloth flying from its top down the track (in
+# `colour`, or chequered with `chequers` squares along it), and `text` on it
+# facing the lane.
+func _official_flag(colour: Color, chequers: float, text: String) -> Node3D:
+	var flag := Node3D.new()
+	var pole := Art.cylinder(0.035, OFFICIAL_FLAG_POLE_M, STEEL, 8, 0.4, 0.6)
+	pole.position = Vector3(0.0, OFFICIAL_FLAG_POLE_M / 2.0, 0.0)
+	flag.add_child(_quiet(pole))
+	var cloth := PlaneMesh.new()
+	cloth.size = OFFICIAL_FLAG_SIZE_M
+	cloth.subdivide_width = 12
+	cloth.subdivide_depth = 4
+	cloth.orientation = PlaneMesh.FACE_Z
+	var material := ShaderMaterial.new()
+	material.shader = FLAG_SHADER
+	material.set_shader_parameter("colour", colour)
+	material.set_shader_parameter("chequers", chequers)
+	var face := Art.instance(cloth, material)
+	# Turned to face the lane; its pole edge at the pole.
+	face.rotation.y = PI / 2.0
+	face.position = Vector3(0.0, OFFICIAL_FLAG_POLE_M - OFFICIAL_FLAG_SIZE_M.y / 2.0,
+			-OFFICIAL_FLAG_SIZE_M.x / 2.0)
+	flag.add_child(_quiet(face))
+	if not text.is_empty():
+		var label := Art.label(text, 56, Color.BLACK, colour)
+		label.position = face.position + Vector3(0.12, 0.0, 0.25)
+		label.rotation.y = PI / 2.0
+		flag.add_child(label)
+	add_child(flag)
+	return flag
