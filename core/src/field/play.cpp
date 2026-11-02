@@ -33,6 +33,11 @@ std::uint64_t log_hash(std::span<const LogEntry> log) noexcept {
         hash.add(entry.pushdown_start_m);
         add_int(hash, entry.deciding);
         hash.add(entry.keep);
+        // Only the player moves back, never a scripted puller: an event
+        // without it hashes as it always has.
+        if (entry.moved_back != 0) {
+            add_int(hash, entry.moved_back);
+        }
     }
     return hash.value();
 }

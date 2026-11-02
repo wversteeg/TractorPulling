@@ -75,6 +75,15 @@ public:
     /// bounds counts 0 m, as for every puller. Only while turn() is
     /// kPlayerPull.
     event::Outcome record_player(const run::Result& result, int gear) noexcept;
+    /// The player stopped short of the restart line and pulls again
+    /// event::kDeferPlaces later instead of recording the pull (Event::
+    /// defer); logged with the places moved. Only while turn() is
+    /// kPlayerPull; returns the places moved (0 if none).
+    int defer_player() noexcept;
+    /// Whether defer_player() would move the player (Event::may_defer).
+    [[nodiscard]] bool may_defer_player() const noexcept {
+        return pending_pull().has_value() && event_.may_defer();
+    }
     /// The player's keep-or-re-pull, while turn() is kPlayerDecision;
     /// suggested_keep() is what a sensible puller would choose.
     [[nodiscard]] bool suggested_keep() const noexcept { return event_.suggested_keep(); }

@@ -20,6 +20,21 @@ Ending why_it_stopped(const pull::State& pull, const pull::Output& out) noexcept
     return out.tractor.slip_ratio > kSpinningSlip ? Ending::kSpunOut : Ending::kStopped;
 }
 
+// Whether the sled has stopped for good, and why: any stop ends the run,
+// measured where the sled stands, except a sled nudged a few centimetres
+// with the tractor still able to pull (kStopCountsFrom_m).
+std::optional<Ending> stopped(const pull::State& pull, const pull::Output& out,
+                              bool sled_was_moving, double pulled_m) noexcept {
+    if (!sled_was_moving || pull.sled.velocity_m_s != 0.0) {
+        return std::nullopt;
+    }
+    const Ending ending = why_it_stopped(pull, out);
+    if (ending == Ending::kStopped && pulled_m < kStopCountsFrom_m) {
+        return std::nullopt;
+    }
+    return ending;
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const Rules& rules) noexcept {
@@ -106,9 +121,9 @@ pull::Output step(State& state, const pull::Model& model, const Rules& rules,
         finish(Ending::kOutOfBounds, 0.0);
     } else if (pulled_m >= rules.track_length_m) {
         finish(Ending::kFullPull, rules.track_length_m);
-    } else if (sled_was_moving && sled.velocity_m_s == 0.0) {
-        // Any stop ends the run, measured where the sled stands.
-        finish(why_it_stopped(state.pull, out), pulled_m);
+    } else if (const std::optional<Ending> stop =
+                   stopped(state.pull, out, sled_was_moving, pulled_m)) {
+        finish(*stop, pulled_m);
     } else if (time_s >= rules.max_duration_s) {
         finish(Ending::kTimedOut, pulled_m);
     }

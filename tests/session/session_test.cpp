@@ -357,6 +357,47 @@ TEST(Session, StandsStillOnceTheRunHasEnded) {
     EXPECT_EQ(session.previous().sled_x_m, session.current().sled_x_m);
 }
 
+// A pull that stopped short of the restart line, restarted: the same
+// controls from then on give the same pull as a new session's, and it may
+// not be restarted again.
+TEST(Session, ARestartedPullIsPulledAfresh) {
+    const session::Setup setup = reference_setup(Layout::kPro);
+    const auto script = [](double t_s) {
+        Controls controls = pro_script(t_s);
+        if (t_s >= 5.0) {
+            controls = {.throttle = 0.0,
+                        .clutch_pedal = 1.0,
+                        .gear = 6,
+                        .brake_left = 1.0,
+                        .brake_right = 1.0};
+        }
+        return controls;
+    };
+    const auto pull = [&](Session& session) {
+        for (int i = 0; !session.result() && i < 200000; ++i) {
+            session.advance(script(i * kDt_s), kStep_ns);
+        }
+    };
+    Session restarted = make(setup);
+    pull(restarted);
+    ASSERT_TRUE(restarted.result());
+    ASSERT_LT(restarted.result().value_or(run::Result{}).distance_m, turn::kRestartBefore_m);
+    ASSERT_TRUE(restarted.may_restart());
+    restarted.restart();
+    EXPECT_FALSE(restarted.result());
+    EXPECT_FALSE(restarted.may_restart());
+    pull(restarted);
+
+    Session fresh = make(setup);
+    pull(fresh);
+    const run::Result again = restarted.result().value_or(run::Result{});
+    const run::Result first = fresh.result().value_or(run::Result{});
+    EXPECT_EQ(again.distance_m, first.distance_m);
+    EXPECT_EQ(again.time_s, first.time_s);
+    EXPECT_EQ(restarted.current().tractor_x_m, fresh.current().tractor_x_m);
+    EXPECT_FALSE(restarted.may_restart()) << "once only";
+}
+
 // Controls that are not a number (a NaN from GDScript maths) never reach
 // the simulation: the run goes on exactly as with the controls at rest.
 TEST(Session, ReadsNotANumberAsAtRest) {

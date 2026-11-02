@@ -314,6 +314,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;
     out["full_pull_line_m"] = rules.full_pull_line_m;
+    out["restart_before_m"] = turn::kRestartBefore_m;
     const engine::Params& engine = tractor.engine;
     out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
     out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
@@ -337,6 +338,16 @@ bool TractorPullRun::is_finished() const {
 
 bool TractorPullRun::is_over() const {
     return session_ && session_->over();
+}
+
+bool TractorPullRun::may_restart() const {
+    return session_ && session_->may_restart();
+}
+
+void TractorPullRun::restart() {
+    if (session_) {
+        session_->restart();
+    }
 }
 
 godot::Dictionary TractorPullRun::get_result() const {
@@ -397,6 +408,8 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("is_finished"), &TractorPullRun::is_finished);
     ClassDB::bind_method(D_METHOD("is_over"), &TractorPullRun::is_over);
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
+    ClassDB::bind_method(D_METHOD("may_restart"), &TractorPullRun::may_restart);
+    ClassDB::bind_method(D_METHOD("restart"), &TractorPullRun::restart);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
 }
 

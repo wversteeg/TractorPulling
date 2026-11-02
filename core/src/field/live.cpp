@@ -243,6 +243,27 @@ event::Outcome LiveEvent::record_player(const run::Result& result, int gear) noe
     return entry->outcome;
 }
 
+int LiveEvent::defer_player() noexcept {
+    const std::optional<event::Pull> pull = pending_pull();
+    if (!pull.has_value() || log_size_ >= log_.size()) {
+        return 0;
+    }
+    const int moved = event_.defer(event::kDeferPlaces);
+    if (moved == 0) {
+        return 0;
+    }
+    LogEntry* entry = next_entry();
+    if (entry == nullptr) {
+        return moved;
+    }
+    entry->pull = *pull;
+    entry->moved_back = moved;
+    entry->full_pull_m = event_.full_pull_m();
+    entry->knives = event_.sled().knives.count;
+    entry->pushdown_start_m = event_.sled().pushdown_start_m;
+    return moved;
+}
+
 void LiveEvent::decide_player(bool keep) noexcept {
     if (turn() != Turn::kPlayerDecision) {
         return;
