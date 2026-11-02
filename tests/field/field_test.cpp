@@ -128,7 +128,6 @@ TEST(PullRules, OnlyTestPullsAndPullOffsRunPastTheLine) {
 
 // Every puller may compete in the class, even where the ranges reach past
 // its limits: power and weight are clamped to them.
-
 TEST(Field, EveryPullerMayCompete) {
     const Field field = field_of(event::kMaxPullers, 7);
     EXPECT_EQ(field.count, event::kMaxPullers);
