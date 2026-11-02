@@ -450,14 +450,14 @@ for the big features; they are repeated at the end for completeness.
 - **Ballast at the centre of gravity's height.** Weights bought sit where
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
-- **Two classes on the ladder.** The tractor path's career has the
-  standard 3.5 t class (its three levels) and Sport 2.5 t (promo and top)
-  so far; the classes above come a class at a time (docs/career.md).
+- **Three classes on the ladder.** The tractor path's career has the
+  standard 3.5 t class (its three levels), Sport 2.5 t (promo and top) and
+  Sport 4.5 t (its three levels) so far; the classes above come a class at a time (docs/career.md).
 - **Sport's engine rules are not checked.** Sport and up limit the
   engine's build (cylinders, displacement, valves, the turbo's inlet, no
   intercooler at 2500 kg), not its power; the class rules have no PTO
   limit for them, and the core checks only mass, engine speed and hitch.
-  The Sport engine's 220 hp is an estimate from those limits.
+  The Sport engines' 220 and 520 hp are estimates from those limits.
 - **The roll bar is drawn only.** A tractor's protection (cab or roll
   bar) changes the picture, not its mass, centre of gravity or the
   driver's view (the cab camera is the same).

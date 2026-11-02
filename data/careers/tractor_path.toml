@@ -11,7 +11,7 @@
 # defend the title, and what is opened stays open. Money and upgrades
 # carry over, by the upgrade's name.
 #
-# Standard 3.5 t and Sport 2.5 t so far. Sport 4.5 t, Supersport 3.4, 3.6
+# Standard 3.5 t, Sport 2.5 t and Sport 4.5 t so far. Supersport 3.4, 3.6
 # and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a class
 # at a time, each with its NTTO and ETPC rules. Sport 2.5 t, an
 # introduction to the Sport classes, has only promo and top.
@@ -34,4 +34,12 @@ name = "Sport 2.5 t"
 levels = [
     { name = "Promo", season = "../seasons/sport_2500_promo.toml" },
     { name = "Top", season = "../seasons/sport_2500_top.toml" },
+]
+
+[[career.classes]]
+name = "Sport 4.5 t"
+levels = [
+    { name = "Belofte", season = "../seasons/sport_4500_belofte.toml" },
+    { name = "Promo", season = "../seasons/sport_4500_promo.toml" },
+    { name = "Top", season = "../seasons/sport_4500_top.toml" },
 ]
