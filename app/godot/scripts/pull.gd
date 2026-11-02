@@ -93,6 +93,9 @@ const END_FLAGMAN_AHEAD_M := 12.0
 # Backing up to the sled, the cameras frame the hitch and the hook from
 # this close [m], and how fast they turn to them and back [1/s].
 const HITCH_FRAMING_M := 12.0
+# Closer to the sled's line than this the hitch is lined up with the hook,
+# not passing beside the sled [m].
+const HITCH_ON_LINE_M := 2.0
 const FRAMING_RATE_PER_S := 2.0
 # Off the hitch, the chain lies on the track this share of its length.
 const CHAIN_LYING_SHARE := 0.9
@@ -332,9 +335,12 @@ func _show_setup(for_practice: bool) -> void:
 
 
 # The next run is the whole turn from the player's bay, or the pull alone.
+# Each event lays its parking out in its own way (VenueView.PARKINGS).
 func _place_parking() -> void:
 	if whole_turn and not autoplay:
-		run.set_parking(VenueView.PLAYER_BAY_X_M, VenueView.PARKING_RIGHT_OF_LANE_M)
+		venue_view.set_parking_layout(int(event.get_event().get("index", 0)))
+		var bay: Vector3 = venue_view.bays()[0]
+		run.set_parking(bay.x, bay.y, bay.z)
 	else:
 		run.clear_parking()
 
@@ -376,6 +382,7 @@ func _build(error: String) -> bool:
 		sled_view.build(dimensions)
 	hud.build(dimensions)
 	cameras.cab = tractor_view.cab_camera()
+	cameras.reset_framing()
 	_build_turn(dimensions)
 	controls.gear_count = dimensions["gear_count"]
 	controls.has_reverse = dimensions.get("has_reverse", false)
@@ -398,10 +405,10 @@ func _build_turn(dimensions: Dictionary) -> void:
 	var turn: bool = run.get_snapshot().get("stage", "pulling") != "pulling"
 	_whole_turn = turn
 	_chain_m = dimensions["chain_length_m"]
-	var bay_y_m := -(lane_m / 2.0 + VenueView.PARKING_RIGHT_OF_LANE_M)
+	var bays := venue_view.bays()
 	# Built for the first whole turn only: a pull from the line has none.
 	if parked.is_empty() and turn:
-		for i in VenueView.RIVAL_BAYS_X_M.size():
+		for i in VenueView.RIVAL_BAYS:
 			var rival := TractorView.new()
 			rival.paint = RIVAL_PAINTS[i % RIVAL_PAINTS.size()]
 			rival.paint_dark = rival.paint.darkened(0.4)
@@ -410,13 +417,15 @@ func _build_turn(dimensions: Dictionary) -> void:
 			rival.build(dimensions)
 			parked.append(rival)
 	for i in parked.size():
-		parked[i].position = TrackSpace.point(VenueView.RIVAL_BAYS_X_M[i], bay_y_m, 0.0)
+		var bay := bays[i + 1]
+		parked[i].position = TrackSpace.point(bay.x, -(lane_m / 2.0 + bay.y), 0.0)
+		parked[i].rotation.y = bay.z
 		parked[i].visible = turn
 	flagman.stand(TrackSpace.point(FLAGMAN_X_M, lane_m / 2.0 - FLAGMAN_IN_M, 0.0),
 			TrackSpace.point(0.0, 0.0, 0.0))
 	_full_pull_m = dimensions["full_pull_line_m"]
 	_left_m = lane_m / 2.0 - FLAGMAN_IN_M
-	hud.set_parking(Vector2(VenueView.PLAYER_BAY_X_M, bay_y_m) if turn else Vector2.INF)
+	hud.set_parking(Vector2(bays[0].x, -(lane_m / 2.0 + bays[0].y)) if turn else Vector2.INF)
 
 
 func _set_screen(next: Screen) -> void:
@@ -471,22 +480,39 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
+	cameras.show_hitch(framing_hitch(_snapshot), float(_snapshot.get("hitch_to_hook_m", 0.0)),
+			float(_snapshot.get("sled_heading_rad", 0.0)))
+	cameras.set_reversing(int(_snapshot.get("gear", 0)) < 0)
 	cameras.follow(_camera_target(delta), delta, true,
 			float(_snapshot.get("tractor_heading_rad", 0.0)), _close_behind())
 
 
-# What the cameras follow: the tractor, or backing up to the sled, the
-# middle between its hitch and the sled's hook, so both are in view. The
+# What the cameras follow: the tractor, or while the hitch meets the hook
+# (framing_hitch()), the middle between them, so both are in view. The
 # cameras turn from one to the other over a moment, not in one frame: the
 # offset from the tractor is eased, so the tractor itself is not lagged.
 func _camera_target(delta: float) -> Vector3:
 	var wanted := Vector3.ZERO
-	if _snapshot.get("stage", "") == "to_the_sled" \
-			and float(_snapshot["hitch_to_hook_m"]) < HITCH_FRAMING_M:
+	if framing_hitch(_snapshot):
 		var middle := (tractor_view.hitch_position() + sled_view.hook_position()) / 2.0
 		wanted = middle - tractor_view.global_position
 	_framing = _framing.lerp(wanted, 1.0 - exp(-FRAMING_RATE_PER_S * delta))
 	return tractor_view.global_position + _framing
+
+
+# The hitch meets the hook: backing up to the sled close to it, or after
+# the pull backing off in reverse to release the chain.
+static func framing_hitch(s: Dictionary) -> bool:
+	match s.get("stage", ""):
+		"to_the_sled":
+			# In front of the hook, backing towards it or on its line: not
+			# driving past it beside the sled.
+			return float(s["hitch_to_hook_m"]) < HITCH_FRAMING_M \
+					and float(s["hitch_along_m"]) > 0.0 \
+					and (int(s["gear"]) < 0 or absf(float(s["hitch_across_m"])) < HITCH_ON_LINE_M)
+		"releasing":
+			return int(s["gear"]) < 0
+	return false
 
 
 # What the close camera stands behind: the sled's rear while it is on the
@@ -567,7 +593,7 @@ func _show_event_end() -> void:
 				mine.append(rows.size())
 		if rows.size() < TOP:
 			rows.append(EventTexts.standing_row(line))
-	board.set_rows(rows, mine)
+	board.set_rows(rows, mine, false)
 	var prize := event.get_event_prize()
 	board.set_status("You placed %d of %d%s." % [place, info.get("pullers", 0),
 			" and won %s" % GarageScreen.euros(prize) if prize > 0 else ""])
@@ -590,7 +616,7 @@ func _show_season() -> void:
 		if int(line["puller"]) == 0:
 			mine.append(rows.size())
 		rows.append(EventTexts.season_row(line))
-	board.set_rows(rows, mine)
+	board.set_rows(rows, mine, false)
 	var status := ""
 	if over and not standings.is_empty():
 		var champion: Dictionary = standings[0]

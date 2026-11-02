@@ -29,7 +29,8 @@
 #   the clutch in, once a pull (from the same make's range: the engine,
 #   clutch housing, gearbox and rear axle must be one make). The first
 #   step costs the most: one gear down under load, without losing the
-#   pull, is what saves most pulls; a second gear down helps less.
+#   pull, is what saves most pulls; a second gear down helps less. Two
+#   gears may be taken at once or a gear at a time.
 #
 # Money in euros; each level's cost is from the level below. An event pays
 # by place (seasons/club_season.toml).

@@ -49,12 +49,12 @@ public:
     /// From the next setup on, each run is the player's whole turn from a
     /// parking beside the track (turn::Parking): x_m down the track from
     /// the start line (negative behind it), right_of_lane_m to the right of
-    /// the lane's right-hand chalk line, whatever the track's lane width.
+    /// the lane's right-hand chalk line, whatever the track's lane width,
+    /// facing heading_rad (0 down the track, positive turned left).
     /// The turn drives to the sled, pulls, and comes back. clear_parking()
     /// goes back to the pull alone, hooked at the line (the default). A
-    /// parking in the lane (right_of_lane_m below half the tractor's width)
-    /// makes the setup fail.
-    void set_parking(double x_m, double right_of_lane_m);
+    /// parking with the tractor (partly) in the lane makes the setup fail.
+    void set_parking(double x_m, double right_of_lane_m, double heading_rad = 0.0);
     void clear_parking();
     /// The controls held from now on (see session::Controls: held to their
     /// range, and a value that is not a number reads as the control at rest).
@@ -131,6 +131,7 @@ private:
     struct ParkingBesideLane {
         double x_m = 0.0;
         double right_of_lane_m = 0.0;
+        double heading_rad = 0.0;
     };
     std::optional<ParkingBesideLane> parking_;
     std::int64_t dropped_ns_ = 0;

@@ -101,7 +101,7 @@ TEST(LoadDownshiftRuns, ShiftingDownLatePullsFurther) {
 // load it made.
 struct RivalPull {
     double reached_m = 0.0;
-    int load_shifts = 0;
+    int load_shift_gears = 0;
 };
 
 RivalPull rival_pull(int gear, double share) {
@@ -129,7 +129,7 @@ RivalPull rival_pull(int gear, double share) {
                   kDt_s);
     }
     const RivalPull out{.reached_m = state.result.value_or(run::Result{}).distance_m,
-                        .load_shifts = state.pull.tractor.driveline.load_shifts};
+                        .load_shift_gears = state.pull.tractor.driveline.load_shift_gears};
     // The same pull as the field's own.
     EXPECT_EQ(
         field::run_pull(puller, venue.sled, venue.track, rules).value_or(run::Result{}).distance_m,
@@ -144,15 +144,15 @@ RivalPull rival_pull(int gear, double share) {
 TEST(LoadDownshiftRuns, RivalsShiftDownLateIn6th) {
     const RivalPull held = rival_pull(6, 0.0);
     const RivalPull shifted = rival_pull(6, 0.9);
-    EXPECT_EQ(held.load_shifts, 0);
-    EXPECT_EQ(shifted.load_shifts, 1);
+    EXPECT_EQ(held.load_shift_gears, 0);
+    EXPECT_EQ(shifted.load_shift_gears, 1);
     EXPECT_GT(shifted.reached_m, held.reached_m + 1.0)
         << "held " << held.reached_m << " m, shifted " << shifted.reached_m << " m";
     const RivalPull fifth = rival_pull(5, 0.0);
     EXPECT_NEAR(shifted.reached_m, fifth.reached_m, 1.0);
     for (const int gear : {3, 4}) {
         const RivalPull watching = rival_pull(gear, 0.9);
-        EXPECT_EQ(watching.load_shifts, 0) << gear;
+        EXPECT_EQ(watching.load_shift_gears, 0) << gear;
         EXPECT_EQ(watching.reached_m, rival_pull(gear, 0.0).reached_m) << gear;
     }
 }
