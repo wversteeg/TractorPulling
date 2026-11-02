@@ -208,7 +208,8 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
                                      assist.steering, signed_unit(input.steering), dt_s);
     // At speed the wheels and the inner brake reach only so far
     // (steering_share_at_speed): a brake that turns a tractor at a walk
-    // spins it at speed.
+    // spins it at speed. The brake is scaled as the wheels are, a simple
+    // cap: its own turn is not modelled against the sideways limit.
     const double steering = assist.steering;
     const double travel = std::abs(steering);
     const double at_speed =

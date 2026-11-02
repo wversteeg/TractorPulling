@@ -124,6 +124,11 @@ TEST(ControlsParams, RejectsNonsense) {
               ParamError::kBrakeOffTheGasOutOfRange);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.engage_time_s = std::nan(""); }),
               ParamError::kNotFinite);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2 = 0.0; }),
+              ParamError::kSteerSideAccelNotPositive);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2 = std::nan(""); }),
+              ParamError::kNotFinite);
+    EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2.reset(); }), std::nullopt);
 }
 
 TEST(ControlsParams, ProReferenceAndDefaultAreValid) {
@@ -145,6 +150,10 @@ TEST(ControlsParams, RejectsProNonsense) {
               ParamError::kSteerRateNotPositive);
     EXPECT_EQ(with([](ProParams& p) { p.steer_rate_per_s = HUGE_VAL; }), ParamError::kNotFinite);
     EXPECT_EQ(with([](ProParams& p) { p.steer_dead_zone = std::nan(""); }), ParamError::kNotFinite);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_side_accel_m_s2 = -1.0; }),
+              ParamError::kSteerSideAccelNotPositive);
+    EXPECT_EQ(with([](ProParams& p) { p.steer_side_accel_m_s2 = HUGE_VAL; }),
+              ParamError::kNotFinite);
 }
 
 // Pro with its default parameters steers as the control is: the same input
