@@ -448,9 +448,10 @@ for the big features; they are repeated at the end for completeness.
 - **Ballast at the centre of gravity's height.** Weights bought sit where
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
-- **One career, no resale.** The career carries from season to season with
-  no way to start it over from the game, and an upgrade cannot be sold or
-  taken back. Prize money is paid by place only: no start money for
+- **One class on the ladder.** The tractor path's career has only the
+  standard 3.5 t class so far; the classes above need their NTTO rules
+  (weights, engines, tires) first.
+- **No resale.** An upgrade cannot be sold or taken back. Prize money is paid by place only: no start money for
   everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
 - **The rivals do not upgrade.** Their tractors are drawn once for the
   season around the reference tractor.

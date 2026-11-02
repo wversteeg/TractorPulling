@@ -1,0 +1,42 @@
+@startuml career_classes
+title Career (tp::career): the ladder of classes and the titles that climb it
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "season::Standing" as SeasonStanding
+  class "event::kMaxPullers" as MaxPullers
+}
+
+package "tp::career" {
+  class Ladder <<struct>> {
+    +classes : int
+    +promotion_place : int
+  }
+  class Progress <<struct>> {
+    +class_index : int
+    +unlocked : int
+  }
+  class "career functions" as CareerFns <<free functions>> {
+    +kMaxClasses = 8
+    +validate(const Ladder&) : optional<ParamError>
+    +valid(const Progress&, const Ladder&) : bool
+    +finish_season(Progress&, const Ladder&, championship_place) : bool
+    +finish_season(Progress&, const Ladder&, span<const season::Standing>, player) : bool
+    +may_move_up(const Progress&) : bool
+    +move_up(Progress&) : bool
+  }
+  CareerFns ..> Ladder
+  CareerFns ..> Progress
+}
+CareerFns ..> SeasonStanding : the player's place\nin the championship
+CareerFns ..> MaxPullers : a promotion place\na field can have
+note bottom of Progress
+  a season finished at promotion_place or better (1: the title)
+  opens the class above; the player is asked whether to move up.
+  A class opened stays open: a player who stays to defend the
+  title may move up after a later season. Which class is which
+  (season, garage, rules) is the data's (data/careers/)
+end note
+@enduml

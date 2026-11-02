@@ -398,6 +398,19 @@ of two seasons to buy it all, sooner as the first levels win places. A
 test (`RivalDifficulty`) checks every row on three of the eight fields. A
 player drives less evenly than the script, and picks the gear themselves.
 
+### The career
+
+A career is a ladder of classes (`data/careers/tractor_path.toml`,
+`tp::career`), each pulling its own season. Winning a class's championship
+opens the class above (`promotion_place`, a shared title counts): the
+season's board then asks whether to move up or stay and defend the title,
+and a class opened stays open, so the start screen offers "Move up" before
+the next season's first pull too. Your one tractor goes with you: the money
+and every upgrade carry up, by the upgrade's name, into the new class's
+garage. The tractor path holds the standard 3.5 t class for now; Sport,
+Supersport, Pro Stock, Limited Super Stock and Super Stock follow, each
+with its NTTO rules.
+
 ### Playing a run from a game
 
 A game drives a run through `tp::session`: it creates a session once from a
@@ -443,10 +456,11 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 (it fetches godot-cpp and copies `data/` into the project), then open
 `app/godot` in Godot 4.7 and play it.
 
-The game plays a season (`data/seasons/club_season.toml`, the club class on
-ten tracks) against nine scripted rivals, named in `club_pull.toml`'s
+The game plays a career (`data/careers/tractor_path.toml`, see "The
+career") of seasons; the first is `data/seasons/club_season.toml`, the club
+class on ten tracks, against nine scripted rivals, named in `club_pull.toml`'s
 `[event.game]`. The season is saved after every event, with your tuning
-and your career (`user://season.toml`, `tp::data::SeasonSave`): at the
+and your career, its class too (`user://season.toml`, `tp::data::SeasonSave`): at the
 next launch the start screen asks whether to continue it, at the next
 event, to start a new season (your career carries over) or a new career
 (the garage's start money, nothing bought; on a second tap, here or in

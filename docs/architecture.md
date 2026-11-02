@@ -221,6 +221,19 @@ class's rules.
 
 ![Garage classes](diagrams/svg/garage_classes.svg)
 
+### Career (`tp::career`)
+
+The ladder of classes a career climbs (`data/careers/`): each class pulls
+its own season, and a season finished at the ladder's promotion place (1:
+the championship won) opens the class above. The player is then asked
+whether to move up or stay and defend the title; a class opened stays
+open. Money and upgrades carry up, by the upgrades' names. The core only
+counts classes and places; which class is which is the data's.
+
+![Career classes](diagrams/svg/career_classes.svg)
+
+![Career promotion](diagrams/svg/career_promotion_sequence.svg)
+
 ### Class rules (`tp::rules`)
 
 A pulling class's technical limits and the check whether a tractor may
