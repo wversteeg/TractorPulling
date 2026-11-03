@@ -11,7 +11,7 @@ inline constexpr EasyParams kReferenceEasy{.steer_share = 0.6,
                                            .brake_off_the_gas = 1.0,
                                            .clutch_assist = {.engage_time_s = 2.0,
                                                              .release_time_s = 0.3,
-                                                             .guard_speed_share = 0.6,
+                                                             .guard_speed_share = 0.7,
                                                              .guard_band_share = 0.1,
                                                              .min_throttle = 0.05},
                                            .steer_side_accel_m_s2 = 2.5};

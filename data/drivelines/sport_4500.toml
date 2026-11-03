@@ -1,7 +1,11 @@
 # The Sport 4.5 t tractor's driveline: a farm gearbox geared up for the
-# built engine, its pulling gears (5th to 7th) at about 14 to 19 km/h at
-# 2600 rpm on the 0.88 m rear tires (tires/sport_4500_rear.toml). No powershift:
-# the Sport classes pull in one gear on wheelspin.
+# built engine. The pulling gears, 5th to 8th, are tall and close (about
+# 15 % apart): at 2600 rpm on the 0.88 m rear tires
+# (tires/sport_4500_rear.toml) the wheels turn at about 28 to 42 km/h, the
+# tractor going slower on its wheelspin. Too tall a gear for the track
+# bogs the engine, too low a gear spins out; 4th is the low gear for a wet
+# start. A two-gear powershift step, as fully built (the garage sets it;
+# the Sport classes still have one, Supersport and up do not).
 
 [driveline]
 final_drive_ratio = 24.0       # bevel gear and final reduction together
@@ -10,8 +14,15 @@ input_inertia_kg_m2 = 0.08     # clutch disc, input shaft, countershaft
 output_inertia_kg_m2 = 3.5     # final drive and axle; wheels belong to the tires
 
 [driveline.gearbox]
-ratios = [15.0, 9.0, 5.0, 3.2, 2.6, 2.2, 1.9, 1.0]     # 1st to 8th
+ratios = [15.0, 9.0, 5.0, 3.2, 1.30, 1.13, 0.98, 0.85]   # 1st to 8th
 reverse = 12.0                 # ~2.5 km/h at 2200 rpm
+
+# A powershift step: one or two gears down under load, the clutch in,
+# when the engine is pulled down near the end of a pull; once a pull (see
+# drivelines/farm_stock_light.toml).
+[driveline.powershift]
+load_downshift_gears = 2
+shifts_per_pull = 1
 
 [driveline.drag]                # churning and bearings, on the input shaft
 constant_nm = 3.0

@@ -16,6 +16,12 @@ namespace tp::driver {
 /// under load, if the gearbox can (driveline::shifts_under_load): once, one
 /// gear, whatever more the gearbox allows, and then they stay in it. The
 /// pullers in a field differ in gear, clutch technique and when they shift.
+///
+/// A driver who holds the launch (launch_hold_share above 0) lets the clutch
+/// in at the same rate but stops letting it come up while the engine is
+/// below that share of its rated speed, so the revs and the turbo's boost
+/// do not collapse in a tall gear; they hold it at most launch_hold_max_s in
+/// all, and then let it come in whatever the engine does.
 struct Plan {
     int gear = 0;
     /// When the gear goes in, clutch pressed [s].
@@ -26,12 +32,23 @@ struct Plan {
     /// The engine speed, as a share of its rated speed, below which the
     /// driver shifts down under load: 0 never, below 1.
     double downshift_share = 0.0;
+    /// The engine speed, as a share of its rated speed, below which the
+    /// clutch stops coming up during the launch: 0 never holds, below 1.
+    double launch_hold_share = 0.0;
+    /// The longest the launch is held, in all [s].
+    double launch_hold_max_s = 0.0;
 };
 
 /// What the driver remembers during a pull; a new pull starts from {}.
 struct State {
     /// The engine has come back from the launch: a drop now is the sled's.
     bool watching = false;
+    /// A held launch: how far the clutch has come up (0 pressed, 1 fully
+    /// in), how long it has been held [s], and the time of the last input
+    /// [s], for the step since.
+    double clutch_in = 0.0;
+    double held_s = 0.0;
+    double last_t_s = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -39,6 +56,7 @@ enum class ParamError : std::uint8_t {
     kGearOutOfRange,
     kTimesOutOfOrder,
     kDownshiftShareOutOfRange,
+    kLaunchHoldOutOfRange,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept;

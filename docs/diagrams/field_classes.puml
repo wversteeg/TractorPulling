@@ -19,9 +19,14 @@ package "tp::driver" {
     +launch_s : double
     +clutch_slip_in_s : double
     +downshift_share : double
+    +launch_hold_share : double
+    +launch_hold_max_s : double
   }
   class "State" as DriverState <<struct>> {
     +watching : bool
+    +clutch_in : double
+    +held_s : double
+    +last_t_s : double
   }
   class "driver functions" as DriverFns <<free functions>> {
     +validate(const Plan&, gear_count) : optional<ParamError>

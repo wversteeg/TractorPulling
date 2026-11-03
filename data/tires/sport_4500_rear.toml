@@ -3,6 +3,13 @@
 # (docs/career.md): a 30.5L-32, bigger round and wider than the 2.5 t
 # tractor's (sport_rear.toml). The garage (garages/sport_4500.toml) takes
 # its grip from worn farm tires to cut puller tires.
+#
+# A puller tire grips harder than a farm tire, but only spinning: its cut
+# lugs bite as they dig, so grip builds slowly with slip (slip_rate a third
+# of a farm tire's) to a higher limit. It spins at the launch, so the engine
+# keeps its revs, and grips hard late in the pull, where a gear too tall
+# for a grippy track bogs the engine. The limit is the fully built tire's;
+# the garage sets it.
 [tire]
 radius_m = 0.88                    # rolling radius
 section_width_m = 0.78
@@ -12,9 +19,9 @@ wheel_inertia_kg_m2 = 60.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-limit = 0.93                       # μ on very strong ground at full bite
+limit = 1.12                       # μ on very strong ground at full bite: a cut puller tire
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
-slip_rate = 18.0                   # how fast grip builds with slip
+slip_rate = 6.0                    # grip builds slowly with slip: a puller tire bites spinning hard
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint

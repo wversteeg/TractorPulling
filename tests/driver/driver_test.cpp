@@ -27,7 +27,13 @@ TEST(DriverPlan, RejectsNonsense) {
         p = kPlan;
         p.downshift_share = share;
         EXPECT_EQ(validate(p, 8), ParamError::kDownshiftShareOutOfRange) << share;
+        p = kPlan;
+        p.launch_hold_share = share;
+        EXPECT_EQ(validate(p, 8), ParamError::kLaunchHoldOutOfRange) << share;
     }
+    p = kPlan;
+    p.launch_hold_max_s = -1.0;
+    EXPECT_EQ(validate(p, 8), ParamError::kLaunchHoldOutOfRange);
 }
 
 // The input at `t_s` with the tractor as it stands still in 6th, the engine
@@ -108,6 +114,45 @@ TEST(Driver, ShiftsDownOnceAsTheSledPullsTheEngineDown) {
     EXPECT_EQ(input(plan, fresh, 25.0, tractor, plain).gear, 6);
     tractor.engine.running = false;
     EXPECT_EQ(input(plan, fresh, 25.0, tractor, params).gear, 6) << "stalled";
+}
+
+// A driver who holds the launch lets the clutch come up at the plan's rate
+// while the engine keeps its speed, eases it back at that rate while the
+// engine is below the share, and gives up holding after the longest hold.
+TEST(Driver, HoldsTheLaunchWhileTheEngineIsLow) {
+    const vehicle::Params params = vehicle::testing::reference_params();
+    Plan plan = kPlan;
+    plan.launch_hold_share = 0.8;
+    plan.launch_hold_max_s = 1.0;
+    const double rated_rad_s = params.engine.rated_omega_rad_s;
+    vehicle::State tractor;
+    tractor.engine.running = true;
+    tractor.driveline.gear = 6;
+    State state;
+    const auto pedal_at = [&](double t_s, double share_of_rated) {
+        tractor.engine.omega_rad_s = share_of_rated * rated_rad_s;
+        return input(plan, state, t_s, tractor, params).clutch_pedal;
+    };
+    EXPECT_EQ(pedal_at(3.0, 1.0), 1.0) << "the launch";
+    EXPECT_DOUBLE_EQ(pedal_at(3.5, 1.0), 0.75) << "half a second of two";
+    EXPECT_DOUBLE_EQ(pedal_at(4.0, 0.7), 1.0) << "eased back: the engine is low";
+    EXPECT_DOUBLE_EQ(pedal_at(4.5, 1.0), 0.75) << "on again";
+    EXPECT_DOUBLE_EQ(pedal_at(5.0, 0.7), 1.0) << "eased back, a second in all";
+    EXPECT_DOUBLE_EQ(pedal_at(5.5, 0.7), 0.75) << "held its longest: on regardless";
+    EXPECT_DOUBLE_EQ(pedal_at(6.5, 0.7), 0.25);
+    EXPECT_EQ(pedal_at(7.0, 0.7), 0.0);
+    EXPECT_EQ(pedal_at(9.0, 1.0), 0.0);
+
+    // The first input after the launch counts from the launch, wherever the
+    // steps fall.
+    State late;
+    tractor.engine.omega_rad_s = rated_rad_s;
+    EXPECT_DOUBLE_EQ(input(plan, late, 3.001, tractor, params).clutch_pedal, 1.0 - 0.001 / 2.0);
+
+    // Without a hold share the clutch comes in on time, the engine low or not.
+    State timed;
+    tractor.engine.omega_rad_s = 0.5 * rated_rad_s;
+    EXPECT_DOUBLE_EQ(input(kPlan, timed, 4.0, tractor, params).clutch_pedal, 0.5);
 }
 
 }  // namespace

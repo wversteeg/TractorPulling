@@ -135,8 +135,9 @@ rear tires) and pulls under a roll bar instead of a cab. Its engine is an
 estimate from the rules: 4 l, a 55 mm turbo inlet and no intercooler let
 in about 0.19 kg/s of air, about 175 kW of fuel burnt at a smoky
 air-fuel ratio, so **about 220 hp** fully built (152 kW at 2450 rpm on
-the virtual dyno), from a stock farm engine's 90 hp. No powershift:
-eight gears, pulled in 5th to 7th on wheelspin.
+the virtual dyno), from a stock farm engine's 90 hp. Eight gears with a
+powershift; it pulls in tall, close gears (see "How the Sport classes
+pull").
 
 ### 3. Sport 4.5 t
 
@@ -174,8 +175,36 @@ rpm unloaded, no PTO power limit. A big six-cylinder tractor (2.75 m
 wheelbase, 30.5L-32 puller tires at the class's widest) under a roll bar.
 Its engine is an estimate from the rules: 7 l, intercooled, its 68 mm
 turbo inlet holding it to about 0.45 kg/s of air, so **about 520 hp**
-fully built, from a stock farm engine's 180 hp. No powershift: pulled in
-5th to 7th on wheelspin. All three levels, belofte, promo and top.
+fully built, from a stock farm engine's 180 hp. Eight gears with a
+powershift, pulled as Sport 2.5 t. All three levels, belofte, promo and
+top.
+
+#### How the Sport classes pull (game)
+
+The Sport engines can drive their wheels far harder than farm tires
+grip, so at first every Sport pull ended in wheelspin with the engine on
+its governor and a powershift never fired. Real Sport pulls end either
+way, depending on the gear and the track: too tall a gear bogs the engine
+(and on a grippy track stalls it), too low a gear spins out, and the
+powershift pulls a slightly too tall gear through. The game gets there
+with three things:
+
+- **Puller tires** (`data/tires/sport_*rear.toml`) grip harder than farm
+  tires, about 1.2 times, but only spinning: grip builds slowly with slip
+  (a third of a farm tire's rate). They spin at the launch, so the engine
+  keeps its revs, and bite late in the pull.
+- **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels
+  turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count,
+  and 4th is the low gear for a wet start.
+- **A held launch**: high revs, the clutch let in over about 3 s but eased
+  back while the engine is below 80 % of its rated speed, for up to 8 s
+  (`driver::Plan::launch_hold_share`, the events' `[event.driver]`). The
+  game's easy clutch assist works the clutch much the same way: it slips
+  the clutch while the engine is below 60 % of its rated speed.
+
+The sleds are heavier to match (the weight box: 1800 kg for Sport 2.5 t,
+4500 kg for Sport 4.5 t). The grip is an estimate, set so that the
+behaviour above appears; real measurements would set it better.
 
 ### 4. Supersport 3.4 t
 

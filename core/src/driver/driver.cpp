@@ -22,8 +22,44 @@ std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept {
         plan.downshift_share >= 1.0) {
         return ParamError::kDownshiftShareOutOfRange;
     }
+    if (!std::isfinite(plan.launch_hold_share) || plan.launch_hold_share < 0.0 ||
+        plan.launch_hold_share >= 1.0 || !std::isfinite(plan.launch_hold_max_s) ||
+        plan.launch_hold_max_s < 0.0) {
+        return ParamError::kLaunchHoldOutOfRange;
+    }
     return std::nullopt;
 }
+
+namespace {
+
+// The clutch up linearly over the slip-in time from the launch.
+double timed_clutch_pedal(const Plan& plan, double t_s) noexcept {
+    const double slipping_s = t_s - plan.launch_s;
+    return plan.clutch_slip_in_s > 0.0
+               ? std::clamp(1.0 - slipping_s / plan.clutch_slip_in_s, 0.0, 1.0)
+               : 0.0;
+}
+
+// As timed, but the clutch stays where it is while the engine is below the
+// hold share, until the hold has lasted its longest.
+double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehicle::State& tractor,
+                         const vehicle::Params& params) noexcept {
+    // The time since the last input, counted from the launch at the first.
+    const double dt_s = std::max(t_s - std::max(state.last_t_s, plan.launch_s), 0.0);
+    state.last_t_s = t_s;
+    const bool low =
+        tractor.engine.omega_rad_s < plan.launch_hold_share * params.engine.rated_omega_rad_s;
+    if (low && state.held_s < plan.launch_hold_max_s) {
+        // Eased back, as fast as it came up, until the revs come back.
+        state.held_s += dt_s;
+        state.clutch_in = std::max(state.clutch_in - dt_s / plan.clutch_slip_in_s, 0.0);
+    } else {
+        state.clutch_in = std::min(state.clutch_in + dt_s / plan.clutch_slip_in_s, 1.0);
+    }
+    return 1.0 - state.clutch_in;
+}
+
+}  // namespace
 
 vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::State& tractor,
                      const vehicle::Params& params) noexcept {
@@ -32,10 +68,9 @@ vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::
     }
     vehicle::Input in{.throttle = 1.0, .clutch_pedal = 1.0, .gear = plan.gear};
     if (t_s >= plan.launch_s) {
-        const double slipping_s = t_s - plan.launch_s;
-        in.clutch_pedal = plan.clutch_slip_in_s > 0.0
-                              ? std::clamp(1.0 - slipping_s / plan.clutch_slip_in_s, 0.0, 1.0)
-                              : 0.0;
+        in.clutch_pedal = plan.launch_hold_share > 0.0 && plan.clutch_slip_in_s > 0.0
+                              ? held_clutch_pedal(plan, state, t_s, tractor, params)
+                              : timed_clutch_pedal(plan, t_s);
     }
     // A gear down once, as the sled pulls the engine down: after it, the
     // gear that went in stays (under way the gearbox goes no lower). A
