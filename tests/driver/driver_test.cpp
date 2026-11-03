@@ -143,6 +143,18 @@ TEST(Driver, HoldsTheLaunchWhileTheEngineIsLow) {
     EXPECT_EQ(pedal_at(7.0, 0.7), 0.0);
     EXPECT_EQ(pedal_at(9.0, 1.0), 0.0);
 
+    // Fully in, the launch is over: revs dropping later, with hold time
+    // left, are the sled's, and the clutch stays in.
+    State quick;
+    Plan short_hold = plan;
+    short_hold.launch_hold_max_s = 5.0;
+    tractor.engine.omega_rad_s = rated_rad_s;
+    EXPECT_EQ(input(short_hold, quick, 5.0, tractor, params).clutch_pedal, 0.0);
+    EXPECT_TRUE(quick.launched);
+    tractor.engine.omega_rad_s = 0.7 * rated_rad_s;
+    EXPECT_EQ(input(short_hold, quick, 20.0, tractor, params).clutch_pedal, 0.0);
+    EXPECT_EQ(input(short_hold, quick, 21.0, tractor, params).clutch_pedal, 0.0);
+
     // The first input after the launch counts from the launch, wherever the
     // steps fall.
     State late;

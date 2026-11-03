@@ -18,10 +18,12 @@ namespace tp::driver {
 /// pullers in a field differ in gear, clutch technique and when they shift.
 ///
 /// A driver who holds the launch (launch_hold_share above 0) lets the clutch
-/// in at the same rate but stops letting it come up while the engine is
+/// in at the same rate but eases it back at that rate while the engine is
 /// below that share of its rated speed, so the revs and the turbo's boost
 /// do not collapse in a tall gear; they hold it at most launch_hold_max_s in
-/// all, and then let it come in whatever the engine does.
+/// all, and then let it come in whatever the engine does. Once the clutch
+/// is fully in the launch is over: a later drop of the revs is the sled's,
+/// for a shift down, not the clutch.
 struct Plan {
     int gear = 0;
     /// When the gear goes in, clutch pressed [s].
@@ -49,6 +51,8 @@ struct State {
     double clutch_in = 0.0;
     double held_s = 0.0;
     double last_t_s = 0.0;
+    /// The held launch is over: the clutch has been fully in.
+    bool launched = false;
 };
 
 enum class ParamError : std::uint8_t {

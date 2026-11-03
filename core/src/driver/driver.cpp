@@ -47,6 +47,9 @@ double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehic
     // The time since the last input, counted from the launch at the first.
     const double dt_s = std::max(t_s - std::max(state.last_t_s, plan.launch_s), 0.0);
     state.last_t_s = t_s;
+    if (state.launched) {
+        return 0.0;
+    }
     const bool low =
         tractor.engine.omega_rad_s < plan.launch_hold_share * params.engine.rated_omega_rad_s;
     if (low && state.held_s < plan.launch_hold_max_s) {
@@ -56,6 +59,7 @@ double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehic
     } else {
         state.clutch_in = std::min(state.clutch_in + dt_s / plan.clutch_slip_in_s, 1.0);
     }
+    state.launched = state.clutch_in >= 1.0;
     return 1.0 - state.clutch_in;
 }
 

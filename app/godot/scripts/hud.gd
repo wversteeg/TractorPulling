@@ -42,7 +42,6 @@ const GAUGE_SWEEP_RAD := 1.5 * PI
 const GAUGE_TICK_BAR := 0.5
 const GAUGE_HEADROOM := 1.15
 const GAUGE_COLOUR := Color(0.35, 0.8, 1.0)
-const PA_PER_BAR := 100000.0
 # The turn's line, short, along the top edge in the middle on a dark band:
 # between the pull's name on the left and the buttons on the right.
 const TURN_TOP := 8.0
@@ -116,9 +115,9 @@ var _front_rest_n := 1.0
 var _front_n := 0.0
 var _front := Label.new()
 # The boost: its share (0 to 1) and the pressure at full boost, 0 when the
-# engine gives none [Pa].
+# engine gives none [bar].
 var _boost := 0.0
-var _full_boost_pa := 0.0
+var _full_boost_bar := 0.0
 var _gauge := Label.new()
 var _turn := Label.new()
 var _ending := Label.new()
@@ -193,7 +192,7 @@ func build(dimensions: Dictionary) -> void:
 	_chain_m = dimensions["chain_length_m"]
 	_steer_hint_m = STEER_HINT_SHARE * float(dimensions["hook_off_line_m"])
 	_taut_within_m = dimensions["ready_taut_within_m"]
-	_full_boost_pa = dimensions.get("full_boost_pressure_pa", 0.0)
+	_full_boost_bar = dimensions.get("full_boost_bar", 0.0)
 
 
 # The officials' signal (pull.gd's signal_for()): "green", "red" or "off".
@@ -234,7 +233,7 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	_pull.text = title
 	_omega_rad_s = s["engine_omega_rad_s"]
 	_boost = s.get("boost", 0.0)
-	_gauge.text = "%.1f bar" % boost_bar() if _full_boost_pa > 0.0 else ""
+	_gauge.text = "%.1f bar" % boost_bar() if _full_boost_bar > 0.0 else ""
 	# The chain off after the pull: the bar starts again for the next one.
 	var chain_off: bool = s.get("stage", "pulling") in ["to_the_parking", "parked"] \
 			and not bool(s.get("chain_hooked", true))
@@ -339,7 +338,7 @@ func turn_text(s: Dictionary) -> String:
 
 # The boost pressure the gauge shows [bar].
 func boost_bar() -> float:
-	return _boost * _full_boost_pa / PA_PER_BAR
+	return _boost * _full_boost_bar
 
 
 # N for neutral, R for reverse, else the gear's number.
@@ -362,7 +361,7 @@ func _draw() -> void:
 	if _signal != "off":
 		draw_circle(LAMP_CENTRE, LAMP_RADIUS + 5.0, BACK_COLOUR)
 		draw_circle(LAMP_CENTRE, LAMP_RADIUS, LAMP_GREEN if _signal == "green" else LAMP_RED)
-	if _full_boost_pa > 0.0:
+	if _full_boost_bar > 0.0:
 		_draw_gauge()
 	# The rev counter, with the stall and rated speeds marked.
 	var revs := Rect2(BAR_LEFT, REV_TOP, BAR_WIDTH, BAR_HEIGHT)
@@ -401,7 +400,7 @@ func _draw() -> void:
 # The boost gauge: the dial, a tick every half bar, full boost marked, the
 # boost so far as an arc and a needle.
 func _draw_gauge() -> void:
-	var top_bar := ceilf(_full_boost_pa / PA_PER_BAR * GAUGE_HEADROOM / GAUGE_TICK_BAR) \
+	var top_bar := ceilf(_full_boost_bar * GAUGE_HEADROOM / GAUGE_TICK_BAR) \
 			* GAUGE_TICK_BAR
 	draw_circle(GAUGE_CENTRE, GAUGE_RADIUS + 4.0, BACK_COLOUR)
 	draw_arc(GAUGE_CENTRE, GAUGE_RADIUS - 4.0, GAUGE_FROM_RAD,
@@ -411,7 +410,7 @@ func _draw_gauge() -> void:
 		var dir := Vector2.from_angle(_gauge_angle(i * GAUGE_TICK_BAR / top_bar))
 		draw_line(GAUGE_CENTRE + dir * (GAUGE_RADIUS - 12.0), GAUGE_CENTRE + dir * GAUGE_RADIUS,
 				Color.WHITE, 2.0)
-	var full := Vector2.from_angle(_gauge_angle(_full_boost_pa / PA_PER_BAR / top_bar))
+	var full := Vector2.from_angle(_gauge_angle(_full_boost_bar / top_bar))
 	draw_line(GAUGE_CENTRE + full * (GAUGE_RADIUS - 14.0), GAUGE_CENTRE + full * GAUGE_RADIUS,
 			RATED_COLOUR, 4.0)
 	var share := clampf(boost_bar() / top_bar, 0.0, 1.0)
