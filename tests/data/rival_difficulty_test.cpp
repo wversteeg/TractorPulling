@@ -190,11 +190,11 @@ TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWin
                                         {.share = 0.66, .places = {.best = 1, .worst = 1}}});
 }
 
-// The Sport classes pull in tall, close gears (4th to 8th), launching with
+// The Sport classes pull in tall, close gears (3rd to 8th), launching with
 // the clutch eased back while the revs are low: a gear too tall for the
 // track bogs or stalls, one too low spins out, and the powershift saves a
 // tall gear at the end. The player picks their best of them.
-constexpr Gears kSportGears{.lowest = 4, .highest = 8};
+constexpr Gears kSportGears{.lowest = 3, .highest = 8};
 
 // The Sport 2.5 t class's two levels (promo and top), its own tractor and
 // garage: a new Sport tractor finishes at the back of promo and about half

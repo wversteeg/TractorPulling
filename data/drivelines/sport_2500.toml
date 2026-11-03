@@ -3,8 +3,9 @@
 # 15 % apart): at 2600 rpm on the 0.78 m rear tires (tires/sport_rear.toml)
 # the wheels turn at about 27 to 41 km/h, the tractor going slower on its
 # wheelspin. Too tall a gear for the track bogs the engine, too low a gear
-# spins out; 4th is the low gear for a wet start. A two-gear powershift
-# step, as fully built (the garage sets it; the Sport classes still have
+# spins out. 1st to 5th are about 40 % apart, so 3rd and 4th are the low
+# gears for a wet start or a weak engine. A two-gear powershift step, as
+# fully built (the garage sets it; the Sport classes still have
 # one, Supersport and up do not).
 
 [driveline]
@@ -14,7 +15,7 @@ input_inertia_kg_m2 = 0.05     # clutch disc, input shaft, countershaft
 output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tires
 
 [driveline.gearbox]
-ratios = [15.0, 9.0, 5.0, 3.2, 1.30, 1.13, 0.98, 0.85]   # 1st to 8th
+ratios = [5.0, 3.57, 2.55, 1.82, 1.30, 1.13, 0.98, 0.85]   # 1st to 8th, about 40 % apart up to 5th, 15 % above
 reverse = 12.0                 # ~2.5 km/h at 2200 rpm, ~1 km/h at idle
 
 # A powershift step: one or two gears down under load, the clutch in,
