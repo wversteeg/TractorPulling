@@ -463,6 +463,13 @@ for the big features; they are repeated at the end for completeness.
   a too tall gear bogs and a too low one spins out, not from measurements.
   Every stage of the Sport garages' tires, the worn farm tires too, uses
   the puller tire's curve; only the limit changes.
+- **The operator's box step is one share for every class.** A lighter
+  step that takes weight out of the box (once the knives are out and the
+  push-down is past the end) takes a tenth of it, a constant in the core
+  (event.cpp); heavier classes may want their own, from the sled's data.
+- **The operator expects the player's tuning at the start of the event.**
+  His gear trials see the player's tractor as tuned when the event starts;
+  a ballast or pressure change later in the event is not in them.
 - **The scripted drivers never shift down in the launch.** A rival in too
   tall a gear eases the clutch back while the revs are low, but shifts
   down only once the clutch is fully in and the engine has come back; a

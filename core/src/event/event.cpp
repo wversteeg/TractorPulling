@@ -28,7 +28,9 @@ constexpr double kBoxShareALighterStep = 0.1;
 // step is worth about what the operator reckons a step is. Once the knives
 // are out and the push-down is past `end_m` (where every pull stops), those
 // change nothing: the step takes weight out of the box instead, as an
-// operator does for a field the sled is far too heavy for.
+// operator does for a field the sled is far too heavy for. The weight stays
+// out for the rest of the event: the pull-offs' heavier steps add knives
+// and move the push-down (the sled's pull_off_step), as at any event.
 sled::Params lighter(const sled::Params& sled, int steps, double step_m, double end_m) noexcept {
     const sled::Adjustment& step = sled.pull_off_step;
     sled::Params out = sled;
