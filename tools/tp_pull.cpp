@@ -581,8 +581,8 @@ void report_change(const tp::field::LogEntry& entry) {
                       << (entry.outcome.change == tp::event::SledChange::kLighter ? "lighter"
                                                                                   : "heavier")
                       << " by " << entry.outcome.steps << " step(s): " << entry.knives
-                      << " knives, push-down at " << entry.pushdown_start_m
-                      << " m; the next puller tests it\n";
+                      << " knives, push-down at " << entry.pushdown_start_m << " m, box "
+                      << entry.box_mass_kg << " kg; the next puller tests it\n";
             return;
         case tp::event::SledChange::kTroubleSuspected:
             std::cout << "      operator: far short for this tractor, sled kept; the next "

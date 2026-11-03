@@ -62,7 +62,7 @@ int place(const data::SeasonDefinition& d, const garage::Career& career, std::ui
         throw std::runtime_error("the career's tractor was refused");
     }
     player.tractor = *tractor;
-    if (!season->start_event(data::venue(e.sled, d.rounds.front().track))) {
+    if (!season->start_event(data::venue(e.sled, d.rounds.front().track), player.tractor)) {
         throw std::runtime_error("the event was refused");
     }
     LiveEvent& event = *season->event();
@@ -217,7 +217,7 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
 
 // The Sport 4.5 t class's three levels, its own tractor and garage: a new
 // tractor is at the back at belofte and about half its garage wins it;
-// belofte's winner starts at the back of promo and about three quarters
+// belofte's winner starts in the back half of promo and about three quarters
 // win it; promo's winner is at the back at top, where about 90 % of the
 // garage reaches the podium and a fully built tractor wins.
 TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) {
@@ -231,7 +231,7 @@ TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) 
 
 TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWinIt) {
     expect_level("sport_4500_promo.toml",
-                 {{.share = 0.45, .places = {.best = 6, .worst = 10}},
+                 {{.share = 0.45, .places = {.best = 5, .worst = 10}},
                   {.share = 0.66, .places = {.best = 1, .worst = 4}},
                   {.share = 0.75, .places = {.best = 1, .worst = 1}}},
                  kSportGears);

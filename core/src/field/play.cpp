@@ -114,6 +114,7 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         entry.full_pull_m = ev.full_pull_m();
         entry.knives = ev.sled().knives.count;
         entry.pushdown_start_m = ev.sled().pushdown_start_m;
+        entry.box_mass_kg = ev.sled().box_mass_kg;
     }
     if (!ev.finished()) {
         return std::nullopt;

@@ -215,6 +215,7 @@ void LiveEvent::finish_pull(const run::Result& result) noexcept {
     entry->full_pull_m = event_.full_pull_m();
     entry->knives = event_.sled().knives.count;
     entry->pushdown_start_m = event_.sled().pushdown_start_m;
+    entry->box_mass_kg = event_.sled().box_mass_kg;
     job_pull_.reset();
     settle();
 }
@@ -241,6 +242,7 @@ event::Outcome LiveEvent::record_player(const run::Result& result, int gear) noe
     entry->full_pull_m = event_.full_pull_m();
     entry->knives = event_.sled().knives.count;
     entry->pushdown_start_m = event_.sled().pushdown_start_m;
+    entry->box_mass_kg = event_.sled().box_mass_kg;
     settle();
     return entry->outcome;
 }
@@ -263,6 +265,7 @@ int LiveEvent::defer_player() noexcept {
     entry->full_pull_m = event_.full_pull_m();
     entry->knives = event_.sled().knives.count;
     entry->pushdown_start_m = event_.sled().pushdown_start_m;
+    entry->box_mass_kg = event_.sled().box_mass_kg;
     return moved;
 }
 

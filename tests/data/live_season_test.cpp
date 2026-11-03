@@ -1,5 +1,6 @@
 #include "tp/core/field/live_season.hpp"
 
+#include "tp/core/engine/engine.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
 
@@ -79,6 +80,31 @@ TEST(LiveSeason, ThePlayerPullsTheReference) {
     EXPECT_EQ(season->player().tractor.chassis.mass_kg, d.event.reference.tractor.chassis.mass_kg);
     EXPECT_EQ(season->player().tractor.engine.rated_omega_rad_s,
               d.event.reference.tractor.engine.rated_omega_rad_s);
+}
+
+// The sled operator's trials see the tractor the player pulls today: a
+// weaker one is expected to get less far than the reference.
+TEST(LiveSeason, TheOperatorExpectsThePlayersOwnTractor) {
+    const data::SeasonDefinition d = club_season();
+    const Venue venue = data::venue(d.event.sled, d.rounds.front().track);
+    const auto expected_m = [&](const std::optional<vehicle::Params>& tractor) {
+        const std::unique_ptr<LiveSeason> season = start(d);
+        const bool started =
+            tractor ? season->start_event(venue, *tractor) : season->start_event(venue);
+        EXPECT_TRUE(started);
+        LiveEvent& event = *season->event();
+        // The trials run before the first pull.
+        while (event.turn() == LiveEvent::Turn::kRivals &&
+               event.expected_m(LiveSeason::kPlayer) <= 0.0) {
+            event.advance(kSlice);
+        }
+        return event.expected_m(LiveSeason::kPlayer);
+    };
+    vehicle::Params weak = d.event.reference.tractor;
+    weak.engine = engine::with_torque_scale(weak.engine, 0.7).value_or(weak.engine);
+    const double reference_m = expected_m(std::nullopt);
+    EXPECT_GT(reference_m, 0.0);
+    EXPECT_LT(expected_m(weak), reference_m);
 }
 
 // The events in turn, each scored in the championship once finished; the

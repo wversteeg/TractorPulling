@@ -48,6 +48,11 @@ public:
     /// Starts the next event, at `venue`: false once the season is over, while
     /// an event is unscored, or if the event is refused.
     bool start_event(const Venue& venue) noexcept;
+    /// As start_event(venue), with the player in `player_tractor`, the
+    /// tractor they pull today (their garage's, tuned): the sled operator's
+    /// gear trials, which say how far each puller should get, see it rather
+    /// than the field's reference. Their own pulls are run by the front end.
+    bool start_event(const Venue& venue, const vehicle::Params& player_tractor) noexcept;
     /// The event being pulled, from start_event() until the next one.
     [[nodiscard]] LiveEvent* event() noexcept { return event_ ? &*event_ : nullptr; }
     /// Scores the event once it is finished, in the championship; false if
@@ -93,6 +98,10 @@ public:
     }
 
 private:
+    // Starts the next event with `field`: the season's, or with the player's
+    // tractor of the day.
+    bool start_with(const Venue& venue, const Field& field) noexcept;
+
     LiveSeason(const event::Rules& rules, const Variation& variation,
                const PullToPull& pull_to_pull, const Field& field,
                const season::Championship& championship, int events, std::uint64_t seed) noexcept;

@@ -44,13 +44,23 @@ LiveSeason::LiveSeason(const event::Rules& rules, const Variation& variation,
       seed_(seed) {}
 
 bool LiveSeason::start_event(const Venue& venue) noexcept {
+    return start_with(venue, field_);
+}
+
+bool LiveSeason::start_event(const Venue& venue, const vehicle::Params& player_tractor) noexcept {
+    Field field = field_;
+    field.pullers[static_cast<std::size_t>(kPlayer)].tractor = player_tractor;
+    return start_with(venue, field);
+}
+
+bool LiveSeason::start_with(const Venue& venue, const Field& field) noexcept {
     if (!scored_ || started_ >= events_) {
         return false;
     }
     const std::uint64_t seed = event_seed(seed_, started_);
-    const auto order = event::running_order(field_.count, seed);
-    event_ = LiveEvent::create(rules_, venue, field_, variation_, pull_to_pull_,
-                               std::span{order.data(), static_cast<std::size_t>(field_.count)},
+    const auto order = event::running_order(field.count, seed);
+    event_ = LiveEvent::create(rules_, venue, field, variation_, pull_to_pull_,
+                               std::span{order.data(), static_cast<std::size_t>(field.count)},
                                kPlayer, seed + 1);
     if (!event_.has_value()) {
         return false;
