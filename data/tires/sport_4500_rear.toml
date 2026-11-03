@@ -1,5 +1,5 @@
 # The Sport 4.5 t tractor's rear tire: a puller tire (cut tread allowed
-# from Sport on) at the class's widest, 30.5" (800 mm) on a 32" rim
+# from Sport on) at the class's widest, 30.5" (775 mm) on a 32" rim
 # (docs/career.md): a 30.5L-32, bigger round and wider than the 2.5 t
 # tractor's (sport_rear.toml). The garage (garages/sport_4500.toml) takes
 # its grip from worn farm tires to cut puller tires.
