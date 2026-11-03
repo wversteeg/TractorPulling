@@ -7,7 +7,7 @@ event = "../events/sport_2500_top.toml"   # the class and this level's field
 seed = 3202                           # the field and every event's draws
 points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # Prize money per place at every event [EUR]; the class's garage costs
-# € 47,250 (garages/sport_2500.toml). Promo pays a fifth more than the
+# € 51,050 (garages/sport_2500.toml). Promo pays a fifth more than the
 # standard class's top, top 30 % more than promo. A disqualified pull
 # earns nothing.
 prize_money_eur = [2600, 2030, 1660, 1400, 1220, 1040, 880, 780, 700, 600]

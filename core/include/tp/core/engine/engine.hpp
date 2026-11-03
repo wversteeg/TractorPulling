@@ -46,6 +46,10 @@ struct Params {
     double boost_onset_omega_rad_s = 0.0;
     /// Full boost is available from this speed [rad/s].
     double full_boost_omega_rad_s = 0.0;
+    /// The boost pressure at full boost, above the atmosphere [Pa], for a
+    /// gauge: the model works from the boost's share (State::boost), so
+    /// this only scales what a boost gauge shows. 0 when not known.
+    double full_boost_pressure_pa = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -59,6 +63,7 @@ enum class ParamError : std::uint8_t {
     kNaTorqueFractionOutOfRange,
     kTurboTimeConstantNotPositive,
     kBoostRangeInvalid,
+    kBoostPressureNegative,
     kTorqueCurveNegative,
     kTorqueCurveDoesNotCoverRange,
 };

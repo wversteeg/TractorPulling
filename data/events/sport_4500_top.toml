@@ -20,6 +20,11 @@ select_gear_s = 0.5
 launch_s = 3.0
 clutch_slip_in_s = 3.0
 downshift_share = 0.9
+# A tall gear's launch: the clutch comes up over clutch_slip_in_s, eased
+# back while the engine is below 80 % of its rated speed so the revs and
+# the boost hold, for up to 8 s in all.
+launch_hold_share = 0.8
+launch_hold_max_s = 8.0
 
 # The field: well-built Sport 4.5 t tractors, from most of the class's
 # garage (garages/sport_4500.toml) to nearly all of it, driven by pullers
@@ -28,18 +33,19 @@ downshift_share = 0.9
 # Each driver picks a gear between `gears` for the day's track, the best
 # one as often as their track_reading says (tests/data/
 # rival_difficulty_test.cpp checks where the player's tractor finishes).
-# No powershift in the Sport classes.
+# The Sport classes pull in tall, close gears (4th to 8th, drivelines/
+# sport_*.toml) and still have a powershift (Supersport and up do not).
 [event.field]
 torque_scale = [0.88, 1.0]
 mass_kg = [4400.0, 4495.0]
-traction_limit = [0.945, 0.975]
+traction_limit = [1.134, 1.170]
 hitch_height_m = [0.47, 0.498]
-load_downshift_gears = [0, 0]
+load_downshift_gears = [1, 2]
 rated_rpm = [2440.0, 2500.0]
-gears = [6, 7]
+gears = [4, 8]
 clutch_slip_in_s = [2.0, 4.0]
-track_reading = [0.7, 1.0]
-downshift_share = [0.82, 0.95]         # of the rated speed (no powershift: unused)
+track_reading = [0.85, 1.0]
+downshift_share = [0.82, 0.95]         # of the rated speed, as the driver above
 pull_to_pull_grip_share = 0.01         # +- 1 % grip
 pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s
 

@@ -83,6 +83,7 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.slip_ratio = lerp(from.slip_ratio, to.slip_ratio, alpha);
     out.front_axle_load_n = lerp(from.front_axle_load_n, to.front_axle_load_n, alpha);
     out.engine_omega_rad_s = lerp(from.engine_omega_rad_s, to.engine_omega_rad_s, alpha);
+    out.boost = lerp(from.boost, to.boost, alpha);
     out.throttle = lerp(from.throttle, to.throttle, alpha);
     out.clutch_pedal = lerp(from.clutch_pedal, to.clutch_pedal, alpha);
     out.sled_x_m = lerp(from.sled_x_m, to.sled_x_m, alpha);
@@ -225,6 +226,7 @@ Snapshot Session::snapshot() const noexcept {
             .front_axle_load_n = output_.tractor.axle_loads.front_n,
             .engine_omega_rad_s = tractor.engine.omega_rad_s,
             .engine_running = tractor.engine.running,
+            .boost = tractor.engine.boost,
             .gear = tractor.driveline.gear,
             .lowest_gear = driveline::lowest_gear(tractor.driveline, model_.tractor().driveline()),
             .throttle = input_.throttle,

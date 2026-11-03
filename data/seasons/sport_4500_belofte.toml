@@ -7,12 +7,13 @@ event = "../events/sport_4500_belofte.toml"   # the class and this level's field
 seed = 3301                           # the field and every event's draws
 points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # Prize money per place at every event [EUR]; the class's garage costs
-# € 68,000 (garages/sport_4500.toml). Belofte pays about as Sport 2.5 t's
-# promo, each level about 30 % more than the one below: a player who buys
+# € 73,000 (garages/sport_4500.toml). Belofte pays the back of the field
+# more than the levels above (a new tractor starts there), each level's
+# winner about 30 % more than the one below: a player who buys
 # as they earn needs about three seasons at belofte and two at promo and
 # at top.
 # A disqualified pull earns nothing.
-prize_money_eur = [1600, 1250, 1030, 870, 750, 640, 550, 480, 430, 370]
+prize_money_eur = [1800, 1500, 1300, 1150, 1050, 950, 880, 820, 770, 720]
 garage = "../garages/sport_4500.toml"   # one tractor for the class's levels
 
 [[season.events]]

@@ -322,6 +322,9 @@ TEST(Session, ShowsTheTractorPullingTheSled) {
     // The pull takes weight off the front, never all of it.
     EXPECT_GT(now.front_axle_load_n, 0.0);
     EXPECT_LT(now.front_axle_load_n, start_front_n);
+    // Under load at speed the turbo has built its boost.
+    EXPECT_GT(now.boost, 0.5);
+    EXPECT_LE(now.boost, 1.0);
 }
 
 // The lowest gear the run takes now: any before moving off; under way one
@@ -458,14 +461,17 @@ TEST(Session, ReadsNotANumberAsAtRest) {
 }
 
 TEST(Blend, GoesFromOneSnapshotToTheNext) {
-    const Snapshot from{.time_s = 1.0, .tractor_x_m = 10.0, .gear = 5, .sled_x_m = 2.0};
-    const Snapshot to{.time_s = 1.001, .tractor_x_m = 10.01, .gear = 6, .sled_x_m = 2.004};
+    const Snapshot from{
+        .time_s = 1.0, .tractor_x_m = 10.0, .boost = 0.4, .gear = 5, .sled_x_m = 2.0};
+    const Snapshot to{
+        .time_s = 1.001, .tractor_x_m = 10.01, .boost = 0.5, .gear = 6, .sled_x_m = 2.004};
     EXPECT_EQ(blend(from, to, 0.0).tractor_x_m, from.tractor_x_m);
     EXPECT_EQ(blend(from, to, 1.0).tractor_x_m, to.tractor_x_m);
     const Snapshot half = blend(from, to, 0.5);
     EXPECT_DOUBLE_EQ(half.tractor_x_m, 10.005);
     EXPECT_DOUBLE_EQ(half.sled_x_m, 2.002);
     EXPECT_DOUBLE_EQ(half.time_s, 1.0005);
+    EXPECT_DOUBLE_EQ(half.boost, 0.45);
     // A gear is in or it is not.
     EXPECT_EQ(half.gear, 6);
 }

@@ -19,6 +19,7 @@ na_torque_fraction = 0.65   # torque without boost, as a fraction of full-load
 time_constant_s = 0.8
 boost_onset_rpm = 1000
 full_boost_rpm = 1600
+full_boost_bar = 1.0          # above the atmosphere, for the boost gauge: a stock farm turbo
 
 # Full-load torque at full boost. Peak 400 N·m at 1400 rpm; net power peaks
 # at about 68 kW near 2000 rpm. Past the rated speed the curve is what the

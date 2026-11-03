@@ -115,6 +115,8 @@ struct Snapshot {
 
     double engine_omega_rad_s = 0.0;
     bool engine_running = false;
+    /// The turbo's boost, 0 (none) to 1 (full): engine::State::boost.
+    double boost = 0.0;
     int gear = driveline::kNeutral;
     /// The lowest gear the gearbox goes into now (driveline::lowest_gear):
     /// once the pull is under way, down only as far as the powershift allows.

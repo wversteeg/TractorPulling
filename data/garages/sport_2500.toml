@@ -16,7 +16,9 @@
 # - hitch_height_m: the drawbar, up to the class's 0.5 m.
 # - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
 #   class's 2700 rpm.
-# No powershift: the Sport classes pull in one gear on wheelspin.
+# - load_downshift_gears: a powershift step that shifts down under load,
+#   one gear or two (the Sport classes still allow it; Supersport and up
+#   do not).
 #
 # The two levels of the class (promo, top; seasons/sport_2500_*.toml)
 # share this garage.
@@ -43,14 +45,14 @@ levels = [
 part = "rear_traction"
 name = "Puller tires"
 levels = [
-    { value = 0.86, cost_eur = 0, label = "Worn farm tires" },
-    { value = 0.88, cost_eur = 700, label = "Farm tires, good tread" },
-    { value = 0.90, cost_eur = 950, label = "New farm tires" },
-    { value = 0.92, cost_eur = 1200, label = "Wide farm tires" },
-    { value = 0.94, cost_eur = 1450, label = "Puller tires" },
-    { value = 0.95, cost_eur = 1700, label = "Puller tires, cut" },
-    { value = 0.96, cost_eur = 1950, label = "Wide puller tires, cut" },
-    { value = 0.97, cost_eur = 2200, label = "24.5\" puller tires, hand cut" },
+    { value = 1.032, cost_eur = 0, label = "Worn farm tires" },
+    { value = 1.056, cost_eur = 700, label = "Farm tires, good tread" },
+    { value = 1.08, cost_eur = 950, label = "New farm tires" },
+    { value = 1.104, cost_eur = 1200, label = "Wide farm tires" },
+    { value = 1.128, cost_eur = 1450, label = "Puller tires" },
+    { value = 1.14, cost_eur = 1700, label = "Puller tires, cut" },
+    { value = 1.152, cost_eur = 1950, label = "Wide puller tires, cut" },
+    { value = 1.164, cost_eur = 2200, label = "24.5\" puller tires, hand cut" },
 ]
 
 [[garage.upgrades]]
@@ -88,4 +90,13 @@ levels = [
     { value = 2350.0, cost_eur = 1400, label = "Turned up, 2350 rpm" },
     { value = 2425.0, cost_eur = 1900, label = "Turned up, 2425 rpm" },
     { value = 2500.0, cost_eur = 2400, label = "2500 rpm, 2700 unloaded" },
+]
+
+[[garage.upgrades]]
+part = "load_downshift_gears"
+name = "Sport powershift"
+levels = [
+    { value = 0.0, cost_eur = 0, label = "None: shift with the clutch" },
+    { value = 1.0, cost_eur = 2400, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 1400, label = "Two gears down under load" },
 ]

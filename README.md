@@ -419,14 +419,15 @@ settings' "Start" picks the rung a new career starts on.
 
 The tractor path holds the standard class, Sport 2.5 t and Sport 4.5 t.
 A new class is a new tractor: Sport's (`data/tractors/sport_2500.toml`) is smaller, pulls
-under a roll bar instead of a cab, with no powershift, and its engine
+under a roll bar instead of a cab, in tall close gears with a powershift
+(see docs/career.md, "How the Sport classes pull"), and its engine
 builds from a stock 90 hp to about 220 hp (`data/garages/sport_2500.toml`,
-€ 47,250, its parts named apart from the standard class's so only the
+€ 51,050, its parts named apart from the standard class's so only the
 money carries over). A new Sport tractor starts at the back of promo and
 wins it with about half its garage; only a fully built one wins at top.
 Sport 4.5 t's tractor (`data/tractors/sport_4500.toml`) is a big
 six-cylinder of about 520 hp fully built, pulled at belofte, promo and top
-(`data/garages/sport_4500.toml`, € 68,000). Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
+(`data/garages/sport_4500.toml`, € 73,000). Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
 Stock and Super Stock follow, a class at a time, each with its NTTO and
 ETPC rules.
 
@@ -504,7 +505,9 @@ pro, and the steering, the slider or tilting the phone, kept on the device
 between launches. After a test pull on a
 changed sled you keep it or pull again. Then the event's top ten and the
 season's (points per place), and the next event. During a pull the HUD
-shows the rev counter (stall and rated speeds marked), gear, speed,
+shows a boost gauge in the top left (the turbo's pressure in bar, full
+boost marked: `engine.turbo.full_boost_bar` in the engine's file), the
+rev counter (stall and rated speeds marked), gear, speed,
 distance and a bar down the track to the full-pull line, with the
 push-down's stretch in orange ("PUSH-DOWN" beside it once it comes on).
 

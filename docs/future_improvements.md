@@ -458,6 +458,15 @@ for the big features; they are repeated at the end for completeness.
   intercooler at 2500 kg), not its power; the class rules have no PTO
   limit for them, and the core checks only mass, engine speed and hitch.
   The Sport engines' 220 and 520 hp are estimates from those limits.
+- **Puller-tire grip is an estimate.** The Sport tires' grip (1.2 times
+  a farm tire's, building at a third of its rate with slip) is set so that
+  a too tall gear bogs and a too low one spins out, not from measurements.
+  Every stage of the Sport garages' tires, the worn farm tires too, uses
+  the puller tire's curve; only the limit changes.
+- **The scripted drivers never shift down in the launch.** A rival in too
+  tall a gear eases the clutch back while the revs are low, but shifts
+  down only once the clutch is fully in and the engine has come back; a
+  player can shift down at once.
 - **The roll bar is drawn only.** A tractor's protection (cab or roll
   bar) changes the picture, not its mass, centre of gravity or the
   driver's view (the cab camera is the same).

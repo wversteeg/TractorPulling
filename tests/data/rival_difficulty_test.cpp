@@ -170,11 +170,12 @@ struct Expectation {
     Places places;
 };
 
-void expect_level(const char* file, std::initializer_list<Expectation> expectations) {
+void expect_level(const char* file, std::initializer_list<Expectation> expectations,
+                  Gears gears = kPullingGears) {
     const data::SeasonDefinition d = season_named(file);
     for (const Expectation& x : expectations) {
         for (const std::uint64_t seed : kSeeds) {
-            const int at = place(d, share_up(d.garage.catalogue, x.share), seed, kPullingGears);
+            const int at = place(d, share_up(d.garage.catalogue, x.share), seed, gears);
             EXPECT_GE(at, x.places.best) << file << ", share " << x.share << ", seed " << seed;
             EXPECT_LE(at, x.places.worst) << file << ", share " << x.share << ", seed " << seed;
         }
@@ -189,43 +190,58 @@ TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWin
                                         {.share = 0.66, .places = {.best = 1, .worst = 1}}});
 }
 
+// The Sport classes pull in tall, close gears (4th to 8th), launching with
+// the clutch eased back while the revs are low: a gear too tall for the
+// track bogs or stalls, one too low spins out, and the powershift saves a
+// tall gear at the end. The player picks their best of them.
+constexpr Gears kSportGears{.lowest = 4, .highest = 8};
+
 // The Sport 2.5 t class's two levels (promo and top), its own tractor and
 // garage: a new Sport tractor finishes at the back of promo and about half
 // its garage wins it; promo's winner starts at the back at top, and only a
-// fully built tractor wins there.
+// nearly or fully built tractor wins there.
 TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndHalfItsGarageWinsIt) {
-    expect_level("sport_2500_promo.toml", {{.share = 0.0, .places = {.best = 7, .worst = 10}},
-                                           {.share = 0.45, .places = {.best = 1, .worst = 2}}});
+    expect_level("sport_2500_promo.toml",
+                 {{.share = 0.0, .places = {.best = 7, .worst = 10}},
+                  {.share = 0.45, .places = {.best = 1, .worst = 1}}},
+                 kSportGears);
 }
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
-    expect_level("sport_2500_top.toml", {{.share = 0.45, .places = {.best = 8, .worst = 10}},
-                                         {.share = 0.8, .places = {.best = 1, .worst = 4}},
-                                         {.share = 1.0, .places = {.best = 1, .worst = 1}}});
+    expect_level("sport_2500_top.toml",
+                 {{.share = 0.45, .places = {.best = 8, .worst = 10}},
+                  {.share = 0.8, .places = {.best = 2, .worst = 7}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 1}}},
+                 kSportGears);
 }
 
 // The Sport 4.5 t class's three levels, its own tractor and garage: a new
-// tractor is last at belofte and about 45 % of its garage wins it;
+// tractor is at the back at belofte and about 45 % of its garage wins it;
 // belofte's winner starts at the back of promo and about three quarters
-// win it; promo's winner is at the back at top, where the class pulls on
-// wheelspin near its limits: about 90 % of the garage reaches the podium
-// and only a fully built tractor is sure to win.
+// win it; promo's winner is at the back at top, where about 90 % of the
+// garage reaches the podium and a fully built tractor wins.
 TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) {
-    expect_level("sport_4500_belofte.toml", {{.share = 0.0, .places = {.best = 8, .worst = 10}},
-                                             {.share = 0.3, .places = {.best = 2, .worst = 5}},
-                                             {.share = 0.45, .places = {.best = 1, .worst = 1}}});
+    expect_level("sport_4500_belofte.toml",
+                 {{.share = 0.0, .places = {.best = 7, .worst = 10}},
+                  {.share = 0.3, .places = {.best = 2, .worst = 7}},
+                  {.share = 0.45, .places = {.best = 1, .worst = 1}}},
+                 kSportGears);
 }
 
 TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWinIt) {
-    expect_level("sport_4500_promo.toml", {{.share = 0.45, .places = {.best = 7, .worst = 10}},
-                                           {.share = 0.66, .places = {.best = 1, .worst = 4}},
-                                           {.share = 0.75, .places = {.best = 1, .worst = 1}}});
+    expect_level("sport_4500_promo.toml",
+                 {{.share = 0.45, .places = {.best = 6, .worst = 10}},
+                  {.share = 0.66, .places = {.best = 1, .worst = 4}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 1}}},
+                 kSportGears);
 }
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
-    expect_level("sport_4500_top.toml", {{.share = 0.75, .places = {.best = 8, .worst = 10}},
-                                         {.share = 0.9, .places = {.best = 1, .worst = 4}},
-                                         {.share = 1.0, .places = {.best = 1, .worst = 1}}});
+    expect_level("sport_4500_top.toml",
+                 {{.share = 0.75, .places = {.best = 7, .worst = 10}},
+                  {.share = 0.9, .places = {.best = 1, .worst = 4}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 1}}},
+                 kSportGears);
 }
 
 }  // namespace

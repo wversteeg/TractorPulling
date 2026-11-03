@@ -114,7 +114,7 @@ TEST(ControlsParams, RejectsNonsense) {
               ParamError::kAssistTimeNotPositive);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.guard_speed_share = 1.2; }),
               ParamError::kGuardOutOfRange);
-    EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.guard_band_share = 0.6; }),
+    EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.guard_band_share = 0.7; }),
               ParamError::kGuardOutOfRange);
     EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.min_throttle = 1.0; }),
               ParamError::kMinThrottleOutOfRange);
@@ -714,9 +714,9 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0xae2dc15f64e65122ULL);
-    // 91.45381394982851 m, every bit pinned.
-    EXPECT_EQ(result.distance_m, 0x1.6dd0b49aa3edap+6);
+    EXPECT_EQ(hash, 0x4fede655132f34dbULL);
+    // 91.54811220783057 m, every bit pinned.
+    EXPECT_EQ(result.distance_m, 0x1.6e3144539caecp+6);
     EXPECT_EQ(result.ending, run::Ending::kStopped);
 }
 

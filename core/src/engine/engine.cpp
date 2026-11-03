@@ -46,6 +46,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.turbo_time_constant_s,
         params.boost_onset_omega_rad_s,
         params.full_boost_omega_rad_s,
+        params.full_boost_pressure_pa,
     };
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
@@ -77,6 +78,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.boost_onset_omega_rad_s < 0.0 ||
         params.boost_onset_omega_rad_s >= params.full_boost_omega_rad_s) {
         return ParamError::kBoostRangeInvalid;
+    }
+    if (params.full_boost_pressure_pa < 0.0) {
+        return ParamError::kBoostPressureNegative;
     }
     const auto points = params.full_load_torque_nm.points();
     if (std::ranges::any_of(points, [](const math::CurvePoint& p) { return p.y < 0.0; })) {

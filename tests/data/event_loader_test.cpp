@@ -175,6 +175,10 @@ TEST(EventLoader, RejectsNonsense) {
               std::string::npos);
     EXPECT_NE(error_of(with("downshift_share = 0.9", "downshift_share = 1.2")).find("event.driver"),
               std::string::npos);
+    EXPECT_NE(
+        error_of(with("downshift_share = 0.9", "downshift_share = 0.9\nlaunch_hold_share = 1.0"))
+            .find("event.driver"),
+        std::string::npos);
     EXPECT_NE(error_of(with("pullers = 10", "pullers = 1")).find("event.game.pullers"),
               std::string::npos);
     EXPECT_NE(error_of(with("\"Wim\"]", "\"\"]")).find("event.game.rival_names"),
@@ -188,6 +192,21 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("../sleds/light_class.toml", "../sleds/missing.toml"))
                   .find("missing.toml: cannot open file"),
               std::string::npos);
+}
+
+// The launch hold is optional: the club event's driver lets the clutch in
+// on time; an event may ask for a driver who holds it while the revs are low.
+TEST(EventLoader, TheLaunchHoldIsOptional) {
+    const auto plain = load_event(kEvent);
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().reference.driver.launch_hold_share, 0.0);
+    const auto held =
+        parse_event(with("downshift_share = 0.9",
+                         "downshift_share = 0.9\nlaunch_hold_share = 0.8\nlaunch_hold_max_s = 6.0"),
+                    "event.toml", kEvent.parent_path());
+    ASSERT_TRUE(held.ok()) << held.error().message;
+    EXPECT_EQ(held.value().reference.driver.launch_hold_share, 0.8);
+    EXPECT_EQ(held.value().reference.driver.launch_hold_max_s, 6.0);
 }
 
 // The shipped club event looks like a real one: a couple of full pulls at
