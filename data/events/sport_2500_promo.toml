@@ -33,7 +33,7 @@ launch_hold_max_s = 8.0
 # Each driver picks a gear between `gears` for the day's track, the best
 # one as often as their track_reading says (tests/data/
 # rival_difficulty_test.cpp checks where the player's tractor finishes).
-# The Sport classes pull in tall, close gears (4th to 8th, drivelines/
+# The Sport classes pull in tall, close gears (3rd to 8th, drivelines/
 # sport_*.toml) and still have a powershift (Supersport and up do not).
 [event.field]
 torque_scale = [0.44, 0.76]
@@ -42,7 +42,7 @@ traction_limit = [1.038, 1.111]
 hitch_height_m = [0.405, 0.46]
 load_downshift_gears = [0, 1]
 rated_rpm = [2215.0, 2380.0]
-gears = [4, 8]
+gears = [3, 8]
 clutch_slip_in_s = [2.0, 4.0]
 track_reading = [0.5, 0.85]
 downshift_share = [0.82, 0.95]         # of the rated speed, as the driver above

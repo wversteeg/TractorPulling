@@ -194,8 +194,9 @@ with three things:
   (a third of a farm tire's rate). They spin at the launch, so the engine
   keeps its revs, and bite late in the pull.
 - **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels
-  turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count,
-  and 4th is the low gear for a wet start.
+  turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count.
+  1st to 5th are about 40 % apart (4th about 20 km/h), so 3rd and 4th
+  are the low gears for a wet start or a weak, new engine.
 - **A held launch**: high revs, the clutch let in over about 3 s but eased
   back while the engine is below 80 % of its rated speed, for up to 8 s
   (`driver::Plan::launch_hold_share`, the events' `[event.driver]`). The

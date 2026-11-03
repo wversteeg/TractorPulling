@@ -1,5 +1,7 @@
 # The reference mix, with the first 30 m watered against the dust: the
-# launch is softer and slicker than the rest of the track.
+# launch is softer and slicker than the rest of the track. Damp, not wet:
+# a strong tractor still pulls its usual gear or one lower, losing a few
+# metres to the start.
 
 [track]
 length_m = 100.0
@@ -13,4 +15,4 @@ compaction = 0.8
 
 [track.profile.moisture]
 x_m = [0.0, 30.0, 35.0]
-value = [0.20, 0.20, 0.14]
+value = [0.18, 0.18, 0.14]
