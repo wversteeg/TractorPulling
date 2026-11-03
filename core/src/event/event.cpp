@@ -19,12 +19,30 @@ constexpr double kHighestStepShare = 6.0;
 // misses by more than this share of a step.
 constexpr double kRetestMarginSteps = 0.5;
 
+// A lighter step's share of the weight box, once the knives and the
+// push-down have nothing more to give.
+constexpr double kBoxShareALighterStep = 0.1;
+
 // A lighter step: a pull-off step's knives out, and the push-down a step's
 // worth later. Knives alone barely lengthen a pull; with the push-down each
-// step is worth about what the operator reckons a step is.
-sled::Params lighter(const sled::Params& sled, int steps, double step_m) noexcept {
+// step is worth about what the operator reckons a step is. Once the knives
+// are out and the push-down is past `end_m` (where every pull stops), those
+// change nothing: the step takes weight out of the box instead, as an
+// operator does for a field the sled is far too heavy for. The weight stays
+// out for the rest of the event: the pull-offs' heavier steps add knives
+// and move the push-down (the sled's pull_off_step), as at any event.
+sled::Params lighter(const sled::Params& sled, int steps, double step_m, double end_m) noexcept {
     const sled::Adjustment& step = sled.pull_off_step;
-    return sled::adjusted(sled, {.knives = step.knives, .pushdown_earlier_m = step_m}, -steps);
+    sled::Params out = sled;
+    for (int i = 0; i < steps; ++i) {
+        const bool knives_left = step.knives > 0 && out.knives.count > 0;
+        if (knives_left || out.pushdown_start_m < end_m) {
+            out = sled::adjusted(out, {.knives = step.knives, .pushdown_earlier_m = step_m}, -1);
+        } else {
+            out.box_mass_kg *= 1.0 - kBoxShareALighterStep;
+        }
+    }
+    return out;
 }
 
 bool running_order_valid(std::span<const int> order) noexcept {
@@ -236,7 +254,7 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     } else if (strongest_m < rules_.sled_target_m - margin_m) {
         outcome = {.change = SledChange::kLighter,
                    .steps = steps_for(rules_.sled_target_m - strongest_m)};
-        sled_ = lighter(sled_, outcome.steps, rules_.step_m);
+        sled_ = lighter(sled_, outcome.steps, rules_.step_m, rules_.max_distance_m);
     } else {
         return outcome;
     }

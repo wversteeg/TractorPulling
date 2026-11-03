@@ -28,6 +28,9 @@ struct LogEntry {
     double full_pull_m = 0.0;
     int knives = 0;
     double pushdown_start_m = 0.0;
+    /// The weight box's mass after the pull [kg]: the operator takes weight
+    /// out only once the knives and the push-down have nothing more to give.
+    double box_mass_kg = 0.0;
     /// The deciding test puller for a decision, else -1.
     int deciding = -1;
     bool keep = false;

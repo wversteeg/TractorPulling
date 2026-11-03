@@ -304,6 +304,30 @@ TEST(Event, ALighterStepTakesAKnifeAndMovesThePushdown) {
     EXPECT_EQ(event.sled().pushdown_start_m, sled.pushdown_start_m + outcome.steps * kRules.step_m);
 }
 
+// With the knives out and the push-down at the end of the track, where no
+// pull reaches it, a lighter step takes a tenth of the box out instead; a
+// step the push-down can still take moves it first.
+TEST(Event, WithNothingElseLeftALighterStepTakesBoxWeightOut) {
+    sled::Params sled = sled::testing::reference_params();
+    sled.knives.count = 0;
+    sled.pushdown_start_m = kRules.max_distance_m - kRules.step_m;
+    Event event = make(4, sled);
+    const Outcome outcome = event.record(75.0);  // 3 steps: 15 m short of 90 m
+    ASSERT_EQ(outcome.change, SledChange::kLighter);
+    ASSERT_EQ(outcome.steps, 3);
+    EXPECT_EQ(event.sled().pushdown_start_m, kRules.max_distance_m) << "the first step";
+    EXPECT_EQ(knives(event), 0);
+    EXPECT_DOUBLE_EQ(event.sled().box_mass_kg, sled.box_mass_kg * 0.9 * 0.9) << "the other two";
+
+    // While knives are left, the box stays as it is.
+    sled::Params with_knives = sled::testing::reference_params();
+    with_knives.pushdown_start_m = kRules.max_distance_m;
+    Event knives_first = make(4, with_knives);
+    ASSERT_EQ(knives_first.record(80.0).change, SledChange::kLighter);
+    EXPECT_EQ(knives_first.sled().box_mass_kg, with_knives.box_mass_kg);
+    EXPECT_LT(knives(knives_first), with_knives.knives.count);
+}
+
 // The operator weighs a test pull by who pulled it: a weak tractor's short
 // pull leaves the sled when the strongest would still reach the target; a
 // full pull by one of the strongest leaves the sled; far short of what a

@@ -90,7 +90,8 @@ note bottom of Event
   100 m <= test < 110 m: line to 110 m, sled stays;
   test past the line: heavier by ceil(over / learnt step), at most max steps; the test puller re-pulls;
   the operator learns what a step is worth from each change and the next test pull;
-  test short of the target: lighter (knives out, then push-down later);
+  test short of the target: lighter (knives out, push-down later; with neither left,
+  a tenth of the box out a step);
   test puller may keep an unchanged or lighter sled's pull: decides after pull +2,
   re-pulls after pull +5 (the 6th);
   pull-off: full pulls, filled to 4 from 90 m; sled heavier so the strongest stops

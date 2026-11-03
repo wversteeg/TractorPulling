@@ -58,7 +58,7 @@ package "tp::field" {
     +disqualified : bool
     +outcome : event::Outcome
     +gear : int
-    +full_pull_m, knives, pushdown_start_m
+    +full_pull_m, knives, pushdown_start_m, box_mass_kg
     +deciding : int, keep : bool
   }
   class PlayedEvent <<struct>> {
@@ -131,6 +131,7 @@ package "tp::field" {
     +{static} kPlayer = 0
     +{static} create(rules, reference, variation, class_rules, pull_to_pull,\n      points, pullers, events, seed) : optional<LiveSeason>
     +start_event(const Venue&) : bool
+    +start_event(const Venue&, player_tractor) : bool\n(the operator's trials see the player's own tractor)
     +event() : LiveEvent*
     +score_event() : bool
     +score_event(span<const int64> prize_by_place, garage::Career&) : bool

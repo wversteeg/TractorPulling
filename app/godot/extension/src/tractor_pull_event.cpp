@@ -398,7 +398,9 @@ godot::String TractorPullEvent::start_event() {
     }
     const auto index = static_cast<std::size_t>(season_->events_started());
     const data::SeasonRound& round = definition_->rounds.at(index);
-    if (!season_->start_event(data::venue(definition_->event.sled, round.track))) {
+    // The sled operator's trials see the player's own tractor, tuned.
+    if (!season_->start_event(data::venue(definition_->event.sled, round.track),
+                              vehicle::tuned(player_tractor(), tuning_))) {
         return godot::vformat("cannot start %s", to_godot(round.name));
     }
     return {};
