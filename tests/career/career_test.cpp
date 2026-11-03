@@ -11,10 +11,8 @@
 namespace tp::career {
 namespace {
 
-// The tractor path as it will be (docs/career.md): Standard 3.5 t, Sport
-// 2.5 and 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
-// Stock and Super Stock, each at belofte, promo and top; the championship
-// wins a rung.
+// A long ladder, about the tractor path's length (docs/career.md): nine
+// classes at three levels; the championship wins a rung.
 constexpr Ladder kTractorPath{.rungs = 27, .promotion_place = 1};
 
 TEST(Career, ValidatesTheLadder) {

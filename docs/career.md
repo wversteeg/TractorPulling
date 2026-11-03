@@ -77,10 +77,10 @@ Money carries over as it is.
 This is step 3 (real parts) of the plan. Until then, step 2 carries the
 garage's upgrade levels by name from one class's garage to the next.
 
-Each class is pulled at its levels, belofte, promo and top, or promo and
-top for the Sport 2.5 t introduction class (see "Levels within a
-class"): a season won opens the next level, and top the
-next class (`tp::career`, `promotion_place = 1`, at least `min_seasons`
+Each class is pulled at its levels, belofte, promo and top; the standard
+class, the warming-up, at one level, and the Sport 2.5 t introduction
+class at promo and top (see "Levels within a class"): a season won opens
+the next level, and a class's last level the next class (`tp::career`, `promotion_place = 1`, at least `min_seasons`
 on a level); the player chooses to move up or stay.
 
 Not in the game: the heavier standard classes.
@@ -94,8 +94,9 @@ weighing: "Het officiële gewicht van de klasse is inclusief deelnemer").
 
 ### 1. Standard 3.5 t
 
-Already in the game (`data/classes/ntto_standard_3500.toml`). From NTTO
-H13 and NTTO 2026:
+Already in the game (`data/classes/ntto_standard_3500.toml`), the
+career's warming-up for the controls, at one level (see "Levels within a
+class"). From NTTO H13 and NTTO 2026:
 
 - 3500 kg; hitch at most 500 mm ("500 of 550", see the chapter).
 - At most 4 cylinders with a turbo.
@@ -301,32 +302,36 @@ The NTTO splits a class into levels, each its own competition:
 
 ### In the game (game choice)
 
-Every class is pulled at three levels, **belofte**, **promo** and
+A class is pulled at up to three levels, **belofte**, **promo** and
 **top**, each a season with its own field of rivals, on the class's one
 tractor:
 
-- A new tractor (every part at its first stage) finishes **around last in
-  belofte**; a **fully upgraded** one **wins at top**. For the standard
-  class, belofte is won once the tractor pulls 6th (about 45 % of the
-  garage's stages), promo with about 75 %, and promo's winner starts near
-  the back at top (tests/data/rival_difficulty_test.cpp).
-- **At least two seasons on every level, so six a class or more.**
-  Winning a level's championship opens the level above (winning top the
-  next class's belofte) once the level has had two seasons; a title in
-  the first season opens it after the second (`min_seasons` in the career
+- A new tractor (every part at its first stage) finishes **around last**
+  at the class's first level; a **fully upgraded** one **wins at the
+  class's last level**
+  (tests/data/rival_difficulty_test.cpp).
+- **At least two seasons on every level.** Winning a level's
+  championship opens the level above (winning a class's last level the
+  next class's first) once the level has had two seasons; a title in the
+  first season opens it after the second (`min_seasons` in the career
   file, `career::Ladder`). The player is asked whether to move up or
   stay. No relegation (for now).
-- The money is set so that the rule rarely has to hold anyone back: the
-  standard class's garage costs € 40,000, each part's stages dearer as
-  they go, and each level pays 30 % more than the one below. A player who
-  buys as they earn needs about three seasons for belofte and two for
-  promo and top: about seven a class (an estimate from the measured
-  places; playing will tell).
+- The money is set so that the rule rarely has to hold anyone back: each
+  part's stages dearer as they go, each level paying about 30 % more than
+  the one below. A player who buys as they earn needs about three
+  seasons for belofte and two for promo and top (an estimate from the
+  measured places; playing will tell).
+- **The standard class has one level**, the career's warming-up for the
+  controls: its few parts (pump, tires, weights, drawbar, governor,
+  powershift) are too few for three levels of good play. Its garage
+  costs about € 20,000; a new tractor finishes near the back, two thirds
+  of the garage wins, and a player who buys as they earn wins it in
+  about two seasons, the minimum.
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
-- The NTTO's standard class has no levels and Pro Stock has groups II and
-  I: the game uses the three Farmstock levels for the classes alike,
-  except **Sport 2.5 t, only promo and top**: it is the introduction to
+- The NTTO's standard class has no levels (nor has the game's) and Pro
+  Stock has groups II and I: the game uses the Farmstock levels for the
+  other classes alike, except **Sport 2.5 t, only promo and top**: it is the introduction to
   the Farmstock classes and should not hold the player for six seasons
   or more. A new Sport tractor finishes at the back of promo and wins it
   with about half its garage; only a fully built one wins at top.

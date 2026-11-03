@@ -1,6 +1,7 @@
-# The NTTO standard class, 3.5 t, at belofte (beloftenniveau), the lowest level of the
-# career (docs/career.md): the class's rules, reference tractor, sled and
-# driver as the club event (club_pull.toml); only the field differs.
+# The NTTO standard class, 3.5 t, the first class of the career and its
+# warming-up (docs/career.md): one level, no belofte, promo or top. The
+# class's rules, reference tractor, sled and driver as the club event
+# (club_pull.toml); only the field differs.
 
 [event]
 class = "../classes/ntto_standard_3500.toml"
@@ -20,24 +21,23 @@ launch_s = 3.0
 clutch_slip_in_s = 3.0
 downshift_share = 0.9
 
-# The field: new and lightly improved tractors (the career's garage,
-# garages/standard_3500.toml, from its first levels to about 40 %),
-# driven by pullers still learning to read a track. A new tractor finishes
-# around last; about half the garage bought wins.
+# The field: tractors from barely improved to nearly all of the class's
+# garage (garages/standard_3500.toml), a few with a powershift. A new
+# tractor finishes near the back; about two thirds of the garage wins.
 # Each driver picks a gear between `gears` for the day's track, the best
 # one as often as their track_reading says; each shifts down at their own
 # engine speed, if their powershift can (tests/data/
 # rival_difficulty_test.cpp checks where the player's tractor finishes).
 [event.field]
-torque_scale = [0.80, 0.885]
-mass_kg = [3200.0, 3335.0]
-traction_limit = [0.85, 0.897]
-hitch_height_m = [0.40, 0.432]
-load_downshift_gears = [0, 0]
-rated_rpm = [2200.0, 2305.0]
-gears = [5, 6]
+torque_scale = [0.8, 0.95]
+mass_kg = [3200.0, 3460.0]
+traction_limit = [0.85, 0.93]
+hitch_height_m = [0.4, 0.475]
+load_downshift_gears = [0, 1]
+rated_rpm = [2200.0, 2440.0]
+gears = [5, 7]
 clutch_slip_in_s = [2.0, 4.0]
-track_reading = [0.4, 0.8]
+track_reading = [0.4, 0.9]
 downshift_share = [0.82, 0.95]         # of the rated speed, as the driver above
 pull_to_pull_grip_share = 0.01         # +- 1 % grip
 pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s

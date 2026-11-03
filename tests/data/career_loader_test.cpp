@@ -62,18 +62,16 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
     EXPECT_EQ(career.name, "Tractor path");
     EXPECT_EQ(career.ladder.promotion_place, 1);
     EXPECT_EQ(career.ladder.min_seasons, 2);
-    // Standard 3.5 t at belofte, promo and top; Sport 2.5 t at promo and
-    // top; Sport 4.5 t at all three.
-    ASSERT_EQ(career.ladder.rungs, 8);
-    ASSERT_EQ(career.rungs.size(), 8U);
+    // Standard 3.5 t at one level, the warming-up; Sport 2.5 t at promo
+    // and top; Sport 4.5 t at belofte, promo and top.
+    ASSERT_EQ(career.ladder.rungs, 6);
+    ASSERT_EQ(career.rungs.size(), 6U);
     for (const CareerRung& rung : career.rungs) {
         // The season's path is resolved, ready to load.
         EXPECT_TRUE(load_season(rung.season, read_from_disk).ok()) << rung.season;
     }
-    const std::array<std::pair<std::string_view, std::string_view>, 8> expected{{
-        {"Standard 3.5 t", "Belofte"},
-        {"Standard 3.5 t", "Promo"},
-        {"Standard 3.5 t", "Top"},
+    const std::array<std::pair<std::string_view, std::string_view>, 6> expected{{
+        {"Standard 3.5 t", "Club"},
         {"Sport 2.5 t", "Promo"},
         {"Sport 2.5 t", "Top"},
         {"Sport 4.5 t", "Belofte"},

@@ -451,7 +451,7 @@ for the big features; they are repeated at the end for completeness.
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
 - **Three classes on the ladder.** The tractor path's career has the
-  standard 3.5 t class (its three levels), Sport 2.5 t (promo and top) and
+  standard 3.5 t class (one level), Sport 2.5 t (promo and top) and
   Sport 4.5 t (its three levels) so far; the classes above come a class at a time (docs/career.md).
 - **Sport's engine rules are not checked.** Sport and up limit the
   engine's build (cylinders, displacement, valves, the turbo's inlet, no
