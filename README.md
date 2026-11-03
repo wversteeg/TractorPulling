@@ -401,17 +401,16 @@ player drives less evenly than the script, and picks the gear themselves.
 ### The career
 
 A career is a ladder (`data/careers/tractor_path.toml`, `tp::career`,
-[docs/career.md](docs/career.md)): classes, each pulled at three levels,
-belofte, promo and top (the Sport 2.5 t introduction class at promo and
-top only), each level a season with its own field of rivals.
-The standard 3.5 t class's levels share one tractor and its garage
-(`data/garages/standard_3500.toml`, the club garage's parts in finer and
-dearer stages, € 40,000 in all): a new tractor finishes around last in
-belofte, it wins belofte once it pulls 6th (about 45 % of the stages),
-about 75 % wins promo, and only a fully upgraded tractor wins top
-(`RivalDifficulty`). Every level takes at least two seasons (`min_seasons`):
-winning a level's championship opens the next level, and winning top the
-next class (`promotion_place`, a shared title counts), once the level has
+[docs/career.md](docs/career.md)): classes, each pulled at up to three
+levels, belofte, promo and top, each level a season with its own field
+of rivals and the class's one tractor and garage. The standard 3.5 t
+class is the warming-up, at one level (`data/seasons/standard_3500.toml`,
+`data/garages/standard_3500.toml`: the club garage's parts in finer
+stages, about € 20,000 in all): a new tractor finishes near the back and
+about two thirds of the garage wins (`RivalDifficulty`). Sport 2.5 t is
+pulled at promo and top. Every level takes at least two seasons
+(`min_seasons`): winning a level's championship opens the next level,
+and winning a class's last level the next class (`promotion_place`, a shared title counts), once the level has
 had them; the season's board then asks whether to move up or stay
 and defend the title, and what is opened stays open, so the start screen
 offers "Move up" before the next season's first pull too. The money and
@@ -477,8 +476,8 @@ Build the extension with `cmake --preset godot && cmake --build --preset godot`
 `app/godot` in Godot 4.7 and play it.
 
 The game plays a career (`data/careers/tractor_path.toml`, see "The
-career") of seasons; the first is `data/seasons/standard_3500_belofte.toml`,
-the standard class's lowest level on ten tracks, against nine scripted
+career") of seasons; the first is `data/seasons/standard_3500.toml`,
+the standard class on ten tracks, against nine scripted
 rivals, named in `club_pull.toml`'s
 `[event.game]`. The season is saved after every event, with your tuning
 and your career, its class too (`user://season.toml`, `tp::data::SeasonSave`): at the

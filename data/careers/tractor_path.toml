@@ -1,11 +1,13 @@
 # The tractor path (docs/career.md): from the NTTO standard class up
 # through the classes that still pull a recognisable tractor, all
-# two-wheel drive. Each class has its own tractor, pulled at three levels,
-# belofte, promo and top, each a season with its own field; the levels
-# share the class's garage.
+# two-wheel drive. Each class has its own tractor, pulled at its levels
+# (belofte, promo and top), each a season with its own field; the levels
+# share the class's garage. The standard class, the warming-up, has one
+# level; Sport 2.5 t, an introduction to the Sport classes, only promo and
+# top.
 #
-# Winning a level's championship opens the next level, and winning top
-# the next class's belofte, once the player has pulled at least
+# Winning a level's championship opens the next level, and winning a
+# class's last level the next class's first, once the player has pulled at least
 # `min_seasons` seasons on the level (a title in the first season opens it
 # after the second); the player is asked whether to move up or stay and
 # defend the title, and what is opened stays open. Money and upgrades
@@ -13,8 +15,7 @@
 #
 # Standard 3.5 t, Sport 2.5 t and Sport 4.5 t so far. Supersport 3.4, 3.6
 # and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a class
-# at a time, each with its NTTO and ETPC rules. Sport 2.5 t, an
-# introduction to the Sport classes, has only promo and top.
+# at a time, each with its NTTO and ETPC rules.
 
 [career]
 name = "Tractor path"
@@ -23,11 +24,7 @@ min_seasons = 2       # at least two seasons on every level: six a class
 
 [[career.classes]]
 name = "Standard 3.5 t"
-levels = [
-    { name = "Belofte", season = "../seasons/standard_3500_belofte.toml" },
-    { name = "Promo", season = "../seasons/standard_3500_promo.toml" },
-    { name = "Top", season = "../seasons/standard_3500_top.toml" },
-]
+levels = [{ name = "Club", season = "../seasons/standard_3500.toml" }]
 
 [[career.classes]]
 name = "Sport 2.5 t"

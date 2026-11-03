@@ -160,13 +160,9 @@ garage::Career share_up(const garage::Catalogue& catalogue, double share) {
     return career;
 }
 
-// The career's three levels of the standard class (docs/career.md), one
-// tractor and garage for all three, in share of the garage's stages: a new
-// tractor finishes around last in belofte, and the tractor wins it once it
-// pulls 6th, with about 45 % bought; belofte's winner starts at the back of
-// promo and about 75 % wins it; promo's winner is near the back at top,
-// and only a fully upgraded tractor wins there. The player picks their best
-// of the pulling gears, as in the game.
+// Each career level's field, in share of the class garage's stages bought
+// (docs/career.md). The player picks their best of the pulling gears, as
+// in the game.
 constexpr Gears kPullingGears{.lowest = 5, .highest = 7};
 
 struct Expectation {
@@ -185,22 +181,12 @@ void expect_level(const char* file, std::initializer_list<Expectation> expectati
     }
 }
 
-TEST(RivalDifficulty, ANewTractorIsAroundLastInBelofteAndPulling6thWinsIt) {
-    expect_level("standard_3500_belofte.toml",
-                 {{.share = 0.0, .places = {.best = 7, .worst = 10}},
-                  {.share = 0.45, .places = {.best = 1, .worst = 1}}});
-}
-
-TEST(RivalDifficulty, BeloftesWinnerStartsAtTheBackOfPromoAndThreeQuartersWinIt) {
-    expect_level("standard_3500_promo.toml", {{.share = 0.45, .places = {.best = 6, .worst = 10}},
-                                              {.share = 0.66, .places = {.best = 1, .worst = 4}},
-                                              {.share = 0.8, .places = {.best = 1, .worst = 1}}});
-}
-
-TEST(RivalDifficulty, PromosWinnerIsNearTheBackAtTopAndOnlyAFullyUpgradedTractorWins) {
-    expect_level("standard_3500_top.toml", {{.share = 0.66, .places = {.best = 7, .worst = 10}},
-                                            {.share = 0.8, .places = {.best = 2, .worst = 5}},
-                                            {.share = 1.0, .places = {.best = 1, .worst = 1}}});
+// The standard class, the career's warming-up at one level: a new tractor
+// finishes near the back, and about two thirds of the garage wins.
+TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWins) {
+    expect_level("standard_3500.toml", {{.share = 0.0, .places = {.best = 7, .worst = 10}},
+                                        {.share = 0.45, .places = {.best = 2, .worst = 4}},
+                                        {.share = 0.66, .places = {.best = 1, .worst = 1}}});
 }
 
 // The Sport 2.5 t class's two levels (promo and top), its own tractor and
