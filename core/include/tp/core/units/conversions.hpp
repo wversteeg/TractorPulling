@@ -23,6 +23,16 @@ inline constexpr double kWattsPerMetricHorsepower = 735.49875;
     return power_w / kWattsPerMetricHorsepower;
 }
 
+/// The bar: boost pressure as gauges and tuners give it.
+inline constexpr double kPascalsPerBar = 100'000.0;
+
+[[nodiscard]] constexpr double bar_to_pa(double pressure_bar) noexcept {
+    return pressure_bar * kPascalsPerBar;
+}
+[[nodiscard]] constexpr double pa_to_bar(double pressure_pa) noexcept {
+    return pressure_pa / kPascalsPerBar;
+}
+
 inline constexpr double kDegreesPerRad = 180.0 / std::numbers::pi;
 
 [[nodiscard]] constexpr double rad_to_deg(double angle_rad) noexcept {

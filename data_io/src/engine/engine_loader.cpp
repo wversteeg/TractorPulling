@@ -45,6 +45,8 @@ FieldError describe(engine::ParamError error) {
             return {"engine.turbo.time_constant_s", "must be > 0"};
         case ParamError::kBoostRangeInvalid:
             return {"engine.turbo", "need 0 <= boost_onset_rpm < full_boost_rpm"};
+        case ParamError::kBoostPressureNegative:
+            return {"engine.turbo.full_boost_bar", "must not be negative"};
         case ParamError::kTorqueCurveNegative:
             return {"engine.torque_curve.torque_nm", "must not be negative"};
         case ParamError::kTorqueCurveDoesNotCoverRange:
@@ -69,6 +71,9 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
     const double turbo_time_constant_s = reader.number("engine.turbo.time_constant_s");
     const double boost_onset_rpm = reader.number("engine.turbo.boost_onset_rpm");
     const double full_boost_rpm = reader.number("engine.turbo.full_boost_rpm");
+    // Optional, for the boost gauge only.
+    const double full_boost_bar =
+        reader.optional_number("engine.turbo.full_boost_bar").value_or(0.0);
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
@@ -89,6 +94,7 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
         .turbo_time_constant_s = turbo_time_constant_s,
         .boost_onset_omega_rad_s = rpm_to_rad_s(boost_onset_rpm),
         .full_boost_omega_rad_s = rpm_to_rad_s(full_boost_rpm),
+        .full_boost_pressure_pa = units::bar_to_pa(full_boost_bar),
     };
     if (const auto error = engine::validate(params)) {
         const FieldError field_error = describe(*error);

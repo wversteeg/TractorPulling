@@ -60,6 +60,15 @@ TEST(EngineLoader, LoadsShippedReferenceEngine) {
     ASSERT_TRUE(result.ok()) << result.error().message;
     EXPECT_EQ(engine::validate(result.value()), std::nullopt);
     EXPECT_DOUBLE_EQ(result.value().full_load_torque_nm.max_y(), 400.0);
+    // The boost gauge's full scale, in bar in the file.
+    EXPECT_DOUBLE_EQ(result.value().full_boost_pressure_pa, units::bar_to_pa(1.0));
+}
+
+// The full boost pressure is only for a gauge: an engine may leave it out.
+TEST(EngineLoader, TheFullBoostPressureIsOptional) {
+    const auto result = parse_engine(kValidEngine, "test.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().full_boost_pressure_pa, 0.0);
 }
 
 TEST(EngineLoader, ConvertsToSiUnits) {
@@ -105,8 +114,10 @@ TEST(EngineLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 10> cases = {{
+    const std::array<Case, 11> cases = {{
         {"inertia_kg_m2 = 1.5", "inertia_kg_m2 = -1.5", "engine.inertia_kg_m2: must be > 0"},
+        {"full_boost_rpm = 1600", "full_boost_rpm = 1600\nfull_boost_bar = -1.0",
+         "engine.turbo.full_boost_bar: must not be negative"},
         {"idle_rpm = 800", "idle_rpm = 2300", "engine.idle_rpm: must be below rated_rpm"},
         {"stall_rpm = 450", "stall_rpm = 900", "engine.stall_rpm: must be below idle_rpm"},
         {"constant_nm = 15.0", "constant_nm = -1.0", "engine.friction: must not be negative"},

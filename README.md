@@ -505,7 +505,9 @@ pro, and the steering, the slider or tilting the phone, kept on the device
 between launches. After a test pull on a
 changed sled you keep it or pull again. Then the event's top ten and the
 season's (points per place), and the next event. During a pull the HUD
-shows the rev counter (stall and rated speeds marked), gear, speed,
+shows a boost gauge in the top left (the turbo's pressure in bar, full
+boost marked: `engine.turbo.full_boost_bar` in the engine's file), the
+rev counter (stall and rated speeds marked), gear, speed,
 distance and a bar down the track to the full-pull line, with the
 push-down's stretch in orange ("PUSH-DOWN" beside it once it comes on).
 

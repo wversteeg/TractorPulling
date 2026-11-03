@@ -27,6 +27,7 @@ na_torque_fraction = 0.5
 time_constant_s = 1.0
 boost_onset_rpm = 1100
 full_boost_rpm = 1800
+full_boost_bar = 2.0          # above the atmosphere (about 3 bar absolute), for the boost gauge
 
 # Full-load torque at full boost: peak 655 N·m at 2000 rpm, 162 kW (220 hp)
 # at 2600 rpm; past the rated speed the engine's own fall-off.

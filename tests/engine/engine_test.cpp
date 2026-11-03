@@ -58,6 +58,10 @@ TEST(EngineParams, RejectsNonsense) {
               ParamError::kRatedNotBelowHighIdle);
     EXPECT_EQ(with([](Params& p) { p.viscous_friction_nm_s_rad = -0.1; }),
               ParamError::kFrictionNegative);
+    EXPECT_EQ(with([](Params& p) { p.full_boost_pressure_pa = -1.0; }),
+              ParamError::kBoostPressureNegative);
+    EXPECT_EQ(with([](Params& p) { p.full_boost_pressure_pa = std::nan(""); }),
+              ParamError::kNotFinite);
     EXPECT_EQ(with([](Params& p) { p.na_torque_fraction = 0.0; }),
               ParamError::kNaTorqueFractionOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.na_torque_fraction = 1.1; }),

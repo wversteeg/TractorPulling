@@ -245,6 +245,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["front_axle_load_n"] = s.front_axle_load_n;
     out["engine_omega_rad_s"] = s.engine_omega_rad_s;
     out["engine_running"] = s.engine_running;
+    out["boost"] = s.boost;
     out["gear"] = s.gear;
     out["lowest_gear"] = s.lowest_gear;
     out["throttle"] = s.throttle;
@@ -323,6 +324,7 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     const engine::Params& engine = tractor.engine;
     out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
     out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
+    out["full_boost_pressure_pa"] = engine.full_boost_pressure_pa;
     out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
     const clutch::EngagementRange clutch = clutch::engagement_range(tractor.clutch);
     out["clutch_full_grip_pedal"] = clutch.full_grip_pedal;

@@ -5,7 +5,9 @@
 # sled has got, with "PUSH-DOWN" beside it once it is on, and how much the
 # front tires still carry, against what they carry at rest (marked): the
 # pull takes weight off the front, and with none left the front is up and
-# the front wheels do not steer. In the pro layout also how far the clutch
+# the front wheels do not steer. Left of the bars a boost gauge: the turbo's
+# pressure in bar, its full boost marked (shown when the engine gives one).
+# In the pro layout also how far the clutch
 # is in. In a whole turn, a short line along the top in the middle says
 # what to do next (it
 # can be turned off in the settings: `guidance`): drive
@@ -22,14 +24,25 @@ class_name Hud
 extends Control
 
 const MARGIN := 24.0
-# The two bars under the text, clear of the buttons along the top right and
-# the pro layout's brake sliders below.
-const BAR_LEFT := MARGIN
-const BAR_WIDTH := 460.0
+# The bars under the text, right of the boost gauge, clear of the buttons
+# along the top right and the pro layout's sliders below.
+const BAR_LEFT := MARGIN + 110.0
+const BAR_WIDTH := 380.0
 const BAR_HEIGHT := 22.0
 const REV_TOP := 112.0
 const TRACK_TOP := 148.0
 const FRONT_TOP := 184.0
+# The boost gauge: a dial as tall as the three bars, left of them, its
+# scale over 270° from the bottom left round to the bottom right, a tick
+# every half bar, its top a little past full boost.
+const GAUGE_CENTRE := Vector2(MARGIN + 48.0, REV_TOP + 47.0)
+const GAUGE_RADIUS := 46.0
+const GAUGE_FROM_RAD := 0.75 * PI
+const GAUGE_SWEEP_RAD := 1.5 * PI
+const GAUGE_TICK_BAR := 0.5
+const GAUGE_HEADROOM := 1.15
+const GAUGE_COLOUR := Color(0.35, 0.8, 1.0)
+const PA_PER_BAR := 100000.0
 # The turn's line, short, along the top edge in the middle on a dark band:
 # between the pull's name on the left and the buttons on the right.
 const TURN_TOP := 8.0
@@ -102,6 +115,11 @@ var _pushdown_label := Label.new()
 var _front_rest_n := 1.0
 var _front_n := 0.0
 var _front := Label.new()
+# The boost: its share (0 to 1) and the pressure at full boost, 0 when the
+# engine gives none [Pa].
+var _boost := 0.0
+var _full_boost_pa := 0.0
+var _gauge := Label.new()
 var _turn := Label.new()
 var _ending := Label.new()
 var _ending_left_s := 0.0
@@ -124,7 +142,8 @@ var _parking := Vector2.INF
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn, _ending, _lamp]:
+	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn, _ending, _lamp,
+			_gauge]:
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
 		label.add_theme_constant_override("outline_size", OUTLINE)
 		add_child(label)
@@ -155,6 +174,10 @@ func _ready() -> void:
 	_lamp.size.x = LAMP_LABEL_WIDTH
 	_lamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lamp.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
+	_gauge.position = GAUGE_CENTRE + Vector2(-GAUGE_RADIUS, GAUGE_RADIUS * 0.25)
+	_gauge.size.x = 2.0 * GAUGE_RADIUS
+	_gauge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_gauge.add_theme_font_size_override("font_size", SMALL_FONT_SIZE - 4)
 
 
 # The run's fixed sizes (TractorPullRun.get_dimensions()).
@@ -170,6 +193,7 @@ func build(dimensions: Dictionary) -> void:
 	_chain_m = dimensions["chain_length_m"]
 	_steer_hint_m = STEER_HINT_SHARE * float(dimensions["hook_off_line_m"])
 	_taut_within_m = dimensions["ready_taut_within_m"]
+	_full_boost_pa = dimensions.get("full_boost_pressure_pa", 0.0)
 
 
 # The officials' signal (pull.gd's signal_for()): "green", "red" or "off".
@@ -209,6 +233,8 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	_pro = pro
 	_pull.text = title
 	_omega_rad_s = s["engine_omega_rad_s"]
+	_boost = s.get("boost", 0.0)
+	_gauge.text = "%.1f bar" % boost_bar() if _full_boost_pa > 0.0 else ""
 	# The chain off after the pull: the bar starts again for the next one.
 	var chain_off: bool = s.get("stage", "pulling") in ["to_the_parking", "parked"] \
 			and not bool(s.get("chain_hooked", true))
@@ -311,6 +337,11 @@ func turn_text(s: Dictionary) -> String:
 	return ""
 
 
+# The boost pressure the gauge shows [bar].
+func boost_bar() -> float:
+	return _boost * _full_boost_pa / PA_PER_BAR
+
+
 # N for neutral, R for reverse, else the gear's number.
 static func gear_name(gear: int) -> String:
 	if gear == 0:
@@ -331,6 +362,8 @@ func _draw() -> void:
 	if _signal != "off":
 		draw_circle(LAMP_CENTRE, LAMP_RADIUS + 5.0, BACK_COLOUR)
 		draw_circle(LAMP_CENTRE, LAMP_RADIUS, LAMP_GREEN if _signal == "green" else LAMP_RED)
+	if _full_boost_pa > 0.0:
+		_draw_gauge()
 	# The rev counter, with the stall and rated speeds marked.
 	var revs := Rect2(BAR_LEFT, REV_TOP, BAR_WIDTH, BAR_HEIGHT)
 	draw_rect(revs, BACK_COLOUR)
@@ -363,6 +396,36 @@ func _draw() -> void:
 	_mark(front, 1.0 / FRONT_HEADROOM, Color.WHITE)
 	if _front_n <= 0.0:
 		draw_rect(front, FRONT_UP_COLOUR, false, 3.0)
+
+
+# The boost gauge: the dial, a tick every half bar, full boost marked, the
+# boost so far as an arc and a needle.
+func _draw_gauge() -> void:
+	var top_bar := ceilf(_full_boost_pa / PA_PER_BAR * GAUGE_HEADROOM / GAUGE_TICK_BAR) \
+			* GAUGE_TICK_BAR
+	draw_circle(GAUGE_CENTRE, GAUGE_RADIUS + 4.0, BACK_COLOUR)
+	draw_arc(GAUGE_CENTRE, GAUGE_RADIUS - 4.0, GAUGE_FROM_RAD,
+			GAUGE_FROM_RAD + GAUGE_SWEEP_RAD, 48, Color(1.0, 1.0, 1.0, 0.25), 4.0)
+	var ticks := int(roundf(top_bar / GAUGE_TICK_BAR))
+	for i in range(ticks + 1):
+		var dir := Vector2.from_angle(_gauge_angle(i * GAUGE_TICK_BAR / top_bar))
+		draw_line(GAUGE_CENTRE + dir * (GAUGE_RADIUS - 12.0), GAUGE_CENTRE + dir * GAUGE_RADIUS,
+				Color.WHITE, 2.0)
+	var full := Vector2.from_angle(_gauge_angle(_full_boost_pa / PA_PER_BAR / top_bar))
+	draw_line(GAUGE_CENTRE + full * (GAUGE_RADIUS - 14.0), GAUGE_CENTRE + full * GAUGE_RADIUS,
+			RATED_COLOUR, 4.0)
+	var share := clampf(boost_bar() / top_bar, 0.0, 1.0)
+	if share > 0.0:
+		draw_arc(GAUGE_CENTRE, GAUGE_RADIUS - 4.0, GAUGE_FROM_RAD, _gauge_angle(share), 48,
+				GAUGE_COLOUR, 5.0)
+	var needle := Vector2.from_angle(_gauge_angle(share))
+	draw_line(GAUGE_CENTRE, GAUGE_CENTRE + needle * (GAUGE_RADIUS - 8.0), Color.WHITE, 3.0)
+	draw_circle(GAUGE_CENTRE, 4.0, Color.WHITE)
+
+
+# Where on the dial a share of its scale is [rad, clockwise on screen].
+func _gauge_angle(share: float) -> float:
+	return GAUGE_FROM_RAD + GAUGE_SWEEP_RAD * share
 
 
 func _mark(bar: Rect2, share: float, colour: Color) -> void:
