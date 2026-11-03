@@ -307,7 +307,8 @@ A class is pulled at up to three levels, **belofte**, **promo** and
 tractor:
 
 - A new tractor (every part at its first stage) finishes **around last**
-  at the class's first level; a **fully upgraded** one **wins at top**
+  at the class's first level; a **fully upgraded** one **wins at the
+  class's last level**
   (tests/data/rival_difficulty_test.cpp).
 - **At least two seasons on every level.** Winning a level's
   championship opens the level above (winning a class's last level the

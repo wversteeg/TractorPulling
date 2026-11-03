@@ -23,7 +23,7 @@ downshift_share = 0.9
 
 # The field: tractors from barely improved to nearly all of the class's
 # garage (garages/standard_3500.toml), a few with a powershift. A new
-# tractor finishes near the back; about 70 % of the garage wins.
+# tractor finishes near the back; about two thirds of the garage wins.
 # Each driver picks a gear between `gears` for the day's track, the best
 # one as often as their track_reading says; each shifts down at their own
 # engine speed, if their powershift can (tests/data/
