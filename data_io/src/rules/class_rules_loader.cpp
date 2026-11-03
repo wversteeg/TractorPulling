@@ -13,12 +13,16 @@ namespace {
 
 Result<rules::ClassRules> read_class_rules(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
-    const rules::ClassRules class_rules{
+    rules::ClassRules class_rules{
         .max_mass_kg = reader.number("class.max_mass_kg"),
-        .max_pto_power_w = units::metric_hp_to_w(reader.number("class.max_pto_power_hp")),
+        .max_pto_power_w = {},
         .max_engine_speed_rad_s = units::rpm_to_rad_s(reader.number("class.max_engine_speed_rpm")),
         .max_hitch_height_m = reader.number("class.max_hitch_height_m"),
     };
+    // Optional: Sport and up limit the engine's build, not its power.
+    if (const std::optional<double> pto_hp = reader.optional_number("class.max_pto_power_hp")) {
+        class_rules.max_pto_power_w = units::metric_hp_to_w(*pto_hp);
+    }
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }

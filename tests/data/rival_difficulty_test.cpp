@@ -203,5 +203,20 @@ TEST(RivalDifficulty, PromosWinnerIsNearTheBackAtTopAndOnlyAFullyUpgradedTractor
                                             {.share = 1.0, .places = {.best = 1, .worst = 1}}});
 }
 
+// The Sport 2.5 t class's two levels (promo and top), its own tractor and
+// garage: a new Sport tractor finishes at the back of promo and about half
+// its garage wins it; promo's winner starts at the back at top, and only a
+// fully built tractor wins there.
+TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndHalfItsGarageWinsIt) {
+    expect_level("sport_2500_promo.toml", {{.share = 0.0, .places = {.best = 7, .worst = 10}},
+                                           {.share = 0.45, .places = {.best = 1, .worst = 2}}});
+}
+
+TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
+    expect_level("sport_2500_top.toml", {{.share = 0.45, .places = {.best = 8, .worst = 10}},
+                                         {.share = 0.8, .places = {.best = 1, .worst = 4}},
+                                         {.share = 1.0, .places = {.best = 1, .worst = 1}}});
+}
+
 }  // namespace
 }  // namespace tp::field

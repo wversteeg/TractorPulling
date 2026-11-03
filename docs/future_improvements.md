@@ -65,7 +65,9 @@ for the big features; they are repeated at the end for completeness.
   the tractor; a real sled lifts them a few centimetres.
 - **Speed-dependent pan resistance.** The pan's drag does not depend on speed.
   Right for the stock classes, which crawl because they lack the power to run
-  fast; faster classes may need the pan to plough harder with speed.
+  fast; faster classes may need the pan to plough harder with speed. A
+  fully built Sport 2.5 t tractor already pulls its sled at about 17 km/h
+  in 7th; left out until pulls in the heavier classes look wrong.
 - **Sled pitch.** The sled shares its weight between wheels and pan
   quasi-statically; it does not pitch or bounce.
 
@@ -448,9 +450,17 @@ for the big features; they are repeated at the end for completeness.
 - **Ballast at the centre of gravity's height.** Weights bought sit where
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
-- **One class on the ladder.** The tractor path's career has only the
-  standard 3.5 t class (its three levels) so far; the classes above come
-  a class at a time (docs/career.md).
+- **Two classes on the ladder.** The tractor path's career has the
+  standard 3.5 t class (its three levels) and Sport 2.5 t (promo and top)
+  so far; the classes above come a class at a time (docs/career.md).
+- **Sport's engine rules are not checked.** Sport and up limit the
+  engine's build (cylinders, displacement, valves, the turbo's inlet, no
+  intercooler at 2500 kg), not its power; the class rules have no PTO
+  limit for them, and the core checks only mass, engine speed and hitch.
+  The Sport engine's 220 hp is an estimate from those limits.
+- **The roll bar is drawn only.** A tractor's protection (cab or roll
+  bar) changes the picture, not its mass, centre of gravity or the
+  driver's view (the cab camera is the same).
 - **No relegation.** A level or class, once reached, is kept; the NTTO's
   Pro Stocks relegate group I's twelfth to group II.
 - **The first powershift step can cost a little.** In 5th, one gear down

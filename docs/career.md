@@ -77,8 +77,9 @@ Money carries over as it is.
 This is step 3 (real parts) of the plan. Until then, step 2 carries the
 garage's upgrade levels by name from one class's garage to the next.
 
-Each class is pulled at three levels, belofte, promo and top (see
-"Levels within a class"): a season won opens the next level, and top the
+Each class is pulled at its levels, belofte, promo and top, or promo and
+top for the Sport 2.5 t introduction class (see "Levels within a
+class"): a season won opens the next level, and top the
 next class (`tp::career`, `promotion_place = 1`, at least `min_seasons`
 on a level); the player chooses to move up or stay.
 
@@ -123,6 +124,18 @@ rulebooks (game choice):
   mm** ahead of the rear axle (ETPC 1.3.1).
 - Tires and roll-over protection as Sport 4.5 t (a lighter roll bar: 60 ×
   60 × 4 mm up to 2500 kg, ETPC 2.5.2).
+
+In the game (`data/classes/ntto_sport_2500.toml`,
+`data/tractors/sport_2500.toml`): 2500 kg, the hitch at most 0.5 m, 2700
+rpm unloaded, and no PTO power limit (the core checks only mass, power,
+speed and hitch, so the engine's build limits above are not checked yet).
+The tractor is smaller than the standard class's (2.2 m wheelbase, 0.78 m
+rear tires) and pulls under a roll bar instead of a cab. Its engine is an
+estimate from the rules: 4 l, a 55 mm turbo inlet and no intercooler let
+in about 0.19 kg/s of air, about 175 kW of fuel burnt at a smoky
+air-fuel ratio, so **about 220 hp** fully built (152 kW at 2450 rpm on
+the virtual dyno), from a stock farm engine's 90 hp. No powershift:
+eight gears, pulled in 5th to 7th on wheelspin.
 
 ### 3. Sport 4.5 t
 
@@ -303,7 +316,11 @@ tractor:
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
 - The NTTO's standard class has no levels and Pro Stock has groups II and
-  I: the game uses the three Farmstock levels for every class alike.
+  I: the game uses the three Farmstock levels for the classes alike,
+  except **Sport 2.5 t, only promo and top**: it is the introduction to
+  the Farmstock classes and should not hold the player for six seasons
+  or more. A new Sport tractor finishes at the back of promo and wins it
+  with about half its garage; only a fully built one wins at top.
 
 ## Upgrades (game choice)
 

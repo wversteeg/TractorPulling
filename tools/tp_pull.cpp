@@ -771,8 +771,13 @@ int check(const tp::vehicle::Params& tractor, const tp::rules::ClassRules& rules
     const tp::rules::Compliance result = tp::rules::check(rules, tractor);
     const tp::chassis::Params& chassis = tractor.chassis;
     report_rule("mass", chassis.mass_kg, rules.max_mass_kg, "kg", result.too_heavy);
-    report_rule("PTO power", tp::units::w_to_metric_hp(tp::rules::pto_power_w(tractor)),
-                tp::units::w_to_metric_hp(rules.max_pto_power_w), "hp", result.too_much_pto_power);
+    if (rules.max_pto_power_w) {
+        report_rule("PTO power", tp::units::w_to_metric_hp(tp::rules::pto_power_w(tractor)),
+                    tp::units::w_to_metric_hp(*rules.max_pto_power_w), "hp",
+                    result.too_much_pto_power);
+    } else {
+        std::cout << "ok    PTO power: no limit in this class\n";
+    }
     report_rule("unloaded engine speed", rad_s_to_rpm(tractor.engine.high_idle_omega_rad_s),
                 rad_s_to_rpm(rules.max_engine_speed_rad_s), "rpm", result.engine_speed_too_high);
     report_rule("hitch height", chassis.hitch_height_m, rules.max_hitch_height_m, "m",

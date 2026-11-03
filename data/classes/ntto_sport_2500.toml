@@ -1,0 +1,12 @@
+# The Sport class at 2.5 t (NTTO 2026 pulls it at 2600 kg; the rulebooks
+# write their lightest Sport limits for 2500 kg: ETPC Farmstock Rulebook
+# 2026, Level 2; NTTO 2018 ch. 15; docs/career.md). The class limits the
+# engine's build, not its power: at most 4 cylinders and 4.0 l, 2 valves a
+# cylinder, one turbo with a 55 mm air inlet, no intercooler, diesel, no
+# four-wheel drive. Those are rules the simulation does not model yet, so
+# they are not listed here; the class's tractor and garage keep to them.
+
+[class]
+max_mass_kg = 2500.0          # tractor as weighed, driver included
+max_engine_speed_rpm = 2700.0 # unloaded (ETPC Level 2)
+max_hitch_height_m = 0.5      # and never above the rear axle centre

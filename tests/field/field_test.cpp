@@ -146,8 +146,8 @@ TEST(Field, EveryPullerMayCompete) {
     }
     // Some drew more torque than the class allows and were tuned down to
     // its limit.
-    EXPECT_NEAR(most_power_w, ntto_standard_3500().max_pto_power_w,
-                1e-6 * ntto_standard_3500().max_pto_power_w);
+    const double limit_w = ntto_standard_3500().max_pto_power_w.value_or(0.0);
+    EXPECT_NEAR(most_power_w, limit_w, 1e-6 * limit_w);
 }
 
 // The pullers differ, and the same seed gives the same field.

@@ -402,7 +402,8 @@ player drives less evenly than the script, and picks the gear themselves.
 
 A career is a ladder (`data/careers/tractor_path.toml`, `tp::career`,
 [docs/career.md](docs/career.md)): classes, each pulled at three levels,
-belofte, promo and top, each level a season with its own field of rivals.
+belofte, promo and top (the Sport 2.5 t introduction class at promo and
+top only), each level a season with its own field of rivals.
 The standard 3.5 t class's levels share one tractor and its garage
 (`data/garages/standard_3500.toml`, the club garage's parts in finer and
 dearer stages, € 40,000 in all): a new tractor finishes around last in
@@ -415,10 +416,18 @@ had them; the season's board then asks whether to move up or stay
 and defend the title, and what is opened stays open, so the start screen
 offers "Move up" before the next season's first pull too. The money and
 every upgrade carry up, by the upgrade's name. For testing a class, the
-settings' "Start" picks the rung a new career starts on. The tractor path
-holds the standard class for now; Sport 2.5 and 4.5 t, Supersport 3.4,
-3.6 and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a
-class at a time, each with its NTTO and ETPC rules.
+settings' "Start" picks the rung a new career starts on.
+
+The tractor path holds the standard class and Sport 2.5 t. A new class is
+a new tractor: Sport's (`data/tractors/sport_2500.toml`) is smaller, pulls
+under a roll bar instead of a cab, with no powershift, and its engine
+builds from a stock 90 hp to about 220 hp (`data/garages/sport_2500.toml`,
+€ 47,250, its parts named apart from the standard class's so only the
+money carries over). A new Sport tractor starts at the back of promo and
+wins it with about half its garage; only a fully built one wins at top.
+Sport 4.5 t, Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
+Stock and Super Stock follow, a class at a time, each with its NTTO and
+ETPC rules.
 
 ### Playing a run from a game
 

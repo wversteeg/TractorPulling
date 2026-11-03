@@ -7,7 +7,7 @@ skinparam classAttributeIconSize 0
 package "tp::rules" {
   class ClassRules <<struct>> {
     +max_mass_kg : double
-    +max_pto_power_w : double
+    +max_pto_power_w : optional<double>
     +max_engine_speed_rad_s : double
     +max_hitch_height_m : double
   }

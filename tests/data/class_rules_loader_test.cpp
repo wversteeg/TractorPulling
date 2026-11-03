@@ -61,17 +61,24 @@ TEST(ClassRulesLoader, ShippedTractorCompetesInShippedClass) {
 TEST(ClassRulesLoader, ConvertsToSiUnits) {
     const auto result = parse_class_rules(kValidClass, "class.toml");
     ASSERT_TRUE(result.ok()) << result.error().message;
-    EXPECT_DOUBLE_EQ(result.value().max_pto_power_w, 110.0 * 735.49875);
+    EXPECT_DOUBLE_EQ(result.value().max_pto_power_w.value_or(0.0), 110.0 * 735.49875);
     EXPECT_DOUBLE_EQ(result.value().max_engine_speed_rad_s, units::rpm_to_rad_s(2700.0));
     EXPECT_DOUBLE_EQ(result.value().max_mass_kg, 4500.0);
+}
+
+// Sport and up limit the engine's build, not its power: no PTO limit.
+TEST(ClassRulesLoader, ThePtoPowerLimitIsOptional) {
+    const auto result = parse_class_rules(with("max_pto_power_hp = 110.0\n", ""), "class.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_FALSE(result.value().max_pto_power_w.has_value());
 }
 
 TEST(ClassRulesLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("max_mass_kg = 4500.0", "max_mass_kg = 0.0"))
                   .find("class.toml: class: all limits must be > 0"),
               std::string::npos);
-    EXPECT_NE(error_of(with("max_pto_power_hp = 110.0", ""))
-                  .find("class.max_pto_power_hp: missing or not a number"),
+    EXPECT_NE(error_of(with("max_pto_power_hp = 110.0", "max_pto_power_hp = \"lots\""))
+                  .find("class.toml: class.max_pto_power_hp: missing or not a number"),
               std::string::npos);
     EXPECT_NE(error_of(with("max_hitch_height_m = 0.5", "max_hitch_height_m = nan"))
                   .find("class: all limits must be finite"),
