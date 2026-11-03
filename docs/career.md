@@ -167,6 +167,15 @@ ETPC FS 2026, Level 2 (current), and NTTO 2018 ch. 15 (the NTTO's own):
   ROP or ETPC roll bar (ETPC 2.5.2). **A cab is no longer needed.**
 - Wheelie bars mandatory.
 
+In the game (`data/classes/ntto_sport_4500.toml`,
+`data/tractors/sport_4500.toml`): 4500 kg, the hitch at most 0.5 m, 2700
+rpm unloaded, no PTO power limit. A big six-cylinder tractor (2.75 m
+wheelbase, 30.5L-32 puller tires at the class's widest) under a roll bar.
+Its engine is an estimate from the rules: 7 l, intercooled, its 68 mm
+turbo inlet holding it to about 0.45 kg/s of air, so **about 520 hp**
+fully built, from a stock farm engine's 180 hp. No powershift: pulled in
+5th to 7th on wheelspin. All three levels, belofte, promo and top.
+
 ### 4. Supersport 3.4 t
 
 ETPC FS 2026, Level 3:
@@ -321,6 +330,10 @@ tractor:
   the Farmstock classes and should not hold the player for six seasons
   or more. A new Sport tractor finishes at the back of promo and wins it
   with about half its garage; only a fully built one wins at top.
+- Sport 4.5 t has all three again. Being a wheelspin class near its
+  limits at top, about 90 % of its garage reaches the podium there and
+  only a fully built tractor is sure to win; its governor comes in six
+  small stages, since each 50 rpm is worth a metre or more there.
 
 ## Upgrades (game choice)
 

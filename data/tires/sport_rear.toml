@@ -1,8 +1,9 @@
 # The Sport 2.5 t tractor's rear tire: a 24.5" (620 mm) puller tire, cut
 # tread allowed from Sport on (the class allows up to 30.5", 800 mm, on a
 # 32" rim; docs/career.md). As the farm pulling tire (pulling_rear.toml)
-# but wider and a little smaller round, for a 2.5 t tractor; the garage (garages/sport_2500.toml) takes
-# its grip from worn farm tires to cut puller tires.
+# but wider and a little smaller round, for a 2.5 t tractor; the garage
+# (garages/sport_2500.toml) takes its grip from worn farm tires to cut
+# puller tires.
 [tire]
 radius_m = 0.78                    # rolling radius
 section_width_m = 0.62

@@ -1,0 +1,56 @@
+# The Sport class at 4.5 t, at belofte (beloftenniveau), its lowest level in the career
+# (careers/tractor_path.toml): ten events, each on its own track. The
+# pullers stay the same all season.
+
+[season]
+event = "../events/sport_4500_belofte.toml"   # the class and this level's field
+seed = 3301                           # the field and every event's draws
+points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+# Prize money per place at every event [EUR]; the class's garage costs
+# € 68,000 (garages/sport_4500.toml). Belofte pays about as Sport 2.5 t's
+# promo, each level about 30 % more than the one below: a player who buys
+# as they earn needs about three seasons at belofte and two at promo and
+# at top.
+# A disqualified pull earns nothing.
+prize_money_eur = [1600, 1250, 1030, 870, 750, 640, 550, 480, 430, 370]
+garage = "../garages/sport_4500.toml"   # one tractor for the class's levels
+
+[[season.events]]
+name = "Spring opener, watered start"
+track = "../tracks/watered_start.toml"
+
+[[season.events]]
+name = "Firm loam"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Rainy day, covered heavy clay"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Sandy clay"
+track = "../tracks/sandy_clay.toml"
+
+[[season.events]]
+name = "Summer, dry hard clay"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Clay-sand"
+track = "../tracks/ideal_clay_sand.toml"
+
+[[season.events]]
+name = "Dry hard clay again"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Firm loam, late summer"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Autumn, covered heavy clay"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Final, clay-sand"
+track = "../tracks/ideal_clay_sand.toml"
