@@ -1,5 +1,5 @@
 # The Sport 2.5 t tractor's driveline: a farm gearbox geared up for the
-# built engine. The pulling gears, 5th to 8th, are tall and close (about
+# built engine. The tall pulling gears, 5th to 8th, are close (about
 # 15 % apart): at 2600 rpm on the 0.78 m rear tires (tires/sport_rear.toml)
 # the wheels turn at about 27 to 41 km/h, the tractor going slower on its
 # wheelspin. Too tall a gear for the track bogs the engine, too low a gear
