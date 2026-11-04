@@ -187,7 +187,12 @@ package "GDScript (app/godot/scripts)" {
   }
   class MenuBackdrop {
     a tractor pulling the sled at sunset,
-    drawn in 2D behind the menus
+    drawn to scale in 2D behind the menus;
+    tools/make_icons.gd draws the icons from it
+    +view_m : Rect2
+    +layers : BACK, FRONT
+    +animated : bool
+    +time_s : float
   }
   class GarageScreen {
     +buy_buttons : Array[TouchButton]
