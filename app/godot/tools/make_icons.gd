@@ -18,19 +18,19 @@ extends SceneTree
 const DRAW_SIZE := 1024
 # The flat picture on the card, larger: the turned card still fills the
 # icon to its corners [px].
-const FLAT_SIZE := 2048
+const FLAT_SIZE := 4096
 # The world in the icon: from the sled's weight box to the tractor's nose,
 # the ground low down [m].
 const ICON_VIEW_M := Rect2(-3.4, -0.9, 7.1, 7.1)
 # The card shows this much more of the world than the icon, all round.
-const CARD_SHARE := 1.8
+const CARD_SHARE := 3.6
 # The adaptive icon's layers show the middle 66 % in the launcher's mask:
 # the same picture with a margin all round.
 const ADAPTIVE_SHARE := 0.66
 # How the card is turned: about the vertical, the tractor's nose towards
 # the viewer, and a little about the view, the nose up.
-const YAW_DEG := -28.0
-const ROLL_DEG := 4.0
+const YAW_DEG := -45.0
+const ROLL_DEG := 6.0
 const FOV_DEG := 50.0
 # The moment the dirt and smoke are caught at [s].
 const MOMENT_S := 0.37
