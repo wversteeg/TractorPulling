@@ -177,10 +177,17 @@ package "GDScript (app/godot/scripts)" {
     +easy_button, pro_button : TouchButton
     +slider_button, tilt_button : TouchButton
     +new_career_button, start_button, done_button : TouchButton
+    +money_button : TouchButton, for testing
     +show_settings(pro, tilt, tilt_available, guidance, rungs)
+    +show_money(money_eur)
     +start_rung() : int
     ..signals..
-    changed(pro, tilt), done, new_career_requested(rung)
+    changed(pro, tilt), done, new_career_requested(rung),
+    money_requested(amount_eur)
+  }
+  class MenuBackdrop {
+    a tractor pulling the sled at sunset,
+    drawn in 2D behind the menus
   }
   class GarageScreen {
     +buy_buttons : Array[TouchButton]
@@ -338,6 +345,8 @@ MenuPanel <|-- StartScreen
 MenuPanel <|-- ResultScreen
 MenuPanel <|-- BoardScreen
 Control <|-- MenuPanel
+Pull *-- MenuBackdrop : behind the menus,\nthe 3D world not drawn
+Control <|-- MenuBackdrop
 Control <|-- Hud
 MenuPanel ..> TouchButton
 Control <|-- DriveControls

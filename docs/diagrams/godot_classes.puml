@@ -73,6 +73,7 @@ package "tp::godot_binding" {
     +get_event_prize() : int
     +get_garage() : Dictionary
     +buy_upgrade(index) : String
+    +add_money(amount_eur) : bool, for testing
     +get_tuning() : Dictionary
     +set_tuning(ballast_position, pressure_bar)
     ..C++ only..
