@@ -39,9 +39,10 @@ std::vector<int> in_order(int count) {
     return order;
 }
 
-Event make(int count, const sled::Params& sled = sled::testing::reference_params()) {
+Event make(int count, const sled::Params& sled = sled::testing::reference_params(),
+           const Rules& rules = kRules) {
     const std::vector<int> order = in_order(count);
-    const auto event = Event::create(kRules, sled, order);
+    const auto event = Event::create(rules, sled, order);
     if (!event) {
         std::abort();
     }
@@ -502,10 +503,8 @@ TEST(Event, QualifyingFromTwentyMetresShortOfTheLine) {
     rules.qualifying_below_line_m = 20.0;
     // Puller 0 tests at 95 m (the sled stays) and pulls 95 m again.
     constexpr std::array<double, 6> kReach = {95.0, 100.0, 79.0, 82.0, 70.0, 81.0};
-    std::optional<Event> event =
-        Event::create(rules, sled::testing::reference_params(), std::vector<int>{0, 1, 2, 3, 4, 5});
-    ASSERT_TRUE(event.has_value());
-    const std::vector<Pull> pulls = run(*event, [&](const Pull& p) {
+    Event event = make(6, sled::testing::reference_params(), rules);
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
         return p.kind == PullKind::kPullOff ? 80.0 : kReach[static_cast<std::size_t>(p.puller)];
     });
     std::vector<int> pull_off;
@@ -523,13 +522,11 @@ TEST(Event, QualifyingFollowsTheExtendedLine) {
     rules.qualifying_below_line_m = 20.0;
     // Puller 0 tests at 104 m: the line moves to 110 m; they keep it.
     constexpr std::array<double, 5> kReach = {104.0, 95.0, 89.0, 91.0, 60.0};
-    std::optional<Event> event =
-        Event::create(rules, sled::testing::reference_params(), std::vector<int>{0, 1, 2, 3, 4});
-    ASSERT_TRUE(event.has_value());
-    const std::vector<Pull> pulls = run(*event, [&](const Pull& p) {
+    Event event = make(5, sled::testing::reference_params(), rules);
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
         return p.kind == PullKind::kPullOff ? 80.0 : kReach[static_cast<std::size_t>(p.puller)];
     });
-    ASSERT_EQ(event->main_line_m(), 110.0);
+    ASSERT_EQ(event.main_line_m(), 110.0);
     std::vector<int> pull_off;
     for (const Pull& p : pulls) {
         if (p.kind == PullKind::kPullOff) {
