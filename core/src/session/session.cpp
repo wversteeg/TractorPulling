@@ -87,6 +87,7 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.throttle = lerp(from.throttle, to.throttle, alpha);
     out.clutch_pedal = lerp(from.clutch_pedal, to.clutch_pedal, alpha);
     out.sled_x_m = lerp(from.sled_x_m, to.sled_x_m, alpha);
+    out.pulled_m = lerp(from.pulled_m, to.pulled_m, alpha);
     out.sled_y_m = lerp(from.sled_y_m, to.sled_y_m, alpha);
     out.sled_heading_rad = lerp(from.sled_heading_rad, to.sled_heading_rad, alpha);
     out.sled_speed_m_s = lerp(from.sled_speed_m_s, to.sled_speed_m_s, alpha);
@@ -232,6 +233,7 @@ Snapshot Session::snapshot() const noexcept {
             .throttle = input_.throttle,
             .clutch_pedal = input_.clutch_pedal,
             .sled_x_m = pull.sled.position_m - start_m,
+            .pulled_m = pull.sled.position_m - model_.sled_start_m(),
             .sled_y_m = pull.sled.lateral_position_m,
             .sled_heading_rad = pull.sled.heading_rad,
             .sled_speed_m_s = pull.sled.velocity_m_s,

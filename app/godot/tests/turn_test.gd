@@ -210,7 +210,7 @@ func _check_steer_hint(hud: Hud) -> void:
 	_expect(hud.turn_text(releasing).begins_with("Red flag: stop!"), "rolling on: stop")
 	hud.guidance = false
 	hud.show_snapshot({"stage": "releasing", "gear": -1, "tractor_speed_m_s": 0.0,
-			"throttle": 0.0, "engine_omega_rad_s": 80.0, "sled_x_m": 50.0, "pushdown": 0.0,
+			"throttle": 0.0, "engine_omega_rad_s": 80.0, "sled_x_m": 46.0, "pulled_m": 50.0, "pushdown": 0.0,
 			"front_axle_load_n": 1000.0, "clutch_pedal": 1.0}, "", false)
 	_expect(hud.get("_turn").text.is_empty(), "no guidance when it is turned off")
 	hud.guidance = true

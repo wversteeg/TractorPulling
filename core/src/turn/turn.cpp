@@ -265,7 +265,7 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
     restart_if_stalled(pull, model, input);
     const pull::Output out = pull::step(pull, model, input, dt_s);
     state.sled_back = state.sled_back || (pull.sled_mode == pull::SledMode::kDrivingBack &&
-                                          pull.sled.position_m == model.start_line_m() &&
+                                          pull.sled.position_m == model.sled_start_m() &&
                                           pull.sled.velocity_m_s == 0.0);
 
     switch (state.stage) {

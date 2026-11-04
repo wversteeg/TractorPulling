@@ -21,12 +21,13 @@ package "tp::pull" {
     -tractor_ : vehicle::Model
     -sled_ : sled::Params
     -track_ : track::Model
-    -start_line_m_ : double
+    -sled_start_m_ : double
     +{static} create(const Params&) : optional<Model>
     +tractor() : const vehicle::Model&
     +sled() : const sled::Params&
     +track() : const track::Model&
-    +start_line_m() : double
+    +sled_start_m() : double, the sled's rear wheels at the start
+    +start_line_m() : double, the sled's front at the start
   }
   class State <<struct>> {
     +tractor : vehicle::State

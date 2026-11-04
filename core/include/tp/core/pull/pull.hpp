@@ -33,9 +33,17 @@ public:
     [[nodiscard]] const vehicle::Model& tractor() const noexcept { return tractor_; }
     [[nodiscard]] const sled::Params& sled() const noexcept { return sled_; }
     [[nodiscard]] const track::Model& track() const noexcept { return track_; }
-    /// Where the start line is in the pull's coordinates (the tractor's rear
-    /// axle starts at 0): the sled's rear wheels at the start [m].
-    [[nodiscard]] double start_line_m() const noexcept { return start_line_m_; }
+    /// Where the sled's rear wheels stand at the start, in the pull's
+    /// coordinates (the tractor's rear axle starts at 0) [m]. After the
+    /// pull the sled is driven back here.
+    [[nodiscard]] double sled_start_m() const noexcept { return sled_start_m_; }
+    /// Where the start line is in the pull's coordinates: at the sled's
+    /// front (its hook) as it stands at the start. Distances down the track
+    /// are measured from it, and a pull is how far the sled's front gets
+    /// past it [m].
+    [[nodiscard]] double start_line_m() const noexcept {
+        return sled_start_m_ + sled_.hook_ahead_of_wheels_m;
+    }
 
 private:
     Model(const vehicle::Model& tractor, const sled::Params& sled,
@@ -44,7 +52,7 @@ private:
     vehicle::Model tractor_;
     sled::Params sled_;
     track::Model track_;
-    double start_line_m_ = 0.0;
+    double sled_start_m_ = 0.0;
 };
 
 /// What the sled does: pulled on the chain, held where it stands (before

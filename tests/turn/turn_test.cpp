@@ -118,7 +118,7 @@ TEST(Turn, StartsInTheParking) {
     EXPECT_EQ(state.run.pull.tractor.driveline.gear, driveline::kNeutral);
     EXPECT_TRUE(state.run.pull.tractor.engine.running);
     // The sled stands at the start line, as for a pull from the line.
-    EXPECT_EQ(state.run.pull.sled.position_m, model.start_line_m());
+    EXPECT_EQ(state.run.pull.sled.position_m, model.sled_start_m());
 }
 
 // The chain hooks on with the tractor standing, its hitch ahead of the
@@ -248,7 +248,7 @@ TEST(Turn, TheFlagGoesGreenOnceTheTractorStandsReady) {
         waited = waited || state.stage == Stage::kWaitingForTheFlag;
         ready_before_the_flag = state.ready_steps;
         step(state, model, kRules, kParking, hook_up_input(state, t_s, 4), kDt_s);
-        ASSERT_EQ(state.run.pull.sled.position_m, model.start_line_m());
+        ASSERT_EQ(state.run.pull.sled.position_m, model.sled_start_m());
         ASSERT_EQ(state.run.steps, 0U) << "no pull clock before the flag";
     }
     ASSERT_EQ(state.stage, Stage::kPulling);
@@ -375,7 +375,7 @@ TEST(Turn, OffTheGasTheEasyLayoutGetsTheFlag) {
         held_by_the_brakes = held_by_the_brakes ||
                              (!creeping && input.brake_left == 1.0 && input.brake_right == 1.0);
         step(state, model, kRules, kParking, input, kDt_s);
-        ASSERT_EQ(state.run.pull.sled.position_m, model.start_line_m());
+        ASSERT_EQ(state.run.pull.sled.position_m, model.sled_start_m());
     }
     ASSERT_EQ(state.stage, Stage::kPulling);
     EXPECT_TRUE(waited);
@@ -657,7 +657,7 @@ TEST(Turn, AWholeTurnFromTheParkingAndBack) {
     // pull counts them.
     EXPECT_NE(result.ending, run::Ending::kOutOfBounds);
     EXPECT_GT(result.distance_m, 20.0);
-    EXPECT_EQ(played.end.sled_x_m, 0.0);
+    EXPECT_EQ(played.end.pulled_m, 0.0);
     EXPECT_EQ(played.end.sled_y_m, 0.0);
     EXPECT_TRUE(played.end.sled_back);
     EXPECT_FALSE(played.end.chain_hooked);

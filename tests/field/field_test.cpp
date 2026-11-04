@@ -289,25 +289,35 @@ TEST(Driver, GuessesAreTheBestGearOrOneOff) {
     }
 }
 
-// No two pulls are quite the same: grip and clutch timing vary within the
-// set bounds, and not at all with zero bounds.
+// No two pulls are quite the same: grip, clutch timing and the sled pan's
+// drag vary within the set bounds, and not at all with zero bounds.
 TEST(Driver, EveryPullDiffersALittle) {
     const Puller puller = reference();
-    const PullToPull variation{.grip_share = 0.01, .clutch_slip_in_s = 0.3};
+    const sled::Params sled = sled::testing::reference_params();
+    const PullToPull variation{.grip_share = 0.01, .clutch_slip_in_s = 0.3, .pan_drag_share = 0.04};
     math::SplitMix64 random{4};
     std::set<double> grips;
+    std::set<double> drags;
     for (int i = 0; i < 50; ++i) {
-        const Puller today = on_this_pull(puller, variation, random);
-        const double share =
-            today.tractor.rear_tire.traction.limit / puller.tractor.rear_tire.traction.limit - 1.0;
+        const ThisPull today = on_this_pull(puller, sled, variation, random);
+        const double share = today.puller.tractor.rear_tire.traction.limit /
+                                 puller.tractor.rear_tire.traction.limit -
+                             1.0;
         EXPECT_LE(std::abs(share), 0.01 + 1e-12);
-        EXPECT_LE(std::abs(today.driver.clutch_slip_in_s - puller.driver.clutch_slip_in_s),
+        EXPECT_LE(std::abs(today.puller.driver.clutch_slip_in_s - puller.driver.clutch_slip_in_s),
                   0.3 + 1e-12);
-        grips.insert(today.tractor.rear_tire.traction.limit);
+        const double drag = today.sled.pan_friction_coefficient / sled.pan_friction_coefficient;
+        EXPECT_LE(std::abs(drag - 1.0), 0.04 + 1e-12);
+        EXPECT_DOUBLE_EQ(today.sled.pan_plough_coefficient / sled.pan_plough_coefficient, drag);
+        grips.insert(today.puller.tractor.rear_tire.traction.limit);
+        drags.insert(drag);
     }
     EXPECT_GT(grips.size(), 40U);
-    const Puller same = on_this_pull(puller, {}, random);
-    EXPECT_EQ(same.tractor.rear_tire.traction.limit, puller.tractor.rear_tire.traction.limit);
+    EXPECT_GT(drags.size(), 40U);
+    const ThisPull same = on_this_pull(puller, sled, {}, random);
+    EXPECT_EQ(same.puller.tractor.rear_tire.traction.limit,
+              puller.tractor.rear_tire.traction.limit);
+    EXPECT_EQ(same.sled.pan_friction_coefficient, sled.pan_friction_coefficient);
 }
 
 // The event's hash is the exact bits of every entry: a pull one ulp

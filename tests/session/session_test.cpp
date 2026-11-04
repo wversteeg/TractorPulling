@@ -260,7 +260,10 @@ TEST(Session, StartsAtTheStartLine) {
     const Session session = make(setup);
     const Snapshot& start = session.current();
     EXPECT_EQ(start.time_s, 0.0);
-    EXPECT_EQ(start.sled_x_m, 0.0);
+    // The start line is at the sled's front: its rear wheels stand the
+    // hook's distance behind it.
+    EXPECT_EQ(start.pulled_m, 0.0);
+    EXPECT_EQ(start.sled_x_m, -setup.sled.hook_ahead_of_wheels_m);
     EXPECT_GT(start.tractor_x_m, setup.sled.chain.length_m);
     EXPECT_EQ(start.tractor_y_m, 0.0);
     EXPECT_EQ(start.gear, driveline::kNeutral);

@@ -16,6 +16,7 @@
 #include "tractor_pull_run.hpp"
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/char_string.hpp>
+#include <godot_cpp/variant/packed_float64_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
 namespace tp::godot_binding {
@@ -418,6 +419,7 @@ godot::Dictionary TractorPullEvent::get_event() const {
     out["count"] = season_->event_count();
     out["pullers"] = event.puller_count();
     out["full_pull_m"] = event.full_pull_m();
+    out["standard_full_pull_m"] = first_line_m();
     out["turn"] = turn_name(event.turn());
     if (const std::optional<event::Pull> pull = event.pending_pull()) {
         out["pull_kind"] = kind_name(pull->kind);
@@ -499,7 +501,10 @@ godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e, double line_
     out["pull_off_round"] = e.pull.pull_off_round;
     out["reached_m"] = e.reached_m;
     out["disqualified"] = e.disqualified;
-    out["full_pull"] = !e.disqualified && e.reached_m >= line_before_m;
+    // A test pull between the line and the extended line moved the line
+    // instead: it counts its distance, not a full pull.
+    out["full_pull"] = !e.disqualified && e.reached_m >= line_before_m &&
+                       e.outcome.change != event::SledChange::kLineExtended;
     out["gear"] = e.gear;
     out["change"] = change_name(e.outcome.change);
     out["steps"] = e.outcome.steps;
@@ -549,6 +554,11 @@ godot::Array TractorPullEvent::get_standings() const {
         line["disqualified"] = s.disqualified;
         line["pull_off_rounds"] = s.pull_off_rounds;
         line["pull_off_distance_m"] = s.pull_off_distance_m;
+        godot::PackedFloat64Array rounds;
+        for (int r = 0; r < s.pull_off_rounds; ++r) {
+            rounds.push_back(s.pull_off_distances_m.at(static_cast<std::size_t>(r)));
+        }
+        line["pull_off_distances_m"] = rounds;
         out.push_back(line);
     }
     return out;

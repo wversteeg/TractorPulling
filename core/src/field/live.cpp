@@ -132,11 +132,11 @@ void LiveEvent::start_next() noexcept {
         failed_ = true;
         return;
     }
-    const Puller puller =
-        on_this_pull(field_.pullers[static_cast<std::size_t>(next->puller)], pull_to_pull_, pulls_);
-    if (start_job(puller, event_.sled(), pull_rules())) {
+    const ThisPull pull = on_this_pull(field_.pullers[static_cast<std::size_t>(next->puller)],
+                                       event_.sled(), pull_to_pull_, pulls_);
+    if (start_job(pull.puller, pull.sled, pull_rules())) {
         job_pull_ = next;
-        job_gear_ = puller.driver.gear;
+        job_gear_ = pull.puller.driver.gear;
     }
 }
 
@@ -231,8 +231,8 @@ event::Outcome LiveEvent::record_player(const run::Result& result, int gear) noe
     }
     // The draw a scripted puller would take, so the rivals' draws stay
     // play_event's whoever the player is.
-    static_cast<void>(
-        on_this_pull(field_.pullers[static_cast<std::size_t>(player_)], pull_to_pull_, pulls_));
+    static_cast<void>(on_this_pull(field_.pullers[static_cast<std::size_t>(player_)], event_.sled(),
+                                   pull_to_pull_, pulls_));
     entry->pull = *pull;
     entry->reached_m = result.distance_m;
     entry->disqualified = result.ending == run::Ending::kOutOfBounds;

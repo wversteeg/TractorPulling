@@ -7,8 +7,10 @@
 # the full-pull line and a scoreboard showing how far the sled has got;
 # beyond them food tents, a barn, trees and flags. Built from the run's
 # sizes: again only when the track's length or lane width changes (another
-# event's track), and the banner and scoreboard move with the full-pull
-# line (to 110 m after a test pull past 100 m). Only the scoreboard changes
+# event's track). The banner and scoreboard are built over the class's own
+# full-pull line ("banner_line_m", 100 m), and stay there when the line in
+# force moves (to 110 m after a test pull past 100 m, 120 m in a pull-off):
+# the chalk line on the track shows that one. Only the scoreboard changes
 # during a pull.
 #
 # The people, trees, tents, barn, flags and clouds are Kenney's CC0 models
@@ -176,7 +178,7 @@ var _parking_built := -1
 func build(d: Dictionary) -> void:
 	var length_m: float = d["track_length_m"]
 	var lane_m: float = d["lane_width_m"]
-	var full_pull_m: float = d["full_pull_line_m"]
+	var full_pull_m: float = d.get("banner_line_m", d["full_pull_line_m"])
 	var sizes := Vector2(length_m, lane_m)
 	if sizes != _sizes:
 		for child: Node in get_children():

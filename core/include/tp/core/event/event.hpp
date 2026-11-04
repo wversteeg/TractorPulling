@@ -27,10 +27,14 @@ struct Rules {
     double extended_full_pull_m = 0.0;
     /// A pull past the line stops here at the latest.
     double max_distance_m = 0.0;
+    /// The full-pull line in a pull-off: a pull-off reaching it is a full
+    /// pull, and those who make one pull off again.
+    double pull_off_full_pull_m = 0.0;
     /// Places in the pull-off: every full pull, filled up with the best
-    /// runs from `qualifying_distance_m` on.
+    /// runs from `qualifying_below_line_m` short of the line in force on
+    /// (80 m on the 100 m line, 90 m once the line is at 110 m).
     int pull_off_places = 0;
-    double qualifying_distance_m = 0.0;
+    double qualifying_below_line_m = 0.0;
     /// A test puller who may keep the test pull decides once this many
     /// more pulls are done, and re-pulls after this many more (counting the
     /// test pull as the first, the NTTO's 3rd and 6th pull).
@@ -124,6 +128,8 @@ struct Standing {
     /// Pull-off rounds pulled, and the official distance in the last one.
     int pull_off_rounds = 0;
     double pull_off_distance_m = 0.0;
+    /// The official distance in each pull-off round pulled, the first first.
+    std::array<double, kMaxPullOffRounds> pull_off_distances_m{};
 };
 
 /// One class at an event, pull by pull: the running order, test pulls and
@@ -156,9 +162,14 @@ public:
     /// due.
     [[nodiscard]] std::optional<Pull> next() const noexcept;
 
-    /// The sled and full-pull line for the next pull.
+    /// The sled and full-pull line for the next pull: in a pull-off, the
+    /// pull-off line.
     [[nodiscard]] const sled::Params& sled() const noexcept { return sled_; }
-    [[nodiscard]] double full_pull_m() const noexcept { return line_m_; }
+    [[nodiscard]] double full_pull_m() const noexcept {
+        return pull_off_round_ > 0 ? rules_.pull_off_full_pull_m : line_m_;
+    }
+    /// The main round's full-pull line, as the test pulls left it.
+    [[nodiscard]] double main_line_m() const noexcept { return line_m_; }
     /// What the operator now reckons one sled step is worth [m].
     [[nodiscard]] double step_estimate_m() const noexcept { return step_estimate_m_; }
 
@@ -199,6 +210,7 @@ private:
         bool disqualified = false;
         int pull_off_rounds = 0;
         double pull_off_reached_m = 0.0;
+        std::array<double, kMaxPullOffRounds> pull_off_history_m{};
         bool tested = false;
         double test_reached_m = 0.0;
         bool may_keep = false;
@@ -226,7 +238,13 @@ private:
     /// After a pull or a decision: a decision now due, or the next round.
     void advance() noexcept;
     void start_pull_off() noexcept;
+    /// The best main-round pull not `in` the pull-off yet, from
+    /// `qualifying_below_line_m` short of the line on; nothing if none.
+    [[nodiscard]] std::optional<int> best_short_of_the_line(
+        const std::array<bool, kMaxPullers>& in) const noexcept;
     [[nodiscard]] double official(double reached_m) const noexcept;
+    /// A pull-off's distance, capped at the pull-off line.
+    [[nodiscard]] double official_pull_off(double reached_m) const noexcept;
     /// Where `puller` stands in the field by expected distance: 0 the
     /// weakest, 1 the strongest, 0.5 when unknown.
     [[nodiscard]] double strength(int puller) const noexcept;

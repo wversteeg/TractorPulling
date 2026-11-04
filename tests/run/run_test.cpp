@@ -204,7 +204,7 @@ TEST(Run, ATurningPullIsMeasuredDownTheTrack) {
         drive(model, {.gear = 6, .lift_at_s = 15.0, .steering_rad = 0.05}, wide);
     const sled::State& sled = outcome.state.pull.sled;
     EXPECT_EQ(outcome.result.ending, Ending::kStopped);
-    EXPECT_EQ(outcome.result.distance_m, sled.position_m - model.start_line_m());
+    EXPECT_EQ(outcome.result.distance_m, sled.position_m - model.sled_start_m());
     EXPECT_GT(std::abs(sled.heading_rad), 0.05);
     EXPECT_LT(outcome.result.distance_m, sled.distance_m - 0.1);
 }

@@ -122,6 +122,17 @@ TEST(Chain, NeverPushes) {
                 1e-6);
 }
 
+// The start line is at the sled's front, its hook, as it stands at the
+// start: the sled's rear wheels start behind it by the hook's distance,
+// and the tractor's rear axle stands ahead of it.
+TEST(Model, StartLineIsAtTheSledsFront) {
+    const Model model = reference_model();
+    const State state = initial_state(model);
+    EXPECT_EQ(model.sled_start_m(), state.sled.position_m);
+    EXPECT_EQ(model.start_line_m(), state.sled.position_m + model.sled().hook_ahead_of_wheels_m);
+    EXPECT_GT(state.tractor.chassis.position_m, model.start_line_m());
+}
+
 // The chain pulls along its own line: from a hitch above the hook it lifts
 // the sled's front a little and pulls the hitch down. Nose-up on the
 // wheelie bar, the hitch drops about 5 cm, level with the hook, and the
@@ -241,7 +252,7 @@ TEST(Pull, AHeldSledStaysPut) {
 TEST(Pull, TheSledDrivesItselfBack) {
     Driver run;
     run.drive(6, false, 20.0);
-    const double pulled_m = run.state.sled.position_m - run.model.start_line_m();
+    const double pulled_m = run.state.sled.position_m - run.model.sled_start_m();
     ASSERT_GT(pulled_m, 10.0);
     run.state.hooked = false;
     run.state.sled_mode = SledMode::kDrivingBack;
@@ -268,7 +279,7 @@ TEST(Pull, TheSledDrivesItselfBack) {
     }
     EXPECT_NEAR(steps * kDt_s, box_back_s, 0.01);
     steps = 0;
-    while (run.state.sled.position_m > run.model.start_line_m() && steps < 100000) {
+    while (run.state.sled.position_m > run.model.sled_start_m() && steps < 100000) {
         step(run.state, run.model, idle, kDt_s);
         ASSERT_LT(run.state.sled.position_m, previous_m);
         ASSERT_GE(run.state.sled.lateral_position_m, 0.0);
@@ -276,7 +287,7 @@ TEST(Pull, TheSledDrivesItselfBack) {
         ++steps;
     }
     EXPECT_NEAR(steps * kDt_s, pulled_m / sled::kDriveBack_m_s, 0.01);
-    EXPECT_EQ(run.state.sled.position_m, run.model.start_line_m());
+    EXPECT_EQ(run.state.sled.position_m, run.model.sled_start_m());
     EXPECT_EQ(run.state.sled.lateral_position_m, 0.0);
     EXPECT_EQ(run.state.sled.heading_rad, 0.0);
     EXPECT_EQ(run.state.sled.velocity_m_s, 0.0);
@@ -284,7 +295,7 @@ TEST(Pull, TheSledDrivesItselfBack) {
     EXPECT_EQ(run.state.sled.berm_kg, 0.0);
     // There it stays.
     step(run.state, run.model, idle, kDt_s);
-    EXPECT_EQ(run.state.sled.position_m, run.model.start_line_m());
+    EXPECT_EQ(run.state.sled.position_m, run.model.sled_start_m());
 }
 
 TEST(Chain, RunsSidewaysToAnOffsetHitch) {

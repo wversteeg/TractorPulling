@@ -107,9 +107,10 @@ pull::Output step(State& state, const pull::Model& model, const Rules& rules,
     const double time_s = static_cast<double>(state.steps) * dt_s;
     const sled::State& sled = state.pull.sled;
     state.top_speed_m_s = std::max(state.top_speed_m_s, sled.velocity_m_s);
-    // Measured down the track, like the chalk lines: a sled that weaves
-    // travels further than it pulls (sled.distance_m is that travel).
-    const double pulled_m = sled.position_m - model.start_line_m();
+    // Measured down the track at the sled's front, like the chalk lines: a
+    // sled that weaves travels further than it pulls (sled.distance_m is
+    // that travel).
+    const double pulled_m = sled.position_m - model.sled_start_m();
 
     const auto finish = [&](Ending ending, double distance_m) {
         state.result = Result{.ending = ending,

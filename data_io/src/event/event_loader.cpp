@@ -33,8 +33,9 @@ FieldError describe(event::ParamError error) {
             return {"event.rules", "all values must be finite"};
         case ParamError::kDistancesOutOfOrder:
             return {"event.rules",
-                    "need 0 < qualifying_distance_m, sled_target_m <= full_pull_m <= "
-                    "extended_full_pull_m <= max_distance_m"};
+                    "need 0 < sled_target_m <= full_pull_m <= extended_full_pull_m <= "
+                    "pull_off_full_pull_m <= max_distance_m and "
+                    "0 < qualifying_below_line_m < full_pull_m"};
         case ParamError::kPlacesOutOfRange:
             return {"event.rules.pull_off_places", "must be 1 to 32"};
         case ParamError::kTurnsOutOfOrder:
@@ -51,6 +52,13 @@ FieldError describe(event::ParamError error) {
             return {"event.pullers", "invalid"};
     }
     return {"event.rules", "invalid"};
+}
+
+// Written to also reject NaN.
+bool pull_to_pull_valid(const field::PullToPull& pull_to_pull) {
+    const auto share_ok = [](double share) { return share >= 0.0 && share < 1.0; };
+    return share_ok(pull_to_pull.grip_share) && pull_to_pull.clutch_slip_in_s >= 0.0 &&
+           share_ok(pull_to_pull.pan_drag_share);
 }
 
 FieldError describe(field::ParamError error) {
@@ -116,8 +124,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .full_pull_m = reader.number("event.rules.full_pull_m"),
         .extended_full_pull_m = reader.number("event.rules.extended_full_pull_m"),
         .max_distance_m = reader.number("event.rules.max_distance_m"),
+        .pull_off_full_pull_m = reader.number("event.rules.pull_off_full_pull_m"),
         .pull_off_places = static_cast<int>(reader.integer("event.rules.pull_off_places")),
-        .qualifying_distance_m = reader.number("event.rules.qualifying_distance_m"),
+        .qualifying_below_line_m = reader.number("event.rules.qualifying_below_line_m"),
         .decide_after_pulls = static_cast<int>(reader.integer("event.rules.decide_after_pulls")),
         .repull_after_pulls = static_cast<int>(reader.integer("event.rules.repull_after_pulls")),
         .sled_target_m = reader.number("event.rules.sled_target_m"),
@@ -154,6 +163,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     const field::PullToPull pull_to_pull{
         .grip_share = reader.number("event.field.pull_to_pull_grip_share"),
         .clutch_slip_in_s = reader.number("event.field.pull_to_pull_clutch_slip_in_s"),
+        // Optional: without it the sled's pan drags the same on every pull.
+        .pan_drag_share =
+            reader.optional_number("event.field.pull_to_pull_pan_drag_share").value_or(0.0),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
@@ -188,12 +200,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     if (const std::optional<LoadError>& late = reader.error()) {
         return *late;
     }
-    // Written to also reject NaN.
-    const bool grip_ok = pull_to_pull.grip_share >= 0.0 && pull_to_pull.grip_share < 1.0;
-    const bool clutch_ok = pull_to_pull.clutch_slip_in_s >= 0.0;
-    if (!grip_ok || !clutch_ok) {
+    if (!pull_to_pull_valid(pull_to_pull)) {
         return detail::make_error(source, "event.field",
-                                  "pull_to_pull values must be >= 0, the grip share < 1");
+                                  "pull_to_pull values must be >= 0, the shares < 1");
     }
     if (seed < 0) {
         return detail::make_error(source, "event.seed", "must not be negative");

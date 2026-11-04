@@ -69,7 +69,7 @@ func _tractor_x() -> float:
 
 
 func _sled_x() -> float:
-	return float((_pull.get("run") as TractorPullRun).get_snapshot()["sled_x_m"])
+	return float((_pull.get("run") as TractorPullRun).get_snapshot()["pulled_m"])
 
 
 func _play() -> void:

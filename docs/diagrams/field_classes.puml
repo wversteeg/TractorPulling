@@ -45,6 +45,11 @@ package "tp::field" {
   class PullToPull <<struct>> {
     +grip_share : double
     +clutch_slip_in_s : double
+    +pan_drag_share : double
+  }
+  class ThisPull <<struct>> {
+    +puller : Puller
+    +sled : sled::Params
   }
   class Venue <<struct>> {
     +track : track::Params
@@ -92,7 +97,7 @@ package "tp::field" {
     +run_pull(const Puller&, const sled::Params&, const track::Params&,\n      const run::Rules&) : optional<run::Result>
     +best_gear(const Puller&, sled, track, lowest, highest, const run::Rules&) : optional<int>
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
-    +on_this_pull(const Puller&, const PullToPull&, SplitMix64&) : Puller
+    +on_this_pull(const Puller&, const sled::Params&, const PullToPull&,\n      SplitMix64&) : ThisPull
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
     +trial_pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
     +pull_rules(const event::Rules&, const Venue&, full_pull_m, event::PullKind) : run::Rules
@@ -162,6 +167,7 @@ package "tp::field" {
   FieldFns ..> Variation
   FieldFns ..> Field
   FieldFns ..> PullToPull
+  FieldFns ..> ThisPull
   FieldFns ..> Venue
   FieldFns ..> PlayedEvent
   PlayedEvent *-- LogEntry

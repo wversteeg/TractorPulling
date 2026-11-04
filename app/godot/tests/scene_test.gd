@@ -53,7 +53,7 @@ func _check() -> void:
 	if s.is_empty():
 		return
 	_expect(float(s["time_s"]) > 9.0, "10 s of frames ran about 10 s of the run: %s" % s["time_s"])
-	_expect(float(s["sled_x_m"]) > 1.0, "the sled has moved: %s m" % s["sled_x_m"])
+	_expect(float(s["pulled_m"]) > 1.0, "the sled has moved: %s m" % s["pulled_m"])
 
 	var tractor: Node3D = _pull.get("tractor_view")
 	var sled: Node3D = _pull.get("sled_view")
@@ -74,19 +74,23 @@ func _check() -> void:
 	_expect(absf(hitch.distance_to(hook) - chain_m) < 0.1 * chain_m,
 			"hitch to hook is the chain's length: %.2f m" % hitch.distance_to(hook))
 
-	# The venue's banner stands at the full-pull line, and follows it when a
-	# test pull moves it to 110 m; the rest of the venue is not rebuilt.
+	# The venue's banner stands at the class's full-pull line, and stays
+	# there when a test pull moves the line in force to 110 m; the rest of
+	# the venue is not rebuilt.
 	var venue: VenueView = _pull.get("venue_view")
 	_expect(venue.banner_at_m() == float(dimensions["full_pull_line_m"]),
 			"the banner at the full-pull line: %s m" % venue.banner_at_m())
 	var parts := venue.get_child_count()
 	var first_part := venue.get_child(0).get_instance_id()
 	var moved := dimensions.duplicate()
+	moved["banner_line_m"] = dimensions["full_pull_line_m"]
 	moved["full_pull_line_m"] = 110.0
 	venue.build(moved)
-	_expect(venue.banner_at_m() == 110.0 and venue.get_child_count() == parts
+	_expect(venue.banner_at_m() == float(dimensions["full_pull_line_m"])
+			and venue.get_child_count() == parts
 			and venue.get_child(0).get_instance_id() == first_part,
-			"the banner moves with the line, the venue stays: %s m" % venue.banner_at_m())
+			"the banner stays at 100 m when the line moves, the venue too: %s m"
+			% venue.banner_at_m())
 	venue.build(dimensions)
 	# Another event's track, a wider lane: the venue is built again, with
 	# its banner at the line and a working scoreboard.
@@ -136,7 +140,7 @@ func _check() -> void:
 	# is a little more than STEP_M (it moves in frames): about the sled's
 	# distance in STEP_M to MARK_STEP_MOST_M steps. Half the step would
 	# give twice the points.
-	var moved_m := float(s["sled_x_m"])
+	var moved_m := float(s["pulled_m"])
 	var fewest := int(moved_m / MARK_STEP_MOST_M) - 2
 	var most := int(moved_m / TrackMarks.STEP_M) + 2
 	_expect(counts.x >= fewest and counts.x <= most and counts.y == counts.x

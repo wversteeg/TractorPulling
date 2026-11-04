@@ -1,5 +1,6 @@
 # A panel with a table: the event as it goes (the pulls and the sled
-# operator's verdicts), the event's top ten and the season's. A title,
+# operator's verdicts, the pulls to beat in bold), the event's top ten and
+# the season's. A title,
 # the rows of columns (the player's highlighted) in a list that scrolls
 # with a finger and follows the newest row, a status line and up to two
 # buttons; the game fills them in.
@@ -15,6 +16,8 @@ const ROW_SIZE := 24
 const COLUMN_GAP := 28
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const PLAYER_COLOUR := Color(1.0, 0.8, 0.2)
+# How much heavier a bold row's strokes are (FontVariation).
+const BOLD_EMBOLDEN := 1.0
 # Wider than the other screens' buttons: "Next event", "Pull again".
 const WIDE_BUTTON := Vector2(260.0, 90.0)
 
@@ -26,6 +29,7 @@ var _scroll := ScrollContainer.new()
 var _status: Label
 # The list was at its end before the rows changed: it follows the newest.
 var _follow := true
+var _bold := FontVariation.new()
 
 
 func _init() -> void:
@@ -34,6 +38,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
+	_bold.base_font = ThemeDB.fallback_font
+	_bold.variation_embolden = BOLD_EMBOLDEN
 	_title = add_line(TITLE_SIZE)
 	_table.add_theme_constant_override("h_separation", COLUMN_GAP)
 	_table.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -64,11 +70,11 @@ func set_title(text: String) -> void:
 
 
 # `rows`: rows of the same number of columns; the rows in `highlights` are
-# the player's. A list (`newest_last`, as the event's pulls) scrolled to its
-# end stays there, showing the newest; a table (the standings) opens at its
-# top.
+# the player's, and those in `strong` are bold (the pulls to beat). A list
+# (`newest_last`, as the event's pulls) scrolled to its end stays there,
+# showing the newest; a table (the standings) opens at its top.
 func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = [],
-		newest_last: bool = true) -> void:
+		newest_last: bool = true, strong: PackedInt32Array = []) -> void:
 	if not newest_last:
 		_follow = false
 		_scroll.scroll_vertical = 0
@@ -83,6 +89,8 @@ func set_rows(rows: Array[PackedStringArray], highlights: PackedInt32Array = [],
 			cell.add_theme_font_size_override("font_size", ROW_SIZE)
 			cell.add_theme_color_override("font_color",
 					PLAYER_COLOUR if highlights.has(i) else TEXT_COLOUR)
+			if strong.has(i):
+				cell.add_theme_font_override("font", _bold)
 			_table.add_child(cell)
 
 

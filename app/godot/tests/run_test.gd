@@ -176,13 +176,14 @@ func _check_event() -> void:
 	_expect(error.is_empty(), "the season: " + error)
 	var season := event.get_season()
 	var names: PackedStringArray = season.get("names", PackedStringArray())
-	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 10
+	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 15
 			and names[0] == "You" and names[1] == "Henk", "the season: %s" % season)
 	error = event.start_event()
 	_expect(error.is_empty(), "the first event: " + error)
 	var info := event.get_event()
 	_expect(info.get("name", "") == "Spring opener, watered start" and info.get("index", -1) == 0
-			and info.get("pullers", 0) == 10 and info.get("full_pull_m", 0.0) == 100.0,
+			and info.get("pullers", 0) == 15 and info.get("full_pull_m", 0.0) == 100.0
+			and info.get("standard_full_pull_m", 0.0) == 100.0,
 			"the event: %s" % info)
 
 	_check_tuning(event)

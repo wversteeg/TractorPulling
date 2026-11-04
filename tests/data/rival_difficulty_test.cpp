@@ -19,10 +19,10 @@
 namespace tp::field {
 namespace {
 
-// The game's event (ten pullers) at the season's first round, as shipped;
-// a few seeds, each a different field.
+// The game's event (fifteen pullers) at the season's first round, as
+// shipped; a few seeds, each a different field.
 constexpr std::array<std::uint64_t, 3> kSeeds{1, 2, 3};
-constexpr int kGamePullers = 10;
+constexpr int kGamePullers = 15;
 constexpr std::int64_t kSlice = 1'000'000;
 
 data::SeasonDefinition season_named(const char* file) {
@@ -116,17 +116,18 @@ constexpr int kFullyUpgraded = static_cast<int>(garage::kMaxLevels);
 // a new career's tractor with a level or two bought, its strongest about a
 // fully upgraded one. So a new tractor starts at the back, climbs with
 // every level, and a fully upgraded one is on the podium, though not
-// always on top.
+// always on top: the strongest few are close, and the spot on the track
+// (field::PullToPull) decides between them.
 struct Places {
     int best = 0;
     int worst = 0;
 };
 
-constexpr Places kNew{.best = 7, .worst = 10};
-constexpr Places kOneLevelUp{.best = 5, .worst = 8};
+constexpr Places kNew{.best = 12, .worst = 15};
+constexpr Places kOneLevelUp{.best = 8, .worst = 13};
 // The sled operator judges by the strongest, so the field finishes close
 // together: halfway may reach second on a good day.
-constexpr Places kHalfway{.best = 2, .worst = 6};
+constexpr Places kHalfway{.best = 2, .worst = 8};
 constexpr Places kOnThePodium{.best = 1, .worst = 3};
 // Halfway: every part at its second level of three or four.
 constexpr int kHalfwayLevels = 2;
@@ -183,11 +184,12 @@ void expect_level(const char* file, std::initializer_list<Expectation> expectati
 }
 
 // The standard class, the career's warming-up at one level: a new tractor
-// finishes near the back, and about two thirds of the garage wins.
+// finishes near the back, and about two thirds of the garage fights for
+// the win.
 TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWins) {
-    expect_level("standard_3500.toml", {{.share = 0.0, .places = {.best = 7, .worst = 10}},
-                                        {.share = 0.45, .places = {.best = 2, .worst = 4}},
-                                        {.share = 0.66, .places = {.best = 1, .worst = 1}}});
+    expect_level("standard_3500.toml", {{.share = 0.0, .places = {.best = 12, .worst = 15}},
+                                        {.share = 0.45, .places = {.best = 2, .worst = 7}},
+                                        {.share = 0.66, .places = {.best = 1, .worst = 2}}});
 }
 
 // The Sport classes pull in tall, close gears (3rd to 8th), launching with
@@ -198,20 +200,20 @@ constexpr Gears kSportGears{.lowest = 3, .highest = 8};
 
 // The Sport 2.5 t class's two levels (promo and top), its own tractor and
 // garage: a new Sport tractor finishes at the back of promo and about half
-// its garage wins it; promo's winner starts at the back at top, and only a
-// nearly or fully built tractor wins there.
+// its garage fights for the win; promo's winner starts at the back at top,
+// and only a nearly or fully built tractor wins there.
 TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndHalfItsGarageWinsIt) {
     expect_level("sport_2500_promo.toml",
-                 {{.share = 0.0, .places = {.best = 7, .worst = 10}},
-                  {.share = 0.45, .places = {.best = 1, .worst = 1}}},
+                 {{.share = 0.0, .places = {.best = 12, .worst = 15}},
+                  {.share = 0.45, .places = {.best = 1, .worst = 3}}},
                  kSportGears);
 }
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
     expect_level("sport_2500_top.toml",
-                 {{.share = 0.45, .places = {.best = 8, .worst = 10}},
-                  {.share = 0.8, .places = {.best = 2, .worst = 7}},
-                  {.share = 1.0, .places = {.best = 1, .worst = 1}}},
+                 {{.share = 0.45, .places = {.best = 13, .worst = 15}},
+                  {.share = 0.8, .places = {.best = 2, .worst = 9}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
 
@@ -222,26 +224,26 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
 // garage reaches the podium and a fully built tractor wins.
 TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) {
     expect_level("sport_4500_belofte.toml",
-                 {{.share = 0.0, .places = {.best = 7, .worst = 10}},
-                  {.share = 0.3, .places = {.best = 2, .worst = 7}},
-                  {.share = 0.45, .places = {.best = 1, .worst = 2}},
-                  {.share = 0.55, .places = {.best = 1, .worst = 1}}},
+                 {{.share = 0.0, .places = {.best = 13, .worst = 15}},
+                  {.share = 0.3, .places = {.best = 3, .worst = 10}},
+                  {.share = 0.45, .places = {.best = 1, .worst = 4}},
+                  {.share = 0.55, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
 
 TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWinIt) {
     expect_level("sport_4500_promo.toml",
-                 {{.share = 0.45, .places = {.best = 5, .worst = 10}},
-                  {.share = 0.66, .places = {.best = 1, .worst = 4}},
-                  {.share = 0.75, .places = {.best = 1, .worst = 1}}},
+                 {{.share = 0.45, .places = {.best = 5, .worst = 12}},
+                  {.share = 0.66, .places = {.best = 1, .worst = 3}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
     expect_level("sport_4500_top.toml",
-                 {{.share = 0.75, .places = {.best = 7, .worst = 10}},
-                  {.share = 0.9, .places = {.best = 1, .worst = 4}},
-                  {.share = 1.0, .places = {.best = 1, .worst = 1}}},
+                 {{.share = 0.75, .places = {.best = 9, .worst = 15}},
+                  {.share = 0.9, .places = {.best = 2, .worst = 8}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
 

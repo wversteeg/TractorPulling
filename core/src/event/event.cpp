@@ -63,16 +63,21 @@ bool running_order_valid(std::span<const int> order) noexcept {
 }  // namespace
 
 std::optional<ParamError> validate(const Rules& rules) noexcept {
-    const std::array distances = {rules.full_pull_m,    rules.extended_full_pull_m,
-                                  rules.max_distance_m, rules.qualifying_distance_m,
-                                  rules.sled_target_m,  rules.step_m};
+    const std::array distances = {rules.full_pull_m,
+                                  rules.extended_full_pull_m,
+                                  rules.max_distance_m,
+                                  rules.pull_off_full_pull_m,
+                                  rules.qualifying_below_line_m,
+                                  rules.sled_target_m,
+                                  rules.step_m};
     if (!std::ranges::all_of(distances, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
-    if (rules.qualifying_distance_m <= 0.0 || rules.qualifying_distance_m > rules.full_pull_m ||
-        rules.sled_target_m <= 0.0 || rules.sled_target_m > rules.full_pull_m ||
-        rules.full_pull_m > rules.extended_full_pull_m ||
-        rules.extended_full_pull_m > rules.max_distance_m) {
+    if (rules.qualifying_below_line_m <= 0.0 ||
+        rules.qualifying_below_line_m >= rules.full_pull_m || rules.sled_target_m <= 0.0 ||
+        rules.sled_target_m > rules.full_pull_m || rules.full_pull_m > rules.extended_full_pull_m ||
+        rules.extended_full_pull_m > rules.pull_off_full_pull_m ||
+        rules.pull_off_full_pull_m > rules.max_distance_m) {
         return ParamError::kDistancesOutOfOrder;
     }
     if (rules.pull_off_places < 1 || rules.pull_off_places > kMaxPullers) {
@@ -162,6 +167,10 @@ std::optional<Pull> Event::next() const noexcept {
 
 double Event::official(double reached_m) const noexcept {
     return std::min(reached_m, line_m_);
+}
+
+double Event::official_pull_off(double reached_m) const noexcept {
+    return std::min(reached_m, rules_.pull_off_full_pull_m);
 }
 
 void Event::insert(std::size_t position, const Pull& pull) noexcept {
@@ -339,6 +348,7 @@ Outcome Event::record_pull(double reached_m, bool disqualified) noexcept {
         case PullKind::kPullOff:
             entry.pull_off_rounds = pull->pull_off_round;
             entry.pull_off_reached_m = reached;
+            entry.pull_off_history_m[static_cast<std::size_t>(pull->pull_off_round - 1)] = reached;
             break;
     }
     advance();
@@ -419,39 +429,47 @@ void Event::decide(bool keep) noexcept {
     advance();
 }
 
+std::optional<int> Event::best_short_of_the_line(
+    const std::array<bool, kMaxPullers>& in) const noexcept {
+    std::optional<int> best;
+    for (int i = 0; i < count_; ++i) {
+        const Entry& e = entries_[static_cast<std::size_t>(i)];
+        const bool qualifies = !in[static_cast<std::size_t>(i)] && e.pulled && !e.disqualified &&
+                               e.reached_m >= line_m_ - rules_.qualifying_below_line_m;
+        if (qualifies &&
+            (!best || e.reached_m > entries_[static_cast<std::size_t>(*best)].reached_m)) {
+            best = i;
+        }
+    }
+    return best;
+}
+
 void Event::start_pull_off() noexcept {
     // Who pulls in the next pull-off round, in running order: after the
     // main round every full pull, filled up to the places with the best
-    // runs from the qualifying distance on; after a pull-off, those who
-    // made a full pull again.
+    // runs from `qualifying_below_line_m` short of the line on; after a
+    // pull-off, those who reached the pull-off line.
     std::array<bool, kMaxPullers> in{};
     int qualifiers = 0;
     double best_full_m = -1.0;
+    const double line_m = pull_off_round_ == 0 ? line_m_ : rules_.pull_off_full_pull_m;
     for (int i = 0; i < count_; ++i) {
         const Entry& e = entries_[static_cast<std::size_t>(i)];
         const bool candidate =
             pull_off_round_ == 0 ? e.pulled : e.pull_off_rounds == pull_off_round_;
         const double reached = pull_off_round_ == 0 ? e.reached_m : e.pull_off_reached_m;
-        if (candidate && reached >= line_m_) {
+        if (candidate && reached >= line_m) {
             in[static_cast<std::size_t>(i)] = true;
             ++qualifiers;
             best_full_m = std::max(best_full_m, reached);
         }
     }
     while (pull_off_round_ == 0 && qualifiers < rules_.pull_off_places) {
-        int best = -1;
-        for (int i = 0; i < count_; ++i) {
-            const Entry& e = entries_[static_cast<std::size_t>(i)];
-            if (!in[static_cast<std::size_t>(i)] && e.pulled &&
-                e.reached_m >= rules_.qualifying_distance_m &&
-                (best < 0 || e.reached_m > entries_[static_cast<std::size_t>(best)].reached_m)) {
-                best = i;
-            }
-        }
-        if (best < 0) {
+        const std::optional<int> best = best_short_of_the_line(in);
+        if (!best) {
             break;
         }
-        in[static_cast<std::size_t>(best)] = true;
+        in[static_cast<std::size_t>(*best)] = true;
         ++qualifiers;
     }
     if (qualifiers < 2 || pull_off_round_ >= kMaxPullOffRounds) {
@@ -459,8 +477,8 @@ void Event::start_pull_off() noexcept {
         head_ = 0;
         return;
     }
-    // Heavy enough that the strongest pull so far stops at the line; one
-    // step at least.
+    // Heavy enough that the strongest pull so far stops at the main
+    // round's line, short of the pull-off line; one step at least.
     const int steps = best_full_m >= line_m_ ? steps_for(best_full_m - line_m_) : 1;
     sled_ = sled::heavier(sled_, steps);
     ++pull_off_round_;
@@ -490,13 +508,19 @@ std::span<const Standing> Event::standings() noexcept {
         if (!e.pulled) {
             continue;
         }
-        standings_[size++] = {.puller = i,
-                              .place = 0,
-                              .distance_m = official(e.reached_m),
-                              .full_pull = e.reached_m >= line_m_,
-                              .disqualified = e.disqualified,
-                              .pull_off_rounds = e.pull_off_rounds,
-                              .pull_off_distance_m = official(e.pull_off_reached_m)};
+        Standing& standing = standings_[size++];
+        standing = {.puller = i,
+                    .place = 0,
+                    .distance_m = official(e.reached_m),
+                    .full_pull = e.reached_m >= line_m_,
+                    .disqualified = e.disqualified,
+                    .pull_off_rounds = e.pull_off_rounds,
+                    .pull_off_distance_m = official_pull_off(e.pull_off_reached_m),
+                    .pull_off_distances_m = {}};
+        for (int r = 0; r < e.pull_off_rounds; ++r) {
+            const auto round = static_cast<std::size_t>(r);
+            standing.pull_off_distances_m[round] = official_pull_off(e.pull_off_history_m[round]);
+        }
     }
     const auto ahead = [](const Standing& a, const Standing& b) {
         if (a.pull_off_rounds != b.pull_off_rounds) {
