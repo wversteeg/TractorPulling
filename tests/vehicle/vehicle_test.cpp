@@ -614,8 +614,9 @@ TEST(VehicleReversing, BacksUpInReverse) {
     EXPECT_LT(back.last.tire_force_n, 0.0);
     EXPECT_GT(back.state.driveline.input_omega_rad_s, 0.0);
     EXPECT_EQ(back.state.chassis.lateral_position_m, 0.0);
-    // Reverse is a crawling gear: at most a few km/h.
-    EXPECT_LT(back.max_speed_m_s, 1.5);
+    // Reverse is a slow gear: about 9 km/h at the rated speed, less at
+    // this little throttle.
+    EXPECT_LT(back.max_speed_m_s, 2.5);
 }
 
 // With the clutch pressed the resistances bring it to rest, and it stays

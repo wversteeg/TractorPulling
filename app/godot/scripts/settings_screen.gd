@@ -6,19 +6,26 @@
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure. "Start" (for testing a class) picks the
 # rung of the career's ladder, a class at a level, the new career starts on.
+# "+ € 1000" (for testing, for now) puts that much in the bank.
 class_name SettingsScreen
 extends MenuPanel
 
 signal changed(pro: bool, tilt: bool, guidance: bool)
 signal done
 signal new_career_requested(rung: int)
+signal money_requested(amount_eur: int)
 
-const SETTINGS_SIZE := Vector2(820.0, 680.0)
+# Wide enough for New career and three buttons beside it.
+const SETTINGS_SIZE := Vector2(960.0, 680.0)
 const TITLE_SIZE := 36
 const LINE_SIZE := 26
 const HINT_SIZE := 20
 # Lower than the other screens' buttons: four rows fit the screen's height.
 const SETTING_BUTTON_SIZE := Vector2(200.0, 70.0)
+# Narrower, so the last row's four buttons fit the panel.
+const LAST_ROW_BUTTON_WIDTH := 160.0
+# What "+ € 1000" adds to the bank [EUR].
+const TEST_MONEY_EUR := 1000
 
 var easy_button: TouchButton
 var pro_button: TouchButton
@@ -28,6 +35,7 @@ var guidance_on_button: TouchButton
 var guidance_off_button: TouchButton
 var new_career_button: TouchButton
 var start_button: TouchButton
+var money_button: TouchButton
 var done_button: TouchButton
 var _hint: Label
 var _pro := false
@@ -42,6 +50,8 @@ var _rungs := PackedStringArray()
 var _start_rung := 0
 # The last tap was on "Start": the hint names the rung.
 var _start_shown := false
+# The bank after the last tap on "+ € 1000", or -1: the hint shows it.
+var _money_shown_eur := -1
 
 
 func _init() -> void:
@@ -70,10 +80,13 @@ func _ready() -> void:
 	new_career_button = add_button(go, "New career")
 	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
 	start_button = add_button(go, "Start: 1")
+	money_button = add_button(go, "+ € %d" % TEST_MONEY_EUR)
 	done_button = add_button(go, "Done")
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
-			guidance_on_button, guidance_off_button, start_button, done_button]:
+			guidance_on_button, guidance_off_button, start_button, money_button, done_button]:
 		button.custom_minimum_size = SETTING_BUTTON_SIZE
+	for button: TouchButton in [start_button, money_button, done_button]:
+		button.custom_minimum_size.x = LAST_ROW_BUTTON_WIDTH
 	new_career_button.custom_minimum_size.y = SETTING_BUTTON_SIZE.y
 	easy_button.tapped.connect(func() -> void: _pick(false, _tilt, _guidance))
 	pro_button.tapped.connect(func() -> void: _pick(true, _tilt, _guidance))
@@ -84,6 +97,7 @@ func _ready() -> void:
 	done_button.tapped.connect(func() -> void: done.emit())
 	new_career_button.tapped.connect(_ask_new_career)
 	start_button.tapped.connect(_next_start)
+	money_button.tapped.connect(func() -> void: money_requested.emit(TEST_MONEY_EUR))
 
 
 # Shows the settings as they are; `tilt_available` whether the device can
@@ -98,6 +112,15 @@ func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool =
 	_start_rung = clampi(_start_rung, 0, maxi(rungs.size() - 1, 0))
 	_career_asked = false
 	_start_shown = false
+	_money_shown_eur = -1
+	_show()
+
+
+# The bank after "+ € 1000" added to it, `money_eur`.
+func show_money(money_eur: int) -> void:
+	_career_asked = false
+	_start_shown = false
+	_money_shown_eur = money_eur
 	_show()
 
 
@@ -111,6 +134,7 @@ func _next_start() -> void:
 	_start_rung = 0 if _rungs.is_empty() else (_start_rung + 1) % _rungs.size()
 	_career_asked = false
 	_start_shown = true
+	_money_shown_eur = -1
 	_show()
 
 
@@ -120,6 +144,7 @@ func _pick(pro: bool, tilt: bool, guidance: bool) -> void:
 	_guidance = guidance
 	_career_asked = false
 	_start_shown = false
+	_money_shown_eur = -1
 	_show()
 	changed.emit(pro, tilt, guidance)
 
@@ -141,6 +166,10 @@ func _show() -> void:
 	if _start_shown:
 		_hint.text = "For testing: a new career starts at %s." % start_at
 		return
+	if _money_shown_eur >= 0:
+		_hint.text = "For testing: %s added. Money: %s." % [GarageScreen.euros(TEST_MONEY_EUR),
+				GarageScreen.euros(_money_shown_eur)]
+		return
 	if _tilt:
 		_hint.text = ("Hold the phone like a steering wheel. However you hold it when you "
 				+ "tap Pull is straight ahead.") if _tilt_available \
@@ -158,4 +187,5 @@ func _ask_new_career() -> void:
 		return
 	_career_asked = true
 	_start_shown = false
+	_money_shown_eur = -1
 	_show()

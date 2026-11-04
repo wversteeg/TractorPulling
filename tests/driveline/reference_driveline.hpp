@@ -7,12 +7,12 @@ namespace tp::driveline::testing {
 
 // Mirrors data/drivelines/farm_stock_light.toml: 8 forward gears and a
 // reverse; with a 0.8 m tire at 2200 rpm, 1st is ~2 km/h, 4th ~7 km/h, the
-// pulling gears 5th to 7th ~11-14 km/h, 8th ~30 km/h, reverse ~2.5 km/h.
+// pulling gears 5th to 7th ~11-14 km/h, 8th ~30 km/h, reverse ~9 km/h.
 inline Params reference_params() {
     return Params{
         .gear_ratios = {15.0, 10.5, 7.0, 4.2, 2.65, 2.4, 2.2, 1.0},
         .gear_count = 8,
-        .reverse_ratio = 12.0,
+        .reverse_ratio = 3.4,
         .final_drive_ratio = 22.0,
         .efficiency = 0.9,
         .input_inertia_kg_m2 = 0.05,

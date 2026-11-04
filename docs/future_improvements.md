@@ -488,6 +488,9 @@ for the big features; they are repeated at the end for completeness.
   everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
 - **The rivals do not upgrade.** Their tractors are drawn once for the
   season around the reference tractor.
+- **"+ € 1000" in the settings is for testing.** It puts money in the
+  bank at a tap (TractorPullEvent.add_money); take it out, with "Start",
+  before a release.
 
 ## Roadmap features (from CLAUDE.md "Later")
 

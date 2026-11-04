@@ -14,7 +14,7 @@ output_inertia_kg_m2 = 2.0     # final drive and axle; wheels belong to the tire
 
 [driveline.gearbox]
 ratios = [15.0, 10.5, 7.0, 4.2, 2.65, 2.4, 2.2, 1.0]   # 1st to 8th
-reverse = 12.0                 # ~2.5 km/h at 2200 rpm, ~1 km/h at idle
+reverse = 3.4                  # ~9 km/h at 2200 rpm, ~3 km/h at idle: less is the throttle
 
 # A powershift step: one gear down under load, the clutch in, when the
 # engine is pulled down near the end of a pull; once a pull. Otherwise the

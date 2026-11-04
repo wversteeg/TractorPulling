@@ -45,6 +45,10 @@
 extends Node3D
 
 enum Screen { START, SETTINGS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
+# The menus drawn over the backdrop (MenuBackdrop), not over the venue;
+# the 3D world is not drawn behind it.
+const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.GARAGE,
+		Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
 
 @export var career_path := "res://data/careers/tractor_path.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
@@ -130,6 +134,7 @@ var start_screen := StartScreen.new()
 var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
+var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
 var restart_screen := RestartScreen.new()
@@ -188,7 +193,7 @@ func _ready() -> void:
 	hitch_marker.mesh = marker
 	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
-	for node: Node in [hud, controls, start_screen, settings_screen, garage_screen, board,
+	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, garage_screen, board,
 			setup_screen, result_screen, restart_screen]:
 		layer.add_child(node)
 	add_child(layer)
@@ -208,6 +213,10 @@ func _ready() -> void:
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.done.connect(show_start)
+	settings_screen.money_requested.connect(func(amount_eur: int) -> void:
+		if event.add_money(amount_eur):
+			_save_season()
+		settings_screen.show_money(int(event.get_garage().get("money_eur", 0))))
 	start_screen.garage_requested.connect(func() -> void:
 		garage_screen.show_garage(event.get_garage())
 		_set_screen(Screen.GARAGE))
@@ -517,6 +526,8 @@ func _build_turn(dimensions: Dictionary) -> void:
 
 func _set_screen(next: Screen) -> void:
 	screen = next
+	menu_backdrop.visible = screen in MENU_BACKDROP_SCREENS
+	get_viewport().disable_3d = menu_backdrop.visible
 	start_screen.visible = screen == Screen.START
 	settings_screen.visible = screen == Screen.SETTINGS
 	garage_screen.visible = screen == Screen.GARAGE

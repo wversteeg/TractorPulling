@@ -172,6 +172,9 @@ public:
     /// Buys the next level of upgrade `index`; "" or why not ("top level",
     /// "not enough money", "not during an event", "no such upgrade").
     godot::String buy_upgrade(std::int64_t index);
+    /// For testing: adds `amount_eur` to the player's money (a negative
+    /// amount takes it away, to no less than 0); false without a career.
+    bool add_money(std::int64_t amount_eur);
     /// The championship so far, best first: {place, puller, name, points,
     /// wins}.
     [[nodiscard]] godot::Array get_season_standings() const;

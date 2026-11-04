@@ -706,6 +706,14 @@ godot::String TractorPullEvent::buy_upgrade(std::int64_t index) {
     return {};
 }
 
+bool TractorPullEvent::add_money(std::int64_t amount_eur) {
+    if (!career_) {
+        return false;
+    }
+    career_->money_eur = std::max<std::int64_t>(career_->money_eur + amount_eur, 0);
+    return true;
+}
+
 godot::Array TractorPullEvent::get_season_standings() const {
     godot::Array out;
     if (!season_) {
@@ -757,6 +765,7 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_event_prize"), &TractorPullEvent::get_event_prize);
     ClassDB::bind_method(D_METHOD("get_garage"), &TractorPullEvent::get_garage);
     ClassDB::bind_method(D_METHOD("buy_upgrade", "index"), &TractorPullEvent::buy_upgrade);
+    ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
     ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar"),
                          &TractorPullEvent::set_tuning);
