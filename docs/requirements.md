@@ -42,8 +42,10 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | P-7 | Too much load stalls the engine in a pulling gear; a low gear spins out. | met | `Run.PullingGearEndsWithAStall`, `Run.LowGearEndsSpinningOut` |
 | P-8 | Dumping the clutch spins the wheels or lifts the front. | met | `Vehicle.DumpingTheClutchSpinsTheWheels`, `Pull.DumpingTheClutchSnapsTheChain` |
 | P-9 | Reverse moves at about 9 km/h at full throttle (less with less gas), and changes direction only standing. | met | `VehicleReversing.*` |
-| P-10 | A hard launch lifts the front wheels for the first metres, as real pullers do (a launch wheelie), with the weights to the rear. | **open** (next PR) | to add: a launch test on the reference tractor |
-| P-11 | When the sled gets heavy near the end of a pull the front comes up, more with the weights to the rear; weights forward keep it down. | **open** (next PR) | to add: a late-pull front-load test per ballast position |
+| P-10 | From the Sport 2.5 t class up, the built tractors' fronts come up as real pullers' do: on the launch, down again while the sled is light, and up again as the sled gets heavy and the gear goes down under load (or by itself near 80 m). | met | `WheelieRuns.ASportTractorLiftsOnTheLaunchAndAgainAsTheSledGetsHeavy` |
+| P-11 | The weights decide how high: towards the back the front comes up, forward it stays down (less grip at the rear: it spins out sooner). The track's grip decides too: on a track that grips less the front comes up on the launch only and the wheels spin out at the end. | met | `WheelieRuns.TheWeightsForwardKeepTheFrontDown`, `WheelieRuns.OnALowGripTrackItLiftsOnlyOnTheLaunch` |
+| P-12 | The standard class's farm tractor keeps its front down in a pull on every track (its weights halfway, the clutch slipped in); only a dumped clutch in a low gear throws it up. | met | `WheelieRuns.TheStandardTractorKeepsItsFrontDown`, `Vehicle.DumpingTheClutchInALowGearLiftsTheFront` |
+| P-13 | Tracks differ in grip by how they were prepared (`grip` per track, a scale on the soil's grip): from firm loam, where front ends go high, to the covered heavy clay, where tractors spin out. On every track the reference pulls past 80 m. | met | `Track.GripScaleScalesTheSurfaceGripOnly`, `TrackLoader.ReadsTheGrip`, `ShippedTracks.*` |
 
 ## Competition rules (after the NTTO's)
 

@@ -63,6 +63,8 @@ FieldError describe(track::ParamError error) {
             return {"track.profile.moisture.value", "every value must be in [0, 0.5]"};
         case ParamError::kCompactionProfile:
             return {"track.profile.compaction.value", "every value must be in [0, 1]"};
+        case ParamError::kGripScale:
+            return {"track.grip", "must be in [0.5, 1.5]"};
     }
     return {"track", "invalid"};
 }
@@ -101,6 +103,8 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
                     },
                 .moisture_along_m = profile(reader, "track.profile.moisture"),
                 .compaction_along_m = profile(reader, "track.profile.compaction"),
+                // Optional: a well-prepared track's grip without it.
+                .grip_scale = reader.optional_number("track.grip").value_or(1.0),
             },
         .sled =
             {

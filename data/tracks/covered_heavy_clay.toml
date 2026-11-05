@@ -6,6 +6,10 @@
 length_m = 100.0
 max_duration_s = 120.0
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
+# How the track was prepared, a scale on its soil's grip (1 is the
+# reference): wet under the cover, it grips least. Built tractors lift on
+# the launch only and spin out at the end.
+grip = 0.85
 
 [track.soil]
 clay_fraction = 0.75

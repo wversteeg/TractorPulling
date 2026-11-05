@@ -5,6 +5,7 @@
 #include <array>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <span>
 
 #include "reference_track.hpp"
@@ -66,6 +67,29 @@ TEST(TrackParams, RejectsNonsense) {
     Params rolled = reference_params();
     rolled.compaction_along_m = curve(kOverRolled);
     EXPECT_EQ(validate(rolled), ParamError::kCompactionProfile);
+
+    for (const double grip : {0.4, 1.6, std::numeric_limits<double>::quiet_NaN()}) {
+        Params prepared = reference_params();
+        prepared.grip_scale = grip;
+        EXPECT_EQ(validate(prepared), ParamError::kGripScale) << grip;
+    }
+}
+
+// How the track was prepared scales the soil's grip everywhere, and
+// nothing else about it: a grippier track bites harder, its strength and
+// wheelspin the same.
+TEST(Track, GripScaleScalesTheSurfaceGripOnly) {
+    Params grippy = wet_patch();
+    grippy.grip_scale = 1.2;
+    const Model plain = model_of(wet_patch());
+    const Model scaled = model_of(grippy);
+    for (const double x_m : {0.0, 37.5, 50.0, 100.0}) {
+        const soil::Surface a = plain.surface_at(x_m);
+        const soil::Surface b = scaled.surface_at(x_m);
+        EXPECT_DOUBLE_EQ(b.grip_factor, 1.2 * a.grip_factor) << x_m;
+        EXPECT_EQ(b.cone_index_pa, a.cone_index_pa);
+        EXPECT_EQ(b.spin_fall_off, a.spin_fall_off);
+    }
 }
 
 // Without a profile the track is its soil everywhere, exactly.

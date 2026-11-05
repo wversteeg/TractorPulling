@@ -14,6 +14,7 @@ package "tp::track" {
     +soil : soil::Composition
     +moisture_along_m : optional<Curve>
     +compaction_along_m : optional<Curve>
+    +grip_scale : double, 0.5 to 1.5 (how it was prepared)
   }
   class Model {
     +{static} kMaxSamples = 512
@@ -29,6 +30,7 @@ package "tp::track" {
     kSoil
     kMoistureProfile
     kCompactionProfile
+    kGripScale
   }
   class "track functions" as TrackFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>

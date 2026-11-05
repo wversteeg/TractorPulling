@@ -73,6 +73,13 @@ for the big features; they are repeated at the end for completeness.
 
 ## Tractor
 
+- **The rear tires never leave the ground.** The rear axle is the pitch
+  pivot and stays at the tire's radius, so a tractor that stands up onto
+  its wheelie bar keeps its rear tires down: the bar takes only part of
+  their load. A real tractor pulled too high (too soft tires, a grippy
+  track) lifts its rear tires off the ground on the bar and spins out; in
+  the game riding the bar costs little, and the weights fully back are
+  rarely wrong.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
   between the left and right rear tires; both sides carry half the rear load.
 - **No differential lock.** The open differential is the only kind. Pulling

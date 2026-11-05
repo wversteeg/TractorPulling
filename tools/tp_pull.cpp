@@ -7,7 +7,7 @@
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
-//               [--ballast B] [--pressure BAR] [-o <out.csv>]
+//               [--ballast B] [--pressure BAR] [--downshift S] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
 //   tp_pull event <event.toml> [--seed N] [--hash]
@@ -216,6 +216,10 @@ struct PullOptions {
     /// position (0 rearmost, 1 foremost) and the rear tires' pressure [bar].
     std::optional<double> ballast_position;
     std::optional<double> rear_pressure_bar;
+    /// run: shift down under load (the gearbox's powershift step, the
+    /// clutch in) once the sled pulls the engine below this share of its
+    /// rated speed, after the launch; as the scripted pullers do.
+    std::optional<double> downshift_share;
 };
 
 // The tractor as --ballast and --pressure tune it; nothing (with a message)
@@ -437,11 +441,24 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         std::cerr << "inconsistent tractor, sled or track\n";
         return std::nullopt;
     }
+    int downshifted_gear = 0;
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
-        session->advance(run_controls(t_s, options, setup.tractor), tp::kSimulationStepNs);
+        tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
+        const double engine_rad_s =
+            tp::session::Inspector::run_state(*session).pull.tractor.engine.omega_rad_s;
+        if (options.downshift_share && downshifted_gear == 0 &&
+            t_s > kPullRevUpEnd_s + kPullSlipIn_s &&
+            engine_rad_s < *options.downshift_share * setup.tractor.engine.rated_omega_rad_s) {
+            downshifted_gear =
+                options.gear - std::max(setup.tractor.driveline.load_downshift_gears, 1);
+        }
+        if (downshifted_gear > 0) {
+            controls.gear = downshifted_gear;
+        }
+        session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
-        if (out.tractor.shift_refused) {
+        if (out.tractor.shift_refused && downshifted_gear == 0) {
             std::cerr << "cannot select gear " << options.gear << '\n';
             return std::nullopt;
         }
@@ -863,6 +880,14 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         pull.rear_pressure_bar = bar;
         return Parsed::kOk;
     }
+    if (arg == "--downshift") {
+        const auto share = parse_number<double>(value);
+        if (!share || *share <= 0.0 || *share >= 1.0) {
+            return Parsed::kInvalid;
+        }
+        pull.downshift_share = share;
+        return Parsed::kOk;
+    }
     return Parsed::kUnknown;
 }
 
@@ -932,7 +957,8 @@ int usage() {
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
-                 "                   [--hash] [--ballast B] [--pressure BAR] [-o <out.csv>]\n"
+                 "                   [--hash] [--ballast B] [--pressure BAR] [--downshift S]\n"
+                 "                   [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump] [--ballast B]\n"
                  "                              [--pressure BAR]\n"

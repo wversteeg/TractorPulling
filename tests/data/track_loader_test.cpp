@@ -37,6 +37,19 @@ value = [0.8, 0.6]
 start_m = 70.0
 )";
 
+constexpr std::string_view kGrippyTrack = R"(
+[track]
+length_m = 100.0
+max_duration_s = 120.0
+lane_width_m = 12.0
+grip = 1.15
+
+[track.soil]
+clay_fraction = 0.5
+moisture = 0.14
+compaction = 0.8
+)";
+
 constexpr std::string_view kPlainTrack = R"(
 [track]
 length_m = 100.0
@@ -110,6 +123,21 @@ TEST(TrackLoader, ProfileAndPushdownAreOptional) {
     ASSERT_TRUE(result.ok()) << result.error().message;
     EXPECT_FALSE(result.value().ground.moisture_along_m.has_value());
     EXPECT_FALSE(result.value().sled.pushdown_start_m.has_value());
+    EXPECT_EQ(result.value().ground.grip_scale, 1.0) << "a well-prepared track's grip";
+}
+
+// A track's grip scales its soil's: how it was prepared.
+TEST(TrackLoader, ReadsTheGrip) {
+    const auto result = parse_track(kGrippyTrack, "t.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_EQ(result.value().ground.grip_scale, 1.15);
+    std::string bad{kGrippyTrack};
+    bad.replace(bad.find("grip = 1.15"), 11, "grip = 2.00");
+    const auto refused = parse_track(bad, "t.toml");
+    ASSERT_FALSE(refused.ok());
+    EXPECT_NE(refused.error().message.find("t.toml: track.grip: must be in [0.5, 1.5]"),
+              std::string::npos)
+        << refused.error().message;
 }
 
 TEST(TrackLoader, RejectsNonsense) {
