@@ -443,19 +443,22 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         return std::nullopt;
     }
     // --downshift: the scripted pullers' gear down under load, once; the
-    // gear it went to is held from then on.
+    // gear it went to (or, if the gearbox refused it, the gear it kept) is
+    // held from then on.
     bool watching = false;
+    bool downshifted = false;
     int gear = options.gear;
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
         const tp::vehicle::State& tractor =
             tp::session::Inspector::run_state(*session).pull.tractor;
-        if (options.downshift_share && gear == options.gear &&
+        if (options.downshift_share && !downshifted &&
             tp::session::Inspector::last_input(*session).clutch_pedal == 0.0) {
             gear = tp::driver::under_load_gear(*options.downshift_share, watching, gear, tractor,
                                                setup.tractor);
-            if (gear != options.gear) {
+            downshifted = gear != options.gear;
+            if (downshifted) {
                 const tp::pull::State& pull = tp::session::Inspector::run_state(*session).pull;
                 std::cout << "shifted down under load to gear " << gear << " at " << std::fixed
                           << std::setprecision(1)
@@ -464,13 +467,13 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                           << " m\n";
             }
         }
-        if (gear != options.gear) {
+        if (downshifted) {
             controls.gear = gear;
         }
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
         if (out.tractor.shift_refused) {
-            if (gear == options.gear) {
+            if (!downshifted) {
                 std::cerr << "cannot select gear " << options.gear << '\n';
                 return std::nullopt;
             }

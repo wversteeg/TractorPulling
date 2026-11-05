@@ -87,6 +87,9 @@ if(TARGET tp_pull AND NOT CMAKE_CROSSCOMPILING)
         COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
             "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
             --gear 6 --downshift 0.9 -o "${CMAKE_CURRENT_BINARY_DIR}/downshift_run.csv")
+    # PASS_REGULAR_EXPRESSION ignores the exit code: a refused shift or a
+    # failed run after the message fails it by its own words.
     set_tests_properties(TpPull.RunShiftsDownUnderLoad PROPERTIES
-        PASS_REGULAR_EXPRESSION "shifted down under load to gear 5 at 8[0-9][.][0-9] m")
+        PASS_REGULAR_EXPRESSION "shifted down under load to gear 5 at 8[0-9][.][0-9] m"
+        FAIL_REGULAR_EXPRESSION "refused|cannot select|usage:|inconsistent")
 endif()
