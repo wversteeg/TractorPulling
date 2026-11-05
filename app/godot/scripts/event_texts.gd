@@ -63,11 +63,6 @@ static func log_row(entry: Dictionary) -> PackedStringArray:
 	return PackedStringArray([entry["name"], what, reach(entry), verdict(entry)])
 
 
-# How many of the main round's best pulls make the pull-off, at least: the
-# board shows them in bold, so the distance to beat stands out.
-const LEADING_PULLS := 4
-
-
 # A row of the event's standings: place, who, and the result that counts:
 # the main round's, then each pull-off's.
 static func standing_row(line: Dictionary) -> PackedStringArray:
@@ -87,9 +82,10 @@ static func standing_row(line: Dictionary) -> PackedStringArray:
 
 # The rows of the event's log (one per entry, as log_row()) to show in
 # bold: each puller's pull that counts in the main round (their last pull,
-# or the test pull they kept), the best LEADING_PULLS of them; and the best
-# pull of the pull-off round under way, the one to beat.
-static func leading_rows(log: Array) -> PackedInt32Array:
+# or the test pull they kept), the best `places` of them (the pull-off's
+# places, TractorPullEvent.get_event()); and the best pull of the pull-off
+# round under way, the one to beat.
+static func leading_rows(log: Array, places: int) -> PackedInt32Array:
 	var counting := {}
 	var pull_off_round := 0
 	var best_pull_off := -1
@@ -109,7 +105,7 @@ static func leading_rows(log: Array) -> PackedInt32Array:
 	var rows: Array = counting.values()
 	rows.sort_custom(func(a: int, b: int) -> bool:
 		return _distance(log[a]) > _distance(log[b]))
-	var out := PackedInt32Array(rows.slice(0, LEADING_PULLS))
+	var out := PackedInt32Array(rows.slice(0, places))
 	if best_pull_off >= 0:
 		out.append(best_pull_off)
 	return out

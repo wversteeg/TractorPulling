@@ -50,8 +50,8 @@ package "tp::event" {
     +full_pull : bool
     +disqualified : bool
     +pull_off_rounds : int
-    +pull_off_distance_m : double
     +pull_off_distances_m : array<double, 5>, each round's
+    +pull_off_distance_m() : double, the last round's
   }
   class Event {
     -rules_ : Rules

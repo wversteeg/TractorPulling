@@ -251,7 +251,7 @@ package "GDScript (app/godot/scripts)" {
     +{static} verdict(entry) : String
     +{static} log_row(entry) : PackedStringArray
     +{static} standing_row(line) : PackedStringArray
-    +{static} leading_rows(log) : PackedInt32Array
+    +{static} leading_rows(log, places) : PackedInt32Array
     +{static} season_row(line) : PackedStringArray
   }
   class TouchSlider {

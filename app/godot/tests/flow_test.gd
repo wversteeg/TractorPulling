@@ -242,7 +242,7 @@ func _play() -> void:
 		{"puller": 1, "kind": "pull_off", "pull_off_round": 1, "reached_m": 93.5,
 				"disqualified": false},
 	]
-	var bold := EventTexts.leading_rows(log)
+	var bold := EventTexts.leading_rows(log, 4)
 	bold.sort()
 	_expect(bold == PackedInt32Array([1, 3, 6, 7, 9]), "the bold rows: %s" % bold)
 

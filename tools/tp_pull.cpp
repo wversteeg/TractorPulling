@@ -608,7 +608,7 @@ void report_standings(tp::event::Event& event) {
             std::cout << (s.disqualified ? " DQ" : " full pull");
         }
         if (s.pull_off_rounds > 0) {
-            std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m
+            std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m()
                       << " m";
         }
         std::cout << '\n';
@@ -711,7 +711,7 @@ void report_round(int number, const tp::data::SeasonRound& round,
                   << std::setw(7) << s.distance_m << " m"
                   << (s.full_pull ? " full pull" : "          ");
         if (s.pull_off_rounds > 0) {
-            std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m << " m";
+            std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m() << " m";
         }
         std::cout << "  " << (s.disqualified ? 0 : tp::season::points_for(points, s.place))
                   << " pts\n";

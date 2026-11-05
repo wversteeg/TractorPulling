@@ -420,6 +420,7 @@ godot::Dictionary TractorPullEvent::get_event() const {
     out["pullers"] = event.puller_count();
     out["full_pull_m"] = event.full_pull_m();
     out["standard_full_pull_m"] = first_line_m();
+    out["pull_off_places"] = definition_->event.rules.pull_off_places;
     out["turn"] = turn_name(event.turn());
     if (const std::optional<event::Pull> pull = event.pending_pull()) {
         out["pull_kind"] = kind_name(pull->kind);
@@ -553,7 +554,7 @@ godot::Array TractorPullEvent::get_standings() const {
         line["full_pull"] = s.full_pull;
         line["disqualified"] = s.disqualified;
         line["pull_off_rounds"] = s.pull_off_rounds;
-        line["pull_off_distance_m"] = s.pull_off_distance_m;
+        line["pull_off_distance_m"] = s.pull_off_distance_m();
         godot::PackedFloat64Array rounds;
         for (int r = 0; r < s.pull_off_rounds; ++r) {
             rounds.push_back(s.pull_off_distances_m.at(static_cast<std::size_t>(r)));

@@ -112,7 +112,8 @@ public:
     /// Starts the season's next event; "" or what is wrong.
     godot::String start_event();
     /// {name, index, count, pullers, full_pull_m, standard_full_pull_m,
-    /// turn, pull_kind, pull_off_round} of the event being pulled:
+    /// pull_off_places, turn, pull_kind, pull_off_round} of the event being
+    /// pulled:
     /// `full_pull_m` is the line in force (110 m after a test pull past
     /// 100 m, the pull-off line in a pull-off), `standard_full_pull_m` the
     /// class's own, where the banner stands; `turn` is "rivals",

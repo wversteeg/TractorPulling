@@ -478,6 +478,25 @@ TEST(Event, PullOffsRepeatUntilOneIsStrongest) {
     EXPECT_EQ(standings.size(), 5U);
 }
 
+// A second pull-off follows pulls of at least 120 m, so its sled is made
+// heavier for 20 m or more past the main line: as many steps as the
+// operator changes at once.
+TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
+    Event event = make(5);
+    std::array<int, 3> knives_in_round{};
+    run(event, [&](const Pull& p) {
+        if (p.kind != PullKind::kPullOff) {
+            return 95.0 + p.puller;
+        }
+        knives_in_round[static_cast<std::size_t>(p.pull_off_round)] = knives(event);
+        if (p.pull_off_round == 1) {
+            return p.puller >= 3 ? 125.0 : 96.0;
+        }
+        return p.puller == 4 ? 99.0 : 97.0;
+    });
+    EXPECT_EQ(knives_in_round[2] - knives_in_round[1], kRules.max_steps_per_change);
+}
+
 // In a pull-off only the pull-off line (120 m) is a full pull: two pullers
 // past the main round's line but short of 120 m decide it in one round.
 TEST(Event, PullOffFullPullIsAtThePullOffLine) {
@@ -491,8 +510,8 @@ TEST(Event, PullOffFullPullIsAtThePullOffLine) {
     EXPECT_EQ(pulls.back().pull_off_round, 1);
     const std::span<const Standing> standings = event.standings();
     EXPECT_EQ(standings[0].puller, 4);
-    EXPECT_EQ(standings[0].pull_off_distance_m, 115.0);
-    EXPECT_EQ(standings[1].pull_off_distance_m, 110.0);
+    EXPECT_EQ(standings[0].pull_off_distance_m(), 115.0);
+    EXPECT_EQ(standings[1].pull_off_distance_m(), 110.0);
 }
 
 // The pull-off's places fill up with the best runs from 20 m short of the

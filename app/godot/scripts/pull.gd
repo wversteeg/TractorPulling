@@ -711,7 +711,8 @@ func _show_event() -> void:
 		if int(entry.get("puller", entry.get("deciding", -1))) == 0:
 			mine.append(rows.size())
 		rows.append(EventTexts.log_row(entry))
-	board.set_rows(rows, mine, true, EventTexts.leading_rows(log))
+	board.set_rows(rows, mine, true,
+			EventTexts.leading_rows(log, int(info.get("pull_off_places", 0))))
 	match turn:
 		"rivals":
 			board.set_status("The rivals choose their gears..." if size == 0

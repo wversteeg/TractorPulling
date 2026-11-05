@@ -515,7 +515,6 @@ std::span<const Standing> Event::standings() noexcept {
                     .full_pull = e.reached_m >= line_m_,
                     .disqualified = e.disqualified,
                     .pull_off_rounds = e.pull_off_rounds,
-                    .pull_off_distance_m = official_pull_off(e.pull_off_reached_m),
                     .pull_off_distances_m = {}};
         for (int r = 0; r < e.pull_off_rounds; ++r) {
             const auto round = static_cast<std::size_t>(r);
@@ -526,8 +525,8 @@ std::span<const Standing> Event::standings() noexcept {
         if (a.pull_off_rounds != b.pull_off_rounds) {
             return a.pull_off_rounds > b.pull_off_rounds;
         }
-        if (a.pull_off_distance_m != b.pull_off_distance_m) {
-            return a.pull_off_distance_m > b.pull_off_distance_m;
+        if (a.pull_off_distance_m() != b.pull_off_distance_m()) {
+            return a.pull_off_distance_m() > b.pull_off_distance_m();
         }
         if (a.disqualified != b.disqualified) {
             return b.disqualified;

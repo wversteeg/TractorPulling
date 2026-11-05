@@ -125,11 +125,17 @@ struct Standing {
     /// A tractor tire touched a chalk line in the counting pull: 0 m,
     /// behind every pull that counts.
     bool disqualified = false;
-    /// Pull-off rounds pulled, and the official distance in the last one.
+    /// Pull-off rounds pulled.
     int pull_off_rounds = 0;
-    double pull_off_distance_m = 0.0;
     /// The official distance in each pull-off round pulled, the first first.
     std::array<double, kMaxPullOffRounds> pull_off_distances_m{};
+
+    /// The official distance in the last pull-off round pulled; 0 for none.
+    [[nodiscard]] double pull_off_distance_m() const noexcept {
+        return pull_off_rounds > 0
+                   ? pull_off_distances_m[static_cast<std::size_t>(pull_off_rounds - 1)]
+                   : 0.0;
+    }
 };
 
 /// One class at an event, pull by pull: the running order, test pulls and
