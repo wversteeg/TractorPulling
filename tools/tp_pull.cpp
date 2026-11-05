@@ -480,6 +480,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                 std::cerr << "cannot select gear " << options.gear << '\n';
                 return std::nullopt;
             }
+            reported_shift = true;  // nothing to report: the shift did not happen
             std::cerr << "--downshift: the gearbox refused gear " << gear << " under load; "
                       << "pulling on in "
                       << tp::session::Inspector::run_state(*session).pull.tractor.driveline.gear

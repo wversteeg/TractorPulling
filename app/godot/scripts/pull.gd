@@ -738,15 +738,12 @@ func _show_event() -> void:
 func _show_event_end() -> void:
 	var info := event.get_event()
 	board.set_title("%s  ·  results" % info.get("name", ""))
-	var rows: Array[PackedStringArray] = []
-	var mine := PackedInt32Array()
+	var standings := event.get_standings()
 	var place := 0
-	for line: Dictionary in event.get_standings():
+	for line: Dictionary in standings:
 		if int(line["puller"]) == 0:
 			place = line["place"]
-			mine.append(rows.size())
-		rows.append(EventTexts.standing_row(line))
-	board.set_rows(rows, mine, false)
+	board.set_rows(EventTexts.standing_rows(standings), EventTexts.player_rows(standings), false)
 	var prize := event.get_event_prize()
 	board.set_status("You placed %d of %d%s." % [place, info.get("pullers", 0),
 			" and won %s" % GarageScreen.euros(prize) if prize > 0 else ""])
@@ -761,14 +758,8 @@ func _show_season() -> void:
 	var over: bool = season.get("over", false)
 	board.set_title("The season%s  ·  standings" % (" is over" if over
 			else " after event %d of %d" % [season.get("scored", 0), season.get("events", 0)]))
-	var rows: Array[PackedStringArray] = []
-	var mine := PackedInt32Array()
 	var standings := event.get_season_standings()
-	for line: Dictionary in standings:
-		if int(line["puller"]) == 0:
-			mine.append(rows.size())
-		rows.append(EventTexts.season_row(line))
-	board.set_rows(rows, mine, false)
+	board.set_rows(EventTexts.season_rows(standings), EventTexts.player_rows(standings), false)
 	var status := ""
 	if over and not standings.is_empty():
 		var champion: Dictionary = standings[0]

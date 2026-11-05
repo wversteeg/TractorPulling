@@ -242,6 +242,17 @@ func _play() -> void:
 		{"puller": 1, "kind": "pull_off", "pull_off_round": 1, "reached_m": 93.5,
 				"disqualified": false},
 	]
+	# The boards list every puller, however many: fifteen, the player 12th.
+	var field: Array = []
+	for i in 15:
+		var puller := 0 if i == 11 else i + 1
+		field.append({"place": i + 1, "puller": puller, "name": "P%d" % puller,
+				"disqualified": false, "full_pull": false, "distance_m": 99.0 - i,
+				"pull_off_rounds": 0, "points": 15 - i, "wins": 0})
+	_expect(EventTexts.standing_rows(field).size() == 15
+			and EventTexts.season_rows(field).size() == 15
+			and EventTexts.player_rows(field) == PackedInt32Array([11]),
+			"every puller on the boards, the player's row marked")
 	var bold := EventTexts.leading_rows(log, 4)
 	bold.sort()
 	_expect(bold == PackedInt32Array([1, 3, 6, 7, 9]), "the bold rows: %s" % bold)

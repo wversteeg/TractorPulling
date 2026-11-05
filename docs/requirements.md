@@ -94,8 +94,8 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 |----|-------------|--------|------------|
 | U-1 | The event board lists every pull and the operator's verdict; the main round's best four pulls (the pull-off places) and the best of a pull-off round under way are in bold, so the distance to beat stands out. | met | `flow_test.gd` (bold rows), manual on screen |
 | U-2 | The standings show each pull-off round's distance, not only the last. | met | `Event.PullOffsRepeatUntilOneIsStrongest`, `flow_test.gd` |
-| U-7 | The event's results and the season's standings list every puller, not a top ten; the list scrolls with a finger, the player's row highlighted. | met | `flow_test.gd` (every puller's row, the board scrolling) |
 | U-3 | The full-pull banner and scoreboard stand over the class's own line (100 m), and stay there when the line in force moves to 110 m or to the pull-off line; the chalk line shows the line in force. | met | `scene_test.gd` |
 | U-4 | Behind the menus a drawn tractor-pulling scene (MenuBackdrop) in place of the 3D venue, which is then not drawn. | manual | screenshots |
 | U-5 | The game's icon is drawn from the menus' scene (`tools/make_icons.gd`), for the project and Android's launcher. | manual | `export` job builds the APK with it |
 | U-6 | For testing (to remove before a release): "+ € 1000" in the settings adds money to the bank. | manual | `docs/future_improvements.md` |
+| U-7 | The event's results and the season's standings list every puller, not a top ten; the list scrolls with a finger, the player's row highlighted. | met | `flow_test.gd` (a fifteen-puller field on both boards; the board scrolling) |
