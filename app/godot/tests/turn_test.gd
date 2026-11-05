@@ -100,6 +100,8 @@ func _play() -> void:
 	var stages: Array[String] = [s["stage"]]
 	var backing_up_told := false
 	var told_to_stand := false
+	var guide_while_taking_up := true
+	var no_guide_pulling := true
 	var result_too_soon := false
 	var flag_green_pulling := true
 	var flag_red_before := true
@@ -122,6 +124,10 @@ func _play() -> void:
 			stages.append(stage)
 		backing_up_told = backing_up_told or hud.turn_text(s).begins_with("Back up:")
 		told_to_stand = told_to_stand or hud.turn_text(s).begins_with("Chain tight")
+		if stage == "taking_up_slack":
+			guide_while_taking_up = guide_while_taking_up and hud.guide_shown()
+		if stage == "pulling":
+			no_guide_pulling = no_guide_pulling and not hud.guide_shown()
 		if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
 			flag_red_before = flag_red_before and flagman.colour_name() == "red"
 		if stage == "pulling":
@@ -159,6 +165,8 @@ func _play() -> void:
 	_expect(stages == ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling",
 			"releasing", "to_the_parking", "parked"], "every stage in order: %s" % [stages])
 	_expect(told_to_stand, "told to stand ready for the flag")
+	_expect(guide_while_taking_up, "the slack gauge shown while taking up the slack")
+	_expect(no_guide_pulling, "no slack gauge in the pull")
 	_expect(lamp_green, "the sled's lamp green while the chain pulls")
 	_expect(lamp_red, "the sled's lamp red once the pull is over")
 	_expect(distance_held, "the pull's distance held while the sled drives back")
@@ -194,11 +202,16 @@ func _check_steer_hint(hud: Hud) -> void:
 	_expect(hud.turn_text(backing).ends_with("steer left"), "right of the line: steer left")
 	backing["hitch_across_m"] = 0.05
 	_expect(not hud.turn_text(backing).contains("steer"), "on the line: no steering hint")
+	# Taking up the slack: how far still to creep, into the ready band.
+	var taut_within: float = hud.get("_taut_within_m")
+	var creeping := {"stage": "taking_up_slack", "chain_slack_m": taut_within + 0.85}
+	_expect(hud.turn_text(creeping) == "Creep forward: 0.85 m", "how far to creep: %s"
+			% hud.turn_text(creeping))
 	# Waiting for the flag with the chain short of tight: told to creep on.
 	var waiting := {"stage": "waiting_for_the_flag", "flag_progress": 0.0,
-			"hitch_to_hook_m": _chain_m - 0.2}
+			"chain_slack_m": taut_within + 0.1}
 	_expect(hud.turn_text(waiting).begins_with("Creep forward"), "a short chain: creep forward")
-	waiting["hitch_to_hook_m"] = _chain_m - 0.02
+	waiting["chain_slack_m"] = 0.5 * taut_within
 	_expect(hud.turn_text(waiting).begins_with("Chain tight"), "a tight chain: stand ready")
 	# After the pull, gas in reverse backs off to release the chain: not a
 	# red flag to stop.

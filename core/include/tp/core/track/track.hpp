@@ -20,7 +20,17 @@ struct Params {
     soil::Composition soil;
     std::optional<math::Curve> moisture_along_m;
     std::optional<math::Curve> compaction_along_m;
+    /// Scale on the soil's surface grip (soil::Surface::grip_factor): how
+    /// the track was prepared, its topsoil worked and rolled, which the
+    /// soil's make-up alone does not say. 1 is a well-prepared track;
+    /// tracks differ by tens of per cent, from one where tractors stand on
+    /// their wheelie bars to one where they spin early.
+    double grip_scale = 1.0;
 };
+
+/// The grip scale a track may have, inclusive.
+inline constexpr double kMinGripScale = 0.5;
+inline constexpr double kMaxGripScale = 1.5;
 
 enum class ParamError : std::uint8_t {
     kSoil,
@@ -28,6 +38,9 @@ enum class ParamError : std::uint8_t {
     /// rejects.
     kMoistureProfile,
     kCompactionProfile,
+    /// The grip scale is not finite or outside [kMinGripScale,
+    /// kMaxGripScale].
+    kGripScale,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;

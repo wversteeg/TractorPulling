@@ -1,6 +1,7 @@
 #include "tp/core/track/track.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace tp::track {
 
@@ -37,6 +38,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (!profile_valid(params, params.compaction_along_m, &soil::Composition::compaction)) {
         return ParamError::kCompactionProfile;
+    }
+    if (!std::isfinite(params.grip_scale) || params.grip_scale < kMinGripScale ||
+        params.grip_scale > kMaxGripScale) {
+        return ParamError::kGripScale;
     }
     return std::nullopt;
 }
@@ -76,6 +81,7 @@ Model::Model(const Params& params) noexcept : params_(params) {
     for (std::size_t i = 0; i < count_; ++i) {
         const double x_m = first_x_m_ + static_cast<double>(i) * spacing_m_;
         samples_[i] = soil::surface(composition_at(params_, x_m));
+        samples_[i].grip_factor *= params_.grip_scale;
     }
 }
 

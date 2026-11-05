@@ -149,6 +149,8 @@ package "GDScript (app/godot/scripts)" {
     +set_parking(bay)
     +show_snapshot(snapshot, title, pro)
     +turn_text(snapshot) : String
+    +slack_to_go_m(snapshot) : float, still to creep into the ready band
+    +guide_shown() : bool, the slack gauge
     +boost_bar() : float, the boost gauge's reading
     +show_signal(signal) : the lamp on the HUD
     +signal_shown() : String
@@ -252,6 +254,8 @@ package "GDScript (app/godot/scripts)" {
     +{static} log_row(entry) : PackedStringArray
     +{static} standing_row(line) : PackedStringArray
     +{static} leading_rows(log, places) : PackedInt32Array
+    +{static} standing_rows(standings), season_rows(standings) : Array
+    +{static} player_rows(standings) : PackedInt32Array
     +{static} season_row(line) : PackedStringArray
   }
   class TouchSlider {
@@ -345,7 +349,7 @@ Pull *-- ResultScreen
 Pull *-- SetupScreen : before every pull
 MenuPanel <|-- SetupScreen
 SetupScreen *-- "2" TouchSlider : weights,\ntire pressure
-Pull *-- BoardScreen : the event, its top ten,\nthe season's
+Pull *-- BoardScreen : the event, its results,\nthe season's standings
 Pull ..> EventTexts
 ResultScreen ..> EventTexts : the operator's verdict
 MenuPanel <|-- StartScreen
@@ -385,7 +389,7 @@ TouchTest ..> DriveControls : simulated fingers\n(push_input) and a simulated\nm
 SceneTree <|-- FlowTest
 SceneTree <|-- TurnTest
 TurnTest ..> Pull : headless, a scripted driver: the whole turn\nfrom the bay to the sled and back
-FlowTest ..> Pull : a practice season (tests/data):\nstart, settings, practice, the event with its rivals,\nthe top tens, next event; launched again:\ncontinue, new season
+FlowTest ..> Pull : a practice season (tests/data):\nstart, settings, practice, the event with its rivals,\nthe standings, next event; launched again:\ncontinue, new season
 note bottom of Pull
   draws the blended snapshot and hands the run the controls;
   who pulls next and the standings are the event's (TractorPullEvent);

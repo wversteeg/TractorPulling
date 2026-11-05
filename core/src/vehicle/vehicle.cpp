@@ -441,14 +441,24 @@ void relax_side_deflections(State& state, const Params& params, const tire::Side
 
 }  // namespace
 
-double travel_direction(const State& state) noexcept {
+double travel_direction(const State& state, bool drive_out, double drawbar_pull_n) noexcept {
     const int gear = state.driveline.gear;
     if (gear == driveline::kReverse) {
         return -1.0;
     }
+    // Free of the engine, a standing tractor that the chain pulls back
+    // rolls back: the resistances then hold it only if they can. (In the
+    // pull the drawbar is the sled's drag, which never pulls back.) While
+    // the body rolls back it rolls on, until a clutch let in or the
+    // resistances stop it; once the body stands, a clutch let in holds the
+    // wheels to it, so a train still turning back a little does not keep
+    // it rolling back.
+    const bool free = gear == driveline::kNeutral || drive_out;
     const bool rolling_back =
-        state.chassis.velocity_m_s < 0.0 || state.driveline.output_omega_rad_s < 0.0;
-    return gear == driveline::kNeutral && rolling_back ? -1.0 : 1.0;
+        state.chassis.velocity_m_s < 0.0 || (free && state.driveline.output_omega_rad_s < 0.0);
+    const bool standing =
+        state.chassis.velocity_m_s == 0.0 && state.driveline.output_omega_rad_s == 0.0;
+    return rolling_back || (free && standing && drawbar_pull_n > 0.0) ? -1.0 : 1.0;
 }
 
 Output step(State& state, const Model& model, const Input& input, const Ground& ground,
@@ -486,7 +496,8 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     }
 
     // After the gear change: a tractor put into reverse travels backwards.
-    const double direction = travel_direction(state);
+    const double direction =
+        travel_direction(state, clutch_capacity_nm == 0.0, input.pull_on ? 0.0 : drawbar.pull_n);
     out.axle_loads = chassis::axle_loads(params.chassis, state.chassis, drawbar);
     const double load_per_tire_n = out.axle_loads.rear_n / params.rear_tire_count;
 

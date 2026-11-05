@@ -145,10 +145,12 @@ cmake --preset release && cmake --build --preset release
     [--gear 4] [--resistance-kn 8] [--dump] [--steer-deg 5] [--brake-right 0.3] -o pull.csv
 
 # A run: the tractor pulls the sled on its chain until the sled's first stop
-# or a full pull (then pull-offs on a heavier sled); prints each result
+# or a full pull (then pull-offs on a heavier sled); prints each result.
+# --downshift S shifts a gear down under load (the powershift step) once the
+# engine falls below S of its rated speed, as the scripted pullers do
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] \
-    [--steer-deg 1] [--hash] -o run.csv
+    [--steer-deg 1] [--downshift 0.9] [--hash] -o run.csv
 
 # The same run with the easy control layout: the clutch assist works the
 # clutch; --stick holds the steering control (-1 right to 1 left). Or with

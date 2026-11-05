@@ -139,11 +139,18 @@ struct Input {
     bool pull_on = true;
 };
 
-/// The way the tractor travels this step: -1 in reverse, or rolling
-/// backwards in neutral; 1 otherwise. Resistances (rolling, the brakes at
+/// The way the tractor travels this step: -1 in reverse; while the body
+/// rolls backwards, in any gear (a clutch let in brings it to rest); or
+/// with the drive out (in neutral, or the clutch pressed so far it carries
+/// nothing) while the wheels turn backwards or it stands with the chain
+/// pulling it back (`drawbar_pull_n` > 0); 1 otherwise. Resistances (rolling, the brakes at
 /// rest) act against it, and hold the tractor at rest without turning it
-/// round.
-[[nodiscard]] double travel_direction(const State& state) noexcept;
+/// round. In gear with the clutch in, a standing tractor never rolls back:
+/// the engine holds it. step() passes the chain's pull outside the pull
+/// only: in it the drawbar is the sled's drag, which holds the tractor but
+/// never pulls it back.
+[[nodiscard]] double travel_direction(const State& state, bool drive_out,
+                                      double drawbar_pull_n) noexcept;
 
 /// The ground under the tractor's tires this step. The track decides it from
 /// where each axle is; tests and tools may pass one surface for both.

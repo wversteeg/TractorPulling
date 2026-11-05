@@ -265,6 +265,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["hitch_to_hook_m"] = s.hitch_to_hook_m;
     out["hitch_along_m"] = s.hitch_along_m;
     out["hitch_across_m"] = s.hitch_across_m;
+    out["chain_slack_m"] = s.chain_slack_m;
     out["flag_progress"] = s.flag_progress;
     out["sled_back"] = s.sled_back;
     return out;

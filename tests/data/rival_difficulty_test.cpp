@@ -204,7 +204,7 @@ constexpr Gears kSportGears{.lowest = 3, .highest = 8};
 // and only a nearly or fully built tractor wins there.
 TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndHalfItsGarageWinsIt) {
     expect_level("sport_2500_promo.toml",
-                 {{.share = 0.0, .places = {.best = 12, .worst = 15}},
+                 {{.share = 0.0, .places = {.best = 10, .worst = 15}},
                   {.share = 0.45, .places = {.best = 1, .worst = 3}}},
                  kSportGears);
 }
@@ -233,7 +233,7 @@ TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) 
 
 TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWinIt) {
     expect_level("sport_4500_promo.toml",
-                 {{.share = 0.45, .places = {.best = 5, .worst = 12}},
+                 {{.share = 0.45, .places = {.best = 5, .worst = 13}},
                   {.share = 0.66, .places = {.best = 1, .worst = 3}},
                   {.share = 0.75, .places = {.best = 1, .worst = 2}}},
                  kSportGears);

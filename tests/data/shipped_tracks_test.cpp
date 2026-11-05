@@ -45,8 +45,9 @@ run::Result pull_on(const std::string& track_file) {
 }
 
 // Every shipped track is pullable: in its pulling gear the reference
-// tractor stalls the engine somewhere past the push-down on all of them,
-// and the clay tracks differ by a few metres, not tens.
+// tractor gets past the push-down on all of them, stalling the engine or,
+// where the track grips less, spinning the wheels; the tracks differ by
+// metres, not tens.
 TEST(ShippedTracks, EveryTrackIsPullable) {
     double shortest_m = 1e9;
     double longest_m = 0.0;
@@ -54,13 +55,29 @@ TEST(ShippedTracks, EveryTrackIsPullable) {
          {"ideal_clay_sand.toml", "dry_hard_clay.toml", "covered_heavy_clay.toml",
           "sandy_clay.toml", "firm_loam.toml", "watered_start.toml"}) {
         const run::Result result = pull_on(name);
-        EXPECT_EQ(result.ending, run::Ending::kStalled) << name;
+        EXPECT_TRUE(result.ending == run::Ending::kStalled ||
+                    result.ending == run::Ending::kSpunOut)
+            << name;
         EXPECT_GT(result.distance_m, 80.0) << name;
         EXPECT_LT(result.distance_m, 100.0) << name;
         shortest_m = std::min(shortest_m, result.distance_m);
         longest_m = std::max(longest_m, result.distance_m);
     }
-    EXPECT_LT(longest_m - shortest_m, 10.0);
+    EXPECT_LT(longest_m - shortest_m, 12.0);
+}
+
+// How a track was prepared (its grip) decides how a pull ends: on the
+// grippiest, firm loam, and the reference the engine gives out first; on
+// the covered heavy clay, which grips least, the wheels spin out sooner.
+TEST(ShippedTracks, TheTracksGripDecidesHowAPullEnds) {
+    const run::Result grippy = pull_on("firm_loam.toml");
+    const run::Result reference = pull_on("ideal_clay_sand.toml");
+    const run::Result slippery = pull_on("covered_heavy_clay.toml");
+    EXPECT_EQ(grippy.ending, run::Ending::kStalled);
+    EXPECT_EQ(reference.ending, run::Ending::kStalled);
+    EXPECT_EQ(slippery.ending, run::Ending::kSpunOut);
+    EXPECT_GE(grippy.distance_m, reference.distance_m);
+    EXPECT_LT(slippery.distance_m, reference.distance_m - 3.0);
 }
 
 // The heavy clay, moist after the rain, is softer and stickier than the

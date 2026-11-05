@@ -262,6 +262,26 @@ TEST(Driveline, ReverseTurnsTheAxleBackwards) {
                      state.output_omega_rad_s * overall_ratio(params, kReverse));
 }
 
+// A tractor rolling back in a forward gear, the clutch pressed, turns the
+// whole train backwards; travelling forwards the same pull back only holds
+// it at rest.
+TEST(Driveline, RollingBackInGearTurnsTheTrainBackwards) {
+    const Params params = reference_params();
+    const auto after = [&](double direction) {
+        State state;
+        EXPECT_TRUE(shift(state, params, 3, true));
+        for (int i = 0; i < 500; ++i) {
+            // A chain pulling the tractor back drives the axle backwards.
+            advance(state, predict(state, params, 200.0, kDt_s, direction), 0.0);
+        }
+        return state;
+    };
+    const State back = after(-1.0);
+    EXPECT_LT(back.input_omega_rad_s, 0.0);
+    EXPECT_DOUBLE_EQ(back.output_omega_rad_s, back.input_omega_rad_s / overall_ratio(params, 3));
+    EXPECT_EQ(after(1.0).input_omega_rad_s, 0.0);
+}
+
 // A gearbox without a reverse gear has none to shift into.
 TEST(Driveline, ReverseNeedsAReverseGear) {
     Params params = reference_params();

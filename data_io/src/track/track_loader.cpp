@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <optional>
+#include <sstream>
+#include <string>
 #include <string_view>
 
 #include "../common/toml_reader.hpp"
@@ -15,8 +17,15 @@ constexpr double kMetresToSi = 1.0;
 
 struct FieldError {
     std::string_view field;
-    std::string_view reason;
+    std::string reason;
 };
+
+// "[low, high]" in the shortest form that reads back as each value.
+std::string range(double low, double high) {
+    std::ostringstream text;
+    text << '[' << low << ", " << high << ']';
+    return text.str();
+}
 
 FieldError describe(run::ParamError error) {
     using run::ParamError;
@@ -63,6 +72,9 @@ FieldError describe(track::ParamError error) {
             return {"track.profile.moisture.value", "every value must be in [0, 0.5]"};
         case ParamError::kCompactionProfile:
             return {"track.profile.compaction.value", "every value must be in [0, 1]"};
+        case ParamError::kGripScale:
+            return {"track.grip",
+                    "must be in " + range(track::kMinGripScale, track::kMaxGripScale)};
     }
     return {"track", "invalid"};
 }
@@ -101,6 +113,8 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
                     },
                 .moisture_along_m = profile(reader, "track.profile.moisture"),
                 .compaction_along_m = profile(reader, "track.profile.compaction"),
+                // Optional: a well-prepared track's grip without it.
+                .grip_scale = reader.optional_number("track.grip").value_or(1.0),
             },
         .sled =
             {

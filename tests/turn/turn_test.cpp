@@ -179,6 +179,55 @@ TEST(Turn, TheFendersStopATractorBackingIntoTheSled) {
     EXPECT_FALSE(held(stop_m - 1.1 * fenders.depth_m, 0.0)) << "past the fenders";
 }
 
+// After the pull too: backing off, the tractor stops at the fenders, and
+// does not drive on through the sled with the chain on.
+TEST(Turn, TheFendersStopATractorBackingOffAfterThePull) {
+    const pull::Model model = reference_model();
+    const double stop_m = fender_stop_m(model);
+    State state = from_the_parking(model, kParking);
+    state.stage = Stage::kReleasing;
+    state.run.pull.hooked = true;
+    state.run.result = run::Result{.ending = run::Ending::kStopped, .distance_m = 40.0};
+    place_hitch(model, state.run.pull, stop_m - 0.05, 0.0);
+    state.run.pull.tractor.chassis.velocity_m_s = -1.0;
+    step(state, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = driveline::kReverse}, kDt_s);
+    EXPECT_NEAR(hitch_to_hook(model, state.run.pull).along_m, stop_m, 1e-9);
+    EXPECT_EQ(state.run.pull.tractor.chassis.velocity_m_s, 0.0);
+    EXPECT_EQ(state.stage, Stage::kToTheParking) << "standing with the chain slack: off";
+}
+
+// The slack counts as taken up once the chain is within the ready band of
+// tight (kReadyTautWithin_m): the driver creeps into it and stops, no jolt
+// on the chain needed. Short of the band the creep goes on.
+TEST(Turn, TheSlackIsTakenUpInTheReadyBand) {
+    const pull::Model model = reference_model();
+    const double chain_m = model.sled().chain.length_m;
+    const auto after_a_step = [&](double span_m) {
+        State state = from_the_parking(model, kParking);
+        state.stage = Stage::kTakingUpSlack;
+        state.run.pull.hooked = true;
+        place_span(model, state.run.pull, span_m);
+        EXPECT_NEAR(chain_slack_m(model, state.run.pull), chain_m - span_m, 1e-9);
+        step(state, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 4}, kDt_s);
+        return state.stage;
+    };
+    EXPECT_EQ(after_a_step(chain_m - 2.0 * kReadyTautWithin_m), Stage::kTakingUpSlack);
+    EXPECT_EQ(after_a_step(chain_m - 0.5 * kReadyTautWithin_m), Stage::kWaitingForTheFlag);
+    EXPECT_EQ(after_a_step(chain_m), Stage::kWaitingForTheFlag);
+
+    // Creeping into the band: taken up at once, but the flag's count waits
+    // until the tractor stands.
+    State creeping = from_the_parking(model, kParking);
+    creeping.stage = Stage::kTakingUpSlack;
+    creeping.run.pull.hooked = true;
+    place_span(model, creeping.run.pull, chain_m - 0.5 * kReadyTautWithin_m);
+    creeping.run.pull.tractor.chassis.velocity_m_s = 0.5;
+    step(creeping, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 4}, kDt_s);
+    EXPECT_EQ(creeping.stage, Stage::kWaitingForTheFlag);
+    step(creeping, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 4}, kDt_s);
+    EXPECT_EQ(creeping.ready_steps, 0U) << "still moving";
+}
+
 // A pull that stopped short of the restart line may be pulled again from
 // the start: the sled and the tractor back at the line, the chain on, the
 // turn at taking up the slack, the result gone. Past the line it may not.

@@ -42,8 +42,11 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | P-7 | Too much load stalls the engine in a pulling gear; a low gear spins out. | met | `Run.PullingGearEndsWithAStall`, `Run.LowGearEndsSpinningOut` |
 | P-8 | Dumping the clutch spins the wheels or lifts the front. | met | `Vehicle.DumpingTheClutchSpinsTheWheels`, `Pull.DumpingTheClutchSnapsTheChain` |
 | P-9 | Reverse moves at about 9 km/h at full throttle (less with less gas), and changes direction only standing. | met | `VehicleReversing.*` |
-| P-10 | A hard launch lifts the front wheels for the first metres, as real pullers do (a launch wheelie), with the weights to the rear. | **open** (next PR) | to add: a launch test on the reference tractor |
-| P-11 | When the sled gets heavy near the end of a pull the front comes up, more with the weights to the rear; weights forward keep it down. | **open** (next PR) | to add: a late-pull front-load test per ballast position |
+| P-10 | From the Sport 2.5 t class up, the built tractors' fronts come up as real pullers' do: on the launch, down again while the sled is light, and up again as the sled gets heavy and the gear goes down under load. Without a powershift step the engine gives out first, unless the weights are all the way back: then the front comes up by itself. | met | `WheelieRuns.ASportTractorLiftsOnTheLaunchAndAgainAsTheSledGetsHeavy`, `WheelieRuns.WithoutAPowershiftOnlyTheWeightsAllBackLiftItAtTheEnd` |
+| P-11 | The weights decide how high: towards the back the front comes up, forward it stays down (less grip at the rear: it spins out sooner). The track's grip decides too: on a track that grips less the front comes up on the launch only and the wheels spin out at the end. | met | `WheelieRuns.TheWeightsForwardKeepTheFrontDown`, `WheelieRuns.OnALowGripTrackItLiftsOnlyOnTheLaunch` |
+| P-12 | The standard class's farm tractor keeps its front down in a pull on every track (its weights halfway, the clutch slipped in); only a dumped clutch in a low gear throws it up. | met | `WheelieRuns.TheStandardTractorKeepsItsFrontDown`, `Vehicle.DumpingTheClutchInALowGearLiftsTheFront` |
+| P-13 | Tracks differ in grip by how they were prepared (`grip` per track, a scale on the soil's grip): from firm loam, where front ends go high, to the covered heavy clay, where tractors spin out. On every track the reference pulls past 80 m. | met | `Track.GripScaleScalesTheSurfaceGripOnly`, `TrackLoader.ReadsTheGrip`, `ShippedTracks.*` |
+| P-14 | With the drive out (the clutch pressed, or in neutral) a standing tractor that the chain pulls back rolls back on it: after the pull the stretched chain eases and the front comes down, so backing off starts from the ground, not from a wheelie. In gear with the clutch in, the engine holds it; the brakes hold it to a creep. | met | `VehicleReversing.TheChainPullsATractorWithTheDriveOutBack`, `VehicleReversing.AfterRollingBackItDrivesForwardsAgain`, `Driveline.RollingBackInGearTurnsTheTrainBackwards`, `WheelieRuns.PressingTheClutchAfterThePullLetsTheFrontDown` |
 
 ## Competition rules (after the NTTO's)
 
@@ -66,6 +69,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 |----|-------------|--------|------------|
 | L-1 | A tractor tire (front or rear) on a chalk line before the full-pull line disqualifies the pull: 0 m. The sled may cross. | met | `Lane.*`, `Run.LeavingTheLaneIsOutOfBounds` |
 | L-2 | Driving to the sled and away crosses the chalk lines freely. | met | `Turn.AWholeTurnFromTheParkingAndBack` |
+| L-3 | Backing up to the sled, before the pull or after it, the rear tires stop against the sled's fenders: the tractor never drives through the sled with the chain on. | met | `Turn.TheFendersStopATractorBackingIntoTheSled`, `Turn.TheFendersStopATractorBackingOffAfterThePull` |
 
 ## Rivals and career
 
@@ -96,3 +100,5 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | U-4 | Behind the menus a drawn tractor-pulling scene (MenuBackdrop) in place of the 3D venue, which is then not drawn. | manual | screenshots |
 | U-5 | The game's icon is drawn from the menus' scene (`tools/make_icons.gd`), for the project and Android's launcher. | manual | `export` job builds the APK with it |
 | U-6 | For testing (to remove before a release): "+ € 1000" in the settings adds money to the bank. | manual | `docs/future_improvements.md` |
+| U-7 | The event's results and the season's standings list every puller, not a top ten; the list scrolls with a finger, the player's row highlighted. | met | `flow_test.gd` (a fifteen-puller field on both boards; the board scrolling) |
+| U-8 | Taking up the slack, the turn's line says how far the tractor still has to creep ("Creep forward: 0.85 m"), and a gauge under it shows the slack shrinking towards the band where it counts as taken up (green: within `turn::kReadyTautWithin_m`, 10 cm, of tight). In the band the slack is taken up without a jolt on the chain. | met | `Turn.TheSlackIsTakenUpInTheReadyBand`, `turn_test.gd` (the distance told, the gauge shown while taking up the slack), manual on screen |

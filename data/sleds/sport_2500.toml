@@ -1,8 +1,11 @@
 # Transfer sled set up for the Sport 2.5 t class: the light class's sled
-# (light_class.toml) with less weight, for a 2.5 t tractor's grip (about
-# 30 % less than the standard 3.5 t class's). The box rides forward over
-# the first 88 m and the push-down comes on from 78 m, as on the light
-# class's sled; on the day the sled operator adjusts it after the test pull.
+# (light_class.toml) with as much weight (4700 kg, frame and box), less on
+# the frame and more in the box. A 2.5 t tractor has less weight to grip
+# with than the standard class's 3.5 t, but the Sport tractor carries far
+# more of it on its rear tires, its puller tires grip harder and its built
+# engine pulls tall gears. The box rides forward over the first 88 m and
+# the push-down comes on from 78 m, as on the light class's sled; on the
+# day the sled operator adjusts it after the test pull.
 
 [sled]
 frame_mass_kg = 2400.0
@@ -44,7 +47,7 @@ half_span_m = 1.0
 depth_m = 1.0
 
 [sled.weight_box]
-mass_kg = 1800.0
+mass_kg = 2300.0
 start_ahead_of_wheels_m = 0.0        # over the rear wheels
 end_ahead_of_wheels_m = 3.0          # over the pan
 travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop as the push-down is fully set

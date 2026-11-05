@@ -115,6 +115,32 @@ static func _distance(entry: Dictionary) -> float:
 	return 0.0 if entry["disqualified"] else float(entry["reached_m"])
 
 
+# The event's results, a row for every puller in the standings
+# (TractorPullEvent.get_standings()), best first.
+static func standing_rows(standings: Array) -> Array[PackedStringArray]:
+	var rows: Array[PackedStringArray] = []
+	for line: Dictionary in standings:
+		rows.append(standing_row(line))
+	return rows
+
+
+# The championship, a row for every puller (get_season_standings()).
+static func season_rows(standings: Array) -> Array[PackedStringArray]:
+	var rows: Array[PackedStringArray] = []
+	for line: Dictionary in standings:
+		rows.append(season_row(line))
+	return rows
+
+
+# Which of those rows are the player's (puller 0), to highlight.
+static func player_rows(standings: Array) -> PackedInt32Array:
+	var rows := PackedInt32Array()
+	for i in standings.size():
+		if int(standings[i]["puller"]) == 0:
+			rows.append(i)
+	return rows
+
+
 # A row of the championship: place, who, points and wins.
 static func season_row(line: Dictionary) -> PackedStringArray:
 	var wins: int = line["wins"]
