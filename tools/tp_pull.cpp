@@ -447,6 +447,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
     // held from then on.
     bool watching = false;
     bool downshifted = false;
+    bool reported_shift = false;
     int gear = options.gear;
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
@@ -458,20 +459,22 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
             gear = tp::driver::under_load_gear(*options.downshift_share, watching, gear, tractor,
                                                setup.tractor);
             downshifted = gear != options.gear;
-            if (downshifted) {
-                const tp::pull::State& pull = tp::session::Inspector::run_state(*session).pull;
-                std::cout << "shifted down under load to gear " << gear << " at " << std::fixed
-                          << std::setprecision(1)
-                          << pull.sled.position_m -
-                                 tp::session::Inspector::model(*session).sled_start_m()
-                          << " m\n";
-            }
         }
         if (downshifted) {
             controls.gear = gear;
         }
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
+        const tp::pull::State& after = tp::session::Inspector::run_state(*session).pull;
+        if (downshifted && !reported_shift && !out.tractor.shift_refused &&
+            after.tractor.driveline.gear == gear) {
+            reported_shift = true;
+            std::cout << "shifted down under load to gear " << gear << " at " << std::fixed
+                      << std::setprecision(1)
+                      << after.sled.position_m -
+                             tp::session::Inspector::model(*session).sled_start_m()
+                      << " m\n";
+        }
         if (out.tractor.shift_refused) {
             if (!downshifted) {
                 std::cerr << "cannot select gear " << options.gear << '\n';

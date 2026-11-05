@@ -258,7 +258,7 @@ no game rules of its own.
 
 GDScript that plays a season's events against the rivals: the start
 screen, the event's board (`BoardScreen`, filled in by `EventTexts`), the
-player's pulls and the result screen, then the event's top ten and the
+player's pulls and the result screen, then the event's results and the
 season's. The root script owns the `TractorPullEvent`, advancing the
 rivals' work a few milliseconds each frame, and the `TractorPullRun`,
 which it sets up for each of the player's pulls (`setup_event_pull()`) or
@@ -392,6 +392,6 @@ advances the run by the frame's time and draws the blended snapshot.
 
 An event of the season, from the start screen: the board filling in with
 the rivals' pulls, the player's pulls and decisions when they are due, the
-event's top ten, the season's, and on to the next event and its track.
+event's results, the season's standings, and on to the next event and its track.
 
 ![Game flow](diagrams/svg/godot_run_flow_sequence.svg)

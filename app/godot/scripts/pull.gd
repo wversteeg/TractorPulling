@@ -12,7 +12,8 @@
 # the steering (slider or tilt), kept on the device. When the player is due
 # they pull (a run, TractorPullRun, stepped by each frame's time and drawn
 # from its blended snapshot) or, after a test pull, keep it or pull again. After the
-# event its top ten, then the season's; then the next event, or a new
+# event its results, every puller, then the season's standings (both
+# scroll); then the next event, or a new
 # season after the last. A won championship opens the level above (or,
 # at top, the next class) once the level has had the career's minimum
 # seasons: the season's board then asks whether to move up or stay and
@@ -87,7 +88,6 @@ const RESULT_DELAY_S := 2.0
 # a step, docs/performance.md).
 const RIVALS_SLICE_STEPS := 500
 const RIVALS_BUDGET_US := 6000
-const TOP := 10
 # The rivals' tractors in their bays, painted their own colours (none like
 # the player's red), and their drivers' shirts.
 const RIVAL_PAINTS: Array[Color] = [Color(0.16, 0.42, 0.2), Color(0.16, 0.3, 0.62),
@@ -737,17 +737,15 @@ func _show_event() -> void:
 
 func _show_event_end() -> void:
 	var info := event.get_event()
-	board.set_title("%s  ·  top %d" % [info.get("name", ""), TOP])
+	board.set_title("%s  ·  results" % info.get("name", ""))
 	var rows: Array[PackedStringArray] = []
 	var mine := PackedInt32Array()
 	var place := 0
 	for line: Dictionary in event.get_standings():
 		if int(line["puller"]) == 0:
 			place = line["place"]
-			if rows.size() < TOP:
-				mine.append(rows.size())
-		if rows.size() < TOP:
-			rows.append(EventTexts.standing_row(line))
+			mine.append(rows.size())
+		rows.append(EventTexts.standing_row(line))
 	board.set_rows(rows, mine, false)
 	var prize := event.get_event_prize()
 	board.set_status("You placed %d of %d%s." % [place, info.get("pullers", 0),
@@ -761,13 +759,12 @@ func _show_season() -> void:
 	_event_ready = false
 	var season := event.get_season()
 	var over: bool = season.get("over", false)
-	board.set_title("The season%s  ·  top %d" % [" is over" if over
-			else " after event %d of %d" % [season.get("scored", 0), season.get("events", 0)],
-			TOP])
+	board.set_title("The season%s  ·  standings" % (" is over" if over
+			else " after event %d of %d" % [season.get("scored", 0), season.get("events", 0)]))
 	var rows: Array[PackedStringArray] = []
 	var mine := PackedInt32Array()
 	var standings := event.get_season_standings()
-	for line: Dictionary in standings.slice(0, TOP):
+	for line: Dictionary in standings:
 		if int(line["puller"]) == 0:
 			mine.append(rows.size())
 		rows.append(EventTexts.season_row(line))

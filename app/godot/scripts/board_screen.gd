@@ -1,6 +1,6 @@
 # A panel with a table: the event as it goes (the pulls and the sled
-# operator's verdicts, the pulls to beat in bold), the event's top ten and
-# the season's. A title,
+# operator's verdicts, the pulls to beat in bold), the event's results and
+# the season's standings, every puller in each. A title,
 # the rows of columns (the player's highlighted) in a list that scrolls
 # with a finger and follows the newest row, a status line and up to two
 # buttons; the game fills them in.

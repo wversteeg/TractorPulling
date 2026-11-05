@@ -1,5 +1,5 @@
 @startuml godot_run_flow_sequence
-title The game's flow: a season's event against the rivals, then the top tens
+title The game's flow: a season's event against the rivals, then the standings
 autonumber
 actor Player
 participant "pull.gd" as Pull
@@ -71,11 +71,11 @@ loop until get_event().turn is "finished"
   end
 end
 Player -> Screens : Results
-Pull -> Screens : the event's top ten: get_standings(),\nthe prize: get_event_prize()
+Pull -> Screens : the event's results, every puller: get_standings(),\nthe prize: get_event_prize()
 Player -> Screens : Season
 Pull -> Event : score_event() (pays the prize)
 Pull -> Pull : save: get_save() (kept once the season is over,\nfor its career)
-Pull -> Screens : the season's top ten: get_season_standings()
+Pull -> Screens : the season's standings, every puller: get_season_standings()
 alt more events
   Player -> Screens : Next event
   Pull -> Event : start_event()

@@ -345,7 +345,7 @@ Pull *-- ResultScreen
 Pull *-- SetupScreen : before every pull
 MenuPanel <|-- SetupScreen
 SetupScreen *-- "2" TouchSlider : weights,\ntire pressure
-Pull *-- BoardScreen : the event, its top ten,\nthe season's
+Pull *-- BoardScreen : the event, its results,\nthe season's standings
 Pull ..> EventTexts
 ResultScreen ..> EventTexts : the operator's verdict
 MenuPanel <|-- StartScreen
@@ -385,7 +385,7 @@ TouchTest ..> DriveControls : simulated fingers\n(push_input) and a simulated\nm
 SceneTree <|-- FlowTest
 SceneTree <|-- TurnTest
 TurnTest ..> Pull : headless, a scripted driver: the whole turn\nfrom the bay to the sled and back
-FlowTest ..> Pull : a practice season (tests/data):\nstart, settings, practice, the event with its rivals,\nthe top tens, next event; launched again:\ncontinue, new season
+FlowTest ..> Pull : a practice season (tests/data):\nstart, settings, practice, the event with its rivals,\nthe standings, next event; launched again:\ncontinue, new season
 note bottom of Pull
   draws the blended snapshot and hands the run the controls;
   who pulls next and the standings are the event's (TractorPullEvent);

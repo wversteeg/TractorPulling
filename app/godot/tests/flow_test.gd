@@ -7,7 +7,7 @@
 # a practice pull and back, then the event's board filling in with the
 # rivals' pulls, the player's pulls when they are due, each after the setup
 # screen (no "again" there), and their decisions,
-# the event's top ten, the season's, and the start screen with the next
+# the event's results, the season's standings, and the start screen with the next
 # event; then the game launched again: the saved season continued, at the
 # next event with the same standings, tuning and career, and a new season
 # with the career carried over. Exits
@@ -386,7 +386,7 @@ func _play() -> void:
 	await _frames(2)
 	_expect(board.first_button.text == "Results", "the event is over")
 
-	# The event's top ten (here four), then the season's.
+	# The event's results, every puller, then the season's standings.
 	_tap(board.first_button)
 	await _frames(2)
 	_expect(board.visible and board.row_count() == PULLERS, "the event's standings")
