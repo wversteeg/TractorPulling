@@ -18,3 +18,6 @@ linux.debug.x86_64 = "res://bin/libtp_godot.linux.template_debug.x86_64.so"
 android.debug.arm64 = "res://bin/libtp_godot.android.template_debug.arm64.so"
 android.debug.x86_64 = "res://bin/libtp_godot.android.template_debug.x86_64.so"
 windows.debug.x86_64 = "res://bin/libtp_godot.windows.template_debug.x86_64.dll"
+; The web export without threads (Godot's "nothreads" templates), which
+; needs no cross-origin isolation headers from the server.
+web.debug.wasm32 = "res://bin/libtp_godot.web.template_debug.wasm32.nothreads.wasm"

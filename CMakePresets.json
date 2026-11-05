@@ -105,6 +105,31 @@
         "TP_BUILD_TESTS": "OFF",
         "TP_BUILD_BENCHMARKS": "OFF"
       }
+    },
+    {
+      "name": "web-base",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "web",
+      "displayName": "WebAssembly (Emscripten): tests, benchmarks and tp_pull, run with Node",
+      "inherits": "web-base"
+    },
+    {
+      "name": "godot-web",
+      "displayName": "Godot extension for the web export (WebAssembly, no threads)",
+      "inherits": "web-base",
+      "cacheVariables": {
+        "TP_BUILD_GODOT": "ON",
+        "GODOTCPP_TARGET": "template_debug",
+        "GODOTCPP_THREADS": "OFF",
+        "TP_BUILD_TESTS": "OFF",
+        "TP_BUILD_BENCHMARKS": "OFF",
+        "TP_BUILD_TOOLS": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -116,7 +141,9 @@
     { "name": "godot", "configurePreset": "godot" },
     { "name": "godot-android-arm64", "configurePreset": "godot-android-arm64" },
     { "name": "godot-android-x86_64", "configurePreset": "godot-android-x86_64" },
-    { "name": "godot-windows", "configurePreset": "godot-windows" }
+    { "name": "godot-windows", "configurePreset": "godot-windows" },
+    { "name": "web", "configurePreset": "web" },
+    { "name": "godot-web", "configurePreset": "godot-web" }
   ],
   "testPresets": [
     {
@@ -127,6 +154,7 @@
     },
     { "name": "debug", "inherits": "base", "configurePreset": "debug" },
     { "name": "release", "inherits": "base", "configurePreset": "release" },
+    { "name": "web", "inherits": "base", "configurePreset": "web" },
     {
       "name": "asan-ubsan",
       "inherits": "base",

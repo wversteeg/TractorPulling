@@ -36,6 +36,9 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 include(CompilerOptions)
+if(EMSCRIPTEN)
+    include(Web)
+endif()
 include(Dependencies)
 
 add_subdirectory(core)

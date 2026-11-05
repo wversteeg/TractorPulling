@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace tp::data::detail {
@@ -56,16 +57,26 @@ private:
 template <typename T>
 using TableLoader = Result<T> (*)(const toml::table& root, std::string_view source);
 
-// Parses `toml_text` and hands the table to `load`; syntax errors become
-// "source:line:column: description".
+// Parses `toml_text` and hands the table to `read`, with `args` after the
+// source name; a syntax error becomes "source:line:column: description".
+// toml++ is built without exceptions (TOML_EXCEPTIONS=0,
+// data_io/CMakeLists.txt): Godot's web export cannot catch any, so a syntax
+// error must be a value on every platform.
+template <typename Read, typename... Args>
+[[nodiscard]] auto parse_then(std::string_view toml_text, std::string_view source, Read read,
+                              Args&&... args)
+    -> decltype(read(std::declval<const toml::table&>(), source, std::forward<Args>(args)...)) {
+    const toml::parse_result parsed = toml::parse(toml_text, source);
+    if (!parsed) {
+        return LoadError{describe(parsed.error(), source)};
+    }
+    return read(parsed.table(), source, std::forward<Args>(args)...);
+}
+
+// Parses `toml_text` and hands the table to `load` (parse_then).
 template <typename T>
 Result<T> parse_with(std::string_view toml_text, std::string_view source, TableLoader<T> load) {
-    try {
-        const toml::table root = toml::parse(toml_text, source);
-        return load(root, source);
-    } catch (const toml::parse_error& e) {
-        return LoadError{describe(e, source)};
-    }
+    return parse_then(toml_text, source, load);
 }
 
 template <typename T>

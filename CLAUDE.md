@@ -213,8 +213,13 @@ xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
 cmake --preset godot-android-arm64 && cmake --build --preset godot-android-arm64
 cmake --preset godot-windows && cmake --build --preset godot-windows
 # What a tp_pull build makes of the scripted runs and an event, for comparing
-# platforms (CI compares Windows with Linux)
+# platforms (CI compares Windows and the web build with Linux)
 scripts/platform_runs.sh build/godot/tools/tp_pull
+# WebAssembly (needs Emscripten 4.0.11, Godot 4.7.2's: source emsdk_env.sh):
+# the tests and tp_pull under Node, and the extension for the web export
+cmake --preset web && cmake --build --preset web && ctest --preset web
+scripts/platform_runs.sh node build/web/tools/tp_pull.js
+cmake --preset godot-web && cmake --build --preset godot-web
 # The game exported (after the godot, godot-android-* and godot-windows
 # builds; needs Godot's export templates, ANDROID_HOME and JAVA_HOME): a
 # debug APK and the Windows game in build/export. CI's export job does the
@@ -222,7 +227,7 @@ scripts/platform_runs.sh build/godot/tools/tp_pull
 scripts/godot_export.sh /path/to/godot
 ```
 
-Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `godot`, `godot-android-arm64`, `godot-android-x86_64`, `godot-windows`. Keep the commands above working; update this section when presets change.
+Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `godot`, `godot-android-arm64`, `godot-android-x86_64`, `godot-windows`, `web`, `godot-web`. Keep the commands above working; update this section when presets change.
 
 ## Code standards
 
@@ -256,7 +261,7 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `g
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
-- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, and Godot's export templates for the exports, downloaded from Godot's releases at a pinned version and checked against their SHA-512; MinGW-w64 from Ubuntu for the Windows extension; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
+- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, and Godot's export templates for the exports, downloaded from Godot's releases at a pinned version and checked against their SHA-512; MinGW-w64 from Ubuntu for the Windows extension; Emscripten's SDK (emsdk), cloned at Godot's version's release tag, for the web build; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
 - Art assets are vendored, not fetched: so far Kenney's CC0 starter-kit models in `app/godot/assets/kenney`, credited with their source commits in its README. Only CC0 or similarly free licences; say where each comes from.
 
 ## Dependencies

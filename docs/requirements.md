@@ -23,11 +23,12 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | ID | Requirement | Status | Checked by |
 |----|-------------|--------|------------|
 | G-1 | The simulation runs at a fixed 1 kHz step (1 ms), whatever the frame rate; the game hands it real time and it alone decides the steps. | met | `FixedStepClock.*`, `Session.GivesTheSameRunHoweverTheTimeIsSplitIntoFrames` |
-| G-2 | Identical inputs give an identical state hash on every supported platform (x86-64, ARM, Windows, Android). | met | `*.MatchesRegressionHash`, `*.ReplayMatchesRegression`, CI's ARM, Android and Windows jobs, `scripts/platform_runs.sh` |
+| G-2 | Identical inputs give an identical state hash on every supported platform (x86-64, ARM, Windows, Android, WebAssembly). | met | `*.MatchesRegressionHash`, `*.ReplayMatchesRegression`, CI's ARM, Android, Windows and web jobs, `scripts/platform_runs.sh` |
 | G-3 | The game's runs through the Godot extension end in the same state hashes as `tp_pull run --hash`. | met | `run_test.gd` via `scripts/godot_test.sh` |
 | G-4 | A simulation step takes at most 50 µs on a mid-range phone, and never allocates on the heap. | met (CI limits; phone not yet measured) | `bench/speed_budget.toml`, `scripts/check_speed_budget.py`, `NoAllocation.*` |
 | G-5 | Android first (API 24 and up); Windows as a desktop build. | met | CI's Android emulator tests and `export` job, `windows game` job |
 | G-6 | All tractor, engine, tire, sled, track, class, event and season numbers come from `data/`, validated on load with a message naming the file and field. | met | `*Loader.*` |
+| G-7 | The simulation, the data loaders and the Godot extension build for the web (WebAssembly, Emscripten at Godot's version, no threads); a file with a TOML syntax error gives a message naming the file and line there too, with no exception thrown (Godot's web export cannot catch one). | met (the web export itself not yet) | CI's `web` job (the tests under Node), `SyntaxError.EveryLoaderNamesTheFileAndLine` |
 
 ## Physics
 

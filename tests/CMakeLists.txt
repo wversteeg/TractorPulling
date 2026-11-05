@@ -67,6 +67,7 @@ if(TP_BUILD_DATA_IO)
         data/load_downshift_runs_test.cpp
         data/shipped_tracks_test.cpp
         data/sled_loader_test.cpp
+        data/syntax_error_test.cpp
         data/tire_loader_test.cpp
         data/track_loader_test.cpp
         data/tractor_loader_test.cpp
