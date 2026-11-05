@@ -180,15 +180,23 @@ for the big features; they are repeated at the end for completeness.
 - **The held sled never moves.** Before the flag the sled stands still
   however hard the chain pulls; a real one is held by its operator and its
   pan, and a tractor pulling too hard could drag it.
-- **The chain eases the tractor back.** A tractor never rolls back from
-  rest on the chain (in a forward gear it only drives forwards), so the
-  jolt that ends the creep would stay in the stretched chain. Waiting for
-  the flag with the drive out, the turn moves the standing tractor back to
-  the chain's length at 5 cm/s instead (`turn::kChainEasesBack_m_s`), its
-  brakes on or not; the flag waits until it has. A driveline that could
-  roll back with the clutch pressed would do it physically.
-- **No collisions.** The tractor drives through the sled, the fence and the
-  parked tractors; nothing stops it but the driver.
+- **The chain eases a braked tractor back.** With the drive out a
+  stretched chain pulls the tractor back physically, but one held on its
+  brakes (the easy layout holds it so) only creeps, so the jolt that ends
+  the creep could stay in the chain. Waiting for the flag with the drive
+  out, the turn moves the standing tractor back to the chain's length at
+  5 cm/s (`turn::kChainEasesBack_m_s`), its brakes on or not; the flag waits
+  until it has.
+- **In the pull the drawbar never pulls back.** There the drawbar is taken
+  as the sled's drag, which holds the tractor but never rolls it back
+  (`vehicle::travel_direction`); only off the pull does the chain alone
+  pull a tractor with the drive out back. A tractor standing on a
+  stretched chain in the pull, the clutch pressed, stays put until the
+  pull ends.
+- **No collisions.** Apart from the sled's fenders while the chain is on
+  (backing up to it, and backing off after the pull), the tractor drives
+  through the sled, the fence and the parked tractors; nothing stops it
+  but the driver.
 - **The ground beside the track.** Off the lane, in the parking and on the
   way back, the tractor rolls on the track's own soil; grass or a gravel
   lane would grip and roll differently.

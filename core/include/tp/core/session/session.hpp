@@ -154,6 +154,10 @@ struct Snapshot {
     double hitch_to_hook_m = 0.0;
     double hitch_along_m = 0.0;
     double hitch_across_m = 0.0;
+    /// How far the chain is short of tight (turn::chain_slack_m): positive
+    /// slack, negative stretched [m]. Taking up the slack the driver creeps
+    /// until it is less than turn::kReadyTautWithin_m.
+    double chain_slack_m = 0.0;
     /// Taking up the slack: how far the official is towards the green flag,
     /// 0 to 1 (the chain has held its tension that share of the time).
     double flag_progress = 0.0;

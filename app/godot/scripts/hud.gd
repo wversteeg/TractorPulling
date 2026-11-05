@@ -12,7 +12,9 @@
 # what to do next (it
 # can be turned off in the settings: `guidance`): drive
 # to the sled and back up to it (how far the hitch still has to go, and
-# which way to steer), take up the slack, wait for the flag, back off to
+# which way to steer), take up the slack (how far still to creep, with a
+# gauge under the line: the slack, and the band where it is taken up),
+# wait for the flag, back off to
 # release the chain, drive back to the bay. After the pull the numbers keep
 # its distance (hold_distance) while the sled drives back, and the bar down
 # the track is empty again once the chain is off. A lamp right of the bars
@@ -64,6 +66,17 @@ const STEER_HINT_SHARE := 0.6
 # the turn into the lane, the tractor is still on its way past the sled.
 const PAST_THE_SLED_CHAINS := 3.0
 const PAST_THE_SLED_MARGIN_M := 10.0
+# Taking up the slack, a gauge under the turn's line: the chain's slack
+# from GUIDE_SLACK_M (left) to GUIDE_STRETCH_M stretched (right), the band
+# the slack counts as taken up in green, a mark where the chain is now
+# [px, m].
+const GUIDE_WIDTH := 300.0
+const GUIDE_TOP := 48.0
+const GUIDE_HEIGHT := 9.0
+const GUIDE_SLACK_M := 1.5
+const GUIDE_STRETCH_M := 0.15
+const GUIDE_COLOUR := Color(1.0, 0.95, 0.6, 0.35)
+const GUIDE_OK_COLOUR := Color(0.2, 0.95, 0.35)
 # The signal lamp: its middle, right of the bars' labels and clear of the
 # numbers line, the buttons and the gear buttons; its radius.
 const LAMP_CENTRE := Vector2(740.0, 155.0)
@@ -132,6 +145,9 @@ var _steer_hint_m := 0.25
 # Shorter than the chain's length by more than this, the chain is not
 # tight enough for the flag [m].
 var _taut_within_m := 0.1
+# The chain's slack now, and whether the gauge shows it [m].
+var _slack_m := 0.0
+var _guide := false
 # The pro layout: the driver works the clutch (the easy one's assist does).
 var _pro := false
 # The player's bay in the parking, on the track; INF for no whole turn.
@@ -259,6 +275,8 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 		text += "   clutch %3.0f %%" % ((1.0 - float(s["clutch_pedal"])) * 100.0)
 	_numbers.text = text
 	_turn.text = turn_text(s) if guidance else ""
+	_slack_m = s.get("chain_slack_m", 0.0)
+	_guide = guidance and s.get("stage", "pulling") in ["taking_up_slack", "waiting_for_the_flag"]
 	queue_redraw()
 
 
@@ -306,14 +324,12 @@ func turn_text(s: Dictionary) -> String:
 				return "Stop: chain goes on" + steer
 			return "Back up: %.1f m%s" % [to_go, steer]
 		"taking_up_slack":
-			return "Creep forward: take up slack"
+			return "Creep forward: %.2f m" % maxf(slack_to_go_m(s), 0.0)
 		"waiting_for_the_flag":
 			if float(s.get("flag_progress", 0.0)) > 0.0:
 				return "Hold still..."
-			# The hitch's distance on the ground: a little short of the
-			# chain's span, which climbs to the hook.
-			if float(s["hitch_to_hook_m"]) < _chain_m - _taut_within_m:
-				return "Creep forward: chain slack"
+			if slack_to_go_m(s) > 0.0:
+				return "Creep forward: %.2f m" % slack_to_go_m(s)
 			if _pro:
 				return "Chain tight: clutch in, gear in, hold"
 			return "Chain tight: off the gas, gear in, hold"
@@ -334,6 +350,17 @@ func turn_text(s: Dictionary) -> String:
 		"parked":
 			return "Parked" if _parking != Vector2.INF else ""
 	return ""
+
+
+# How far the tractor still has to creep before the slack counts as taken
+# up: into the band within the ready distance of tight [m].
+func slack_to_go_m(s: Dictionary) -> float:
+	return float(s.get("chain_slack_m", 0.0)) - _taut_within_m
+
+
+# Whether the slack gauge shows, for tests.
+func guide_shown() -> bool:
+	return _guide
 
 
 # The boost pressure the gauge shows [bar].
@@ -357,6 +384,8 @@ func _draw() -> void:
 		var band := Rect2(_turn.position + Vector2((TURN_WIDTH - width) / 2.0, 0.0),
 				Vector2(width, _turn.get_minimum_size().y))
 		draw_rect(band.grow(TURN_PADDING), BACK_COLOUR)
+	if _guide:
+		_draw_guide()
 	# The officials' signal.
 	if _signal != "off":
 		draw_circle(LAMP_CENTRE, LAMP_RADIUS + 5.0, BACK_COLOUR)
@@ -399,6 +428,27 @@ func _draw() -> void:
 
 # The boost gauge: the dial, a tick every half bar, full boost marked, the
 # boost so far as an arc and a needle.
+# The slack gauge: the slack shrinking to the right, the band where it
+# counts as taken up, and the chain now.
+func _draw_guide() -> void:
+	var left := (size.x - GUIDE_WIDTH) / 2.0
+	var bar := Rect2(left, GUIDE_TOP, GUIDE_WIDTH, GUIDE_HEIGHT)
+	draw_rect(bar.grow(2.0), BACK_COLOUR)
+	draw_rect(bar, GUIDE_COLOUR)
+	var ok_from := _guide_x(_taut_within_m)
+	draw_rect(Rect2(left + ok_from, GUIDE_TOP, _guide_x(0.0) - ok_from, GUIDE_HEIGHT),
+			GUIDE_OK_COLOUR)
+	var now := left + _guide_x(_slack_m)
+	draw_line(Vector2(now, GUIDE_TOP - 4.0), Vector2(now, GUIDE_TOP + GUIDE_HEIGHT + 4.0),
+			Color.WHITE, 3.0)
+
+
+# Where the gauge shows `slack_m`, from its left end [px].
+func _guide_x(slack_m: float) -> float:
+	var share := (GUIDE_SLACK_M - slack_m) / (GUIDE_SLACK_M + GUIDE_STRETCH_M)
+	return GUIDE_WIDTH * clampf(share, 0.0, 1.0)
+
+
 func _draw_gauge() -> void:
 	var top_bar := ceilf(_full_boost_bar * GAUGE_HEADROOM / GAUGE_TICK_BAR) \
 			* GAUGE_TICK_BAR

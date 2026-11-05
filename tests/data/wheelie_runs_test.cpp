@@ -1,6 +1,7 @@
 #include "tp/core/driver/driver.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/time/fixed_step_clock.hpp"
+#include "tp/core/turn/turn.hpp"
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/session/run_setup.hpp"
 #include "tp/data/sled/sled_loader.hpp"
@@ -10,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <filesystem>
 #include <limits>
 #include <stdexcept>
@@ -146,6 +148,56 @@ TEST(WheelieRuns, OnALowGripTrackItLiftsOnlyOnTheLaunch) {
     EXPECT_EQ(f.launch_n, 0.0);
     EXPECT_GT(f.end_n, 0.0);
     EXPECT_EQ(f.result.ending, run::Ending::kSpunOut);
+}
+
+// A pull that ends with the front up and the chain pulling hard leaves the
+// chain stretched once the tractor stands, which would hold the front up.
+// With the clutch pressed the tractor rolls back on it, free of the
+// engine: the chain goes slack and the front comes down, so backing off
+// after the pull starts from the ground, not from a wheelie.
+TEST(WheelieRuns, PressingTheClutchAfterThePullLetsTheFrontDown) {
+    const vehicle::Params built = loaded(load_tractor(data("tractors/sport_2500.toml")));
+    vehicle::Tuning tuning = vehicle::as_built(built);
+    tuning.ballast_position = 0.0;
+    const sled::Params sled = loaded(load_sled(data("sleds/sport_2500.toml")));
+    const Track track = loaded(load_track(data("tracks/firm_loam.toml")));
+    const session::Setup setup = run_setup(vehicle::tuned(built, tuning), sled, track, 0);
+    const std::optional<pull::Model> model =
+        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    if (!model) {
+        throw std::runtime_error("the pull was refused");
+    }
+    // The pull as a whole turn has it: hooked at the line, the flag green.
+    constexpr turn::Parking kParking{.x_m = -15.0, .y_m = -10.0};
+    turn::State state = turn::from_the_parking(*model, kParking);
+    state.run = run::start(*model);
+    state.stage = turn::Stage::kPulling;
+    // Off the line quicker than kSportDriver: a full pull.
+    driver::Plan plan = kSportDriver;
+    plan.select_gear_s = 0.0;
+    plan.launch_s = 0.5;
+    driver::State driver;
+    pull::Output out;
+    while (state.stage == turn::Stage::kPulling) {
+        const double t_s = static_cast<double>(state.run.steps) * kDt_s;
+        out = turn::step(state, *model, setup.rules, kParking,
+                         driver::input(plan, driver, t_s, state.run.pull.tractor, setup.tractor),
+                         kDt_s);
+    }
+    ASSERT_EQ(state.stage, turn::Stage::kReleasing);
+    ASSERT_EQ(state.run.result.value_or(run::Result{}).ending, run::Ending::kFullPull);
+    const int gear = state.run.pull.tractor.driveline.gear;
+    ASSERT_GT(out.chain.tension_n, 20000.0) << "the chain pulling hard at the line";
+    ASSERT_EQ(out.tractor.axle_loads.front_n, 0.0) << "the front up";
+    // Off the gas, the clutch pressed: the tractor and the sled roll to a
+    // stop, the chain between them.
+    for (int i = 0; i < 3000; ++i) {
+        out = turn::step(state, *model, setup.rules, kParking,
+                         {.throttle = 0.0, .clutch_pedal = 1.0, .gear = gear}, kDt_s);
+    }
+    EXPECT_EQ(out.chain.tension_n, 0.0) << "the chain slack";
+    EXPECT_GT(out.tractor.axle_loads.front_n, 0.0) << "the front down";
+    EXPECT_LT(std::abs(state.run.pull.tractor.chassis.pitch_rad), 0.01);
 }
 
 // The standard class's farm tractor, its weights halfway and its clutch

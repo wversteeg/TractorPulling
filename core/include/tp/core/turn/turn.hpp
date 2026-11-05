@@ -18,8 +18,8 @@ namespace tp::turn {
 enum class Stage : std::uint8_t {
     /// Driving from the parking and backing up to the sled, the chain off.
     kToTheSled,
-    /// Hooked on: the tractor creeps forward to put some force on the
-    /// chain, the sled held.
+    /// Hooked on: the tractor creeps forward until the chain is tight (to
+    /// within kReadyTautWithin_m), the sled held.
     kTakingUpSlack,
     /// The slack taken up: the driver stops, picks the pulling gear (the
     /// pull has not begun, so any gear goes) and stands ready; the official
@@ -79,25 +79,29 @@ inline constexpr double kAtRest_m_s = 0.05;
 /// sled's line [m] and turned at most this far from it [rad].
 inline constexpr double kHookOffLine_m = 0.4;
 inline constexpr double kHookTurned_rad = 0.26;
-/// "Some force on the chain": the slack is taken up once the chain holds at
-/// least this tension [N].
+/// "Some force on the chain": the sled's lamp shows the chain pulling on
+/// the hook from this tension [N]. The slack is taken up once the chain
+/// holds it, or once the chain is within kReadyTautWithin_m of tight: the
+/// band the driver creeps into and stops in, without a jolt.
 inline constexpr double kTakeUpTension_n = 1000.0;
 /// Ready for the flag: the tractor stands with the chain at most
 /// kReadyTautWithin_m short of its length between the hitch and the hook
-/// and at most kReadyStretched_m longer (the jolt eased out, see
-/// kChainEasesBack_m_s) [m], the drive out (the
+/// and at most kReadyStretched_m longer (the jolt eased out: with the drive
+/// out the chain pulls the tractor back, see kChainEasesBack_m_s) [m], the
+/// drive out (the
 /// clutch pressed so far it carries nothing, or the gear in neutral): the
 /// chain held, not pulled on. The official waves green once the tractor
 /// has stood ready this long without a break [s].
 inline constexpr double kReadyTautWithin_m = 0.1;
 inline constexpr double kReadyStretched_m = 0.001;
 inline constexpr double kFlagAfter_s = 2.0;
-/// A tractor never rolls back from rest on the chain (vehicle::step: in a
-/// forward gear it only drives forwards), so the jolt that ends the creep
-/// would stay in the stretched chain and, at the flag, throw the freed
-/// sled a few centimetres: a stop that ends the pull. Waiting with the
-/// drive out, the chain eases the standing tractor back to its length at
-/// this speed instead [m/s].
+/// With the drive out a stretched chain pulls the tractor back
+/// (vehicle::travel_direction), but not one held on its brakes, as the easy
+/// layout holds it: the jolt that ends the creep would stay in the
+/// stretched chain and, at the flag, throw the freed sled a few
+/// centimetres, a stop that ends the pull. Waiting with the drive out, the
+/// chain eases the standing tractor back to its length at this speed
+/// instead [m/s].
 inline constexpr double kChainEasesBack_m_s = 0.05;
 /// The chain comes off once it is this much shorter than its length
 /// between the hitch and the hook, with the tractor standing [m].
@@ -152,6 +156,11 @@ struct HitchToHook {
 [[nodiscard]] double fender_stop_m(const vehicle::Params& tractor,
                                    const sled::Fenders& fenders) noexcept;
 [[nodiscard]] double fender_stop_m(const pull::Model& model) noexcept;
+
+/// How far the chain is short of tight: its length less its span from the
+/// hitch to the hook, the climb to the hook included [m]. Positive slack,
+/// negative stretched; within kReadyTautWithin_m of 0 the slack is taken up.
+[[nodiscard]] double chain_slack_m(const pull::Model& model, const pull::State& state) noexcept;
 
 /// Whether the chain hooks on now (see kHookOffLine_m).
 [[nodiscard]] bool hooks_on(const pull::Model& model, const pull::State& state) noexcept;

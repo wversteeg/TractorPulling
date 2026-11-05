@@ -149,6 +149,8 @@ package "GDScript (app/godot/scripts)" {
     +set_parking(bay)
     +show_snapshot(snapshot, title, pro)
     +turn_text(snapshot) : String
+    +slack_to_go_m(snapshot) : float, still to creep into the ready band
+    +guide_shown() : bool, the slack gauge
     +boost_bar() : float, the boost gauge's reading
     +show_signal(signal) : the lamp on the HUD
     +signal_shown() : String

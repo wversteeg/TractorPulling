@@ -96,9 +96,9 @@ bool parked(const pull::Model& model, const pull::State& state, const Parking& p
     return stands(state) && std::sqrt(dx_m * dx_m + dy_m * dy_m) <= kParkedWithin_m;
 }
 
-// Backing up to the sled, the rear tires stop against its fenders: the
-// tractor stands there, as against a wall. Only its speed along is
-// stopped: the wheels may spin on, and a turn in progress is not.
+// Backing up to the sled, before the pull or after it, the rear tires stop
+// against its fenders: the tractor stands there, as against a wall. Only its
+// speed along is stopped: the wheels may spin on, and a turn in progress is not.
 void stop_at_the_fenders(pull::State& state, const pull::Model& model) noexcept {
     const sled::Fenders& fenders = model.sled().fenders;
     const HitchToHook gap = hitch_to_hook(model, state);
@@ -126,6 +126,14 @@ void restart_if_stalled(pull::State& state, const pull::Model& model,
     if (!engine.running && may_start) {
         engine = engine::initial_state(model.tractor().params().engine);
     }
+}
+
+// The slack is taken up once the chain is tight to within the ready band
+// (kReadyTautWithin_m), or pulls on the hook.
+bool taken_up(const pull::Model& model, const pull::State& state,
+              const pull::ChainForce& chain) noexcept {
+    return chain.tension_n >= kTakeUpTension_n ||
+           chain_span_m(model, state) >= model.sled().chain.length_m - kReadyTautWithin_m;
 }
 
 // kWaitingForTheFlag, after the step: the count while the tractor stands
@@ -191,6 +199,10 @@ double fender_stop_m(const vehicle::Params& tractor, const sled::Fenders& fender
 
 double fender_stop_m(const pull::Model& model) noexcept {
     return fender_stop_m(model.tractor().params(), model.sled().fenders);
+}
+
+double chain_slack_m(const pull::Model& model, const pull::State& state) noexcept {
+    return model.sled().chain.length_m - chain_span_m(model, state);
 }
 
 bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
@@ -268,16 +280,18 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
                                           pull.sled.position_m == model.sled_start_m() &&
                                           pull.sled.velocity_m_s == 0.0);
 
+    if (state.stage != Stage::kToTheParking && state.stage != Stage::kParked) {
+        stop_at_the_fenders(pull, model);
+    }
     switch (state.stage) {
         case Stage::kToTheSled:
-            stop_at_the_fenders(pull, model);
             if (hooks_on(model, pull)) {
                 pull.hooked = true;
                 state.stage = Stage::kTakingUpSlack;
             }
             break;
         case Stage::kTakingUpSlack:
-            if (out.chain.tension_n >= kTakeUpTension_n) {
+            if (taken_up(model, pull, out.chain)) {
                 state.ready_steps = 0;
                 state.stage = Stage::kWaitingForTheFlag;
             }

@@ -629,6 +629,36 @@ TEST(VehicleReversing, ComesToRestWithoutRollingForwards) {
     EXPECT_EQ(back.state.driveline.output_omega_rad_s, 0.0);
 }
 
+// Off the pull the chain alone pulls on the hitch: a standing tractor with
+// the drive out (the clutch pressed, or in neutral) rolls back on it, as a
+// stretched chain eases. With the clutch in the engine holds it, as do the
+// brakes and, for a light pull, the rolling resistance; in the pull the
+// drawbar is the sled's drag, which holds but never pulls back.
+TEST(VehicleReversing, TheChainPullsATractorWithTheDriveOutBack) {
+    const auto speed_after = [](Input input, double drawbar_n) {
+        const Model model = reference_model();
+        State state = initial_state(model);
+        for (int i = 0; i < 1000; ++i) {
+            step(state, model, input, kGround, {.pull_n = drawbar_n}, kDt_s);
+        }
+        return state.chassis.velocity_m_s;
+    };
+    const Input pressed{.clutch_pedal = 1.0, .gear = 4, .pull_on = false};
+    EXPECT_LT(speed_after(pressed, 20000.0), -0.5) << "the clutch pressed";
+    Input neutral = pressed;
+    neutral.gear = driveline::kNeutral;
+    EXPECT_LT(speed_after(neutral, 20000.0), -0.5) << "in neutral";
+    EXPECT_EQ(speed_after(pressed, 100.0), 0.0) << "too light to roll it";
+    Input braked = pressed;
+    braked.brake_left = 1.0;
+    braked.brake_right = 1.0;
+    EXPECT_EQ(speed_after(braked, 5000.0), 0.0) << "the brakes on";
+    EXPECT_GT(speed_after(braked, 20000.0), -0.1) << "the locked tires creep at most";
+    Input pulling = pressed;
+    pulling.pull_on = true;
+    EXPECT_EQ(speed_after(pulling, 20000.0), 0.0) << "the sled's drag";
+}
+
 // Backing up with the wheels to the left swings the nose left too, so the
 // tractor turns right: the other way from going forwards.
 TEST(VehicleReversing, SteersTheOtherWayRound) {

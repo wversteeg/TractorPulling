@@ -59,6 +59,7 @@ package "tp::session" {
     +box_ahead_of_wheels_m, pushdown, berm_m3, chain_tension_n : double
     +chain_hooked, sled_back : bool
     +hitch_to_hook_m, hitch_along_m, hitch_across_m : double
+    +chain_slack_m : double
     +flag_progress : double
   }
   class Frame <<struct>> {

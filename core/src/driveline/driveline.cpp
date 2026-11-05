@@ -201,7 +201,12 @@ Prediction predict(const State& state, const Params& params, double axle_load_to
 
     // Constant drag opposes rotation; a shaft at rest is held, not reversed
     // (see the clamp in advance()).
-    const double drag_nm = state.input_omega_rad_s > 0.0 ? params.drag_torque_nm : 0.0;
+    double drag_nm = 0.0;
+    if (state.input_omega_rad_s > 0.0) {
+        drag_nm = params.drag_torque_nm;
+    } else if (state.input_omega_rad_s < 0.0) {
+        drag_nm = -params.drag_torque_nm;
+    }
 
     if (p.ratio == 0.0) {
         const Line input = integrate(state.input_omega_rad_s, params.input_inertia_kg_m2, -drag_nm,
@@ -273,11 +278,14 @@ void advance(State& state, const Prediction& p, double clutch_torque_nm,
     }
     const double effective_nm =
         clutch_torque_nm >= 0.0 ? clutch_torque_nm * p.efficiency : clutch_torque_nm / p.efficiency;
-    // Resistance holds the train at rest but never turns the input shaft
-    // backwards: in reverse the axle turns backwards through the gears.
-    state.input_omega_rad_s = std::max(p.free_input_rad_s + p.input_per_nm * effective_nm +
-                                           p.input_per_nm / p.ratio * axle_torque_nm,
-                                       0.0);
+    // Resistance holds the train at rest but never turns it against the
+    // way the tractor travels: the input shaft turns forwards, in reverse
+    // too (the axle then turns backwards through the gears), and backwards
+    // only in a forward gear rolling back with the drive out.
+    const double input_rad_s = p.free_input_rad_s + p.input_per_nm * effective_nm +
+                               p.input_per_nm / p.ratio * axle_torque_nm;
+    state.input_omega_rad_s = p.ratio > 0.0 && p.direction < 0.0 ? std::min(input_rad_s, 0.0)
+                                                                 : std::max(input_rad_s, 0.0);
     state.output_omega_rad_s = state.input_omega_rad_s / p.ratio;
 }
 

@@ -98,6 +98,7 @@ Snapshot blend(const Snapshot& from, const Snapshot& to, double alpha) noexcept 
     out.hitch_to_hook_m = lerp(from.hitch_to_hook_m, to.hitch_to_hook_m, alpha);
     out.hitch_along_m = lerp(from.hitch_along_m, to.hitch_along_m, alpha);
     out.hitch_across_m = lerp(from.hitch_across_m, to.hitch_across_m, alpha);
+    out.chain_slack_m = lerp(from.chain_slack_m, to.chain_slack_m, alpha);
     out.flag_progress = lerp(from.flag_progress, to.flag_progress, alpha);
     return out;
 }
@@ -245,6 +246,7 @@ Snapshot Session::snapshot() const noexcept {
             .hitch_to_hook_m = gap.distance_m,
             .hitch_along_m = gap.along_m,
             .hitch_across_m = gap.across_m,
+            .chain_slack_m = turn::chain_slack_m(model_, pull),
             .flag_progress = flag_progress,
             .sled_back = turn_.sled_back};
 }
