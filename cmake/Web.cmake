@@ -6,15 +6,15 @@ if(TP_BUILD_GODOT)
     # The extension is a side module that Godot's web export loads into its
     # own main module (Godot's "extensions support" templates). godot-cpp
     # compiles with -sSIDE_MODULE, and every static library linked in must
-    # be position independent (set above). CMake has no shared libraries for
-    # Emscripten, and links a SHARED library into a static object: this
-    # links it as a side module instead, named .wasm as Godot expects, as
-    # godot-cpp's cmake/emsdkHack.cmake does for its own project. Mode 2,
-    # not godot-cpp's 1: mode 1 links every object of every static library
-    # in (and fails on tp_core, which CMake lists twice), mode 2 only what
-    # the entry point Godot looks up reaches, which is smaller. It throws
-    # nothing, so it keeps Emscripten's default of no exception support,
-    # like Godot's own web build.
+    # be position independent (CMakeLists.txt sets it). CMake has no shared
+    # libraries for Emscripten, and links a SHARED library into a static
+    # object: this links it as a side module instead, named .wasm as Godot
+    # expects, as godot-cpp's cmake/emsdkHack.cmake does for its own
+    # project. Mode 2, not godot-cpp's 1: mode 1 links every object of every
+    # static library in (and fails on tp_core, which CMake lists twice),
+    # mode 2 only what the entry point Godot looks up reaches, which is
+    # smaller. It throws nothing, so it keeps Emscripten's default of no
+    # exception support, like Godot's own web build.
     set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
     set(CMAKE_SHARED_LIBRARY_CREATE_CXX_FLAGS
         "-sSIDE_MODULE=2 -sEXPORTED_FUNCTIONS=_tractor_pulling_init")
