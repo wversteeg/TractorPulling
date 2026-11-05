@@ -659,6 +659,30 @@ TEST(VehicleReversing, TheChainPullsATractorWithTheDriveOutBack) {
     EXPECT_EQ(speed_after(pulling, 20000.0), 0.0) << "the sled's drag";
 }
 
+// Rolling back on the chain and then letting the clutch in hard stalls the
+// engine and stops the tractor; it is then standing, not rolling back, so
+// once the engine is started again it drives forwards.
+TEST(VehicleReversing, AfterRollingBackItDrivesForwardsAgain) {
+    const Model model = reference_model();
+    State state = initial_state(model);
+    const auto run = [&](Input input, double drawbar_n, double seconds) {
+        for (int i = 0; i < static_cast<int>(seconds / kDt_s); ++i) {
+            step(state, model, input, kGround, {.pull_n = drawbar_n}, kDt_s);
+        }
+    };
+    run({.clutch_pedal = 1.0, .gear = 4, .pull_on = false}, 20000.0, 1.0);
+    ASSERT_LT(state.chassis.velocity_m_s, -1.0);
+    run({.throttle = 1.0, .clutch_pedal = 0.0, .gear = 4, .pull_on = false}, 0.0, 4.0);
+    EXPECT_EQ(state.chassis.velocity_m_s, 0.0);
+    EXPECT_GE(state.driveline.output_omega_rad_s, 0.0) << "standing, not rolling back";
+    EXPECT_EQ(travel_direction(state, false, 0.0), 1.0);
+    // The driver starts it again, the clutch pressed, then slips it in.
+    run({.clutch_pedal = 1.0, .gear = 4, .pull_on = false}, 0.0, 0.1);
+    state.engine = engine::initial_state(model.params().engine);
+    run({.throttle = 0.5, .clutch_pedal = 0.4, .gear = 4, .pull_on = false}, 0.0, 3.0);
+    EXPECT_GT(state.chassis.velocity_m_s, 0.3);
+}
+
 // Backing up with the wheels to the left swings the nose left too, so the
 // tractor turns right: the other way from going forwards.
 TEST(VehicleReversing, SteersTheOtherWayRound) {

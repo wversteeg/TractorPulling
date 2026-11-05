@@ -214,6 +214,18 @@ TEST(Turn, TheSlackIsTakenUpInTheReadyBand) {
     EXPECT_EQ(after_a_step(chain_m - 2.0 * kReadyTautWithin_m), Stage::kTakingUpSlack);
     EXPECT_EQ(after_a_step(chain_m - 0.5 * kReadyTautWithin_m), Stage::kWaitingForTheFlag);
     EXPECT_EQ(after_a_step(chain_m), Stage::kWaitingForTheFlag);
+
+    // Creeping into the band: taken up at once, but the flag's count waits
+    // until the tractor stands.
+    State creeping = from_the_parking(model, kParking);
+    creeping.stage = Stage::kTakingUpSlack;
+    creeping.run.pull.hooked = true;
+    place_span(model, creeping.run.pull, chain_m - 0.5 * kReadyTautWithin_m);
+    creeping.run.pull.tractor.chassis.velocity_m_s = 0.5;
+    step(creeping, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 4}, kDt_s);
+    EXPECT_EQ(creeping.stage, Stage::kWaitingForTheFlag);
+    step(creeping, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 4}, kDt_s);
+    EXPECT_EQ(creeping.ready_steps, 0U) << "still moving";
 }
 
 // A pull that stopped short of the restart line may be pulled again from

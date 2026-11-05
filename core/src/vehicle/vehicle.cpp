@@ -448,13 +448,16 @@ double travel_direction(const State& state, bool drive_out, double drawbar_pull_
     }
     // Free of the engine, a standing tractor that the chain pulls back
     // rolls back: the resistances then hold it only if they can. (In the
-    // pull the drawbar is the sled's drag, which never pulls back.) Rolling
-    // back, it rolls on until a clutch let in or the resistances stop it.
+    // pull the drawbar is the sled's drag, which never pulls back.) While
+    // the body rolls back it rolls on, until a clutch let in or the
+    // resistances stop it; once the body stands, a clutch let in holds the
+    // wheels to it, so a train still turning back a little does not keep
+    // it rolling back.
+    const bool free = gear == driveline::kNeutral || drive_out;
     const bool rolling_back =
-        state.chassis.velocity_m_s < 0.0 || state.driveline.output_omega_rad_s < 0.0;
+        state.chassis.velocity_m_s < 0.0 || (free && state.driveline.output_omega_rad_s < 0.0);
     const bool standing =
         state.chassis.velocity_m_s == 0.0 && state.driveline.output_omega_rad_s == 0.0;
-    const bool free = gear == driveline::kNeutral || drive_out;
     return rolling_back || (free && standing && drawbar_pull_n > 0.0) ? -1.0 : 1.0;
 }
 

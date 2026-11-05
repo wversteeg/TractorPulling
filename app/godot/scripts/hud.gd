@@ -426,8 +426,6 @@ func _draw() -> void:
 		draw_rect(front, FRONT_UP_COLOUR, false, 3.0)
 
 
-# The boost gauge: the dial, a tick every half bar, full boost marked, the
-# boost so far as an arc and a needle.
 # The slack gauge: the slack shrinking to the right, the band where it
 # counts as taken up, and the chain now.
 func _draw_guide() -> void:
@@ -449,6 +447,8 @@ func _guide_x(slack_m: float) -> float:
 	return GUIDE_WIDTH * clampf(share, 0.0, 1.0)
 
 
+# The boost gauge: the dial, a tick every half bar, full boost marked, the
+# boost so far as an arc and a needle.
 func _draw_gauge() -> void:
 	var top_bar := ceilf(_full_boost_bar * GAUGE_HEADROOM / GAUGE_TICK_BAR) \
 			* GAUGE_TICK_BAR
