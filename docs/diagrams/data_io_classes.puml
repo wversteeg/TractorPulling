@@ -184,6 +184,7 @@ package "tp::data::detail (internal)" {
     +error() : optional<LoadError>
   }
   class "toml_reader" as TomlFns <<free functions>> {
+    +parse_then(text, source, read, args...) : Result<T>
     +parse_with<T>(text, source, loader) : Result<T>
     +load_file_with<T>(path, read, loader) : Result<T>
     +make_error(source, field, reason) : LoadError

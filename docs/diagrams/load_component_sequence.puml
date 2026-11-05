@@ -3,7 +3,7 @@ title Loading a component definition from data/ (engine, clutch, ...)
 autonumber
 participant "tp_pull\n(or a front end)" as App
 participant "data::load_<component>" as Load
-participant "detail::load_file_with /\nparse_with" as Parse
+participant "detail::load_file_with /\nparse_with / parse_then" as Parse
 participant "ReadFile\n(the front end's,\nor read_from_disk)" as Read
 participant "toml++" as Toml
 participant "detail::Reader" as Reader
@@ -20,10 +20,10 @@ alt cannot open
 end
 Parse -> Toml : parse(text, source_name)
 alt syntax error
-  Toml --> Parse : throws parse_error
+  Toml --> Parse : parse_result holding a parse_error\n(toml++ without exceptions)
   Parse --> App : LoadError "file:line:col: description"
 end
-Toml --> Parse : toml::table
+Toml --> Parse : parse_result holding the toml::table
 Parse -> Load : read_<component>(table, source)
 Load -> Reader : curve("engine.torque_curve", "rpm", "torque_nm", rpm to rad/s)
 Reader -> Curve : validate(points), create(points)
