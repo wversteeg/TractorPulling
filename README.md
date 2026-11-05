@@ -659,6 +659,23 @@ Windows and checks it gives Linux's results (`scripts/platform_runs.sh`:
 the scripted runs' state hashes and a whole event), and starts the
 exported game there.
 
+### The web build
+
+The simulation, the data loaders and `tp_pull` build to WebAssembly with
+Emscripten, at the version Godot 4.7.2 builds its web export with (4.0.11).
+The tests run under Node, and CI checks `tp_pull` gives Linux's results
+there too. The `godot-web` preset builds the extension as a side module for
+Godot's web export (the "nothreads" templates with extensions support):
+
+```bash
+git clone --branch 4.0.11 https://github.com/emscripten-core/emsdk.git
+emsdk/emsdk install 4.0.11 && emsdk/emsdk activate 4.0.11
+source emsdk/emsdk_env.sh
+cmake --preset web && cmake --build --preset web && ctest --preset web
+scripts/platform_runs.sh node build/web/tools/tp_pull.js
+cmake --preset godot-web && cmake --build --preset godot-web
+```
+
 ## Requirements
 
 - CMake 3.25+ and Ninja
