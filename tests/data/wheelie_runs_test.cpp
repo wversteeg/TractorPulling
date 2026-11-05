@@ -93,6 +93,12 @@ const driver::Plan kSportDriver{.gear = 5,
                                 .launch_hold_share = 0.8,
                                 .launch_hold_max_s = 8.0};
 
+FrontLoads sport_no_shift(const std::string& track_file, double ballast_position) {
+    driver::Plan plan = kSportDriver;
+    plan.downshift_share = 0.0;
+    return pull("sport_2500.toml", "sport_2500.toml", track_file, ballast_position, plan);
+}
+
 FrontLoads sport(const std::string& track_file, double ballast_position) {
     return pull("sport_2500.toml", "sport_2500.toml", track_file, ballast_position, kSportDriver);
 }
@@ -106,6 +112,18 @@ TEST(WheelieRuns, ASportTractorLiftsOnTheLaunchAndAgainAsTheSledGetsHeavy) {
     EXPECT_EQ(f.launch_n, 0.0) << "up on the launch";
     EXPECT_GT(f.middle_n, 1000.0) << "down in the middle";
     EXPECT_EQ(f.end_n, 0.0) << "up again at the end";
+}
+
+// Without a powershift step the engine is pulled down before the front
+// comes up again at the end, unless the weights are all the way back: then
+// the front comes up by itself as the sled gets heavy.
+TEST(WheelieRuns, WithoutAPowershiftOnlyTheWeightsAllBackLiftItAtTheEnd) {
+    const FrontLoads quarter = sport_no_shift("ideal_clay_sand.toml", 0.25);
+    const FrontLoads back = sport_no_shift("ideal_clay_sand.toml", 0.0);
+    EXPECT_EQ(quarter.launch_n, 0.0);
+    EXPECT_GT(quarter.end_n, 0.0) << "light, but down";
+    EXPECT_EQ(quarter.result.ending, run::Ending::kStalled);
+    EXPECT_EQ(back.end_n, 0.0) << "up by itself";
 }
 
 // The weights forward keep the front down the whole pull: the puller

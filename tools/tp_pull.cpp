@@ -62,6 +62,7 @@
 
 #include "tp/core/controls/controls.hpp"
 #include "tp/core/driveline/driveline.hpp"
+#include "tp/core/driver/driver.hpp"
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/event/event.hpp"
 #include "tp/core/field/field.hpp"
@@ -441,26 +442,43 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         std::cerr << "inconsistent tractor, sled or track\n";
         return std::nullopt;
     }
-    int downshifted_gear = 0;
+    // --downshift: the scripted pullers' gear down under load, once; the
+    // gear it went to is held from then on.
+    bool watching = false;
+    int gear = options.gear;
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
-        const double engine_rad_s =
-            tp::session::Inspector::run_state(*session).pull.tractor.engine.omega_rad_s;
-        if (options.downshift_share && downshifted_gear == 0 &&
-            t_s > kPullRevUpEnd_s + kPullSlipIn_s &&
-            engine_rad_s < *options.downshift_share * setup.tractor.engine.rated_omega_rad_s) {
-            downshifted_gear =
-                options.gear - std::max(setup.tractor.driveline.load_downshift_gears, 1);
+        const tp::vehicle::State& tractor =
+            tp::session::Inspector::run_state(*session).pull.tractor;
+        if (options.downshift_share && gear == options.gear &&
+            tp::session::Inspector::last_input(*session).clutch_pedal == 0.0) {
+            gear = tp::driver::under_load_gear(*options.downshift_share, watching, gear, tractor,
+                                               setup.tractor);
+            if (gear != options.gear) {
+                const tp::pull::State& pull = tp::session::Inspector::run_state(*session).pull;
+                std::cout << "shifted down under load to gear " << gear << " at " << std::fixed
+                          << std::setprecision(1)
+                          << pull.sled.position_m -
+                                 tp::session::Inspector::model(*session).sled_start_m()
+                          << " m\n";
+            }
         }
-        if (downshifted_gear > 0) {
-            controls.gear = downshifted_gear;
+        if (gear != options.gear) {
+            controls.gear = gear;
         }
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
-        if (out.tractor.shift_refused && downshifted_gear == 0) {
-            std::cerr << "cannot select gear " << options.gear << '\n';
-            return std::nullopt;
+        if (out.tractor.shift_refused) {
+            if (gear == options.gear) {
+                std::cerr << "cannot select gear " << options.gear << '\n';
+                return std::nullopt;
+            }
+            std::cerr << "--downshift: the gearbox refused gear " << gear << " under load; "
+                      << "pulling on in "
+                      << tp::session::Inspector::run_state(*session).pull.tractor.driveline.gear
+                      << '\n';
+            gear = tp::session::Inspector::run_state(*session).pull.tractor.driveline.gear;
         }
         if (i % kStepsPerRow == 0) {
             const tp::pull::State& pull = tp::session::Inspector::run_state(*session).pull;

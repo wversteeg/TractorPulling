@@ -80,18 +80,25 @@ vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::
     // gear that went in stays (under way the gearbox goes no lower). A
     // scripted driver takes one gear of a two-gear step, never the second.
     if (in.clutch_pedal == 0.0 && plan.downshift_share > 0.0) {
-        const driveline::State& gearbox = tractor.driveline;
-        const bool below =
-            tractor.engine.omega_rad_s < plan.downshift_share * params.engine.rated_omega_rad_s;
-        state.watching = state.watching || !below;
-        if (gearbox.load_shift_gears > 0) {
-            in.gear = gearbox.gear;
-        } else if (state.watching && below && tractor.engine.running &&
-                   driveline::shifts_under_load(gearbox, params.driveline, gearbox.gear - 1)) {
-            in.gear = gearbox.gear - 1;
-        }
+        in.gear = under_load_gear(plan.downshift_share, state.watching, in.gear, tractor, params);
     }
     return in;
+}
+
+int under_load_gear(double downshift_share, bool& watching, int gear, const vehicle::State& tractor,
+                    const vehicle::Params& params) noexcept {
+    const driveline::State& gearbox = tractor.driveline;
+    const bool below =
+        tractor.engine.omega_rad_s < downshift_share * params.engine.rated_omega_rad_s;
+    watching = watching || !below;
+    if (gearbox.load_shift_gears > 0) {
+        return gearbox.gear;
+    }
+    if (watching && below && tractor.engine.running &&
+        driveline::shifts_under_load(gearbox, params.driveline, gearbox.gear - 1)) {
+        return gearbox.gear - 1;
+    }
+    return gear;
 }
 
 }  // namespace tp::driver

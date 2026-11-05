@@ -71,4 +71,14 @@ enum class ParamError : std::uint8_t {
                                    const vehicle::State& tractor,
                                    const vehicle::Params& params) noexcept;
 
+/// The scripted driver's gear down under load, the clutch in (see Plan):
+/// the gear to ask for instead of `gear`. They watch the rev counter once
+/// the engine is above `downshift_share` of its rated speed (`watching`,
+/// kept between steps); when it falls below that again they ask for a gear
+/// down, if the gearbox takes it under load, and hold the gear while it
+/// shifts. Otherwise `gear`.
+[[nodiscard]] int under_load_gear(double downshift_share, bool& watching, int gear,
+                                  const vehicle::State& tractor,
+                                  const vehicle::Params& params) noexcept;
+
 }  // namespace tp::driver

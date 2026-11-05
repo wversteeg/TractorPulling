@@ -31,6 +31,7 @@ package "tp::driver" {
   class "driver functions" as DriverFns <<free functions>> {
     +validate(const Plan&, gear_count) : optional<ParamError>
     +input(const Plan&, State&, t_s, const vehicle::State&, const vehicle::Params&) : vehicle::Input
+    +under_load_gear(downshift_share, bool& watching, gear, const vehicle::State&,\n      const vehicle::Params&) : int
   }
   DriverFns ..> Plan
   DriverFns ..> DriverState

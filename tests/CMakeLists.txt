@@ -78,3 +78,15 @@ if(TP_BUILD_DATA_IO)
     tp_configure_target(tp_data_tests)
     gtest_discover_tests(tp_data_tests DISCOVERY_MODE PRE_TEST)
 endif()
+
+# tp_pull's command line itself, where the tool runs on the build machine:
+# --downshift shifts the standard tractor down under load near the end of a
+# pull, as the scripted pullers do.
+if(TARGET tp_pull AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME TpPull.RunShiftsDownUnderLoad
+        COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
+            "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
+            --gear 6 --downshift 0.9 -o "${CMAKE_CURRENT_BINARY_DIR}/downshift_run.csv")
+    set_tests_properties(TpPull.RunShiftsDownUnderLoad PROPERTIES
+        PASS_REGULAR_EXPRESSION "shifted down under load to gear 5 at 8[0-9][.][0-9] m")
+endif()
