@@ -131,6 +131,7 @@ package "GDScript (app/godot/scripts)" {
     +throttle() : float
     +clutch() : float
     +brake_left(), brake_right() : float
+    +latch_brakes(latched)
     +steering() : float
     +set_layout(pro)
     +set_steering(by_tilt)
@@ -236,7 +237,7 @@ package "GDScript (app/godot/scripts)" {
   class BoardScreen {
     +first_button, second_button : TouchButton
     +set_title(text)
-    +set_rows(rows, highlights)
+    +set_rows(rows, highlights, newest_last, strong)
     +row_count() : int
     +set_status(text)
     +status() : String
@@ -250,6 +251,7 @@ package "GDScript (app/godot/scripts)" {
     +{static} verdict(entry) : String
     +{static} log_row(entry) : PackedStringArray
     +{static} standing_row(line) : PackedStringArray
+    +{static} leading_rows(log, places) : PackedInt32Array
     +{static} season_row(line) : PackedStringArray
   }
   class TouchSlider {

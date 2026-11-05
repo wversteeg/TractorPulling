@@ -211,11 +211,40 @@ func _play() -> void:
 	var hud: Hud = _pull.get("hud")
 	var setup: SetupScreen = _pull.get("setup_screen")
 
-	# How a pull reads: against the line before it, not the one after.
-	_expect(EventTexts.reach({"disqualified": false, "full_pull": true, "reached_m": 104.0,
-			"full_pull_m": 110.0}) == "FULL PULL", "a full pull that moved the line")
+	# How a pull reads: a full pull as the event judges it; a test pull
+	# that moved the line to 110 m counts its distance.
+	_expect(EventTexts.reach({"disqualified": false, "full_pull": true, "reached_m": 101.0,
+			"full_pull_m": 100.0}) == "FULL PULL", "a full pull")
+	_expect(EventTexts.reach({"disqualified": false, "full_pull": false, "reached_m": 104.0,
+			"full_pull_m": 110.0}) == "104.00 m", "a test pull that moved the line")
 	_expect(EventTexts.reach({"disqualified": false, "full_pull": false, "reached_m": 95.5,
 			"full_pull_m": 100.0}) == "95.50 m", "a pull short of the line")
+	# The standings show each pull-off round, and say "full pull" only for
+	# one.
+	var two_rounds := EventTexts.standing_row({"place": 1, "name": "Henk", "disqualified": false,
+			"full_pull": false, "distance_m": 96.0, "pull_off_rounds": 2,
+			"pull_off_distances_m": PackedFloat64Array([120.0, 98.5])})
+	_expect(two_rounds[2] == "96.00 m, pull-off 1: 120.00 m, pull-off 2: 98.50 m",
+			"both pull-offs in the standings: %s" % two_rounds[2])
+	# The board's bold rows: the main round's best four as they count (a
+	# re-pull replaces the test pull) and the best of the pull-off under way.
+	var log := [
+		{"puller": 1, "kind": "test", "reached_m": 99.0, "disqualified": false},
+		{"puller": 2, "kind": "competition", "reached_m": 85.0, "disqualified": false},
+		{"deciding": 1, "keep": false},
+		{"puller": 3, "kind": "competition", "reached_m": 92.0, "disqualified": false},
+		{"puller": 4, "kind": "competition", "reached_m": 70.0, "disqualified": false},
+		{"puller": 5, "kind": "competition", "reached_m": 88.0, "disqualified": true},
+		{"puller": 6, "kind": "competition", "reached_m": 81.0, "disqualified": false},
+		{"puller": 1, "kind": "repull", "reached_m": 90.0, "disqualified": false},
+		{"puller": 3, "kind": "pull_off", "pull_off_round": 1, "reached_m": 91.0,
+				"disqualified": false},
+		{"puller": 1, "kind": "pull_off", "pull_off_round": 1, "reached_m": 93.5,
+				"disqualified": false},
+	]
+	var bold := EventTexts.leading_rows(log, 4)
+	bold.sort()
+	_expect(bold == PackedInt32Array([1, 3, 6, 7, 9]), "the bold rows: %s" % bold)
 
 	# The start screen: the season's first event, started behind it.
 	var info := event.get_event()
@@ -349,10 +378,10 @@ func _play() -> void:
 	var pullers := {}
 	for entry: Dictionary in event.get_log(0):
 		pullers[entry.get("puller", entry.get("deciding", -1))] = true
-		# A test pull that moves the line to 110 m passed the line before it.
+		# A test pull that moves the line to 110 m counts its distance.
 		if entry.get("change", "") == "line_extended":
-			_expect(entry["full_pull"] and EventTexts.reach(entry) == "FULL PULL",
-					"a test pull past 100 m is a full pull: %s" % entry)
+			_expect(not entry["full_pull"] and EventTexts.reach(entry).ends_with(" m"),
+					"a test pull past 100 m counts its distance: %s" % entry)
 	_expect(pullers.size() == PULLERS, "every puller pulled: %s" % pullers)
 	await _frames(2)
 	_expect(board.first_button.text == "Results", "the event is over")

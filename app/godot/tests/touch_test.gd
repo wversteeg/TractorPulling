@@ -376,6 +376,19 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(controls.brake_left() == 1.0 and controls.brake_right() == 0.0, "the left brake on")
 	_touch(STEERING_FINGER, brake.position, false)
 	_expect(controls.brake_left() == 0.0, "the left brake off when let go")
+	# Off the pull the pedals are latched: the held brake moves the other
+	# slider along, and both come off together.
+	_touch(STEERING_FINGER, Vector2(brake.get_center().x, brake.end.y - 1.0), true)
+	_drag(STEERING_FINGER, Vector2(brake.get_center().x, brake.get_center().y))
+	controls.latch_brakes(true)
+	_expect(controls.brake_left() > 0.2
+			and controls.brake_right_slider.value == controls.brake_left_slider.value,
+			"latched: the right brake follows the left: %s, %s"
+			% [controls.brake_left(), controls.brake_right()])
+	_touch(STEERING_FINGER, brake.position, false)
+	controls.latch_brakes(true)
+	_expect(controls.brake_left() == 0.0 and controls.brake_right() == 0.0,
+			"latched: both off when let go")
 
 	# Back to easy.
 	_tap(controls.menu_button)

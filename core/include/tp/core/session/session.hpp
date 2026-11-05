@@ -126,9 +126,13 @@ struct Snapshot {
     /// in the easy layout. 0 engaged, 1 pressed.
     double clutch_pedal = 1.0;
 
-    /// The sled's rear wheels, at the middle of their axle; sled_x_m is how
-    /// far it has pulled.
+    /// The sled's rear wheels, at the middle of their axle, from the start
+    /// line (which is at the sled's front as it starts: sled_x_m starts at
+    /// minus the sled's length to its hook).
     double sled_x_m = 0.0;
+    /// How far the sled has pulled: its front past the start line, down
+    /// the track [m].
+    double pulled_m = 0.0;
     double sled_y_m = 0.0;
     double sled_heading_rad = 0.0;
     double sled_speed_m_s = 0.0;

@@ -236,6 +236,10 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `g
 - Performance-sensitive changes include or update a benchmark. The speed budget (`docs/performance.md`, `bench/speed_budget.toml`) is checked in CI on ARM; a deliberate slowdown raises its limit in the same PR, saying why. `tp_alloc_tests` fails on any heap allocation in the step.
 - Comments explain *why* and the physical model, not *what* the code does.
 
+## Requirements
+
+`docs/requirements.md` lists what the game must do, each requirement with the tests that check it. Validate every change against it: find the requirements a change touches before making it; a new behaviour adds its requirement (and test) in the same PR; a change that breaks one updates the requirement only with the owner's agreement.
+
 ## Documentation and diagrams
 
 - `docs/architecture.md` shows the class and sequence diagrams. Sources are PlantUML in `docs/diagrams/*.puml`; rendered SVGs live next to them in `docs/diagrams/svg/` and are committed for easy review.

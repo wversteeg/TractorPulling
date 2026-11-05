@@ -237,7 +237,7 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	# The chain off after the pull: the bar starts again for the next one.
 	var chain_off: bool = s.get("stage", "pulling") in ["to_the_parking", "parked"] \
 			and not bool(s.get("chain_hooked", true))
-	_sled_m = 0.0 if chain_off else float(s["sled_x_m"])
+	_sled_m = 0.0 if chain_off else float(s["pulled_m"])
 	_pushdown = 0.0 if chain_off else float(s["pushdown"])
 	if _pushdown <= 0.0:
 		_pushdown_label.text = ""

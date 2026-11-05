@@ -447,7 +447,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         }
         if (i % kStepsPerRow == 0) {
             const tp::pull::State& pull = tp::session::Inspector::run_state(*session).pull;
-            const double start_line_m = tp::session::Inspector::model(*session).start_line_m();
+            const double sled_start_m = tp::session::Inspector::model(*session).sled_start_m();
             // Output only: atan2 may differ in the last bit between platforms.
             const double chain_angle_rad = std::atan2(out.chain.direction_z, out.chain.direction_x);
             csv << round << ',' << t_s << ','
@@ -455,7 +455,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                 << pull.tractor.driveline.gear << ','
                 << rad_s_to_rpm(pull.tractor.engine.omega_rad_s) << ','
                 << pull.sled.velocity_m_s * kMetersPerSecondToKmh << ','
-                << pull.sled.position_m - start_line_m << ',' << out.tractor.slip_ratio << ','
+                << pull.sled.position_m - sled_start_m << ',' << out.tractor.slip_ratio << ','
                 << out.tractor.axle_loads.rear_n / kNewtonsPerKilonewton << ','
                 << out.tractor.axle_loads.front_n / kNewtonsPerKilonewton << ','
                 << rad_to_deg(pull.tractor.chassis.pitch_rad) << ','
@@ -608,7 +608,7 @@ void report_standings(tp::event::Event& event) {
             std::cout << (s.disqualified ? " DQ" : " full pull");
         }
         if (s.pull_off_rounds > 0) {
-            std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m
+            std::cout << ", pull-off " << s.pull_off_rounds << ": " << s.pull_off_distance_m()
                       << " m";
         }
         std::cout << '\n';
@@ -694,7 +694,7 @@ void report_round(int number, const tp::data::SeasonRound& round,
         ++gears[static_cast<std::size_t>(played.gears[static_cast<std::size_t>(i)])];
     }
     std::cout << "\nEvent " << number << ": " << round.name << "\n  " << full_pulls
-              << " full pull(s), " << changes << " sled change(s); line " << event.full_pull_m()
+              << " full pull(s), " << changes << " sled change(s); line " << event.main_line_m()
               << " m; gears";
     for (std::size_t g = 1; g < gears.size(); ++g) {
         if (gears[g] > 0) {
@@ -711,7 +711,7 @@ void report_round(int number, const tp::data::SeasonRound& round,
                   << std::setw(7) << s.distance_m << " m"
                   << (s.full_pull ? " full pull" : "          ");
         if (s.pull_off_rounds > 0) {
-            std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m << " m";
+            std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m() << " m";
         }
         std::cout << "  " << (s.disqualified ? 0 : tp::season::points_for(points, s.place))
                   << " pts\n";

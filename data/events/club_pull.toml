@@ -24,8 +24,8 @@ downshift_share = 0.9
 # the class. The field spans what the garage offers (data/garages), a step
 # above it: its weakest tractors are about a new career's with a level or
 # two bought, its best about a fully upgraded one. So a new tractor starts
-# at the back (8th to 10th of ten), one with every part a level up 5th to
-# 8th, halfway 3rd to 6th, and a fully upgraded one on the podium
+# at the back (12th to 15th of fifteen), one with every part a level up
+# 8th to 13th, halfway 2nd to 8th, and a fully upgraded one on the podium
 # (tests/data/rival_difficulty_test.cpp). Each driver
 # picks a gear between `gears` for the day's track: the best one as often
 # as their track_reading says, otherwise one off. Each shifts down at their
@@ -44,14 +44,16 @@ track_reading = [0.5, 0.95]
 downshift_share = [0.82, 0.95]         # of the rated speed, as the driver above
 pull_to_pull_grip_share = 0.01         # +- 1 % grip
 pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s
+pull_to_pull_pan_drag_share = 0.06     # +- 6 % drag: the spot the sled's pan ploughs
 
 # The NTTO's competition rules and the sled operator's rule of thumb.
 [event.rules]
 full_pull_m = 100.0
 extended_full_pull_m = 110.0     # when a test pull stops between the two
 max_distance_m = 130.0           # a pull past the line stops here at the latest
+pull_off_full_pull_m = 120.0     # the full-pull line in a pull-off
 pull_off_places = 4              # full pulls, filled up with the best...
-qualifying_distance_m = 90.0     # ...from 90 m on
+qualifying_below_line_m = 20.0   # ...from 20 m short of the line on (80 m, or 90 m at 110 m)
 decide_after_pulls = 2           # the test puller decides after the 3rd pull
 repull_after_pulls = 5           # and re-pulls after the 6th
 sled_target_m = 98.0             # what the strongest should reach: the best come close to a full pull
@@ -68,8 +70,8 @@ max_steps_per_change = 4         # at most this many steps at once
 strong_full_pull_from = 0.8
 trouble_share = 0.6
 
-# The event in the game: the player and nine scripted rivals, drawn from the
+# The event in the game: the player and fourteen scripted rivals, drawn from the
 # field as above.
 [event.game]
-pullers = 10
-rival_names = ["Henk", "Gerrit", "Annemiek", "Bert", "Klaas", "Marieke", "Dirk", "Anouk", "Wim"]
+pullers = 15
+rival_names = ["Henk", "Gerrit", "Annemiek", "Bert", "Klaas", "Marieke", "Dirk", "Anouk", "Wim", "Jos", "Ilse", "Gijs", "Tineke", "Arie"]

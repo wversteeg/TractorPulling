@@ -111,8 +111,12 @@ public:
 
     /// Starts the season's next event; "" or what is wrong.
     godot::String start_event();
-    /// {name, index, count, pullers, full_pull_m, turn, pull_kind,
-    /// pull_off_round} of the event being pulled: `turn` is "rivals",
+    /// {name, index, count, pullers, full_pull_m, standard_full_pull_m,
+    /// pull_off_places, turn, pull_kind, pull_off_round} of the event being
+    /// pulled:
+    /// `full_pull_m` is the line in force (110 m after a test pull past
+    /// 100 m, the pull-off line in a pull-off), `standard_full_pull_m` the
+    /// class's own, where the banner stands; `turn` is "rivals",
     /// "player_pull", "player_decision", "finished" or "failed";
     /// `pull_kind` ("test", "competition", "repull", "pull_off") and
     /// `pull_off_round` the player's pull, while it is due. {} before one.
@@ -134,7 +138,8 @@ public:
     [[nodiscard]] std::int64_t get_log_size() const;
     /// The event's standings so far, best first: {place, puller, name,
     /// distance_m, full_pull, disqualified, pull_off_rounds,
-    /// pull_off_distance_m}.
+    /// pull_off_distance_m, pull_off_distances_m (each round's, the first
+    /// first)}.
     [[nodiscard]] godot::Array get_standings() const;
 
     /// Records the player's pull `run` has finished (it must be the pull

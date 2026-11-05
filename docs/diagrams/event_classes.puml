@@ -14,8 +14,9 @@ package "tp::event" {
     +full_pull_m : double, 100
     +extended_full_pull_m : double, 110
     +max_distance_m : double, 130
+    +pull_off_full_pull_m : double, 120
     +pull_off_places : int, 4
-    +qualifying_distance_m : double, 90
+    +qualifying_below_line_m : double, 20
     +decide_after_pulls : int, 2
     +repull_after_pulls : int, 5
     +sled_target_m : double, 90
@@ -49,7 +50,8 @@ package "tp::event" {
     +full_pull : bool
     +disqualified : bool
     +pull_off_rounds : int
-    +pull_off_distance_m : double
+    +pull_off_distances_m : array<double, 5>, each round's
+    +pull_off_distance_m() : double, the last round's
   }
   class Event {
     -rules_ : Rules
@@ -61,7 +63,8 @@ package "tp::event" {
     +{static} create(const Rules&, const sled::Params&, span<const int> order) : optional<Event>
     +next() : optional<Pull>
     +sled() : const sled::Params&
-    +full_pull_m() : double
+    +full_pull_m() : double, the pull-off line in a pull-off
+    +main_line_m() : double
     +step_estimate_m() : double
     +record(reached_m) : Outcome
     +record_disqualified() : Outcome

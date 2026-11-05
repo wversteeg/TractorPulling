@@ -67,7 +67,7 @@ func _play() -> void:
 	restart.restart_requested.emit()
 	await process_frame
 	var s := run.get_snapshot()
-	_expect(not restart.visible and run.get_result().is_empty() and float(s["sled_x_m"]) == 0.0
+	_expect(not restart.visible and run.get_result().is_empty() and float(s["pulled_m"]) == 0.0
 			and int(s["gear"]) == 0, "restarted at the line in neutral: %s" % s)
 	# Pull and stop again: one restart a pull, so no choice now.
 	_time_s = 0.0

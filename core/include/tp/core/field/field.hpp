@@ -68,6 +68,10 @@ struct PullToPull {
     double grip_share = 0.0;
     /// On the time the driver lets the clutch in [s].
     double clutch_slip_in_s = 0.0;
+    /// Share of the sled pan's drag: the spot on the track it ploughs
+    /// through. Pulls that end on the engine (a stall, not wheelspin) are
+    /// what this spreads; the grip spreads those that spin out.
+    double pan_drag_share = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -138,9 +142,16 @@ struct GearTrial {
 [[nodiscard]] int guess_gear(const Puller& puller, int best, int lowest, int highest,
                              math::SplitMix64& random) noexcept;
 
-/// The puller as they are on this pull: grip and clutch timing drawn
-/// within `variation`.
-[[nodiscard]] Puller on_this_pull(const Puller& puller, const PullToPull& variation,
-                                  math::SplitMix64& random) noexcept;
+/// One pull as it goes for a scripted puller: the puller as they are on
+/// it (grip and clutch timing), and the sled on the spot it ploughs.
+struct ThisPull {
+    Puller puller;
+    sled::Params sled;
+};
+
+/// The puller and `sled` as they are on this pull, drawn within
+/// `variation`.
+[[nodiscard]] ThisPull on_this_pull(const Puller& puller, const sled::Params& sled,
+                                    const PullToPull& variation, math::SplitMix64& random) noexcept;
 
 }  // namespace tp::field

@@ -285,15 +285,22 @@ int guess_gear(const Puller& puller, int best, int lowest, int highest,
     return higher ? best + 1 : best - 1;
 }
 
-Puller on_this_pull(const Puller& puller, const PullToPull& variation,
-                    math::SplitMix64& random) noexcept {
-    Puller out = puller;
-    out.tractor.rear_tire.traction.limit *=
+ThisPull on_this_pull(const Puller& puller, const sled::Params& sled, const PullToPull& variation,
+                      math::SplitMix64& random) noexcept {
+    ThisPull out{.puller = puller, .sled = sled};
+    out.puller.tractor.rear_tire.traction.limit *=
         1.0 + random.uniform(-variation.grip_share, variation.grip_share);
-    out.driver.clutch_slip_in_s =
+    out.puller.driver.clutch_slip_in_s =
         std::max(puller.driver.clutch_slip_in_s +
                      random.uniform(-variation.clutch_slip_in_s, variation.clutch_slip_in_s),
                  0.0);
+    // Drawn only when it varies, so a field without it draws as before.
+    if (variation.pan_drag_share > 0.0) {
+        const double scale =
+            1.0 + random.uniform(-variation.pan_drag_share, variation.pan_drag_share);
+        out.sled.pan_friction_coefficient *= scale;
+        out.sled.pan_plough_coefficient *= scale;
+    }
     return out;
 }
 

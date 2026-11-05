@@ -20,7 +20,8 @@ static func pull_name(kind: String, pull_off_round: int) -> String:
 
 
 # Where a pull got: past the line in force before it, a full pull (the
-# event judges it: a test pull that moves the line to 110 m is one too).
+# event judges it). A test pull that moves the line to 110 m is not one:
+# it counts its distance.
 static func reach(entry: Dictionary) -> String:
 	if entry["disqualified"]:
 		return "out of bounds"
@@ -62,18 +63,56 @@ static func log_row(entry: Dictionary) -> PackedStringArray:
 	return PackedStringArray([entry["name"], what, reach(entry), verdict(entry)])
 
 
-# A row of the event's standings: place, who, and the result that counts.
+# A row of the event's standings: place, who, and the result that counts:
+# the main round's, then each pull-off's.
 static func standing_row(line: Dictionary) -> PackedStringArray:
 	var result: String
 	if line["disqualified"]:
 		result = "out of bounds"
-	elif int(line["pull_off_rounds"]) > 0:
-		result = "full pull, pull-off %.2f m" % float(line["pull_off_distance_m"])
 	elif line["full_pull"]:
 		result = "full pull"
 	else:
 		result = "%.2f m" % float(line["distance_m"])
+	var rounds: PackedFloat64Array = line.get("pull_off_distances_m", PackedFloat64Array())
+	for i in rounds.size():
+		result += ", pull-off %s%.2f m" % ["" if rounds.size() == 1 else "%d: " % (i + 1),
+				rounds[i]]
 	return PackedStringArray(["%d." % int(line["place"]), line["name"], result])
+
+
+# The rows of the event's log (one per entry, as log_row()) to show in
+# bold: each puller's pull that counts in the main round (their last pull,
+# or the test pull they kept), the best `places` of them (the pull-off's
+# places, TractorPullEvent.get_event()); and the best pull of the pull-off
+# round under way, the one to beat.
+static func leading_rows(log: Array, places: int) -> PackedInt32Array:
+	var counting := {}
+	var pull_off_round := 0
+	var best_pull_off := -1
+	for i in log.size():
+		var entry: Dictionary = log[i]
+		if entry.has("deciding") or int(entry.get("moved_back", 0)) > 0:
+			continue
+		if entry["kind"] == "pull_off":
+			var round: int = entry["pull_off_round"]
+			if round != pull_off_round:
+				pull_off_round = round
+				best_pull_off = -1
+			if best_pull_off < 0 or _distance(entry) > _distance(log[best_pull_off]):
+				best_pull_off = i
+			continue
+		counting[int(entry["puller"])] = i
+	var rows: Array = counting.values()
+	rows.sort_custom(func(a: int, b: int) -> bool:
+		return _distance(log[a]) > _distance(log[b]))
+	var out := PackedInt32Array(rows.slice(0, places))
+	if best_pull_off >= 0:
+		out.append(best_pull_off)
+	return out
+
+
+static func _distance(entry: Dictionary) -> float:
+	return 0.0 if entry["disqualified"] else float(entry["reached_m"])
 
 
 # A row of the championship: place, who, points and wins.

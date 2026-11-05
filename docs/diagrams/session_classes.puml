@@ -54,6 +54,7 @@ package "tp::session" {
     +gear, lowest_gear : int
     +throttle, clutch_pedal : double
     +sled_x_m, sled_y_m, sled_heading_rad : double
+    +pulled_m : double, the sled's front past the start line
     +sled_speed_m_s : double
     +box_ahead_of_wheels_m, pushdown, berm_m3, chain_tension_n : double
     +chain_hooked, sled_back : bool

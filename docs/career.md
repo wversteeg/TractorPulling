@@ -355,7 +355,8 @@ tractor:
   controls: its few parts (pump, tires, weights, drawbar, governor,
   powershift) are too few for three levels of good play. Its garage
   costs about € 20,000; a new tractor finishes near the back, two thirds
-  of the garage wins, and a player who buys as they earn wins it in
+  of the garage fights for the win with the strongest two or three
+  rivals, and a player who buys as they earn wins it in
   about two seasons, the minimum.
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
@@ -363,8 +364,9 @@ tractor:
   Stock has groups II and I: the game uses the Farmstock levels for the
   other classes alike, except **Sport 2.5 t, only promo and top**: it is the introduction to
   the Farmstock classes and should not hold the player for six seasons
-  or more. A new Sport tractor finishes at the back of promo and wins it
-  with about half its garage; only a fully built one wins at top.
+  or more. A new Sport tractor finishes at the back of promo and fights
+  for the win with about half its garage; only a fully built one wins at
+  top.
 - Sport 4.5 t has all three again. Being a wheelspin class near its
   limits at top, about 90 % of its garage reaches the podium there and
   only a fully built tractor is sure to win; its governor comes in six

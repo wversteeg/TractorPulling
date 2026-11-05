@@ -20,8 +20,9 @@ namespace {
 constexpr Rules kRules{.full_pull_m = 100.0,
                        .extended_full_pull_m = 110.0,
                        .max_distance_m = 130.0,
+                       .pull_off_full_pull_m = 120.0,
                        .pull_off_places = 4,
-                       .qualifying_distance_m = 90.0,
+                       .qualifying_below_line_m = 10.0,
                        .decide_after_pulls = 2,
                        .repull_after_pulls = 5,
                        .sled_target_m = 90.0,
@@ -38,9 +39,10 @@ std::vector<int> in_order(int count) {
     return order;
 }
 
-Event make(int count, const sled::Params& sled = sled::testing::reference_params()) {
+Event make(int count, const sled::Params& sled = sled::testing::reference_params(),
+           const Rules& rules = kRules) {
     const std::vector<int> order = in_order(count);
-    const auto event = Event::create(kRules, sled, order);
+    const auto event = Event::create(rules, sled, order);
     if (!event) {
         std::abort();
     }
@@ -89,7 +91,11 @@ TEST(EventRules, RejectsNonsense) {
     EXPECT_EQ(with([](Rules& r) { r.extended_full_pull_m = 95.0; }),
               ParamError::kDistancesOutOfOrder);
     EXPECT_EQ(with([](Rules& r) { r.max_distance_m = 105.0; }), ParamError::kDistancesOutOfOrder);
-    EXPECT_EQ(with([](Rules& r) { r.qualifying_distance_m = 120.0; }),
+    EXPECT_EQ(with([](Rules& r) { r.qualifying_below_line_m = 120.0; }),
+              ParamError::kDistancesOutOfOrder);
+    EXPECT_EQ(with([](Rules& r) { r.pull_off_full_pull_m = 105.0; }),
+              ParamError::kDistancesOutOfOrder);
+    EXPECT_EQ(with([](Rules& r) { r.pull_off_full_pull_m = 140.0; }),
               ParamError::kDistancesOutOfOrder);
     EXPECT_EQ(with([](Rules& r) { r.pull_off_places = 0; }), ParamError::kPlacesOutOfRange);
     EXPECT_EQ(with([](Rules& r) { r.repull_after_pulls = 2; }), ParamError::kTurnsOutOfOrder);
@@ -444,8 +450,9 @@ TEST(Event, PullOffSledMatchesTheStrongestFullPull) {
     EXPECT_EQ(knives(event), before + 4);
 }
 
-// When several pullers make a full pull again, another, heavier pull-off
-// follows among them; it ends when at most one gets to the line.
+// When several pullers reach the pull-off line (120 m) again, another,
+// heavier pull-off follows among them; it ends when at most one gets to
+// the line. Each round's distance stays in the standings.
 TEST(Event, PullOffsRepeatUntilOneIsStrongest) {
     Event event = make(5);
     const std::vector<Pull> pulls = run(event, [](const Pull& p) {
@@ -453,7 +460,7 @@ TEST(Event, PullOffsRepeatUntilOneIsStrongest) {
             return 95.0 + p.puller;  // nobody full-pulls: 95 to 99 m
         }
         if (p.pull_off_round == 1) {
-            return p.puller >= 3 ? 105.0 : 96.0;  // two full pulls again
+            return p.puller >= 3 ? 125.0 : 96.0;  // two full pulls again
         }
         return p.puller == 4 ? 99.0 : 97.0;
     });
@@ -461,10 +468,91 @@ TEST(Event, PullOffsRepeatUntilOneIsStrongest) {
     const std::span<const Standing> standings = event.standings();
     EXPECT_EQ(standings[0].puller, 4);
     EXPECT_EQ(standings[0].place, 1);
+    EXPECT_EQ(standings[0].pull_off_distances_m[0], 120.0) << "capped at the pull-off line";
+    EXPECT_EQ(standings[0].pull_off_distances_m[1], 99.0);
     EXPECT_EQ(standings[1].puller, 3);
     EXPECT_EQ(standings[1].pull_off_rounds, 2);
+    EXPECT_EQ(standings[1].pull_off_distances_m[1], 97.0);
     EXPECT_EQ(standings[2].pull_off_rounds, 1);
+    EXPECT_EQ(standings[2].pull_off_distances_m[0], 96.0);
     EXPECT_EQ(standings.size(), 5U);
+}
+
+// A second pull-off follows pulls of at least 120 m, so its sled is made
+// heavier for 20 m or more past the main line: as many steps as the
+// operator changes at once.
+TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
+    Event event = make(5);
+    std::array<int, 3> knives_in_round{};
+    run(event, [&](const Pull& p) {
+        if (p.kind != PullKind::kPullOff) {
+            return 95.0 + p.puller;
+        }
+        knives_in_round[static_cast<std::size_t>(p.pull_off_round)] = knives(event);
+        if (p.pull_off_round == 1) {
+            return p.puller >= 3 ? 125.0 : 96.0;
+        }
+        return p.puller == 4 ? 99.0 : 97.0;
+    });
+    EXPECT_EQ(knives_in_round[2] - knives_in_round[1], kRules.max_steps_per_change);
+}
+
+// In a pull-off only the pull-off line (120 m) is a full pull: two pullers
+// past the main round's line but short of 120 m decide it in one round.
+TEST(Event, PullOffFullPullIsAtThePullOffLine) {
+    Event event = make(5);
+    const std::vector<Pull> pulls = run(event, [](const Pull& p) {
+        if (p.kind != PullKind::kPullOff) {
+            return 95.0 + p.puller;
+        }
+        return p.puller == 4 ? 115.0 : 110.0;
+    });
+    EXPECT_EQ(pulls.back().pull_off_round, 1);
+    const std::span<const Standing> standings = event.standings();
+    EXPECT_EQ(standings[0].puller, 4);
+    EXPECT_EQ(standings[0].pull_off_distance_m(), 115.0);
+    EXPECT_EQ(standings[1].pull_off_distance_m(), 110.0);
+}
+
+// The pull-off's places fill up with the best runs from 20 m short of the
+// line in force: 80 m on the 100 m line, so a full pull, 95, 82 and 81 m
+// make the pull-off and 79 m does not.
+TEST(Event, QualifyingFromTwentyMetresShortOfTheLine) {
+    Rules rules = kRules;
+    rules.qualifying_below_line_m = 20.0;
+    // Puller 0 tests at 95 m (the sled stays) and pulls 95 m again.
+    constexpr std::array<double, 6> kReach = {95.0, 100.0, 79.0, 82.0, 70.0, 81.0};
+    Event event = make(6, sled::testing::reference_params(), rules);
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
+        return p.kind == PullKind::kPullOff ? 80.0 : kReach[static_cast<std::size_t>(p.puller)];
+    });
+    std::vector<int> pull_off;
+    for (const Pull& p : pulls) {
+        if (p.kind == PullKind::kPullOff) {
+            pull_off.push_back(p.puller);
+        }
+    }
+    EXPECT_EQ(pull_off, (std::vector<int>{0, 1, 3, 5}));
+}
+
+// With the line moved to 110 m by a test pull, qualifying starts at 90 m.
+TEST(Event, QualifyingFollowsTheExtendedLine) {
+    Rules rules = kRules;
+    rules.qualifying_below_line_m = 20.0;
+    // Puller 0 tests at 104 m: the line moves to 110 m; they keep it.
+    constexpr std::array<double, 5> kReach = {104.0, 95.0, 89.0, 91.0, 60.0};
+    Event event = make(5, sled::testing::reference_params(), rules);
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
+        return p.kind == PullKind::kPullOff ? 80.0 : kReach[static_cast<std::size_t>(p.puller)];
+    });
+    ASSERT_EQ(event.main_line_m(), 110.0);
+    std::vector<int> pull_off;
+    for (const Pull& p : pulls) {
+        if (p.kind == PullKind::kPullOff) {
+            pull_off.push_back(p.puller);
+        }
+    }
+    EXPECT_EQ(pull_off, (std::vector<int>{0, 1, 3})) << "104, 95 and 91 m; not 89 m";
 }
 
 // Equal results share a place; the next place counts both.

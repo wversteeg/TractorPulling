@@ -7,7 +7,8 @@
 # in and leave it) and the left brake beside it as the right brake beside
 # the throttle (the brakes spring back to off): each side's brake under its
 # own thumb, the steering between them in the bottom middle. Outside the
-# pull the run works both brakes together (session::Controls). Every
+# pull the run works both brakes together (session::Controls), and the two
+# brake sliders move as one (latch_brakes()). Every
 # control has its own colour and label (GAS green, CLUTCH blue, BRAKE red,
 # STEER white), so they are told apart at a glance; the pedals are drawn as
 # pedals. The clutch slider marks where the clutch slips (set_clutch_range),
@@ -273,6 +274,25 @@ func brake_left() -> float:
 
 func brake_right() -> float:
 	return maxf(brake_right_slider.value, 1.0 if Input.is_physical_key_pressed(KEY_E) else 0.0)
+
+
+# Outside the pull the pedals are latched together, as on a road tractor
+# (the run brakes both with either): `latched`, the slider a thumb holds
+# moves the other along, and both spring back together. Called every
+# frame; in the pull each brake is its own.
+func latch_brakes(latched: bool) -> void:
+	if not latched:
+		return
+	var left := brake_left_slider
+	var right := brake_right_slider
+	var both := left.rest_value
+	if left.is_held() or right.is_held():
+		both = maxf(left.value if left.is_held() else left.rest_value,
+				right.value if right.is_held() else right.rest_value)
+	for slider: TouchSlider in [left, right]:
+		if slider.value != both:
+			slider.value = both
+			slider.queue_redraw()
 
 
 # -1 (full right) to 1 (full left): the keys while held, else the tilt or

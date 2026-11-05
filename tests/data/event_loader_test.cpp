@@ -105,8 +105,11 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.rules.full_pull_m, 100.0);
     EXPECT_EQ(definition.rules.extended_full_pull_m, 110.0);
     EXPECT_EQ(definition.rules.pull_off_places, 4);
-    EXPECT_EQ(definition.game.pullers, 10);
-    ASSERT_EQ(definition.game.rival_names.size(), 9U);
+    EXPECT_EQ(definition.rules.pull_off_full_pull_m, 120.0);
+    EXPECT_EQ(definition.rules.qualifying_below_line_m, 20.0);
+    EXPECT_EQ(definition.pull_to_pull.pan_drag_share, 0.06);
+    EXPECT_EQ(definition.game.pullers, 15);
+    ASSERT_EQ(definition.game.rival_names.size(), 14U);
     EXPECT_EQ(definition.game.rival_names.front(), "Henk");
     EXPECT_EQ(definition.reference.driver.gear, 6);
     EXPECT_EQ(definition.variation.lowest_gear, 5);
@@ -141,7 +144,7 @@ TEST(EventLoader, RejectsNonsense) {
                   .find("event.field.mass_kg: must be [low, high]"),
               std::string::npos);
     EXPECT_NE(error_of(with("extended_full_pull_m = 110.0", "extended_full_pull_m = 90.0"))
-                  .find("event.rules: need 0 < qualifying_distance_m"),
+                  .find("event.rules: need 0 < sled_target_m"),
               std::string::npos);
     EXPECT_NE(error_of(with("pull_to_pull_grip_share = 0.01", "pull_to_pull_grip_share = -0.1"))
                   .find("event.field: pull_to_pull values must be >= 0"),
@@ -179,11 +182,12 @@ TEST(EventLoader, RejectsNonsense) {
         error_of(with("downshift_share = 0.9", "downshift_share = 0.9\nlaunch_hold_share = 1.0"))
             .find("event.driver"),
         std::string::npos);
-    EXPECT_NE(error_of(with("pullers = 10", "pullers = 1")).find("event.game.pullers"),
+    EXPECT_NE(error_of(with("pullers = 15\nrival_names", "pullers = 1\nrival_names"))
+                  .find("event.game.pullers"),
               std::string::npos);
-    EXPECT_NE(error_of(with("\"Wim\"]", "\"\"]")).find("event.game.rival_names"),
+    EXPECT_NE(error_of(with("\"Arie\"]", "\"\"]")).find("event.game.rival_names"),
               std::string::npos);
-    EXPECT_NE(error_of(with(", \"Wim\"]", "]")).find("event.game.rival_names"), std::string::npos);
+    EXPECT_NE(error_of(with(", \"Arie\"]", "]")).find("event.game.rival_names"), std::string::npos);
     EXPECT_NE(error_of(with("trouble_share = 0.6", "trouble_share = 1.5"))
                   .find("event.rules: need strong_full_pull_from 0 to 1"),
               std::string::npos);
@@ -235,7 +239,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 20);
-    EXPECT_EQ(first.hash, 0xf373ad76e7e7179cULL);
+    EXPECT_EQ(first.hash, 0xbbf3c8c2b1ff2f08ULL);
 }
 
 }  // namespace

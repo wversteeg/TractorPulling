@@ -98,10 +98,12 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         if (!pull) {
             return std::nullopt;
         }
-        const Puller puller = on_this_pull(today.pullers[static_cast<std::size_t>(pull->puller)],
-                                           pull_to_pull, pulls);
-        const std::optional<run::Result> result = run_pull(
-            puller, ev.sled(), venue.track, pull_rules(rules, venue, ev.full_pull_m(), pull->kind));
+        const ThisPull this_pull = on_this_pull(
+            today.pullers[static_cast<std::size_t>(pull->puller)], ev.sled(), pull_to_pull, pulls);
+        const Puller& puller = this_pull.puller;
+        const std::optional<run::Result> result =
+            run_pull(puller, this_pull.sled, venue.track,
+                     pull_rules(rules, venue, ev.full_pull_m(), pull->kind));
         if (!result) {
             return std::nullopt;
         }

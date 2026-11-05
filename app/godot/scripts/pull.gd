@@ -457,6 +457,10 @@ func _build(error: String) -> bool:
 		push_error("cannot set up the pull: " + error)
 		return false
 	var dimensions := run.get_dimensions()
+	# The banner over the class's own full-pull line: a test pull or a
+	# pull-off moves the chalk line, not the banner.
+	dimensions["banner_line_m"] = float(event.get_event().get("standard_full_pull_m",
+			dimensions["full_pull_line_m"]))
 	for child in track_view.get_children():
 		child.queue_free()
 	track_view.build(dimensions)
@@ -702,11 +706,13 @@ func _show_event() -> void:
 			int(info.get("index", 0)) + 1, info.get("count", 0)])
 	var rows: Array[PackedStringArray] = []
 	var mine := PackedInt32Array()
-	for entry: Dictionary in event.get_log(0):
+	var log := event.get_log(0)
+	for entry: Dictionary in log:
 		if int(entry.get("puller", entry.get("deciding", -1))) == 0:
 			mine.append(rows.size())
 		rows.append(EventTexts.log_row(entry))
-	board.set_rows(rows, mine)
+	board.set_rows(rows, mine, true,
+			EventTexts.leading_rows(log, int(info.get("pull_off_places", 0))))
 	match turn:
 		"rivals":
 			board.set_status("The rivals choose their gears..." if size == 0
@@ -836,7 +842,8 @@ func _read_controls() -> void:
 		run.set_controls(1.0 if go else 0.0, clutch, autoplay_gear if go else 0, 0.0, 0.0, 0.0)
 		return
 	# The easy layout's run ignores the clutch and the brakes: its assist
-	# works them.
+	# works them. Off the pull the brake pedals are latched together.
+	controls.latch_brakes(run.get_snapshot().get("stage", "pulling") != "pulling")
 	run.set_controls(controls.throttle(), controls.clutch(), controls.gear, controls.steering(),
 			controls.brake_left(), controls.brake_right())
 
@@ -852,7 +859,7 @@ func _show(delta: float) -> void:
 	sled_view.show_snapshot(s, delta)
 	# After the pull its distance stays on the boards while the sled drives
 	# back, until the turn is over.
-	var pulled_m: float = s["sled_x_m"]
+	var pulled_m: float = s["pulled_m"]
 	if s.get("stage", "pulling") in ["releasing", "to_the_parking", "parked"]:
 		pulled_m = float(run.get_result().get("distance_m", pulled_m))
 	venue_view.show_distance(pulled_m)
