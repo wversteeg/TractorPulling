@@ -21,3 +21,8 @@ if(TP_BUILD_DATA_IO)
 endif()
 
 tp_configure_target(core_bench)
+# The BENCHMARK macro's __COUNTER__ is a C2y extension to Emscripten
+# 4.0.20's Clang (cmake/Web.cmake); after our -Wpedantic, so it wins.
+if(EMSCRIPTEN)
+    target_compile_options(core_bench PRIVATE -Wno-c2y-extensions)
+endif()
