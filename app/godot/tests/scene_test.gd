@@ -281,6 +281,20 @@ func _check_web_loops() -> void:
 			and absf(sound.load_loop.pitch_scale - 1.0) < 0.05,
 			"pulling: the pulling loop at its own pitch, louder: %.1f dB, %.1f dB, x%.2f" % [
 			sound.load_loop.volume_db, sound.idle_loop.volume_db, sound.load_loop.pitch_scale])
+	# Lugging, louder than the loop was made: never above its own level.
+	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 160.0, "throttle": 1.0,
+			"boost": 0.8})
+	for i in 30:
+		sound._process(1.0 / 60.0)
+	_expect(sound.load_loop.volume_db <= 0.0, "lugging: no gain past the loop's own level: %.1f dB"
+			% sound.load_loop.volume_db)
+	# A second sound for the same engine uses the loops made for the first.
+	var again := EngineSound.new()
+	again.loops = true
+	_pull.add_child(again)
+	again.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
+	_expect(again.load_loop.stream == sound.load_loop.stream, "the loops made once per engine")
+	again.queue_free()
 	sound.show_snapshot({"engine_running": false})
 	for i in 60:
 		sound._process(1.0 / 60.0)

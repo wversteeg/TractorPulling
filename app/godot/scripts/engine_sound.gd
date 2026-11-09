@@ -95,6 +95,8 @@ const SATURATION_KNEE := 0.6
 # the speed they were made at); and how quickly their loudness follows.
 const LOOP_S := 0.5
 const LOOP_BLEND_S := 0.05
+# Before a loop is cut, the sound settles this long into its state [s].
+const LOOP_SETTLE_S := 0.5
 const LOOP_PITCH_LOW := 0.25
 const LOOP_PITCH_HIGH := 4.0
 # Quieter than this, heading for silence, the sound is silent [0..1].
@@ -150,6 +152,9 @@ var idle_loop := AudioStreamPlayer.new()
 var load_loop := AudioStreamPlayer.new()
 var _idle_loop_omega_rad_s := 1.0
 var _load_loop_omega_rad_s := 1.0
+# The loops made so far, by engine (cylinders, idle and rated speed): made
+# once, as making them takes a moment on the web, not at every run.
+static var _loop_cache := {}
 
 
 # The loops' players are made with the node; outside the web they never
@@ -188,10 +193,15 @@ func configure(dimensions: Dictionary) -> void:
 	if loops:
 		_idle_loop_omega_rad_s = idle_omega_rad_s
 		_load_loop_omega_rad_s = rated_omega_rad_s
-		idle_loop.stream = make_loop({"engine_running": true,
-				"engine_omega_rad_s": idle_omega_rad_s, "throttle": 0.0, "boost": 0.0})
-		load_loop.stream = make_loop({"engine_running": true,
-				"engine_omega_rad_s": rated_omega_rad_s, "throttle": 1.0, "boost": 1.0})
+		var key := "%d/%f/%f" % [cylinders, idle_omega_rad_s, rated_omega_rad_s]
+		if not _loop_cache.has(key):
+			_loop_cache[key] = [
+				make_loop({"engine_running": true, "engine_omega_rad_s": idle_omega_rad_s,
+						"throttle": 0.0, "boost": 0.0}),
+				make_loop({"engine_running": true, "engine_omega_rad_s": rated_omega_rad_s,
+						"throttle": 1.0, "boost": 1.0})]
+		idle_loop.stream = _loop_cache[key][0]
+		load_loop.stream = _loop_cache[key][1]
 
 
 # This engine's sound in the state `s` (a snapshot's engine fields) as a
@@ -203,7 +213,7 @@ func make_loop(s: Dictionary) -> AudioStreamWAV:
 	maker.idle_omega_rad_s = idle_omega_rad_s
 	maker.rated_omega_rad_s = rated_omega_rad_s
 	maker.show_snapshot(s)
-	maker.sample_frames(int(MIX_RATE_HZ * 0.5))  # settled
+	maker.sample_frames(int(MIX_RATE_HZ * LOOP_SETTLE_S))
 	var firing_rate_hz := maxf(firing_hz(float(s.get("engine_omega_rad_s", 0.0)), cylinders), 1.0)
 	var firings := maxf(roundf(LOOP_S * firing_rate_hz), 1.0)
 	var length := int(roundf(firings / firing_rate_hz * MIX_RATE_HZ))
@@ -272,11 +282,15 @@ func _play_loops(delta: float) -> void:
 	var omega := maxf(_omega_rad_s, 1.0)
 	idle_loop.pitch_scale = clampf(omega / _idle_loop_omega_rad_s, LOOP_PITCH_LOW, LOOP_PITCH_HIGH)
 	load_loop.pitch_scale = clampf(omega / _load_loop_omega_rad_s, LOOP_PITCH_LOW, LOOP_PITCH_HIGH)
-	# Each loop was made at its own loudness: scale them to the engine's.
+	# Each loop was made at its own loudness: scale them to the engine's,
+	# never up past it (the loops are saturated already: louder would
+	# clip). The two are unlike, so an equal-power blend keeps the level.
 	var idle_made := loudness(true, _idle_loop_omega_rad_s, 0.0)
 	var load_made := loudness(true, _load_loop_omega_rad_s, 1.0)
-	idle_loop.volume_db = linear_to_db(maxf(_volume / idle_made * (1.0 - _throttle), 1e-5))
-	load_loop.volume_db = linear_to_db(maxf(_volume / load_made * _throttle, 1e-5))
+	var idle_gain := minf(_volume / idle_made, 1.0) * sqrt(1.0 - clampf(_throttle, 0.0, 1.0))
+	var load_gain := minf(_volume / load_made, 1.0) * sqrt(clampf(_throttle, 0.0, 1.0))
+	idle_loop.volume_db = linear_to_db(maxf(idle_gain, 1e-5))
+	load_loop.volume_db = linear_to_db(maxf(load_gain, 1e-5))
 
 
 # The firing frequency of an engine with `count` cylinders at
