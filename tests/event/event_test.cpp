@@ -411,6 +411,41 @@ TEST(Event, OneFarStrongerTractorDoesNotSetTheSled) {
     EXPECT_EQ(lighter.steps, kRules.max_steps_per_change);
 }
 
+// A full pull makes the sled heavier until the field's average would stop
+// at the target: by the steps the average is over it, and one at least,
+// as a full pull's distance only says the sled went that far.
+TEST(Event, AFullPullMakesItHeavierForTheAverage) {
+    const std::vector<int> order = in_order(10);
+    const auto made = [&](int first) {
+        std::vector<int> running = order;
+        std::swap(running[0], running[static_cast<std::size_t>(first)]);
+        std::optional<Event> event =
+            Event::create(kRules, sled::testing::reference_params(), running);
+        if (!event) {
+            std::abort();
+        }
+        Event out = *event;
+        // Expected at 60 to 76 m, and the last at 90 m: the average 70.2 m.
+        for (int i = 0; i < 9; ++i) {
+            out.expect(i, 60.0 + 2.0 * i);
+        }
+        out.expect(9, 90.0);
+        return out;
+    };
+    // The weakest (60 m) pulls 112 m: the average would get 122.2 m, 32.2 m
+    // over the 90 m target: more steps than one change takes.
+    Event weak = made(0);
+    const Outcome far = weak.record(112.0);
+    EXPECT_EQ(far.change, SledChange::kHeavier);
+    EXPECT_EQ(far.steps, kRules.max_steps_per_change);
+    // The strongest (90 m) pulls 110 m, past the extended line: the
+    // average would get 90.2 m, barely over: still one step.
+    Event strong = made(9);
+    const Outcome just = strong.record(110.0);
+    EXPECT_EQ(just.change, SledChange::kHeavier);
+    EXPECT_EQ(just.steps, 1);
+}
+
 // After one change, the next test changes the sled again only if it
 // misses by more than half a step.
 TEST(Event, AfterAChangeOnlyAClearMissChangesItAgain) {
