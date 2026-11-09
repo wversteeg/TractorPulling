@@ -7,7 +7,7 @@
 # in and leave it) and the left brake beside it as the right brake beside
 # the throttle (the brakes spring back to off): each side's brake under its
 # own thumb, the steering between them in the bottom middle. Outside the
-# pull the run works both brakes together (session::Controls), and the two
+# pull (from the moment the sled stands after it) the run works both brakes together (session::Controls), and the two
 # brake sliders move as one (latch_brakes()). Every
 # control has its own colour and label (GAS green, CLUTCH blue, BRAKE red,
 # STEER white), so they are told apart at a glance; the pedals are drawn as

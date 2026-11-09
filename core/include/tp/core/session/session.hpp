@@ -163,6 +163,10 @@ struct Snapshot {
     double flag_progress = 0.0;
     /// After the pull, the sled stands back at the start line.
     bool sled_back = false;
+    /// The pull's rules hold (turn::pull_rules_apply): in the pull, and
+    /// after it until the sled stops. The brake pedals are each side's and
+    /// the gearbox goes down only by its powershift; off, they are latched.
+    bool pull_rules = true;
 };
 
 /// The snapshot `alpha` of the way from `from` to `to` (0 to 1), for drawing

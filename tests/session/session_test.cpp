@@ -393,6 +393,8 @@ TEST(Session, TheBrakesWorkTogetherOutsideThePull) {
     const vehicle::Input pull = Inspector::last_input(at_the_line);
     EXPECT_EQ(pull.brake_left, 0.7);
     EXPECT_EQ(pull.brake_right, 0.0);
+    EXPECT_TRUE(at_the_line.current().pull_rules);
+    EXPECT_FALSE(session.current().pull_rules);
 }
 
 // A pull that stopped short of the restart line, restarted: the same

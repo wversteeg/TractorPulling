@@ -54,6 +54,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | ID | Requirement | Status | Checked by |
 |----|-------------|--------|------------|
 | R-1 | The first pull of an event, and the first after every sled change, is a test pull; the sled operator lightens or makes heavier by it, weighing who pulled it. | met | `Event.FirstPullIsATestPull`, `Event.EasyTestPullMakesTheSledHeavier`, `Event.ShortTestPullMakesTheSledLighter`, `Event.OperatorLearnsWhatAStepIsWorth` |
+| R-12 | The pull's rules hold until the sled stops, not only to the full-pull line: past a full pull (or a disqualification) the sled rolls on, and with it the gearbox goes down only by its powershift and each brake pedal brakes its own side. Once the sled stands they are off. | met | `Turn.ASledStillRollingAfterThePullStopsBeforeItIsHeld`, `Session.TheBrakesWorkTogetherOutsideThePull` |
 | R-2 | A test pull stopping between 100 m and 110 m moves the full-pull line to 110 m and leaves the sled; it counts its own distance (e.g. 104 m), not a full pull, and the board says so. | met | `Event.TestPullJustPastTheLineExtendsIt`, `flow_test.gd` |
 | R-3 | A test puller keeps the test pull or pulls again, deciding after the 3rd pull and re-pulling after the 6th. | met | `Event.TestPullBeatenByLaterTestPullsIsRepulled`, `Event.DecisionIsDueByTheEndOfTheRound` |
 | R-4 | Every full pull goes to the pull-off; the places (4) are filled up with the best pulls from 20 m short of the line in force: from 80 m on the 100 m line, from 90 m on the 110 m line. | met | `Event.QualifyingFromTwentyMetresShortOfTheLine`, `Event.QualifyingFollowsTheExtendedLine` |
@@ -88,7 +89,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 |----|-------------|--------|------------|
 | C-1 | Two layouts: easy (the clutch assist works the clutch and brakes) and pro (clutch and two brakes on their own). | met | `ClutchAssist.*`, `Pro.*`, `touch_test.gd` |
 | C-2 | Steering by an on-screen slider or by tilting the phone. | met | `touch_test.gd` |
-| C-3 | In the pull each brake pedal brakes its own side; off the pull they are latched together, and the two brake sliders move as one. | met | `Session.TheBrakesWorkTogetherOutsideThePull`, `touch_test.gd` |
+| C-3 | In the pull each brake pedal brakes its own side; off the pull they are latched together, and the two brake sliders move as one. The pull lasts until the sled stops: past a full pull, while the sled rolls on, the brakes are still each side's (R-12). | met | `Session.TheBrakesWorkTogetherOutsideThePull`, `touch_test.gd` |
 | C-4 | The gear "−" stops at the lowest gear the gearbox may go to under way, and reaches N and R standing. | met | `touch_test.gd`, `turn_test.gd` |
 
 ## Game and screens
