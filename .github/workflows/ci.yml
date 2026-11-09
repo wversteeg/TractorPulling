@@ -533,6 +533,39 @@ jobs:
           diff --strip-trailing-cr linux/platform_runs_linux.txt platform_runs_windows.txt
           echo "the same results on Windows as on Linux"
 
+  # The web game on GitHub Pages, https://wversteeg.github.io/TractorPulling/:
+  # the export job's web game, after every push to develop whose builds,
+  # tests and games all passed. Needs the repository's Settings → Pages →
+  # Source set to "GitHub Actions". One deployment at a time, none cut short.
+  pages:
+    name: pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: [build-test, android, web, export, windows-game]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: tractor-pulling-web
+          path: web
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+
+      - name: Deploy
+        id: deploy
+        uses: actions/deploy-pages@v5
+
   clang-tidy:
     runs-on: ubuntu-24.04
     steps:

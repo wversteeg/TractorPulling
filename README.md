@@ -633,6 +633,13 @@ xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
 
 ### Playing it on a phone, on Windows or in a browser
 
+The latest game on `develop` plays in any browser at
+**https://wversteeg.github.io/TractorPulling/**, on an iPhone too. On a
+phone, "Add to Home Screen" (Safari's share menu) installs it as an app
+that opens full screen. CI's `pages` job publishes it after every push to
+`develop` whose builds, tests and games all passed; it needs the
+repository's Settings → Pages → Source set to "GitHub Actions" (once).
+
 Every CI run exports the game (the `export` job) and keeps it for 30 days:
 open the run on GitHub's Actions tab and download, under Artifacts,
 `tractor-pulling-android` (a debug APK for phones and the emulator),
