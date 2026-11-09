@@ -8,7 +8,8 @@
 #
 #   scripts/web_game_test.sh <web export directory> [chrome] [seconds]
 #
-# The export is scripts/godot_export.sh's build/export/web. Needs Python 3
+# The export is scripts/godot_export.sh's build/export/web, a debug export:
+# only debug builds print the data files' count. Needs Python 3
 # (the server), Node 22 or later, and Chrome or Chromium (default
 # google-chrome); no GPU: Chrome draws WebGL in software (SwiftShader).
 set -euo pipefail

@@ -330,12 +330,15 @@ func _season_started(error: String, seed: int) -> void:
 		push_error("cannot start the season: " + error)
 	else:
 		# One line on the console, which CI's Windows and web checks look
-		# for: the extension and the data loaded, and how many data files
-		# the export carries (the web check compares that with data/).
+		# for: the extension and the data loaded. Debug builds, which CI
+		# exports, also count the data files the export carries (the web
+		# check compares that with data/); a release build skips the walk.
 		var season := event.get_season()
-		print("A season of %d events, %d pullers, seed %d; %d data files" % [
-				season["events"], PackedStringArray(season["names"]).size(), seed,
-				_count_data_files("res://data")])
+		var line := "A season of %d events, %d pullers, seed %d" % [season["events"],
+				PackedStringArray(season["names"]).size(), seed]
+		if OS.is_debug_build():
+			line += "; %d data files" % _count_data_files("res://data")
+		print(line)
 		_save_season()
 	show_start(error)
 
