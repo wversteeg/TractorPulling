@@ -200,9 +200,8 @@ func _check_engine_sound() -> void:
 			"a six at 2500 rpm fires at 125 Hz")
 	var sound := EngineSound.new()
 	sound.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
-	# The RMS level of a quarter second; the loudest sample and the mean
-	# (no DC offset) kept for the checks below.
-	var peak := [0.0]
+	# The RMS level of a quarter second; the mean (no DC offset) and the
+	# share of samples past the saturation's knee kept for the checks below.
 	var mean := [0.0]
 	var bent := [0.0]
 	var level := func(snapshot: Dictionary) -> float:
@@ -216,7 +215,6 @@ func _check_engine_sound() -> void:
 		for frame in frames:
 			sum += frame.x * frame.x
 			total += frame.x
-			peak[0] = maxf(peak[0], absf(frame.x))
 			over += 1 if absf(frame.x) > EngineSound.SATURATION_KNEE else 0
 		mean[0] = total / frames.size()
 		bent[0] = float(over) / frames.size()
