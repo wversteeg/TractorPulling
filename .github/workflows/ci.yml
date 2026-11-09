@@ -72,8 +72,11 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
+      # Each test is its own ctest test (gtest discovery), so they run in
+      # parallel on all the runner's cores: the debug and sanitizer runs are
+      # the slowest jobs otherwise.
       - name: Test
-        run: ctest --preset ${{ matrix.preset }}
+        run: ctest --preset ${{ matrix.preset }} -j "$(nproc)"
 
       # The speed budget (docs/performance.md): on the ARM runner, the
       # benchmarks it is set on must stay within bench/speed_budget.toml.
@@ -303,10 +306,11 @@ jobs:
 
   # The core, the data loaders and tp_pull in WebAssembly (Emscripten), run
   # with Node: the tests, the platform runs, which must match Linux's, and
-  # the speed; and the Godot extension for the web export.
+  # the speed; and the Godot extension for the web export. Linux's results
+  # come from a tp_pull built here, so the job need not wait for the godot
+  # job's.
   web:
     name: web
-    needs: godot
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -336,16 +340,14 @@ jobs:
           source "${RUNNER_TEMP}/emsdk/emsdk_env.sh"
           ctest --preset web -j "$(nproc)"
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: platform-runs-linux
-          path: linux
-
       - name: Match Linux's results
         run: |
+          cmake --preset release -DTP_BUILD_TESTS=OFF -DTP_BUILD_BENCHMARKS=OFF
+          cmake --build --preset release --target tp_pull
+          scripts/platform_runs.sh build/release/tools/tp_pull > platform_runs_linux.txt
           source "${RUNNER_TEMP}/emsdk/emsdk_env.sh"
           scripts/platform_runs.sh node build/web/tools/tp_pull.js > platform_runs_web.txt
-          diff linux/platform_runs_linux.txt platform_runs_web.txt
+          diff platform_runs_linux.txt platform_runs_web.txt
           echo "the same results in WebAssembly as on Linux"
 
       # For information only: the speed budget's limits are for CI's ARM
