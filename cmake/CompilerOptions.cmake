@@ -46,13 +46,18 @@ if(TP_ENABLE_SANITIZERS)
         -fsanitize=address,undefined
         -fno-sanitize-recover=all
         -fno-omit-frame-pointer)
+    # -O1, as the sanitizers' documentation advises: unoptimized, the
+    # sanitized tests that play whole events took over 20 minutes in CI.
+    # Frame pointers keep the stack traces whole; asserts stay on.
+    set(TP_SANITIZER_COMPILE_FLAGS -O1)
 endif()
 
 # Common settings for every first-party target.
 function(tp_configure_target target)
     target_compile_options(${target} PRIVATE ${TP_WARNING_FLAGS})
     if(TP_ENABLE_SANITIZERS)
-        target_compile_options(${target} PRIVATE ${TP_SANITIZER_FLAGS})
+        target_compile_options(${target} PRIVATE ${TP_SANITIZER_FLAGS}
+            ${TP_SANITIZER_COMPILE_FLAGS})
         target_link_options(${target} PRIVATE ${TP_SANITIZER_FLAGS})
     endif()
 endfunction()
