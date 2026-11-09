@@ -16,7 +16,10 @@ extends SceneTree
 
 const THROTTLE_FINGER := 0
 const TAP_FINGER := 1
-const STEERING_FINGER := 2
+# Negative, as iPhone Safari's touch identifiers can arrive in Godot's web
+# build (a large number, cut to 32 bits): a finger is any index, not only
+# 0 and up.
+const STEERING_FINGER := -1640531527
 const STUCK_FINGER := 3
 const PULL_FRAMES := 300
 # Long enough for the easy layout's assist to press the clutch, change

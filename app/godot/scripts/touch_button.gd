@@ -38,7 +38,10 @@ const KEY_BORDER_COLOUR := Color(1.0, 1.0, 1.0, 0.35)
 		disabled = value
 		release()
 
-var _finger := -1
+# Whether a finger holds the button, and which: any index, negative too
+# (iPhone Safari's, as TouchSlider explains).
+var _held := false
+var _finger := 0
 # The rounded key icon buttons draw (draw_key), made once.
 var _key := StyleBoxFlat.new()
 
@@ -53,14 +56,15 @@ func _input(event: InputEvent) -> void:
 	var touch := event as InputEventScreenTouch
 	if touch == null:
 		return
-	if touch.pressed and _finger < 0 and not disabled and not readout \
+	if touch.pressed and not _held and not disabled and not readout \
 			and get_global_rect().has_point(touch.position):
+		_held = true
 		_finger = touch.index
 		queue_redraw()
 		get_viewport().set_input_as_handled()
 		if not fires_on_release:
 			tapped.emit()
-	elif not touch.pressed and touch.index == _finger:
+	elif not touch.pressed and _held and touch.index == _finger:
 		release()
 		get_viewport().set_input_as_handled()
 		if fires_on_release and get_global_rect().has_point(touch.position):
@@ -68,13 +72,13 @@ func _input(event: InputEvent) -> void:
 
 
 func is_held() -> bool:
-	return _finger >= 0
+	return _held
 
 
 # Lets go of a held finger without a release, as when the app loses focus:
 # otherwise the button would wait for that finger and ignore new ones.
 func release() -> void:
-	_finger = -1
+	_held = false
 	queue_redraw()
 
 
@@ -85,7 +89,7 @@ func _notification(what: int) -> void:
 
 func _draw() -> void:
 	var colour := COLOUR
-	if _finger >= 0:
+	if _held:
 		colour = HELD_COLOUR
 	elif selected:
 		colour = SELECTED_COLOUR
@@ -102,7 +106,7 @@ func _draw() -> void:
 # the button's colour: held, picked or at rest.
 func draw_key() -> void:
 	var colour := COLOUR
-	if _finger >= 0:
+	if _held:
 		colour = HELD_COLOUR
 	elif selected:
 		colour = SELECTED_COLOUR

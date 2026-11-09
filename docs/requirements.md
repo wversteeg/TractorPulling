@@ -90,7 +90,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | ID | Requirement | Status | Checked by |
 |----|-------------|--------|------------|
 | C-1 | Two layouts: easy (the clutch assist works the clutch and brakes) and pro (clutch and two brakes on their own). | met | `ClutchAssist.*`, `Pro.*`, `touch_test.gd` |
-| C-2 | Steering by an on-screen slider or by tilting the phone. | met | `touch_test.gd` |
+| C-2 | Steering by an on-screen slider or by tilting the phone. The touch controls take any finger the platform reports, also the negative touch indexes iPhone Safari's identifiers can arrive as in the web build. | met | `touch_test.gd` (the steering thumb a negative index) |
 | C-3 | In the pull each brake pedal brakes its own side; off the pull they are latched together, and the two brake sliders move as one. The pull lasts until the sled stops: past a full pull, while the sled rolls on, the brakes are still each side's (R-12). | met | `Session.TheBrakesWorkTogetherOutsideThePull`, `touch_test.gd` |
 | C-4 | The gear "−" stops at the lowest gear the gearbox may go to under way, and reaches N and R standing. | met | `touch_test.gd`, `turn_test.gd` |
 
