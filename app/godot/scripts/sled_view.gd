@@ -216,10 +216,13 @@ func _show_transport() -> void:
 
 
 # Down (1) while the sled goes back to the start line after the pull: from
-# the moment the turn is over and the box runs back. Up (0) otherwise: the
-# operator lifts them before the next pull.
+# the moment the chain is off and the box runs back. Up (0) otherwise: the
+# operator lifts them before the next pull. A pull from the line ends
+# parked with the chain still on and the sled where it stopped: up.
 static func transport_wanted(s: Dictionary) -> float:
-	return 1.0 if s.get("stage", "pulling") in ["to_the_parking", "parked"] else 0.0
+	var going_back: bool = s.get("stage", "pulling") in ["to_the_parking", "parked"] \
+			and not bool(s.get("chain_hooked", true))
+	return 1.0 if going_back else 0.0
 
 
 # At the start of a run: a whole turn starts with the sled on its transport

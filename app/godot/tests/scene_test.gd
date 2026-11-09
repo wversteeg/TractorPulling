@@ -80,7 +80,8 @@ func _check() -> void:
 	# the box runs back; a pull from the line has them up.
 	_expect(SledView.transport_wanted({"stage": "pulling"}) == 0.0
 			and SledView.transport_wanted({"stage": "taking_up_slack"}) == 0.0
-			and SledView.transport_wanted({"stage": "to_the_parking"}) == 1.0,
+			and SledView.transport_wanted({"stage": "to_the_parking", "chain_hooked": false}) == 1.0
+			and SledView.transport_wanted({"stage": "parked", "chain_hooked": true}) == 0.0,
 			"the transport wheels down only to drive back")
 	_expect(sled_view.transport == 0.0, "pulling: the transport wheels are up")
 
