@@ -71,8 +71,12 @@ var has_band := false
 var band_from := 0.0
 var band_to := 0.0
 var mark := 0.0
-# The finger holding the slider, -1 for none.
-var _finger := -1
+# Whether a finger holds the slider, and which. Any index can be a finger:
+# Godot's web build passes the browser's touch identifiers on, and iPhone
+# Safari's arrive as large numbers, negative ones too, so "no finger" is
+# its own flag, not an index.
+var _held := false
+var _finger := 0
 # Where the finger landed along the slider (0 to 1) and the value then, for
 # a relative slide.
 var _grab_share := 0.0
@@ -112,7 +116,7 @@ func position_of(at_value: float) -> float:
 
 
 func is_held() -> bool:
-	return _finger >= 0
+	return _held
 
 
 # Touches come in through _input, not _gui_input: each finger is followed
@@ -122,7 +126,8 @@ func _input(event: InputEvent) -> void:
 		return
 	var touch := event as InputEventScreenTouch
 	if touch != null:
-		if touch.pressed and _finger < 0 and get_global_rect().has_point(touch.position):
+		if touch.pressed and not _held and get_global_rect().has_point(touch.position):
+			_held = true
 			_finger = touch.index
 			_grab_share = _share_at(touch.position)
 			_grab_value = value
@@ -130,19 +135,19 @@ func _input(event: InputEvent) -> void:
 				_slide_to(touch.position)
 			queue_redraw()
 			get_viewport().set_input_as_handled()
-		elif not touch.pressed and touch.index == _finger:
+		elif not touch.pressed and _held and touch.index == _finger:
 			release()
 			get_viewport().set_input_as_handled()
 		return
 	var drag := event as InputEventScreenDrag
-	if drag != null and drag.index == _finger:
+	if drag != null and _held and drag.index == _finger:
 		_slide_to(drag.position)
 		get_viewport().set_input_as_handled()
 
 
 # Lets go of a held finger without a release, as when the app loses focus.
 func release() -> void:
-	_finger = -1
+	_held = false
 	if springs_back:
 		value = rest_value
 	queue_redraw()
