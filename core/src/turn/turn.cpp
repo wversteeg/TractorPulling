@@ -213,6 +213,12 @@ bool hooks_on(const pull::Model& model, const pull::State& state) noexcept {
            std::abs(gap.across_m) <= kHookOffLine_m && turned_rad <= kHookTurned_rad;
 }
 
+bool pull_rules_apply(const State& state) noexcept {
+    return state.stage == Stage::kPulling ||
+           (state.stage == Stage::kReleasing &&
+            state.run.pull.sled_mode == pull::SledMode::kOnTheChain);
+}
+
 bool may_restart(const State& state) noexcept {
     const std::optional<run::Result>& result = state.run.result;
     const bool just_stopped =
@@ -273,7 +279,9 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
         // sled finishes driving back.
         input = vehicle::Input{.pull_on = false};
     }
-    input.pull_on = false;
+    // Past a full pull the sled rolls on, and the pull's rules with it,
+    // until it stops.
+    input.pull_on = pull_rules_apply(state);
     restart_if_stalled(pull, model, input);
     const pull::Output out = pull::step(pull, model, input, dt_s);
     state.sled_back = state.sled_back || (pull.sled_mode == pull::SledMode::kDrivingBack &&

@@ -63,8 +63,9 @@ static func log_row(entry: Dictionary) -> PackedStringArray:
 	return PackedStringArray([entry["name"], what, reach(entry), verdict(entry)])
 
 
-# A row of the event's standings: place, who, and the result that counts:
-# the main round's, then each pull-off's.
+# A row of the event's standings: place, who, the result that counts (the
+# main round's, then each pull-off's) and the points the place scores in
+# the championship.
 static func standing_row(line: Dictionary) -> PackedStringArray:
 	var result: String
 	if line["disqualified"]:
@@ -77,7 +78,27 @@ static func standing_row(line: Dictionary) -> PackedStringArray:
 	for i in rounds.size():
 		result += ", pull-off %s%.2f m" % ["" if rounds.size() == 1 else "%d: " % (i + 1),
 				rounds[i]]
-	return PackedStringArray(["%d." % int(line["place"]), line["name"], result])
+	return PackedStringArray(["%d." % int(line["place"]), line["name"], result,
+			points_text(int(line.get("points", 0)))])
+
+
+# "1st", "2nd", "3rd", "11th", "22nd".
+static func ordinal(n: int) -> String:
+	var suffix := "th"
+	if n % 100 < 11 or n % 100 > 13:
+		match n % 10:
+			1:
+				suffix = "st"
+			2:
+				suffix = "nd"
+			3:
+				suffix = "rd"
+	return "%d%s" % [n, suffix]
+
+
+# "1 point", "17 points".
+static func points_text(points: int) -> String:
+	return "%d point%s" % [points, "" if points == 1 else "s"]
 
 
 # The rows of the event's log (one per entry, as log_row()) to show in
@@ -145,5 +166,5 @@ static func player_rows(standings: Array) -> PackedInt32Array:
 static func season_row(line: Dictionary) -> PackedStringArray:
 	var wins: int = line["wins"]
 	return PackedStringArray(["%d." % int(line["place"]), line["name"],
-			"%d points" % int(line["points"]),
+			points_text(int(line["points"])),
 			"" if wins == 0 else "%d win%s" % [wins, "" if wins == 1 else "s"]])

@@ -58,6 +58,7 @@ package "tp::session" {
     +sled_speed_m_s : double
     +box_ahead_of_wheels_m, pushdown, berm_m3, chain_tension_n : double
     +chain_hooked, sled_back : bool
+    +pull_rules : bool
     +hitch_to_hook_m, hitch_along_m, hitch_across_m : double
     +chain_slack_m : double
     +flag_progress : double

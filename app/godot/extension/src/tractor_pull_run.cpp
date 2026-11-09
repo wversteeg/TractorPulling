@@ -262,6 +262,7 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["chain_tension_n"] = s.chain_tension_n;
     out["stage"] = stage_name(s.stage);
     out["chain_hooked"] = s.chain_hooked;
+    out["pull_rules"] = s.pull_rules;
     out["hitch_to_hook_m"] = s.hitch_to_hook_m;
     out["hitch_along_m"] = s.hitch_along_m;
     out["hitch_across_m"] = s.hitch_across_m;

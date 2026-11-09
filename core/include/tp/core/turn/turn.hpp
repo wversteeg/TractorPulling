@@ -165,9 +165,16 @@ struct HitchToHook {
 /// Whether the chain hooks on now (see kHookOffLine_m).
 [[nodiscard]] bool hooks_on(const pull::Model& model, const pull::State& state) noexcept;
 
+/// Whether the pull's rules hold: in the pull, and after it until the sled
+/// stops (a full pull, or a pull out of bounds, rolls on past its end).
+/// While they hold the gearbox goes down only by its powershift
+/// (vehicle::Input::pull_on) and each brake pedal brakes its own side; once
+/// the sled stands they are off, as for driving to the sled.
+[[nodiscard]] bool pull_rules_apply(const State& state) noexcept;
+
 /// One step of the turn. The stage decides what `input` drives: the
 /// tractor alone, the tractor on the held sled, or the pull (with
-/// vehicle::Input::pull_on set accordingly); parked, the tractor idles in
+/// vehicle::Input::pull_on set by pull_rules_apply()); parked, the tractor idles in
 /// neutral while the sled finishes driving back. At the line the turn ends
 /// with the pull, and after it nothing moves.
 pull::Output step(State& state, const pull::Model& model, const run::Rules& rules,

@@ -355,9 +355,58 @@ TEST(Turn, AStretchedChainIsNotReady) {
         << "eased back";
 }
 
+// Creeping into the held sled with the clutch slipping stretches the chain;
+// pressing the clutch then lets it ease the tractor back by the stretch
+// alone. Steel chain and shackles do not spring back like a rubber band:
+// their damping takes the jolt's energy, so the tractor does not bounce
+// back off the sled (with a fifth of the damping it went back 7 cm, at
+// 0.14 m/s).
+TEST(Turn, AJoltIntoTheHeldChainDoesNotThrowTheTractorBack) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    place_hitch(model, state.run.pull, 0.6 * model.sled().chain.length_m, 0.0);
+    const auto input = [](double t_s) -> vehicle::Input {
+        if (t_s < 0.1) {
+            return {.clutch_pedal = 1.0, .gear = driveline::kNeutral};
+        }
+        if (t_s < 0.3) {
+            return {.clutch_pedal = 1.0, .gear = 1};
+        }
+        if (t_s < 3.0) {
+            return {.throttle = 0.4, .clutch_pedal = 0.5, .gear = 1};
+        }
+        return {.clutch_pedal = 1.0, .gear = 1};
+    };
+    constexpr int kPressedAt = 3000;
+    constexpr int kSteps = 4500;
+    double stretch_m = 0.0;
+    double pressed_x_m = 0.0;
+    double back_x_m = 0.0;
+    double fastest_back_m_s = 0.0;
+    for (int i = 0; i < kSteps; ++i) {
+        const pull::Output out = step(state, model, kRules, kParking, input(i * kDt_s), kDt_s);
+        const chassis::State& body = state.run.pull.tractor.chassis;
+        if (i == kPressedAt - 1) {
+            stretch_m = out.chain.tension_n / model.sled().chain.stiffness_n_per_m;
+            pressed_x_m = body.position_m;
+            back_x_m = body.position_m;
+        }
+        if (i >= kPressedAt) {
+            back_x_m = std::min(back_x_m, body.position_m);
+            fastest_back_m_s = std::min(fastest_back_m_s, body.velocity_m_s);
+        }
+    }
+    ASSERT_GT(stretch_m, 0.01) << "the creep stretched the chain";
+    ASSERT_NE(state.stage, Stage::kPulling);
+    EXPECT_LE(pressed_x_m - back_x_m, stretch_m + 0.002) << "back by the stretch, no more";
+    EXPECT_GT(fastest_back_m_s, -0.06) << "eased back, not thrown";
+}
+
 // A pull that ends with the sled still rolling (here a full pull on a
 // short track) leaves it on the chain until it has stopped; then it is
-// held, standing still for good, its speeds all 0.
+// held, standing still for good, its speeds all 0. The pull's rules hold
+// until then: the gearbox goes down only by its powershift, as in the
+// pull; once the sled stands any gear may be chosen again.
 TEST(Turn, ASledStillRollingAfterThePullStopsBeforeItIsHeld) {
     const pull::Model model = reference_model();
     run::Rules short_track = kRules;
@@ -384,19 +433,29 @@ TEST(Turn, ASledStillRollingAfterThePullStopsBeforeItIsHeld) {
     EXPECT_EQ(state.run.result.value_or(run::Result{}).ending, run::Ending::kFullPull);
     EXPECT_GT(state.run.pull.sled.velocity_m_s, 0.0) << "still rolling at the result";
     EXPECT_EQ(state.run.pull.sled_mode, pull::SledMode::kOnTheChain);
+    EXPECT_TRUE(pull_rules_apply(state)) << "the sled rolls on: still the pull";
 
-    // Throttle closed, the clutch pressed: it rolls to a stop on the chain,
-    // and only then is held (here and unhooked at once: the tractor stands
-    // with the chain slack).
+    // Throttle closed, the clutch pressed, 1st asked for: it rolls to a stop
+    // on the chain, and only then is held (here and unhooked at once: the
+    // tractor stands with the chain slack). Until it stops the gearbox
+    // stays above its floor; then 1st goes in.
+    const driveline::Params& gearbox = model.tractor().driveline();
     const vehicle::Input stopping{
-        .clutch_pedal = 1.0, .gear = 4, .brake_left = 1.0, .brake_right = 1.0};
+        .clutch_pedal = 1.0, .gear = 1, .brake_left = 1.0, .brake_right = 1.0};
     int steps = 0;
+    bool floor_held = true;
     while (state.run.pull.sled_mode == pull::SledMode::kOnTheChain && steps < 30000) {
+        const int floor = driveline::lowest_gear(state.run.pull.tractor.driveline, gearbox);
         step(state, model, short_track, kParking, stopping, kDt_s);
+        floor_held = floor_held && floor > 1 && state.run.pull.tractor.driveline.gear >= floor;
         ++steps;
     }
+    EXPECT_TRUE(floor_held) << "the powershift's floor holds while the sled rolls";
     EXPECT_NE(state.run.pull.sled_mode, pull::SledMode::kOnTheChain);
     EXPECT_EQ(state.run.pull.sled.velocity_m_s, 0.0) << "it stood when it was held";
+    EXPECT_FALSE(pull_rules_apply(state));
+    step(state, model, short_track, kParking, stopping, kDt_s);
+    EXPECT_EQ(state.run.pull.tractor.driveline.gear, 1) << "the sled stands: any gear";
 }
 
 // In the easy layout the driver stands ready by letting go of the gas:

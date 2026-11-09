@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdlib>
 #include <initializer_list>
@@ -46,6 +47,26 @@ TEST(SeasonPoints, FollowTheTable) {
     EXPECT_EQ(points_for(points, 15), 3);
     EXPECT_EQ(points_for(points, 16), 0) << "beyond the table";
     EXPECT_EQ(points_for(points, 0), 0);
+}
+
+// An event's results show what each line scores, as the championship
+// counts it: the place's points, nothing for a disqualified pull.
+TEST(SeasonPoints, AStandingScoresItsPlaceUnlessDisqualified) {
+    const Points points = club_points();
+    event::Standing standing{.puller = 4, .place = 2};
+    EXPECT_EQ(points_scored(points, standing), 17);
+    standing.disqualified = true;
+    EXPECT_EQ(points_scored(points, standing), 0);
+    Championship championship = make(5);
+    EXPECT_EQ(championship.points().by_place, points.by_place);
+    standing.disqualified = false;
+    std::vector<event::Standing> standings = result({{0, 1}, {1, 3}, {2, 4}, {3, 5}});
+    standings.push_back(standing);
+    championship.add(standings);
+    for (const Standing& total : championship.standings()) {
+        const auto line = std::ranges::find(standings, total.puller, &event::Standing::puller);
+        EXPECT_EQ(total.points, points_scored(points, *line)) << "puller " << total.puller;
+    }
 }
 
 TEST(SeasonPoints, RejectsNonsense) {
