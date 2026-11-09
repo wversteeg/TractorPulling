@@ -4,9 +4,12 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -81,6 +84,36 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
     for (std::size_t i = 0; i < expected.size(); ++i) {
         EXPECT_EQ(career.rungs[i].class_name, expected[i].first) << i;
         EXPECT_EQ(career.rungs[i].level_name, expected[i].second) << i;
+    }
+}
+
+// A new tractor finishes at the back: every place of every level the career
+// climbs pays, so a player at the back can still build their tractor up.
+// At the career's start (its first rung) the last place pays the garage's
+// cheapest upgrade every event; further up, one every two events (the
+// player brings money and parts from below).
+TEST(CareerLoader, EveryPlaceOfTheShippedCareerPaysForUpgrades) {
+    const auto career = load_career(kCareers / "tractor_path.toml");
+    ASSERT_TRUE(career.ok()) << career.error().message;
+    bool first = true;
+    for (const CareerRung& rung : career.value().rungs) {
+        const auto season = load_season(rung.season, read_from_disk);
+        ASSERT_TRUE(season.ok()) << rung.season;
+        const SeasonDefinition& d = season.value();
+        ASSERT_EQ(d.prize_money_eur.size(), static_cast<std::size_t>(d.event.game.pullers))
+            << rung.season << ": a prize for every place";
+        std::int64_t cheapest_eur = std::numeric_limits<std::int64_t>::max();
+        const garage::Catalogue& catalogue = d.garage.catalogue;
+        for (std::size_t i = 0; i < catalogue.count; ++i) {
+            const garage::Upgrade& upgrade = catalogue.upgrades.at(i);
+            if (upgrade.level_count > 1) {
+                cheapest_eur = std::min(cheapest_eur, upgrade.levels.at(1).cost_eur);
+            }
+        }
+        const std::int64_t events_an_upgrade = first ? 1 : 2;
+        EXPECT_GE(d.prize_money_eur.back() * events_an_upgrade, cheapest_eur)
+            << rung.season << ": the last place";
+        first = false;
     }
 }
 
