@@ -116,6 +116,11 @@ func _play() -> void:
 	var ending_told := false
 	var ahead_of_the_tractor := true
 	var full_pull_m: float = dimensions["full_pull_line_m"]
+	# The turn starts with the sled on its transport wheels, lifted before
+	# the pull and down again to drive back.
+	var transport_down_at_start := sled.transport > 0.9
+	var transport_up_pulling := true
+	var transport_down_driving_back := false
 	for frame in MAX_FRAMES:
 		await process_frame
 		s = run.get_snapshot()
@@ -128,6 +133,9 @@ func _play() -> void:
 			guide_while_taking_up = guide_while_taking_up and hud.guide_shown()
 		if stage == "pulling":
 			no_guide_pulling = no_guide_pulling and not hud.guide_shown()
+			transport_up_pulling = transport_up_pulling and sled.transport == 0.0
+		if stage in ["to_the_parking", "parked"]:
+			transport_down_driving_back = transport_down_driving_back or sled.transport == 1.0
 		if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
 			flag_red_before = flag_red_before and flagman.colour_name() == "red"
 		if stage == "pulling":
@@ -175,6 +183,9 @@ func _play() -> void:
 	_expect(backing_up_told, "told how far to back up")
 	_expect(flag_red_before and flag_green_pulling, "red before the pull, green in it")
 	_expect(chain_on_while_hooked, "the chain on from hooking to releasing")
+	_expect(transport_down_at_start and transport_up_pulling and transport_down_driving_back,
+			"the transport wheels: down at the start (%s), up in the pull (%s), down to drive back (%s)"
+			% [transport_down_at_start, transport_up_pulling, transport_down_driving_back])
 	_expect(green_while_pulling, "both officials green, the lights green, in the pull")
 	_expect(ahead_of_the_tractor, "the official down the track walks ahead of the tractor")
 	_expect(red_to_stop, "both officials red, the lights red, once the pull is over")
