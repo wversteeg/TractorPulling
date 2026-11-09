@@ -80,7 +80,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | K-1 | The game's events have 15 pullers: the player and 14 named rivals. | met | `EventLoader.LoadsTheShippedEvent`, `RivalDifficulty.*` |
 | K-2 | No two of a rival's pulls are the same: grip, clutch timing and the sled pan's drag (the spot on the track) vary per pull, so the strongest two or three rivals fight for the win rather than one winning every event. The player's pull runs on the event's sled as it is (its draw is taken and dropped, so the rivals' draws do not depend on the player); varying it too is in `docs/future_improvements.md`. | met (measured with `tp_pull season`) | `Driver.EveryPullDiffersALittle`, `RivalDifficulty.*`, `LiveEvent.IsPlayEventWithThePlayerPullingAsScripted` |
 | K-3 | A new tractor finishes near the back of its class's first level; a fully upgraded one wins at its last level; each stage of the garage climbs. | met | `RivalDifficulty.*` |
-| K-4 | Winning a level's championship opens the level above, after at least two seasons on a level. | met | `Career.*` |
+| K-4 | Finishing a level's championship first or second opens the level above, after at least two seasons on a level. | met | `Career.*`, `CareerLoader.LoadsTheShippedCareer` |
 | K-5 | Upgrades only change parameters within the class's rules. | met | `Garage.*`, `ClassRules.*` |
 
 ## Controls
@@ -103,4 +103,5 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | U-5 | The game's icon is drawn from the menus' scene (`tools/make_icons.gd`), for the project, Android's launcher and the web game's home-screen icons. | manual | `export` job builds the APK and the web game with it |
 | U-6 | For testing (to remove before a release): "+ € 1000" in the settings adds money to the bank. | manual | `docs/future_improvements.md` |
 | U-7 | The event's results and the season's standings list every puller, not a top ten; the list scrolls with a finger, the player's row highlighted. | met | `flow_test.gd` (a fifteen-puller field on both boards; the board scrolling) |
+| U-9 | The event's results show the points each place scores in the championship (none for a disqualified pull); they add up to what the season's standings gain. | met | `SeasonPoints.AStandingScoresItsPlaceUnlessDisqualified`, `flow_test.gd` |
 | U-8 | Taking up the slack, the turn's line says how far the tractor still has to creep ("Creep forward: 0.85 m"), and a gauge under it shows the slack shrinking towards the band where it counts as taken up (green: within `turn::kReadyTautWithin_m`, 10 cm, of tight). In the band the slack is taken up without a jolt on the chain. | met | `Turn.TheSlackIsTakenUpInTheReadyBand`, `turn_test.gd` (the distance told, the gauge shown while taking up the slack), manual on screen |

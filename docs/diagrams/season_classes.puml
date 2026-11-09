@@ -25,11 +25,13 @@ package "tp::season" {
     +{static} create(const Points&, pullers) : optional<Championship>
     +add(span<const event::Standing>) : bool
     +events() : int
+    +points() : const Points&
     +standings() : span<const Standing>
   }
   class "season functions" as SeasonFns <<free functions>> {
     +validate(const Points&) : optional<ParamError>
     +points_for(const Points&, place) : int
+    +points_scored(const Points&, const event::Standing&) : int
   }
   Championship *-- Points
   Championship ..> Standing

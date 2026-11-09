@@ -409,8 +409,9 @@ class is the warming-up, at one level (`data/seasons/standard_3500.toml`,
 stages, about € 20,000 in all): a new tractor finishes near the back and
 about two thirds of the garage wins (`RivalDifficulty`). Sport 2.5 t is
 pulled at promo and top. Every level takes at least two seasons
-(`min_seasons`): winning a level's championship opens the next level,
-and winning a class's last level the next class (`promotion_place`, a shared title counts), once the level has
+(`min_seasons`): finishing a level's championship first or second opens
+the next level, and at a class's last level the next class
+(`promotion_place = 2`, a shared place counts), once the level has
 had them; the season's board then asks whether to move up or stay
 and defend the title, and what is opened stays open, so the start screen
 offers "Move up" before the next season's first pull too. The money and

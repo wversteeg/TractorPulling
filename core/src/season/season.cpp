@@ -24,6 +24,10 @@ int points_for(const Points& points, int place) noexcept {
     return points.by_place[static_cast<std::size_t>(place) - 1];
 }
 
+int points_scored(const Points& points, const event::Standing& standing) noexcept {
+    return standing.disqualified ? 0 : points_for(points, standing.place);
+}
+
 std::optional<Championship> Championship::create(const Points& points, int pullers) noexcept {
     if (validate(points) || pullers < 1 || pullers > event::kMaxPullers) {
         return std::nullopt;
@@ -47,8 +51,7 @@ bool Championship::add(std::span<const event::Standing> event_standings) noexcep
     }
     for (const event::Standing& s : event_standings) {
         Standing& total = totals_[static_cast<std::size_t>(s.puller)];
-        // A disqualified pull scores nothing, whatever place it ends in.
-        const int scored = s.disqualified ? 0 : points_for(points_, s.place);
+        const int scored = points_scored(points_, s);
         total.points += scored;
         total.event_points[static_cast<std::size_t>(events_)] = scored;
         total.wins += s.place == 1 && !s.disqualified ? 1 : 0;

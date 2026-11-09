@@ -223,9 +223,13 @@ func _play() -> void:
 	# one.
 	var two_rounds := EventTexts.standing_row({"place": 1, "name": "Henk", "disqualified": false,
 			"full_pull": false, "distance_m": 96.0, "pull_off_rounds": 2,
-			"pull_off_distances_m": PackedFloat64Array([120.0, 98.5])})
+			"pull_off_distances_m": PackedFloat64Array([120.0, 98.5]), "points": 20})
 	_expect(two_rounds[2] == "96.00 m, pull-off 1: 120.00 m, pull-off 2: 98.50 m",
 			"both pull-offs in the standings: %s" % two_rounds[2])
+	_expect(two_rounds[3] == "20 points", "the place's points in the results: %s" % two_rounds[3])
+	_expect(EventTexts.ordinal(1) == "1st" and EventTexts.ordinal(2) == "2nd"
+			and EventTexts.ordinal(12) == "12th" and EventTexts.ordinal(23) == "23rd",
+			"places in words")
 	# The board's bold rows: the main round's best four as they count (a
 	# re-pull replaces the test pull) and the best of the pull-off under way.
 	var log := [
@@ -401,6 +405,10 @@ func _play() -> void:
 	_tap(board.first_button)
 	await _frames(2)
 	_expect(board.visible and board.row_count() == PULLERS, "the event's standings")
+	# Every place's points, as the championship then counts them.
+	var event_points := 0
+	for line: Dictionary in event.get_standings():
+		event_points += int(line["points"])
 	var prize := event.get_event_prize()
 	_expect(prize >= 0 and (prize == 0 or board.status().contains("won")),
 			"the prize, if any: %d" % prize)
@@ -415,6 +423,8 @@ func _play() -> void:
 	for line: Dictionary in event.get_season_standings():
 		points += int(line["points"])
 	_expect(points > 0 and board.row_count() == PULLERS, "the season's standings")
+	_expect(points == event_points,
+			"the results' points are the championship's: %d, %d" % [event_points, points])
 	_expect(board.first_button.text == "Next event", "on to the next event")
 	_expect(int(event.get_garage()["money_eur"]) == 400 + prize and event.get_garage()["can_buy"],
 			"the prize paid: %s" % event.get_garage())
