@@ -200,18 +200,31 @@ func _check_engine_sound() -> void:
 			"a six at 2500 rpm fires at 125 Hz")
 	var sound := EngineSound.new()
 	sound.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
+	# The RMS level of a quarter second; the loudest sample and the mean
+	# (no DC offset) kept for the checks below.
+	var peak := [0.0]
+	var mean := [0.0]
 	var level := func(snapshot: Dictionary) -> float:
 		sound.show_snapshot(snapshot)
 		sound.sample_frames(int(EngineSound.MIX_RATE_HZ))  # a second to settle
 		var frames := sound.sample_frames(int(EngineSound.MIX_RATE_HZ / 4.0))
 		var sum := 0.0
+		var total := 0.0
 		for frame in frames:
 			sum += frame.x * frame.x
+			total += frame.x
+			peak[0] = maxf(peak[0], absf(frame.x))
+		mean[0] = total / frames.size()
 		return sqrt(sum / frames.size())
 	var idle: float = level.call({"engine_running": true, "engine_omega_rad_s": 84.0,
 			"throttle": 0.0, "boost": 0.0})
 	var full: float = level.call({"engine_running": true, "engine_omega_rad_s": 262.0,
 			"throttle": 1.0, "boost": 1.0})
+	# Loudest, lugging at full throttle: soft, never clipped, and centred.
+	level.call({"engine_running": true, "engine_omega_rad_s": 160.0, "throttle": 1.0,
+			"boost": 0.8})
+	_expect(peak[0] < 0.9 and absf(mean[0]) < 0.01,
+			"the loudest sound unclipped and centred: peak %.2f, mean %.4f" % [peak[0], mean[0]])
 	var stopped: float = level.call({"engine_running": false, "engine_omega_rad_s": 0.0,
 			"throttle": 0.0, "boost": 0.0})
 	_expect(idle > 0.01 and full > 2.0 * idle and stopped < 1e-3,
