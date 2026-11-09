@@ -12,8 +12,10 @@ points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # winner about 30 % more than the one below: a player who buys
 # as they earn needs about three seasons at belofte and two at promo and
 # at top.
-# A disqualified pull earns nothing.
-prize_money_eur = [2700, 2110, 1730, 1460, 1270, 1080, 920, 810, 730, 630]
+# Every place pays, the last at least half the garage's cheapest upgrade
+# (one every two events), so a tractor at the back can still be built up;
+# a disqualified pull earns nothing.
+prize_money_eur = [3100, 2430, 1990, 1680, 1460, 1320, 1220, 1130, 1080, 1000, 920, 850, 760, 690, 600]
 garage = "../garages/sport_4500.toml"   # one tractor for the class's levels
 
 [[season.events]]
