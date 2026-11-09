@@ -667,8 +667,10 @@ scripts/web_game_test.sh build/export/web   # the web game starts in headless Ch
 
 Each export carries its build: "Build N · commit" at the bottom of the
 settings and first in the game's log. N counts the commits along the
-first parents, so every merge to `develop` adds one; the script needs the
-whole history for it (`git fetch --unshallow` in a shallow clone). A game
+first parents, so every merge commit on `develop` adds one; the script
+needs the whole history for it (`git fetch --unshallow` in a shallow
+clone). A pull request's build in CI says "Build N + PR P · commit": the
+`develop` it builds on and the PR's own commit. A game
 run from the project itself says "Development build".
 
 The Windows extension is cross-compiled with MinGW-w64

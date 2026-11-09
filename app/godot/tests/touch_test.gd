@@ -405,6 +405,8 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 			"the build at the bottom: %s" % settings.build_label.text)
 	_expect(BuildInfo.describe("res://tests/data/build_info.cfg") == "Build 86 · 8206bca",
 			"an export's build: %s" % BuildInfo.describe("res://tests/data/build_info.cfg"))
+	_expect(BuildInfo.describe("res://tests/data/build_info_pr.cfg") == "Build 86 + PR 87 · e8df148",
+			"a pull request's build: %s" % BuildInfo.describe("res://tests/data/build_info_pr.cfg"))
 	_tap(settings.pro_button)
 	_expect(settings.pro_button.selected and not settings.easy_button.selected, "pro picked")
 	_expect(GameSettings.read(SETTINGS_PATH).pro, "pro kept in the settings file")

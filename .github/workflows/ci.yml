@@ -446,6 +446,11 @@ jobs:
           rm templates.tpz
 
       - name: Export
+        env:
+          # Empty on a push: develop's own build. On a pull request, its
+          # build is marked with the PR and names the PR's head commit.
+          TP_PR_NUMBER: ${{ github.event.pull_request.number }}
+          TP_PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           export ANDROID_HOME="${ANDROID_SDK_ROOT}"
           export JAVA_HOME="${JAVA_HOME_17_X64}"
