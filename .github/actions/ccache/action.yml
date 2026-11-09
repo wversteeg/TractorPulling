@@ -1,0 +1,46 @@
+name: Compiler cache
+description: >
+  Installs ccache (Ubuntu's), puts it in front of every compiler CMake
+  configures from here on, and restores the job's latest cache from the
+  branch, or for a pull request from its base branch. Run it after the
+  job's apt-get update; on a push the job saves the cache at its end with
+  actions/cache/save and the key this sets in CCACHE_KEY.
+inputs:
+  name:
+    description: The job's cache name, one per job and matrix entry.
+    required: true
+  max-size:
+    description: The cache's size limit; ccache drops the oldest entries past it.
+    default: 300M
+runs:
+  using: composite
+  steps:
+    - name: Install and configure ccache
+      shell: bash
+      env:
+        CACHE_NAME: ${{ inputs.name }}
+        MAX_SIZE: ${{ inputs.max-size }}
+      run: |
+        sudo apt-get install -y -q ccache
+        {
+          echo "CCACHE_DIR=${RUNNER_TEMP}/ccache"
+          # Paths under the checkout are hashed relative to it.
+          echo "CCACHE_BASEDIR=${GITHUB_WORKSPACE}"
+          echo "CCACHE_MAXSIZE=${MAX_SIZE}"
+          echo "CMAKE_C_COMPILER_LAUNCHER=ccache"
+          echo "CMAKE_CXX_COMPILER_LAUNCHER=ccache"
+          echo "CCACHE_KEY=ccache-${CACHE_NAME}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+        } >> "${GITHUB_ENV}"
+
+    # A cache is never overwritten, so each run saves under a new key and
+    # the next one restores the newest that starts with the prefix.
+    - name: Restore the compiler cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ runner.temp }}/ccache
+        key: ccache-${{ inputs.name }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ccache-${{ inputs.name }}-
+
+    - name: Zero the cache statistics
+      shell: bash
+      run: ccache --zero-stats

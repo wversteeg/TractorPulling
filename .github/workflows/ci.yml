@@ -58,6 +58,10 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build libclang-rt-${LLVM_VERSION}-dev
 
+      - uses: ./.github/actions/ccache
+        with:
+          name: ${{ matrix.compiler }}-${{ matrix.preset }}-${{ matrix.arch }}
+
       - name: Select compiler
         run: |
           if [ "${{ matrix.compiler }}" = gcc ]; then
@@ -72,8 +76,11 @@ jobs:
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }}
 
+      # Each test is its own ctest test (gtest discovery), so they run in
+      # parallel on all the runner's cores: the debug and sanitizer runs are
+      # the slowest jobs otherwise.
       - name: Test
-        run: ctest --preset ${{ matrix.preset }}
+        run: ctest --preset ${{ matrix.preset }} -j "$(nproc)"
 
       # The speed budget (docs/performance.md): on the ARM runner, the
       # benchmarks it is set on must stay within bench/speed_budget.toml.
@@ -129,6 +136,20 @@ jobs:
             done
           done
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
+      - name: Save the compiler cache
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The Android NDK build: the same code with the NDK's clang, libc++ and
   # bionic. Both ABIs build; the x86_64 build runs its tests on an emulator
   # at the oldest Android we support (API 24), so the regression hashes are
@@ -155,6 +176,11 @@ jobs:
           yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
             --install "ndk;${NDK_VERSION}"
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: android-${{ matrix.abi }}
+          max-size: 500M
 
       - name: Configure
         run: cmake --preset android-${{ matrix.abi }}
@@ -211,6 +237,20 @@ jobs:
             scripts/android_test.sh build/android-x86_64 build/host_event.txt
             scripts/android_bench.sh build/android-x86_64
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
+      - name: Save the compiler cache
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The Godot extension (app/godot/extension) on the desktop: built against
   # godot-cpp and played in the pinned Godot, with a software renderer. The scripted run must
   # end in the same state hash as tp_pull's (scripts/godot_test.sh).
@@ -228,6 +268,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build xvfb libgl1-mesa-dri
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: godot
+          max-size: 500M
 
       - name: Configure
         run: cmake --preset godot
@@ -266,6 +311,20 @@ jobs:
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
+      - name: Save the compiler cache
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The Godot extension and tp_pull for Windows, cross-compiled with
   # MinGW-w64 as Godot builds its own Windows releases.
   windows-build:
@@ -279,6 +338,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build g++-mingw-w64-x86-64-posix
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: windows
+          max-size: 500M
 
       - name: Build
         run: |
@@ -301,12 +365,27 @@ jobs:
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
+      - name: Save the compiler cache
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The core, the data loaders and tp_pull in WebAssembly (Emscripten), run
   # with Node: the tests, the platform runs, which must match Linux's, and
-  # the speed; and the Godot extension for the web export.
+  # the speed; and the Godot extension for the web export. Linux's results
+  # come from a tp_pull built here (the release preset, with the runner's
+  # gcc, as the godot job's), so the job need not wait for the godot job.
   web:
     name: web
-    needs: godot
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -316,6 +395,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: web
+          max-size: 500M
 
       # Emscripten's own SDK at its release tag, not a third-party action.
       - name: Install Emscripten
@@ -336,16 +420,14 @@ jobs:
           source "${RUNNER_TEMP}/emsdk/emsdk_env.sh"
           ctest --preset web -j "$(nproc)"
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: platform-runs-linux
-          path: linux
-
       - name: Match Linux's results
         run: |
+          cmake --preset release -DTP_BUILD_TESTS=OFF -DTP_BUILD_BENCHMARKS=OFF
+          cmake --build --preset release --target tp_pull
+          scripts/platform_runs.sh build/release/tools/tp_pull > platform_runs_linux.txt
           source "${RUNNER_TEMP}/emsdk/emsdk_env.sh"
           scripts/platform_runs.sh node build/web/tools/tp_pull.js > platform_runs_web.txt
-          diff linux/platform_runs_linux.txt platform_runs_web.txt
+          diff platform_runs_linux.txt platform_runs_web.txt
           echo "the same results in WebAssembly as on Linux"
 
       # For information only: the speed budget's limits are for CI's ARM
@@ -371,6 +453,20 @@ jobs:
           path: app/godot/bin/libtp_godot.web.template_debug.wasm32.nothreads.wasm
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
+
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
+      - name: Save the compiler cache
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
 
   # The game exported: a debug APK for phones and the emulator, the Windows
   # desktop game and the web game, as artifacts to download from the run
@@ -571,15 +667,28 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@v5
 
+  # On a pull request, clang-tidy checks only the source files the change
+  # touches or that include a file it touches (scripts/tidy_files.py, with
+  # clang-scan-deps); a change to .clang-tidy, the build or this workflow,
+  # and every push to a branch, check everything.
   clang-tidy:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A pull request's merge commit and its first parent, the base.
+          fetch-depth: 2
 
       - name: Install tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q ninja-build clang-tidy-${LLVM_VERSION}
+          sudo apt-get install -y -q ninja-build clang-tidy-${LLVM_VERSION} clang-tools-${LLVM_VERSION}
+
+      - name: List the changed files
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff --name-only HEAD^1 HEAD | tee "${RUNNER_TEMP}/changed.txt"
+          echo "TIDY_CHANGED=${RUNNER_TEMP}/changed.txt" >> "$GITHUB_ENV"
 
       - name: Configure
         env:
@@ -587,10 +696,17 @@ jobs:
         run: cmake --preset debug
 
       - name: Run clang-tidy
-        run: >
-          run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug
-          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
-          "$PWD/(core|data_io|tests|tools|bench)/"
+        run: |
+          files=$(scripts/tidy_files.py build/debug '^(core|data_io|tests|tools|bench)/' \
+            ${TIDY_CHANGED:+"$TIDY_CHANGED"})
+          if [[ -z "${files}" ]]; then
+            echo "no source file to check"
+            exit 0
+          fi
+          mapfile -t files <<< "${files}"
+          echo "checking ${#files[@]} source files"
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug \
+            -clang-tidy-binary clang-tidy-${LLVM_VERSION} "${files[@]}"
 
       # The Godot extension needs godot-cpp's generated headers, so it gets
       # its own build tree.
@@ -602,10 +718,17 @@ jobs:
           cmake --build --preset godot --target generate_bindings
 
       - name: Run clang-tidy on the Godot extension
-        run: >
-          run-clang-tidy-${LLVM_VERSION} -quiet -p build/godot
-          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
-          "$PWD/app/godot/extension/"
+        run: |
+          files=$(scripts/tidy_files.py build/godot '^app/godot/extension/' \
+            ${TIDY_CHANGED:+"$TIDY_CHANGED"})
+          if [[ -z "${files}" ]]; then
+            echo "no source file to check"
+            exit 0
+          fi
+          mapfile -t files <<< "${files}"
+          echo "checking ${#files[@]} source files"
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/godot \
+            -clang-tidy-binary clang-tidy-${LLVM_VERSION} "${files[@]}"
 
   format:
     runs-on: ubuntu-24.04

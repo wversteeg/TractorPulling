@@ -180,6 +180,13 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
     data/classes/ntto_standard_3500.toml
 
+# clang-tidy on the files a branch changes and those that include them, as
+# CI does on pull requests (clang-scan-deps, from clang-tools-18, finds the
+# includes); without the list, every file
+git diff --name-only develop... > changed.txt
+run-clang-tidy-18 -p build/debug \
+    $(scripts/tidy_files.py build/debug '^(core|data_io|tests|tools|bench)/' changed.txt)
+
 # Android (needs ANDROID_NDK_HOME; CI pins NDK 29.0.14206865, Godot's): build
 # for phones or the emulator, then run the tests on a device over adb
 cmake --preset android-arm64 && cmake --build --preset android-arm64
@@ -263,7 +270,7 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `g
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.
-- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, and Godot's export templates for the exports, downloaded from Godot's releases at a pinned version and checked against their SHA-512; MinGW-w64 from Ubuntu for the Windows extension; Emscripten's SDK (emsdk), cloned at Godot's version's release tag, for the web build; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
+- Do not add dependencies without explaining the trade-off. Approved so far: GoogleTest, Google Benchmark, toml++, godot-cpp (the Godot extension only). In CI: the Godot editor binary for the extension's test, and Godot's export templates for the exports, downloaded from Godot's releases at a pinned version and checked against their SHA-512; MinGW-w64 from Ubuntu for the Windows extension; ccache from Ubuntu, with its cache kept by GitHub's `actions/cache` between runs (`.github/actions/ccache`), so unchanged code such as godot-cpp is not compiled again; Emscripten's SDK (emsdk), cloned at Godot's version's release tag, for the web build; and `reactivecircus/android-emulator-runner`, which runs the Android tests on an emulator; it is third-party and runs with KVM access, so it is pinned to a commit and updated by hand.
 - Art assets are vendored, not fetched: so far Kenney's CC0 starter-kit models in `app/godot/assets/kenney`, credited with their source commits in its README. Only CC0 or similarly free licences; say where each comes from.
 
 ## Dependencies
