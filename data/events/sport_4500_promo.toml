@@ -59,13 +59,15 @@ pull_off_places = 4              # full pulls, filled up with the best...
 qualifying_below_line_m = 20.0   # ...from 20 m short of the line on (80 m, or 90 m at 110 m)
 decide_after_pulls = 2           # the test puller decides after the 3rd pull
 repull_after_pulls = 5           # and re-pulls after the 6th
-sled_target_m = 98.0             # what the strongest should reach: the best come close to a full pull
+sled_target_m = 91.0             # what the field's average should reach: the best come close to a full pull
 step_m = 8.0                     # rule of thumb: a sled step is worth about 8 m (learnt better on the day)
 max_steps_per_change = 4         # at most this many steps at once
 # The operator weighs a test pull by who pulled it (each tractor's gear
 # trials say how far it should get): the sled goes lighter when the
-# strongest would stop short of sled_target_m (the test pull plus how much
-# further the strongest gets), so a weak tractor's 80 m may be fine; a full
+# field's average would stop short of sled_target_m (the test pull plus how
+# much further the average gets), so a weak tractor's 80 m may be fine. The
+# average, not the strongest: a tractor far stronger than the rest (the
+# player's, built up) leaves the sled as the class needs it. A full
 # pull by one of the strongest fifth leaves the sled; a pull short of 60 %
 # of what the tractor should do is trouble with the tractor, and the next
 # puller tests. After a change, the next test changes the sled only if it

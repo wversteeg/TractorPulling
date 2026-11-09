@@ -335,7 +335,7 @@ TEST(Event, WithNothingElseLeftALighterStepTakesBoxWeightOut) {
 }
 
 // The operator weighs a test pull by who pulled it: a weak tractor's short
-// pull leaves the sled when the strongest would still reach the target; a
+// pull leaves the sled when the field's average would still reach the target; a
 // full pull by one of the strongest leaves the sled; far short of what a
 // tractor should do is trouble with the tractor, and the next one tests.
 TEST(Event, TheOperatorWeighsATestPullByItsTractor) {
@@ -358,10 +358,10 @@ TEST(Event, TheOperatorWeighsATestPullByItsTractor) {
     };
     Event weak = made(order);
     EXPECT_EQ(weak.record(82.0).change, SledChange::kNone)
-        << "82 m by the weakest: the strongest would get 102 m";
+        << "82 m by the weakest: the average would get 92 m";
     Event weak_short = made(order);
     EXPECT_EQ(weak_short.record(66.0).change, SledChange::kLighter)
-        << "the strongest would get only 86 m";
+        << "the average would get only 76 m";
 
     std::vector<int> strongest_first = order;
     std::swap(strongest_first[0], strongest_first[5]);
@@ -373,6 +373,77 @@ TEST(Event, TheOperatorWeighsATestPullByItsTractor) {
     EXPECT_EQ(trouble.record(40.0).change, SledChange::kTroubleSuspected)
         << "40 m where 80 m was expected";
     EXPECT_EQ(next_of(trouble).kind, PullKind::kTest) << "the next puller tests";
+}
+
+// The sled is set for the field as a whole: one tractor far stronger than
+// the rest (a player who built theirs up) moves the average a little, not
+// the sled to its own measure. Judged by the strongest, a rival's short
+// test pull on a sled far too heavy for the field would leave it, since the
+// strong one would still get there; judged by the average, it is lightened.
+TEST(Event, OneFarStrongerTractorDoesNotSetTheSled) {
+    const std::vector<int> order = in_order(10);
+    const auto made = [&](double strongest_m) {
+        std::optional<Event> event =
+            Event::create(kRules, sled::testing::reference_params(), order);
+        if (!event) {
+            std::abort();
+        }
+        Event out = *event;
+        // Puller 0, the first to pull, expected at 60 m; the others up to
+        // 76 m; the tenth, last in the order, as given.
+        for (int i = 0; i < 9; ++i) {
+            out.expect(i, 60.0 + 2.0 * i);
+        }
+        out.expect(9, strongest_m);
+        return out;
+    };
+    // A tenth like the others: the average 69 m, 9 m more than puller 0.
+    // An 84 m test pull says the average would get 93 m: the sled is right.
+    Event even = made(78.0);
+    EXPECT_EQ(even.record(84.0).change, SledChange::kNone);
+    // A tenth expected at 160 m moves the average up 8.2 m, to 77.2 m. A
+    // 40 m test pull: the average would get 57.2 m, 32.8 m short of the
+    // target, so lighter by the most steps at once. (The strongest would
+    // still get 140 m: by its measure the sled would stay far too heavy.)
+    Event outlier = made(160.0);
+    const Outcome lighter = outlier.record(40.0);
+    EXPECT_EQ(lighter.change, SledChange::kLighter) << "the sled is set for the field";
+    EXPECT_EQ(lighter.steps, kRules.max_steps_per_change);
+}
+
+// A full pull makes the sled heavier until the field's average would stop
+// at the target: by the steps the average is over it, and one at least,
+// as a full pull's distance only says the sled went that far.
+TEST(Event, AFullPullMakesItHeavierForTheAverage) {
+    const std::vector<int> order = in_order(10);
+    const auto made = [&](int first) {
+        std::vector<int> running = order;
+        std::swap(running[0], running[static_cast<std::size_t>(first)]);
+        std::optional<Event> event =
+            Event::create(kRules, sled::testing::reference_params(), running);
+        if (!event) {
+            std::abort();
+        }
+        Event out = *event;
+        // Expected at 60 to 76 m, and the last at 90 m: the average 70.2 m.
+        for (int i = 0; i < 9; ++i) {
+            out.expect(i, 60.0 + 2.0 * i);
+        }
+        out.expect(9, 90.0);
+        return out;
+    };
+    // The weakest (60 m) pulls 112 m: the average would get 122.2 m, 32.2 m
+    // over the 90 m target: more steps than one change takes.
+    Event weak = made(0);
+    const Outcome far = weak.record(112.0);
+    EXPECT_EQ(far.change, SledChange::kHeavier);
+    EXPECT_EQ(far.steps, kRules.max_steps_per_change);
+    // The strongest (90 m) pulls 110 m, past the extended line: the
+    // average would get 90.2 m, barely over: still one step.
+    Event strong = made(9);
+    const Outcome just = strong.record(110.0);
+    EXPECT_EQ(just.change, SledChange::kHeavier);
+    EXPECT_EQ(just.steps, 1);
 }
 
 // After one change, the next test changes the sled again only if it

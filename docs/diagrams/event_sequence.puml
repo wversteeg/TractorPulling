@@ -21,7 +21,7 @@ loop until finished()
     else
       Caller -> Event : record(reached_m)
       opt test pull
-        Event -> Event : operator: line to 110 m, lighter or heavier;\nafter a change the next puller tests
+        Event -> Event : operator: line to 110 m, lighter or heavier\nfor the field's average; after a change the next puller tests
       end
     end
     opt round over

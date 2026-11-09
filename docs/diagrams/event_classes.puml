@@ -91,9 +91,10 @@ EventFns ..> Random
 note bottom of Event
   test pull: first pull, and the first after every sled change;
   100 m <= test < 110 m: line to 110 m, sled stays;
-  test past the line: heavier by ceil(over / learnt step), at most max steps; the test puller re-pulls;
+  judged by the field's average: the test plus how much further the average gets (expect());
+  test past the line: heavier until the average stops at the target, at most max steps; the test puller re-pulls;
   the operator learns what a step is worth from each change and the next test pull;
-  test short of the target: lighter (knives out, push-down later; with neither left,
+  the average short of the target: lighter (knives out, push-down later; with neither left,
   a tenth of the box out a step);
   test puller may keep an unchanged or lighter sled's pull: decides after pull +2,
   re-pulls after pull +5 (the 6th);
