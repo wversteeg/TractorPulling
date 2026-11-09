@@ -304,14 +304,17 @@ func _check_haptics() -> void:
 	step.call({})
 	_expect(step.call({"clutch_pedal": 0.3}) == 1, "a tick passing the bite point")
 	_expect(step.call({"clutch_pedal": 0.2}) == 0, "nothing past it")
+	# The clutch in from here on.
+	base["clutch_pedal"] = 0.0
+	step.call({})
 	_expect(step.call({"gear": 5}) == 1, "a tick for a gear going in")
 	base["gear"] = 5
 	step.call({})
 	_expect(step.call({"slip_ratio": 0.6}) == 1 and step.call({"slip_ratio": 0.6}) == 0,
 			"wheelspin buzzes now and then, not every frame")
-	_expect(step.call({"throttle": 1.0, "clutch_pedal": 0.0, "engine_omega_rad_s": 150.0}) == 1,
+	_expect(step.call({"throttle": 1.0, "engine_omega_rad_s": 150.0}) == 1,
 			"a pulse when the engine lugs")
-	_expect(step.call({"throttle": 1.0, "clutch_pedal": 0.0, "engine_omega_rad_s": 240.0}) == 0,
+	_expect(step.call({"throttle": 1.0, "engine_omega_rad_s": 240.0}) == 0,
 			"none at its speed")
 	step.call({"front_axle_load_n": 0.0}, -1, 0.3)
 	_expect(step.call({}) == 1 and float(felt[0][1]) == 1.0, "a thump when the front lands")
