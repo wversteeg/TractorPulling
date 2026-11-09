@@ -67,6 +67,7 @@ func _check() -> void:
 	_expect(is_equal_approx(tractor.rotation.y, float(s["tractor_heading_rad"])),
 			"the tractor's heading")
 
+	_check_engine_sound()
 	# The box holds a weight for every 250 kg of its mass for the pull, as
 	# many as fit; this pull's box shows its own.
 	_expect(SledView.weight_count(6000.0) == 24 and SledView.weight_count(1500.0) == 6
@@ -186,6 +187,39 @@ func _check() -> void:
 	_expect(camera.global_position.distance_to(tractor.global_position) < 50.0,
 			"the camera follows the tractor")
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
+
+
+# The engine's sound: a six at 2500 rpm fires at 125 Hz; louder at full
+# throttle than at idle, and silent once the engine stops. Made without an
+# audio device (sample_frames()). Silent, it makes no samples at all.
+func _check_engine_sound() -> void:
+	var pulling: EngineSound = _pull.get("engine_sound")
+	_expect(pulling.target_volume() > 0.0,
+			"the engine is heard in the pull: %.2f" % pulling.target_volume())
+	_expect(absf(EngineSound.firing_hz(2500.0 * TAU / 60.0, 6) - 125.0) < 1e-9,
+			"a six at 2500 rpm fires at 125 Hz")
+	var sound := EngineSound.new()
+	sound.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
+	var level := func(snapshot: Dictionary) -> float:
+		sound.show_snapshot(snapshot)
+		sound.sample_frames(int(EngineSound.MIX_RATE_HZ))  # a second to settle
+		var frames := sound.sample_frames(int(EngineSound.MIX_RATE_HZ / 4.0))
+		var sum := 0.0
+		for frame in frames:
+			sum += frame.x * frame.x
+		return sqrt(sum / frames.size())
+	var idle: float = level.call({"engine_running": true, "engine_omega_rad_s": 84.0,
+			"throttle": 0.0, "boost": 0.0})
+	var full: float = level.call({"engine_running": true, "engine_omega_rad_s": 262.0,
+			"throttle": 1.0, "boost": 1.0})
+	var stopped: float = level.call({"engine_running": false, "engine_omega_rad_s": 0.0,
+			"throttle": 0.0, "boost": 0.0})
+	_expect(idle > 0.01 and full > 2.0 * idle and stopped < 1e-3,
+			"the engine's sound: idle %.3f, full %.3f, stopped %.4f" % [idle, full, stopped])
+	_expect(not sound.making(), "silent: no samples made")
+	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 84.0})
+	_expect(sound.making(), "running: the samples made again")
+	sound.free()
 
 
 # The close camera has the whole sled in view, from its rear to the

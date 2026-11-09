@@ -131,6 +131,7 @@ var chain_view := ChainView.new()
 var cameras := CameraRig.new()
 var controls := DriveControls.new()
 var hud := Hud.new()
+var engine_sound := EngineSound.new()
 var start_screen := StartScreen.new()
 var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
@@ -187,7 +188,7 @@ var _moved_back := false
 func _ready() -> void:
 	_add_world()
 	for node: Node in [venue_view, track_view, track_marks, tractor_view, sled_view, chain_view,
-			flagman, end_flagman, hitch_marker, cameras]:
+			flagman, end_flagman, hitch_marker, cameras, engine_sound]:
 		add_child(node)
 	var marker := BoxMesh.new()
 	marker.size = Vector3(1.2, 0.02, 0.15)
@@ -210,9 +211,13 @@ func _ready() -> void:
 	start_screen.practice_requested.connect(func() -> void: _show_setup(true))
 	start_screen.settings_requested.connect(func() -> void:
 		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available(),
-				hud.guidance, event.get_career().get("rungs", PackedStringArray()))
+				hud.guidance, event.get_career().get("rungs", PackedStringArray()),
+				engine_sound.enabled)
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
+	settings_screen.sound_changed.connect(func(on: bool) -> void:
+		engine_sound.enabled = on
+		_keep_settings())
 	settings_screen.done.connect(show_start)
 	settings_screen.money_requested.connect(func(amount_eur: int) -> void:
 		if event.add_money(amount_eur):
@@ -270,6 +275,7 @@ func _ready() -> void:
 		pro = settings.pro
 		tilt = settings.tilt
 		hud.guidance = settings.guidance
+		engine_sound.enabled = settings.sound
 		var error := event.load_career(career_path)
 		if not error.is_empty():
 			push_error("cannot load the career: " + error)
@@ -291,10 +297,16 @@ func _change_settings(is_pro: bool, by_tilt: bool, guidance: bool) -> void:
 	pro = is_pro
 	tilt = by_tilt
 	hud.guidance = guidance
+	_keep_settings()
+
+
+# The settings as they are now, kept on the device for the next launch.
+func _keep_settings() -> void:
 	var settings := GameSettings.new()
 	settings.pro = pro
 	settings.tilt = tilt
-	settings.guidance = guidance
+	settings.guidance = hud.guidance
+	settings.sound = engine_sound.enabled
 	var error := settings.write(settings_path)
 	if error != OK:
 		push_warning("cannot keep the settings: %s" % error_string(error))
@@ -497,6 +509,7 @@ func _build(error: String) -> bool:
 	sled_view.show_box_mass(dimensions["box_mass_kg"])
 	sled_view.start_run(run.get_snapshot())
 	hud.build(dimensions)
+	engine_sound.configure(dimensions)
 	cameras.cab = tractor_view.cab_camera()
 	cameras.reset_framing()
 	_build_turn(dimensions)
@@ -607,6 +620,9 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
+	# The engine is heard on the track (the pull and its result), not
+	# behind the menus.
+	engine_sound.show_snapshot(_snapshot if screen in [Screen.PULLING, Screen.RESULT] else {})
 	cameras.show_hitch(framing_hitch(_snapshot, _chain_m),
 			float(_snapshot.get("hitch_to_hook_m", 0.0)),
 			float(_snapshot.get("sled_heading_rad", 0.0)))

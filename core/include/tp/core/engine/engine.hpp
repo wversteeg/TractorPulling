@@ -50,7 +50,13 @@ struct Params {
     /// gauge: the model works from the boost's share (State::boost), so
     /// this only scales what a boost gauge shows. 0 when not known.
     double full_boost_pressure_pa = 0.0;
+    /// For the engine's sound only: a four-stroke fires cylinders / 2 times
+    /// a turn. 0 when not known.
+    int cylinders = 0;
 };
+
+/// The most cylinders an engine may have.
+inline constexpr int kMaxCylinders = 16;
 
 enum class ParamError : std::uint8_t {
     kNotFinite,
@@ -64,6 +70,7 @@ enum class ParamError : std::uint8_t {
     kTurboTimeConstantNotPositive,
     kBoostRangeInvalid,
     kBoostPressureNegative,
+    kCylindersOutOfRange,
     kTorqueCurveNegative,
     kTorqueCurveDoesNotCoverRange,
 };

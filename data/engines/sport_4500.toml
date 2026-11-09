@@ -19,6 +19,7 @@ idle_rpm = 800
 rated_rpm = 2500         # the governor as built; the garage sets it
 high_idle_rpm = 2700     # the class's unloaded limit
 stall_rpm = 450
+cylinders = 6            # a six: for the engine's sound only
 
 [engine.friction]
 constant_nm = 25.0

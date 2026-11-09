@@ -70,6 +70,7 @@ skinparam classAttributeIconSize 0
       +turbo_time_constant_s
       +boost_onset / full_boost_omega_rad_s
       +full_boost_pressure_pa : for a gauge
+      +cylinders : int, for the sound
     }
     class State <<struct>> {
       +omega_rad_s : double
