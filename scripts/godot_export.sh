@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 # Exports the game: a debug APK for phones and the emulator (arm64-v8a and
-# x86_64) and the Windows desktop game, from app/godot/export_presets.cfg,
-# into the output directory (default build/export): tractor_pulling.apk and
-# windows/ (TractorPulling.exe, its console wrapper and the extension's DLL).
+# x86_64), the Windows desktop game and the web game, from
+# app/godot/export_presets.cfg, into the output directory (default
+# build/export): tractor_pulling.apk, windows/ (TractorPulling.exe, its
+# console wrapper and the extension's DLL) and web/ (index.html and the
+# files it loads, the extension's .wasm among them; serve the directory
+# over HTTP, and see scripts/web_game_test.sh).
 #
 #   scripts/godot_export.sh <godot binary> [output directory]
 #
 # Needs:
 # - the extension built for each platform: the godot preset (the editor
-#   loads it to export), godot-android-arm64, godot-android-x86_64 and
-#   godot-windows (MinGW-w64, g++-mingw-w64-x86-64-posix);
+#   loads it to export), godot-android-arm64, godot-android-x86_64,
+#   godot-windows (MinGW-w64, g++-mingw-w64-x86-64-posix) and godot-web
+#   (Emscripten);
 # - Godot's export templates for its version, at least android_debug.apk and
-#   windows_debug_x86_64.exe (and its _console), in Godot's
+#   windows_debug_x86_64.exe (and its _console) and
+#   web_dlink_nothreads_debug.zip, in Godot's
 #   export_templates directory (~/.local/share/godot/export_templates/<version>);
 # - ANDROID_HOME, an Android SDK with platform-tools and build-tools
 #   (apksigner), and JAVA_HOME, a JDK 17 or later: the script writes them
@@ -37,7 +42,8 @@ readonly output
 readonly project="${root}/app/godot"
 
 for library in android.template_debug.arm64.so android.template_debug.x86_64.so \
-    windows.template_debug.x86_64.dll linux.template_debug.x86_64.so; do
+    windows.template_debug.x86_64.dll linux.template_debug.x86_64.so \
+    web.template_debug.wasm32.nothreads.wasm; do
     if [[ ! -f "${project}/bin/libtp_godot.${library}" ]]; then
         echo "app/godot/bin/libtp_godot.${library} is missing: build its preset first" >&2
         exit 1
@@ -111,5 +117,17 @@ fi
 export_preset "Windows Desktop" "${output}/windows/TractorPulling.exe"
 if [[ ! -f "${output}/windows/libtp_godot.windows.template_debug.x86_64.dll" ]]; then
     echo "the Windows export has no extension DLL next to it" >&2
+    exit 1
+fi
+export_preset Web "${output}/web/index.html"
+if [[ ! -f "${output}/web/libtp_godot.web.template_debug.wasm32.nothreads.wasm" ]]; then
+    echo "the web export has no extension next to it" >&2
+    exit 1
+fi
+# The pack keeps file paths as plain text: every data file must be named.
+web_data_files="$(strings "${output}/web/index.pck" |
+    grep -oE '(^|[^A-Za-z0-9_/.-])data/[A-Za-z0-9_/.-]+\.toml' | sed 's/^[^d]*//' | sort -u | wc -l)"
+if [[ "${web_data_files}" -ne "${data_files}" ]]; then
+    echo "the web export has ${web_data_files} of the ${data_files} data files" >&2
     exit 1
 fi

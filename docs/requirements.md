@@ -26,9 +26,9 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | G-2 | Identical inputs give an identical state hash on every supported platform (x86-64, ARM, Windows, Android, WebAssembly). | met | `*.MatchesRegressionHash`, `*.ReplayMatchesRegression`, CI's ARM, Android, Windows and web jobs, `scripts/platform_runs.sh` |
 | G-3 | The game's runs through the Godot extension end in the same state hashes as `tp_pull run --hash`. | met | `run_test.gd` via `scripts/godot_test.sh` |
 | G-4 | A simulation step takes at most 50 µs on a mid-range phone, and never allocates on the heap. | met (CI limits; phone not yet measured) | `bench/speed_budget.toml`, `scripts/check_speed_budget.py`, `NoAllocation.*` |
-| G-5 | Android first (API 24 and up); Windows as a desktop build. | met | CI's Android emulator tests and `export` job, `windows game` job |
+| G-5 | Android first (API 24 and up); Windows as a desktop build; a web build that plays in a phone's or desktop's browser (Safari on iPhones included), served as plain files with no special headers. | met (Safari not yet tried) | CI's Android emulator tests and `export` job (the web game started in headless Chrome, `scripts/web_game_test.sh`), `windows game` job |
 | G-6 | All tractor, engine, tire, sled, track, class, event and season numbers come from `data/`, validated on load with a message naming the file and field. | met | `*Loader.*` |
-| G-7 | The simulation, the data loaders and the Godot extension build for the web (WebAssembly, Emscripten at Godot's version, no threads); a file with a TOML syntax error gives a message naming the file and line there too, with no exception thrown (Godot's web export cannot catch one). | met (the web export itself not yet) | CI's `web` job (the tests under Node), `SyntaxError.EveryLoaderNamesTheFileAndLine` |
+| G-7 | The simulation, the data loaders and the Godot extension build for the web (WebAssembly, Emscripten at Godot's version, no threads); a file with a TOML syntax error gives a message naming the file and line there too, with no exception thrown (Godot's web export cannot catch one). | met | CI's `web` job (the tests under Node) and `export` job (the extension loaded in the web game), `SyntaxError.EveryLoaderNamesTheFileAndLine` |
 
 ## Physics
 
@@ -99,7 +99,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | U-2 | The standings show each pull-off round's distance, not only the last. | met | `Event.PullOffsRepeatUntilOneIsStrongest`, `flow_test.gd` |
 | U-3 | The full-pull banner and scoreboard stand over the class's own line (100 m), and stay there when the line in force moves to 110 m or to the pull-off line; the chalk line shows the line in force. | met | `scene_test.gd` |
 | U-4 | Behind the menus a drawn tractor-pulling scene (MenuBackdrop) in place of the 3D venue, which is then not drawn. | manual | screenshots |
-| U-5 | The game's icon is drawn from the menus' scene (`tools/make_icons.gd`), for the project and Android's launcher. | manual | `export` job builds the APK with it |
+| U-5 | The game's icon is drawn from the menus' scene (`tools/make_icons.gd`), for the project, Android's launcher and the web game's home-screen icons. | manual | `export` job builds the APK and the web game with it |
 | U-6 | For testing (to remove before a release): "+ € 1000" in the settings adds money to the bank. | manual | `docs/future_improvements.md` |
 | U-7 | The event's results and the season's standings list every puller, not a top ten; the list scrolls with a finger, the player's row highlighted. | met | `flow_test.gd` (a fifteen-puller field on both boards; the board scrolling) |
 | U-8 | Taking up the slack, the turn's line says how far the tractor still has to creep ("Creep forward: 0.85 m"), and a gauge under it shows the slack shrinking towards the band where it counts as taken up (green: within `turn::kReadyTautWithin_m`, 10 cm, of tight). In the band the slack is taken up without a jolt on the chain. | met | `Turn.TheSlackIsTakenUpInTheReadyBand`, `turn_test.gd` (the distance told, the gauge shown while taking up the slack), manual on screen |

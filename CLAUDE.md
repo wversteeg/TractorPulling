@@ -220,11 +220,13 @@ scripts/platform_runs.sh build/godot/tools/tp_pull
 cmake --preset web && cmake --build --preset web && ctest --preset web
 scripts/platform_runs.sh node build/web/tools/tp_pull.js
 cmake --preset godot-web && cmake --build --preset godot-web
-# The game exported (after the godot, godot-android-* and godot-windows
-# builds; needs Godot's export templates, ANDROID_HOME and JAVA_HOME): a
-# debug APK and the Windows game in build/export. CI's export job does the
-# same and keeps them as artifacts
+# The game exported (after the godot, godot-android-*, godot-windows and
+# godot-web builds; needs Godot's export templates, ANDROID_HOME and
+# JAVA_HOME): a debug APK, the Windows game and the web game in
+# build/export. CI's export job does the same and keeps them as artifacts;
+# then the web game started in headless Chrome (Node 22, Python 3)
 scripts/godot_export.sh /path/to/godot
+scripts/web_game_test.sh build/export/web
 ```
 
 Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `godot`, `godot-android-arm64`, `godot-android-x86_64`, `godot-windows`, `web`, `godot-web`. Keep the commands above working; update this section when presets change.

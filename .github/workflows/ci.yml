@@ -369,13 +369,14 @@ jobs:
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
 
-  # The game exported: a debug APK for phones and the emulator, and the
-  # Windows desktop game, as artifacts to download from the run
-  # (scripts/godot_export.sh), from the extension the godot, android and
-  # windows-build jobs built.
+  # The game exported: a debug APK for phones and the emulator, the Windows
+  # desktop game and the web game, as artifacts to download from the run
+  # (scripts/godot_export.sh), from the extension the godot, android,
+  # windows-build and web jobs built; and the web game started in headless
+  # Chrome (scripts/web_game_test.sh).
   export:
     name: export
-    needs: [godot, android, windows-build]
+    needs: [godot, android, windows-build, web]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -394,7 +395,7 @@ jobs:
           cmake --build --preset godot --target tp_godot_data
 
       # One library per artifact: Linux (the editor loads it to export),
-      # Android arm64 and x86_64, and Windows.
+      # Android arm64 and x86_64, Windows and the web.
       - name: Collect the extension
         uses: actions/download-artifact@v4
         with:
@@ -414,15 +415,15 @@ jobs:
       - name: Find the templates directory
         run: echo "TEMPLATES_DIR=${HOME}/.local/share/godot/export_templates/${GODOT_VERSION/-/.}" >> "$GITHUB_ENV"
 
-      # The templates come in one 1.3 GB archive; only the four files the
-      # exports use are kept, cached by Godot's version and the file list
-      # (bump the suffix when the list changes).
+      # The templates come in one 1.3 GB archive; only the files the exports
+      # use are kept, cached by Godot's version and the file list (bump the
+      # suffix when the list changes).
       - name: Cache the export templates
         id: templates
         uses: actions/cache@v4
         with:
           path: ${{ env.TEMPLATES_DIR }}
-          key: godot-export-templates-${{ env.GODOT_VERSION }}-v1
+          key: godot-export-templates-${{ env.GODOT_VERSION }}-v2
 
       - name: Download the export templates
         if: steps.templates.outputs.cache-hit != 'true'
@@ -431,7 +432,8 @@ jobs:
             "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
           echo "${TEMPLATES_SHA512}  templates.tpz" | sha512sum --check
           unzip -q templates.tpz templates/version.txt templates/android_debug.apk \
-            templates/windows_debug_x86_64.exe templates/windows_debug_x86_64_console.exe
+            templates/windows_debug_x86_64.exe templates/windows_debug_x86_64_console.exe \
+            templates/web_dlink_nothreads_debug.zip
           mkdir -p "${TEMPLATES_DIR}"
           mv templates/* "${TEMPLATES_DIR}/"
           rm templates.tpz
@@ -455,6 +457,33 @@ jobs:
           name: tractor-pulling-windows
           path: build/export/windows/
           retention-days: 30
+
+      - name: Upload the web game
+        uses: actions/upload-artifact@v4
+        with:
+          name: tractor-pulling-web
+          path: build/export/web/
+          retention-days: 30
+
+      # The web check talks to Chrome with Node's own WebSocket, which
+      # needs Node 22; the runner's default is older.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Start the web game
+        run: scripts/web_game_test.sh build/export/web google-chrome 60
+
+      - name: Keep the web game's console and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-game-check
+          path: |
+            build/export/web_console.log
+            build/export/web_game.png
+          if-no-files-found: ignore
+          retention-days: 7
 
   # On Windows: the exported game starts (its season loaded through the
   # extension, a few hundred frames without a display, no errors), and the

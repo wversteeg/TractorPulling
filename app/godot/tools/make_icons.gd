@@ -9,7 +9,9 @@
 # icon.png is the project's icon (the Windows game's too); Android takes the
 # legacy 192 px icon and the adaptive icon's two 432 px layers, the
 # background (sky and ground) and the foreground (the tractor and sled),
-# whose middle two thirds every launcher's mask keeps.
+# whose middle two thirds every launcher's mask keeps. The web export, an
+# installable web app, takes 144 px (its manifest) and 180 px (the icon an
+# iPhone puts on the home screen), and icon.png for 512 px.
 extends SceneTree
 
 # Drawn this large, then scaled down: smooth edges at every size [px].
@@ -28,6 +30,8 @@ const JOBS := [
 	["res://icons/android_192.png", 192, false, MenuBackdrop.Layer.BACK | MenuBackdrop.Layer.FRONT],
 	["res://icons/android_background_432.png", 432, true, MenuBackdrop.Layer.BACK],
 	["res://icons/android_foreground_432.png", 432, true, MenuBackdrop.Layer.FRONT],
+	["res://icons/web_144.png", 144, false, MenuBackdrop.Layer.BACK | MenuBackdrop.Layer.FRONT],
+	["res://icons/web_180.png", 180, false, MenuBackdrop.Layer.BACK | MenuBackdrop.Layer.FRONT],
 ]
 
 var _viewport := SubViewport.new()
