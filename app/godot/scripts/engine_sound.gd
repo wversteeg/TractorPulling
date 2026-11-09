@@ -8,12 +8,15 @@
 # A four-stroke fires cylinders / 2 times a turn, so a six at 2500 rpm
 # fires at 125 Hz. The samples come from sample_frames(), which needs no
 # audio device (the tests call it); the player pushes them into an
-# AudioStreamGenerator each frame.
+# AudioStreamGenerator each frame. Made sample by sample in GDScript, they
+# cost a phone some CPU: so the rate is low, and once the sound has faded
+# out (the engine off, the menus, the sound switched off) none are made and
+# the player pauses.
 class_name EngineSound
 extends AudioStreamPlayer
 
 # The rate the sound is made at, and how much is kept ready ahead [Hz, s].
-const MIX_RATE_HZ := 22050.0
+const MIX_RATE_HZ := 16000.0
 const BUFFER_S := 0.12
 # Unknown cylinders (an engine file without them) sound as a four.
 const DEFAULT_CYLINDERS := 4
@@ -39,7 +42,9 @@ const LUGGING_VOLUME := 0.2
 const FOLLOW_S := 0.05
 # How quickly the noise wanders: a low-passed noise is the rough edge, not
 # a hiss (a share a sample).
-const NOISE_SMOOTHING := 0.18
+const NOISE_SMOOTHING := 0.24
+# Quieter than this, heading for silence, the sound is silent [0..1].
+const SILENT := 1e-4
 
 # Off (the settings' sound off): silent, whatever the engine does.
 var enabled := true
@@ -96,6 +101,9 @@ func show_snapshot(s: Dictionary) -> void:
 func _process(_delta: float) -> void:
 	if _playback == null:
 		return
+	stream_paused = not making()
+	if stream_paused:
+		return
 	var frames := _playback.get_frames_available()
 	if frames > 0:
 		_playback.push_buffer(sample_frames(frames))
@@ -150,6 +158,11 @@ func sample_frames(count: int) -> PackedVector2Array:
 # How loud the sound is now, 0 to 1, for tests.
 func volume() -> float:
 	return _volume
+
+
+# Whether samples are made: while the sound is heard or still fading out.
+func making() -> bool:
+	return target_volume() > 0.0 or _volume > SILENT
 
 
 # How loud the sound is heading for, from the last snapshot, 0 to 1.

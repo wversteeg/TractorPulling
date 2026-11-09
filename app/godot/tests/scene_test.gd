@@ -67,7 +67,7 @@ func _check() -> void:
 	_expect(is_equal_approx(tractor.rotation.y, float(s["tractor_heading_rad"])),
 			"the tractor's heading")
 
-	_check_engine_sound(s)
+	_check_engine_sound()
 
 	# The chain spans the hitch and the hook: about its length while it pulls.
 	var hitch: Vector3 = tractor.call("hitch_position")
@@ -172,13 +172,10 @@ func _check() -> void:
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
 
 
-# The close camera has the whole sled in view, from its rear to the
-# tractor; the cab camera rides on the tractor; next() goes round every
-# view and back.
 # The engine's sound: a six at 2500 rpm fires at 125 Hz; louder at full
 # throttle than at idle, and silent once the engine stops. Made without an
-# audio device (sample_frames()).
-func _check_engine_sound(s: Dictionary) -> void:
+# audio device (sample_frames()). Silent, it makes no samples at all.
+func _check_engine_sound() -> void:
 	var pulling: EngineSound = _pull.get("engine_sound")
 	_expect(pulling.target_volume() > 0.0,
 			"the engine is heard in the pull: %.2f" % pulling.target_volume())
@@ -202,9 +199,15 @@ func _check_engine_sound(s: Dictionary) -> void:
 			"throttle": 0.0, "boost": 0.0})
 	_expect(idle > 0.01 and full > 2.0 * idle and stopped < 1e-3,
 			"the engine's sound: idle %.3f, full %.3f, stopped %.4f" % [idle, full, stopped])
+	_expect(not sound.making(), "silent: no samples made")
+	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 84.0})
+	_expect(sound.making(), "running: the samples made again")
 	sound.free()
 
 
+# The close camera has the whole sled in view, from its rear to the
+# tractor; the cab camera rides on the tractor; next() goes round every
+# view and back.
 func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) -> void:
 	var close: Camera3D = cameras.get("_cameras")[CameraRig.View.CLOSE]
 	var sled_rear := sled.rear_position()
