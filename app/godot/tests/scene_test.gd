@@ -67,6 +67,23 @@ func _check() -> void:
 	_expect(is_equal_approx(tractor.rotation.y, float(s["tractor_heading_rad"])),
 			"the tractor's heading")
 
+	# The box holds a weight for every 250 kg of its mass for the pull, as
+	# many as fit; this pull's box shows its own.
+	_expect(SledView.weight_count(6000.0) == 24 and SledView.weight_count(1500.0) == 6
+			and SledView.weight_count(0.0) == 0 and SledView.weight_count(1.0e5) == 36,
+			"the weights follow the box's mass")
+	var sled_view: SledView = _pull.get("sled_view")
+	_expect(sled_view.weights_shown() == SledView.weight_count(float(dimensions["box_mass_kg"])),
+			"this pull's box: %d weights for %.0f kg" % [sled_view.weights_shown(),
+			float(dimensions["box_mass_kg"])])
+	# The transport wheels: up for the pull, down once the turn is over and
+	# the box runs back; a pull from the line has them up.
+	_expect(SledView.transport_wanted({"stage": "pulling"}) == 0.0
+			and SledView.transport_wanted({"stage": "taking_up_slack"}) == 0.0
+			and SledView.transport_wanted({"stage": "to_the_parking"}) == 1.0,
+			"the transport wheels down only to drive back")
+	_expect(sled_view.transport == 0.0, "pulling: the transport wheels are up")
+
 	# The chain spans the hitch and the hook: about its length while it pulls.
 	var hitch: Vector3 = tractor.call("hitch_position")
 	var hook: Vector3 = sled.call("hook_position")

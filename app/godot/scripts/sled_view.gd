@@ -9,6 +9,13 @@
 # real sled lifts them, to be seen from the tractor's seat). The lamp is
 # green while the chain pulls on the hook, red once the sled has stopped
 # after the pull (until it drives back), and off otherwise.
+#
+# Two transport wheels stand either side of the pan. Driving back the sled
+# rides on them with the pan lifted off the track: they come down as the
+# weight box runs back at the end of the pull. Before the next pull the
+# operator lifts them again, setting the pan down (the sled preparation,
+# while the tractor comes to the sled). The box holds as many weights as
+# its mass for the pull makes (show_box_mass).
 class_name SledView
 extends Node3D
 
@@ -44,8 +51,32 @@ const PAN_DEPTH_M := 1.2
 # How far the wheels are drawn lifted with the push-down fully set [m].
 const WHEEL_LIFT_M := 0.15
 const LUGS := 18
+# The transport wheels beside the pan: their size, how far they lift
+# clear of the track for the pull, and how far down they lift the pan to
+# drive back [m]; and how quickly they go up or down (a share a second:
+# about two seconds).
+const TRANSPORT_RADIUS_M := 0.3
+const TRANSPORT_WIDTH_M := 0.22
+const TRANSPORT_CLEAR_M := 0.2
+const PAN_LIFT_M := 0.15
+const TRANSPORT_RATE_PER_S := 0.5
+# A weight in the box [kg], and how the box stacks them: a layer of
+# BLOCK_COLUMNS × BLOCK_ROWS, at most BLOCK_LAYERS high.
+const BLOCK_KG := 250.0
+const BLOCK_COLUMNS := 3
+const BLOCK_ROWS := 3
+const BLOCK_LAYERS := 4
 
 var _box := Node3D.new()
+var _box_weights: MultiMeshInstance3D = null
+# The pan and its lip, lifted on the transport wheels; the wheels on their
+# arms, down when `transport` is 1.
+var _pan := Node3D.new()
+var _transport_wheels: Array[Node3D] = []
+var _transport_spin: Array[Node3D] = []
+# 0 the transport wheels up (the pan on the track) to 1 down (the pan
+# lifted, the sled on them).
+var transport := 0.0
 var _hook := Marker3D.new()
 var _wheels := Node3D.new()
 var _lamp := MeshInstance3D.new()
@@ -64,7 +95,7 @@ var lamp_tension_n := 1000.0
 # As TractorView's: parts never added to the tree are freed here.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		for part: Node in [_box, _hook, _wheels, _lamp, _berm]:
+		for part: Node in [_box, _hook, _wheels, _lamp, _berm, _pan]:
 			if part.get_parent() == null:
 				part.free()
 
@@ -110,13 +141,15 @@ func build(d: Dictionary) -> void:
 
 	# The pan: a wide steel plate on the track, its leading edge turned up,
 	# hung from the rails.
+	add_child(_pan)
 	var pan := Art.box(Vector3(WIDTH_M, 0.06, PAN_DEPTH_M), STEEL, 0.7)
 	pan.position = TrackSpace.point(pan_ahead_m, 0.0, 0.03)
-	add_child(pan)
+	_pan.add_child(pan)
 	var lip := Art.box(Vector3(WIDTH_M, 0.05, 0.35), STEEL, 0.7)
 	lip.position = TrackSpace.point(pan_ahead_m + PAN_DEPTH_M / 2.0 + 0.12, 0.0, 0.12)
 	lip.rotation.x = 0.7
-	add_child(lip)
+	_pan.add_child(lip)
+	_add_transport_wheels(pan_ahead_m, rail_z_m)
 	for side: float in [-1.0, 1.0]:
 		var hanger := _painted(Vector3(0.1, rail_z_m - 0.05, 0.1), PAINT_DARK)
 		hanger.position = TrackSpace.point(pan_ahead_m, side * RAIL_GAP_M / 2.0, rail_z_m / 2.0)
@@ -144,7 +177,71 @@ func build(d: Dictionary) -> void:
 	_build_box()
 	_build_platform(rail_z_m)
 	_show_pushdown(0.0)
+	_show_transport()
 	_show_lamp(LAMP_DARK)
+
+
+# A transport wheel either side of the pan, each on an arm down from the
+# rail: the arm slides, so the wheel goes up and down with `transport`.
+func _add_transport_wheels(pan_ahead_m: float, rail_z_m: float) -> void:
+	for side: float in [-1.0, 1.0]:
+		var across_m := side * (WIDTH_M / 2.0 + TRANSPORT_WIDTH_M / 2.0 + 0.06)
+		var holder := Node3D.new()
+		holder.position = TrackSpace.point(pan_ahead_m, across_m, 0.0)
+		add_child(holder)
+		var arm := _painted(Vector3(0.1, rail_z_m, 0.1), PAINT_DARK)
+		arm.position = TrackSpace.point(0.0, 0.0, TRANSPORT_RADIUS_M + rail_z_m / 2.0)
+		holder.add_child(arm)
+		var spin := Node3D.new()
+		spin.position = TrackSpace.point(0.0, 0.0, TRANSPORT_RADIUS_M)
+		holder.add_child(spin)
+		Art.tire(spin, TRANSPORT_RADIUS_M, TRANSPORT_WIDTH_M, TIRE)
+		Art.rim(spin, TRANSPORT_RADIUS_M * 0.6, TRANSPORT_WIDTH_M, side, 6, PAINT)
+		_transport_wheels.append(holder)
+		_transport_spin.append(spin)
+		# The bracket on the rail the arm slides in.
+		var bracket := _painted(Vector3(0.16, 0.16, absf(across_m) - RAIL_GAP_M / 2.0 + 0.1),
+				PAINT_DARK)
+		bracket.position = TrackSpace.point(pan_ahead_m,
+				side * (RAIL_GAP_M / 2.0 + absf(across_m)) / 2.0, rail_z_m)
+		add_child(bracket)
+
+
+# Where the transport wheels and the pan are drawn for `transport`.
+func _show_transport() -> void:
+	for holder in _transport_wheels:
+		holder.position.y = (1.0 - transport) * TRANSPORT_CLEAR_M
+	_pan.position = TrackSpace.point(0.0, 0.0, transport * PAN_LIFT_M)
+
+
+# Down (1) while the sled goes back to the start line after the pull: from
+# the moment the turn is over and the box runs back. Up (0) otherwise: the
+# operator lifts them before the next pull.
+static func transport_wanted(s: Dictionary) -> float:
+	return 1.0 if s.get("stage", "pulling") in ["to_the_parking", "parked"] else 0.0
+
+
+# At the start of a run: a whole turn starts with the sled on its transport
+# wheels as it came back, and the operator lifts them while the tractor
+# comes to the sled; a pull from the line starts with them up.
+func start_run(s: Dictionary) -> void:
+	transport = 1.0 if s.get("stage", "pulling") == "to_the_sled" else 0.0
+	_show_transport()
+
+
+# The weights in the box: one for each BLOCK_KG of `box_mass_kg`, rounded,
+# stacked layer by layer from the bottom (at most what the box holds).
+func show_box_mass(box_mass_kg: float) -> void:
+	_box_weights.multimesh.visible_instance_count = weight_count(box_mass_kg)
+
+
+static func weight_count(box_mass_kg: float) -> int:
+	return clampi(roundi(maxf(box_mass_kg, 0.0) / BLOCK_KG), 0,
+			BLOCK_COLUMNS * BLOCK_ROWS * BLOCK_LAYERS)
+
+
+func weights_shown() -> int:
+	return -1 if _box_weights == null else _box_weights.multimesh.visible_instance_count
 
 
 # A cross beam behind the hook, and on each end a rubber fender facing the
@@ -195,17 +292,18 @@ func _build_box() -> void:
 		var end := _painted(Vector3(size.x, size.y * 0.6, 0.06), PAINT)
 		end.position = Vector3(0.0, -size.y * 0.2, side * size.z / 2.0)
 		_box.add_child(end)
+	# Every place a weight can go, bottom layer first: show_box_mass()
+	# shows as many as the box's mass makes.
 	var blocks: Array[Transform3D] = []
 	var block := BoxMesh.new()
-	block.size = Vector3(0.6, 0.28, 0.45)
-	for layer in 3:
-		for column in 3:
-			for row in 3:
-				if layer == 2 and (column + row) % 2 == 1:
-					continue
+	block.size = Vector3(0.6, 0.22, 0.45)
+	for layer in BLOCK_LAYERS:
+		for column in BLOCK_COLUMNS:
+			for row in BLOCK_ROWS:
 				blocks.append(Transform3D(Basis(), Vector3((column - 1) * 0.62,
-						-size.y / 2.0 + 0.22 + layer * 0.29, (row - 1) * 0.48)))
-	_box.add_child(Art.many(block, blocks, Art.material(WEIGHT, 0.6, 0.4)))
+						-size.y / 2.0 + 0.19 + layer * 0.23, (row - 1) * 0.48)))
+	_box_weights = Art.many(block, blocks, Art.material(WEIGHT, 0.6, 0.4))
+	_box.add_child(_box_weights)
 	# The name on both sides, where the cameras see it past the operator.
 	for side: float in [-1.0, 1.0]:
 		var text := Art.label("TRANSFER SLED", 36, Color.WHITE, PAINT_DARK)
@@ -286,6 +384,11 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 	for spin in _wheel_spin:
 		spin.rotation.x = wrapf(_wheel_angle, -PI, PI)
 	_show_pushdown(s["pushdown"])
+	transport = move_toward(transport, transport_wanted(s), TRANSPORT_RATE_PER_S * delta)
+	_show_transport()
+	# On the track the transport wheels roll with the sled.
+	for spin in _transport_spin:
+		spin.rotation.x = wrapf(-float(s["sled_x_m"]) / TRANSPORT_RADIUS_M, -PI, PI)
 	_show_berm(s["berm_m3"])
 	_show_lamp(lamp_colour(s, lamp_tension_n))
 

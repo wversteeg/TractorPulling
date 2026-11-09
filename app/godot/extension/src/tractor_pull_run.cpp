@@ -305,6 +305,8 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["hook_ahead_of_wheels_m"] = sled.hook_ahead_of_wheels_m;
     out["hook_height_m"] = sled.hook_height_m;
     out["pan_ahead_of_wheels_m"] = sled.pan_ahead_of_wheels_m;
+    // The weight box's mass for this pull, as the operator has set it [kg].
+    out["box_mass_kg"] = sled.box_mass_kg;
     out["box_start_ahead_of_wheels_m"] = sled.box_start_ahead_of_wheels_m;
     out["box_end_ahead_of_wheels_m"] = sled.box_end_ahead_of_wheels_m;
     // Where the push-down starts and has the wheels fully off, as the sled
