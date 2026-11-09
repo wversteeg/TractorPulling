@@ -355,6 +355,53 @@ TEST(Turn, AStretchedChainIsNotReady) {
         << "eased back";
 }
 
+// Creeping into the held sled with the clutch slipping stretches the chain;
+// pressing the clutch then lets it ease the tractor back by the stretch
+// alone. Steel chain and shackles do not spring back like a rubber band:
+// their damping takes the jolt's energy, so the tractor does not bounce
+// back off the sled (with a fifth of the damping it went back 7 cm, at
+// 0.14 m/s).
+TEST(Turn, AJoltIntoTheHeldChainDoesNotThrowTheTractorBack) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    place_hitch(model, state.run.pull, 0.6 * model.sled().chain.length_m, 0.0);
+    const auto input = [](double t_s) -> vehicle::Input {
+        if (t_s < 0.1) {
+            return {.clutch_pedal = 1.0, .gear = driveline::kNeutral};
+        }
+        if (t_s < 0.3) {
+            return {.clutch_pedal = 1.0, .gear = 1};
+        }
+        if (t_s < 3.0) {
+            return {.throttle = 0.4, .clutch_pedal = 0.5, .gear = 1};
+        }
+        return {.clutch_pedal = 1.0, .gear = 1};
+    };
+    constexpr int kPressedAt = 3000;
+    constexpr int kSteps = 4500;
+    double stretch_m = 0.0;
+    double pressed_x_m = 0.0;
+    double back_x_m = 0.0;
+    double fastest_back_m_s = 0.0;
+    for (int i = 0; i < kSteps; ++i) {
+        const pull::Output out = step(state, model, kRules, kParking, input(i * kDt_s), kDt_s);
+        const chassis::State& body = state.run.pull.tractor.chassis;
+        if (i == kPressedAt - 1) {
+            stretch_m = out.chain.tension_n / model.sled().chain.stiffness_n_per_m;
+            pressed_x_m = body.position_m;
+            back_x_m = body.position_m;
+        }
+        if (i >= kPressedAt) {
+            back_x_m = std::min(back_x_m, body.position_m);
+            fastest_back_m_s = std::min(fastest_back_m_s, body.velocity_m_s);
+        }
+    }
+    ASSERT_GT(stretch_m, 0.01) << "the creep stretched the chain";
+    ASSERT_NE(state.stage, Stage::kPulling);
+    EXPECT_LE(pressed_x_m - back_x_m, stretch_m + 0.002) << "back by the stretch, no more";
+    EXPECT_GT(fastest_back_m_s, -0.06) << "eased back, not thrown";
+}
+
 // A pull that ends with the sled still rolling (here a full pull on a
 // short track) leaves it on the chain until it has stopped; then it is
 // held, standing still for good, its speeds all 0.
