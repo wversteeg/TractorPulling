@@ -58,6 +58,10 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build libclang-rt-${LLVM_VERSION}-dev
 
+      - uses: ./.github/actions/ccache
+        with:
+          name: ${{ matrix.compiler }}-${{ matrix.preset }}-${{ matrix.arch }}
+
       - name: Select compiler
         run: |
           if [ "${{ matrix.compiler }}" = gcc ]; then
@@ -132,6 +136,17 @@ jobs:
             done
           done
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      - name: Save the compiler cache
+        if: always() && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The Android NDK build: the same code with the NDK's clang, libc++ and
   # bionic. Both ABIs build; the x86_64 build runs its tests on an emulator
   # at the oldest Android we support (API 24), so the regression hashes are
@@ -158,6 +173,11 @@ jobs:
           yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" \
             --install "ndk;${NDK_VERSION}"
           echo "ANDROID_NDK_HOME=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: android-${{ matrix.abi }}
+          max-size: 1G
 
       - name: Configure
         run: cmake --preset android-${{ matrix.abi }}
@@ -214,6 +234,17 @@ jobs:
             scripts/android_test.sh build/android-x86_64 build/host_event.txt
             scripts/android_bench.sh build/android-x86_64
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      - name: Save the compiler cache
+        if: always() && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The Godot extension (app/godot/extension) on the desktop: built against
   # godot-cpp and played in the pinned Godot, with a software renderer. The scripted run must
   # end in the same state hash as tp_pull's (scripts/godot_test.sh).
@@ -231,6 +262,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build xvfb libgl1-mesa-dri
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: godot
+          max-size: 1G
 
       - name: Configure
         run: cmake --preset godot
@@ -269,6 +305,17 @@ jobs:
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      - name: Save the compiler cache
+        if: always() && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The Godot extension and tp_pull for Windows, cross-compiled with
   # MinGW-w64 as Godot builds its own Windows releases.
   windows-build:
@@ -282,6 +329,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build g++-mingw-w64-x86-64-posix
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: windows
+          max-size: 1G
 
       - name: Build
         run: |
@@ -304,6 +356,17 @@ jobs:
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
 
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      - name: Save the compiler cache
+        if: always() && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
+
   # The core, the data loaders and tp_pull in WebAssembly (Emscripten), run
   # with Node: the tests, the platform runs, which must match Linux's, and
   # the speed; and the Godot extension for the web export. Linux's results
@@ -320,6 +383,11 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q ninja-build
+
+      - uses: ./.github/actions/ccache
+        with:
+          name: web
+          max-size: 1G
 
       # Emscripten's own SDK at its release tag, not a third-party action.
       - name: Install Emscripten
@@ -373,6 +441,17 @@ jobs:
           path: app/godot/bin/libtp_godot.web.template_debug.wasm32.nothreads.wasm
           # Kept a few days, for re-running the jobs that use it.
           retention-days: 3
+
+      - name: Show the compiler cache's hits
+        if: always() && env.CCACHE_KEY != ''
+        run: ccache --show-stats
+
+      - name: Save the compiler cache
+        if: always() && env.CCACHE_KEY != ''
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: ${{ env.CCACHE_KEY }}
 
   # The game exported: a debug APK for phones and the emulator, the Windows
   # desktop game and the web game, as artifacts to download from the run
