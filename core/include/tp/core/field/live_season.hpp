@@ -93,9 +93,7 @@ public:
         return field_.pullers[static_cast<std::size_t>(kPlayer)];
     }
     /// The points per place each event scores.
-    [[nodiscard]] const season::Points& points() const noexcept {
-        return championship_.points();
-    }
+    [[nodiscard]] const season::Points& points() const noexcept { return championship_.points(); }
     /// The championship so far, best first.
     [[nodiscard]] std::span<const season::Standing> standings() noexcept {
         return championship_.standings();
