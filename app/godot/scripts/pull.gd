@@ -329,13 +329,29 @@ func _season_started(error: String, seed: int) -> void:
 	if not error.is_empty():
 		push_error("cannot start the season: " + error)
 	else:
-		# One line on the console, which CI's Windows check looks for: the
-		# extension and the data loaded.
+		# One line on the console, which CI's Windows and web checks look
+		# for: the extension and the data loaded. Debug builds, which CI
+		# exports, also count the data files the export carries (the web
+		# check compares that with data/); a release build skips the walk.
 		var season := event.get_season()
-		print("A season of %d events, %d pullers, seed %d" % [season["events"],
-				PackedStringArray(season["names"]).size(), seed])
+		var line := "A season of %d events, %d pullers, seed %d" % [season["events"],
+				PackedStringArray(season["names"]).size(), seed]
+		if OS.is_debug_build():
+			line += "; %d data files" % _count_data_files("res://data")
+		print(line)
 		_save_season()
 	show_start(error)
+
+
+# The .toml files under `directory`, its subdirectories included.
+static func _count_data_files(directory: String) -> int:
+	var count := 0
+	for file in DirAccess.get_files_at(directory):
+		if file.get_extension() == "toml":
+			count += 1
+	for subdirectory in DirAccess.get_directories_at(directory):
+		count += _count_data_files(directory.path_join(subdirectory))
+	return count
 
 
 # The season saved at `save_path`, picked up again and offered on the start
