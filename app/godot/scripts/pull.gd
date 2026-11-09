@@ -139,6 +139,8 @@ var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
 var haptics_screen := HapticsScreen.new()
 var haptics := Haptics.new()
+# A whole turn's stages up to and through the pull: no result yet.
+const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling"]
 var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
@@ -268,6 +270,7 @@ func _ready() -> void:
 	board.second_tapped.connect(_on_board_second)
 	restart_screen.restart_requested.connect(func() -> void:
 		run.restart()
+		haptics.restart()
 		controls.reset()
 		_choice_made = false
 		_end_choice())
@@ -640,9 +643,13 @@ func _process(delta: float) -> void:
 	# behind the menus.
 	engine_sound.show_snapshot(_snapshot if screen in [Screen.PULLING, Screen.RESULT] else {})
 	# The phone vibrates in the pull only (the driver's hands on it).
-	if screen == Screen.PULLING and not autoplay:
+	# Not while the restart choice is up: the run stands still then.
+	if screen == Screen.PULLING and not autoplay and not _choosing:
+		haptics.pro = controls.pro
 		haptics.update(_snapshot, controls.gear, delta)
-		haptics.show_result(run.get_result())
+		# The result once the pull is over (the stage past the pull).
+		if haptics.wants_result() and not _snapshot.get("stage", "pulling") in PULL_STAGES:
+			haptics.show_result(run.get_result())
 	cameras.show_hitch(framing_hitch(_snapshot, _chain_m),
 			float(_snapshot.get("hitch_to_hook_m", 0.0)),
 			float(_snapshot.get("sled_heading_rad", 0.0)))

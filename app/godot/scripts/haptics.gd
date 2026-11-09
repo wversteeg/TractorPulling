@@ -86,6 +86,9 @@ const CHALK_MS := 400
 
 # Each kind on (true) or off, by Kind.
 var enabled := {}
+# The pro layout: the player works the clutch. In the easy layout the
+# assist does, and its moves are not the player's to feel.
+var pro := true
 # Called with (duration_ms: int, strength: float).
 var vibrate := func(ms: int, strength: float) -> void: Input.vibrate_handheld(ms, strength)
 # The run's sizes (TractorPullRun.get_dimensions()).
@@ -130,10 +133,24 @@ func configure(dimensions: Dictionary) -> void:
 	take_up_tension_n = dimensions.get("take_up_tension_n", take_up_tension_n)
 	_last = {}
 	_queue.clear()
+	restart()
+
+
+# The pull again from the line: nothing remembered from before.
+func restart() -> void:
+	_last = {}
 	_result_told = false
 	_front_off_s = 0.0
+	_asked_gear = 0
 	_asked_for_s = 0.0
 	_refused_told = false
+	_since_wheelspin_s = WHEELSPIN_EVERY_S
+	_since_lugging_s = LUGGING_EVERY_S
+
+
+# Whether the pull's result is still to be told.
+func wants_result() -> bool:
+	return not _result_told
 
 
 # The frame's snapshot, the gear the player asks for, and the frame's time.
@@ -170,6 +187,8 @@ func _buzz(kind: int, ms: int, strength: float) -> void:
 
 
 func _clutch(s: Dictionary) -> void:
+	if not pro:
+		return
 	var before: float = _last["clutch_pedal"]
 	var now: float = s["clutch_pedal"]
 	if (before - clutch_bite_pedal) * (now - clutch_bite_pedal) < 0.0:
@@ -183,7 +202,9 @@ func _gear(s: Dictionary, asked_gear: int, delta: float) -> void:
 		_asked_gear = asked_gear
 		_asked_for_s = 0.0
 		_refused_told = false
-	if asked_gear == int(s["gear"]):
+	# Once the pull is over the gearbox is the driver's again, and a tap
+	# on the way to the result is no refusal to tell.
+	if asked_gear == int(s["gear"]) or _result_told:
 		_asked_for_s = 0.0
 		return
 	_asked_for_s += delta

@@ -338,6 +338,15 @@ func _check_haptics() -> void:
 	_expect(pattern == 3, "a full pull: three buzzes, %d" % pattern)
 	haptics.show_result({"full_pull": true})
 	_expect(step.call({}) == 0, "the result told once")
+	# Out of bounds: one long buzz; after a restart a result is told again.
+	haptics.restart()
+	_expect(haptics.wants_result(), "a restarted pull's result to be told")
+	haptics.show_result({"ending": "out_of_bounds"})
+	_expect(step.call({}) == 1 and int(felt[0][0]) == Haptics.CHALK_MS, "the chalk line")
+	# The easy layout's assist works the clutch: no bite ticks for it.
+	haptics.pro = false
+	step.call({"clutch_pedal": 0.8})
+	_expect(step.call({"clutch_pedal": 0.2}) == 0, "easy layout: no bite tick")
 
 
 func _expect_on_screen(list: Array) -> void:
