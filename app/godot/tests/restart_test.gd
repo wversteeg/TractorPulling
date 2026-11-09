@@ -50,10 +50,19 @@ func _play() -> void:
 	_pull.call("_start_practice")
 	var run: TractorPullRun = _pull.get("run")
 	var restart: RestartScreen = _pull.get("restart_screen")
+	# The phone's vibrations, caught instead of felt.
+	var haptics: Haptics = _pull.get("haptics")
+	var felt: Array = []
+	haptics.vibrate = func(ms: int, strength: float) -> void: felt.append([ms, strength])
+	var result_waited := true
 	var frame := 0
 	while frame < MAX_FRAMES and not run.may_restart():
 		await process_frame
 		frame += 1
+		# In the pull the result is not told yet.
+		if run.get_snapshot().get("stage", "") == "pulling":
+			result_waited = result_waited and haptics.wants_result()
+	_expect(result_waited, "no result told while the pull is on")
 	_expect(run.may_restart(), "stopped short of 30 m: %s" % run.get_result())
 	# A scripted driver's pull counts; let go of it and the choice comes.
 	_pull.set("driver", Callable())
@@ -62,10 +71,14 @@ func _play() -> void:
 	_expect(restart.visible and not restart.move_back_button.visible,
 			"the choice, no moving back in practice")
 	var steps_before: float = run.get_snapshot()["time_s"]
-	await process_frame
+	felt.clear()
+	for i in 20:
+		await process_frame
 	_expect(run.get_snapshot()["time_s"] == steps_before, "the run waits for the choice")
+	_expect(felt.is_empty(), "nothing felt behind the choice: %s" % [felt])
 	restart.restart_requested.emit()
 	await process_frame
+	_expect(haptics.wants_result(), "restarted: the new pull's result to be told")
 	var s := run.get_snapshot()
 	_expect(not restart.visible and run.get_result().is_empty() and float(s["pulled_m"]) == 0.0
 			and int(s["gear"]) == 0, "restarted at the line in neutral: %s" % s)

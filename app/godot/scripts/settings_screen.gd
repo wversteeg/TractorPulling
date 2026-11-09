@@ -2,7 +2,8 @@
 # (easy, with the clutch assist, or pro, every pedal on its own) and the
 # steering (the on-screen slider, or tilting the phone) and the guidance
 # (the HUD's line on what to do next in a turn, on or off) and the sound
-# (the engine heard, or not). Each tap applies
+# (the engine heard, or not); "haptics" opens the Haptics menu
+# (HapticsScreen). Each tap applies
 # at once; the game keeps them on the device (GameSettings). "New career"
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure. "Start" (for testing a class) picks the
@@ -13,6 +14,7 @@ extends MenuPanel
 
 signal changed(pro: bool, tilt: bool, guidance: bool)
 signal sound_changed(on: bool)
+signal haptics_requested
 signal done
 signal new_career_requested(rung: int)
 signal money_requested(amount_eur: int)
@@ -26,6 +28,8 @@ const HINT_SIZE := 20
 const SETTING_BUTTON_SIZE := Vector2(200.0, 70.0)
 # Narrower, so the last row's four buttons fit the panel.
 const LAST_ROW_BUTTON_WIDTH := 160.0
+# Narrower, so the guidance, sound and haptics row's five fit.
+const FEEDBACK_BUTTON_WIDTH := 160.0
 # What "+ € 1000" adds to the bank [EUR].
 const TEST_MONEY_EUR := 1000
 
@@ -37,6 +41,7 @@ var guidance_on_button: TouchButton
 var guidance_off_button: TouchButton
 var sound_on_button: TouchButton
 var sound_off_button: TouchButton
+var haptics_button: TouchButton
 var new_career_button: TouchButton
 var start_button: TouchButton
 var money_button: TouchButton
@@ -74,13 +79,15 @@ func _ready() -> void:
 	var steering := add_button_row()
 	slider_button = add_button(steering, "slider")
 	tilt_button = add_button(steering, "tilt")
-	# The guidance and the sound share a row: the panel keeps its height.
-	add_line(LINE_SIZE).text = "Guidance  ·  Sound"
+	# The guidance, the sound and the haptics share a row: the panel keeps
+	# its height.
+	add_line(LINE_SIZE).text = "Guidance  ·  Sound  ·  Haptics"
 	var guidance := add_button_row()
 	guidance_on_button = add_button(guidance, "guide on")
 	guidance_off_button = add_button(guidance, "guide off")
 	sound_on_button = add_button(guidance, "sound on")
 	sound_off_button = add_button(guidance, "sound off")
+	haptics_button = add_button(guidance, "haptics")
 	_hint = add_line(HINT_SIZE)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# New career beside Done: the panel keeps its height.
@@ -96,6 +103,10 @@ func _ready() -> void:
 		button.custom_minimum_size = SETTING_BUTTON_SIZE
 	for button: TouchButton in [start_button, money_button, done_button]:
 		button.custom_minimum_size.x = LAST_ROW_BUTTON_WIDTH
+	haptics_button.custom_minimum_size = SETTING_BUTTON_SIZE
+	for button: TouchButton in [guidance_on_button, guidance_off_button, sound_on_button,
+			sound_off_button, haptics_button]:
+		button.custom_minimum_size.x = FEEDBACK_BUTTON_WIDTH
 	new_career_button.custom_minimum_size.y = SETTING_BUTTON_SIZE.y
 	easy_button.tapped.connect(func() -> void: _pick(false, _tilt, _guidance))
 	pro_button.tapped.connect(func() -> void: _pick(true, _tilt, _guidance))
@@ -105,6 +116,7 @@ func _ready() -> void:
 	guidance_off_button.tapped.connect(func() -> void: _pick(_pro, _tilt, false))
 	sound_on_button.tapped.connect(func() -> void: _pick_sound(true))
 	sound_off_button.tapped.connect(func() -> void: _pick_sound(false))
+	haptics_button.tapped.connect(func() -> void: haptics_requested.emit())
 	done_button.tapped.connect(func() -> void: done.emit())
 	new_career_button.tapped.connect(_ask_new_career)
 	start_button.tapped.connect(_next_start)

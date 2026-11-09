@@ -251,6 +251,107 @@ func _play() -> void:
 
 # Every control in `list` is on the screen, where a thumb can reach it, and
 # no two overlap.
+# The Haptics menu from the settings: a kind switched off and on again,
+# all off, all on, kept in the settings file; Back to the settings.
+func _check_haptics_menu(settings: SettingsScreen) -> void:
+	var menu: HapticsScreen = _pull.get("haptics_screen")
+	var haptics: Haptics = _pull.get("haptics")
+	_expect_on_screen([settings.guidance_on_button, settings.guidance_off_button,
+			settings.sound_on_button, settings.sound_off_button, settings.haptics_button])
+	_tap(settings.haptics_button)
+	await _frames(2)
+	_expect(menu.visible and not settings.visible, "the Haptics menu from the settings")
+	_expect_on_screen(menu.kind_buttons.values())
+	var wheelspin: TouchButton = menu.kind_buttons[Haptics.Kind.WHEELSPIN]
+	_expect(wheelspin.selected, "every haptic on to start with")
+	_tap(wheelspin)
+	_expect(not wheelspin.selected and not haptics.enabled[Haptics.Kind.WHEELSPIN]
+			and not bool(GameSettings.read(SETTINGS_PATH).haptics.get("wheelspin", true)),
+			"wheelspin off, kept in the settings file")
+	_tap(wheelspin)
+	_expect(haptics.enabled[Haptics.Kind.WHEELSPIN], "wheelspin on again")
+	_tap(menu.all_off_button)
+	_expect(haptics.enabled.values().all(func(on: bool) -> bool: return not on)
+			and GameSettings.read(SETTINGS_PATH).haptics.values().all(
+			func(on: bool) -> bool: return not on), "all off")
+	_tap(menu.all_on_button)
+	_expect(haptics.enabled.values().all(func(on: bool) -> bool: return on), "all on")
+	_expect(GameSettings.read(SETTINGS_PATH).sound and GameSettings.read(SETTINGS_PATH).pro,
+			"the other settings kept with the haptics")
+	_tap(menu.back_button)
+	await _frames(2)
+	_expect(settings.visible and not menu.visible, "back to the settings")
+
+
+# What each kind of haptic gives for a run's snapshots, with a stand-in
+# for the phone's vibrator.
+func _check_haptics() -> void:
+	var felt: Array = []
+	var haptics := Haptics.new()
+	haptics.vibrate = func(ms: int, strength: float) -> void: felt.append([ms, strength])
+	haptics.configure({"clutch_bite_pedal": 0.5, "rated_omega_rad_s": 250.0,
+			"take_up_tension_n": 1000.0})
+	var base := {"stage": "pulling", "clutch_pedal": 0.8, "gear": 4, "chain_tension_n": 0.0,
+			"slip_ratio": 0.0, "engine_running": true, "throttle": 0.0,
+			"engine_omega_rad_s": 240.0, "front_axle_load_n": 10000.0}
+	# The asked gear the snapshot's, unless given (>= 0).
+	var step := func(changes: Dictionary, gear: int = -1, delta: float = 0.02) -> int:
+		var s := base.duplicate()
+		s.merge(changes, true)
+		felt.clear()
+		haptics.update(s, gear if gear >= 0 else int(s["gear"]), delta)
+		return felt.size()
+	step.call({})
+	_expect(step.call({"clutch_pedal": 0.3}) == 1, "a tick passing the bite point")
+	_expect(step.call({"clutch_pedal": 0.2}) == 0, "nothing past it")
+	# The clutch in from here on.
+	base["clutch_pedal"] = 0.0
+	step.call({})
+	_expect(step.call({"gear": 5}) == 1, "a tick for a gear going in")
+	base["gear"] = 5
+	step.call({})
+	_expect(step.call({"slip_ratio": 0.6}) == 1 and step.call({"slip_ratio": 0.6}) == 0,
+			"wheelspin buzzes now and then, not every frame")
+	_expect(step.call({"throttle": 1.0, "engine_omega_rad_s": 150.0}) == 1,
+			"a pulse when the engine lugs")
+	_expect(step.call({"throttle": 1.0, "engine_omega_rad_s": 240.0}) == 0,
+			"none at its speed")
+	step.call({"front_axle_load_n": 0.0}, -1, 0.3)
+	_expect(step.call({}) == 1 and float(felt[0][1]) == 1.0, "a thump when the front lands")
+	step.call({"stage": "taking_up_slack", "chain_tension_n": 500.0})
+	_expect(step.call({"stage": "taking_up_slack", "chain_tension_n": 1500.0}) == 1,
+			"the chain coming tight")
+	# A gear asked for that does not go in: two short buzzes, once.
+	var refused := 0
+	for i in 30:
+		refused += step.call({}, 2)
+	_expect(refused == 2, "a refused gear: two buzzes, %d" % refused)
+	# Switched off, a kind is not felt.
+	haptics.enabled[Haptics.Kind.WHEELSPIN] = false
+	step.call({"slip_ratio": 0.0})
+	_expect(step.call({"slip_ratio": 0.9}) == 0, "wheelspin off: nothing")
+	# The result: a full pull's three rising buzzes, over the next frames.
+	haptics.show_result({"full_pull": true})
+	var pattern := 0
+	for i in 30:
+		pattern += step.call({})
+	_expect(pattern == 3, "a full pull: three buzzes, %d" % pattern)
+	haptics.show_result({"full_pull": true})
+	_expect(step.call({}) == 0, "the result told once")
+	# Out of bounds: one long buzz; after a restart a result is told again.
+	haptics.restart()
+	haptics.show_result({"full_pull": true})
+	haptics.restart()
+	_expect(step.call({}) == 0, "a restart drops a pattern still to come")
+	_expect(haptics.wants_result(), "a restarted pull's result to be told")
+	haptics.show_result({"ending": "out_of_bounds"})
+	_expect(step.call({}) == 1 and int(felt[0][0]) == Haptics.CHALK_MS, "the chalk line")
+	# The easy layout's assist works the clutch: no bite ticks for it.
+	haptics.pro = false
+	step.call({"clutch_pedal": 0.8})
+	_expect(step.call({"clutch_pedal": 0.2}) == 0, "easy layout: no bite tick")
+
+
 func _expect_on_screen(list: Array) -> void:
 	var screen := root.get_visible_rect()
 	for i in list.size():
@@ -320,6 +421,8 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(GameSettings.read(SETTINGS_PATH).sound and sound.enabled, "sound on again")
 	_expect(GameSettings.read("user://touch_test_old_settings.cfg").sound,
 			"a settings file without the sound reads it on")
+	await _check_haptics_menu(settings)
+	_check_haptics()
 	_tap(settings.done_button)
 	await _frames(2)
 	_expect(start.visible and not settings.visible, "done: back to the start screen")

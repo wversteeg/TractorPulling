@@ -151,6 +151,24 @@ package "GDScript (app/godot/scripts)" {
     camera_requested, restart_requested,
     menu_requested
   }
+  class Haptics {
+    +enabled : Dictionary (Kind: bool)
+    +vibrate : Callable(ms, strength)
+    +configure(dimensions)
+    +update(snapshot, asked_gear, delta)
+    +show_result(result)
+    +set_enabled_by_key(by_key), enabled_by_key() : Dictionary
+    --
+    Kind: clutch bite, wheelspin, lugging, gear,
+    chain, landing, full pull, chalk line
+  }
+  class HapticsScreen {
+    +kind_buttons : Dictionary
+    +all_on_button, all_off_button, back_button : TouchButton
+    +show_haptics(by_key)
+    ..signals..
+    changed(by_key), done
+  }
   class EngineSound {
     +enabled : bool
     +cylinders : int
@@ -196,13 +214,14 @@ package "GDScript (app/godot/scripts)" {
     +easy_button, pro_button : TouchButton
     +slider_button, tilt_button : TouchButton
     +new_career_button, start_button, done_button : TouchButton
-    +sound_on_button, sound_off_button : TouchButton
+    +sound_on_button, sound_off_button, haptics_button : TouchButton
     +money_button : TouchButton, for testing
     +show_settings(pro, tilt, tilt_available, guidance, rungs, sound)
     +show_money(money_eur)
     +start_rung() : int
     ..signals..
-    changed(pro, tilt, guidance), sound_changed(on), done, new_career_requested(rung),
+    changed(pro, tilt, guidance), sound_changed(on), haptics_requested,
+    done, new_career_requested(rung),
     money_requested(amount_eur)
   }
   class MenuBackdrop {
@@ -224,6 +243,7 @@ package "GDScript (app/godot/scripts)" {
   }
   class GameSettings {
     +pro, tilt, guidance, sound : bool
+    +haptics : Dictionary
     +{static} read(path) : GameSettings
     +write(path) : Error
   }
@@ -355,6 +375,10 @@ DriveControls *-- "6" TouchButton : gear +/- (R below N), N,\ncamera, again, men
 Pull *-- Hud
 Pull *-- EngineSound : the engine heard on the track,\nmade from the snapshot
 AudioStreamPlayer <|-- EngineSound
+Pull *-- Haptics : the phone vibrates in the pull
+Pull *-- HapticsScreen : from the settings
+MenuPanel <|-- HapticsScreen
+HapticsScreen ..> Haptics : its kinds
 Pull *-- StartScreen
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen

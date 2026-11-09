@@ -46,11 +46,14 @@
 # dropped.
 extends Node3D
 
-enum Screen { START, SETTINGS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END, SEASON }
+enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
+		SEASON }
 # The menus drawn over the backdrop (MenuBackdrop), not over the venue;
 # the 3D world is not drawn behind it.
-const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.GARAGE,
-		Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
+# A whole turn's stages up to and through the pull: no result yet.
+const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling"]
+const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
+		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
 
 @export var career_path := "res://data/careers/tractor_path.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
@@ -136,6 +139,8 @@ var start_screen := StartScreen.new()
 var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
+var haptics_screen := HapticsScreen.new()
+var haptics := Haptics.new()
 var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()
@@ -195,8 +200,8 @@ func _ready() -> void:
 	hitch_marker.mesh = marker
 	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
-	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, garage_screen, board,
-			setup_screen, result_screen, restart_screen]:
+	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, haptics_screen,
+			garage_screen, board, setup_screen, result_screen, restart_screen]:
 		layer.add_child(node)
 	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
@@ -218,6 +223,13 @@ func _ready() -> void:
 	settings_screen.sound_changed.connect(func(on: bool) -> void:
 		engine_sound.enabled = on
 		_keep_settings())
+	settings_screen.haptics_requested.connect(func() -> void:
+		haptics_screen.show_haptics(haptics.enabled_by_key())
+		_set_screen(Screen.HAPTICS))
+	haptics_screen.changed.connect(func(by_key: Dictionary) -> void:
+		haptics.set_enabled_by_key(by_key)
+		_keep_settings())
+	haptics_screen.done.connect(func() -> void: _set_screen(Screen.SETTINGS))
 	settings_screen.done.connect(show_start)
 	settings_screen.money_requested.connect(func(amount_eur: int) -> void:
 		if event.add_money(amount_eur):
@@ -258,6 +270,7 @@ func _ready() -> void:
 	board.second_tapped.connect(_on_board_second)
 	restart_screen.restart_requested.connect(func() -> void:
 		run.restart()
+		haptics.restart()
 		controls.reset()
 		_choice_made = false
 		_end_choice())
@@ -276,6 +289,7 @@ func _ready() -> void:
 		tilt = settings.tilt
 		hud.guidance = settings.guidance
 		engine_sound.enabled = settings.sound
+		haptics.set_enabled_by_key(settings.haptics)
 		var error := event.load_career(career_path)
 		if not error.is_empty():
 			push_error("cannot load the career: " + error)
@@ -307,6 +321,7 @@ func _keep_settings() -> void:
 	settings.tilt = tilt
 	settings.guidance = hud.guidance
 	settings.sound = engine_sound.enabled
+	settings.haptics = haptics.enabled_by_key()
 	var error := settings.write(settings_path)
 	if error != OK:
 		push_warning("cannot keep the settings: %s" % error_string(error))
@@ -510,6 +525,7 @@ func _build(error: String) -> bool:
 	sled_view.start_run(run.get_snapshot())
 	hud.build(dimensions)
 	engine_sound.configure(dimensions)
+	haptics.configure(dimensions)
 	cameras.cab = tractor_view.cab_camera()
 	cameras.reset_framing()
 	_build_turn(dimensions)
@@ -568,6 +584,7 @@ func _set_screen(next: Screen) -> void:
 	get_viewport().disable_3d = menu_backdrop.visible
 	start_screen.visible = screen == Screen.START
 	settings_screen.visible = screen == Screen.SETTINGS
+	haptics_screen.visible = screen == Screen.HAPTICS
 	garage_screen.visible = screen == Screen.GARAGE
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
@@ -581,6 +598,7 @@ func _set_screen(next: Screen) -> void:
 	controls.menu_button.visible = practice and not autoplay
 	start_screen.release_buttons()
 	settings_screen.release_buttons()
+	haptics_screen.release_buttons()
 	garage_screen.release_buttons()
 	setup_screen.release_buttons()
 	setup_screen.release_sliders()
@@ -613,7 +631,8 @@ func _process(delta: float) -> void:
 			_ended_s += delta
 			if _ended_s >= RESULT_DELAY_S:
 				_show_result()
-	elif screen in [Screen.START, Screen.SETTINGS, Screen.GARAGE, Screen.EVENT, Screen.SETUP]:
+	elif screen in [Screen.START, Screen.SETTINGS, Screen.HAPTICS, Screen.GARAGE, Screen.EVENT,
+			Screen.SETUP]:
 		# The rivals get on with their work (their gears first) while the
 		# player reads the start screen too.
 		_advance_rivals()
@@ -623,6 +642,14 @@ func _process(delta: float) -> void:
 	# The engine is heard on the track (the pull and its result), not
 	# behind the menus.
 	engine_sound.show_snapshot(_snapshot if screen in [Screen.PULLING, Screen.RESULT] else {})
+	# The phone vibrates in the pull only (the driver's hands on it).
+	# Not while the restart choice is up: the run stands still then.
+	if screen == Screen.PULLING and not autoplay and not _choosing:
+		haptics.pro = controls.pro
+		haptics.update(_snapshot, controls.gear, delta)
+		# The result once the pull is over (the stage past the pull).
+		if haptics.wants_result() and not _snapshot.get("stage", "pulling") in PULL_STAGES:
+			haptics.show_result(run.get_result())
 	cameras.show_hitch(framing_hitch(_snapshot, _chain_m),
 			float(_snapshot.get("hitch_to_hook_m", 0.0)),
 			float(_snapshot.get("sled_heading_rad", 0.0)))
