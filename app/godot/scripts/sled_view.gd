@@ -77,6 +77,7 @@ var _transport_spin: Array[Node3D] = []
 # 0 the transport wheels up (the pan on the track) to 1 down (the pan
 # lifted, the sled on them).
 var transport := 0.0
+var _transport_angle := 0.0
 var _hook := Marker3D.new()
 var _wheels := Node3D.new()
 var _lamp := MeshInstance3D.new()
@@ -386,9 +387,12 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 	_show_pushdown(s["pushdown"])
 	transport = move_toward(transport, transport_wanted(s), TRANSPORT_RATE_PER_S * delta)
 	_show_transport()
-	# On the track the transport wheels roll with the sled.
-	for spin in _transport_spin:
-		spin.rotation.x = wrapf(-float(s["sled_x_m"]) / TRANSPORT_RADIUS_M, -PI, PI)
+	# Down on the track the transport wheels roll with the sled; lifted
+	# clear, they stand still.
+	if transport > 0.0:
+		_transport_angle -= float(s["sled_speed_m_s"]) / TRANSPORT_RADIUS_M * delta
+		for spin in _transport_spin:
+			spin.rotation.x = wrapf(_transport_angle, -PI, PI)
 	_show_berm(s["berm_m3"])
 	_show_lamp(lamp_colour(s, lamp_tension_n))
 
