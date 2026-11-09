@@ -662,14 +662,15 @@ exported game there.
 ### The web build
 
 The simulation, the data loaders and `tp_pull` build to WebAssembly with
-Emscripten, at the version Godot 4.7.2 builds its web export with (4.0.11).
+Emscripten, at the version Godot 4.7.2's web export templates were built
+with (4.0.20: they print it at start-up).
 The tests run under Node, and CI checks `tp_pull` gives Linux's results
 there too. The `godot-web` preset builds the extension as a side module for
 Godot's web export (the "nothreads" templates with extensions support):
 
 ```bash
-git clone --branch 4.0.11 https://github.com/emscripten-core/emsdk.git
-emsdk/emsdk install 4.0.11 && emsdk/emsdk activate 4.0.11
+git clone --branch 4.0.20 https://github.com/emscripten-core/emsdk.git
+emsdk/emsdk install 4.0.20 && emsdk/emsdk activate 4.0.20
 source emsdk/emsdk_env.sh
 cmake --preset web && cmake --build --preset web && ctest --preset web
 scripts/platform_runs.sh node build/web/tools/tp_pull.js

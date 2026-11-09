@@ -215,7 +215,7 @@ cmake --preset godot-windows && cmake --build --preset godot-windows
 # What a tp_pull build makes of the scripted runs and an event, for comparing
 # platforms (CI compares Windows and the web build with Linux)
 scripts/platform_runs.sh build/godot/tools/tp_pull
-# WebAssembly (needs Emscripten 4.0.11, Godot 4.7.2's: source emsdk_env.sh):
+# WebAssembly (needs Emscripten 4.0.20, Godot 4.7.2's: source emsdk_env.sh):
 # the tests and tp_pull under Node, and the extension for the web export
 cmake --preset web && cmake --build --preset web && ctest --preset web
 scripts/platform_runs.sh node build/web/tools/tp_pull.js
