@@ -40,10 +40,12 @@ struct Rules {
     /// test pull as the first, the NTTO's 3rd and 6th pull).
     int decide_after_pulls = 0;
     int repull_after_pulls = 0;
-    /// A test pull stopping short of this makes the operator lighten the
-    /// sled. The operator judges what the strongest puller would reach: the
-    /// test pull plus how much further the strongest is expected to get
-    /// than its puller (Event::expect).
+    /// What the field's average tractor should reach: the operator sets the
+    /// sled for the class as a whole, not for its strongest. They judge a
+    /// test pull by what the average would reach on the sled (the test pull
+    /// plus how much further the average is expected to get than its
+    /// puller, Event::expect): lighter when that is short of this, heavier
+    /// after a full pull (unless by one of the strongest) until it is.
     double sled_target_m = 0.0;
     /// The operator's rule of thumb at the start of the day: what one sled
     /// step is worth [m]. They learn better from each change they make.
@@ -254,9 +256,10 @@ private:
     /// Where `puller` stands in the field by expected distance: 0 the
     /// weakest, 1 the strongest, 0.5 when unknown.
     [[nodiscard]] double strength(int puller) const noexcept;
-    /// How much further the field's strongest is expected to pull than
-    /// `puller` [m]; 0 when unknown.
-    [[nodiscard]] double gap_to_strongest_m(int puller) const noexcept;
+    /// How much further the field's average (of the pullers expected) is
+    /// expected to pull than `puller` [m], negative for a puller above it;
+    /// 0 when unknown.
+    [[nodiscard]] double gap_to_average_m(int puller) const noexcept;
 
     Rules rules_;
     sled::Params sled_;

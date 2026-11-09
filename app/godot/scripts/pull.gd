@@ -504,6 +504,10 @@ func _build(error: String) -> bool:
 	tractor_view.build(dimensions)
 	if sled_view.get_child_count() == 0:
 		sled_view.build(dimensions)
+	# The box as the operator has set it for this pull, and the transport
+	# wheels as the turn starts.
+	sled_view.show_box_mass(dimensions["box_mass_kg"])
+	sled_view.start_run(run.get_snapshot())
 	hud.build(dimensions)
 	engine_sound.configure(dimensions)
 	cameras.cab = tractor_view.cab_camera()
