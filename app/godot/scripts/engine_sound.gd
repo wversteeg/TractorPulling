@@ -71,6 +71,11 @@ var _playback: AudioStreamGeneratorPlayback = null
 
 
 func _ready() -> void:
+	# The web export plays sounds as samples made ahead, and a generated
+	# stream cannot be one (without threads, as the game is built for the
+	# web): silent there, see docs/future_improvements.md.
+	if OS.has_feature("web"):
+		return
 	var generator := AudioStreamGenerator.new()
 	generator.mix_rate = MIX_RATE_HZ
 	generator.buffer_length = BUFFER_S
