@@ -47,13 +47,19 @@ def includes_by_source(in_scope):
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as database:
         json.dump([command for _, command in in_scope], database)
     try:
-        rules = subprocess.run(
+        scan = subprocess.run(
             [SCAN_DEPS, "-compilation-database", database.name, "-format=make",
              "-j", str(os.cpu_count() or 1)],
-            check=True, capture_output=True, text=True,
-        ).stdout
+            check=False, capture_output=True, text=True,
+        )
     finally:
         os.unlink(database.name)
+    # A source it cannot read gets no rule, only an error; the caller checks
+    # such a source anyway, so a failure here never skips one.
+    if scan.returncode != 0:
+        print(f"{SCAN_DEPS} could not read every source; those are checked anyway:\n"
+              f"{scan.stderr}", file=sys.stderr)
+    rules = scan.stdout
     # One make rule per source: "target.o: source.cpp header.hpp ... \".
     deps = {}
     for rule in re.split(r"\n(?=\S)", rules.replace("\\\n", " ")):

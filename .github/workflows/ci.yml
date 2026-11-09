@@ -140,8 +140,11 @@ jobs:
         if: always() && env.CCACHE_KEY != ''
         run: ccache --show-stats
 
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
       - name: Save the compiler cache
-        if: always() && env.CCACHE_KEY != ''
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache
@@ -238,8 +241,11 @@ jobs:
         if: always() && env.CCACHE_KEY != ''
         run: ccache --show-stats
 
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
       - name: Save the compiler cache
-        if: always() && env.CCACHE_KEY != ''
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache
@@ -309,8 +315,11 @@ jobs:
         if: always() && env.CCACHE_KEY != ''
         run: ccache --show-stats
 
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
       - name: Save the compiler cache
-        if: always() && env.CCACHE_KEY != ''
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache
@@ -360,8 +369,11 @@ jobs:
         if: always() && env.CCACHE_KEY != ''
         run: ccache --show-stats
 
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
       - name: Save the compiler cache
-        if: always() && env.CCACHE_KEY != ''
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache
@@ -370,8 +382,8 @@ jobs:
   # The core, the data loaders and tp_pull in WebAssembly (Emscripten), run
   # with Node: the tests, the platform runs, which must match Linux's, and
   # the speed; and the Godot extension for the web export. Linux's results
-  # come from a tp_pull built here, so the job need not wait for the godot
-  # job's.
+  # come from a tp_pull built here (the release preset, with the runner's
+  # gcc, as the godot job's), so the job need not wait for the godot job.
   web:
     name: web
     runs-on: ubuntu-24.04
@@ -446,8 +458,11 @@ jobs:
         if: always() && env.CCACHE_KEY != ''
         run: ccache --show-stats
 
+      # Only a push to a branch saves: pull requests restore develop's cache
+      # without adding their own, which would crowd it out of the
+      # repository's cache storage.
       - name: Save the compiler cache
-        if: always() && env.CCACHE_KEY != ''
+        if: always() && github.event_name == 'push' && env.CCACHE_KEY != ''
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/ccache

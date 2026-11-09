@@ -1,10 +1,10 @@
 name: Compiler cache
 description: >
   Installs ccache (Ubuntu's), puts it in front of every compiler CMake
-  configures from here on, and restores the job's cache from its latest
-  run: this pull request's, else the base branch's. Run it after the job's
-  apt-get update; the job saves the cache at its end with actions/cache/save
-  and the key this sets in CCACHE_KEY.
+  configures from here on, and restores the job's latest cache from the
+  branch, or for a pull request from its base branch. Run it after the
+  job's apt-get update; on a push the job saves the cache at its end with
+  actions/cache/save and the key this sets in CCACHE_KEY.
 inputs:
   name:
     description: The job's cache name, one per job and matrix entry.
