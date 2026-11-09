@@ -149,13 +149,22 @@ double Event::strength(int puller) const noexcept {
     return known < 2 ? kMiddle : static_cast<double>(below) / static_cast<double>(known - 1);
 }
 
-double Event::gap_to_strongest_m(int puller) const noexcept {
+double Event::gap_to_average_m(int puller) const noexcept {
     const double mine = expected_m_[static_cast<std::size_t>(puller)];
     if (mine <= 0.0) {
         return 0.0;
     }
-    const double strongest = *std::ranges::max_element(expected_m_);
-    return strongest - mine;
+    double sum_m = 0.0;
+    int known = 0;
+    for (int i = 0; i < count_; ++i) {
+        const double theirs = expected_m_[static_cast<std::size_t>(i)];
+        if (theirs > 0.0) {
+            sum_m += theirs;
+            ++known;
+        }
+    }
+    // `mine` is known, so `known` is at least 1.
+    return sum_m / static_cast<double>(known) - mine;
 }
 
 std::optional<Pull> Event::next() const noexcept {
@@ -247,22 +256,26 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     // misses by more than half a step, where another step would come closer:
     // the first change is usually enough. A full pull is a full pull.
     const double margin_m = changes_ > 0 ? kRetestMarginSteps * step_estimate_m_ : 0.0;
-    // What the strongest would reach on this sled: a weak tractor's short
-    // test pull may still leave the sled right for the field.
-    const double strongest_m = reached_m + gap_to_strongest_m(puller);
+    // What the field's average tractor would reach on this sled: a weak
+    // tractor's short test pull may still leave the sled right for the
+    // field. The average, not the strongest: one tractor far stronger than
+    // the rest (a player who built theirs up) would otherwise have the sled
+    // set for it alone, too heavy for everyone else.
+    const double average_m = reached_m + gap_to_average_m(puller);
     if (reached_m >= line_m_) {
         if (rules_.strong_full_pull_from && strength(puller) >= *rules_.strong_full_pull_from) {
             // One of the strongest pulled it the whole way: as meant.
             return outcome;
         }
-        // Too easy: heavier, so that the strongest stops at the line.
-        outcome = {.change = SledChange::kHeavier, .steps = steps_for(strongest_m - line_m_)};
+        // Too easy: heavier, so that the average stops at the target.
+        outcome = {.change = SledChange::kHeavier,
+                   .steps = steps_for(average_m - rules_.sled_target_m)};
         sled_ = sled::heavier(sled_, outcome.steps);
         entry.may_keep = false;
         schedule_repull(puller);
-    } else if (strongest_m < rules_.sled_target_m - margin_m) {
+    } else if (average_m < rules_.sled_target_m - margin_m) {
         outcome = {.change = SledChange::kLighter,
-                   .steps = steps_for(rules_.sled_target_m - strongest_m)};
+                   .steps = steps_for(rules_.sled_target_m - average_m)};
         sled_ = lighter(sled_, outcome.steps, rules_.step_m, rules_.max_distance_m);
     } else {
         return outcome;
