@@ -41,6 +41,8 @@ const FOLLOW_S := 0.05
 # a hiss (a share a sample).
 const NOISE_SMOOTHING := 0.18
 
+# Off (the settings' sound off): silent, whatever the engine does.
+var enabled := true
 var cylinders := DEFAULT_CYLINDERS
 var idle_omega_rad_s := 80.0
 var rated_omega_rad_s := 250.0
@@ -85,7 +87,7 @@ func configure(dimensions: Dictionary) -> void:
 # The engine as the snapshot has it; the sound follows over the next
 # samples.
 func show_snapshot(s: Dictionary) -> void:
-	_target_running = bool(s.get("engine_running", false))
+	_target_running = enabled and bool(s.get("engine_running", false))
 	_target_omega_rad_s = float(s.get("engine_omega_rad_s", 0.0))
 	_target_throttle = float(s.get("throttle", 0.0))
 	_target_boost = float(s.get("boost", 0.0))

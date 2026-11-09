@@ -1,7 +1,8 @@
 # The settings, from the gear on the start screen: the control layout
 # (easy, with the clutch assist, or pro, every pedal on its own) and the
 # steering (the on-screen slider, or tilting the phone) and the guidance
-# (the HUD's line on what to do next in a turn, on or off). Each tap applies
+# (the HUD's line on what to do next in a turn, on or off) and the sound
+# (the engine heard, or not). Each tap applies
 # at once; the game keeps them on the device (GameSettings). "New career"
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure. "Start" (for testing a class) picks the
@@ -11,6 +12,7 @@ class_name SettingsScreen
 extends MenuPanel
 
 signal changed(pro: bool, tilt: bool, guidance: bool)
+signal sound_changed(on: bool)
 signal done
 signal new_career_requested(rung: int)
 signal money_requested(amount_eur: int)
@@ -33,6 +35,8 @@ var slider_button: TouchButton
 var tilt_button: TouchButton
 var guidance_on_button: TouchButton
 var guidance_off_button: TouchButton
+var sound_on_button: TouchButton
+var sound_off_button: TouchButton
 var new_career_button: TouchButton
 var start_button: TouchButton
 var money_button: TouchButton
@@ -41,6 +45,7 @@ var _hint: Label
 var _pro := false
 var _tilt := false
 var _guidance := true
+var _sound := true
 var _tilt_available := true
 # The first tap on "New career" made: the next one starts it.
 var _career_asked := false
@@ -69,10 +74,13 @@ func _ready() -> void:
 	var steering := add_button_row()
 	slider_button = add_button(steering, "slider")
 	tilt_button = add_button(steering, "tilt")
-	add_line(LINE_SIZE).text = "Guidance"
+	# The guidance and the sound share a row: the panel keeps its height.
+	add_line(LINE_SIZE).text = "Guidance  ·  Sound"
 	var guidance := add_button_row()
-	guidance_on_button = add_button(guidance, "on")
-	guidance_off_button = add_button(guidance, "off")
+	guidance_on_button = add_button(guidance, "guide on")
+	guidance_off_button = add_button(guidance, "guide off")
+	sound_on_button = add_button(guidance, "sound on")
+	sound_off_button = add_button(guidance, "sound off")
 	_hint = add_line(HINT_SIZE)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# New career beside Done: the panel keeps its height.
@@ -83,7 +91,8 @@ func _ready() -> void:
 	money_button = add_button(go, "+ € %d" % TEST_MONEY_EUR)
 	done_button = add_button(go, "Done")
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
-			guidance_on_button, guidance_off_button, start_button, money_button, done_button]:
+			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
+			start_button, money_button, done_button]:
 		button.custom_minimum_size = SETTING_BUTTON_SIZE
 	for button: TouchButton in [start_button, money_button, done_button]:
 		button.custom_minimum_size.x = LAST_ROW_BUTTON_WIDTH
@@ -94,6 +103,8 @@ func _ready() -> void:
 	tilt_button.tapped.connect(func() -> void: _pick(_pro, true, _guidance))
 	guidance_on_button.tapped.connect(func() -> void: _pick(_pro, _tilt, true))
 	guidance_off_button.tapped.connect(func() -> void: _pick(_pro, _tilt, false))
+	sound_on_button.tapped.connect(func() -> void: _pick_sound(true))
+	sound_off_button.tapped.connect(func() -> void: _pick_sound(false))
 	done_button.tapped.connect(func() -> void: done.emit())
 	new_career_button.tapped.connect(_ask_new_career)
 	start_button.tapped.connect(_next_start)
@@ -103,7 +114,8 @@ func _ready() -> void:
 # Shows the settings as they are; `tilt_available` whether the device can
 # steer by tilting; `rungs` the career's rungs, lowest first.
 func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool = true,
-		rungs := PackedStringArray()) -> void:
+		rungs := PackedStringArray(), sound: bool = true) -> void:
+	_sound = sound
 	_pro = pro
 	_tilt = tilt
 	_guidance = guidance
@@ -149,6 +161,15 @@ func _pick(pro: bool, tilt: bool, guidance: bool) -> void:
 	changed.emit(pro, tilt, guidance)
 
 
+func _pick_sound(on: bool) -> void:
+	_sound = on
+	_career_asked = false
+	_start_shown = false
+	_money_shown_eur = -1
+	_show()
+	sound_changed.emit(on)
+
+
 func _show() -> void:
 	easy_button.selected = not _pro
 	pro_button.selected = _pro
@@ -156,6 +177,8 @@ func _show() -> void:
 	tilt_button.selected = _tilt
 	guidance_on_button.selected = _guidance
 	guidance_off_button.selected = not _guidance
+	sound_on_button.selected = _sound
+	sound_off_button.selected = not _sound
 	new_career_button.text = "Sure? Tap again" if _career_asked else "New career"
 	start_button.text = "Start: %d" % (_start_rung + 1)
 	var start_at := _rungs[_start_rung] if _start_rung < _rungs.size() else ""

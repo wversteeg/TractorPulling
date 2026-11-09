@@ -146,6 +146,7 @@ package "GDScript (app/godot/scripts)" {
     menu_requested
   }
   class EngineSound {
+    +enabled : bool
     +cylinders : int
     +configure(dimensions)
     +show_snapshot(snapshot)
@@ -189,12 +190,13 @@ package "GDScript (app/godot/scripts)" {
     +easy_button, pro_button : TouchButton
     +slider_button, tilt_button : TouchButton
     +new_career_button, start_button, done_button : TouchButton
+    +sound_on_button, sound_off_button : TouchButton
     +money_button : TouchButton, for testing
-    +show_settings(pro, tilt, tilt_available, guidance, rungs)
+    +show_settings(pro, tilt, tilt_available, guidance, rungs, sound)
     +show_money(money_eur)
     +start_rung() : int
     ..signals..
-    changed(pro, tilt), done, new_career_requested(rung),
+    changed(pro, tilt, guidance), sound_changed(on), done, new_career_requested(rung),
     money_requested(amount_eur)
   }
   class MenuBackdrop {
@@ -215,7 +217,7 @@ package "GDScript (app/godot/scripts)" {
     buy_requested(index), done
   }
   class GameSettings {
-    +pro, tilt : bool
+    +pro, tilt, guidance, sound : bool
     +{static} read(path) : GameSettings
     +write(path) : Error
   }

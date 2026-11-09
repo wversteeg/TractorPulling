@@ -306,6 +306,20 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	old_file.save("user://touch_test_old_settings.cfg")
 	_expect(GameSettings.read("user://touch_test_old_settings.cfg").guidance,
 			"a settings file without the guidance reads it on")
+	# Sound off: the engine falls silent, kept in the file; on again. A
+	# file without it reads on.
+	var sound: EngineSound = _pull.get("engine_sound")
+	_tap(settings.sound_off_button)
+	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 200.0, "throttle": 1.0})
+	_expect(settings.sound_off_button.selected and not GameSettings.read(SETTINGS_PATH).sound
+			and not sound.enabled and sound.target_volume() == 0.0,
+			"sound off: silent, kept in the settings file")
+	_expect(GameSettings.read(SETTINGS_PATH).guidance and GameSettings.read(SETTINGS_PATH).pro,
+			"the other settings kept with it")
+	_tap(settings.sound_on_button)
+	_expect(GameSettings.read(SETTINGS_PATH).sound and sound.enabled, "sound on again")
+	_expect(GameSettings.read("user://touch_test_old_settings.cfg").sound,
+			"a settings file without the sound reads it on")
 	_tap(settings.done_button)
 	await _frames(2)
 	_expect(start.visible and not settings.visible, "done: back to the start screen")
