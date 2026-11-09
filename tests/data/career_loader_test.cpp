@@ -60,7 +60,7 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
     ASSERT_TRUE(result.ok()) << result.error().message;
     const CareerDefinition& career = result.value();
     EXPECT_EQ(career.name, "Tractor path");
-    EXPECT_EQ(career.ladder.promotion_place, 1);
+    EXPECT_EQ(career.ladder.promotion_place, 2) << "the first two move up";
     EXPECT_EQ(career.ladder.min_seasons, 2);
     // Standard 3.5 t at one level, the warming-up; Sport 2.5 t at promo
     // and top; Sport 4.5 t at belofte, promo and top.

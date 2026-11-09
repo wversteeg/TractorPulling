@@ -149,6 +149,7 @@ package "tp::field" {
     +over() : bool
     +puller_count() : int
     +player() : const Puller&
+    +points() : const season::Points&
     +standings() : span<const season::Standing>
     --
     -field_ : Field (the player the reference)
