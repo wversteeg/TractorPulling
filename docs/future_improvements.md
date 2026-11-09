@@ -291,6 +291,14 @@ for the big features; they are repeated at the end for completeness.
   takes the gap to the average as the same on every sled, where on a sled
   far too heavy the field's distances bunch up.
 
+## Sound
+
+- **The engine's sound on the web.** The engine sound is made as it runs
+  (`EngineSound`, an `AudioStreamGenerator`). The web export plays sounds
+  as samples made ahead, which a generated stream cannot be in a build
+  without threads, so the web game is silent. Made in the extension, or
+  from recorded loops pitched by the engine's speed, it could play there.
+
 ## Controls
 
 - **Clutch heat.** The easy-mode assist may slip the clutch for seconds at

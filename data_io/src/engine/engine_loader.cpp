@@ -18,6 +18,9 @@ using units::rpm_to_rad_s;
 // Rpm per "1000 rpm", for friction given per 1000 rpm in the data files.
 constexpr double kRpmPerKiloRpm = 1000.0;
 
+// The message for engine.cylinders names the limit; it must follow it.
+static_assert(engine::kMaxCylinders == 16, "update engine.cylinders' message below");
+
 struct FieldError {
     std::string_view field;
     std::string_view reason;
