@@ -60,6 +60,10 @@ TEST(EngineParams, RejectsNonsense) {
               ParamError::kFrictionNegative);
     EXPECT_EQ(with([](Params& p) { p.full_boost_pressure_pa = -1.0; }),
               ParamError::kBoostPressureNegative);
+    EXPECT_EQ(with([](Params& p) { p.cylinders = -1; }), ParamError::kCylindersOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.cylinders = kMaxCylinders + 1; }),
+              ParamError::kCylindersOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.cylinders = 6; }), std::nullopt);
     EXPECT_EQ(with([](Params& p) { p.full_boost_pressure_pa = std::nan(""); }),
               ParamError::kNotFinite);
     EXPECT_EQ(with([](Params& p) { p.na_torque_fraction = 0.0; }),

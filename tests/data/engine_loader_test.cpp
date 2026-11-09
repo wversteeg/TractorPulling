@@ -62,6 +62,7 @@ TEST(EngineLoader, LoadsShippedReferenceEngine) {
     EXPECT_DOUBLE_EQ(result.value().full_load_torque_nm.max_y(), 400.0);
     // The boost gauge's full scale, in bar in the file.
     EXPECT_DOUBLE_EQ(result.value().full_boost_pressure_pa, units::bar_to_pa(1.0));
+    EXPECT_EQ(result.value().cylinders, 4) << "a four, for its sound";
 }
 
 // The full boost pressure is only for a gauge: an engine may leave it out.
@@ -69,6 +70,18 @@ TEST(EngineLoader, TheFullBoostPressureIsOptional) {
     const auto result = parse_engine(kValidEngine, "test.toml");
     ASSERT_TRUE(result.ok()) << result.error().message;
     EXPECT_EQ(result.value().full_boost_pressure_pa, 0.0);
+}
+
+// The cylinders are only for the engine's sound: an engine may leave them
+// out (0, not known).
+TEST(EngineLoader, TheCylindersAreOptional) {
+    const auto none = parse_engine(kValidEngine, "test.toml");
+    ASSERT_TRUE(none.ok()) << none.error().message;
+    EXPECT_EQ(none.value().cylinders, 0);
+    const auto six =
+        parse_engine(with("stall_rpm = 450", "stall_rpm = 450\ncylinders = 6"), "test.toml");
+    ASSERT_TRUE(six.ok()) << six.error().message;
+    EXPECT_EQ(six.value().cylinders, 6);
 }
 
 TEST(EngineLoader, ConvertsToSiUnits) {
@@ -114,7 +127,11 @@ TEST(EngineLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 11> cases = {{
+    const std::array<Case, 14> cases = {{
+        {"stall_rpm = 450", "stall_rpm = 450\ncylinders = -2",
+         "engine.cylinders: must be a whole number from 0 to 16"},
+        {"stall_rpm = 450", "stall_rpm = 450\ncylinders = 4.5", "engine.cylinders"},
+        {"stall_rpm = 450", "stall_rpm = 450\ncylinders = 40", "engine.cylinders"},
         {"inertia_kg_m2 = 1.5", "inertia_kg_m2 = -1.5", "engine.inertia_kg_m2: must be > 0"},
         {"full_boost_rpm = 1600", "full_boost_rpm = 1600\nfull_boost_bar = -1.0",
          "engine.turbo.full_boost_bar: must not be negative"},

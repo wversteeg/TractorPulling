@@ -82,6 +82,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.full_boost_pressure_pa < 0.0) {
         return ParamError::kBoostPressureNegative;
     }
+    if (params.cylinders < 0 || params.cylinders > kMaxCylinders) {
+        return ParamError::kCylindersOutOfRange;
+    }
     const auto points = params.full_load_torque_nm.points();
     if (std::ranges::any_of(points, [](const math::CurvePoint& p) { return p.y < 0.0; })) {
         return ParamError::kTorqueCurveNegative;

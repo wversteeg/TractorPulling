@@ -8,6 +8,7 @@ package "Godot 4.7" {
   class Node3D
   class SceneTree
   class Control
+  class AudioStreamPlayer
 }
 
 package "GDScript (app/godot/scripts)" {
@@ -143,6 +144,14 @@ package "GDScript (app/godot/scripts)" {
     ..signals..
     camera_requested, restart_requested,
     menu_requested
+  }
+  class EngineSound {
+    +cylinders : int
+    +configure(dimensions)
+    +show_snapshot(snapshot)
+    +sample_frames(count) : PackedVector2Array
+    +loudness(running, omega_rad_s, throttle) : float
+    +{static} firing_hz(omega_rad_s, cylinders) : float
   }
   class Hud {
     +build(dimensions)
@@ -336,6 +345,8 @@ Pull *-- DriveControls : the easy or pro layout's controls
 DriveControls *-- "5" TouchSlider : steering (slider steering), hand throttle;\npro: clutch (its slipping range marked),\ntwo brakes
 DriveControls *-- "6" TouchButton : gear +/- (R below N), N,\ncamera, again, menu
 Pull *-- Hud
+Pull *-- EngineSound : the engine heard on the track,\nmade from the snapshot
+AudioStreamPlayer <|-- EngineSound
 Pull *-- StartScreen
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen

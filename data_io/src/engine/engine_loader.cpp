@@ -3,6 +3,7 @@
 #include "tp/core/math/curve.hpp"
 #include "tp/core/units/conversions.hpp"
 
+#include <cmath>
 #include <optional>
 #include <string_view>
 
@@ -47,6 +48,8 @@ FieldError describe(engine::ParamError error) {
             return {"engine.turbo", "need 0 <= boost_onset_rpm < full_boost_rpm"};
         case ParamError::kBoostPressureNegative:
             return {"engine.turbo.full_boost_bar", "must not be negative"};
+        case ParamError::kCylindersOutOfRange:
+            return {"engine.cylinders", "must be a whole number from 0 to 16"};
         case ParamError::kTorqueCurveNegative:
             return {"engine.torque_curve.torque_nm", "must not be negative"};
         case ParamError::kTorqueCurveDoesNotCoverRange:
@@ -74,12 +77,21 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
     // Optional, for the boost gauge only.
     const double full_boost_bar =
         reader.optional_number("engine.turbo.full_boost_bar").value_or(0.0);
+    // Optional, for the engine's sound only.
+    const double cylinders = reader.optional_number("engine.cylinders").value_or(0.0);
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;
     }
     if (!torque_curve) {
         return detail::make_error(source, "engine.torque_curve", "invalid");
     }
+    // Out of range or not whole: validate() names it, from a value it
+    // rejects.
+    const int whole_cylinders =
+        std::isfinite(cylinders) && cylinders == std::floor(cylinders) &&
+                std::abs(cylinders) <= static_cast<double>(engine::kMaxCylinders)
+            ? static_cast<int>(cylinders)
+            : -1;
 
     const engine::Params params{
         .full_load_torque_nm = *torque_curve,
@@ -95,6 +107,7 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
         .boost_onset_omega_rad_s = rpm_to_rad_s(boost_onset_rpm),
         .full_boost_omega_rad_s = rpm_to_rad_s(full_boost_rpm),
         .full_boost_pressure_pa = units::bar_to_pa(full_boost_bar),
+        .cylinders = whole_cylinders,
     };
     if (const auto error = engine::validate(params)) {
         const FieldError field_error = describe(*error);

@@ -9,6 +9,7 @@ idle_rpm = 800           # governed speed at zero throttle
 rated_rpm = 2200         # full fuel at full throttle from here down
 high_idle_rpm = 2400     # governed no-load speed at full throttle
 stall_rpm = 450
+cylinders = 4            # a four: for the engine's sound only
 
 [engine.friction]
 constant_nm = 15.0

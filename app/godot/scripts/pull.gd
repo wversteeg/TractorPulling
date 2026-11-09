@@ -130,6 +130,7 @@ var chain_view := ChainView.new()
 var cameras := CameraRig.new()
 var controls := DriveControls.new()
 var hud := Hud.new()
+var engine_sound := EngineSound.new()
 var start_screen := StartScreen.new()
 var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
@@ -186,7 +187,7 @@ var _moved_back := false
 func _ready() -> void:
 	_add_world()
 	for node: Node in [venue_view, track_view, track_marks, tractor_view, sled_view, chain_view,
-			flagman, end_flagman, hitch_marker, cameras]:
+			flagman, end_flagman, hitch_marker, cameras, engine_sound]:
 		add_child(node)
 	var marker := BoxMesh.new()
 	marker.size = Vector3(1.2, 0.02, 0.15)
@@ -476,6 +477,7 @@ func _build(error: String) -> bool:
 	if sled_view.get_child_count() == 0:
 		sled_view.build(dimensions)
 	hud.build(dimensions)
+	engine_sound.configure(dimensions)
 	cameras.cab = tractor_view.cab_camera()
 	cameras.reset_framing()
 	_build_turn(dimensions)
@@ -586,6 +588,9 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
+	# The engine is heard on the track (the pull and its result), not
+	# behind the menus.
+	engine_sound.show_snapshot(_snapshot if screen in [Screen.PULLING, Screen.RESULT] else {})
 	cameras.show_hitch(framing_hitch(_snapshot, _chain_m),
 			float(_snapshot.get("hitch_to_hook_m", 0.0)),
 			float(_snapshot.get("sled_heading_rad", 0.0)))
