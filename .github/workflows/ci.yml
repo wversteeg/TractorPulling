@@ -8,9 +8,12 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels the run on its last one. A running
+# run on a branch is never cancelled: a later push waits for it (only the
+# newest waiting run is kept), so a pages deployment is never cut short.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   LLVM_VERSION: 18
@@ -536,7 +539,9 @@ jobs:
   # The web game on GitHub Pages, https://wversteeg.github.io/TractorPulling/:
   # the export job's web game, after every push to develop whose builds,
   # tests and games all passed. Needs the repository's Settings → Pages →
-  # Source set to "GitHub Actions". One deployment at a time, none cut short.
+  # Source set to "GitHub Actions". One deployment at a time; none is cut
+  # short, as runs on develop are never cancelled (the workflow's
+  # concurrency).
   pages:
     name: pages
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
