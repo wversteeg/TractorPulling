@@ -48,6 +48,20 @@ const browserUrl = await new Promise((resolve, reject) => {
     chrome.on('exit', (code) => reject(new Error(`Chrome exited (${code}) before listening`)));
 });
 
+// The console, one line per message.
+const lines = [];
+
+// Chrome dying while the page runs (a crash, the GPU process killed) fails
+// at once, with the console so far, not at the caller's timeout.
+let finished = false;
+chrome.on('exit', (code, signal) => {
+    if (!finished) {
+        console.log(lines.join('\n'));
+        console.error(`Chrome exited (${signal ?? code}) while the page ran`);
+        process.exit(1);
+    }
+});
+
 const socket = new WebSocket(browserUrl);
 await new Promise((resolve, reject) => {
     socket.onopen = resolve;
@@ -56,7 +70,6 @@ await new Promise((resolve, reject) => {
 
 let nextId = 1;
 const pending = new Map();
-const lines = [];
 socket.onmessage = (event) => {
     const message = JSON.parse(event.data);
     if (message.id !== undefined) {
@@ -99,5 +112,6 @@ await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
 const shot = await send('Page.captureScreenshot', { format: 'png' }, sessionId);
 writeFileSync(screenshotPath, Buffer.from(shot.data, 'base64'));
 console.log(lines.join('\n'));
+finished = true;
 chrome.kill();
 process.exit(0);

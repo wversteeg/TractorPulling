@@ -38,10 +38,9 @@ endif()
 string(APPEND CMAKE_CXX_FLAGS " -fwasm-exceptions -sSUPPORT_LONGJMP=wasm")
 # Google Benchmark 1.9.4's BENCHMARK macro uses __COUNTER__, which
 # Emscripten 4.0.20's Clang calls a C2y extension under -pedantic: the
-# library builds itself with -pedantic-errors, and our benchmarks expand
-# the macro under -Wpedantic -Werror.
+# library builds itself with -pedantic-errors (our benchmarks, which expand
+# the macro under -Wpedantic -Werror, turn it off in bench/CMakeLists.txt).
 string(APPEND CMAKE_CXX_FLAGS " -Wno-c2y-extensions")
-list(APPEND TP_WARNING_FLAGS -Wno-c2y-extensions)
 string(APPEND CMAKE_EXE_LINKER_FLAGS
     " -fwasm-exceptions -sSUPPORT_LONGJMP=wasm -sNODERAWFS=1 -sALLOW_MEMORY_GROWTH=1 -sEXIT_RUNTIME=1"
     " -sSTACK_SIZE=5MB")
