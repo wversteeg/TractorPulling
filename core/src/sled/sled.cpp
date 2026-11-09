@@ -64,6 +64,8 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     // Behind the wheels the box levers the pan up, but the whole sled's
     // weight must stay at or ahead of them: further back it would tip onto
     // its tail, which the model (the pan's load held at 0) does not hold.
+    // At rest only the frame's and the box's moments count: the chain's
+    // pull only presses the pan down harder.
     if (params.frame_mass_kg * params.frame_cg_ahead_of_wheels_m +
             params.box_mass_kg * params.box_start_ahead_of_wheels_m <
         0.0) {
