@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace tp::data {
 namespace {
@@ -89,13 +90,18 @@ TEST(CareerLoader, LoadsTheShippedCareer) {
 
 // A new tractor finishes at the back: every place of every level the career
 // climbs pays, so a player at the back can still build their tractor up.
-// At the career's start (its first rung) the last place pays the garage's
-// cheapest upgrade every event; further up, one every two events (the
-// player brings money and parts from below).
+// At the career's start (its first rung, the standard class) the last place
+// pays the garage's cheapest upgrade every event; further up, one every two
+// events (the player brings money and parts from below). Within a class
+// each level pays every place at least what the level below does, so
+// moving up never cuts a back-marker's income. (Tables that grow towards
+// the back are refused on load.)
 TEST(CareerLoader, EveryPlaceOfTheShippedCareerPaysForUpgrades) {
     const auto career = load_career(kCareers / "tractor_path.toml");
     ASSERT_TRUE(career.ok()) << career.error().message;
     bool first = true;
+    const CareerRung* below = nullptr;
+    std::vector<std::int64_t> below_prizes_eur;
     for (const CareerRung& rung : career.value().rungs) {
         const auto season = load_season(rung.season, read_from_disk);
         ASSERT_TRUE(season.ok()) << rung.season;
@@ -113,7 +119,16 @@ TEST(CareerLoader, EveryPlaceOfTheShippedCareerPaysForUpgrades) {
         const std::int64_t events_an_upgrade = first ? 1 : 2;
         EXPECT_GE(d.prize_money_eur.back() * events_an_upgrade, cheapest_eur)
             << rung.season << ": the last place";
+        if (below != nullptr && below->class_name == rung.class_name) {
+            for (std::size_t place = 0; place < d.prize_money_eur.size(); ++place) {
+                EXPECT_GE(d.prize_money_eur[place], below_prizes_eur.at(place))
+                    << rung.season << ": place " << place + 1 << " pays less than "
+                    << below->level_name;
+            }
+        }
         first = false;
+        below = &rung;
+        below_prizes_eur = d.prize_money_eur;
     }
 }
 

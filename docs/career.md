@@ -352,8 +352,10 @@ tractor:
   the one below. Every place pays, so a new tractor at the back still
   climbs: in the standard class, the career's start, the 15th earns the
   garage's cheapest upgrade every event, in the Sport classes one every
-  two events. The standard class pays the most for its garage, so the
-  first upgrades come quickly. A player who buys as they earn needs about three
+  two events. Within a class each level pays every place at least about
+  10 % more than the level below, so moving up never cuts a back-marker's
+  income. The standard class pays the most for its garage, so the first
+  upgrades come quickly. A player who buys as they earn needs about three
   seasons for belofte and two for promo and top (an estimate from the
   measured places; playing will tell).
 - **The standard class has one level**, the career's warming-up for the
