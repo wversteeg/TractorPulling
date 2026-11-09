@@ -857,8 +857,9 @@ func _read_controls() -> void:
 		run.set_controls(1.0 if go else 0.0, clutch, autoplay_gear if go else 0, 0.0, 0.0, 0.0)
 		return
 	# The easy layout's run ignores the clutch and the brakes: its assist
-	# works them. Off the pull the brake pedals are latched together.
-	controls.latch_brakes(run.get_snapshot().get("stage", "pulling") != "pulling")
+	# works them. Off the pull (once the sled stands after it) the brake
+	# pedals are latched together.
+	controls.latch_brakes(not run.get_snapshot().get("pull_rules", true))
 	run.set_controls(controls.throttle(), controls.clutch(), controls.gear, controls.steering(),
 			controls.brake_left(), controls.brake_right())
 
