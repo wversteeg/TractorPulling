@@ -286,8 +286,10 @@ for the big features; they are repeated at the end for completeness.
   ranking of several full pullers on the pull-off sled is not modelled.
 - **The operator's expectations.** Each tractor's expected distance comes
   from its gear trials on the class's sled, which stop at the event's
-  maximum distance: several tractors reaching it tie, and the gap to the
-  strongest is then underestimated.
+  maximum distance: several tractors reaching it tie, and a tractor that
+  far outpulls the class counts in the average only that far. The operator
+  takes the gap to the average as the same on every sled, where on a sled
+  far too heavy the field's distances bunch up.
 
 ## Controls
 
