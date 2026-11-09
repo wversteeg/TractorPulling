@@ -56,6 +56,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 |----|-------------|--------|------------|
 | R-1 | The first pull of an event, and the first after every sled change, is a test pull; the sled operator lightens or makes heavier by it, weighing who pulled it. | met | `Event.FirstPullIsATestPull`, `Event.EasyTestPullMakesTheSledHeavier`, `Event.ShortTestPullMakesTheSledLighter`, `Event.OperatorLearnsWhatAStepIsWorth` |
 | R-11 | The sled operator sets the sled for the class as a whole: a test pull is judged by what the field's average tractor would reach on it (`sled_target_m`), not its strongest, so one tractor far stronger than the rest (a built-up player's) does not get the sled set for it alone, too heavy for everyone else. | met | `Event.OneFarStrongerTractorDoesNotSetTheSled`, `Event.TheOperatorWeighsATestPullByItsTractor` |
+| R-12 | The pull's rules hold until the sled stops, not only to the full-pull line: past a full pull (or a disqualification) the sled rolls on, and with it the gearbox goes down only by its powershift and each brake pedal brakes its own side. Once the sled stands they are off. | met | `Turn.ASledStillRollingAfterThePullStopsBeforeItIsHeld`, `Session.TheBrakesWorkTogetherOutsideThePull` |
 | R-2 | A test pull stopping between 100 m and 110 m moves the full-pull line to 110 m and leaves the sled; it counts its own distance (e.g. 104 m), not a full pull, and the board says so. | met | `Event.TestPullJustPastTheLineExtendsIt`, `flow_test.gd` |
 | R-3 | A test puller keeps the test pull or pulls again, deciding after the 3rd pull and re-pulling after the 6th. | met | `Event.TestPullBeatenByLaterTestPullsIsRepulled`, `Event.DecisionIsDueByTheEndOfTheRound` |
 | R-4 | Every full pull goes to the pull-off; the places (4) are filled up with the best pulls from 20 m short of the line in force: from 80 m on the 100 m line, from 90 m on the 110 m line. | met | `Event.QualifyingFromTwentyMetresShortOfTheLine`, `Event.QualifyingFollowsTheExtendedLine` |
@@ -81,7 +82,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | K-1 | The game's events have 15 pullers: the player and 14 named rivals. | met | `EventLoader.LoadsTheShippedEvent`, `RivalDifficulty.*` |
 | K-2 | No two of a rival's pulls are the same: grip, clutch timing and the sled pan's drag (the spot on the track) vary per pull, so the strongest two or three rivals fight for the win rather than one winning every event. The player's pull runs on the event's sled as it is (its draw is taken and dropped, so the rivals' draws do not depend on the player); varying it too is in `docs/future_improvements.md`. | met (measured with `tp_pull season`) | `Driver.EveryPullDiffersALittle`, `RivalDifficulty.*`, `LiveEvent.IsPlayEventWithThePlayerPullingAsScripted` |
 | K-3 | A new tractor finishes near the back of its class's first level; a fully upgraded one wins at its last level; each stage of the garage climbs. | met | `RivalDifficulty.*` |
-| K-4 | Winning a level's championship opens the level above, after at least two seasons on a level. | met | `Career.*` |
+| K-4 | Finishing a level's championship first or second opens the level above, after at least two seasons on a level. | met | `Career.*`, `CareerLoader.LoadsTheShippedCareer` |
 | K-5 | Upgrades only change parameters within the class's rules. | met | `Garage.*`, `ClassRules.*` |
 
 ## Controls
@@ -90,7 +91,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 |----|-------------|--------|------------|
 | C-1 | Two layouts: easy (the clutch assist works the clutch and brakes) and pro (clutch and two brakes on their own). | met | `ClutchAssist.*`, `Pro.*`, `touch_test.gd` |
 | C-2 | Steering by an on-screen slider or by tilting the phone. | met | `touch_test.gd` |
-| C-3 | In the pull each brake pedal brakes its own side; off the pull they are latched together, and the two brake sliders move as one. | met | `Session.TheBrakesWorkTogetherOutsideThePull`, `touch_test.gd` |
+| C-3 | In the pull each brake pedal brakes its own side; off the pull they are latched together, and the two brake sliders move as one. The pull lasts until the sled stops: past a full pull, while the sled rolls on, the brakes are still each side's (R-12). | met | `Session.TheBrakesWorkTogetherOutsideThePull`, `touch_test.gd` |
 | C-4 | The gear "−" stops at the lowest gear the gearbox may go to under way, and reaches N and R standing. | met | `touch_test.gd`, `turn_test.gd` |
 
 ## Game and screens
@@ -104,4 +105,5 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | U-5 | The game's icon is drawn from the menus' scene (`tools/make_icons.gd`), for the project, Android's launcher and the web game's home-screen icons. | manual | `export` job builds the APK and the web game with it |
 | U-6 | For testing (to remove before a release): "+ € 1000" in the settings adds money to the bank. | manual | `docs/future_improvements.md` |
 | U-7 | The event's results and the season's standings list every puller, not a top ten; the list scrolls with a finger, the player's row highlighted. | met | `flow_test.gd` (a fifteen-puller field on both boards; the board scrolling) |
+| U-9 | The event's results show the points each place scores in the championship (none for a disqualified pull); they add up to what the season's standings gain. | met | `SeasonPoints.AStandingScoresItsPlaceUnlessDisqualified`, `flow_test.gd` |
 | U-8 | Taking up the slack, the turn's line says how far the tractor still has to creep ("Creep forward: 0.85 m"), and a gauge under it shows the slack shrinking towards the band where it counts as taken up (green: within `turn::kReadyTautWithin_m`, 10 cm, of tight). In the band the slack is taken up without a jolt on the chain. | met | `Turn.TheSlackIsTakenUpInTheReadyBand`, `turn_test.gd` (the distance told, the gauge shown while taking up the slack), manual on screen |

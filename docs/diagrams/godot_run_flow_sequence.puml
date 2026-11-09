@@ -71,7 +71,7 @@ loop until get_event().turn is "finished"
   end
 end
 Player -> Screens : Results
-Pull -> Screens : the event's results, every puller: get_standings(),\nthe prize: get_event_prize()
+Pull -> Screens : the event's results, every puller and the points\ntheir place scores: get_standings(), the prize: get_event_prize()
 Player -> Screens : Season
 Pull -> Event : score_event() (pays the prize)
 Pull -> Pull : save: get_save() (kept once the season is over,\nfor its career)

@@ -14,7 +14,8 @@
 # from its blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its results, every puller, then the season's standings (both
 # scroll); then the next event, or a new
-# season after the last. A won championship opens the level above (or,
+# season after the last. A championship finished first or second (the
+# career's promotion_place) opens the level above (or,
 # at top, the next class) once the level has had the career's minimum
 # seasons: the season's board then asks whether to move up or stay and
 # defend the title (and the start screen offers it until the next season's
@@ -755,10 +756,7 @@ func _show_event_end() -> void:
 	var info := event.get_event()
 	board.set_title("%s  ·  results" % info.get("name", ""))
 	var standings := event.get_standings()
-	var place := 0
-	for line: Dictionary in standings:
-		if int(line["puller"]) == 0:
-			place = line["place"]
+	var place := _player_place(standings)
 	board.set_rows(EventTexts.standing_rows(standings), EventTexts.player_rows(standings), false)
 	var prize := event.get_event_prize()
 	board.set_status("You placed %d of %d%s." % [place, info.get("pullers", 0),
@@ -777,11 +775,16 @@ func _show_season() -> void:
 	var standings := event.get_season_standings()
 	board.set_rows(EventTexts.season_rows(standings), EventTexts.player_rows(standings), false)
 	var status := ""
+	var career := event.get_career()
 	if over and not standings.is_empty():
 		var champion: Dictionary = standings[0]
 		status = "You are the champion!" if int(champion["puller"]) == 0 \
 				else "%s is the champion." % champion["name"]
-	var career := event.get_career()
+		# The places that move up (the career's promotion_place) are more
+		# than the champion's: say the player made one.
+		var place := _player_place(standings)
+		if place > 1 and place <= int(career.get("promotion_place", 1)):
+			status += " You finished %s: a place that moves you up." % EventTexts.ordinal(place)
 	var next: String = career.get("next_class", "") if career.get("next_is_new_class", false) \
 			else career.get("next_level", "")
 	var to_go: int = int(career.get("min_seasons", 0)) - int(career.get("seasons", 0))
@@ -801,6 +804,14 @@ func _show_season() -> void:
 	else:
 		board.set_buttons("New season" if over else "Next event")
 	board.set_status(status.strip_edges())
+
+
+# The player's place in standings (event or season), 0 if not in them.
+static func _player_place(standings: Array) -> int:
+	for line: Dictionary in standings:
+		if int(line["puller"]) == 0:
+			return int(line["place"])
+	return 0
 
 
 func _on_board_first() -> void:
@@ -846,8 +857,9 @@ func _read_controls() -> void:
 		run.set_controls(1.0 if go else 0.0, clutch, autoplay_gear if go else 0, 0.0, 0.0, 0.0)
 		return
 	# The easy layout's run ignores the clutch and the brakes: its assist
-	# works them. Off the pull the brake pedals are latched together.
-	controls.latch_brakes(run.get_snapshot().get("stage", "pulling") != "pulling")
+	# works them. Off the pull (once the sled stands after it) the brake
+	# pedals are latched together.
+	controls.latch_brakes(not run.get_snapshot().get("pull_rules", true))
 	run.set_controls(controls.throttle(), controls.clutch(), controls.gear, controls.steering(),
 			controls.brake_left(), controls.brake_right())
 

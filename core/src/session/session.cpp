@@ -187,9 +187,9 @@ void Session::step(const Controls& controls) noexcept {
                                      .brake_right = controls.brake_right};
         input_ = controls::pro(pro, pro_, assist_, tractor, turn_.run.pull.tractor, dt_s);
         // Outside the pull the pedals are latched together, as on a road
-        // tractor: either brakes both. In the pull they are each side's, to
-        // steer the tractor on the track.
-        if (turn_.stage != turn::Stage::kPulling) {
+        // tractor: either brakes both. In the pull, until the sled stops,
+        // they are each side's, to steer the tractor on the track.
+        if (!turn::pull_rules_apply(turn_)) {
             const double both = std::max(input_.brake_left, input_.brake_right);
             input_.brake_left = both;
             input_.brake_right = both;
@@ -248,7 +248,8 @@ Snapshot Session::snapshot() const noexcept {
             .hitch_across_m = gap.across_m,
             .chain_slack_m = turn::chain_slack_m(model_, pull),
             .flag_progress = flag_progress,
-            .sled_back = turn_.sled_back};
+            .sled_back = turn_.sled_back,
+            .pull_rules = turn::pull_rules_apply(turn_)};
 }
 
 std::uint64_t Session::hash() const noexcept {
