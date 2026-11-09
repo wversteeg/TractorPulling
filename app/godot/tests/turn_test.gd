@@ -118,7 +118,7 @@ func _play() -> void:
 	var full_pull_m: float = dimensions["full_pull_line_m"]
 	# The turn starts with the sled on its transport wheels, lifted before
 	# the pull and down again to drive back.
-	var transport_down_at_start := sled.transport == 1.0
+	var transport_down_at_start := sled.transport > 0.9
 	var transport_up_pulling := true
 	var transport_down_driving_back := false
 	for frame in MAX_FRAMES:
