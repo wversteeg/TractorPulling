@@ -8,7 +8,9 @@
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure. "Start" (for testing a class) picks the
 # rung of the career's ladder, a class at a level, the new career starts on.
-# "+ € 1000" (for testing, for now) puts that much in the bank.
+# "+ € 1000" (for testing, for now) puts that much in the bank. The build
+# (BuildInfo) shows small at the panel's bottom edge, so a tester can say
+# which one they play.
 class_name SettingsScreen
 extends MenuPanel
 
@@ -24,6 +26,8 @@ const SETTINGS_SIZE := Vector2(960.0, 680.0)
 const TITLE_SIZE := 36
 const LINE_SIZE := 26
 const HINT_SIZE := 20
+const BUILD_SIZE := 16
+const BUILD_COLOUR := Color(0.75, 0.75, 0.75)
 # Lower than the other screens' buttons: four rows fit the screen's height.
 const SETTING_BUTTON_SIZE := Vector2(200.0, 70.0)
 # Narrower, so the last row's four buttons fit the panel.
@@ -46,6 +50,8 @@ var new_career_button: TouchButton
 var start_button: TouchButton
 var money_button: TouchButton
 var done_button: TouchButton
+# The build, in the panel's bottom padding, below the last row.
+var build_label := Label.new()
 var _hint: Label
 var _pro := false
 var _tilt := false
@@ -121,6 +127,18 @@ func _ready() -> void:
 	new_career_button.tapped.connect(_ask_new_career)
 	start_button.tapped.connect(_next_start)
 	money_button.tapped.connect(func() -> void: money_requested.emit(TEST_MONEY_EUR))
+	build_label.text = BuildInfo.describe()
+	build_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	build_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	build_label.add_theme_font_size_override("font_size", BUILD_SIZE)
+	build_label.add_theme_color_override("font_color", BUILD_COLOUR)
+	build_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	build_label.set_anchors_preset(Control.PRESET_CENTER)
+	build_label.offset_left = -panel_size.x / 2.0
+	build_label.offset_right = panel_size.x / 2.0
+	build_label.offset_top = panel_size.y / 2.0 - PADDING
+	build_label.offset_bottom = panel_size.y / 2.0
+	add_child(build_label)
 
 
 # Shows the settings as they are; `tilt_available` whether the device can

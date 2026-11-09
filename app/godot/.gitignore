@@ -4,3 +4,5 @@
 # (the project's own, not tests/data/).
 /bin/
 /data/
+# Written by scripts/godot_export.sh for the export, and removed after it.
+/build_info.cfg

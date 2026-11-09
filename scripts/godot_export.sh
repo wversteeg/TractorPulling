@@ -82,6 +82,35 @@ set_editor_setting() {
 set_editor_setting export/android/android_sdk_path "${ANDROID_HOME}"
 set_editor_setting export/android/java_sdk_path "${JAVA_HOME}"
 
+# The build: its number counts the commits along the first parents, so each
+# merge commit on develop adds one, and its commit names the source. The
+# game reads them from build_info.cfg (BuildInfo, shown in the settings);
+# the file is removed after the export, so the project itself stays a
+# development build. A shallow clone would count wrong: CI checks out the
+# whole history.
+#
+# A pull request's build (TP_PR_NUMBER and TP_PR_HEAD set, as CI does on a
+# pull request) is checked out as GitHub's merge commit, which no branch
+# keeps: it is marked with the PR instead, numbered as the develop it
+# builds on (the merge's first parent), and names the PR's own head commit.
+if [[ "$(git -C "${root}" rev-parse --is-shallow-repository)" == true ]]; then
+    echo "a shallow clone: the build number needs the whole history (git fetch --unshallow)" >&2
+    exit 1
+fi
+build_pr="${TP_PR_NUMBER:-0}"
+if [[ "${build_pr}" -gt 0 ]]; then
+    build_number="$(git -C "${root}" rev-list --count --first-parent HEAD^1)"
+    build_commit="$(git -C "${root}" rev-parse --short "${TP_PR_HEAD:?TP_PR_HEAD: the PR head commit}")"
+else
+    build_number="$(git -C "${root}" rev-list --count --first-parent HEAD)"
+    build_commit="$(git -C "${root}" rev-parse --short HEAD)"
+fi
+readonly build_pr build_number build_commit
+printf '[build]\nnumber=%d\ncommit="%s"\npr=%d\n' "${build_number}" "${build_commit}" \
+    "${build_pr}" >"${project}/build_info.cfg"
+trap 'rm -f "${project}/build_info.cfg"' EXIT
+echo "build ${build_number} (${build_commit}), PR ${build_pr}"
+
 # Exports one preset to `path`; Godot may exit 0 after an error, so the
 # file is checked too.
 export_preset() {

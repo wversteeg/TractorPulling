@@ -191,6 +191,8 @@ var _moved_back := false
 
 
 func _ready() -> void:
+	# In the log first, so a tester's console says which build it was.
+	print("Tractor Pulling, ", BuildInfo.describe())
 	_add_world()
 	for node: Node in [venue_view, track_view, track_marks, tractor_view, sled_view, chain_view,
 			flagman, end_flagman, hitch_marker, cameras, engine_sound]:
