@@ -7,8 +7,8 @@
 # throttle; and the turbo's air and a faint whistle with the boost. It
 # speeds up and slows down with the engine, grows louder with the throttle
 # and harder as the sled pulls the revs down, and falls silent when the
-# engine stops. Soft saturation, never hard clipping, keeps it from
-# crackling when it is loudest.
+# engine stops. Above a knee a soft saturation, never hard clipping, keeps
+# it from crackling when it is loudest; below it the sound is untouched.
 #
 # A four-stroke fires cylinders / 2 times a turn, so a six at 2500 rpm
 # fires at 125 Hz. The samples come from sample_frames(), which needs no
@@ -70,15 +70,18 @@ const TURBO_FULL_HZ := 2600.0
 const TURBO_LOW_SHARE := 0.4
 # Loudness: at idle, at full throttle, and the extra when the sled pulls
 # the engine down from its rated speed (lugging).
-const IDLE_VOLUME := 0.3
-const FULL_VOLUME := 0.85
-const LUGGING_VOLUME := 0.15
+const IDLE_VOLUME := 0.24
+const FULL_VOLUME := 0.64
+const LUGGING_VOLUME := 0.11
 # How quickly the sound follows the engine, as a time constant [s]: smooth
 # between frames, no clicks.
 const FOLLOW_S := 0.05
 # The output's DC blocker (a one-pole high-pass): the thud's pressure
 # pulses push one way only, and a speaker should not be held out.
 const DC_BLOCK := 0.995
+# Up to this level the sound passes as it is; above it, it bends softly
+# towards full scale (tanh), never past it.
+const SATURATION_KNEE := 0.6
 # Quieter than this, heading for silence, the sound is silent [0..1].
 const SILENT := 1e-4
 
@@ -102,7 +105,8 @@ var _volume := 0.0
 var _fire_phase := 0.0
 var _turbo_phase := 0.0
 var _next_firing := 1.0
-# The burst now: its envelope, and its strength.
+# The burst's envelope now (its strength when it fires), and the
+# clatter's, which dies away faster.
 var _burst := 0.0
 var _clatter := 0.0
 # The filters' memories: the exhaust's resonator (two in, two out), the
@@ -120,6 +124,8 @@ var _last_noise := 0.0
 var _air := 0.0
 var _dc_in := 0.0
 var _dc_out := 0.0
+# The loudest sample before the saturation since last asked, for tests.
+var _peak_before_saturation := 0.0
 var _random := RandomNumberGenerator.new()
 var _playback: AudioStreamGeneratorPlayback = null
 
@@ -194,7 +200,9 @@ func sample_frames(count: int) -> PackedVector2Array:
 	var target_volume := loudness(_target_running, _target_omega_rad_s, _target_throttle)
 	# The filters follow the engine once a frame: it hardly changes within
 	# one, and the coefficients are what cost.
-	var firing_rate_hz := maxf(firing_hz(_target_omega_rad_s, cylinders), 1.0)
+	# From the speed the sound has reached, not the snapshot's: the filters
+	# then move with the firing rate, without steps on a quick change.
+	var firing_rate_hz := maxf(firing_hz(_omega_rad_s, cylinders), 1.0)
 	var burst_decay := exp(-1.0 / (BURST_SHARE / firing_rate_hz * MIX_RATE_HZ))
 	var clatter_decay := pow(burst_decay, CLATTER_SHARPNESS)
 	var exhaust := _resonator(clampf(EXHAUST_PITCH_PER_FIRING * firing_rate_hz,
@@ -240,7 +248,8 @@ func sample_frames(count: int) -> PackedVector2Array:
 		_bk_y1 = bark
 		var knock := (noise - _last_noise) * _clatter * (0.3 + 0.7 * _throttle)
 		_last_noise = noise
-		var engine := EXHAUST_LEVEL * ring + BARK_LEVEL * bark + THUD_LEVEL * _burst * _burst + CLATTER_LEVEL * knock
+		var engine := EXHAUST_LEVEL * ring + BARK_LEVEL * bark + THUD_LEVEL * _burst * _burst \
+				+ CLATTER_LEVEL * knock
 		_muffled += (engine - _muffled) * muffler
 		# The turbo: air rushing (noise smoothed near its pitch) and a
 		# faint whistle, both with the boost.
@@ -253,9 +262,8 @@ func sample_frames(count: int) -> PackedVector2Array:
 		_dc_out = mixed - _dc_in + DC_BLOCK * _dc_out
 		_dc_in = mixed
 		var sample := _dc_out * _volume
-		# Soft saturation: loud stays round, never clips.
-		sample = sample / (1.0 + absf(sample))
-		out[i] = Vector2(sample, sample)
+		_peak_before_saturation = maxf(_peak_before_saturation, absf(sample))
+		out[i] = Vector2.ONE * saturated(sample)
 	return out
 
 
@@ -267,6 +275,24 @@ static func _resonator(pitch_hz: float, q: float) -> PackedFloat64Array:
 	var alpha := sin(w) / (2.0 * q)
 	var a0 := 1.0 + alpha
 	return PackedFloat64Array([alpha / a0, -2.0 * cos(w) / a0, (1.0 - alpha) / a0])
+
+
+# Linear up to SATURATION_KNEE; above it, a tanh's soft bend that meets
+# the line smoothly there and never goes past full scale.
+static func saturated(x: float) -> float:
+	var level := absf(x)
+	if level <= SATURATION_KNEE:
+		return x
+	var room := 1.0 - SATURATION_KNEE
+	return signf(x) * (SATURATION_KNEE + room * tanh((level - SATURATION_KNEE) / room))
+
+
+# The loudest sample before the saturation since the last call, for tests:
+# how far into the knee the sound goes.
+func peak_before_saturation() -> float:
+	var peak := _peak_before_saturation
+	_peak_before_saturation = 0.0
+	return peak
 
 
 # How loud the sound is now, 0 to 1, for tests.
