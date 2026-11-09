@@ -177,7 +177,7 @@ jobs:
       - uses: ./.github/actions/ccache
         with:
           name: android-${{ matrix.abi }}
-          max-size: 1G
+          max-size: 500M
 
       - name: Configure
         run: cmake --preset android-${{ matrix.abi }}
@@ -266,7 +266,7 @@ jobs:
       - uses: ./.github/actions/ccache
         with:
           name: godot
-          max-size: 1G
+          max-size: 500M
 
       - name: Configure
         run: cmake --preset godot
@@ -333,7 +333,7 @@ jobs:
       - uses: ./.github/actions/ccache
         with:
           name: windows
-          max-size: 1G
+          max-size: 500M
 
       - name: Build
         run: |
@@ -387,7 +387,7 @@ jobs:
       - uses: ./.github/actions/ccache
         with:
           name: web
-          max-size: 1G
+          max-size: 500M
 
       # Emscripten's own SDK at its release tag, not a third-party action.
       - name: Install Emscripten

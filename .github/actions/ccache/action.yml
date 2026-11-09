@@ -11,7 +11,7 @@ inputs:
     required: true
   max-size:
     description: The cache's size limit; ccache drops the oldest entries past it.
-    default: 500M
+    default: 300M
 runs:
   using: composite
   steps:
