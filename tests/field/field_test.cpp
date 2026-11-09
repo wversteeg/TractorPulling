@@ -126,16 +126,19 @@ TEST(PullRules, OnlyTestPullsAndPullOffsRunPastTheLine) {
     EXPECT_EQ(trial_pull_rules(rules, venue, 100.0).lane_width_m, 12.0);
 }
 
-// Every puller may compete in the class, even where the ranges reach past
-// its limits: power and weight are clamped to them.
 // A driver whose gear trials did not get the sled going in any gear takes
 // the lowest, which pulls hardest; otherwise the trials' best.
 TEST(Field, NoGearGettingTheSledGoingMeansTheLowest) {
-    EXPECT_EQ(gear_for_the_day(7, 0.3, 3), 3);
-    EXPECT_EQ(gear_for_the_day(7, kGetsTheSledGoing_m, 3), 7);
-    EXPECT_EQ(gear_for_the_day(5, 60.0, 3), 5);
+    const GearTrial lowest{.gear = 3, .distance_m = 0.1};
+    const GearTrial stuck = gear_for_the_day({.gear = 7, .distance_m = 0.3}, lowest);
+    EXPECT_EQ(stuck.gear, 3);
+    EXPECT_EQ(stuck.distance_m, 0.1) << "the lowest gear's own distance";
+    EXPECT_EQ(gear_for_the_day({.gear = 7, .distance_m = kGetsTheSledGoing_m}, lowest).gear, 7);
+    EXPECT_EQ(gear_for_the_day({.gear = 5, .distance_m = 60.0}, lowest).gear, 5);
 }
 
+// Every puller may compete in the class, even where the ranges reach past
+// its limits: power and weight are clamped to them.
 TEST(Field, EveryPullerMayCompete) {
     const Field field = field_of(event::kMaxPullers, 7);
     EXPECT_EQ(field.count, event::kMaxPullers);

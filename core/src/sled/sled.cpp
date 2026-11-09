@@ -61,6 +61,14 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
         !within(params.box_end_ahead_of_wheels_m, 0.0, pan_m)) {
         return ParamError::kBoxOutsideSled;
     }
+    // Behind the wheels the box levers the pan up, but the whole sled's
+    // weight must stay at or ahead of them: further back it would tip onto
+    // its tail, which the model (the pan's load held at 0) does not hold.
+    if (params.frame_mass_kg * params.frame_cg_ahead_of_wheels_m +
+            params.box_mass_kg * params.box_start_ahead_of_wheels_m <
+        0.0) {
+        return ParamError::kSledTipsBack;
+    }
     if (params.box_travel_distance_m <= 0.0) {
         return ParamError::kBoxTravelNotPositive;
     }
@@ -172,6 +180,13 @@ Params adjusted(const Params& params, const Adjustment& adjustment, int times) n
         std::clamp(params.knives.depth_m + n * adjustment.knife_depth_m, 0.0, kMaxKnifeDepth_m);
     out.pushdown_start_m =
         std::max(params.pushdown_start_m - n * adjustment.pushdown_earlier_m, 0.0);
+    // A box made heavier behind the wheels starts no further back than the
+    // sled balances on them: further, it would tip onto its tail.
+    if (out.box_mass_kg > 0.0) {
+        out.box_start_ahead_of_wheels_m =
+            std::max(out.box_start_ahead_of_wheels_m,
+                     -params.frame_mass_kg * params.frame_cg_ahead_of_wheels_m / out.box_mass_kg);
+    }
     return out;
 }
 

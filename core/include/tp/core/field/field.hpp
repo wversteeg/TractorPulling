@@ -139,10 +139,10 @@ inline constexpr double kGetsTheSledGoing_m = 2.0;
                                                        const track::Params& track, int lowest,
                                                        int highest,
                                                        const run::Rules& rules) noexcept;
-/// The gear for the day from the trials' best: `best_gear`, unless it did
-/// not get the sled going (`best_m` short of kGetsTheSledGoing_m), then
-/// `lowest`.
-[[nodiscard]] int gear_for_the_day(int best_gear, double best_m, int lowest) noexcept;
+/// The gear for the day from the trials: `best`, unless it did not get the
+/// sled going (short of kGetsTheSledGoing_m), then `lowest`, the lowest
+/// gear's own trial (its gear and how far it went).
+[[nodiscard]] GearTrial gear_for_the_day(const GearTrial& best, const GearTrial& lowest) noexcept;
 /// best_gear_trial()'s gear.
 [[nodiscard]] std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
                                            const track::Params& track, int lowest, int highest,

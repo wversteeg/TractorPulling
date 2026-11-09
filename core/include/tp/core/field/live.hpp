@@ -134,9 +134,9 @@ private:
     static std::int64_t step_job(Job& job, std::int64_t max_steps) noexcept;
     /// After a gear trial: the next gear, or the puller's guess.
     void finish_trial(double reached_m) noexcept;
-    /// The trial puller's gear for the day from the best, then the next
-    /// puller, or the event once all have one.
-    void choose(int best) noexcept;
+    /// The trial puller's gear for the day (gear_for_the_day()) and how far
+    /// it went, then the next puller, or the event once all have one.
+    void choose(const GearTrial& day) noexcept;
     /// After a rival's pull at the event.
     void finish_pull(const run::Result& result) noexcept;
     /// Settles what needs no steps: the rivals' decisions.
@@ -158,6 +158,8 @@ private:
     int trial_gear_ = 0;
     int best_gear_ = 0;
     double best_m_ = -1.0;
+    /// How far the trial puller's lowest gear went [m].
+    double lowest_m_ = 0.0;
     std::array<int, event::kMaxPullers> gears_{};
     /// The rival's pull in progress at the event, and the puller as they are
     /// on it.
