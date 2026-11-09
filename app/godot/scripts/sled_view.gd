@@ -45,10 +45,15 @@ const BERM_WIDTH_M := WIDTH_M + 0.2  # across the pan, spilling a little past it
 const RAIL_HEIGHT_M := 0.25
 # How far the rails reach behind the wheels: the sled's rear [m].
 const REAR_BEHIND_WHEELS_M := 0.7
-# The operator's platform: its front edge behind the wheels [m], kept this
-# far behind the weight box where the box starts behind the wheels.
+# The operator's platform: its front edge behind the wheels [m]. Where the
+# weight box starts behind the wheels, under it, the platform stands raised
+# on stilts with this much room over the box [m], as real sleds' operators
+# sit high at the back with the box running beneath them.
 const PLATFORM_FRONT_M := -0.5
 const PLATFORM_GAP_M := 0.1
+const STILT_M := 0.08
+# The box rides this far above the rails [m].
+const BOX_LIFT_M := 0.12
 const RAIL_GAP_M := 1.7
 const BOX_SIZE_M := Vector3(2.0, 1.0, 1.6)
 const PAN_DEPTH_M := 1.2
@@ -72,9 +77,11 @@ const BLOCK_ROWS := 3
 const BLOCK_LAYERS := 4
 
 var _box := Node3D.new()
-# How far the platform and the rails' rear end move back to clear the box
-# where it starts behind the wheels [m, negative: back].
-var _platform_shift_m := 0.0
+# How high the platform stands above the rails to clear the box where it
+# starts beneath it [m], and where the rails end behind the wheels, under
+# the box at its start [m, negative: behind].
+var _platform_up_m := 0.0
+var _rear_m := -REAR_BEHIND_WHEELS_M
 var _box_weights: MultiMeshInstance3D = null
 # The pan and its lip, lifted on the transport wheels; the wheels on their
 # arms, down when `transport` is 1.
@@ -116,12 +123,15 @@ func build(d: Dictionary) -> void:
 	var wheel_width_m: float = d["sled_wheel_width_m"]
 	var rail_z_m := _wheel_height_m + RAIL_HEIGHT_M
 	# The box's rear at its start, behind the wheels on a sled whose box
-	# starts there: the platform goes behind it.
+	# starts there: under the platform, which is raised over it, and the
+	# rails reach back beneath it.
 	var box_rear_m := float(d.get("box_start_ahead_of_wheels_m", 0.0)) - BOX_SIZE_M.z / 2.0
-	_platform_shift_m = minf(0.0, box_rear_m - PLATFORM_GAP_M - PLATFORM_FRONT_M)
+	var under_platform := box_rear_m < PLATFORM_FRONT_M + PLATFORM_GAP_M
+	_platform_up_m = BOX_LIFT_M + BOX_SIZE_M.y + PLATFORM_GAP_M if under_platform else 0.0
+	_rear_m = minf(-REAR_BEHIND_WHEELS_M, box_rear_m - PLATFORM_GAP_M)
 
 	# Two rails, cross members, and the gooseneck down to the hook.
-	var rail_from_m := -REAR_BEHIND_WHEELS_M + _platform_shift_m
+	var rail_from_m := _rear_m
 	var rail_to_m := pan_ahead_m + 0.2
 	for side: float in [-1.0, 1.0]:
 		var rail := _painted(Vector3(0.16, 0.24, rail_to_m - rail_from_m), PAINT)
@@ -331,38 +341,49 @@ func _build_box() -> void:
 # The operator's platform behind the wheels: a seat, the operator, the
 # controls, and the lamp on its mast.
 func _build_platform(rail_z_m: float) -> void:
-	var deck := Art.box(Vector3(1.4, 0.06, 0.9), STEEL, 0.5, 0.5)
-	deck.position = TrackSpace.point(-0.95 + _platform_shift_m, 0.0, rail_z_m)
+	# Raised over the box where it starts beneath: four stilts from the
+	# rails up to the deck.
+	if _platform_up_m > 0.0:
+		for x_m: float in [-1.35, -0.55]:
+			for side: float in [-1.0, 1.0]:
+				var stilt := _painted(Vector3(STILT_M, _platform_up_m, STILT_M), PAINT_DARK)
+				stilt.position = TrackSpace.point(x_m, side * (BOX_SIZE_M.x / 2.0 + STILT_M),
+						rail_z_m + _platform_up_m / 2.0)
+				add_child(stilt)
+	var deck_z_m := rail_z_m + _platform_up_m
+	var deck_width_m := BOX_SIZE_M.x + 3.0 * STILT_M if _platform_up_m > 0.0 else 1.4
+	var deck := Art.box(Vector3(deck_width_m, 0.06, 0.9), STEEL, 0.5, 0.5)
+	deck.position = TrackSpace.point(-0.95, 0.0, deck_z_m)
 	add_child(deck)
 	var seat := Art.box(Vector3(0.45, 0.1, 0.45), DARK)
-	seat.position = TrackSpace.point(-1.05 + _platform_shift_m, 0.0, rail_z_m + 0.45)
+	seat.position = TrackSpace.point(-1.05, 0.0, deck_z_m + 0.45)
 	add_child(seat)
 	var stand := Art.box(Vector3(0.1, 0.4, 0.1), DARK)
-	stand.position = TrackSpace.point(-1.05 + _platform_shift_m, 0.0, rail_z_m + 0.2)
+	stand.position = TrackSpace.point(-1.05, 0.0, deck_z_m + 0.2)
 	add_child(stand)
 	var controls := _painted(Vector3(0.5, 0.5, 0.25), PAINT_DARK)
-	controls.position = TrackSpace.point(-0.65 + _platform_shift_m, 0.35, rail_z_m + 0.35)
+	controls.position = TrackSpace.point(-0.65, 0.35, deck_z_m + 0.35)
 	add_child(controls)
 	# In a high-visibility shirt, seated facing the tractor (TrackSpace's x
 	# is the world's -z; People face +z), their hips on the seat.
 	var operator := People.one(true, OPERATOR)
 	operator.rotation.y = PI
-	operator.position = TrackSpace.point(-0.63 + _platform_shift_m, 0.0, rail_z_m + 0.05)
+	operator.position = TrackSpace.point(-0.63, 0.0, deck_z_m + 0.05)
 	add_child(operator)
 	# A canopy over the operator, on four posts; the lamp's mast rises
 	# through it, so the puller sees the lamp from the seat.
 	for x_m: float in [-1.35, -0.55]:
 		for side: float in [-1.0, 1.0]:
 			var post := Art.box(Vector3(0.05, CANOPY_M, 0.05), DARK, 0.5, 0.4)
-			post.position = TrackSpace.point(x_m + _platform_shift_m, side * 0.62,
-					rail_z_m + CANOPY_M / 2.0)
+			post.position = TrackSpace.point(x_m, side * 0.62,
+					deck_z_m + CANOPY_M / 2.0)
 			add_child(post)
 	var canopy := _painted(Vector3(1.5, 0.05, 1.1), PAINT)
-	canopy.position = TrackSpace.point(-0.95 + _platform_shift_m, 0.0, rail_z_m + CANOPY_M)
+	canopy.position = TrackSpace.point(-0.95, 0.0, deck_z_m + CANOPY_M)
 	add_child(canopy)
 	var mast := Art.cylinder(0.04, CANOPY_M + 0.5, STEEL, 8, 0.4, 0.6)
-	mast.position = TrackSpace.point(-1.4 + _platform_shift_m, -0.5,
-			rail_z_m + (CANOPY_M + 0.5) / 2.0)
+	mast.position = TrackSpace.point(-1.4, -0.5,
+			deck_z_m + (CANOPY_M + 0.5) / 2.0)
 	add_child(mast)
 	var lamp_mesh := SphereMesh.new()
 	lamp_mesh.radius = 0.14
@@ -371,7 +392,7 @@ func _build_platform(rail_z_m: float) -> void:
 	_lamp_material.emission_enabled = true
 	_lamp_material.emission_energy_multiplier = 2.0
 	_lamp.material_override = _lamp_material
-	_lamp.position = TrackSpace.point(-1.4 + _platform_shift_m, -0.5, rail_z_m + CANOPY_M + 0.6)
+	_lamp.position = TrackSpace.point(-1.4, -0.5, deck_z_m + CANOPY_M + 0.6)
 	add_child(_lamp)
 
 
@@ -389,14 +410,14 @@ func hook_position() -> Vector3:
 # The middle of the sled's rear on the ground, in the world: where it sits
 # and points, the dog-tail included.
 func rear_position() -> Vector3:
-	return global_transform * TrackSpace.point(-REAR_BEHIND_WHEELS_M + _platform_shift_m, 0.0, 0.0)
+	return global_transform * TrackSpace.point(_rear_m, 0.0, 0.0)
 
 
 func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 	position = TrackSpace.point(s["sled_x_m"], s["sled_y_m"], 0.0)
 	rotation.y = s["sled_heading_rad"]
 	_box.position = TrackSpace.point(s["box_ahead_of_wheels_m"], 0.0,
-			_wheel_height_m + RAIL_HEIGHT_M + 0.12 + BOX_SIZE_M.y / 2.0)
+			_wheel_height_m + RAIL_HEIGHT_M + BOX_LIFT_M + BOX_SIZE_M.y / 2.0)
 	_wheel_angle -= float(s["sled_speed_m_s"]) / _wheel_height_m * delta
 	for spin in _wheel_spin:
 		spin.rotation.x = wrapf(_wheel_angle, -PI, PI)
