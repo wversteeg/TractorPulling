@@ -652,15 +652,28 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@v5
 
+  # On a pull request, clang-tidy checks only the source files the change
+  # touches or that include a file it touches (scripts/tidy_files.py, with
+  # clang-scan-deps); a change to .clang-tidy, the build or this workflow,
+  # and every push to a branch, check everything.
   clang-tidy:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # A pull request's merge commit and its first parent, the base.
+          fetch-depth: 2
 
       - name: Install tools
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q ninja-build clang-tidy-${LLVM_VERSION}
+          sudo apt-get install -y -q ninja-build clang-tidy-${LLVM_VERSION} clang-tools-${LLVM_VERSION}
+
+      - name: List the changed files
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff --name-only HEAD^1 HEAD | tee "${RUNNER_TEMP}/changed.txt"
+          echo "TIDY_CHANGED=${RUNNER_TEMP}/changed.txt" >> "$GITHUB_ENV"
 
       - name: Configure
         env:
@@ -668,10 +681,17 @@ jobs:
         run: cmake --preset debug
 
       - name: Run clang-tidy
-        run: >
-          run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug
-          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
-          "$PWD/(core|data_io|tests|tools|bench)/"
+        run: |
+          files=$(scripts/tidy_files.py build/debug '^(core|data_io|tests|tools|bench)/' \
+            ${TIDY_CHANGED:+"$TIDY_CHANGED"})
+          if [[ -z "${files}" ]]; then
+            echo "no source file to check"
+            exit 0
+          fi
+          mapfile -t files <<< "${files}"
+          echo "checking ${#files[@]} source files"
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/debug \
+            -clang-tidy-binary clang-tidy-${LLVM_VERSION} "${files[@]}"
 
       # The Godot extension needs godot-cpp's generated headers, so it gets
       # its own build tree.
@@ -683,10 +703,17 @@ jobs:
           cmake --build --preset godot --target generate_bindings
 
       - name: Run clang-tidy on the Godot extension
-        run: >
-          run-clang-tidy-${LLVM_VERSION} -quiet -p build/godot
-          -clang-tidy-binary clang-tidy-${LLVM_VERSION}
-          "$PWD/app/godot/extension/"
+        run: |
+          files=$(scripts/tidy_files.py build/godot '^app/godot/extension/' \
+            ${TIDY_CHANGED:+"$TIDY_CHANGED"})
+          if [[ -z "${files}" ]]; then
+            echo "no source file to check"
+            exit 0
+          fi
+          mapfile -t files <<< "${files}"
+          echo "checking ${#files[@]} source files"
+          run-clang-tidy-${LLVM_VERSION} -quiet -p build/godot \
+            -clang-tidy-binary clang-tidy-${LLVM_VERSION} "${files[@]}"
 
   format:
     runs-on: ubuntu-24.04

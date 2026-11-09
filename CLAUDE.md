@@ -180,6 +180,13 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull check data/tractors/farm_stock_light.toml \
     data/classes/ntto_standard_3500.toml
 
+# clang-tidy on the files a branch changes and those that include them, as
+# CI does on pull requests (clang-scan-deps, from clang-tools-18, finds the
+# includes); without the list, every file
+git diff --name-only develop... > changed.txt
+run-clang-tidy-18 -p build/debug \
+    $(scripts/tidy_files.py build/debug '^(core|data_io|tests|tools|bench)/' changed.txt)
+
 # Android (needs ANDROID_NDK_HOME; CI pins NDK 29.0.14206865, Godot's): build
 # for phones or the emulator, then run the tests on a device over adb
 cmake --preset android-arm64 && cmake --build --preset android-arm64
