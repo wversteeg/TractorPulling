@@ -216,6 +216,7 @@ package "GDScript (app/godot/scripts)" {
     +new_career_button, start_button, done_button : TouchButton
     +sound_on_button, sound_off_button, haptics_button : TouchButton
     +money_button : TouchButton, for testing
+    +build_label : Label, the build at the bottom
     +show_settings(pro, tilt, tilt_available, guidance, rungs, sound)
     +show_money(money_eur)
     +start_rung() : int
@@ -240,6 +241,11 @@ package "GDScript (app/godot/scripts)" {
     +{static} euros(amount) : String
     ..signals..
     buy_requested(index), done
+  }
+  class BuildInfo {
+    which build this is, from res://build_info.cfg
+    (scripts/godot_export.sh writes it from git)
+    +{static} describe(path) : String
   }
   class GameSettings {
     +pro, tilt, guidance, sound : bool
@@ -384,6 +390,8 @@ Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen
 MenuPanel <|-- GarageScreen
 Pull ..> GameSettings : read at the start,\nwritten on a change
+SettingsScreen ..> BuildInfo : shows
+Pull ..> BuildInfo : prints at the start
 StartScreen *-- GearButton
 TouchButton <|-- GearButton
 MenuPanel <|-- SettingsScreen

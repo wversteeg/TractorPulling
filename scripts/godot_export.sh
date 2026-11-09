@@ -82,6 +82,23 @@ set_editor_setting() {
 set_editor_setting export/android/android_sdk_path "${ANDROID_HOME}"
 set_editor_setting export/android/java_sdk_path "${JAVA_HOME}"
 
+# The build: its number counts the commits along the first parents, so each
+# merge to develop adds one, and its commit names the source. The game reads
+# them from build_info.cfg (BuildInfo, shown in the settings); the file is
+# removed after the export, so the project itself stays a development
+# build. A shallow clone would count wrong: CI checks out the whole history.
+if [[ "$(git -C "${root}" rev-parse --is-shallow-repository)" == true ]]; then
+    echo "a shallow clone: the build number needs the whole history (git fetch --unshallow)" >&2
+    exit 1
+fi
+build_number="$(git -C "${root}" rev-list --count --first-parent HEAD)"
+build_commit="$(git -C "${root}" rev-parse --short HEAD)"
+readonly build_number build_commit
+printf '[build]\nnumber=%d\ncommit="%s"\n' "${build_number}" "${build_commit}" \
+    >"${project}/build_info.cfg"
+trap 'rm -f "${project}/build_info.cfg"' EXIT
+echo "build ${build_number} (${build_commit})"
+
 # Exports one preset to `path`; Godot may exit 0 after an error, so the
 # file is checked too.
 export_preset() {

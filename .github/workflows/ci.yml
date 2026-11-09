@@ -384,6 +384,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The whole history: the build number counts develop's merges
+          # (scripts/godot_export.sh).
+          fetch-depth: 0
 
       - name: Install Ninja
         run: |

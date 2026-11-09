@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Checks the exported web game starts in a browser: serves the export over
-# HTTP, opens it in headless Chrome, and expects the season loaded through
+# HTTP, opens it in headless Chrome, and expects its build named
+# ("Tractor Pulling, Build N · <commit>"), the season loaded through
 # the extension ("A season of N events, M pullers, ...; K data files", K
 # the number of .toml files in data/) and no error in the console. Leaves
 # the console in <web export>/../web_console.log and a screenshot in
@@ -48,6 +49,11 @@ done
 timeout $((seconds + 60)) node "${root}/scripts/web_console.mjs" "${chrome}" \
     "http://127.0.0.1:${port}/index.html" "${seconds}" "${screenshot}" | tee "${log}"
 
+# The export carries its build's number (scripts/godot_export.sh).
+if ! grep -qE '^log: Tractor Pulling, Build [0-9]+ · [0-9a-f]+$' "${log}"; then
+    echo "the web game does not name its build" >&2
+    exit 1
+fi
 if ! grep -qE '^log: A season of [0-9]+ events, [0-9]+ pullers' "${log}"; then
     echo "the web game did not start its season" >&2
     exit 1

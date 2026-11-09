@@ -665,6 +665,12 @@ ANDROID_HOME=~/Android/Sdk JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
 scripts/web_game_test.sh build/export/web   # the web game starts in headless Chrome
 ```
 
+Each export carries its build: "Build N · commit" at the bottom of the
+settings and first in the game's log. N counts the commits along the
+first parents, so every merge to `develop` adds one; the script needs the
+whole history for it (`git fetch --unshallow` in a shallow clone). A game
+run from the project itself says "Development build".
+
 The Windows extension is cross-compiled with MinGW-w64
 (`g++-mingw-w64-x86-64-posix` on Debian and Ubuntu), as Godot builds its
 own Windows releases; the preset builds `tp_pull.exe` too. CI runs it on
