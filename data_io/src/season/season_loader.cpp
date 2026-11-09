@@ -117,12 +117,7 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
 
 Result<SeasonDefinition> parse_season(std::string_view toml_text, std::string_view source_name,
                                       std::string_view base_directory, const ReadFile& read) {
-    try {
-        const toml::table root = toml::parse(toml_text, source_name);
-        return read_season(root, source_name, base_directory, read);
-    } catch (const toml::parse_error& e) {
-        return LoadError{detail::describe(e, source_name)};
-    }
+    return detail::parse_then(toml_text, source_name, read_season, base_directory, read);
 }
 
 Result<SeasonDefinition> parse_season(std::string_view toml_text, std::string_view source_name,

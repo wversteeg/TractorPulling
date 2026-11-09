@@ -26,4 +26,8 @@ target_include_directories(tp_data PUBLIC
 target_link_libraries(tp_data
     PUBLIC tp::core
     PRIVATE tomlplusplus::tomlplusplus)
+# toml++ without exceptions: a syntax error is a parse_result, not a throw.
+# Godot's web export is built without exception support, so a throw there
+# would end the game instead of reporting the file (detail::parse_then).
+target_compile_definitions(tp_data PRIVATE TOML_EXCEPTIONS=0)
 tp_configure_target(tp_data)
