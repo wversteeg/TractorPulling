@@ -50,6 +50,8 @@ enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, E
 		SEASON }
 # The menus drawn over the backdrop (MenuBackdrop), not over the venue;
 # the 3D world is not drawn behind it.
+# A whole turn's stages up to and through the pull: no result yet.
+const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling"]
 const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
 		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
 
@@ -139,8 +141,6 @@ var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
 var haptics_screen := HapticsScreen.new()
 var haptics := Haptics.new()
-# A whole turn's stages up to and through the pull: no result yet.
-const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling"]
 var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
 var result_screen := ResultScreen.new()

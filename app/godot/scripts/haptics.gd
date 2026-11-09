@@ -131,14 +131,13 @@ func configure(dimensions: Dictionary) -> void:
 	clutch_bite_pedal = dimensions.get("clutch_bite_pedal", clutch_bite_pedal)
 	rated_omega_rad_s = dimensions.get("rated_omega_rad_s", rated_omega_rad_s)
 	take_up_tension_n = dimensions.get("take_up_tension_n", take_up_tension_n)
-	_last = {}
-	_queue.clear()
 	restart()
 
 
 # The pull again from the line: nothing remembered from before.
 func restart() -> void:
 	_last = {}
+	_queue.clear()
 	_result_told = false
 	_front_off_s = 0.0
 	_asked_gear = 0

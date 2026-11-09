@@ -340,6 +340,9 @@ func _check_haptics() -> void:
 	_expect(step.call({}) == 0, "the result told once")
 	# Out of bounds: one long buzz; after a restart a result is told again.
 	haptics.restart()
+	haptics.show_result({"full_pull": true})
+	haptics.restart()
+	_expect(step.call({}) == 0, "a restart drops a pattern still to come")
 	_expect(haptics.wants_result(), "a restarted pull's result to be told")
 	haptics.show_result({"ending": "out_of_bounds"})
 	_expect(step.call({}) == 1 and int(felt[0][0]) == Haptics.CHALK_MS, "the chalk line")
