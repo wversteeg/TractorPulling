@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Checks the exported web game starts in a browser: serves the export over
 # HTTP, opens it in headless Chrome, and expects the season loaded through
-# the extension ("A season of N events, M pullers") and no error in the
-# console. Leaves the console in <web export>/../web_console.log and a
-# screenshot in <web export>/../web_game.png.
+# the extension ("A season of N events, M pullers, ...; K data files", K
+# the number of .toml files in data/) and no error in the console. Leaves
+# the console in <web export>/../web_console.log and a screenshot in
+# <web export>/../web_game.png.
 #
 #   scripts/web_game_test.sh <web export directory> [chrome] [seconds]
 #
@@ -48,6 +49,11 @@ timeout $((seconds + 60)) node "${root}/scripts/web_console.mjs" "${chrome}" \
 
 if ! grep -qE '^log: A season of [0-9]+ events, [0-9]+ pullers' "${log}"; then
     echo "the web game did not start its season" >&2
+    exit 1
+fi
+data_files="$(find "${root}/data" -name '*.toml' | wc -l)"
+if ! grep -qE "^log: A season of .*; ${data_files} data files\$" "${log}"; then
+    echo "the web game does not carry the ${data_files} data files of data/" >&2
     exit 1
 fi
 if grep -qE '^(error|exception):|ERROR' "${log}"; then

@@ -124,10 +124,5 @@ if [[ ! -f "${output}/web/libtp_godot.web.template_debug.wasm32.nothreads.wasm" 
     echo "the web export has no extension next to it" >&2
     exit 1
 fi
-# The pack keeps file paths as plain text: every data file must be named.
-web_data_files="$(strings "${output}/web/index.pck" |
-    grep -oE '(^|[^A-Za-z0-9_/.-])data/[A-Za-z0-9_/.-]+\.toml' | sed 's/^[^d]*//' | sort -u | wc -l)"
-if [[ "${web_data_files}" -ne "${data_files}" ]]; then
-    echo "the web export has ${web_data_files} of the ${data_files} data files" >&2
-    exit 1
-fi
+# The web game itself reports the data files it carries:
+# scripts/web_game_test.sh checks them.
