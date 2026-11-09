@@ -33,7 +33,7 @@ inline Params reference_params() {
                             .mobility_rate = 0.1,
                             .relaxation_length_m = 0.55},
         .wheel_count = 2,
-        .chain = {.length_m = 1.15, .stiffness_n_per_m = 2.0e6, .damping_n_s_per_m = 15000.0},
+        .chain = {.length_m = 1.15, .stiffness_n_per_m = 2.0e6, .damping_n_s_per_m = 80000.0},
         .pull_off_step = {.box_mass_kg = 0.0,
                           .knives = 1,
                           .knife_depth_m = 0.0,

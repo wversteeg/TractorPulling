@@ -57,7 +57,9 @@ ramp_m = 30.0                        # travel until the wheels are fully off
 [sled.chain]
 length_m = 1.15                      # 1.1 to 1.2 m
 stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
-damping_n_s_per_m = 15000.0
+damping_n_s_per_m = 80000.0          # about half of critical for a 2.5 to 4.5 t tractor
+# on the held sled: links and shackles take a jolt's energy, so a tractor
+# that creeps into the chain is not sprung back off it like a rubber band
 
 # Knives under the pan cut grooves in the track; the sled operator sets
 # how many and how deep.
