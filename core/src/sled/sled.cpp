@@ -53,7 +53,11 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     if (!within(params.frame_cg_ahead_of_wheels_m, 0.0, pan_m)) {
         return ParamError::kFrameCgOutsideSled;
     }
-    if (!within(params.box_start_ahead_of_wheels_m, 0.0, pan_m) ||
+    // The box may start behind the wheels (a negative distance), where its
+    // weight levers the pan up for the start; no further back than the pan
+    // is ahead of them. It ends over the sled, between the wheels and the
+    // pan.
+    if (!within(params.box_start_ahead_of_wheels_m, -pan_m, pan_m) ||
         !within(params.box_end_ahead_of_wheels_m, 0.0, pan_m)) {
         return ParamError::kBoxOutsideSled;
     }

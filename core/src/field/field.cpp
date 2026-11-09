@@ -266,7 +266,14 @@ std::optional<GearTrial> best_gear_trial(const Puller& puller, const sled::Param
             best = GearTrial{.gear = gear, .distance_m = best_m};
         }
     }
+    if (best) {
+        best->gear = gear_for_the_day(best->gear, best->distance_m, lowest);
+    }
     return best;
+}
+
+int gear_for_the_day(int best_gear, double best_m, int lowest) noexcept {
+    return best_m < kGetsTheSledGoing_m ? lowest : best_gear;
 }
 
 int guess_gear(const Puller& puller, int best, int lowest, int highest,

@@ -283,6 +283,8 @@ private:
     /// loosely), and the steps made heavier less those made lighter.
     int changes_ = 0;
     int net_steps_ = 0;
+    /// Test pulls in a row put down to tractor trouble (Rules::trouble_share).
+    int troubles_in_a_row_ = 0;
     /// Each puller's expected distance (expect()), 0 for unknown [m].
     std::array<double, kMaxPullers> expected_m_{};
     std::array<Standing, kMaxPullers> standings_{};

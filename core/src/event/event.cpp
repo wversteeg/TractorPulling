@@ -15,6 +15,9 @@ namespace {
 constexpr double kLearningRate = 0.5;
 constexpr double kLowestStepShare = 0.25;
 constexpr double kHighestStepShare = 6.0;
+// Test pulls in a row the operator puts down to tractor trouble before
+// taking the next as the sled's measure.
+constexpr int kMaxTroublesInARow = 1;
 // After a change, a short test pull changes the sled again only when it
 // misses by more than this share of a step.
 constexpr double kRetestMarginSteps = 0.5;
@@ -28,16 +31,25 @@ constexpr double kBoxShareALighterStep = 0.1;
 // step is worth about what the operator reckons a step is. Once the knives
 // are out and the push-down is past `end_m` (where every pull stops), those
 // change nothing: the step takes weight out of the box instead, as an
-// operator does for a field the sled is far too heavy for. The weight stays
-// out for the rest of the event: the pull-offs' heavier steps add knives
-// and move the push-down (the sled's pull_off_step), as at any event.
-sled::Params lighter(const sled::Params& sled, int steps, double step_m, double end_m) noexcept {
+// operator does for a field the sled is far too heavy for. So does a field
+// expected to stop at `field_stops_m`, short of where the push-down starts:
+// it never reaches the push-down, so moving it later gains nothing, and on
+// a heavy, wet track the start is what stops them. The weight stays out
+// for the rest of the event: the pull-offs' heavier steps add knives and
+// move the push-down (the sled's pull_off_step), as at any event.
+sled::Params lighter(const sled::Params& sled, int steps, double step_m, double end_m,
+                     double field_stops_m) noexcept {
     const sled::Adjustment& step = sled.pull_off_step;
     sled::Params out = sled;
     for (int i = 0; i < steps; ++i) {
         const bool knives_left = step.knives > 0 && out.knives.count > 0;
-        if (knives_left || out.pushdown_start_m < end_m) {
-            out = sled::adjusted(out, {.knives = step.knives, .pushdown_earlier_m = step_m}, -1);
+        const bool pushdown_in_play =
+            out.pushdown_start_m < end_m && field_stops_m >= out.pushdown_start_m;
+        if (knives_left || pushdown_in_play) {
+            // The push-down moves only where the field gets to it.
+            out = sled::adjusted(
+                out, {.knives = step.knives, .pushdown_earlier_m = pushdown_in_play ? step_m : 0.0},
+                -1);
         } else {
             out.box_mass_kg *= 1.0 - kBoxShareALighterStep;
         }
@@ -235,15 +247,20 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     Outcome outcome;
     // Far short of what this tractor was expected to pull (on the sled as
     // it is now: each step heavier is worth a step less): trouble with the
-    // tractor, not a sled too heavy. The next puller tests the sled.
+    // tractor, not a sled too heavy. The next puller tests the sled. Not
+    // twice in a row: two tractors far short in turn say the sled is too
+    // heavy for the day (the track wetter than the gear trials told), and
+    // the operator judges it by this test pull.
     const double expected_m = expected_m_[static_cast<std::size_t>(puller)];
-    if (rules_.trouble_share && expected_m > 0.0 &&
+    if (rules_.trouble_share && expected_m > 0.0 && troubles_in_a_row_ < kMaxTroublesInARow &&
         reached_m < *rules_.trouble_share *
                         (expected_m - static_cast<double>(net_steps_) * step_estimate_m_)) {
+        ++troubles_in_a_row_;
         outcome.change = SledChange::kTroubleSuspected;
         retest_next();
         return outcome;
     }
+    troubles_in_a_row_ = 0;
     learn(reached_m);
     const bool standard_line = line_m_ == rules_.full_pull_m;
     if (standard_line && reached_m >= rules_.full_pull_m &&
@@ -276,7 +293,7 @@ Outcome Event::judge_test(int puller, double reached_m) noexcept {
     } else if (average_m < rules_.sled_target_m - margin_m) {
         outcome = {.change = SledChange::kLighter,
                    .steps = steps_for(rules_.sled_target_m - average_m)};
-        sled_ = lighter(sled_, outcome.steps, rules_.step_m, rules_.max_distance_m);
+        sled_ = lighter(sled_, outcome.steps, rules_.step_m, rules_.max_distance_m, average_m);
     } else {
         return outcome;
     }

@@ -17,7 +17,7 @@ package "tp::sled" {
     +pan_ahead_of_wheels_m : double
     +hook_ahead_of_wheels_m, hook_height_m : double
     +box_mass_kg : double
-    +box_start / box_end_ahead_of_wheels_m : double
+    +box_start / box_end_ahead_of_wheels_m : double (start may be behind the wheels)
     +box_travel_distance_m : double
     +pushdown_start_m, pushdown_ramp_m : double
     +pan_friction_coefficient : double

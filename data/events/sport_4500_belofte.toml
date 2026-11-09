@@ -60,7 +60,7 @@ pull_off_places = 4              # full pulls, filled up with the best...
 qualifying_below_line_m = 20.0   # ...from 20 m short of the line on (80 m, or 90 m at 110 m)
 decide_after_pulls = 2           # the test puller decides after the 3rd pull
 repull_after_pulls = 5           # and re-pulls after the 6th
-sled_target_m = 87.0             # what the field's average should reach: the best come close to a full pull
+sled_target_m = 90.0             # what the field's average should reach: the best come close to a full pull
 step_m = 8.0                     # rule of thumb: a sled step is worth about 8 m (learnt better on the day)
 max_steps_per_change = 4         # at most this many steps at once
 # The operator weighs a test pull by who pulled it (each tractor's gear

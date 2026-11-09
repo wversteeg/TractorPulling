@@ -298,21 +298,32 @@ TEST(Event, ShortTestPullMakesTheSledLighter) {
 }
 
 // A lighter step takes a knife out and moves the push-down a step later;
-// with no knives left, only the push-down moves.
+// with no knives left, only the push-down moves. The push-down moves only
+// for a field that gets to it: one that stops short of it does not.
 TEST(Event, ALighterStepTakesAKnifeAndMovesThePushdown) {
     sled::Params sled = sled::testing::reference_params();
     sled.knives.count = 1;
+    sled.pushdown_start_m = 60.0;
     Event event = make(4, sled);
     const Outcome outcome = event.record(75.0);  // 3 steps: 15 m short of 90 m
     ASSERT_EQ(outcome.change, SledChange::kLighter);
     EXPECT_EQ(outcome.steps, 3);
     EXPECT_EQ(knives(event), 0);
     EXPECT_EQ(event.sled().pushdown_start_m, sled.pushdown_start_m + outcome.steps * kRules.step_m);
+
+    // Stopping at 55 m, short of the push-down: the knife comes out, the
+    // push-down stays, and the other steps take box weight.
+    Event short_of_it = make(4, sled);
+    ASSERT_EQ(short_of_it.record(55.0).change, SledChange::kLighter);
+    EXPECT_EQ(knives(short_of_it), 0);
+    EXPECT_EQ(short_of_it.sled().pushdown_start_m, sled.pushdown_start_m);
+    EXPECT_LT(short_of_it.sled().box_mass_kg, sled.box_mass_kg);
 }
 
-// With the knives out and the push-down at the end of the track, where no
-// pull reaches it, a lighter step takes a tenth of the box out instead; a
-// step the push-down can still take moves it first.
+// With the knives out and the push-down where the field does not get to
+// (here past the line), a lighter step takes a tenth of the box out
+// instead: moving the push-down would change nothing. A heavy, wet track's
+// field that stops at the start is lightened so.
 TEST(Event, WithNothingElseLeftALighterStepTakesBoxWeightOut) {
     sled::Params sled = sled::testing::reference_params();
     sled.knives.count = 0;
@@ -321,9 +332,9 @@ TEST(Event, WithNothingElseLeftALighterStepTakesBoxWeightOut) {
     const Outcome outcome = event.record(75.0);  // 3 steps: 15 m short of 90 m
     ASSERT_EQ(outcome.change, SledChange::kLighter);
     ASSERT_EQ(outcome.steps, 3);
-    EXPECT_EQ(event.sled().pushdown_start_m, kRules.max_distance_m) << "the first step";
+    EXPECT_EQ(event.sled().pushdown_start_m, sled.pushdown_start_m) << "out of the field's reach";
     EXPECT_EQ(knives(event), 0);
-    EXPECT_DOUBLE_EQ(event.sled().box_mass_kg, sled.box_mass_kg * 0.9 * 0.9) << "the other two";
+    EXPECT_DOUBLE_EQ(event.sled().box_mass_kg, sled.box_mass_kg * 0.9 * 0.9 * 0.9);
 
     // While knives are left, the box stays as it is.
     sled::Params with_knives = sled::testing::reference_params();
@@ -332,6 +343,26 @@ TEST(Event, WithNothingElseLeftALighterStepTakesBoxWeightOut) {
     ASSERT_EQ(knives_first.record(80.0).change, SledChange::kLighter);
     EXPECT_EQ(knives_first.sled().box_mass_kg, with_knives.box_mass_kg);
     EXPECT_LT(knives(knives_first), with_knives.knives.count);
+}
+
+// One test pull far short of its tractor's trials is put down to tractor
+// trouble; a second in a row says the sled is too heavy for the day, and
+// the operator judges it.
+TEST(Event, TwoTroublesInARowAreTheSled) {
+    Rules rules = kRules;
+    rules.trouble_share = 0.6;
+    const std::vector<int> order = in_order(4);
+    std::optional<Event> made = Event::create(rules, sled::testing::reference_params(), order);
+    if (!made) {
+        FAIL() << "the event was refused";
+    }
+    Event event = made.value();
+    for (int i = 0; i < 4; ++i) {
+        event.expect(i, 80.0);
+    }
+    EXPECT_EQ(event.record(5.0).change, SledChange::kTroubleSuspected);
+    EXPECT_EQ(next_of(event).kind, PullKind::kTest);
+    EXPECT_EQ(event.record(6.0).change, SledChange::kLighter) << "the sled, not the tractors";
 }
 
 // The operator weighs a test pull by who pulled it: a weak tractor's short

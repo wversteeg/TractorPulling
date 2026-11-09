@@ -97,6 +97,7 @@ package "tp::field" {
     +generate(reference, variation, rules, count, seed) : optional<Field>
     +run_pull(const Puller&, const sled::Params&, const track::Params&,\n      const run::Rules&) : optional<run::Result>
     +best_gear(const Puller&, sled, track, lowest, highest, const run::Rules&) : optional<int>
+    +gear_for_the_day(best_gear, best_m, lowest) : int
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
     +on_this_pull(const Puller&, const sled::Params&, const PullToPull&,\n      SplitMix64&) : ThisPull
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>

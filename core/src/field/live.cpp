@@ -178,7 +178,7 @@ void LiveEvent::finish_trial(double reached_m) noexcept {
     }
     ++trial_gear_;
     if (trial_gear_ > variation_.highest_gear) {
-        choose(best_gear_);
+        choose(gear_for_the_day(best_gear_, best_m_, variation_.lowest_gear));
     }
 }
 
