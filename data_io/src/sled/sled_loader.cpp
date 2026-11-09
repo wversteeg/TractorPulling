@@ -33,6 +33,9 @@ FieldError describe(sled::ParamError error) {
             return {"sled.frame_cg_ahead_of_wheels_m", "must lie between the wheels and the pan"};
         case ParamError::kBoxOutsideSled:
             return {"sled.weight_box", "must stay between the wheels and the pan"};
+        case ParamError::kSledTipsBack:
+            return {"sled.weight_box.start_ahead_of_wheels_m",
+                    "too far behind the wheels: the sled would tip onto its tail"};
         case ParamError::kBoxTravelNotPositive:
             return {"sled.weight_box.travel_distance_m", "must be > 0"};
         case ParamError::kHookInvalid:

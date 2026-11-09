@@ -172,21 +172,25 @@ std::int64_t LiveEvent::step_job(Job& job, std::int64_t max_steps) noexcept {
 
 // As best_gear: on a tie the higher gear.
 void LiveEvent::finish_trial(double reached_m) noexcept {
+    if (trial_gear_ == variation_.lowest_gear) {
+        lowest_m_ = reached_m;
+    }
     if (reached_m >= best_m_) {
         best_m_ = reached_m;
         best_gear_ = trial_gear_;
     }
     ++trial_gear_;
     if (trial_gear_ > variation_.highest_gear) {
-        choose(best_gear_);
+        choose(gear_for_the_day({.gear = best_gear_, .distance_m = best_m_},
+                                {.gear = variation_.lowest_gear, .distance_m = lowest_m_}));
     }
 }
 
 // As guess_gear after best_gear, for the puller being tried; then the next.
-void LiveEvent::choose(int best) noexcept {
+void LiveEvent::choose(const GearTrial& day) noexcept {
     const auto at = static_cast<std::size_t>(trial_puller_);
-    event_.expect(trial_puller_, best_m_);
-    const int guess = guess_gear(field_.pullers[at], best, variation_.lowest_gear,
+    event_.expect(trial_puller_, day.distance_m);
+    const int guess = guess_gear(field_.pullers[at], day.gear, variation_.lowest_gear,
                                  variation_.highest_gear, guesses_);
     field_.pullers[at].driver.gear = guess;
     gears_[at] = guess;
@@ -194,6 +198,7 @@ void LiveEvent::choose(int best) noexcept {
     trial_gear_ = variation_.lowest_gear;
     best_m_ = -1.0;
     best_gear_ = 0;
+    lowest_m_ = 0.0;
     if (trial_puller_ >= field_.count) {
         choosing_ = false;
         settle();

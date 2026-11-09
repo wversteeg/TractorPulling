@@ -93,23 +93,45 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kPullOffStepNotHeavier);
 }
 
-// At the start the box sits over the wheels: the pan carries only its
-// share of the frame by the levers.
+// At the start the box stands behind the wheels: its weight levers the pan
+// up, so the pan carries less than the frame alone would put on it, and
+// the sled starts more easily.
 TEST(Sled, StartsWithMostWeightOnTheWheels) {
     const Params params = reference_params();
+    ASSERT_LT(params.box_start_ahead_of_wheels_m, 0.0);
     const Loads start = at(params, 0.0);
     const double frame_n = params.frame_mass_kg * kStandardGravity_m_s2;
-    EXPECT_NEAR(start.pan_n, frame_n * 0.75 / 3.0, 1e-9);
+    const double box_n = params.box_mass_kg * kStandardGravity_m_s2;
+    EXPECT_NEAR(start.pan_n, (frame_n * 0.75 + box_n * params.box_start_ahead_of_wheels_m) / 3.0,
+                1e-9);
+    EXPECT_LT(start.pan_n, frame_n * 0.75 / 3.0) << "lifted by the box behind the wheels";
     EXPECT_NEAR(start.pan_n + start.wheels_n, weight_n(params), 1e-9);
     EXPECT_GT(start.wheels_n, 3.0 * start.pan_n);
     EXPECT_EQ(start.pushdown, 0.0);
+}
+
+// A box far enough behind the wheels lifts the pan off the track: with the
+// sled's centre of gravity right over the wheels they carry all of its
+// weight. Further back it would tip onto its tail, which is refused.
+TEST(Sled, ABoxFarBehindTheWheelsLiftsThePan) {
+    Params params = reference_params();
+    params.box_start_ahead_of_wheels_m =
+        -params.frame_mass_kg * params.frame_cg_ahead_of_wheels_m / params.box_mass_kg;
+    ASSERT_FALSE(validate(params).has_value());
+    const Loads start = at(params, 0.0);
+    EXPECT_NEAR(start.pan_n, 0.0, 1e-9);
+    EXPECT_NEAR(start.wheels_n, weight_n(params), 1e-9);
+    params.box_start_ahead_of_wheels_m -= 0.01;
+    EXPECT_EQ(validate(params), ParamError::kSledTipsBack) << "on its tail";
 }
 
 // The box moves forward with the sled's travel and stops at its end.
 TEST(Sled, BoxMovesForwardWithTravel) {
     const Params params = reference_params();
     EXPECT_DOUBLE_EQ(at(params, 0.0).box_ahead_of_wheels_m, params.box_start_ahead_of_wheels_m);
-    EXPECT_NEAR(at(params, 0.5 * params.box_travel_distance_m).box_ahead_of_wheels_m, 1.5, 1e-12);
+    EXPECT_NEAR(at(params, 0.5 * params.box_travel_distance_m).box_ahead_of_wheels_m,
+                (params.box_start_ahead_of_wheels_m + params.box_end_ahead_of_wheels_m) / 2.0,
+                1e-12);
     EXPECT_DOUBLE_EQ(at(params, params.box_travel_distance_m).box_ahead_of_wheels_m,
                      params.box_end_ahead_of_wheels_m);
     EXPECT_DOUBLE_EQ(at(params, 130.0).box_ahead_of_wheels_m, params.box_end_ahead_of_wheels_m);
@@ -225,6 +247,10 @@ TEST(Sled, AdjustmentsStayValid) {
         EXPECT_EQ(validate(extreme), std::nullopt) << times;
     }
     EXPECT_EQ(adjusted(sled, heavier_by, -100).box_mass_kg, 0.0);
+    // Much heavier, the box behind the wheels moves up to where the sled
+    // still balances on them.
+    EXPECT_GT(adjusted(sled, heavier_by, 100).box_start_ahead_of_wheels_m,
+              sled.box_start_ahead_of_wheels_m);
     EXPECT_EQ(adjusted(sled, heavier_by, 100).knives.count, kMaxKnives);
     EXPECT_EQ(adjusted(sled, heavier_by, 100).pushdown_start_m, 0.0);
 }

@@ -222,11 +222,14 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
 // tractor is at the back at belofte and about half its garage wins it;
 // belofte's winner starts in the back half of promo and about three quarters
 // win it; promo's winner is at the back at top, where about 90 % of the
-// garage reaches the podium and a fully built tractor wins.
+// garage reaches the podium and a fully built tractor wins. Belofte's first
+// event is the watered start, where the sled is lightened until the field
+// gets it going and the right gear decides much: a third of the garage,
+// in its best gear, may win there.
 TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) {
     expect_level("sport_4500_belofte.toml",
                  {{.share = 0.0, .places = {.best = 13, .worst = 15}},
-                  {.share = 0.3, .places = {.best = 3, .worst = 10}},
+                  {.share = 0.3, .places = {.best = 1, .worst = 10}},
                   {.share = 0.45, .places = {.best = 1, .worst = 4}},
                   {.share = 0.55, .places = {.best = 1, .worst = 2}}},
                  kSportGears);

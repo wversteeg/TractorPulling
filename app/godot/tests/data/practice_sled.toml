@@ -44,7 +44,7 @@ depth_m = 1.0
 
 [sled.weight_box]
 mass_kg = 500.0
-start_ahead_of_wheels_m = 0.0        # over the rear wheels
+start_ahead_of_wheels_m = -0.5       # behind the rear wheels: its weight lifts the pan for the start
 end_ahead_of_wheels_m = 3.0          # over the pan
 travel_distance_m = 100.0            # sled travel to move it from start to end
 

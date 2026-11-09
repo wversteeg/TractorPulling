@@ -150,6 +150,9 @@ enum class ParamError : std::uint8_t {
     kPanNotAheadOfWheels,
     kFrameCgOutsideSled,
     kBoxOutsideSled,
+    /// The box starts so far behind the wheels that the sled's centre of
+    /// gravity is behind them: it would sit on its tail.
+    kSledTipsBack,
     kBoxTravelNotPositive,
     kHookInvalid,
     kPushdownStartNegative,
@@ -254,7 +257,9 @@ struct Loads {
 [[nodiscard]] double total_mass_kg(const Params& params) noexcept;
 
 /// The sled after `adjustment`, applied `times` over. Box mass, knife count
-/// and depth and the push-down stay within what validate() accepts.
+/// and depth and the push-down stay within what validate() accepts; a box
+/// made heavier behind the wheels starts no further back than the sled
+/// balances on them.
 [[nodiscard]] Params adjusted(const Params& params, const Adjustment& adjustment,
                               int times = 1) noexcept;
 

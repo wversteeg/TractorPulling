@@ -252,6 +252,7 @@ std::optional<GearTrial> best_gear_trial(const Puller& puller, const sled::Param
                                          const track::Params& track, int lowest, int highest,
                                          const run::Rules& rules) noexcept {
     std::optional<GearTrial> best;
+    GearTrial lowest_trial{.gear = lowest};
     double best_m = -1.0;
     for (int gear = lowest; gear <= highest; ++gear) {
         Puller trying = puller;
@@ -260,13 +261,23 @@ std::optional<GearTrial> best_gear_trial(const Puller& puller, const sled::Param
         if (!result) {
             return std::nullopt;
         }
+        if (gear == lowest) {
+            lowest_trial.distance_m = result->distance_m;
+        }
         // On a tie the higher gear: it gets there quicker.
         if (result->distance_m >= best_m) {
             best_m = result->distance_m;
             best = GearTrial{.gear = gear, .distance_m = best_m};
         }
     }
+    if (best) {
+        best = gear_for_the_day(*best, lowest_trial);
+    }
     return best;
+}
+
+GearTrial gear_for_the_day(const GearTrial& best, const GearTrial& lowest) noexcept {
+    return best.distance_m < kGetsTheSledGoing_m ? lowest : best;
 }
 
 int guess_gear(const Puller& puller, int best, int lowest, int highest,

@@ -124,14 +124,25 @@ struct GearTrial {
     double distance_m = 0.0;
 };
 
+/// A gear trial that takes the sled no further than this has not got it
+/// going [m]: on a heavy, wet track the start is all the gears show.
+inline constexpr double kGetsTheSledGoing_m = 2.0;
+
 /// The gear among `lowest` to `highest` that takes `puller` furthest on this
-/// sled and track: what a driver who reads the track right picks. Runs a
-/// pull per gear; for setup, not inside a frame.
+/// sled and track: what a driver who reads the track right picks. When no
+/// gear gets the sled going (kGetsTheSledGoing_m), the lowest: it pulls
+/// hardest, where a tie would otherwise go to the gear that merely jolts the
+/// sled a little further. Runs a pull per gear; for setup, not inside a
+/// frame.
 [[nodiscard]] std::optional<GearTrial> best_gear_trial(const Puller& puller,
                                                        const sled::Params& sled,
                                                        const track::Params& track, int lowest,
                                                        int highest,
                                                        const run::Rules& rules) noexcept;
+/// The gear for the day from the trials: `best`, unless it did not get the
+/// sled going (short of kGetsTheSledGoing_m), then `lowest`, the lowest
+/// gear's own trial (its gear and how far it went).
+[[nodiscard]] GearTrial gear_for_the_day(const GearTrial& best, const GearTrial& lowest) noexcept;
 /// best_gear_trial()'s gear.
 [[nodiscard]] std::optional<int> best_gear(const Puller& puller, const sled::Params& sled,
                                            const track::Params& track, int lowest, int highest,
