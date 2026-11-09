@@ -18,6 +18,13 @@
 # coefficients set once a frame), and once the sound has faded out (the
 # engine off, the menus, the sound switched off) none are made and the
 # player pauses.
+#
+# The web export (`loops`, on by itself there) cannot play a stream made as
+# it runs: it plays samples made ahead. There the same sound is made ahead,
+# as two short seamless loops for this run's engine (configure()): idling,
+# and pulling at its rated speed with the throttle open. Two players loop
+# them, their pitch following the engine's speed and the throttle blending
+# from the one to the other.
 class_name EngineSound
 extends AudioStreamPlayer
 
@@ -82,6 +89,14 @@ const DC_BLOCK := 0.995
 # Up to this level the sound passes as it is; above it, it bends softly
 # towards full scale (tanh), never past it.
 const SATURATION_KNEE := 0.6
+# The loops made ahead for the web: about this long each, a whole number of
+# firings, the last part blended into the start so they loop without a
+# seam [s]; how far their pitch may follow the engine's speed (a share of
+# the speed they were made at); and how quickly their loudness follows.
+const LOOP_S := 0.5
+const LOOP_BLEND_S := 0.05
+const LOOP_PITCH_LOW := 0.25
+const LOOP_PITCH_HIGH := 4.0
 # Quieter than this, heading for silence, the sound is silent [0..1].
 const SILENT := 1e-4
 
@@ -128,13 +143,31 @@ var _dc_out := 0.0
 var _peak_before_saturation := 0.0
 var _random := RandomNumberGenerator.new()
 var _playback: AudioStreamGeneratorPlayback = null
+# The web's way (see above): loops made ahead and their players, and the
+# engine speeds they were made at [rad/s].
+var loops := OS.has_feature("web")
+var idle_loop := AudioStreamPlayer.new()
+var load_loop := AudioStreamPlayer.new()
+var _idle_loop_omega_rad_s := 1.0
+var _load_loop_omega_rad_s := 1.0
+
+
+# The loops' players are made with the node; outside the web they never
+# join the tree, so they are freed here.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		for player: AudioStreamPlayer in [idle_loop, load_loop]:
+			if player.get_parent() == null:
+				player.free()
 
 
 func _ready() -> void:
 	# The web export plays sounds as samples made ahead, and a generated
 	# stream cannot be one (without threads, as the game is built for the
-	# web): silent there, see docs/future_improvements.md.
-	if OS.has_feature("web"):
+	# web): loops made ahead play there instead.
+	if loops:
+		add_child(idle_loop)
+		add_child(load_loop)
 		return
 	var generator := AudioStreamGenerator.new()
 	generator.mix_rate = MIX_RATE_HZ
@@ -152,6 +185,48 @@ func configure(dimensions: Dictionary) -> void:
 	cylinders = count if count > 0 else DEFAULT_CYLINDERS
 	idle_omega_rad_s = dimensions.get("idle_omega_rad_s", idle_omega_rad_s)
 	rated_omega_rad_s = dimensions.get("rated_omega_rad_s", rated_omega_rad_s)
+	if loops:
+		_idle_loop_omega_rad_s = idle_omega_rad_s
+		_load_loop_omega_rad_s = rated_omega_rad_s
+		idle_loop.stream = make_loop({"engine_running": true,
+				"engine_omega_rad_s": idle_omega_rad_s, "throttle": 0.0, "boost": 0.0})
+		load_loop.stream = make_loop({"engine_running": true,
+				"engine_omega_rad_s": rated_omega_rad_s, "throttle": 1.0, "boost": 1.0})
+
+
+# This engine's sound in the state `s` (a snapshot's engine fields) as a
+# seamless loop: about LOOP_S of it, a whole number of firings, its last
+# LOOP_BLEND_S blended into its start, at that state's own loudness.
+func make_loop(s: Dictionary) -> AudioStreamWAV:
+	var maker := EngineSound.new()
+	maker.cylinders = cylinders
+	maker.idle_omega_rad_s = idle_omega_rad_s
+	maker.rated_omega_rad_s = rated_omega_rad_s
+	maker.show_snapshot(s)
+	maker.sample_frames(int(MIX_RATE_HZ * 0.5))  # settled
+	var firing_rate_hz := maxf(firing_hz(float(s.get("engine_omega_rad_s", 0.0)), cylinders), 1.0)
+	var firings := maxf(roundf(LOOP_S * firing_rate_hz), 1.0)
+	var length := int(roundf(firings / firing_rate_hz * MIX_RATE_HZ))
+	var blend := int(LOOP_BLEND_S * MIX_RATE_HZ)
+	var frames := maker.sample_frames(length + blend)
+	maker.free()
+	# The sound just after the loop's end fades out over its start as the
+	# start fades in: playing on from the end is playing on from there.
+	for i in blend:
+		var w := float(i) / blend
+		frames[i] = frames[i] * w + frames[length + i] * (1.0 - w)
+	var data := PackedByteArray()
+	data.resize(length * 2)
+	for i in length:
+		data.encode_s16(i * 2, int(clampf(frames[i].x, -1.0, 1.0) * 32767.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = int(MIX_RATE_HZ)
+	wav.data = data
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = length
+	return wav
 
 
 # The engine as the snapshot has it; the sound follows over the next
@@ -163,7 +238,10 @@ func show_snapshot(s: Dictionary) -> void:
 	_target_boost = float(s.get("boost", 0.0))
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if loops:
+		_play_loops(delta)
+		return
 	if _playback == null:
 		return
 	stream_paused = not making()
@@ -172,6 +250,33 @@ func _process(_delta: float) -> void:
 	var frames := _playback.get_frames_available()
 	if frames > 0:
 		_playback.push_buffer(sample_frames(frames))
+
+
+# The loops: their pitch following the engine's speed, the throttle
+# blending from the idling loop to the pulling one, both at the engine's
+# loudness as their own was made; silent, they stop.
+func _play_loops(delta: float) -> void:
+	if idle_loop.stream == null or load_loop.stream == null:
+		return
+	var follow := 1.0 - exp(-delta / FOLLOW_S)
+	_omega_rad_s += (_target_omega_rad_s - _omega_rad_s) * follow
+	_throttle += (_target_throttle - _throttle) * follow
+	_volume += (target_volume() - _volume) * follow
+	if not making():
+		idle_loop.stop()
+		load_loop.stop()
+		return
+	for player: AudioStreamPlayer in [idle_loop, load_loop]:
+		if not player.playing:
+			player.play()
+	var omega := maxf(_omega_rad_s, 1.0)
+	idle_loop.pitch_scale = clampf(omega / _idle_loop_omega_rad_s, LOOP_PITCH_LOW, LOOP_PITCH_HIGH)
+	load_loop.pitch_scale = clampf(omega / _load_loop_omega_rad_s, LOOP_PITCH_LOW, LOOP_PITCH_HIGH)
+	# Each loop was made at its own loudness: scale them to the engine's.
+	var idle_made := loudness(true, _idle_loop_omega_rad_s, 0.0)
+	var load_made := loudness(true, _load_loop_omega_rad_s, 1.0)
+	idle_loop.volume_db = linear_to_db(maxf(_volume / idle_made * (1.0 - _throttle), 1e-5))
+	load_loop.volume_db = linear_to_db(maxf(_volume / load_made * _throttle, 1e-5))
 
 
 # The firing frequency of an engine with `count` cylinders at
