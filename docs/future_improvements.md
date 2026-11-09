@@ -427,6 +427,17 @@ for the big features; they are repeated at the end for completeness.
   template_release), a release key kept as a CI secret, an app bundle for
   Google Play, and the Windows game signed. No icon of its own yet
   (`application/modify_resources` is off: it needs rcedit).
+- **The web game is only started in CI, in Chrome.** The export job
+  serves it and starts it in headless Chrome (scripts/web_game_test.sh:
+  its season loaded through the extension, no console errors); no
+  scripted run is played through it, and Safari, which iPhones use, is not
+  tried. The debug templates make it about 50 MB (most of it Godot's own
+  engine); release templates and libraries would roughly halve that.
+- **No tilt steering on the web.** Godot's web build reads no motion
+  sensors (Input.get_gravity() is zero), so the web game offers slider
+  steering only. Tilt there needs the browser's DeviceMotionEvent passed
+  in through JavaScriptBridge, and on iPhones a permission prompt from a
+  tap (DeviceMotionEvent.requestPermission).
 - **The Windows game is only started in CI.** The windows-game job starts
   the export headless (its season loaded, no errors) and checks that the
   Windows tp_pull gives Linux's results (scripts/platform_runs.sh: the

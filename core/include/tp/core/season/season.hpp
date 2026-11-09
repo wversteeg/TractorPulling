@@ -29,6 +29,10 @@ enum class ParamError : std::uint8_t {
 
 [[nodiscard]] int points_for(const Points& points, int place) noexcept;
 
+/// The points a line of an event's standings scores: its place's, nothing
+/// for a disqualified pull, whatever place it ends in.
+[[nodiscard]] int points_scored(const Points& points, const event::Standing& standing) noexcept;
+
 /// A puller's place in the championship.
 struct Standing {
     int puller = 0;
@@ -53,6 +57,8 @@ public:
 
     [[nodiscard]] int events() const noexcept { return events_; }
     [[nodiscard]] int pullers() const noexcept { return pullers_; }
+    /// The points per place it scores by.
+    [[nodiscard]] const Points& points() const noexcept { return points_; }
     /// The championship so far, best first.
     [[nodiscard]] std::span<const Standing> standings() noexcept;
 

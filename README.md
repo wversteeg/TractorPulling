@@ -409,8 +409,9 @@ class is the warming-up, at one level (`data/seasons/standard_3500.toml`,
 stages, about € 20,000 in all): a new tractor finishes near the back and
 about two thirds of the garage wins (`RivalDifficulty`). Sport 2.5 t is
 pulled at promo and top. Every level takes at least two seasons
-(`min_seasons`): winning a level's championship opens the next level,
-and winning a class's last level the next class (`promotion_place`, a shared title counts), once the level has
+(`min_seasons`): finishing a level's championship first or second opens
+the next level, and at a class's last level the next class
+(`promotion_place = 2`, a shared place counts), once the level has
 had them; the season's board then asks whether to move up or stay
 and defend the title, and what is opened stays open, so the start screen
 offers "Move up" before the next season's first pull too. The money and
@@ -631,12 +632,14 @@ xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
     --script res://tests/screenshots.gd -- /tmp/shots [pro]   # view_0..2.png
 ```
 
-### Playing it on a phone or on Windows
+### Playing it on a phone, on Windows or in a browser
 
 Every CI run exports the game (the `export` job) and keeps it for 30 days:
 open the run on GitHub's Actions tab and download, under Artifacts,
-`tractor-pulling-android` (a debug APK for phones and the emulator) or
-`tractor-pulling-windows` (unzip it and run `TractorPulling.exe`). On a
+`tractor-pulling-android` (a debug APK for phones and the emulator),
+`tractor-pulling-windows` (unzip it and run `TractorPulling.exe`) or
+`tractor-pulling-web` (unzip it and serve the directory over HTTP, e.g.
+`python3 -m http.server` in it, then open `http://localhost:8000`). On a
 phone, allow your browser or file manager to install unknown apps, then
 open the APK; on the emulator, drag the APK onto its window. Every APK is
 signed with the same debug key, so a new one installs over the last.
@@ -645,11 +648,12 @@ To export locally (Linux), build the extension for each platform, install
 Godot's export templates for its version, and run the export script:
 
 ```bash
-for preset in godot godot-android-arm64 godot-android-x86_64 godot-windows; do
-    cmake --preset "$preset" && cmake --build --preset "$preset"
+for preset in godot godot-android-arm64 godot-android-x86_64 godot-windows godot-web; do
+    cmake --preset "$preset" && cmake --build --preset "$preset"   # godot-web: source emsdk_env.sh first
 done
 ANDROID_HOME=~/Android/Sdk JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64 \
-    scripts/godot_export.sh /path/to/godot   # build/export: the APK and windows/
+    scripts/godot_export.sh /path/to/godot   # build/export: the APK, windows/ and web/
+scripts/web_game_test.sh build/export/web   # the web game starts in headless Chrome
 ```
 
 The Windows extension is cross-compiled with MinGW-w64
@@ -662,19 +666,30 @@ exported game there.
 ### The web build
 
 The simulation, the data loaders and `tp_pull` build to WebAssembly with
-Emscripten, at the version Godot 4.7.2 builds its web export with (4.0.11).
+Emscripten, at the version Godot 4.7.2's web export templates were built
+with (4.0.20: they print it at start-up).
 The tests run under Node, and CI checks `tp_pull` gives Linux's results
 there too. The `godot-web` preset builds the extension as a side module for
 Godot's web export (the "nothreads" templates with extensions support):
 
 ```bash
-git clone --branch 4.0.11 https://github.com/emscripten-core/emsdk.git
-emsdk/emsdk install 4.0.11 && emsdk/emsdk activate 4.0.11
+git clone --branch 4.0.20 https://github.com/emscripten-core/emsdk.git
+emsdk/emsdk install 4.0.20 && emsdk/emsdk activate 4.0.20
 source emsdk/emsdk_env.sh
 cmake --preset web && cmake --build --preset web && ctest --preset web
 scripts/platform_runs.sh node build/web/tools/tp_pull.js
 cmake --preset godot-web && cmake --build --preset godot-web
 ```
+
+The web game (the `Web` export preset) uses Godot's templates with
+extensions support and without threads, so it needs no cross-origin
+isolation headers and runs from any static file host. It draws with
+Godot's Compatibility renderer (WebGL 2), the only one Godot has on the
+web, and is an installable web app: "Add to Home Screen" on an iPhone opens
+it full screen. Godot's web build reads no motion sensors, so it steers
+with the slider, not by tilting. CI starts it in headless Chrome
+(`scripts/web_game_test.sh`: the season loaded through the extension, no
+errors in the console).
 
 ## Requirements
 

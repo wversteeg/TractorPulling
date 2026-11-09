@@ -134,6 +134,7 @@ godot::Dictionary TractorPullEvent::get_career() const {
     out["seasons"] = progress_.seasons;
     out["min_seasons"] = career_definition_->ladder.min_seasons;
     out["title"] = progress_.title;
+    out["promotion_place"] = career_definition_->ladder.promotion_place;
     return out;
 }
 
@@ -560,6 +561,8 @@ godot::Array TractorPullEvent::get_standings() const {
             rounds.push_back(s.pull_off_distances_m.at(static_cast<std::size_t>(r)));
         }
         line["pull_off_distances_m"] = rounds;
+        // What the place scores in the championship once the event is over.
+        line["points"] = season::points_scored(season_->points(), s);
         out.push_back(line);
     }
     return out;
