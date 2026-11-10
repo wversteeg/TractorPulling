@@ -78,8 +78,15 @@ for the big features; they are repeated at the end for completeness.
   its wheelie bar keeps its rear tires down: the bar takes only part of
   their load. A real tractor pulled too high (too soft tires, a grippy
   track) lifts its rear tires off the ground on the bar and spins out; in
-  the game riding the bar costs little, and the weights fully back are
-  rarely wrong.
+  the game riding the bar costs the load it carries and the pad's drag
+  (a steel skid, ETPC FS 2026 1.2.4), and the weights fully back are
+  rarely wrong. A tractor stays up on its bar only while the sled's pull
+  times the hitch's height outweighs its weight times the centre of
+  gravity's distance ahead of the rear axle: the Sport 2.5 t with its
+  weights back rides its bar for seconds (about 13°), the Sport 4.5 t
+  (82 % on the rear axle) only pops up at the launch (about 11°). Real
+  4.5 t pullers likely carry more on the rear; a tractor balance from
+  measurements would settle it.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
   between the left and right rear tires; both sides carry half the rear load.
 - **No differential lock.** The open differential is the only kind. Pulling
