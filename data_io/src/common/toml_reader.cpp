@@ -83,6 +83,13 @@ std::string Reader::text(std::string_view path) {
     return *value;
 }
 
+std::string Reader::optional_text(std::string_view path) {
+    if (!has(path)) {
+        return {};
+    }
+    return text(path);
+}
+
 std::vector<double> Reader::numbers(std::string_view path) {
     const toml::array* array = root_->at_path(path).as_array();
     if (array == nullptr) {

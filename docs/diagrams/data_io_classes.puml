@@ -44,6 +44,7 @@ package "tp::data" {
     +rules : run::Rules
     +ground : track::Params, soil and profile
     +sled : sled::Conditions, the day's push-down
+    +setup_tip : string, for the pit board
   }
   class EventDefinition <<struct>> {
     +class_rules : rules::ClassRules

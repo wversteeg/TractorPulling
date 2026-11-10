@@ -96,6 +96,7 @@ TEST(TrackLoader, LoadsEveryShippedTrack) {
         const auto result = load_track(kTracks / name);
         ASSERT_TRUE(result.ok()) << result.error().message;
         EXPECT_TRUE(track::Model::create(result.value().ground).has_value()) << name;
+        EXPECT_FALSE(result.value().setup_tip.empty()) << name << ": the pit board's tip";
     }
 }
 
@@ -124,6 +125,23 @@ TEST(TrackLoader, ProfileAndPushdownAreOptional) {
     EXPECT_FALSE(result.value().ground.moisture_along_m.has_value());
     EXPECT_FALSE(result.value().sled.pushdown_start_m.has_value());
     EXPECT_EQ(result.value().ground.grip_scale, 1.0) << "a well-prepared track's grip";
+    EXPECT_EQ(result.value().setup_tip, "") << "no tip";
+}
+
+// A tip that is not text is an error, not an empty tip.
+TEST(TrackLoader, RefusesATipThatIsNotText) {
+    std::string tipped{kPlainTrack};
+    tipped.replace(tipped.find("[track]\n"), 8, "[track]\nsetup_tip = \"Weights back.\"\n");
+    const auto read = parse_track(tipped, "t.toml");
+    ASSERT_TRUE(read.ok()) << read.error().message;
+    EXPECT_EQ(read.value().setup_tip, "Weights back.");
+    std::string wrong{kPlainTrack};
+    wrong.replace(wrong.find("[track]\n"), 8, "[track]\nsetup_tip = 3\n");
+    const auto refused = parse_track(wrong, "t.toml");
+    ASSERT_FALSE(refused.ok());
+    EXPECT_NE(refused.error().message.find("t.toml: track.setup_tip: missing or not a string"),
+              std::string::npos)
+        << refused.error().message;
 }
 
 // A track's grip scales its soil's: how it was prepared.

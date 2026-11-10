@@ -237,7 +237,9 @@ func _ready() -> void:
 		if event.add_money(amount_eur):
 			_save_season()
 		settings_screen.show_money(int(event.get_garage().get("money_eur", 0))))
+	garage_screen.event = event
 	start_screen.garage_requested.connect(func() -> void:
+		garage_screen.show_workshop()
 		garage_screen.show_garage(event.get_garage())
 		_set_screen(Screen.GARAGE))
 	garage_screen.buy_requested.connect(func(index: int) -> void:
@@ -453,7 +455,8 @@ func _show_setup(for_practice: bool) -> void:
 	var which := "Practice" if practice else EventTexts.pull_name(info.get("pull_kind", ""),
 			info.get("pull_off_round", 0))
 	setup_screen.show_setup("%s  ·  %s" % [which, info.get("name", "")], event.get_tuning(), pro,
-			tilt and controls.tilt_steering.available())
+			tilt and controls.tilt_steering.available(), info.get("track", {}),
+			String(info.get("name", "")))
 	_set_screen(Screen.SETUP)
 
 

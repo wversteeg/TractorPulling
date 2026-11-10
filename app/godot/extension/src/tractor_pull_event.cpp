@@ -1,5 +1,9 @@
 #include "tractor_pull_event.hpp"
 
+#include "tp/core/engine/engine.hpp"
+#include "tp/core/soil/soil.hpp"
+#include "tp/core/track/track.hpp"
+#include "tp/core/units/conversions.hpp"
 #include "tp/data/garage/career_names.hpp"
 #include "tp/data/session/run_setup.hpp"
 
@@ -64,6 +68,64 @@ const char* change_name(event::SledChange change) {
             return "trouble";
     }
     return "unknown";
+}
+
+// An upgrade's part as the garage files name it (data/garages/).
+const char* part_name(garage::Part part) {
+    switch (part) {
+        case garage::Part::kEngineTorque:
+            return "engine_torque";
+        case garage::Part::kRearTraction:
+            return "rear_traction";
+        case garage::Part::kBallastMass:
+            return "ballast_kg";
+        case garage::Part::kHitchHeight:
+            return "hitch_height_m";
+        case garage::Part::kLoadDownshift:
+            return "load_downshift_gears";
+        case garage::Part::kRatedSpeed:
+            return "rated_rpm";
+    }
+    return "";
+}
+
+const char* slot_name(garage::Slot slot) {
+    switch (slot) {
+        case garage::Slot::kEngine:
+            return "engine";
+        case garage::Slot::kRearTire:
+            return "rear_tire";
+        case garage::Slot::kDriveline:
+            return "driveline";
+    }
+    return "";
+}
+
+constexpr double kWattsPerKw = 1000.0;
+// Points of a dyno curve, idle to high idle.
+constexpr int kDynoPoints = 41;
+
+// The engine's dyno curve at full throttle: (rpm, kW) from idle to high
+// idle, none below 0.
+godot::PackedVector2Array dyno_curve(const engine::Params& engine) {
+    godot::PackedVector2Array out;
+    const double from_rad_s = engine.idle_omega_rad_s;
+    const double to_rad_s = engine.high_idle_omega_rad_s;
+    for (int i = 0; i < kDynoPoints; ++i) {
+        const double omega_rad_s = from_rad_s + (to_rad_s - from_rad_s) * i / (kDynoPoints - 1);
+        const double power_w =
+            std::max(engine::full_throttle_net_torque_nm(engine, omega_rad_s) * omega_rad_s, 0.0);
+        out.push_back(godot::Vector2(static_cast<float>(units::rad_s_to_rpm(omega_rad_s)),
+                                     static_cast<float>(power_w / kWattsPerKw)));
+    }
+    return out;
+}
+
+godot::Dictionary dyno(const engine::Params& engine) {
+    godot::Dictionary out;
+    out["points"] = dyno_curve(engine);
+    out["hp"] = units::w_to_metric_hp(engine::max_net_power_w(engine));
+    return out;
 }
 
 const char* turn_name(field::LiveEvent::Turn turn) {
@@ -413,6 +475,16 @@ godot::Dictionary TractorPullEvent::get_event() const {
     // A pull stopped short of the restart line may move this many places
     // later (move_back()), if it may at all.
     out["move_back_places"] = event.may_defer_player() ? event::kDeferPlaces : 0;
+    // The track at the start line, for the pit board.
+    const data::Track& track = definition_->rounds.at(static_cast<std::size_t>(index)).track;
+    godot::Dictionary ground;
+    if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
+        const soil::Surface start = model->surface_at(0.0);
+        ground["grip"] = start.grip_factor;
+        ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
+    }
+    ground["tip"] = to_godot(track.setup_tip);
+    out["track"] = ground;
     return out;
 }
 
@@ -443,6 +515,7 @@ godot::Dictionary TractorPullEvent::get_tuning() const {
     const vehicle::Params set = vehicle::tuned(tractor, tuning_);
     const tire::Pressure& pressure = tractor.rear_tire.pressure;
     out["ballast"] = tractor.chassis.ballast.mass_kg > 0.0;
+    out["ballast_kg"] = tractor.chassis.ballast.mass_kg;
     out["ballast_position"] = set.chassis.ballast.position;
     out["rear_share"] = chassis::rear_axle_share(set.chassis);
     out["pressure"] = pressure.reference_bar > 0.0;
@@ -683,6 +756,15 @@ godot::Dictionary TractorPullEvent::get_garage() const {
         line["next_label"] = at_top ? godot::String{} : to_godot(text.level_labels.at(next));
         line["next_cost_eur"] = at_top ? std::int64_t{0} : upgrade.levels.at(next).cost_eur;
         line["counts"] = garage::counts(garage.catalogue, *career_, i);
+        line["part"] = part_name(upgrade.part);
+        godot::PackedStringArray labels;
+        godot::Array costs;
+        for (std::size_t l = 0; l < upgrade.level_count; ++l) {
+            labels.push_back(to_godot(text.level_labels.at(l)));
+            costs.push_back(upgrade.levels.at(l).cost_eur);
+        }
+        line["labels"] = labels;
+        line["costs"] = costs;
         line["for"] =
             upgrade.choice == garage::kNoChoice
                 ? godot::String{}
@@ -699,6 +781,7 @@ godot::Dictionary TractorPullEvent::get_garage() const {
         godot::Dictionary line;
         line["name"] = to_godot(text.name);
         line["fitted"] = static_cast<std::int64_t>(garage::fitted(garage.catalogue, *career_, c));
+        line["slot"] = slot_name(choice.slot);
         godot::Array alternatives;
         for (std::size_t a = 0; a < choice.alternative_count; ++a) {
             godot::Dictionary alternative;
@@ -711,6 +794,49 @@ godot::Dictionary TractorPullEvent::get_garage() const {
         choices.push_back(line);
     }
     out["choices"] = choices;
+    out["power_hp"] = units::w_to_metric_hp(engine::max_net_power_w(player_tractor().engine));
+    return out;
+}
+
+godot::Dictionary TractorPullEvent::get_upgrade_dyno(std::int64_t index) const {
+    godot::Dictionary out;
+    if (!season_ || !definition_ || !career_ || index < 0 ||
+        static_cast<std::size_t>(index) >= definition_->garage.catalogue.count) {
+        return out;
+    }
+    const garage::Catalogue& catalogue = definition_->garage.catalogue;
+    const vehicle::Params& reference = season_->player().tractor;
+    const auto i = static_cast<std::size_t>(index);
+    out["now"] = dyno(player_tractor().engine);
+    garage::Career next = *career_;
+    const int top = static_cast<int>(catalogue.upgrades.at(i).level_count) - 1;
+    if (next.levels.at(i) < top) {
+        ++next.levels.at(i);
+        if (const std::optional<vehicle::Params> built =
+                garage::equipped(reference, catalogue, next)) {
+            out["next"] = dyno(built->engine);
+        }
+    }
+    return out;
+}
+
+godot::Array TractorPullEvent::get_choice_dynos(std::int64_t choice) const {
+    godot::Array out;
+    if (!season_ || !definition_ || !career_ || choice < 0 ||
+        static_cast<std::size_t>(choice) >= definition_->garage.catalogue.choice_count) {
+        return out;
+    }
+    const garage::Catalogue& catalogue = definition_->garage.catalogue;
+    const vehicle::Params& reference = season_->player().tractor;
+    const auto c = static_cast<std::size_t>(choice);
+    // Each alternative as if fitted, with the career's builds.
+    for (std::size_t a = 0; a < catalogue.choices.at(c).alternative_count; ++a) {
+        garage::Career trying = *career_;
+        trying.owned.at(c) = static_cast<std::uint8_t>(trying.owned.at(c) | (1U << a));
+        trying.fitted.at(c) = static_cast<int>(a);
+        const std::optional<vehicle::Params> built = garage::equipped(reference, catalogue, trying);
+        out.push_back(built ? dyno(built->engine) : godot::Dictionary{});
+    }
     return out;
 }
 
@@ -846,6 +972,10 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_event_prize"), &TractorPullEvent::get_event_prize);
     ClassDB::bind_method(D_METHOD("get_garage"), &TractorPullEvent::get_garage);
     ClassDB::bind_method(D_METHOD("buy_upgrade", "index"), &TractorPullEvent::buy_upgrade);
+    ClassDB::bind_method(D_METHOD("get_upgrade_dyno", "index"),
+                         &TractorPullEvent::get_upgrade_dyno);
+    ClassDB::bind_method(D_METHOD("get_choice_dynos", "choice"),
+                         &TractorPullEvent::get_choice_dynos);
     ClassDB::bind_method(D_METHOD("buy_alternative", "choice", "alternative"),
                          &TractorPullEvent::buy_alternative);
     ClassDB::bind_method(D_METHOD("fit_alternative", "choice", "alternative"),

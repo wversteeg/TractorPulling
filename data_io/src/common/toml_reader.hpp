@@ -33,6 +33,9 @@ public:
     [[nodiscard]] bool has(std::string_view path) const;
     std::int64_t integer(std::string_view path);
     std::string text(std::string_view path);
+    /// The string at `path`; "" if there is none, an error if there is
+    /// something else there.
+    std::string optional_text(std::string_view path);
     std::vector<double> numbers(std::string_view path);
     std::vector<std::string> texts(std::string_view path);
 

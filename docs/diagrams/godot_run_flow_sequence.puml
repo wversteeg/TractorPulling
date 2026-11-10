@@ -35,7 +35,7 @@ opt the gear: Settings
   Pull -> Pull : GameSettings.write()
 end
 opt Garage (before the player's first pull of the event)
-  Pull -> Screens : get_garage(): the money, each part's level\nand the next one's cost
+  Pull -> Screens : get_garage(): the money, each part's levels\nand costs; the workshop, then a part's screen\n(get_upgrade_dyno() for the engine)
   loop each Buy
     Player -> Screens : Buy
     Pull -> Event : buy_upgrade(index)\n(garage::buy; the tractor is garage::equipped)

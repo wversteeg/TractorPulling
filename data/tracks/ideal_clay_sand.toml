@@ -5,6 +5,7 @@
 # heavier sled, see the sled's [sled.pull_off_step]).
 
 [track]
+setup_tip = "A fair track: weights towards the back."   # for the pit board
 length_m = 100.0
 max_duration_s = 120.0   # safety cut-off; real pulls end long before
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width

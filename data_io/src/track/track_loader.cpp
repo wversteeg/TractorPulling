@@ -95,7 +95,7 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
     // On its own track a run ends at the full-pull line.
     const double length_m = reader.number("track.length_m");
-    const Track track{
+    Track track{
         .rules =
             {
                 .track_length_m = length_m,
@@ -120,6 +120,7 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
             {
                 .pushdown_start_m = reader.optional_number("track.pushdown.start_m"),
             },
+        .setup_tip = reader.optional_text("track.setup_tip"),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

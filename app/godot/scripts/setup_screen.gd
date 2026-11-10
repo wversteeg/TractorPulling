@@ -1,22 +1,29 @@
-# Just before a pull (or a practice pull): how the tractor is set up, and
-# a line naming the controls (picked in the settings). The weights slide from the rear wheels to the front
-# bracket (more on the rear axle grips harder but lifts the nose sooner),
-# and the rear tires' pressure from soft (a bigger footprint for soft
-# tracks) to hard (lugs that bite on firm ones). An adjustable pulling hitch
-# goes from its lowest hole to its top one (higher puts more of the sled's
-# pull on the rear tires, but lifts the nose sooner). TractorPullEvent keeps
-# the setting for the season; the run takes it from there.
+# Just before a pull (or a practice pull), the pit board: how to set the
+# tractor up for today's track. On the left the track's card (its grip,
+# how firm it is, and a tip); on the right the tractor (TractorSketch) with
+# the weights drawn where they sit, the hitch's hole and the rear tires'
+# footprint, and under it the three settings:
+#
+# - the weights slide from the carrier behind the rear wheels to the front
+#   bracket (more on the rear axle grips harder but lifts the nose sooner);
+# - the rear tires' pressure from soft (a bigger footprint for soft tracks)
+#   to hard (lugs that bite on firm ones);
+# - an adjustable pulling hitch from its lowest hole to its top one
+#   (higher puts more of the sled's pull on the rear tires, but lifts the
+#   nose sooner).
+#
+# A line names the controls (picked in the settings). TractorPullEvent
+# keeps the setting for the season; the run takes it from there.
 class_name SetupScreen
-extends MenuPanel
+extends Control
 
 signal tuning_changed(ballast_position: float, pressure_bar: float, hitch_m: float)
 signal pull_requested
 signal back_requested
 
-const SETUP_SIZE := Vector2(900.0, 700.0)
-const TITLE_SIZE := 36
-const LINE_SIZE := 26
-const SLIDER_HEIGHT := 56.0
+const STAGE := Vector2(1280.0, 720.0)
+const BACKGROUND := Color(0.06, 0.07, 0.09, 0.985)
+const SLIDER_HEIGHT := 58.0
 # The pressure moves in steps of this much [bar].
 const PRESSURE_STEP_BAR := 0.05
 # The hitch's holes are this far apart [m].
@@ -24,52 +31,101 @@ const HITCH_STEP_M := 0.02
 const WEIGHT_COLOUR := Color(0.85, 0.6, 0.2, 0.9)
 const TIRE_COLOUR := Color(0.6, 0.6, 0.65, 0.9)
 const HITCH_COLOUR := Color(0.35, 0.55, 0.85, 0.9)
+# The track card's scales: grip (the surface's grip factor) and firmness
+# (the cone index, on a log scale) [kPa].
+const GRIP_LOW := 0.7
+const GRIP_HIGH := 1.5
+const FIRM_LOW_KPA := 500.0
+const FIRM_HIGH_KPA := 7000.0
 
 var ballast_slider := TouchSlider.new()
 var pressure_slider := TouchSlider.new()
 var hitch_slider := TouchSlider.new()
 var pull_button: TouchButton
 var back_button: TouchButton
+var _stage := Control.new()
 var _title: Label
+var _track_name: Label
+var _grip: Label
+var _grip_bar := ColorRect.new()
+var _firm: Label
+var _firm_bar := ColorRect.new()
+var _tip: Label
+var _sketch := TractorSketch.new()
+var _shares: Label
 var _weights: Label
 var _pressure: Label
 var _hitch: Label
+var _hitch_panel: Panel
 var _controls: Label
 var _sent := Vector3(-1.0, -1.0, -1.0)
 
 
-func _init() -> void:
-	panel_size = SETUP_SIZE
-
-
 func _ready() -> void:
-	super()
-	_title = add_line(TITLE_SIZE)
-	_weights = add_line(LINE_SIZE)
-	_add_slider(ballast_slider, "REAR  ·  WEIGHTS  ·  FRONT", WEIGHT_COLOUR)
-	_pressure = add_line(LINE_SIZE)
-	_add_slider(pressure_slider, "SOFT  ·  REAR TIRES  ·  HARD", TIRE_COLOUR)
-	_hitch = add_line(LINE_SIZE)
-	_add_slider(hitch_slider, "LOW  ·  HITCH  ·  HIGH", HITCH_COLOUR)
-	_controls = add_line(LINE_SIZE)
-	var go := add_button_row()
-	back_button = add_button(go, "Back")
-	pull_button = add_button(go, "Pull")
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var background := ColorRect.new()
+	background.color = BACKGROUND
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(background)
+	_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage.set_anchors_preset(Control.PRESET_CENTER)
+	_stage.offset_left = -STAGE.x / 2.0
+	_stage.offset_right = STAGE.x / 2.0
+	_stage.offset_top = -STAGE.y / 2.0
+	_stage.offset_bottom = STAGE.y / 2.0
+	add_child(_stage)
+
+	_panel(_stage, Rect2(0, 0, STAGE.x, 64), Color(0.04, 0.05, 0.07, 0.9), 0)
+	_title = _label(_stage, Rect2(28, 12, 860, 40), 26, GarageArt.TEXT)
+	back_button = _button(_stage, "Back", Rect2(940, 8, 140, 48), 24)
+	pull_button = _button(_stage, "Pull ›", Rect2(1100, 8, 156, 48), 26)
+	pull_button.selected = true
 	pull_button.tapped.connect(func() -> void: pull_requested.emit())
 	back_button.tapped.connect(func() -> void: back_requested.emit())
 
+	var card := _panel(_stage, Rect2(28, 84, 330, 560), GarageArt.PANEL, 14)
+	_label(card, Rect2(16, 12, 300, 20), 13, GarageArt.DIM).text = "TODAY'S TRACK"
+	var ground := Control.new()
+	ground.position = Vector2(16, 40)
+	ground.size = Vector2(298, 130)
+	ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ground.clip_contents = true
+	ground.draw.connect(func() -> void: _draw_ground(ground))
+	card.add_child(ground)
+	_track_name = _label(card, Rect2(16, 180, 300, 64), 20, GarageArt.TEXT)
+	_track_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_grip = _scale_row(card, 258, "Grip", _grip_bar, GarageArt.GREEN)
+	_firm = _scale_row(card, 306, "Firmness", _firm_bar, Color(0.79, 0.75, 0.42))
+	var tip_box := _panel(card, Rect2(16, 362, 298, 128), Color(0.16, 0.13, 0.08), 10)
+	_tip = _label(tip_box, Rect2(12, 10, 274, 112), 16, Color(0.91, 0.83, 0.67))
+	_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_controls = _label(card, Rect2(16, 506, 300, 40), 14, GarageArt.DIM)
+	_controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-func _add_slider(slider: TouchSlider, text: String, colour: Color) -> void:
-	slider.label = text
-	slider.colour = colour
-	slider.custom_minimum_size = Vector2(0.0, SLIDER_HEIGHT)
-	add_item(slider)
+	var view := _panel(_stage, Rect2(380, 84, 872, 340), GarageArt.PANEL, 14)
+	_sketch.position = Vector2(30, 34)
+	_sketch.size = Vector2(812, 296)
+	view.add_child(_sketch)
+	_shares = _label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
+
+	_weights = _setting(Rect2(380, 440, 280, 204), "WEIGHTS", "ballast_kg", ballast_slider,
+			WEIGHT_COLOUR, "rear", "front")
+	_pressure = _setting(Rect2(676, 440, 280, 204), "REAR TIRES", "rear_traction",
+			pressure_slider, TIRE_COLOUR, "soft", "hard")
+	_hitch = _setting(Rect2(972, 440, 280, 204), "HITCH", "hitch_height_m", hitch_slider,
+			HITCH_COLOUR, "low", "top")
+	_hitch_panel = hitch_slider.get_parent() as Panel
 
 
 # `title` names the pull to come; `tuning` is TractorPullEvent.get_tuning();
 # `pro` and `tilt` the controls that will drive (`tilt` only where the
-# phone can steer by tilting).
-func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> void:
+# phone can steer by tilting); `track` the event's track
+# (TractorPullEvent.get_event()["track"]: grip, cone_index_kpa, tip) and
+# `track_name` its name.
+func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool,
+		track: Dictionary = {}, track_name: String = "") -> void:
 	_title.text = title
 	ballast_slider.visible = tuning.get("ballast", false)
 	pressure_slider.visible = tuning.get("pressure", false)
@@ -77,7 +133,7 @@ func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> voi
 	pressure_slider.end_value = tuning.get("max_bar", 1.0)
 	var hitch: bool = tuning.get("hitch", false)
 	hitch_slider.visible = hitch
-	_hitch.visible = hitch
+	_hitch_panel.modulate.a = 1.0 if hitch else 0.45
 	hitch_slider.start_value = tuning.get("min_hitch_m", 0.0)
 	hitch_slider.end_value = tuning.get("max_hitch_m", 1.0)
 	ballast_slider.value = tuning.get("ballast_position", 0.0)
@@ -86,18 +142,39 @@ func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> voi
 	_sent = Vector3(ballast_slider.value, pressure_slider.value, _hitch_m())
 	for slider: TouchSlider in [ballast_slider, pressure_slider, hitch_slider]:
 		slider.queue_redraw()
+	_show_track(track, track_name)
 	show_values(tuning)
 	_controls.text = "Controls: %s, %s steering" % ["pro" if pro else "easy",
 			"tilt" if tilt else "slider"]
 
 
-# The settings in words, from TractorPullEvent.get_tuning().
+# The settings in words and on the tractor, from
+# TractorPullEvent.get_tuning().
 func show_values(tuning: Dictionary) -> void:
-	_weights.text = "Weights: %.0f %% on the rear axle" % (float(tuning.get("rear_share", 0.0)) * 100.0) \
-			if tuning.get("ballast", false) else "No weights to move"
-	_pressure.text = "Rear tires: %.2f bar" % float(tuning.get("pressure_bar", 0.0)) \
-			if tuning.get("pressure", false) else "The tire pressure is fixed"
-	_hitch.text = "Hitch: %.2f m" % float(tuning.get("hitch_m", 0.0))
+	var ballast: bool = tuning.get("ballast", false)
+	var share := float(tuning.get("rear_share", 0.0))
+	_weights.text = "%d %% forward" % roundi(float(tuning.get("ballast_position", 0.0)) * 100.0) \
+			if ballast else "No weights to move"
+	_pressure.text = "%.2f bar" % float(tuning.get("pressure_bar", 0.0)) \
+			if tuning.get("pressure", false) else "Fixed pressure"
+	_hitch.text = "%.2f m" % float(tuning.get("hitch_m", 0.0)) \
+			if tuning.get("hitch", false) else "Fixed hitch"
+	_shares.text = "At rest: %d %% on the rear axle, %d %% on the front" % [roundi(share * 100.0),
+			roundi((1.0 - share) * 100.0)] if share > 0.0 else ""
+	_sketch.ballast_share = float(tuning.get("ballast_position", 0.0)) if ballast else -1.0
+	_sketch.ballast_kg = float(tuning.get("ballast_kg", 0.0))
+	_sketch.hitch_low_m = float(tuning.get("min_hitch_m", 0.0)) if tuning.get("hitch", false) \
+			else 0.0
+	_sketch.hitch_top_m = float(tuning.get("max_hitch_m", 0.5))
+	_sketch.hitch_m = float(tuning.get("hitch_m", 0.5))
+	if tuning.get("pressure", false):
+		var low := float(tuning.get("min_bar", 0.5))
+		var high := float(tuning.get("max_bar", 1.6))
+		_sketch.footprint = clampf(inverse_lerp(high, low, float(tuning.get("pressure_bar", 1.0))),
+				0.0, 1.0)
+	else:
+		_sketch.footprint = -1.0
+	_sketch.queue_redraw()
 
 
 func _process(_delta: float) -> void:
@@ -125,3 +202,116 @@ func release_sliders() -> void:
 	ballast_slider.release()
 	pressure_slider.release()
 	hitch_slider.release()
+
+
+func release_buttons() -> void:
+	pull_button.release()
+	back_button.release()
+
+
+func _show_track(track: Dictionary, track_name: String) -> void:
+	_track_name.text = track_name
+	var grip := float(track.get("grip", 1.0))
+	var kpa := float(track.get("cone_index_kpa", 1500.0))
+	_grip_bar.size.x = 298.0 * clampf(inverse_lerp(GRIP_LOW, GRIP_HIGH, grip), 0.04, 1.0)
+	_firm_bar.size.x = 298.0 * clampf(
+			inverse_lerp(log(FIRM_LOW_KPA), log(FIRM_HIGH_KPA), log(maxf(kpa, 1.0))), 0.04, 1.0)
+	_grip.text = "low" if grip < 0.95 else ("fair" if grip < 1.15 else
+			("high" if grip < 1.35 else "very high"))
+	_firm.text = "soft" if kpa < 1000.0 else ("firm" if kpa < 3000.0 else "hard")
+	var tip := String(track.get("tip", ""))
+	_tip.text = "Crew chief: \"%s\"" % tip if not tip.is_empty() else \
+			"Set the weights, tires and hitch for the track."
+
+
+func _draw_ground(ground: Control) -> void:
+	# A strip of track: worked soil in furrows, darker where it is wetter.
+	var base := Color(0.32, 0.23, 0.16)
+	ground.draw_rect(Rect2(Vector2.ZERO, ground.size), base)
+	for i in 18:
+		var x := i * 18.0 - 10.0
+		ground.draw_line(Vector2(x, 0), Vector2(x + 30.0, ground.size.y),
+				Color(0.26, 0.18, 0.12), 7.0)
+	ground.draw_rect(Rect2(0, ground.size.y * 0.72, ground.size.x, 14),
+			Color(0.2, 0.14, 0.1, 0.8))
+
+
+# A labelled bar on the track card; returns the label for its word.
+func _scale_row(card: Panel, y: float, name_text: String, bar: ColorRect, colour: Color) -> Label:
+	_label(card, Rect2(16, y, 150, 22), 15, GarageArt.TEXT).text = name_text
+	var word := _label(card, Rect2(160, y, 154, 22), 15, colour)
+	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	var track := ColorRect.new()
+	track.color = GarageArt.LINE
+	track.position = Vector2(16, y + 26)
+	track.size = Vector2(298, 8)
+	card.add_child(track)
+	bar.color = colour
+	bar.position = track.position
+	bar.size = Vector2(150, 8)
+	card.add_child(bar)
+	return word
+
+
+# A setting's panel: its heading and icon, its value in words (returned)
+# and the slider with its ends named.
+func _setting(rect: Rect2, heading: String, icon: String, slider: TouchSlider, colour: Color,
+		start: String, end: String) -> Label:
+	var panel := _panel(_stage, rect, GarageArt.PANEL, 14)
+	_label(panel, Rect2(16, 12, 200, 20), 13, GarageArt.DIM).text = heading
+	var art := Control.new()
+	art.position = Vector2(rect.size.x - 44, 8)
+	art.size = Vector2(30, 30)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.draw.connect(func() -> void:
+		GarageArt.draw_icon(art, icon, art.size / 2.0, 26.0, colour))
+	panel.add_child(art)
+	var value := _label(panel, Rect2(16, 38, rect.size.x - 32, 34), 22, GarageArt.TEXT)
+	slider.colour = colour
+	slider.position = Vector2(16, 86)
+	slider.size = Vector2(rect.size.x - 32, SLIDER_HEIGHT)
+	slider.custom_minimum_size = slider.size
+	panel.add_child(slider)
+	var ends := _label(panel, Rect2(16, 152, rect.size.x - 32, 22), 13, GarageArt.DIM)
+	ends.text = start
+	var right := _label(panel, Rect2(16, 152, rect.size.x - 32, 22), 13, GarageArt.DIM)
+	right.text = end
+	right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	return value
+
+
+func _panel(parent: Control, rect: Rect2, colour: Color, corner: int) -> Panel:
+	var panel := Panel.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = colour
+	style.border_color = GarageArt.LINE
+	style.set_border_width_all(1 if corner > 0 else 0)
+	style.set_corner_radius_all(corner)
+	panel.add_theme_stylebox_override("panel", style)
+	panel.position = rect.position
+	panel.size = rect.size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(panel)
+	return panel
+
+
+func _label(parent: Control, rect: Rect2, font_size: int, colour: Color) -> Label:
+	var label := Label.new()
+	label.position = rect.position
+	label.size = rect.size
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", colour)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(label)
+	return label
+
+
+func _button(parent: Control, text: String, rect: Rect2, font_size: int) -> TouchButton:
+	var button := TouchButton.new()
+	button.text = text
+	button.font_size = font_size
+	button.fires_on_release = true
+	button.position = rect.position
+	button.size = rect.size
+	parent.add_child(button)
+	return button

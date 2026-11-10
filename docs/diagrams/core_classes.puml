@@ -99,6 +99,7 @@ skinparam classAttributeIconSize 0
       +with_rated_speed(const Params&, rated_omega_rad_s) : optional<Params>
       +initial_state(const Params&) : State
       +max_net_power_w(const Params&) : double
+      +full_throttle_net_torque_nm(const Params&, omega_rad_s) : double
       +full_fuel_omega_rad_s(const Params&, throttle) : double
       +predict(const State&, const Params&, throttle, dt_s) : Prediction
       +shaft_prediction(const Prediction&) : ShaftPrediction
@@ -146,6 +147,7 @@ skinparam classAttributeIconSize 0
       +rad_s_to_rpm(omega_rad_s) : double
       +rad_to_deg(angle_rad) / deg_to_rad(angle_deg) : double
       +metric_hp_to_w(hp) / w_to_metric_hp(power_w) : double
+      +bar_to_pa(bar) / pa_to_bar(pa) / pa_to_kpa(pa) : double
     }
   }
 

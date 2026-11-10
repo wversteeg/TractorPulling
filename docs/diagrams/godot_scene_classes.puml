@@ -238,14 +238,47 @@ package "GDScript (app/godot/scripts)" {
     +time_s : float
   }
   class GarageScreen {
-    +buy_buttons : Array[TouchButton]
-    +choice_buttons : Array[Array]
-    +done_button : TouchButton
+    the workshop, a part's screen, a choice's screen
+    +event : TractorPullEvent, for the dyno charts
+    +view : WORKSHOP, UPGRADE, CHOICE
+    +upgrade_pins, choice_pins : Array[PartPin]
+    +buy_button, back_button, done_button : TouchButton
+    +alternative_buttons : Array[TouchButton]
     +show_garage(garage, message)
-    +{static} alternative_text(alternative, fitted) : String
+    +show_workshop()
+    +open_upgrade(index)
+    +open_choice(index)
     +{static} euros(amount) : String
     ..signals..
     buy_requested(index), choice_requested(choice, alternative), done
+  }
+  class TractorSketch {
+    a pulling tractor from the side, to scale
+    +ballast_share, ballast_kg : float
+    +hitch_low_m, hitch_top_m, hitch_m : float
+    +footprint : float
+    +anchor(part) : Vector2
+    +to_px(m) : Vector2
+  }
+  class PartPin {
+    a part's pin: progress ring, icon, € badge
+    +part, title, note : String
+    +share : float
+    +choice, complete, affordable : bool
+    +ring_centre() : Vector2
+  }
+  class LevelLine {
+    a part's levels on one line (tires as treads)
+    +show_levels(labels, costs, level, treads, counts)
+  }
+  class DynoChart {
+    power against engine speed
+    +show_curves(curves)
+  }
+  class GarageArt {
+    the parts' icons, drawn
+    +{static} draw_icon(canvas, part, centre, size, colour)
+    +{static} draw_tread(canvas, rect, depth, colour)
   }
   class BuildInfo {
     which build this is, from res://build_info.cfg
@@ -267,11 +300,13 @@ package "GDScript (app/godot/scripts)" {
   }
   class GearButton
   class SetupScreen {
+    the pit board: the track's card, the tractor set up
     +ballast_slider, pressure_slider, hitch_slider : TouchSlider
     +pull_button, back_button : TouchButton
-    +show_setup(title, tuning, pro, tilt)
+    +show_setup(title, tuning, pro, tilt, track, track_name)
     +show_values(tuning)
     +release_sliders()
+    +release_buttons()
     ..signals..
     tuning_changed(ballast_position, pressure_bar, hitch_m),
     pull_requested, back_requested
@@ -393,7 +428,12 @@ HapticsScreen ..> Haptics : its kinds
 Pull *-- StartScreen
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen
-MenuPanel <|-- GarageScreen
+GarageScreen *-- TractorSketch : the workshop
+GarageScreen *-- PartPin : a pin per part
+GarageScreen *-- LevelLine
+GarageScreen *-- DynoChart
+TouchButton <|-- PartPin
+GarageScreen ..> GarageArt
 Pull ..> GameSettings : read at the start,\nwritten on a change
 SettingsScreen ..> BuildInfo : shows
 Pull ..> BuildInfo : prints at the start
@@ -403,8 +443,8 @@ MenuPanel <|-- SettingsScreen
 DriveControls *-- TiltSteering : steering by tilt,\ncentred at the pull's start
 Pull *-- ResultScreen
 Pull *-- SetupScreen : before every pull
-MenuPanel <|-- SetupScreen
-SetupScreen *-- "2" TouchSlider : weights,\ntire pressure
+SetupScreen *-- "3" TouchSlider : weights,\ntire pressure, hitch
+SetupScreen *-- TractorSketch : the setup shown
 Pull *-- BoardScreen : the event, its results,\nthe season's standings
 Pull ..> EventTexts
 ResultScreen ..> EventTexts : the operator's verdict
