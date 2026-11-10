@@ -3,6 +3,7 @@
 #include "tp/core/field/live_season.hpp"
 #include "tp/core/field/play.hpp"
 #include "tp/core/garage/garage.hpp"
+#include "tp/core/sled/sled.hpp"
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
@@ -31,8 +32,8 @@ class SportSetup {
 public:
     SportSetup() : season_(load("sport_4500_top.toml")), built_(built(season_)) {}
 
-    double reach_m(const std::string& round, double ballast_position,
-                   double pressure_bar = 1.0) const {
+    double reach_m(const std::string& round, double ballast_position, double pressure_bar = 1.0,
+                   int heavier_steps = 0) const {
         const data::SeasonRound& r = round_named(round);
         const data::EventDefinition& e = season_.event;
         Venue venue = data::venue(e.sled, r.track);
@@ -40,6 +41,7 @@ public:
         venue.sled = known != sleds_.end()
                          ? known->second
                          : sleds_.emplace(round, operators_sled(venue)).first->second;
+        venue.sled = sled::heavier(venue.sled, heavier_steps);
         vehicle::Tuning tuning = vehicle::as_built(built_);
         tuning.ballast_position = ballast_position;
         tuning.rear_tire_pressure_bar = pressure_bar;
@@ -161,6 +163,30 @@ TEST(TrackSetup, SoftTiresPayOnHeavyClayAndCostOnFirmLoam) {
     EXPECT_GT(sport.reach_m(heavy, kHalfway, kSoft_bar), sport.reach_m(heavy, kHalfway) + 2.0);
     EXPECT_LT(sport.reach_m("Firm loam", kHalfway, kSoft_bar),
               sport.reach_m("Firm loam", kHalfway) - kClearly_m);
+}
+
+// Each track has its own best tire pressure, and both sides of it cost:
+// too hard shrinks the footprint, so the tires grip less; too soft lets
+// the lugs squirm. On the grippy tracks the reference pressure is best, on
+// the heavy clay a soft one. On a sled heavier than the operator's, where
+// halfway does not make a full pull.
+TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
+    const SportSetup sport;
+    constexpr int kHeavier = 3;
+    constexpr double kSoft_bar = 0.5;
+    constexpr double kReference_bar = 1.0;
+    constexpr double kHard_bar = 1.4;
+    for (const char* grippy : {"Firm loam", "Summer, dry hard clay"}) {
+        const double best_m = sport.reach_m(grippy, kHalfway, kReference_bar, kHeavier);
+        EXPECT_GT(best_m, sport.reach_m(grippy, kHalfway, kSoft_bar, kHeavier) + kClearly_m)
+            << grippy;
+        EXPECT_GT(best_m, sport.reach_m(grippy, kHalfway, kHard_bar, kHeavier) + 1.0) << grippy;
+    }
+    const char* heavy = "Rainy day, covered heavy clay";
+    constexpr double kHeavyClay_bar = 0.7;
+    const double best_m = sport.reach_m(heavy, kHalfway, kHeavyClay_bar, kHeavier);
+    EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kSoft_bar, kHeavier));
+    EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kHard_bar, kHeavier) + kClearly_m);
 }
 
 }  // namespace

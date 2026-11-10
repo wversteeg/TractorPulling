@@ -87,6 +87,17 @@ for the big features; they are repeated at the end for completeness.
   (82 % on the rear axle) only pops up at the launch (about 11°). Real
   4.5 t pullers likely carry more on the rear; a tractor balance from
   measurements would settle it.
+- **A tire that bites too hard does not bog the engine.** Pullers keep
+  some wheelspin on a grippy track: a spinning tire works as a slip
+  clutch, taking the sled's sudden jumps in drag (the knives biting, the
+  push-down coming on, a soft spot) while the engine stays in its power
+  and boost band; a tire that bites hands each jump to the engine, which
+  drops out of boost and stalls. The sled's drag here rises smoothly, so
+  more grip never costs: a too-soft tire loses only by its lugs squirming.
+  Drag that jumps along the track would let wheelspin pay (the owner's
+  next step for the tire pressure). The nose does not come up from the
+  grip itself: the pull at the hitch is what the sled asks, so more grip
+  only lets the tractor hold a heavier drag before it spins.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
   between the left and right rear tires; both sides carry half the rear load.
 - **No differential lock.** The open differential is the only kind. Pulling
