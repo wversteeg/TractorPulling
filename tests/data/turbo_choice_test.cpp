@@ -15,13 +15,14 @@
 namespace tp::field {
 namespace {
 
-// Sport 4.5 t's turbo choice (garages/sport_4500.toml): the small, quick
-// turbo and the 68 mm one, each on the fully built tractor as built, in its
-// best gear, against the class's sled on each of the season's tracks.
-// Neither is best everywhere: the small one where the sled drags the
-// engine down, the 68 mm one where the tractor keeps its revs. (The season
-// visits some tracks twice; each visit counts.)
-TEST(TurboChoice, NeitherTurboWinsOnEveryTrack) {
+// Sport 4.5 t's turbos (garages/sport_4500.toml): the small, quick turbo
+// the stock tractor comes with and the 68 mm one, each on the fully built
+// tractor as built, in its best gear, against the class's sled on each of
+// the season's tracks. The 68 mm turbo is the upgrade: it pulls at least
+// as far everywhere, and clearly further on most tracks (on the grippiest
+// both make a full pull). (The season visits some tracks twice; each visit
+// counts.)
+TEST(TurboChoice, TheSixtyEightMillimetreTurboIsTheUpgrade) {
     const auto loaded =
         data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" / "sport_4500_top.toml");
     ASSERT_TRUE(loaded.ok()) << loaded.error().message;
@@ -40,6 +41,7 @@ TEST(TurboChoice, NeitherTurboWinsOnEveryTrack) {
     constexpr double kClearly_m = 1.0;
     int small_wins = 0;
     int large_wins = 0;
+    int visits = 0;
     std::string distances;
     for (const data::SeasonRound& round : d.rounds) {
         const Venue venue = data::venue(e.sled, round.track);
@@ -58,13 +60,14 @@ TEST(TurboChoice, NeitherTurboWinsOnEveryTrack) {
             ASSERT_TRUE(trial.has_value());
             distance_m[turbo] = trial.has_value() ? trial->distance_m : 0.0;
         }
-        small_wins += distance_m[0] > distance_m[1] + kClearly_m ? 1 : 0;
+        ++visits;
+        small_wins += distance_m[0] > distance_m[1] ? 1 : 0;
         large_wins += distance_m[1] > distance_m[0] + kClearly_m ? 1 : 0;
         distances += round.name + ": small " + std::to_string(distance_m[0]) + " m, 68 mm " +
                      std::to_string(distance_m[1]) + " m\n";
     }
-    EXPECT_GE(small_wins, 1) << distances;
-    EXPECT_GE(large_wins, 1) << distances;
+    EXPECT_EQ(small_wins, 0) << distances;
+    EXPECT_GT(2 * large_wins, visits) << distances;
 }
 
 }  // namespace

@@ -1,13 +1,13 @@
 # The Sport 4.5 t class's engine (engines/sport_4500.toml) with a smaller,
-# quicker turbo: the first of the garage's two turbos (garages/
-# sport_4500.toml), the one the tractor comes with. A smaller turbine spins
+# quicker turbo: the stock one the tractor comes with, the first of the
+# garage's two turbos (garages/sport_4500.toml); the 68 mm turbo is the
+# upgrade. A smaller turbine spins
 # up on less exhaust, so it boosts from lower down and with less lag, and
 # holds the boost when the sled drags the engine down, and it is sized for
 # the middle of the range, where it gives more than the 68 mm turbo; but
 # its compressor chokes at high revs, so it gives less on top: about
 # 440 hp (330 kW) fully built, against the 68 mm turbo's 510 hp. Game
-# choice: the figures are an estimate, set so that neither turbo wins on
-# every track.
+# choice: the figures are an estimate.
 # Speeds are in rpm and converted to rad/s on load.
 [engine]
 inertia_kg_m2 = 2.0      # crankshaft and flywheel of a 7 l six

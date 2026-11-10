@@ -530,16 +530,13 @@ for the big features; they are repeated at the end for completeness.
   everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
 - **The rivals do not upgrade.** Their tractors are drawn once for the
   season around the reference tractor.
-- **The rivals do not choose.** A rival keeps the reference tractor's
-  parts: Sport 4.5 t's rivals all pull the 68 mm turbo, on every track,
-  and the hitch where the field puts it. Some rivals on the small turbo,
-  or each fitting the turbo for the day's track, would show the choice
-  at work in the field.
-- **The hitch's top hole always pulls furthest for the scripted
-  pullers.** They drive straight, so a front lifted by a high hitch costs
-  them nothing; the trade-off (the steering lost with the front up, the
-  lane) is the player's. A hitch too high that stands the tractor on its
-  wheelie bar and drags it is not modelled.
+- **The rivals do not set up for the track.** A rival keeps the reference
+  tractor's parts and the weights, tire pressure and hitch the field
+  draws for it, on every track; a good puller would move the weights back
+  on the loose sand and forward on the heavy clay.
+- **A high hitch costs the scripted pullers only through the wheelie
+  bar.** They drive straight, so the steering lost with the front up
+  costs them nothing; the lane is the player's worry.
 - **No cost or time to swap a part.** An owned alternative is fitted for
   nothing between events; a real swap of a turbo or an engine takes a
   day's work.

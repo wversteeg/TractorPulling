@@ -140,11 +140,11 @@ TEST(WheelieRuns, TheWeightsForwardKeepTheFrontDown) {
     EXPECT_LT(forward.result.distance_m, back.result.distance_m);
 }
 
-// On a track that grips less the same tractor lifts on the launch only:
-// near the end the tires give way before the front comes up, and the
-// wheels spin out.
+// On a track that grips less (the loose sandy clay) the same tractor lifts
+// on the launch only: near the end the tires give way before the front
+// comes up, and the wheels spin out.
 TEST(WheelieRuns, OnALowGripTrackItLiftsOnlyOnTheLaunch) {
-    const FrontLoads f = sport("covered_heavy_clay.toml", 0.25);
+    const FrontLoads f = sport("sandy_clay.toml", 0.25);
     EXPECT_EQ(f.launch_n, 0.0);
     EXPECT_GT(f.end_n, 0.0);
     EXPECT_EQ(f.result.ending, run::Ending::kSpunOut);

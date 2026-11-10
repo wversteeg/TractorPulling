@@ -1,15 +1,18 @@
 # A heavy clay track on a rainy day. The track was covered with plastic
-# while it rained, so it is moist rather than wet: still softer and
-# stickier than the reference, and the tires smear it once they spin.
+# while it rained, so it is moist rather than wet: softer and stickier than
+# the reference. A heavy track: the tires dig in and bite, the sled's pan
+# ploughs deep, and the engine is pulled down until it stalls before the
+# tires spin out.
 
 [track]
 length_m = 100.0
 max_duration_s = 120.0
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
 # How the track was prepared, a scale on its soil's grip (1 is the
-# reference): wet under the cover, it grips least. Built tractors lift on
-# the launch only and spin out at the end.
-grip = 0.85
+# reference): sticky clay the lugs bite into. A strong tractor with its
+# weights back climbs onto its wheelie bar here: the weights go forward
+# (TrackSetup.OnHeavyClayTheWeightsGoForward), and soft tires pay.
+grip = 1.45
 
 [track.soil]
 clay_fraction = 0.75

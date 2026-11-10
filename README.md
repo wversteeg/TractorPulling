@@ -127,19 +127,25 @@ the shipped tracks:
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml --gear 6
 # track                         cone index   grip  fall-off  push-down  result
-# covered_heavy_clay                875 kPa   1.00      0.21     78.0 m  90.89 m, engine stalled
-# dry_hard_clay                    6000 kPa   0.96      0.19     73.0 m  91.06 m, engine stalled
-# firm_loam                        1943 kPa   1.00      0.24     78.0 m  92.61 m, engine stalled
-# ideal_clay_sand                  1485 kPa   1.00      0.22     78.0 m  92.61 m, engine stalled
-# sandy_clay                       2107 kPa   1.00      0.26     78.0 m  92.71 m, engine stalled
-# watered_start                     584 kPa   1.00      0.25     78.0 m  92.26 m, engine stalled
+# covered_heavy_clay                875 kPa   1.45      0.21     78.0 m  91.48 m, engine stalled
+# dry_hard_clay                    6000 kPa   1.20      0.19     73.0 m  90.73 m, engine stalled
+# firm_loam                        1943 kPa   1.30      0.24     78.0 m  92.81 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     78.0 m  92.01 m, engine stalled
+# sandy_clay                       2107 kPa   0.92      0.26     78.0 m  90.56 m, wheels spun out
+# watered_start                     812 kPa   1.00      0.22     78.0 m  91.84 m, engine stalled
 ```
 
 Pulling tracks are clay mixes, prepared and covered when it rains, so they
-differ by a metre or two for the same tractor: the moist heavy clay is the
-shortest, and the sled operator evens out the rest with the push-down and
-the knives on the day. On the fast dry clay the operator brings the
-push-down 5 m earlier.
+differ by a metre or two for this light tractor, which runs out of engine
+before grip on all but the loose sandy clay; the sled operator evens out
+the rest with the push-down and the knives on the day. On the fast dry
+clay the operator brings the push-down 5 m earlier. For the heavier,
+stronger classes the track matters far more (the grip, `grip` per track):
+on the grippy firm loam and dry clay a Sport tractor with its weights all
+back stands on its wheelie bar, and halfway pulls further; on the heavy
+clay the tires dig in, the engine stalls before they spin out, and the
+weights go forward; on the loose sandy clay they go back
+(`TrackSetup.*`).
 
 ### The sled tops out after the push-down
 
@@ -173,10 +179,11 @@ The puller sets two things on the tractor before a pull
 - **The rear tires' pressure.** 0.5 to 1.6 bar (`[tire.pressure]`): lower
   deflects the tire more, for a bigger footprint that sinks less and pulls
   better on soft ground, but lets the lugs squirm, which costs grip, most
-  on firm ground; harder than 1.0 bar only shrinks the footprint. What a
-  pressure costs depends on the track: on dry hard clay 0.7 bar costs over
-  2 m, on the soft covered heavy clay only half a metre (in 6th there it
-  pulls a little further than 1.0 bar):
+  on firm ground; harder than 1.0 bar only shrinks the footprint. This
+  light tractor runs out of engine before grip, so a pressure changes its
+  pull by under a metre; a Sport 4.5 t gains metres on soft tires on the
+  heavy clay and loses more on the firm loam
+  (`TrackSetup.SoftTiresPayOnHeavyClayAndCostOnFirmLoam`):
 
 ```bash
 for bar in 0.7 1.0 1.6; do
@@ -184,9 +191,9 @@ for bar in 0.7 1.0 1.6; do
       data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
       data/tracks/dry_hard_clay.toml --gear 5 --pressure $bar
 done
-# 0.7 bar: covered heavy clay 90.86 m, dry hard clay 88.66 m
-# 1.0 bar: covered heavy clay 91.34 m, dry hard clay 91.02 m
-# 1.6 bar: covered heavy clay 90.36 m, dry hard clay 90.82 m
+# 0.7 bar: covered heavy clay 93.95 m, dry hard clay 96.93 m
+# 1.0 bar: covered heavy clay 93.40 m, dry hard clay 96.75 m
+# 1.6 bar: covered heavy clay 92.73 m, dry hard clay 96.34 m
 ```
 
 `--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the
@@ -244,10 +251,10 @@ falls below 90 % of its rated speed past 40 m:
 
 | track (two knives) | stays in 6th | shifts to 5th (at) |
 |---|---|---|
-| ideal clay-sand | 93.93 m, stalled | **97.58 m** (85.5 m) |
-| covered heavy clay | 91.32 m, stalled | **93.04 m** (84.2 m) |
-| watered start | 93.71 m, stalled | **97.25 m** (85.3 m) |
-| dry hard clay | 94.51 m, stalled | **full pull** (82.4 m) |
+| ideal clay-sand | 94.00 m, stalled | **97.66 m** (85.6 m) |
+| covered heavy clay | 92.46 m, stalled | **95.04 m** (84.4 m) |
+| watered start | 93.97 m, stalled | **97.67 m** (85.5 m) |
+| dry hard clay | 96.07 m, stalled | **full pull** (82.3 m) |
 
 Late is too late: shifting at 60 % of rated speed (about 90 m) gains only
 half a metre to a metre. A test pins the first row (`LoadDownshiftRuns`).

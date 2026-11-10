@@ -73,6 +73,7 @@ if(TP_BUILD_DATA_IO)
         data/tire_loader_test.cpp
         data/track_loader_test.cpp
         data/tractor_loader_test.cpp
+        data/track_setup_test.cpp
         data/tuning_runs_test.cpp
         data/turbo_choice_test.cpp
         data/wheelie_runs_test.cpp)

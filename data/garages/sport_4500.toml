@@ -6,15 +6,12 @@
 # part's value outright; each cost is from the level below, the stages
 # dearer as they go. A full class, so more stages than Sport 2.5 t's.
 #
-# - Turbo (a choice, the class's setup lesson): the tractor comes with a
-#   small, quick turbo (engines/sport_4500_fast_turbo.toml, about 440 hp
-#   fully built), full boost from 1300 rpm and strong in the middle; the
-#   68 mm turbo (engines/sport_4500.toml, about 510 hp) lags and gives
-#   less low down, but more on top. Neither is best on every track: the
-#   small one where the sled drags the engine down (the covered heavy
-#   clay, by metres), the 68 mm one where the tractor keeps its revs (every
-#   firmer track, by a metre or three).
-#   Bought once, either is fitted for nothing between events.
+# - Turbo (a garage choice): the stock tractor comes with a small, quick
+#   turbo (engines/sport_4500_fast_turbo.toml, about 440 hp fully built),
+#   full boost from 1300 rpm; the 68 mm turbo (engines/sport_4500.toml,
+#   about 510 hp) is the upgrade, further on every track. Bought, either is
+#   fitted for nothing between events. The class's setup lesson is the
+#   weights, tire pressure and hitch for the track (docs/career.md).
 # - engine_torque: the engine's full-load torque as a share of the fully
 #   built engine's, whichever turbo is on: from a stock 7 l farm engine's
 #   180 hp, through the pump, injectors, lift pump, the intercooler, the

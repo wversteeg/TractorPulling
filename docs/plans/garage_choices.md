@@ -6,14 +6,18 @@ to `docs/future_improvements.md`).
 
 What came out differently from the plan:
 
-- The small turbo is the heavy-clay turbo: it wins by metres on the
-  covered heavy clay, the 68 mm one by a metre or three on every firmer
-  track (`TurboChoice.NeitherTurboWinsOnEveryTrack`). Tuned so a
-  half-built tractor on it is no stronger in the field than before
-  (`RivalDifficulty.*`).
-- For the scripted pullers the hitch's top hole always pulls furthest;
-  the cost of a high hitch (the front up, the steering gone) is the
-  player's only (`docs/future_improvements.md`).
+- The tracks were rebalanced after (the owner's description of how a
+  track should pull): grippy tracks stand a tractor with its weights
+  back on its wheelie bar, the heavy clay wants the weights forward and
+  stalls the engine, the loose sand wants them back (`TrackSetup.*`). On
+  them the 68 mm turbo wins everywhere, so the owner chose: the small
+  turbo is the stock one and the 68 mm the upgrade
+  (`TurboChoice.TheSixtyEightMillimetreTurboIsTheUpgrade`); Sport 4.5 t's
+  setup lesson is the weights, tire pressure and hitch for the track. The
+  either/or choices start in Supersport.
+- The wheelie bars follow the ETPC rules (the pad at 250 mm, a sliding
+  skid), so a high hitch with the weights back rides the bar and costs
+  the load it carries.
 - "Keeping the turbo lit" is the engine's existing turbo model
   (`na_torque_fraction`, the lag); it was not tuned further.
 
