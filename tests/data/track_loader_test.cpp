@@ -96,6 +96,7 @@ TEST(TrackLoader, LoadsEveryShippedTrack) {
         const auto result = load_track(kTracks / name);
         ASSERT_TRUE(result.ok()) << result.error().message;
         EXPECT_TRUE(track::Model::create(result.value().ground).has_value()) << name;
+        EXPECT_FALSE(result.value().setup_tip.empty()) << name << ": the pit board's tip";
     }
 }
 
@@ -124,6 +125,7 @@ TEST(TrackLoader, ProfileAndPushdownAreOptional) {
     EXPECT_FALSE(result.value().ground.moisture_along_m.has_value());
     EXPECT_FALSE(result.value().sled.pushdown_start_m.has_value());
     EXPECT_EQ(result.value().ground.grip_scale, 1.0) << "a well-prepared track's grip";
+    EXPECT_EQ(result.value().setup_tip, "") << "no tip";
 }
 
 // A track's grip scales its soil's: how it was prepared.

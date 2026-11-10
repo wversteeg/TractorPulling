@@ -134,16 +134,18 @@ constexpr int kPowerSamples = 4096;
 
 }  // namespace
 
+double full_throttle_net_torque_nm(const Params& params, double omega_rad_s) noexcept {
+    return governor_fuel(params, 1.0, omega_rad_s) *
+               params.full_load_torque_nm.evaluate(omega_rad_s) -
+           params.friction_torque_nm - params.viscous_friction_nm_s_rad * omega_rad_s;
+}
+
 double max_net_power_w(const Params& params) noexcept {
     const double span_rad_s = params.high_idle_omega_rad_s - params.idle_omega_rad_s;
     double best_w = 0.0;
     for (int i = 0; i <= kPowerSamples; ++i) {
         const double omega_rad_s = params.idle_omega_rad_s + span_rad_s * i / kPowerSamples;
-        const double torque_nm = governor_fuel(params, 1.0, omega_rad_s) *
-                                     params.full_load_torque_nm.evaluate(omega_rad_s) -
-                                 params.friction_torque_nm -
-                                 params.viscous_friction_nm_s_rad * omega_rad_s;
-        best_w = std::max(best_w, torque_nm * omega_rad_s);
+        best_w = std::max(best_w, full_throttle_net_torque_nm(params, omega_rad_s) * omega_rad_s);
     }
     return best_w;
 }

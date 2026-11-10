@@ -334,6 +334,19 @@ TEST(Engine, MaxNetPowerIsThePeakOfTheFullLoadCurve) {
     EXPECT_LT(net_power_w(params, params.high_idle_omega_rad_s), 0.0);
 }
 
+// The dynamometer's curve the garage draws is the one the peak is taken
+// from: full fuel up to the rated speed, the governor's droop above it.
+TEST(Engine, FullThrottleNetTorqueIsTheDynoCurve) {
+    const Params params = reference_params();
+    for (const int rpm : {900, 1500, 2100, 2300, 2400}) {
+        const double omega_rad_s = rpm_to_rad_s(rpm);
+        EXPECT_NEAR(full_throttle_net_torque_nm(params, omega_rad_s) * omega_rad_s,
+                    net_power_w(params, omega_rad_s), 1e-9)
+            << rpm << " rpm";
+    }
+    EXPECT_LT(full_throttle_net_torque_nm(params, params.high_idle_omega_rad_s), 0.0);
+}
+
 // Power scales with torque when there is no friction.
 TEST(Engine, MaxNetPowerScalesWithTorque) {
     Params params = reference_params();

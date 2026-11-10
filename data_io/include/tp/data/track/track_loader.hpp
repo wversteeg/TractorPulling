@@ -7,6 +7,7 @@
 #include "tp/data/result.hpp"
 
 #include <filesystem>
+#include <string>
 #include <string_view>
 
 namespace tp::data {
@@ -17,6 +18,9 @@ struct Track {
     run::Rules rules;
     track::Params ground;
     sled::Conditions sled;
+    /// How a puller sets up for this track, in a line, for the game's pit
+    /// board; "" if the file gives none (`track.setup_tip`).
+    std::string setup_tip;
 };
 
 /// Loads and validates a track definition (see data/tracks/).

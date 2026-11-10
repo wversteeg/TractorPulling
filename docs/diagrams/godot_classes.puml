@@ -72,6 +72,8 @@ package "tp::godot_binding" {
     +get_season_standings() : Array
     +get_event_prize() : int
     +get_garage() : Dictionary
+    +get_upgrade_dyno(index) : Dictionary
+    +get_choice_dynos(choice) : Array
     +buy_upgrade(index) : String
     +buy_alternative(choice, alternative) : String
     +fit_alternative(choice, alternative) : String

@@ -147,6 +147,12 @@ struct Prediction {
 /// class checks, not for the simulation step.
 [[nodiscard]] double max_net_power_w(const Params& params) noexcept;
 
+/// The torque on the crankshaft at full throttle and full boost at
+/// `omega_rad_s`, the governor's droop and the friction taken off [N·m]:
+/// the dynamometer's curve that max_net_power_w() takes its peak from. For
+/// data and the garage's charts, not for the simulation step.
+[[nodiscard]] double full_throttle_net_torque_nm(const Params& params, double omega_rad_s) noexcept;
+
 /// The speed below which the governor gives full fuel at `throttle`
 /// (clamped to [0, 1], as in predict()): its target less the droop.
 /// Under more load the engine lugs down its torque curve [rad/s].

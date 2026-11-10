@@ -75,29 +75,6 @@ func _check_new_career(event: TractorPullEvent, start: StartScreen, what: String
 			"%s, saved: %s" % [what, saved])
 
 
-# A part at its top level keeps the garage's columns: the row after it
-# starts in the first column, its Buy in the last.
-func _check_garage_columns(garage: GarageScreen) -> void:
-	var line := {"name": "Part", "label": "Now", "level": 0, "levels": 2,
-			"next_label": "", "next_cost_eur": 0}
-	var next := line.duplicate()
-	next["next_label"] = "Better"
-	next["next_cost_eur"] = 100
-	garage.show_garage({"money_eur": 1000, "can_buy": true, "upgrades": [line, next]})
-	await _frames(2)
-	var table: GridContainer = garage.get("_table")
-	var cells := table.get_children()
-	_expect(cells.size() == 2 * table.columns, "a cell for each column: %d" % cells.size())
-	if cells.size() == 2 * table.columns:
-		var first := cells[0] as Control
-		var below := cells[table.columns] as Control
-		var buy := cells[table.columns - 1] as Control
-		var buy_below := cells[2 * table.columns - 1] as Control
-		_expect(is_equal_approx(first.position.x, below.position.x)
-				and is_equal_approx(buy.position.x, buy_below.position.x),
-				"the columns line up after a part at its top level")
-
-
 # More rows than fit: all of them in the list, which shows the newest; a
 # table opens at its top.
 func _check_board_scrolls(board: BoardScreen) -> void:
@@ -287,30 +264,45 @@ func _play() -> void:
 	await _frames(2)
 	_expect(start.visible and not settings.visible, "back from the settings")
 
-	# The garage: the start money buys the second powershift level once;
-	# then it is at its top. Then the spare pump, which is fitted, taken
-	# off and fitted again for nothing.
+	# The garage: the workshop shows a pin for the powershift and one for
+	# the pump choice. The powershift's screen buys its second level once
+	# with the start money; then it is at its top. Then the spare pump,
+	# which is fitted, taken off and fitted again for nothing.
 	var garage: GarageScreen = _pull.get("garage_screen")
 	_tap(start.garage_button)
 	await _frames(2)
 	var stock := event.get_garage()
-	_expect(garage.visible and int(stock["money_eur"]) == START_MONEY_EUR and stock["can_buy"]
-			and garage.buy_buttons.size() == 1 and garage.buy_buttons[0].visible,
-			"the garage: %s" % stock)
+	_expect(garage.visible and garage.view == GarageScreen.View.WORKSHOP
+			and int(stock["money_eur"]) == START_MONEY_EUR and stock["can_buy"]
+			and garage.upgrade_pins.size() == 1 and garage.choice_pins.size() == 1
+			and garage.upgrade_pins[0].affordable and garage.done_button.visible,
+			"the workshop: %s" % stock)
 	await _shot("1c_garage")
-	_tap(garage.buy_buttons[0])
+	_tap(garage.upgrade_pins[0])
+	await _frames(2)
+	_expect(garage.view == GarageScreen.View.UPGRADE and garage.buy_button.visible
+			and not garage.buy_button.disabled and garage.back_button.visible
+			and not garage.done_button.visible, "the powershift's screen")
+	await _shot("1c_garage_part")
+	_tap(garage.buy_button)
 	await _frames(2)
 	var bought := event.get_garage()
 	var powershift: Dictionary = bought["upgrades"][0]
 	_expect(int(bought["money_eur"]) == 400 and int(powershift["level"]) == 1
-			and not bought["fully_upgraded"] and not garage.buy_buttons[0].visible,
+			and not bought["fully_upgraded"] and not garage.buy_button.visible
+			and garage.view == GarageScreen.View.UPGRADE,
 			"bought the powershift: %s" % bought)
 	_expect(event.buy_upgrade(0) == "top level", "nothing more to buy")
+	_tap(garage.back_button)
+	await _frames(2)
+	_expect(garage.view == GarageScreen.View.WORKSHOP and garage.upgrade_pins[0].complete,
+			"back in the workshop, the powershift complete")
 	await _check_garage_choice(event, garage)
-	await _check_garage_columns(garage)
 	await _check_board_scrolls(_pull.get("board"))
 	_check_officials_flags(_pull.get("venue_view"))
 	garage.show_garage(event.get_garage())
+	_tap(garage.back_button)
+	await _frames(2)
 	_tap(garage.done_button)
 	await _frames(2)
 	_expect(start.visible and not garage.visible, "back from the garage")
@@ -470,28 +462,33 @@ func _check_hitch_slider(setup: SetupScreen) -> void:
 			"the hitch's top hole is 0, a lower hole its height: %f, %f" % [top, lower])
 
 
-# The pump choice: the spare pump bought (and fitted) with the money left,
-# the stock one fitted again for nothing, and the spare one again; then
-# everything is bought. The fitted alternative is picked out.
+# The pump choice, from its pin: the spare pump bought (and fitted) with
+# the money left, the stock one fitted again for nothing, and the spare one
+# again; then everything is bought. The fitted alternative is picked out.
 func _check_garage_choice(event: TractorPullEvent, garage: GarageScreen) -> void:
-	_expect(garage.choice_buttons.size() == 1 and garage.choice_buttons[0].size() == 2
-			and garage.choice_buttons[0][0].selected and not garage.choice_buttons[0][1].selected
-			and not garage.choice_buttons[0][1].disabled, "the pumps on offer")
-	_tap(garage.choice_buttons[0][1])
+	_tap(garage.choice_pins[0])
 	await _frames(2)
+	var buttons := garage.alternative_buttons
+	_expect(garage.view == GarageScreen.View.CHOICE and buttons.size() == 2
+			and buttons[0].selected and not buttons[1].selected and not buttons[1].disabled,
+			"the pumps on offer")
+	_tap(buttons[1])
+	await _frames(2)
+	buttons = garage.alternative_buttons
 	var spare := event.get_garage()
 	var pump: Dictionary = spare["choices"][0]
 	_expect(int(spare["money_eur"]) == 100 and int(pump["fitted"]) == 1
 			and pump["alternatives"][1]["owned"] and spare["fully_upgraded"]
-			and garage.choice_buttons[0][1].selected, "bought the spare pump: %s" % spare)
+			and buttons[1].selected, "bought the spare pump: %s" % spare)
 	await _shot("1d_garage_choice")
-	_tap(garage.choice_buttons[0][0])
+	_tap(buttons[0])
 	await _frames(2)
+	buttons = garage.alternative_buttons
 	var stock := event.get_garage()
 	_expect(int(stock["money_eur"]) == 100 and int(stock["choices"][0]["fitted"]) == 0
-			and garage.choice_buttons[0][0].selected
-			and garage.choice_buttons[0][1].text == "Fit: Spare pump", "the stock pump fitted again")
-	_tap(garage.choice_buttons[0][1])
+			and buttons[0].selected and buttons[1].text == "Fit · free",
+			"the stock pump fitted again")
+	_tap(buttons[1])
 	await _frames(2)
 	_expect(int(event.get_garage()["money_eur"]) == 100
 			and int(event.get_garage()["choices"][0]["fitted"]) == 1, "and the spare one")

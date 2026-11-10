@@ -372,6 +372,14 @@ up together: the engine gives full fuel to 2500 rpm instead of 2200, so it
 runs faster in the same gear, close to the class's 2700 rpm, with about
 the same power, which the class limits.
 
+In the game the garage is a workshop: the tractor drawn from the side with
+a pin on each part, its ring filling as the part is built up and a €
+badge when its next level is affordable. A part's screen lines up all its
+levels (bought ones checked, the next with its price and Buy; the tires
+drawn as their tread), the engine's with a dyno chart of what the next
+level adds; a choice (Sport 4.5 t's turbo) puts its alternatives side by
+side.
+
 ### The rivals
 
 The rivals' tractors span what the garage offers, a step above it
@@ -505,9 +513,11 @@ sled operator's verdicts fill in as they are simulated (the rivals try
 their gears from the start screen on). When you are due, you pull: a test
 pull, a pull, a re-pull or a pull-off, each on the sled as the operator has
 set it, counted by the NTTO rules as for everyone. Before every pull the
-setup screen sets the tractor (see "Tuning before a pull": the weights,
-shown as the rear axle's share, and the rear tires' pressure, both kept for
-the season); it names the controls the settings picked. The gear in the
+pit board sets the tractor (see "Tuning before a pull": the weights,
+the rear tires' pressure and an adjustable hitch, kept for the season),
+with the day's track on a card (its grip, how firm it is, and a crew
+chief's tip) and the tractor drawn as set; it names the controls the
+settings picked. The gear in the
 start screen's top right corner opens the settings: the layout, easy or
 pro, and the steering, the slider or tilting the phone, kept on the device
 between launches. After a test pull on a

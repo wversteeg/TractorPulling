@@ -112,14 +112,16 @@ public:
     /// Starts the season's next event; "" or what is wrong.
     godot::String start_event();
     /// {name, index, count, pullers, full_pull_m, standard_full_pull_m,
-    /// pull_off_places, turn, pull_kind, pull_off_round} of the event being
+    /// pull_off_places, turn, pull_kind, pull_off_round, track} of the event being
     /// pulled:
     /// `full_pull_m` is the line in force (110 m after a test pull past
     /// 100 m, the pull-off line in a pull-off), `standard_full_pull_m` the
     /// class's own, where the banner stands; `turn` is "rivals",
     /// "player_pull", "player_decision", "finished" or "failed";
     /// `pull_kind` ("test", "competition", "repull", "pull_off") and
-    /// `pull_off_round` the player's pull, while it is due. {} before one.
+    /// `pull_off_round` the player's pull, while it is due; `track` {grip,
+    /// cone_index_kpa, tip} the track at the start line and how to set up
+    /// for it. {} before one.
     [[nodiscard]] godot::Dictionary get_event() const;
 
     /// Runs the rivals' work for at most `max_steps` 1 ms steps; the steps
@@ -168,15 +170,26 @@ public:
     /// [EUR] (garage::prize_eur); 0 before an event.
     [[nodiscard]] std::int64_t get_event_prize() const;
 
-    /// The garage: {money_eur, can_buy, fully_upgraded, upgrades, choices},
-    /// each upgrade {name, level, levels, label, next_label, next_cost_eur,
-    /// counts, for} (the next ones "" and 0 at the top level; `for` the
-    /// alternative it belongs to, "" for none, and `counts` whether that is
-    /// fitted), each choice {name, fitted, alternatives}, each alternative
-    /// {label, cost_eur, owned}. `can_buy` is false while the
+    /// The garage: {money_eur, can_buy, fully_upgraded, power_hp, upgrades,
+    /// choices}, each upgrade {name, part, level, levels, label, labels,
+    /// costs, next_label, next_cost_eur, counts, for} (`part` as the garage
+    /// files name it, `labels` and `costs` every level's, the next ones ""
+    /// and 0 at the top level; `for` the alternative it belongs to, "" for
+    /// none, and `counts` whether that is fitted), each choice {name, slot,
+    /// fitted, alternatives}, each alternative {label, cost_eur, owned};
+    /// `power_hp` the tractor's peak in metric hp. `can_buy` is false while the
     /// player has pulled in the event being pulled: a tractor changes
     /// between events, not during one. {} before a season.
     [[nodiscard]] godot::Dictionary get_garage() const;
+    /// The engine's dyno curve for upgrade `index`'s screen: {now, next},
+    /// each {points, hp}: (rpm, kW) at full throttle from idle to high idle
+    /// and the peak in metric hp; `next` with the upgrade's next level
+    /// bought, left out at its top. {} for no such upgrade.
+    [[nodiscard]] godot::Dictionary get_upgrade_dyno(std::int64_t index) const;
+    /// Each alternative of choice `choice` as if fitted, with the career's
+    /// builds: its dyno curve {points, hp} (an engine slot's; the others'
+    /// engine is the tractor's).
+    [[nodiscard]] godot::Array get_choice_dynos(std::int64_t choice) const;
     /// Buys the next level of upgrade `index`; "" or why not ("top level",
     /// "not enough money", "not during an event", "no such upgrade").
     godot::String buy_upgrade(std::int64_t index);
@@ -195,7 +208,7 @@ public:
     [[nodiscard]] godot::Array get_season_standings() const;
 
     /// The player's tractor as they set it before a pull (vehicle::Tuning),
-    /// kept for the season: {ballast, ballast_position, rear_share,
+    /// kept for the season: {ballast, ballast_kg, ballast_position, rear_share,
     /// pressure, pressure_bar, min_bar, max_bar, hitch, hitch_m,
     /// min_hitch_m, max_hitch_m}. `ballast`, `pressure` and `hitch` say
     /// whether the tractor has weights to move, rear tires whose pressure
