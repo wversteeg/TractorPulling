@@ -5,7 +5,7 @@ length_m = 100.0
 max_duration_s = 120.0
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
 # How the track was prepared, a scale on its soil's grip (1 is the
-# reference): well rolled loam, the grippiest track. A strong tractor with
+# reference): well rolled loam, a grippy track. A strong tractor with
 # its weights all back stands on its wheelie bar here: halfway pulls
 # further, and soft tires' squirming lugs cost metres.
 grip = 1.3

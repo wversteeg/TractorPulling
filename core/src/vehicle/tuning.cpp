@@ -10,6 +10,14 @@ Tuning as_built(const Params& params) noexcept {
             .hitch_height_m = params.chassis.hitch_height_m};
 }
 
+double hitch_setting(const Params& params, double wanted_m) noexcept {
+    // Written so that NaN is the top hole too.
+    if (!(wanted_m < params.chassis.hitch_height_m) || !(wanted_m > 0.0)) {
+        return 0.0;
+    }
+    return wanted_m;
+}
+
 Params tuned(const Params& params, const Tuning& tuning) noexcept {
     Params out = params;
     out.chassis = chassis::with_ballast_at(params.chassis, tuning.ballast_position);

@@ -110,14 +110,15 @@ func _process(_delta: float) -> void:
 		tuning_changed.emit(now.x, now.y, now.z)
 
 
-# The hitch's hole the slider is at, from the top one down; 0 for a fixed
-# hitch (the top hole).
+# The hitch's hole the slider is at, from the top one down; 0 for the top
+# hole (and a fixed hitch), so that a drawbar bought later raises it.
 func _hitch_m() -> float:
 	if not hitch_slider.visible:
 		return 0.0
 	var top := hitch_slider.end_value
-	return clampf(top - snappedf(top - hitch_slider.value, HITCH_STEP_M), hitch_slider.start_value,
-			top)
+	var hole := clampf(top - snappedf(top - hitch_slider.value, HITCH_STEP_M),
+			hitch_slider.start_value, top)
+	return 0.0 if hole >= top else hole
 
 
 func release_sliders() -> void:

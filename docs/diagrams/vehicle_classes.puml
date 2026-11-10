@@ -95,6 +95,7 @@ package "tp::vehicle" {
   }
   class "tuning functions" as TuningFns <<free functions>> {
     +as_built(const Params&) : Tuning
+    +hitch_setting(const Params&, wanted_m) : double
     +tuned(const Params&, const Tuning&) : Params
     --
     chassis::with_ballast_at and

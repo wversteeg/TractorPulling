@@ -6,6 +6,10 @@
 # than 4.0 m ahead of the rear axle, the hitch at most 0.5 m high and at
 # least 0.45 m behind the axle. The garage (garages/sport_4500.toml) builds
 # it from a stock tractor.
+#
+# The engine here is the 68 mm turbo's, as the rivals and tp_pull pull it;
+# the player's stock tractor comes with the small turbo instead (the
+# garage's turbo choice, engines/sport_4500_fast_turbo.toml).
 
 [tractor]
 engine = "../engines/sport_4500.toml"

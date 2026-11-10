@@ -63,5 +63,26 @@ TEST(Tuning, SetsTheHitchWithinItsHoles) {
     EXPECT_EQ(validate(tuned(params, low)), std::nullopt);
 }
 
+// A hitch set in the top hole is kept as the top hole (0), so a higher
+// drawbar bought later raises it; one set lower stays where it was set.
+TEST(Tuning, AHitchInTheTopHoleFollowsAHigherDrawbar) {
+    Params stock = reference_params();
+    stock.chassis.hitch_min_height_m = 0.30;
+    stock.chassis.hitch_height_m = 0.40;
+    Params raised = stock;
+    raised.chassis.hitch_height_m = 0.50;
+    Tuning top = as_built(stock);
+    top.hitch_height_m = hitch_setting(stock, 0.40);
+    EXPECT_EQ(top.hitch_height_m, 0.0);
+    EXPECT_EQ(tuned(raised, top).chassis.hitch_height_m, 0.50);
+    Tuning low = as_built(stock);
+    low.hitch_height_m = hitch_setting(stock, 0.34);
+    EXPECT_EQ(low.hitch_height_m, 0.34);
+    EXPECT_EQ(tuned(raised, low).chassis.hitch_height_m, 0.34);
+    EXPECT_EQ(hitch_setting(stock, 0.0), 0.0);
+    EXPECT_EQ(hitch_setting(stock, -1.0), 0.0);
+    EXPECT_EQ(hitch_setting(stock, std::nan("")), 0.0);
+}
+
 }  // namespace
 }  // namespace tp::vehicle

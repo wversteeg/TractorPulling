@@ -333,6 +333,7 @@ func _play() -> void:
 			and is_equal_approx(float(tuned["pressure_bar"]), float(tuned["min_bar"])),
 			"the weights to the rear, the tires soft: %s" % tuned)
 	await _shot("1b_setup")
+	_check_hitch_slider(setup)
 	_tap(setup.back_button)
 	await _frames(2)
 	_expect(start.visible and not setup.visible, "back to the start screen")
@@ -445,6 +446,28 @@ func _play() -> void:
 
 	print("flow test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# The hitch's slider sends 0 for the top hole, so that a drawbar bought
+# later raises it, and a lower hole as its height (2 cm holes). Checked
+# within one frame, then put back: the practice tractor's hitch is fixed.
+func _check_hitch_slider(setup: SetupScreen) -> void:
+	var slider := setup.hitch_slider
+	var was_visible := slider.visible
+	var was := [slider.start_value, slider.end_value, slider.value]
+	slider.visible = true
+	slider.start_value = 0.40
+	slider.end_value = 0.50
+	slider.value = 0.50
+	var top: float = setup.call("_hitch_m")
+	slider.value = 0.443
+	var lower: float = setup.call("_hitch_m")
+	slider.start_value = was[0]
+	slider.end_value = was[1]
+	slider.value = was[2]
+	slider.visible = was_visible
+	_expect(top == 0.0 and is_equal_approx(lower, 0.44),
+			"the hitch's top hole is 0, a lower hole its height: %f, %f" % [top, lower])
 
 
 # The pump choice: the spare pump bought (and fitted) with the money left,

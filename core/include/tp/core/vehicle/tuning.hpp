@@ -23,6 +23,11 @@ struct Tuning {
 /// reference pressure, its hitch in the top hole.
 [[nodiscard]] Tuning as_built(const Params& params) noexcept;
 
+/// What Tuning::hitch_height_m keeps for a hitch the puller sets at
+/// `wanted_m`: 0 (the top hole) at or above `params`' top hole, so that a
+/// higher drawbar bought later raises it; below, the height itself.
+[[nodiscard]] double hitch_setting(const Params& params, double wanted_m) noexcept;
+
 /// The tractor with `tuning` applied, each setting held to its range. A
 /// tractor without ballast, a set tire pressure or an adjustable hitch
 /// keeps that part as it is;

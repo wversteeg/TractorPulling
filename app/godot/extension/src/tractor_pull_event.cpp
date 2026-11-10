@@ -463,9 +463,10 @@ void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar, 
         !std::isfinite(hitch_m)) {
         return;
     }
-    // 0 (or below): the top hole; vehicle::tuned holds the rest to the
-    // tractor's holes, whatever its drawbar.
-    tuning_.hitch_height_m = std::max(hitch_m, 0.0);
+    // The top hole is kept as 0, so a drawbar bought later raises it
+    // (vehicle::hitch_setting); vehicle::tuned holds the rest to the
+    // tractor's holes.
+    tuning_.hitch_height_m = vehicle::hitch_setting(player_tractor(), hitch_m);
     const tire::Pressure pressure = player_tractor().rear_tire.pressure;
     tuning_.ballast_position = std::clamp(ballast_position, 0.0, 1.0);
     if (pressure.reference_bar > 0.0) {

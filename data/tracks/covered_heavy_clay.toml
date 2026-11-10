@@ -9,7 +9,11 @@ length_m = 100.0
 max_duration_s = 120.0
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
 # How the track was prepared, a scale on its soil's grip (1 is the
-# reference): sticky clay the lugs bite into. A strong tractor with its
+# reference): the highest of the tracks, though the soil is soft. The cover
+# kept the rain off, so the moist clay is sticky rather than slick: the
+# lugs press into it and it holds them, where the dry tracks' dust and the
+# loose sand let them slide. Soft, it also drags the sled hardest, so the
+# pull is heavy. A strong tractor with its
 # weights back climbs onto its wheelie bar here: the weights go forward
 # (TrackSetup.OnHeavyClayTheWeightsGoForward), and soft tires pay.
 grip = 1.45

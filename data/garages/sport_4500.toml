@@ -13,9 +13,11 @@
 #   fitted for nothing between events. The class's setup lesson is the
 #   weights, tire pressure and hitch for the track (docs/career.md).
 # - engine_torque: the engine's full-load torque as a share of the fully
-#   built engine's, whichever turbo is on: from a stock 7 l farm engine's
-#   180 hp, through the pump, injectors, lift pump, the intercooler, the
-#   injection timing, the manifold, head and cam.
+#   built engine's, whichever turbo is on: from a stock 7 l farm engine
+#   (about 155 hp on the small turbo, 180 hp on the 68 mm one), through the
+#   pump, injectors, lift pump, the intercooler, the injection timing, the
+#   manifold, head and cam. The labels name no power: it depends on the
+#   turbo fitted.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
 #   cut 30.5" puller tires.
 # - ballast_kg: weights up to the class's 4500 kg with the driver.
@@ -46,7 +48,7 @@ alternatives = [
 part = "engine_torque"
 name = "Six-cylinder build"
 levels = [
-    { value = 0.35, cost_eur = 0, label = "Stock 7 l, 180 hp" },
+    { value = 0.35, cost_eur = 0, label = "Stock 7 l" },
     { value = 0.41, cost_eur = 1100, label = "Pump turned up" },
     { value = 0.47, cost_eur = 1400, label = "Bigger injectors" },
     { value = 0.53, cost_eur = 1700, label = "Bigger lift pump" },
@@ -56,7 +58,7 @@ levels = [
     { value = 0.81, cost_eur = 2900, label = "Ported head" },
     { value = 0.88, cost_eur = 3200, label = "Pulling cam" },
     { value = 0.94, cost_eur = 3500, label = "Pump on maximum" },
-    { value = 1.0, cost_eur = 3800, label = "Fully built, 520 hp" },
+    { value = 1.0, cost_eur = 3800, label = "Fully built" },
 ]
 
 [[garage.upgrades]]
