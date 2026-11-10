@@ -89,6 +89,7 @@ package "tp::vehicle" {
   class Tuning <<struct>> {
     +ballast_position : double
     +rear_tire_pressure_bar : double
+    +hitch_height_m : double
     --
     set by the puller before a pull
   }

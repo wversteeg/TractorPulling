@@ -1,4 +1,6 @@
+#include "tp/core/field/field.hpp"
 #include "tp/core/field/live_season.hpp"
+#include "tp/core/field/play.hpp"
 #include "tp/core/garage/garage.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
@@ -12,6 +14,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <initializer_list>
+#include <limits>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -150,14 +153,55 @@ TEST(RivalDifficulty, ANewTractorStartsAtTheBackAndAFullyUpgradedOneIsOnThePodiu
     }
 }
 
+// Past this share of the garage the player owns every choice's
+// alternatives (Sport 4.5 t's 68 mm turbo).
+constexpr double kOwnsTheChoicesFrom = 0.5;
+
 // Every part bought to `share` of its levels (0 new, 1 fully upgraded),
-// rounded to the nearest level.
+// rounded to the nearest level; from kOwnsTheChoicesFrom, every
+// alternative owned too.
 garage::Career share_up(const garage::Catalogue& catalogue, double share) {
     garage::Career career = garage::new_career(catalogue);
     for (std::size_t i = 0; i < catalogue.count; ++i) {
         const int top = static_cast<int>(catalogue.upgrades[i].level_count) - 1;
         career.levels[i] = static_cast<int>(std::lround(share * top));
     }
+    if (share >= kOwnsTheChoicesFrom) {
+        career.owned.fill(std::numeric_limits<std::uint8_t>::max());
+    }
+    return career;
+}
+
+// `career` with the alternative of its one choice (if it has one) that
+// takes the tractor furthest on the season's first track, in its best
+// gear: the player fits the turbo for the day.
+garage::Career fitted_for_the_day(const data::SeasonDefinition& d, garage::Career career,
+                                  Gears gears) {
+    const data::EventDefinition& e = d.event;
+    const garage::Catalogue& catalogue = d.garage.catalogue;
+    if (catalogue.choice_count != 1) {
+        return career;
+    }
+    const Venue venue = data::venue(e.sled, d.rounds.front().track);
+    const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
+    double furthest_m = -1.0;
+    int best = 0;
+    for (std::size_t a = 0; a < catalogue.choices[0].alternative_count; ++a) {
+        if (!garage::owns(career, 0, a)) {
+            continue;
+        }
+        career.fitted[0] = static_cast<int>(a);
+        Puller puller = e.reference;
+        puller.tractor =
+            garage::equipped(e.reference.tractor, catalogue, career).value_or(e.reference.tractor);
+        const std::optional<GearTrial> trial =
+            best_gear_trial(puller, venue.sled, venue.track, gears.lowest, gears.highest, rules);
+        if (trial && trial->distance_m > furthest_m) {
+            furthest_m = trial->distance_m;
+            best = static_cast<int>(a);
+        }
+    }
+    career.fitted[0] = best;
     return career;
 }
 
@@ -176,7 +220,9 @@ void expect_level(const char* file, std::initializer_list<Expectation> expectati
     const data::SeasonDefinition d = season_named(file);
     for (const Expectation& x : expectations) {
         for (const std::uint64_t seed : kSeeds) {
-            const int at = place(d, share_up(d.garage.catalogue, x.share), seed, gears);
+            const int at =
+                place(d, fitted_for_the_day(d, share_up(d.garage.catalogue, x.share), gears), seed,
+                      gears);
             EXPECT_GE(at, x.places.best) << file << ", share " << x.share << ", seed " << seed;
             EXPECT_LE(at, x.places.worst) << file << ", share " << x.share << ", seed " << seed;
         }

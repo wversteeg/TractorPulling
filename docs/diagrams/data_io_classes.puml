@@ -101,19 +101,31 @@ package "tp::data" {
     +season : string
     +seed : uint64
     +tuning : vehicle::Tuning
-    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n class_name, level_name,\n unlocked_class, unlocked_level, seasons_on_level, title_on_level}>
+    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n choices : vector<{name, fitted, owned}>, class_name, level_name,\n unlocked_class, unlocked_level, seasons_on_level, title_on_level}>
     +events : vector<vector<event::Standing>>
   }
   class GarageDefinition <<struct>> {
     +catalogue : garage::Catalogue
     +texts : vector<UpgradeText{name, level_labels}>
+    +choice_texts : vector<ChoiceText{name, alternative_labels}>
   }
   class "garage_loader" as GarageLoader <<free functions>> {
+    +parse_garage(text, source, base_directory, read) : Result<GarageDefinition>
     +parse_garage(text, source) : Result<GarageDefinition>
     +load_garage(path, read) : Result<GarageDefinition>
+    --
+    a choice's alternatives are component files
+    (engine, rear tire, driveline), read with their loaders
+  }
+  class "career_names" as CareerNames <<free functions>> {
+    +name_career(const garage::Career&, const GarageDefinition&, SavedCareer&)
+    +career_from_names(const SavedCareer&, const GarageDefinition&) : garage::Career
+    +carry_career(const garage::Career&, from, to) : garage::Career
+    --
+    upgrades and choices by name: saves, moving up a class
   }
   class "season_save" as SeasonSaveFns <<free functions>> {
-    +kSeasonSaveVersion = 4 (1 read too: no career;\n2: the first rung; 3: the classes' first levels)
+    +kSeasonSaveVersion = 5 (1 read too: no career;\n2: the first rung; 3: the classes' first levels;\n4: no choices, the hitch in its top hole)
     +write_season_save(const SeasonSave&) : string
     +parse_season_save(text, source) : Result<SeasonSave>
     --
@@ -160,6 +172,8 @@ package "tp::data" {
   SeasonDefinition *-- EventDefinition
   SeasonDefinition *-- GarageDefinition
   GarageLoader ..> GarageDefinition
+  CareerNames ..> GarageDefinition
+  CareerNames ..> SeasonSave
   SeasonLoader ..> GarageLoader : then garage::validate\nagainst the event's tractor and class
   CareerLoader ..> CareerDefinition
   CareerLoader ..> SeasonLoader : every class's season

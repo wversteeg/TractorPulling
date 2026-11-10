@@ -180,6 +180,36 @@ fully built, from a stock farm engine's 180 hp. Eight gears with a
 powershift, pulled as Sport 2.5 t. All three levels, belofte, promo and
 top.
 
+#### The setup class (game choice)
+
+Each class adds something to learn: the standard class the controls,
+Sport 2.5 t a careful clutch and where the weights go, Sport 4.5 t the
+**setup**: the first parts that are not simply better, and a tractor set
+up for each track. It prepares for Supersport, where the big choices are
+an engine (the bigger at 2700 rpm or the smaller at 3200 rpm) and the
+tires and gearbox (traction or wheelspin).
+
+- **The turbo, a choice** (`garages/sport_4500.toml`, the garage's
+  choices: owned side by side, one fitted, swapped for nothing between
+  events). The tractor comes with a small, quick turbo
+  (`engines/sport_4500_fast_turbo.toml`): full boost from 1300 rpm,
+  strong in the middle, about 440 hp fully built. The 68 mm turbo
+  (`engines/sport_4500.toml`, the rivals' too) lags and gives less low
+  down, but about 510 hp. The small one wins by metres on the covered
+  heavy clay, where the sled drags the engine down; the 68 mm one by a
+  metre or three on the firmer tracks, more with the weights moved back.
+  The engine build counts on whichever is fitted.
+- **The hitch, set per pull**: a pulling hitch with holes from 0.40 m
+  (the tractor's `hitch_min_height_m`) to the top hole the garage's
+  drawbar gives, at most the class's 0.50 m, set on the setup screen
+  beside the weights and the tire pressure. Higher puts more of the
+  sled's pull on the rear tires but lifts the front, and with it the
+  steering, sooner.
+
+The rivals keep one build each (the 68 mm turbo, their hitch where the
+field puts it); a rival choosing its turbo for the track is in
+`docs/future_improvements.md`.
+
 #### How the Sport classes pull (game)
 
 The Sport engines can drive their wheels far harder than farm tires

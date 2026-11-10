@@ -6,15 +6,25 @@
 # part's value outright; each cost is from the level below, the stages
 # dearer as they go. A full class, so more stages than Sport 2.5 t's.
 #
+# - Turbo (a choice, the class's setup lesson): the tractor comes with a
+#   small, quick turbo (engines/sport_4500_fast_turbo.toml, about 440 hp
+#   fully built), full boost from 1300 rpm and strong in the middle; the
+#   68 mm turbo (engines/sport_4500.toml, about 510 hp) lags and gives
+#   less low down, but more on top. Neither is best on every track: the
+#   small one where the sled drags the engine down (the covered heavy
+#   clay, by metres), the 68 mm one where the tractor keeps its revs (every
+#   firmer track, by a metre or three).
+#   Bought once, either is fitted for nothing between events.
 # - engine_torque: the engine's full-load torque as a share of the fully
-#   built engine's (engines/sport_4500.toml, about 520 hp): from a stock
-#   7 l farm engine's 180 hp, through the pump, injectors, a bigger turbo
-#   behind the class's 68 mm inlet, the intercooler, the manifold, head and
-#   cam.
+#   built engine's, whichever turbo is on: from a stock 7 l farm engine's
+#   180 hp, through the pump, injectors, lift pump, the intercooler, the
+#   injection timing, the manifold, head and cam.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
 #   cut 30.5" puller tires.
 # - ballast_kg: weights up to the class's 4500 kg with the driver.
-# - hitch_height_m: the drawbar, up to the class's 0.5 m.
+# - hitch_height_m: the pulling hitch's top hole, up to the class's 0.5 m;
+#   the puller sets it before each pull from its lowest hole, 0.40 m
+#   (tractors/sport_4500.toml), up to the top one.
 # - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
 #   class's 2700 rpm.
 # - load_downshift_gears: a powershift step that shifts down under load,
@@ -27,6 +37,14 @@
 [garage]
 start_money_eur = 1000
 
+[[garage.choices]]
+slot = "engine"
+name = "Turbo"
+alternatives = [
+    { file = "../engines/sport_4500_fast_turbo.toml", cost_eur = 0, label = "Small, quick turbo" },
+    { file = "../engines/sport_4500.toml", cost_eur = 4000, label = "68 mm turbo" },
+]
+
 [[garage.upgrades]]
 part = "engine_torque"
 name = "Six-cylinder build"
@@ -34,9 +52,9 @@ levels = [
     { value = 0.35, cost_eur = 0, label = "Stock 7 l, 180 hp" },
     { value = 0.41, cost_eur = 1100, label = "Pump turned up" },
     { value = 0.47, cost_eur = 1400, label = "Bigger injectors" },
-    { value = 0.53, cost_eur = 1700, label = "Bigger turbo" },
+    { value = 0.53, cost_eur = 1700, label = "Bigger lift pump" },
     { value = 0.60, cost_eur = 2000, label = "Intercooler" },
-    { value = 0.67, cost_eur = 2300, label = "68 mm turbo" },
+    { value = 0.67, cost_eur = 2300, label = "Injection timing" },
     { value = 0.74, cost_eur = 2600, label = "Pulling manifold" },
     { value = 0.81, cost_eur = 2900, label = "Ported head" },
     { value = 0.88, cost_eur = 3200, label = "Pulling cam" },

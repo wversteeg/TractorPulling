@@ -474,13 +474,20 @@ for the big features; they are repeated at the end for completeness.
   step); a new tire does not change the tire's size, rolling radius or
   inflation range, and a wider tire not its section width or the lane it
   needs. A heavier engine part, a wheelie bar, a clutch, final drive ratios
-  and gear ratios are not offered.
+  and gear ratios are not offered as upgrades; a choice (garage::Choice)
+  can swap a whole engine, rear tire or driveline, but a rear tire must
+  keep the tractor's radius (the rear axle's height is the tire's).
 - **Ballast at the centre of gravity's height.** Weights bought sit where
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
 - **Three classes on the ladder.** The tractor path's career has the
   standard 3.5 t class (one level), Sport 2.5 t (promo and top) and
   Sport 4.5 t (its three levels) so far; the classes above come a class at a time (docs/career.md).
+  Supersport 3.6 t comes next (docs/plans/garage_choices.md): the
+  engine choice (7.0 l at 2700 rpm or 6.06 l at 3200 rpm, each with its
+  own build) and the tires and gearbox choice (traction or wheelspin), on
+  the garage's choices; then Supersport 4.5 t with engine tuning.
+  Supersport 3.4 t is left out for now.
 - **Sport's engine rules are not checked.** Sport and up limit the
   engine's build (cylinders, displacement, valves, the turbo's inlet, no
   intercooler at 2500 kg), not its power; the class rules have no PTO
@@ -516,6 +523,19 @@ for the big features; they are repeated at the end for completeness.
   everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
 - **The rivals do not upgrade.** Their tractors are drawn once for the
   season around the reference tractor.
+- **The rivals do not choose.** A rival keeps the reference tractor's
+  parts: Sport 4.5 t's rivals all pull the 68 mm turbo, on every track,
+  and the hitch where the field puts it. Some rivals on the small turbo,
+  or each fitting the turbo for the day's track, would show the choice
+  at work in the field.
+- **The hitch's top hole always pulls furthest for the scripted
+  pullers.** They drive straight, so a front lifted by a high hitch costs
+  them nothing; the trade-off (the steering lost with the front up, the
+  lane) is the player's. A hitch too high that stands the tractor on its
+  wheelie bar and drags it is not modelled.
+- **No cost or time to swap a part.** An owned alternative is fitted for
+  nothing between events; a real swap of a turbo or an engine takes a
+  day's work.
 - **The player's pull does not vary from spot to spot.** The rivals'
   pulls each draw the grip, the clutch timing and the sled pan's drag
   (field::PullToPull); the player's run uses the event's sled as it is.

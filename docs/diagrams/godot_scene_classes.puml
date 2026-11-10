@@ -239,11 +239,13 @@ package "GDScript (app/godot/scripts)" {
   }
   class GarageScreen {
     +buy_buttons : Array[TouchButton]
+    +choice_buttons : Array[Array]
     +done_button : TouchButton
     +show_garage(garage, message)
+    +{static} alternative_text(alternative, fitted) : String
     +{static} euros(amount) : String
     ..signals..
-    buy_requested(index), done
+    buy_requested(index), choice_requested(choice, alternative), done
   }
   class BuildInfo {
     which build this is, from res://build_info.cfg
@@ -265,13 +267,13 @@ package "GDScript (app/godot/scripts)" {
   }
   class GearButton
   class SetupScreen {
-    +ballast_slider, pressure_slider : TouchSlider
+    +ballast_slider, pressure_slider, hitch_slider : TouchSlider
     +pull_button, back_button : TouchButton
     +show_setup(title, tuning, pro, tilt)
     +show_values(tuning)
     +release_sliders()
     ..signals..
-    tuning_changed(ballast_position, pressure_bar),
+    tuning_changed(ballast_position, pressure_bar, hitch_m),
     pull_requested, back_requested
   }
   class ResultScreen {

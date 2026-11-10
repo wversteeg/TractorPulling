@@ -1,8 +1,21 @@
 # Plan: garage choices, and Sport 4.5 t as the setup class
 
-Status: proposed, waiting for the owner's approval. Remove this file once
-every step below is built (or move what is left to
-`docs/future_improvements.md`).
+Status: approved; steps 1 to 5 built. Supersport 3.6 t ("Later") is
+still to come. Remove this file once it is built (or move what is left
+to `docs/future_improvements.md`).
+
+What came out differently from the plan:
+
+- The small turbo is the heavy-clay turbo: it wins by metres on the
+  covered heavy clay, the 68 mm one by a metre or three on every firmer
+  track (`TurboChoice.NeitherTurboWinsOnEveryTrack`). Tuned so a
+  half-built tractor on it is no stronger in the field than before
+  (`RivalDifficulty.*`).
+- For the scripted pullers the hitch's top hole always pulls furthest;
+  the cost of a high hitch (the front up, the steering gone) is the
+  player's only (`docs/future_improvements.md`).
+- "Keeping the turbo lit" is the engine's existing turbo model
+  (`na_torque_fraction`, the lag); it was not tuned further.
 
 ## Why
 

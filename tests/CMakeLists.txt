@@ -74,6 +74,7 @@ if(TP_BUILD_DATA_IO)
         data/track_loader_test.cpp
         data/tractor_loader_test.cpp
         data/tuning_runs_test.cpp
+        data/turbo_choice_test.cpp
         data/wheelie_runs_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE

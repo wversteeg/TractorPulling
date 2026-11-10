@@ -84,6 +84,8 @@ func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> voi
 	pressure_slider.value = tuning.get("pressure_bar", 0.0)
 	hitch_slider.value = tuning.get("hitch_m", 0.0)
 	_sent = Vector3(ballast_slider.value, pressure_slider.value, _hitch_m())
+	for slider: TouchSlider in [ballast_slider, pressure_slider, hitch_slider]:
+		slider.queue_redraw()
 	show_values(tuning)
 	_controls.text = "Controls: %s, %s steering" % ["pro" if pro else "easy",
 			"tilt" if tilt else "slider"]
