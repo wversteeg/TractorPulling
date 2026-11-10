@@ -30,6 +30,7 @@ package "tp::run" {
     +distance_m : double
     +time_s : double
     +top_speed_m_s : double
+    +out_of_bounds_at_m : double
   }
   class State <<struct>> {
     +pull : pull::State

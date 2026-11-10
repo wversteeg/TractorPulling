@@ -78,8 +78,26 @@ for the big features; they are repeated at the end for completeness.
   its wheelie bar keeps its rear tires down: the bar takes only part of
   their load. A real tractor pulled too high (too soft tires, a grippy
   track) lifts its rear tires off the ground on the bar and spins out; in
-  the game riding the bar costs little, and the weights fully back are
-  rarely wrong.
+  the game riding the bar costs the load it carries and the pad's drag
+  (a steel skid, ETPC FS 2026 1.2.4), and the weights fully back are
+  rarely wrong. A tractor stays up on its bar only while the sled's pull
+  times the hitch's height outweighs its weight times the centre of
+  gravity's distance ahead of the rear axle: the Sport 2.5 t with its
+  weights back rides its bar for seconds (about 13°), the Sport 4.5 t
+  (82 % on the rear axle) only pops up at the launch (about 11°). Real
+  4.5 t pullers likely carry more on the rear; a tractor balance from
+  measurements would settle it.
+- **A tire that bites too hard does not bog the engine.** Pullers keep
+  some wheelspin on a grippy track: a spinning tire works as a slip
+  clutch, taking the sled's sudden jumps in drag (the knives biting, the
+  push-down coming on, a soft spot) while the engine stays in its power
+  and boost band; a tire that bites hands each jump to the engine, which
+  drops out of boost and stalls. The sled's drag here rises smoothly, so
+  more grip never costs: a too-soft tire loses only by its lugs squirming.
+  Drag that jumps along the track would let wheelspin pay (the owner's
+  next step for the tire pressure). The nose does not come up from the
+  grip itself: the pull at the hitch is what the sled asks, so more grip
+  only lets the tractor hold a heavier drag before it spins.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
   between the left and right rear tires; both sides carry half the rear load.
 - **No differential lock.** The open differential is the only kind. Pulling
@@ -474,13 +492,20 @@ for the big features; they are repeated at the end for completeness.
   step); a new tire does not change the tire's size, rolling radius or
   inflation range, and a wider tire not its section width or the lane it
   needs. A heavier engine part, a wheelie bar, a clutch, final drive ratios
-  and gear ratios are not offered.
+  and gear ratios are not offered as upgrades; a choice (garage::Choice)
+  can swap a whole engine, rear tire or driveline, but a rear tire must
+  keep the tractor's radius (the rear axle's height is the tire's).
 - **Ballast at the centre of gravity's height.** Weights bought sit where
   the tractor's weights sit, at the height of its centre of gravity, so the
   centre of gravity moves along the tractor only.
 - **Three classes on the ladder.** The tractor path's career has the
   standard 3.5 t class (one level), Sport 2.5 t (promo and top) and
   Sport 4.5 t (its three levels) so far; the classes above come a class at a time (docs/career.md).
+  Supersport 3.6 t comes next (docs/plans/garage_choices.md): the
+  engine choice (7.0 l at 2700 rpm or 6.06 l at 3200 rpm, each with its
+  own build) and the tires and gearbox choice (traction or wheelspin), on
+  the garage's choices; then Supersport 4.5 t with engine tuning.
+  Supersport 3.4 t is left out for now.
 - **Sport's engine rules are not checked.** Sport and up limit the
   engine's build (cylinders, displacement, valves, the turbo's inlet, no
   intercooler at 2500 kg), not its power; the class rules have no PTO
@@ -516,6 +541,16 @@ for the big features; they are repeated at the end for completeness.
   everyone, no costs per event (fuel, entry fees, repairs), no sponsors.
 - **The rivals do not upgrade.** Their tractors are drawn once for the
   season around the reference tractor.
+- **The rivals do not set up for the track.** A rival keeps the reference
+  tractor's parts and the weights, tire pressure and hitch the field
+  draws for it, on every track; a good puller would move the weights back
+  on the loose sand and forward on the heavy clay.
+- **A high hitch costs the scripted pullers only through the wheelie
+  bar.** They drive straight, so the steering lost with the front up
+  costs them nothing; the lane is the player's worry.
+- **No cost or time to swap a part.** An owned alternative is fitted for
+  nothing between events; a real swap of a turbo or an engine takes a
+  day's work.
 - **The player's pull does not vary from spot to spot.** The rivals'
   pulls each draw the grip, the clutch timing and the sled pan's drag
   (field::PullToPull); the player's run uses the event's sled as it is.

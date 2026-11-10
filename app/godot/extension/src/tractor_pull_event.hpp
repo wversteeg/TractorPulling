@@ -168,15 +168,25 @@ public:
     /// [EUR] (garage::prize_eur); 0 before an event.
     [[nodiscard]] std::int64_t get_event_prize() const;
 
-    /// The garage: {money_eur, can_buy, fully_upgraded, upgrades}, each
-    /// upgrade {name, level, levels, label, next_label, next_cost_eur} (the
-    /// next ones "" and 0 at the top level). `can_buy` is false while the
+    /// The garage: {money_eur, can_buy, fully_upgraded, upgrades, choices},
+    /// each upgrade {name, level, levels, label, next_label, next_cost_eur,
+    /// counts, for} (the next ones "" and 0 at the top level; `for` the
+    /// alternative it belongs to, "" for none, and `counts` whether that is
+    /// fitted), each choice {name, fitted, alternatives}, each alternative
+    /// {label, cost_eur, owned}. `can_buy` is false while the
     /// player has pulled in the event being pulled: a tractor changes
     /// between events, not during one. {} before a season.
     [[nodiscard]] godot::Dictionary get_garage() const;
     /// Buys the next level of upgrade `index`; "" or why not ("top level",
     /// "not enough money", "not during an event", "no such upgrade").
     godot::String buy_upgrade(std::int64_t index);
+    /// Buys alternative `alternative` of choice `choice` and fits it; "" or
+    /// why not ("owned already", "not enough money", "not during an
+    /// event", "no such part").
+    godot::String buy_alternative(std::int64_t choice, std::int64_t alternative);
+    /// Fits an alternative owned, for nothing; "" or why not ("not bought
+    /// yet", "not during an event", "no such part").
+    godot::String fit_alternative(std::int64_t choice, std::int64_t alternative);
     /// For testing: adds `amount_eur` to the player's money (a negative
     /// amount takes it away, to no less than 0); false without a career.
     bool add_money(std::int64_t amount_eur);
@@ -186,16 +196,19 @@ public:
 
     /// The player's tractor as they set it before a pull (vehicle::Tuning),
     /// kept for the season: {ballast, ballast_position, rear_share,
-    /// pressure, pressure_bar, min_bar, max_bar}. `ballast` and `pressure`
-    /// say whether the tractor has weights to move and rear tires whose
-    /// pressure can be set; `ballast_position` runs from 0 (rearmost) to 1
-    /// (foremost), and `rear_share` is the share of the weight then on the
-    /// rear axle at rest (0 to 1). {} before a season.
+    /// pressure, pressure_bar, min_bar, max_bar, hitch, hitch_m,
+    /// min_hitch_m, max_hitch_m}. `ballast`, `pressure` and `hitch` say
+    /// whether the tractor has weights to move, rear tires whose pressure
+    /// can be set and an adjustable pulling hitch (from its lowest hole to
+    /// the top one its drawbar has); `ballast_position` runs from 0
+    /// (rearmost) to 1 (foremost), and `rear_share` is the share of the
+    /// weight then on the rear axle at rest (0 to 1). {} before a season.
     [[nodiscard]] godot::Dictionary get_tuning() const;
     /// Sets the player's tuning, each held to its range (a value that is not
     /// finite changes nothing); their next pulls and practice pulls are on
-    /// the tuned tractor.
-    void set_tuning(double ballast_position, double pressure_bar);
+    /// the tuned tractor. `hitch_m` 0 (the default) puts the hitch in its
+    /// top hole.
+    void set_tuning(double ballast_position, double pressure_bar, double hitch_m);
 
     /// The player's next pull, for TractorPullRun: nothing unless one is
     /// due.

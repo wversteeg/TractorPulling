@@ -180,6 +180,43 @@ fully built, from a stock farm engine's 180 hp. Eight gears with a
 powershift, pulled as Sport 2.5 t. All three levels, belofte, promo and
 top.
 
+#### The setup class (game choice)
+
+Each class adds something to learn: the standard class the controls,
+Sport 2.5 t a careful clutch and where the weights go, Sport 4.5 t the
+**setup for the track**. The stronger and heavier the tractor, the more
+the track decides: the light standard tractor runs out of engine before
+grip on most tracks, a Sport 4.5 t does not (`TrackSetup.*`):
+
+- **Grippy tracks** (the firm loam, the dry hard clay): with its weights
+  all back the tractor stands on its wheelie bar, nose high, and the bar
+  takes load the rear tires lose; halfway pulls further. Soft tires'
+  squirming lugs cost metres.
+- **The heavy clay**: the tires dig in and bite, the sled ploughs, and the
+  engine is pulled down to a stall before the tires spin out. With the
+  weights back the nose climbs: they go forward, and soft tires pay.
+- **The loose sandy clay**: the grip runs out first, so the weights go
+  all back for the most load on the rear tires.
+- **The hitch, set per pull**: a pulling hitch with holes from 0.40 m
+  (the tractor's `hitch_min_height_m`) to the top hole the garage's
+  drawbar gives, at most the class's 0.50 m, set on the setup screen
+  beside the weights and the tire pressure. Higher puts more of the
+  sled's pull on the rear tires but lifts the front, and with it the
+  steering, sooner.
+- **The turbo**: the stock tractor comes with a small, quick turbo
+  (`engines/sport_4500_fast_turbo.toml`, about 440 hp fully built); the
+  68 mm turbo (`engines/sport_4500.toml`, the rivals' too, about 510 hp)
+  is the upgrade, further on every track
+  (`TurboChoice.TheSixtyEightMillimetreTurboIsTheUpgrade`). It is a
+  garage choice (owned side by side, one fitted), the garage the
+  Supersport classes' engine, tires and gearbox choices will use: there
+  the alternatives are each best somewhere (an engine at 2700 rpm or one
+  at 3200 rpm; traction or wheelspin).
+
+The rivals keep one build each (the 68 mm turbo, the weights and hitch
+where the field puts them); rivals setting up for the track are in
+`docs/future_improvements.md`.
+
 #### How the Sport classes pull (game)
 
 The Sport engines can drive their wheels far harder than farm tires

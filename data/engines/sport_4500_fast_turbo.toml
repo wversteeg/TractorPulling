@@ -1,0 +1,37 @@
+# The Sport 4.5 t class's engine (engines/sport_4500.toml) with a smaller,
+# quicker turbo: the stock one the tractor comes with, the first of the
+# garage's two turbos (garages/sport_4500.toml); the 68 mm turbo is the
+# upgrade. A smaller turbine spins
+# up on less exhaust, so it boosts from lower down and with less lag, and
+# holds the boost when the sled drags the engine down, and it is sized for
+# the middle of the range, where it gives more than the 68 mm turbo; but
+# its compressor chokes at high revs, so it gives less on top: about
+# 440 hp (330 kW) fully built, against the 68 mm turbo's 510 hp. Game
+# choice: the figures are an estimate.
+# Speeds are in rpm and converted to rad/s on load.
+[engine]
+inertia_kg_m2 = 2.0      # crankshaft and flywheel of a 7 l six
+idle_rpm = 800
+rated_rpm = 2500         # the governor as built; the garage sets it
+high_idle_rpm = 2700     # the class's unloaded limit
+stall_rpm = 450
+cylinders = 6            # a six: for the engine's sound only
+
+[engine.friction]
+constant_nm = 25.0
+viscous_nm_per_1000_rpm = 14.0
+
+# The turbo: small and quick, full boost from 1300 rpm.
+[engine.turbo]
+na_torque_fraction = 0.45
+time_constant_s = 0.5
+boost_onset_rpm = 800
+full_boost_rpm = 1300
+full_boost_bar = 2.2          # above the atmosphere, for the boost gauge
+
+# Full-load torque at full boost: peak 1630 N·m at 1800 rpm (the 68 mm
+# turbo's 1590), falling off as the small compressor chokes: about 340 kW
+# at 2400 rpm before the losses (the 68 mm turbo's 385 kW).
+[engine.torque_curve]
+rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3000]
+torque_nm = [875, 1050, 1260, 1455, 1590, 1630, 1580, 1475, 1360, 1220, 1095, 970]

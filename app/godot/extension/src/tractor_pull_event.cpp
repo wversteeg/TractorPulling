@@ -1,5 +1,6 @@
 #include "tractor_pull_event.hpp"
 
+#include "tp/data/garage/career_names.hpp"
 #include "tp/data/session/run_setup.hpp"
 
 #include <algorithm>
@@ -244,11 +245,11 @@ godot::String TractorPullEvent::start_career(const godot::String& season_path, s
 }
 
 godot::String TractorPullEvent::start_season(const godot::String& season_path, std::int64_t seed) {
-    // The upgrades' names, to carry the career's levels into another
-    // class's garage.
-    std::vector<data::UpgradeText> bought_from;
+    // The garage the career was bought in, to carry it by name into
+    // another class's.
+    std::optional<data::GarageDefinition> bought_from;
     if (definition_) {
-        bought_from = definition_->garage.texts;
+        bought_from = definition_->garage;
     }
     season_.reset();
     definition_.reset();
@@ -268,18 +269,10 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
     season_ = std::make_unique<field::LiveSeason>(*season);
     if (!career_) {
         career_ = garage::new_career(d.garage.catalogue);
-    } else if (!bought_from.empty()) {
+    } else if (bought_from) {
         // By name, as a save is read: what the new garage does not offer is
         // left behind, and what it offers that was not bought starts at 0.
-        garage::Career carried{.money_eur = career_->money_eur, .levels = {}};
-        for (std::size_t from = 0; from < bought_from.size(); ++from) {
-            for (std::size_t to = 0; to < d.garage.texts.size(); ++to) {
-                if (d.garage.texts[to].name == bought_from[from].name) {
-                    carried.levels.at(to) = career_->levels.at(from);
-                }
-            }
-        }
-        career_ = carried;
+        career_ = data::carry_career(*career_, *bought_from, d.garage);
     }
     definition_ = std::move(loaded).value();
     tuning_ = vehicle::as_built(player_tractor());
@@ -300,6 +293,7 @@ godot::String TractorPullEvent::get_save() const {
     if (career_ && definition_) {
         data::SavedCareer career{.money_eur = career_->money_eur,
                                  .upgrades = {},
+                                 .choices = {},
                                  .class_name = {},
                                  .level_name = {},
                                  .unlocked_class = {},
@@ -317,10 +311,7 @@ godot::String TractorPullEvent::get_save() const {
             career.seasons_on_level = progress_.seasons;
             career.title_on_level = progress_.title;
         }
-        const std::vector<data::UpgradeText>& texts = definition_->garage.texts;
-        for (std::size_t i = 0; i < texts.size(); ++i) {
-            career.upgrades.push_back({.name = texts[i].name, .level = career_->levels.at(i)});
-        }
+        data::name_career(*career_, definition_->garage, career);
         save.career = career;
     }
     for (int i = 0; i < season_->events_scored(); ++i) {
@@ -347,18 +338,9 @@ godot::String TractorPullEvent::resume_season(const godot::String& season_path,
     // fits (another season's, or events the data has changed under) gives
     // way to a new season with the career kept, not to a new career.
     if (saved.career && definition_) {
-        // By name: an upgrade the garage no longer offers is dropped, and a
-        // level past its top is held to it (garage::equipped).
-        garage::Career career{.money_eur = saved.career->money_eur, .levels = {}};
-        const std::vector<data::UpgradeText>& texts = definition_->garage.texts;
-        for (const data::SavedUpgrade& upgrade : saved.career->upgrades) {
-            for (std::size_t i = 0; i < texts.size(); ++i) {
-                if (texts[i].name == upgrade.name) {
-                    career.levels.at(i) = upgrade.level;
-                }
-            }
-        }
-        career_ = career;
+        // By name: what the garage no longer offers is dropped
+        // (data::career_from_names).
+        career_ = data::career_from_names(*saved.career, definition_->garage);
     }
     if (saved.season != to_std(season_path)) {
         season_.reset();
@@ -370,7 +352,8 @@ godot::String TractorPullEvent::resume_season(const godot::String& season_path,
             return "the saved events do not fit the season";
         }
     }
-    set_tuning(saved.tuning.ballast_position, saved.tuning.rear_tire_pressure_bar);
+    set_tuning(saved.tuning.ballast_position, saved.tuning.rear_tire_pressure_bar,
+               saved.tuning.hitch_height_m);
     return {};
 }
 
@@ -466,15 +449,24 @@ godot::Dictionary TractorPullEvent::get_tuning() const {
     out["pressure_bar"] = tuning_.rear_tire_pressure_bar;
     out["min_bar"] = pressure.min_bar;
     out["max_bar"] = pressure.max_bar;
+    out["hitch"] = tractor.chassis.hitch_min_height_m > 0.0;
+    out["hitch_m"] = set.chassis.hitch_height_m;
+    out["min_hitch_m"] = tractor.chassis.hitch_min_height_m;
+    out["max_hitch_m"] = tractor.chassis.hitch_height_m;
     return out;
 }
 
-void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar) {
+void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar, double hitch_m) {
     // A setting that is not a number (a 0/0 in GDScript) leaves the tuning
     // as it is: std::clamp would keep it, and the save would refuse it.
-    if (!season_ || !std::isfinite(ballast_position) || !std::isfinite(pressure_bar)) {
+    if (!season_ || !std::isfinite(ballast_position) || !std::isfinite(pressure_bar) ||
+        !std::isfinite(hitch_m)) {
         return;
     }
+    // The top hole is kept as 0, so a drawbar bought later raises it
+    // (vehicle::hitch_setting); vehicle::tuned holds the rest to the
+    // tractor's holes.
+    tuning_.hitch_height_m = vehicle::hitch_setting(player_tractor(), hitch_m);
     const tire::Pressure pressure = player_tractor().rear_tire.pressure;
     tuning_.ballast_position = std::clamp(ballast_position, 0.0, 1.0);
     if (pressure.reference_bar > 0.0) {
@@ -690,10 +682,83 @@ godot::Dictionary TractorPullEvent::get_garage() const {
         const auto next = static_cast<std::size_t>(at_top ? level : level + 1);
         line["next_label"] = at_top ? godot::String{} : to_godot(text.level_labels.at(next));
         line["next_cost_eur"] = at_top ? std::int64_t{0} : upgrade.levels.at(next).cost_eur;
+        line["counts"] = garage::counts(garage.catalogue, *career_, i);
+        line["for"] =
+            upgrade.choice == garage::kNoChoice
+                ? godot::String{}
+                : to_godot(
+                      garage.choice_texts.at(static_cast<std::size_t>(upgrade.choice))
+                          .alternative_labels.at(static_cast<std::size_t>(upgrade.alternative)));
         upgrades.push_back(line);
     }
     out["upgrades"] = upgrades;
+    godot::Array choices;
+    for (std::size_t c = 0; c < garage.catalogue.choice_count; ++c) {
+        const garage::Choice& choice = garage.catalogue.choices.at(c);
+        const data::ChoiceText& text = garage.choice_texts.at(c);
+        godot::Dictionary line;
+        line["name"] = to_godot(text.name);
+        line["fitted"] = static_cast<std::int64_t>(garage::fitted(garage.catalogue, *career_, c));
+        godot::Array alternatives;
+        for (std::size_t a = 0; a < choice.alternative_count; ++a) {
+            godot::Dictionary alternative;
+            alternative["label"] = to_godot(text.alternative_labels.at(a));
+            alternative["cost_eur"] = choice.alternatives.at(a).cost_eur;
+            alternative["owned"] = garage::owns(*career_, c, a);
+            alternatives.push_back(alternative);
+        }
+        line["alternatives"] = alternatives;
+        choices.push_back(line);
+    }
+    out["choices"] = choices;
     return out;
+}
+
+godot::String TractorPullEvent::buy_alternative(std::int64_t choice, std::int64_t alternative) {
+    if (!season_ || !definition_ || !career_ || choice < 0 || alternative < 0) {
+        return "no such part";
+    }
+    if (!season_->player_may_change_tractor()) {
+        return "not during an event";
+    }
+    const std::optional<garage::BuyError> error = garage::buy_alternative(
+        *career_, definition_->garage.catalogue, static_cast<std::size_t>(choice),
+        static_cast<std::size_t>(alternative));
+    if (error) {
+        switch (*error) {
+            case garage::BuyError::kNoSuchUpgrade:
+            case garage::BuyError::kTopLevel:
+                return "no such part";
+            case garage::BuyError::kOwned:
+                return "owned already";
+            case garage::BuyError::kNotEnoughMoney:
+                return "not enough money";
+        }
+    }
+    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar, tuning_.hitch_height_m);
+    return {};
+}
+
+godot::String TractorPullEvent::fit_alternative(std::int64_t choice, std::int64_t alternative) {
+    if (!season_ || !definition_ || !career_ || choice < 0 || alternative < 0) {
+        return "no such part";
+    }
+    if (!season_->player_may_change_tractor()) {
+        return "not during an event";
+    }
+    const std::optional<garage::FitError> error =
+        garage::fit(*career_, definition_->garage.catalogue, static_cast<std::size_t>(choice),
+                    static_cast<std::size_t>(alternative));
+    if (error) {
+        switch (*error) {
+            case garage::FitError::kNoSuchAlternative:
+                return "no such part";
+            case garage::FitError::kNotOwned:
+                return "not bought yet";
+        }
+    }
+    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar, tuning_.hitch_height_m);
+    return {};
 }
 
 godot::String TractorPullEvent::buy_upgrade(std::int64_t index) {
@@ -713,10 +778,12 @@ godot::String TractorPullEvent::buy_upgrade(std::int64_t index) {
                 return "top level";
             case garage::BuyError::kNotEnoughMoney:
                 return "not enough money";
+            case garage::BuyError::kOwned:
+                return "owned already";
         }
     }
     // The tuning keeps its settings, held to the new tractor's ranges.
-    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar);
+    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar, tuning_.hitch_height_m);
     return {};
 }
 
@@ -779,10 +846,14 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_event_prize"), &TractorPullEvent::get_event_prize);
     ClassDB::bind_method(D_METHOD("get_garage"), &TractorPullEvent::get_garage);
     ClassDB::bind_method(D_METHOD("buy_upgrade", "index"), &TractorPullEvent::buy_upgrade);
+    ClassDB::bind_method(D_METHOD("buy_alternative", "choice", "alternative"),
+                         &TractorPullEvent::buy_alternative);
+    ClassDB::bind_method(D_METHOD("fit_alternative", "choice", "alternative"),
+                         &TractorPullEvent::fit_alternative);
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
-    ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar"),
-                         &TractorPullEvent::set_tuning);
+    ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar", "hitch_m"),
+                         &TractorPullEvent::set_tuning, DEFVAL(0.0));
 }
 
 }  // namespace tp::godot_binding

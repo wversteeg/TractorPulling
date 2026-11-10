@@ -73,9 +73,11 @@ package "tp::godot_binding" {
     +get_event_prize() : int
     +get_garage() : Dictionary
     +buy_upgrade(index) : String
+    +buy_alternative(choice, alternative) : String
+    +fit_alternative(choice, alternative) : String
     +add_money(amount_eur) : bool, for testing
     +get_tuning() : Dictionary
-    +set_tuning(ballast_position, pressure_bar)
+    +set_tuning(ballast_position, pressure_bar, hitch_m = 0)
     ..C++ only..
     +player_setup() : optional<session::Setup>
     +practice_setup() : optional<session::Setup>

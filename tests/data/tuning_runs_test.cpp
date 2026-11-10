@@ -51,7 +51,9 @@ double reach_m(const vehicle::Tuning& tuning, const std::string& track_file) {
 }
 
 vehicle::Tuning tuning(double ballast_position, double pressure_bar) {
-    return {.ballast_position = ballast_position, .rear_tire_pressure_bar = pressure_bar};
+    return {.ballast_position = ballast_position,
+            .rear_tire_pressure_bar = pressure_bar,
+            .hitch_height_m = 0.0};
 }
 
 // The settings matter in a whole pull, as the README says: the weights at
@@ -61,18 +63,10 @@ TEST(TuningRuns, RearWeightsPullFurther) {
               reach_m(tuning(1.0, 1.0), "ideal_clay_sand.toml"));
 }
 
-// And what a pressure costs depends on the track: on dry hard clay soft
-// tires' lugs squirm and lose metres; on the soft covered heavy clay their
-// bigger footprint sinks less and makes up most of it.
-TEST(TuningRuns, SoftTiresCostLessOnSoftGround) {
-    const double soft_clay_m = reach_m(tuning(0.5, 0.7), "covered_heavy_clay.toml");
-    const double clay_m = reach_m(tuning(0.5, 1.0), "covered_heavy_clay.toml");
-    const double dry_m = reach_m(tuning(0.5, 1.0), "dry_hard_clay.toml");
-    const double soft_dry_m = reach_m(tuning(0.5, 0.7), "dry_hard_clay.toml");
-    EXPECT_GT(dry_m, soft_dry_m + 1.0) << dry_m << " m, " << soft_dry_m << " m";
-    EXPECT_GT(soft_clay_m - clay_m, soft_dry_m - dry_m + 1.0)
-        << "clay " << soft_clay_m << " m against " << clay_m << " m";
-}
+// What a pressure gives depends on the track: see
+// TrackSetup.SoftTiresPayOnHeavyClayAndCostOnFirmLoam (the standard
+// tractor runs out of engine before grip on most tracks, so its pressure
+// changes little).
 
 }  // namespace
 }  // namespace tp::field

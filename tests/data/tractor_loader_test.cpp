@@ -282,6 +282,24 @@ TEST(TractorLoader, ReadsTheProtection) {
               std::string::npos);
 }
 
+// An adjustable pulling hitch names its lowest hole; without one the hitch
+// is fixed.
+TEST(TractorLoader, ReadsTheHitchsHoles) {
+    const auto fixed = parse_tractor(kTractor, "tractor.toml", kDataDir);
+    ASSERT_TRUE(fixed.ok()) << fixed.error().message;
+    EXPECT_EQ(fixed.value().chassis.hitch_min_height_m, 0.0);
+    const auto holes = parse_tractor(with("hitch_behind_rear_axle_m = 0.4",
+                                          "hitch_behind_rear_axle_m = 0.4\n"
+                                          "hitch_min_height_m = 0.4"),
+                                     "tractor.toml", kDataDir);
+    ASSERT_TRUE(holes.ok()) << holes.error().message;
+    EXPECT_EQ(holes.value().chassis.hitch_min_height_m, 0.4);
+    EXPECT_NE(error_of(with("hitch_behind_rear_axle_m = 0.4",
+                            "hitch_behind_rear_axle_m = 0.4\nhitch_min_height_m = 0.6"))
+                  .find("tractor.chassis.hitch_min_height_m: must be from 0 to"),
+              std::string::npos);
+}
+
 TEST(TractorLoader, ReadsTheBallast) {
     const auto result = load_tractor(std::string{TP_DATA_DIR} + "/tractors/farm_stock_light.toml");
     ASSERT_TRUE(result.ok()) << result.error().message;

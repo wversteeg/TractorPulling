@@ -199,6 +199,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.hitch_behind_rear_axle_m < 0.0) {
         return ParamError::kHitchAheadOfRearAxle;
     }
+    if (std::isnan(params.hitch_min_height_m) || params.hitch_min_height_m < 0.0 ||
+        params.hitch_min_height_m > params.hitch_height_m) {
+        return ParamError::kHitchRangeInvalid;
+    }
     if (params.front_tires.stiffness_n_per_m <= 0.0) {
         return ParamError::kFrontTireStiffnessNotPositive;
     }

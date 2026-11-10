@@ -6,6 +6,10 @@
 # than 4.0 m ahead of the rear axle, the hitch at most 0.5 m high and at
 # least 0.45 m behind the axle. The garage (garages/sport_4500.toml) builds
 # it from a stock tractor.
+#
+# The engine here is the 68 mm turbo's, as the rivals and tp_pull pull it;
+# the player's stock tractor comes with the small turbo instead (the
+# garage's turbo choice, engines/sport_4500_fast_turbo.toml).
 
 [tractor]
 engine = "../engines/sport_4500.toml"
@@ -47,6 +51,7 @@ rear_track_m = 2.0
 front_track_m = 1.75
 hitch_height_m = 0.5              # the class's limit, not above the rear axle
 hitch_behind_rear_axle_m = 0.45   # the class's shortest drawbar
+hitch_min_height_m = 0.40         # a pulling hitch with holes from 0.40 m up to hitch_height_m
 protection = "roll_bar"           # no cab needed: an ETPC roll bar
 
 # Weights the puller moves before a pull: from a weight carrier behind the
@@ -56,7 +61,7 @@ protection = "roll_bar"           # no cab needed: an ETPC roll bar
 # back, 64 % with them at the front.
 [tractor.chassis.ballast]
 mass_kg = 500.0
-rear_ahead_of_rear_axle_m = -0.9   # on the weight carrier behind the rear axle
+rear_ahead_of_rear_axle_m = -0.85  # by the hitch, at the rear tires' edge (ETPC FS 2026 1.2.2: none beyond the rear tires)
 front_ahead_of_rear_axle_m = 3.6
 position = 0.5
 
@@ -64,10 +69,13 @@ position = 0.5
 stiffness_n_per_m = 500000.0
 damping_n_s_per_m = 8000.0        # about 15 % of critical in pitch
 
-# Mandatory; the tip touches down at about 7° nose-up.
+# Mandatory (ETPC FS 2026, 1.2.4, Level 2 and 3): at least half a tire
+# diameter behind the rear axle, its pad at most 250 mm off the ground and
+# at least 15000 mm² (a skid, not a wheel). Set at the limit, as pullers
+# do: the tip touches down at about 11° nose-up, and the pad slides.
 [tractor.chassis.wheelie_bar]
 behind_rear_axle_m = 1.4
-tip_height_m = 0.15
+tip_height_m = 0.25
 stiffness_n_per_m = 2.0e6
 damping_n_s_per_m = 40000.0
-rolling_resistance_coefficient = 0.05
+rolling_resistance_coefficient = 0.35  # a steel pad sliding on the track

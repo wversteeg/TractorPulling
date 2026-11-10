@@ -246,9 +246,18 @@ func _ready() -> void:
 			_save_season()
 		garage_screen.show_garage(event.get_garage(),
 				"" if error.is_empty() else "Cannot buy it: %s." % error))
+	garage_screen.choice_requested.connect(func(choice: int, alternative: int) -> void:
+		var owned: bool = event.get_garage()["choices"][choice]["alternatives"][alternative]["owned"]
+		var error := event.fit_alternative(choice, alternative) if owned \
+				else event.buy_alternative(choice, alternative)
+		if error.is_empty():
+			_save_season()
+		garage_screen.show_garage(event.get_garage(),
+				"" if error.is_empty() else "Cannot %s it: %s." % ["fit" if owned else "buy", error]))
 	garage_screen.done.connect(show_start)
-	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float) -> void:
-		event.set_tuning(ballast_position, bar)
+	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float,
+			hitch_m: float) -> void:
+		event.set_tuning(ballast_position, bar, hitch_m)
 		setup_screen.show_values(event.get_tuning()))
 	setup_screen.pull_requested.connect(func() -> void:
 		_save_season()
@@ -734,7 +743,11 @@ func _offer_restart() -> void:
 	_choosing = true
 	var result := run.get_result()
 	var ending: String = result.get("ending", "")
-	restart_screen.show_choice(String(ResultScreen.ENDINGS.get(ending, ending)), float(result.get("distance_m", 0.0)),
+	# Out of bounds counts 0 m: where the tire touched the line says why it
+	# may be pulled again.
+	var at_m := float(result.get("out_of_bounds_at_m", 0.0)) if ending == "out_of_bounds" \
+			else float(result.get("distance_m", 0.0))
+	restart_screen.show_choice(String(ResultScreen.ENDINGS.get(ending, ending)), at_m,
 			float(run.get_dimensions()["restart_before_m"]),
 			0 if practice else int(event.get_event().get("move_back_places", 0)))
 	restart_screen.visible = true

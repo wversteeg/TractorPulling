@@ -446,7 +446,8 @@ TEST(Vehicle, AHighHitchPullsAWheelieOntoTheBar) {
     constexpr double kHeavy_n = 24000.0;
     const auto with_hitch = [](double hitch_height_m) {
         Params params =
-            tuned(reference_params(), {.ballast_position = 0.0, .rear_tire_pressure_bar = 1.0});
+            tuned(reference_params(),
+                  {.ballast_position = 0.0, .rear_tire_pressure_bar = 1.0, .hitch_height_m = 0.0});
         params.chassis.hitch_height_m = hitch_height_m;
         return Model::create(params);
     };

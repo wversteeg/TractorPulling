@@ -233,6 +233,11 @@ bool may_restart(const State& state) noexcept {
     const bool stopped = result->ending == run::Ending::kStalled ||
                          result->ending == run::Ending::kSpunOut ||
                          result->ending == run::Ending::kStopped || nudged;
+    // Out of bounds before the restart line is a short pull too: pulled
+    // again from the start, it no longer counts as disqualified.
+    if (result->ending == run::Ending::kOutOfBounds) {
+        return result->out_of_bounds_at_m < kRestartBefore_m;
+    }
     return stopped && result->distance_m < kRestartBefore_m;
 }
 

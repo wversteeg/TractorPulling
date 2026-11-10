@@ -1,5 +1,5 @@
 @startuml garage_classes
-title Garage (tp::garage): upgrades as parameter changes, the career's money
+title Garage (tp::garage): upgrades as parameter changes, choices between parts, the career's money
 hide empty members
 skinparam packageStyle rectangle
 skinparam classAttributeIconSize 0
@@ -30,16 +30,39 @@ package "tp::garage" {
     +part : Part
     +levels : array<Level, 12>
     +level_count : size_t
+    +choice : int
+    +alternative : int
+  }
+  enum Slot {
+    kEngine
+    kRearTire
+    kDriveline
+  }
+  class Alternative <<struct>> {
+    +engine : optional<engine::Params>
+    +rear_tire : optional<tire::Params>
+    +driveline : optional<driveline::Params>
+    +cost_eur : int64
+  }
+  class Choice <<struct>> {
+    +slot : Slot
+    +alternatives : array<Alternative, 4>
+    +alternative_count : size_t
   }
   class Catalogue <<struct>> {
     +upgrades : array<Upgrade, 16>
     +count : size_t
     +start_money_eur : int64
+    +choices : array<Choice, 4>
+    +choice_count : size_t
     +offer() : span<const Upgrade>
+    +choice_offer() : span<const Choice>
   }
   class Career <<struct>> {
     +money_eur : int64
     +levels : array<int, 16>
+    +fitted : array<int, 4>
+    +owned : array<uint8, 4>
   }
   class "garage functions" as GarageFns <<free functions>> {
     +validate(const Catalogue&, const vehicle::Params&, const rules::ClassRules&) : optional<ParamError>
@@ -47,11 +70,20 @@ package "tp::garage" {
     +equipped(const vehicle::Params&, const Catalogue&, const Career&) : optional<vehicle::Params>
     +fully_upgraded(const Catalogue&, const Career&) : bool
     +buy(Career&, const Catalogue&, upgrade) : optional<BuyError>
+    +buy_alternative(Career&, const Catalogue&, choice, alternative) : optional<BuyError>
+    +fit(Career&, const Catalogue&, choice, alternative) : optional<FitError>
+    +owns(const Career&, choice, alternative) : bool
+    +fitted(const Catalogue&, const Career&, choice) : size_t
+    +counts(const Catalogue&, const Career&, upgrade) : bool
     +prize_eur(span<const int64> by_place, const event::Standing&) : int64
   }
   Catalogue *-- Upgrade
+  Catalogue *-- Choice
+  Choice *-- Alternative
+  Choice --> Slot
   Upgrade *-- Level
   Upgrade --> Part
+  Upgrade ..> Alternative : belongs to one (or none)
   GarageFns ..> Catalogue
   GarageFns ..> Career
 }
@@ -67,5 +99,11 @@ note bottom of Catalogue
   and validate() checks each level with the others at their top.
   The top levels reach the class's limits (NTTO standard 3.5 t:
   85 hp at the PTO, 2700 rpm unloaded, 3500 kg, the hitch at 0.5 m)
+end note
+note bottom of Choice
+  alternatives owned side by side, one fitted: the first comes with
+  the tractor, another is bought once and fitted or taken off for
+  nothing. equipped() puts the fitted ones in, then the upgrades
+  that count; validate() tries every combination of alternatives
 end note
 @enduml

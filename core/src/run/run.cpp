@@ -112,14 +112,15 @@ pull::Output step(State& state, const pull::Model& model, const Rules& rules,
     // that travel).
     const double pulled_m = sled.position_m - model.sled_start_m();
 
-    const auto finish = [&](Ending ending, double distance_m) {
+    const auto finish = [&](Ending ending, double distance_m, double out_of_bounds_at_m = 0.0) {
         state.result = Result{.ending = ending,
                               .distance_m = distance_m,
                               .time_s = time_s,
-                              .top_speed_m_s = state.top_speed_m_s};
+                              .top_speed_m_s = state.top_speed_m_s,
+                              .out_of_bounds_at_m = out_of_bounds_at_m};
     };
     if (touches_line(model, state.pull, rules)) {
-        finish(Ending::kOutOfBounds, 0.0);
+        finish(Ending::kOutOfBounds, 0.0, std::max(pulled_m, 0.0));
     } else if (pulled_m >= rules.track_length_m) {
         finish(Ending::kFullPull, rules.track_length_m);
     } else if (const std::optional<Ending> stop =

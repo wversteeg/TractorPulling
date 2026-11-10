@@ -114,6 +114,10 @@ struct Params {
     double hitch_height_m = 0.0;
     /// Drawbar hitch point behind the rear axle [m].
     double hitch_behind_rear_axle_m = 0.0;
+    /// The lowest hole of an adjustable pulling hitch [m]: the puller sets
+    /// the hitch before each pull from here up to hitch_height_m, the top
+    /// hole (vehicle::Tuning). 0: a fixed hitch.
+    double hitch_min_height_m = 0.0;
     /// Both front tires together, acting below the front axle.
     Contact front_tires;
     WheelieBar wheelie_bar;
@@ -138,6 +142,8 @@ enum class ParamError : std::uint8_t {
     kFrontTrackNotPositive,
     kHitchHeightNegative,
     kHitchAheadOfRearAxle,
+    /// hitch_min_height_m negative or above hitch_height_m.
+    kHitchRangeInvalid,
     kFrontTireStiffnessNotPositive,
     kFrontTireDampingNegative,
     kWheelieBarNotBehindRearAxle,

@@ -192,6 +192,9 @@ TEST(Run, LeavingTheLaneIsOutOfBounds) {
     EXPECT_EQ(outcome.result.ending, Ending::kOutOfBounds);
     EXPECT_EQ(outcome.result.distance_m, 0.0);
     EXPECT_GT(outcome.state.pull.sled.distance_m, 5.0);
+    // Where it happened, for the restart rule (turn::may_restart).
+    EXPECT_GT(outcome.result.out_of_bounds_at_m, 5.0);
+    EXPECT_LE(outcome.result.out_of_bounds_at_m, outcome.state.pull.sled.distance_m);
 }
 
 // A pull that turns is measured down the track, not along the sled's

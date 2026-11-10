@@ -17,6 +17,7 @@ package "tp::chassis" {
     +front_track_m : double
     +hitch_height_m : double
     +hitch_behind_rear_axle_m : double
+    +hitch_min_height_m : double
     +front_tires : Contact
     +wheelie_bar : WheelieBar
     +ballast : Ballast

@@ -1,5 +1,5 @@
-# Over the pull, when the sled stopped short of the restart line (30 m:
-# TractorPullRun.may_restart()): the player chooses to pull again from the
+# Over the pull, when the sled stopped, or the tractor went out of bounds,
+# short of the restart line (30 m: TractorPullRun.may_restart()): the player chooses to pull again from the
 # start line on the track as it is, to pull again later (at an event: six
 # places further down the running order), or to let the pull count.
 class_name RestartScreen
@@ -45,6 +45,6 @@ func _ready() -> void:
 # move (0: not at all, as in practice).
 func show_choice(ending: String, distance_m: float, restart_m: float, places: int) -> void:
 	_title.text = "%s at %.2f m" % [ending, distance_m]
-	_line.text = "Stopped before %.0f m" % restart_m
+	_line.text = "Before the %.0f m line" % restart_m
 	move_back_button.text = "%d places later" % places
 	move_back_button.visible = places > 0

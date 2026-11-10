@@ -89,11 +89,13 @@ package "tp::vehicle" {
   class Tuning <<struct>> {
     +ballast_position : double
     +rear_tire_pressure_bar : double
+    +hitch_height_m : double
     --
     set by the puller before a pull
   }
   class "tuning functions" as TuningFns <<free functions>> {
     +as_built(const Params&) : Tuning
+    +hitch_setting(const Params&, wanted_m) : double
     +tuned(const Params&, const Tuning&) : Params
     --
     chassis::with_ballast_at and

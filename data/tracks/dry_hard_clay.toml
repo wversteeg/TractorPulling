@@ -7,8 +7,10 @@ length_m = 100.0
 max_duration_s = 120.0
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
 # How the track was prepared, a scale on its soil's grip (1 is the
-# reference): well prepared; its dust already costs grip (the soil model).
-grip = 1.0
+# reference): well prepared, a grippy track (its dust already costs grip in
+# the soil model). A strong tractor with its weights all back stands on its
+# wheelie bar here: halfway pulls further.
+grip = 1.25
 
 [track.soil]
 clay_fraction = 0.75

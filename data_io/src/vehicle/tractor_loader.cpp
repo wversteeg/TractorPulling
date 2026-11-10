@@ -66,6 +66,9 @@ FieldError describe(chassis::ParamError error) {
             return {"tractor.chassis.hitch_height_m", "must not be negative"};
         case ParamError::kHitchAheadOfRearAxle:
             return {"tractor.chassis.hitch_behind_rear_axle_m", "must not be negative"};
+        case ParamError::kHitchRangeInvalid:
+            return {"tractor.chassis.hitch_min_height_m",
+                    "must be from 0 to tractor.chassis.hitch_height_m"};
         case ParamError::kFrontTireStiffnessNotPositive:
             return {"tractor.chassis.front_tires.stiffness_n_per_m", "must be > 0"};
         case ParamError::kFrontTireDampingNegative:
@@ -135,6 +138,8 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .front_track_m = reader.number("tractor.chassis.front_track_m"),
         .hitch_height_m = reader.number("tractor.chassis.hitch_height_m"),
         .hitch_behind_rear_axle_m = reader.number("tractor.chassis.hitch_behind_rear_axle_m"),
+        .hitch_min_height_m =
+            reader.optional_number("tractor.chassis.hitch_min_height_m").value_or(0.0),
         .front_tires =
             {
                 .stiffness_n_per_m = reader.number("tractor.chassis.front_tires.stiffness_n_per_m"),
