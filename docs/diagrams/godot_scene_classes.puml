@@ -171,6 +171,9 @@ package "GDScript (app/godot/scripts)" {
   }
   class EngineSound {
     +enabled : bool
+    +loops : bool (the web: loops made ahead)
+    +idle_loop, load_loop : AudioStreamPlayer
+    +make_loop(state) : AudioStreamWAV
     +cylinders : int
     +configure(dimensions)
     +show_snapshot(snapshot)

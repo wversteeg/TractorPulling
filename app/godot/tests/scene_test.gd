@@ -243,9 +243,61 @@ func _check_engine_sound() -> void:
 	_expect(idle > 0.01 and full > 2.0 * idle and stopped < 1e-3,
 			"the engine's sound: idle %.3f, full %.3f, stopped %.4f" % [idle, full, stopped])
 	_expect(not sound.making(), "silent: no samples made")
+	_check_web_loops()
 	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 84.0})
 	_expect(sound.making(), "running: the samples made again")
 	sound.free()
+
+
+# The web's way, tried here: the engine's sound made ahead as two seamless
+# loops for this engine, idling and pulling; their pitch follows the
+# engine's speed, the throttle blends from one to the other, and silent
+# they stop.
+func _check_web_loops() -> void:
+	var sound := EngineSound.new()
+	sound.loops = true
+	_pull.add_child(sound)
+	sound.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
+	var loop: AudioStreamWAV = sound.load_loop.stream
+	_expect(loop != null and loop.loop_mode == AudioStreamWAV.LOOP_FORWARD
+			and loop.loop_end > int(EngineSound.MIX_RATE_HZ * 0.4), "a loop made for the web")
+	# Seamless: the step from the loop's end to its start is no bigger than
+	# its steps elsewhere.
+	var data := loop.data
+	var last := data.decode_s16((loop.loop_end - 1) * 2)
+	var seam := absi(data.decode_s16(0) - last)
+	var biggest := 0
+	for i in range(1, loop.loop_end):
+		biggest = maxi(biggest, absi(data.decode_s16(i * 2) - data.decode_s16((i - 1) * 2)))
+	_expect(seam <= biggest, "the loop seamless: %d at the seam, %d at most elsewhere" % [seam,
+			biggest])
+	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 262.0, "throttle": 1.0,
+			"boost": 1.0})
+	for i in 30:
+		sound._process(1.0 / 60.0)
+	_expect(sound.load_loop.playing and sound.load_loop.volume_db > sound.idle_loop.volume_db
+			and absf(sound.load_loop.pitch_scale - 1.0) < 0.05,
+			"pulling: the pulling loop at its own pitch, louder: %.1f dB, %.1f dB, x%.2f" % [
+			sound.load_loop.volume_db, sound.idle_loop.volume_db, sound.load_loop.pitch_scale])
+	# Lugging, louder than the loop was made: never above its own level.
+	sound.show_snapshot({"engine_running": true, "engine_omega_rad_s": 160.0, "throttle": 1.0,
+			"boost": 0.8})
+	for i in 30:
+		sound._process(1.0 / 60.0)
+	_expect(sound.load_loop.volume_db <= 0.0, "lugging: no gain past the loop's own level: %.1f dB"
+			% sound.load_loop.volume_db)
+	# A second sound for the same engine uses the loops made for the first.
+	var again := EngineSound.new()
+	again.loops = true
+	_pull.add_child(again)
+	again.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
+	_expect(again.load_loop.stream == sound.load_loop.stream, "the loops made once per engine")
+	again.queue_free()
+	sound.show_snapshot({"engine_running": false})
+	for i in 60:
+		sound._process(1.0 / 60.0)
+	_expect(not sound.load_loop.playing and not sound.idle_loop.playing, "silent: the loops stop")
+	sound.queue_free()
 
 
 # The close camera has the whole sled in view, from its rear to the
