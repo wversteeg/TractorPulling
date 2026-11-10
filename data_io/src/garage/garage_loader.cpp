@@ -138,6 +138,18 @@ constexpr std::array<SlotName, 3> kSlots = {{
     {.key = "driveline", .slot = garage::Slot::kDriveline},
 }};
 
+// The slot the file names `name`; nothing if there is none. (A loop, as
+// part_named: std::array's iterator is a pointer in libstdc++ but a class
+// in libc++, so a find's result has no one spelling for both.)
+std::optional<garage::Slot> slot_named(std::string_view name) {
+    for (const SlotName& s : kSlots) {
+        if (s.key == name) {
+            return s.slot;
+        }
+    }
+    return std::nullopt;
+}
+
 // The component file `path` for `slot` into `alternative`; its own error if
 // it does not load.
 std::optional<LoadError> read_component(garage::Slot slot, const std::string& path,
@@ -220,9 +232,8 @@ std::optional<LoadError> read_choice(const toml::node& node, std::string_view so
     if (!slot_name || !name || name->empty()) {
         return detail::make_error(source, "garage.choices", "every choice needs a slot and a name");
     }
-    const auto* const slot =
-        std::ranges::find_if(kSlots, [&](const SlotName& s) { return s.key == *slot_name; });
-    if (slot == kSlots.end()) {
+    const std::optional<garage::Slot> slot = slot_named(*slot_name);
+    if (!slot) {
         return detail::make_error(
             source, "garage.choices.slot",
             "unknown slot '" + *slot_name + "' (engine, rear_tire or driveline)");
@@ -239,7 +250,7 @@ std::optional<LoadError> read_choice(const toml::node& node, std::string_view so
                                       std::to_string(garage::kMaxAlternatives) + " alternatives");
     }
     garage::Choice choice;
-    choice.slot = slot->slot;
+    choice.slot = *slot;
     ChoiceText text{.name = *name, .alternative_labels = {}};
     for (const toml::node& alternative : *alternatives) {
         if (std::optional<LoadError> error =
