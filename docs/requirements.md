@@ -67,7 +67,7 @@ C++ tests are named `Suite.Test` (`tests/`), Godot tests by their script
 | R-6 | A pull past the line stops at the maximum distance (130 m); a counting pull stops at the line. | met | `PullRules.OnlyTestPullsAndPullOffsRunPastTheLine` |
 | R-7 | The distance is measured down the track from the start line to the front of the sled; the sled's front stands on the start line at the start. | met | `Model.StartLineIsAtTheSledsFront`, `Session.StartsAtTheStartLine`, `Run.ATurningPullIsMeasuredDownTheTrack` |
 | R-8 | Standings: pull-off rounds first, then the pull-off distance, then the main round's distance; disqualified pulls last; equal results share a place. | met | `Event.EqualResultsShareAPlace`, `Event.DisqualifiedPullRanksLast` |
-| R-9 | A puller stopped short of the restart line (30 m) may restart once, or move back 6 places and pull later. | met | `Turn.AShortPullMayBeRestarted`, `Event.ADeferredPullerPullsLater`, `restart_test.gd` |
+| R-9 | A puller stopped short of the restart line (30 m), or out of bounds before it, may restart once, or move back 6 places and pull later. | met | `Turn.AShortPullMayBeRestarted`, `Run.LeavingTheLaneIsOutOfBounds`, `Event.ADeferredPullerPullsLater`, `restart_test.gd` |
 | R-10 | Points per place over a season; prize money per place; disqualified scores nothing. In the career every place pays, so a new tractor at the back can still be built up: at the career's start (the standard class) the last place pays the garage's cheapest upgrade every event, further up one every two events; within a class each level pays every place at least what the level below pays. | met | `Championship.*`, `Garage.PaysByPlace`, `CareerLoader.EveryPlaceOfTheShippedCareerPaysForUpgrades` |
 
 ## The lane

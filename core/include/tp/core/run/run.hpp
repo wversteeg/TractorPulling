@@ -58,6 +58,9 @@ struct Result {
     double distance_m = 0.0;
     double time_s = 0.0;
     double top_speed_m_s = 0.0;
+    /// Out of bounds: how far down the track the sled had pulled when the
+    /// tire touched the line (the distance counts 0 m); 0 otherwise [m].
+    double out_of_bounds_at_m = 0.0;
 };
 
 /// Before the sled has pulled this far, a stop with the engine running and

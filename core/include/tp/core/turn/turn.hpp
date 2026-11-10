@@ -187,9 +187,9 @@ inline constexpr double kRestartBefore_m = 30.0;
 inline constexpr std::uint8_t kMaxRestarts = 1;
 
 /// Whether the pull just ended may be restarted: it stopped (stalled, spun
-/// out or eased off, or the time ran out on a sled barely nudged) before
-/// kRestartBefore_m, the chain still on (just after the stop), and it has
-/// not been restarted kMaxRestarts times yet.
+/// out or eased off, or the time ran out on a sled barely nudged) or went
+/// out of bounds before kRestartBefore_m, the chain still on (just after
+/// the stop), and it has not been restarted kMaxRestarts times yet.
 [[nodiscard]] bool may_restart(const State& state) noexcept;
 
 /// The pull again from the start line, the track as the last pull left it:

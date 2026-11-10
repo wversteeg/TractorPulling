@@ -263,8 +263,14 @@ TEST(Turn, AShortPullMayBeRestarted) {
     EXPECT_TRUE(may_restart(state)) << "a nudged sled that stood until the time ran out";
     state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = kRestartBefore_m};
     EXPECT_FALSE(may_restart(state)) << "at the restart line";
-    state.run.result = run::Result{.ending = run::Ending::kOutOfBounds, .distance_m = 0.0};
-    EXPECT_FALSE(may_restart(state)) << "disqualified";
+    state.run.result = run::Result{.ending = run::Ending::kOutOfBounds,
+                                   .distance_m = 0.0,
+                                   .time_s = 0.0,
+                                   .top_speed_m_s = 0.0,
+                                   .out_of_bounds_at_m = 12.0};
+    EXPECT_TRUE(may_restart(state)) << "out of bounds short of the restart line";
+    state.run.result->out_of_bounds_at_m = kRestartBefore_m;
+    EXPECT_FALSE(may_restart(state)) << "out of bounds at the restart line: disqualified";
 }
 
 // The driver's side of the hook-up: creep forward in 1st until the slack

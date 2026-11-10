@@ -743,7 +743,11 @@ func _offer_restart() -> void:
 	_choosing = true
 	var result := run.get_result()
 	var ending: String = result.get("ending", "")
-	restart_screen.show_choice(String(ResultScreen.ENDINGS.get(ending, ending)), float(result.get("distance_m", 0.0)),
+	# Out of bounds counts 0 m: where the tire touched the line says why it
+	# may be pulled again.
+	var at_m := float(result.get("out_of_bounds_at_m", 0.0)) if ending == "out_of_bounds" \
+			else float(result.get("distance_m", 0.0))
+	restart_screen.show_choice(String(ResultScreen.ENDINGS.get(ending, ending)), at_m,
 			float(run.get_dimensions()["restart_before_m"]),
 			0 if practice else int(event.get_event().get("move_back_places", 0)))
 	restart_screen.visible = true

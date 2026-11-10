@@ -380,6 +380,7 @@ godot::Dictionary TractorPullRun::get_result() const {
                        result->distance_m >= setup_->rules.full_pull_line_m;
     out["time_s"] = result->time_s;
     out["top_speed_m_s"] = result->top_speed_m_s;
+    out["out_of_bounds_at_m"] = result->out_of_bounds_at_m;
     return out;
 }
 
