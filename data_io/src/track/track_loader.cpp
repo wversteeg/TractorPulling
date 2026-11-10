@@ -120,7 +120,7 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
             {
                 .pushdown_start_m = reader.optional_number("track.pushdown.start_m"),
             },
-        .setup_tip = root.at_path("track.setup_tip").value<std::string>().value_or(""),
+        .setup_tip = reader.optional_text("track.setup_tip"),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

@@ -147,6 +147,7 @@ skinparam classAttributeIconSize 0
       +rad_s_to_rpm(omega_rad_s) : double
       +rad_to_deg(angle_rad) / deg_to_rad(angle_deg) : double
       +metric_hp_to_w(hp) / w_to_metric_hp(power_w) : double
+      +bar_to_pa(bar) / pa_to_bar(pa) / pa_to_kpa(pa) : double
     }
   }
 

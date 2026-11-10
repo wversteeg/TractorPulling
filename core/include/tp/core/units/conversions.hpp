@@ -33,6 +33,13 @@ inline constexpr double kPascalsPerBar = 100'000.0;
     return pressure_pa / kPascalsPerBar;
 }
 
+/// The kilopascal: soil strength (a cone index) as surveys give it.
+inline constexpr double kPascalsPerKilopascal = 1'000.0;
+
+[[nodiscard]] constexpr double pa_to_kpa(double pressure_pa) noexcept {
+    return pressure_pa / kPascalsPerKilopascal;
+}
+
 inline constexpr double kDegreesPerRad = 180.0 / std::numbers::pi;
 
 [[nodiscard]] constexpr double rad_to_deg(double angle_rad) noexcept {

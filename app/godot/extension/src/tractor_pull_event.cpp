@@ -101,9 +101,6 @@ const char* slot_name(garage::Slot slot) {
     return "";
 }
 
-constexpr double kPascalsPerKilopascal = 1000.0;
-// Metric horsepower (pk), as the classes' rules give power [W].
-constexpr double kWattsPerHp = 735.49875;
 constexpr double kWattsPerKw = 1000.0;
 // Points of a dyno curve, idle to high idle.
 constexpr int kDynoPoints = 41;
@@ -127,7 +124,7 @@ godot::PackedVector2Array dyno_curve(const engine::Params& engine) {
 godot::Dictionary dyno(const engine::Params& engine) {
     godot::Dictionary out;
     out["points"] = dyno_curve(engine);
-    out["hp"] = engine::max_net_power_w(engine) / kWattsPerHp;
+    out["hp"] = units::w_to_metric_hp(engine::max_net_power_w(engine));
     return out;
 }
 
@@ -484,7 +481,7 @@ godot::Dictionary TractorPullEvent::get_event() const {
     if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
         const soil::Surface start = model->surface_at(0.0);
         ground["grip"] = start.grip_factor;
-        ground["cone_index_kpa"] = start.cone_index_pa / kPascalsPerKilopascal;
+        ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
     }
     ground["tip"] = to_godot(track.setup_tip);
     out["track"] = ground;
@@ -797,7 +794,7 @@ godot::Dictionary TractorPullEvent::get_garage() const {
         choices.push_back(line);
     }
     out["choices"] = choices;
-    out["power_hp"] = engine::max_net_power_w(player_tractor().engine) / kWattsPerHp;
+    out["power_hp"] = units::w_to_metric_hp(engine::max_net_power_w(player_tractor().engine));
     return out;
 }
 
