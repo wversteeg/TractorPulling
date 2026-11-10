@@ -1,9 +1,12 @@
 #include "tp/data/garage/garage_loader.hpp"
 
+#include "tp/core/engine/engine.hpp"
 #include "tp/core/units/conversions.hpp"
 
 #include <gtest/gtest.h>
 
+#include <filesystem>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -100,6 +103,123 @@ TEST(GarageLoader, RefusesNonsense) {
     EXPECT_NE(error_of(with("name = \"Drawbar\"\n", "")).find("needs a part and a name"),
               std::string::npos);
     EXPECT_NE(error_of("[garage]\nstart_money_eur = 1\n").find("garage.upgrades"),
+              std::string::npos);
+}
+
+// A garage with a turbo choice between two of the shipped engines, each
+// with its own build, and weights that count on either.
+constexpr std::string_view kChoiceGarage = R"(
+[garage]
+start_money_eur = 500
+
+[[garage.choices]]
+slot = "engine"
+name = "Turbo"
+alternatives = [
+    { file = "../engines/sport_2500.toml", cost_eur = 0, label = "Small turbo" },
+    { file = "../engines/sport_4500.toml", cost_eur = 900, label = "Big turbo" },
+]
+
+[[garage.upgrades]]
+part = "engine_torque"
+name = "Small build"
+choice = "Turbo"
+alternative = "Small turbo"
+levels = [{ value = 0.5, cost_eur = 0, label = "Stock" }]
+
+[[garage.upgrades]]
+part = "engine_torque"
+name = "Big build"
+choice = "Turbo"
+alternative = "Big turbo"
+levels = [{ value = 0.4, cost_eur = 0, label = "Stock" }]
+
+[[garage.upgrades]]
+part = "ballast_kg"
+name = "Weights"
+levels = [{ value = 0.0, cost_eur = 0, label = "None" }]
+)";
+
+// The garage as if it were in data/garages/.
+Result<GarageDefinition> parse_choices(std::string_view text) {
+    const std::string garages = (std::filesystem::path{TP_DATA_DIR} / "garages").generic_string();
+    return parse_garage(text, "garage.toml", garages, read_from_disk);
+}
+
+std::string choice_error_of(std::string_view from, std::string_view to) {
+    std::string text{kChoiceGarage};
+    const auto pos = text.find(from);
+    EXPECT_NE(pos, std::string::npos) << "test bug: '" << from << "' not found";
+    if (pos != std::string::npos) {
+        text.replace(pos, from.size(), to);
+    }
+    const auto result = parse_choices(text);
+    return result.ok() ? std::string{} : result.error().message;
+}
+
+TEST(GarageLoader, ReadsChoicesAndTheUpgradesBelongingToThem) {
+    const auto result = parse_choices(kChoiceGarage);
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const GarageDefinition& g = result.value();
+    ASSERT_EQ(g.catalogue.choice_count, 1U);
+    const garage::Choice& turbo = g.catalogue.choices[0];
+    EXPECT_EQ(turbo.slot, garage::Slot::kEngine);
+    ASSERT_EQ(turbo.alternative_count, 2U);
+    const std::optional<engine::Params>& small = turbo.alternatives[0].engine;
+    const std::optional<engine::Params>& big = turbo.alternatives[1].engine;
+    ASSERT_TRUE(small.has_value() && big.has_value());
+    EXPECT_GT(big.has_value() ? big->inertia_kg_m2 : 0.0,
+              small.has_value() ? small->inertia_kg_m2 : 0.0);
+    EXPECT_EQ(turbo.alternatives[1].cost_eur, 900);
+    ASSERT_EQ(g.choice_texts.size(), 1U);
+    EXPECT_EQ(g.choice_texts[0].name, "Turbo");
+    EXPECT_EQ(g.choice_texts[0].alternative_labels.at(1), "Big turbo");
+    ASSERT_EQ(g.catalogue.count, 3U);
+    EXPECT_EQ(g.catalogue.upgrades[0].choice, 0);
+    EXPECT_EQ(g.catalogue.upgrades[0].alternative, 0);
+    EXPECT_EQ(g.catalogue.upgrades[1].choice, 0);
+    EXPECT_EQ(g.catalogue.upgrades[1].alternative, 1);
+    EXPECT_EQ(g.catalogue.upgrades[2].choice, garage::kNoChoice);
+}
+
+TEST(GarageLoader, RefusesNonsenseInChoices) {
+    EXPECT_EQ(choice_error_of("", ""), "");
+    EXPECT_NE(choice_error_of("slot = \"engine\"", "slot = \"turbo\"").find("unknown slot"),
+              std::string::npos);
+    EXPECT_NE(choice_error_of("sport_4500.toml", "nowhere.toml").find("cannot open"),
+              std::string::npos);
+    EXPECT_NE(choice_error_of("cost_eur = 900", "cost_eur = -900").find("must not be negative"),
+              std::string::npos);
+    EXPECT_NE(choice_error_of("cost_eur = 0, label = \"Small turbo\"",
+                              "cost_eur = 5, label = \"Small turbo\"")
+                  .find("the first alternative"),
+              std::string::npos);
+    EXPECT_NE(
+        choice_error_of("label = \"Big turbo\"", "label = \"Small turbo\"").find("listed twice"),
+        std::string::npos);
+    EXPECT_NE(choice_error_of(
+                  "    { file = \"../engines/sport_4500.toml\", cost_eur = 900, label = \"Big "
+                  "turbo\" },\n",
+                  "")
+                  .find("must list 2 to"),
+              std::string::npos);
+    EXPECT_NE(choice_error_of("alternative = \"Big turbo\"", "alternative = \"Huge turbo\"")
+                  .find("has no alternative 'Huge turbo'"),
+              std::string::npos);
+    EXPECT_NE(choice_error_of("choice = \"Turbo\"\nalternative = \"Big turbo\"",
+                              "choice = \"Pump\"\nalternative = \"Big turbo\"")
+                  .find("no choice 'Pump'"),
+              std::string::npos);
+    EXPECT_NE(
+        choice_error_of("choice = \"Turbo\"\nalternative = \"Big turbo\"\n", "choice = \"Turbo\"\n")
+            .find("or neither"),
+        std::string::npos);
+    // Builds that could count together.
+    EXPECT_NE(
+        choice_error_of("choice = \"Turbo\"\nalternative = \"Big turbo\"\n", "").find("twice"),
+        std::string::npos);
+    EXPECT_NE(choice_error_of("name = \"Weights\"", "name = \"Big build\"")
+                  .find("'Big build' is listed twice"),
               std::string::npos);
 }
 

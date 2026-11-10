@@ -13,6 +13,7 @@ add_executable(tp_core_tests
     engine/engine_test.cpp
     event/event_test.cpp
     field/field_test.cpp
+    garage/garage_choice_test.cpp
     garage/garage_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp
@@ -50,6 +51,7 @@ gtest_discover_tests(tp_alloc_tests DISCOVERY_MODE PRE_TEST)
 if(TP_BUILD_DATA_IO)
     add_executable(tp_data_tests
         data/career_loader_test.cpp
+        data/career_names_test.cpp
         data/class_rules_loader_test.cpp
         data/clutch_loader_test.cpp
         data/controls_loader_test.cpp

@@ -15,14 +15,25 @@ namespace tp::data {
 /// The save format's version. Older ones are read too: version 1 (before
 /// the garage) as a career that has not begun, version 2 (before the
 /// career's classes) as a career on its first rung, version 3 (before the
-/// levels) at the first level of its classes. Any other is refused.
-inline constexpr std::int64_t kSeasonSaveVersion = 4;
+/// levels) at the first level of its classes, version 4 (before the
+/// garage's choices) with every choice at its first alternative. Any other
+/// is refused.
+inline constexpr std::int64_t kSeasonSaveVersion = 5;
 
 /// An upgrade's level, by the garage's name for it (data::UpgradeText), so
 /// that a save outlives a garage file whose order changes.
 struct SavedUpgrade {
     std::string name;
     int level = 0;
+};
+
+/// A garage choice (data::ChoiceText), by the names of its alternatives: the
+/// ones bought (not the first, which comes with the tractor) and the one
+/// fitted.
+struct SavedChoice {
+    std::string name;
+    std::string fitted;
+    std::vector<std::string> owned;
 };
 
 /// The player's career: their money, what they have bought, and how far up
@@ -32,6 +43,8 @@ struct SavedUpgrade {
 struct SavedCareer {
     std::int64_t money_eur = 0;
     std::vector<SavedUpgrade> upgrades;
+    /// None in a save from before version 5.
+    std::vector<SavedChoice> choices;
     /// The class and level the player pulls at; "" for the career's first
     /// class (a version 2 save, or a season played without a career file)
     /// or the class's first level (a version 3 save).
@@ -74,8 +87,9 @@ struct SeasonSave {
 /// without a puller or a place, (version 2 on) a career without its money
 /// (0 or more) or with an upgrade without a name or a level (0 or more),
 /// (version 3 on) a career without its class and the class unlocked, and
-/// (version 4) without their levels, its seasons there (0 or more) or
-/// whether one was won.
+/// (version 4 on) without their levels, its seasons there (0 or more) or
+/// whether one was won, and (version 5) a choice without a name, the
+/// alternative fitted or the list of those owned.
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

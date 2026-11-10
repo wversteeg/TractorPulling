@@ -168,15 +168,25 @@ public:
     /// [EUR] (garage::prize_eur); 0 before an event.
     [[nodiscard]] std::int64_t get_event_prize() const;
 
-    /// The garage: {money_eur, can_buy, fully_upgraded, upgrades}, each
-    /// upgrade {name, level, levels, label, next_label, next_cost_eur} (the
-    /// next ones "" and 0 at the top level). `can_buy` is false while the
+    /// The garage: {money_eur, can_buy, fully_upgraded, upgrades, choices},
+    /// each upgrade {name, level, levels, label, next_label, next_cost_eur,
+    /// counts, for} (the next ones "" and 0 at the top level; `for` the
+    /// alternative it belongs to, "" for none, and `counts` whether that is
+    /// fitted), each choice {name, fitted, alternatives}, each alternative
+    /// {label, cost_eur, owned}. `can_buy` is false while the
     /// player has pulled in the event being pulled: a tractor changes
     /// between events, not during one. {} before a season.
     [[nodiscard]] godot::Dictionary get_garage() const;
     /// Buys the next level of upgrade `index`; "" or why not ("top level",
     /// "not enough money", "not during an event", "no such upgrade").
     godot::String buy_upgrade(std::int64_t index);
+    /// Buys alternative `alternative` of choice `choice` and fits it; "" or
+    /// why not ("owned already", "not enough money", "not during an
+    /// event", "no such part").
+    godot::String buy_alternative(std::int64_t choice, std::int64_t alternative);
+    /// Fits an alternative owned, for nothing; "" or why not ("not bought
+    /// yet", "not during an event", "no such part").
+    godot::String fit_alternative(std::int64_t choice, std::int64_t alternative);
     /// For testing: adds `amount_eur` to the player's money (a negative
     /// amount takes it away, to no less than 0); false without a career.
     bool add_money(std::int64_t amount_eur);

@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace tp::data {
 namespace {
@@ -19,6 +20,10 @@ SeasonSave example() {
     save.career = SavedCareer{.money_eur = 1234,
                               .upgrades = {{.name = "Injection pump", .level = 2},
                                            {.name = R"(The "big" tires)", .level = 0}},
+                              .choices = {{.name = "Turbo",
+                                           .fitted = "68 mm turbo",
+                                           .owned = {"68 mm turbo", R"(A "huge" one)"}},
+                                          {.name = "Gearbox", .fitted = "Stock", .owned = {}}},
                               .class_name = "Sport",
                               .level_name = "Promo",
                               .unlocked_class = R"(Super "stock")",
@@ -57,6 +62,13 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
     EXPECT_EQ(career.unlocked_level, "Belofte");
     EXPECT_EQ(career.seasons_on_level, 2);
     EXPECT_TRUE(career.title_on_level);
+    ASSERT_EQ(career.choices.size(), 2U);
+    EXPECT_EQ(career.choices[0].name, "Turbo");
+    EXPECT_EQ(career.choices[0].fitted, "68 mm turbo");
+    EXPECT_EQ(career.choices[0].owned,
+              (std::vector<std::string>{"68 mm turbo", R"(A "huge" one)"}));
+    EXPECT_EQ(career.choices[1].name, "Gearbox");
+    EXPECT_TRUE(career.choices[1].owned.empty());
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
         ASSERT_EQ(back.events[e].size(), save.events[e].size()) << e;
@@ -145,8 +157,8 @@ TEST(SeasonSave, ReadsASaveFromBeforeTheLevels) {
 TEST(SeasonSave, RefusesNonsense) {
     EXPECT_EQ(error_of(kHead), "");
     std::string other_version = kHead;
-    other_version.replace(0, 11, "version = 5");
-    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 4"),
+    other_version.replace(0, 11, "version = 6");
+    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 5"),
               std::string::npos)
         << error_of(other_version);
     std::string version_2 = kHead;
@@ -194,6 +206,24 @@ TEST(SeasonSave, RefusesNonsense) {
               std::string::npos);
     EXPECT_NE(error_of(version_4 + levels + "seasons_on_level = 1\n").find("career.title_on_level"),
               std::string::npos);
+    // Version 5 adds the garage's choices; a version 4 save has none.
+    const Result<SeasonSave> before_choices =
+        parse_season_save(version_4 + levels + seasons, "season.toml");
+    ASSERT_TRUE(before_choices && before_choices.value().career.has_value());
+    EXPECT_TRUE(before_choices.value().career.value_or(SavedCareer{}).choices.empty());
+    std::string version_5 = kHead;
+    version_5.replace(0, 11, "version = 5");
+    const std::string head_5 = version_5 + levels + seasons;
+    EXPECT_NE(error_of(head_5).find("career.choices"), std::string::npos);
+    EXPECT_EQ(error_of(head_5 + "choices = []\n"), "");
+    EXPECT_EQ(error_of(head_5 + "choices = [{ name = \"T\", fitted = \"A\", owned = [] }]\n"), "");
+    for (const char* choices : {"choices = [{ name = \"T\", owned = [] }]\n",
+                                "choices = [{ name = \"T\", fitted = \"A\" }]\n",
+                                "choices = [{ fitted = \"A\", owned = [] }]\n",
+                                "choices = [{ name = \"T\", fitted = \"A\", owned = [1] }]\n"}) {
+        EXPECT_NE(error_of(head_5 + choices).find("season.toml: career.choices"), std::string::npos)
+            << choices << ": " << error_of(head_5 + choices);
+    }
     std::string bad_seed = kHead;
     bad_seed.replace(bad_seed.find("\"7\""), 3, "\"-7\"");
     EXPECT_NE(error_of(bad_seed).find("seed"), std::string::npos) << error_of(bad_seed);
