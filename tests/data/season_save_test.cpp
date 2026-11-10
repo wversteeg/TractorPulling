@@ -16,7 +16,8 @@ SeasonSave example() {
     save.season = "res://data/seasons/club_season.toml";
     // Past what a signed 64-bit TOML integer holds.
     save.seed = UINT64_MAX - 1;
-    save.tuning = {.ballast_position = 0.35, .rear_tire_pressure_bar = 0.75};
+    save.tuning = {
+        .ballast_position = 0.35, .rear_tire_pressure_bar = 0.75, .hitch_height_m = 0.47};
     save.career = SavedCareer{.money_eur = 1234,
                               .upgrades = {{.name = "Injection pump", .level = 2},
                                            {.name = R"(The "big" tires)", .level = 0}},
@@ -48,6 +49,7 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
     EXPECT_EQ(back.seed, save.seed);
     EXPECT_EQ(back.tuning.ballast_position, save.tuning.ballast_position);
     EXPECT_EQ(back.tuning.rear_tire_pressure_bar, save.tuning.rear_tire_pressure_bar);
+    EXPECT_EQ(back.tuning.hitch_height_m, save.tuning.hitch_height_m);
     ASSERT_TRUE(back.career.has_value());
     const SavedCareer career = back.career.value_or(SavedCareer{});
     EXPECT_EQ(career.money_eur, 1234);
@@ -213,6 +215,18 @@ TEST(SeasonSave, RefusesNonsense) {
     EXPECT_TRUE(before_choices.value().career.value_or(SavedCareer{}).choices.empty());
     std::string version_5 = kHead;
     version_5.replace(0, 11, "version = 5");
+    // Version 5 adds the hitch's height to the tuning.
+    EXPECT_NE(
+        error_of(version_5 + levels + seasons + "choices = []\n").find("tuning.hitch_height_m"),
+        std::string::npos);
+    const std::string pressure_line = "rear_tire_pressure_bar = 1.0\n";
+    version_5.replace(version_5.find(pressure_line), pressure_line.size(),
+                      pressure_line + "hitch_height_m = 0.45\n");
+    std::string low_hitch = version_5;
+    low_hitch.replace(low_hitch.find("0.45"), 4, "-0.1");
+    EXPECT_NE(error_of(low_hitch + levels + seasons + "choices = []\n")
+                  .find("tuning.hitch_height_m: must be"),
+              std::string::npos);
     const std::string head_5 = version_5 + levels + seasons;
     EXPECT_NE(error_of(head_5).find("career.choices"), std::string::npos);
     EXPECT_EQ(error_of(head_5 + "choices = []\n"), "");

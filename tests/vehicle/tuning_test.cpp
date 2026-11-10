@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+
 #include "reference_vehicle.hpp"
 
 namespace tp::vehicle {
@@ -27,13 +29,38 @@ TEST(Tuning, AsBuiltIsTheTractor) {
 // changes: the front tires keep theirs. The tuned tractor is valid.
 TEST(Tuning, SetsTheBallastAndTheRearTires) {
     const Params params = reference_params();
-    const Params set = tuned(params, {.ballast_position = 0.0, .rear_tire_pressure_bar = 0.7});
+    const Params set = tuned(
+        params, {.ballast_position = 0.0, .rear_tire_pressure_bar = 0.7, .hitch_height_m = 0.0});
     EXPECT_GT(set.chassis.cg_ahead_of_rear_axle_m, 0.0);
     EXPECT_LT(set.chassis.cg_ahead_of_rear_axle_m, params.chassis.cg_ahead_of_rear_axle_m);
     EXPECT_GT(set.rear_tire.size.deflection_m, params.rear_tire.size.deflection_m);
     EXPECT_EQ(set.front_tire.deflection_m, params.front_tire.deflection_m);
     EXPECT_EQ(validate(set), std::nullopt);
     EXPECT_TRUE(Model::create(set).has_value());
+}
+
+// An adjustable hitch is set within its holes, the lowest to the top one
+// the tractor is built with; 0 or nonsense keeps the top hole, and a fixed
+// hitch stays where it is.
+TEST(Tuning, SetsTheHitchWithinItsHoles) {
+    Params params = reference_params();
+    const double top_m = params.chassis.hitch_height_m;
+    const auto hitch_m = [&](double wanted_m) {
+        Tuning tuning = as_built(params);
+        tuning.hitch_height_m = wanted_m;
+        return tuned(params, tuning).chassis.hitch_height_m;
+    };
+    EXPECT_EQ(hitch_m(top_m - 0.05), top_m) << "a fixed hitch";
+    params.chassis.hitch_min_height_m = top_m - 0.1;
+    EXPECT_EQ(as_built(params).hitch_height_m, top_m);
+    EXPECT_EQ(hitch_m(top_m - 0.05), top_m - 0.05);
+    EXPECT_EQ(hitch_m(top_m - 0.3), top_m - 0.1);
+    EXPECT_EQ(hitch_m(top_m + 0.5), top_m);
+    EXPECT_EQ(hitch_m(0.0), top_m);
+    EXPECT_EQ(hitch_m(std::nan("")), top_m);
+    Tuning low = as_built(params);
+    low.hitch_height_m = top_m - 0.1;
+    EXPECT_EQ(validate(tuned(params, low)), std::nullopt);
 }
 
 }  // namespace

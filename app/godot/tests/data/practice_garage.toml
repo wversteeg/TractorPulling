@@ -1,8 +1,17 @@
-# The flow test's garage: the reference tractor as it is, and one upgrade
-# to buy with the start money.
+# The flow test's garage: the reference tractor as it is, one upgrade to
+# buy with the start money, and a choice between two pumps (the same
+# engine, for the test) to buy, fit and take off again.
 
 [garage]
 start_money_eur = 1000
+
+[[garage.choices]]
+slot = "engine"
+name = "Pump"
+alternatives = [
+    { file = "../../data/engines/farm_stock_light.toml", cost_eur = 0, label = "Stock pump" },
+    { file = "../../data/engines/farm_stock_light.toml", cost_eur = 300, label = "Spare pump" },
+]
 
 [[garage.upgrades]]
 part = "load_downshift_gears"

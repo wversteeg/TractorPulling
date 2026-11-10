@@ -246,9 +246,18 @@ func _ready() -> void:
 			_save_season()
 		garage_screen.show_garage(event.get_garage(),
 				"" if error.is_empty() else "Cannot buy it: %s." % error))
+	garage_screen.choice_requested.connect(func(choice: int, alternative: int) -> void:
+		var owned: bool = event.get_garage()["choices"][choice]["alternatives"][alternative]["owned"]
+		var error := event.fit_alternative(choice, alternative) if owned \
+				else event.buy_alternative(choice, alternative)
+		if error.is_empty():
+			_save_season()
+		garage_screen.show_garage(event.get_garage(),
+				"" if error.is_empty() else "Cannot %s it: %s." % ["fit" if owned else "buy", error]))
 	garage_screen.done.connect(show_start)
-	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float) -> void:
-		event.set_tuning(ballast_position, bar)
+	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float,
+			hitch_m: float) -> void:
+		event.set_tuning(ballast_position, bar, hitch_m)
 		setup_screen.show_values(event.get_tuning()))
 	setup_screen.pull_requested.connect(func() -> void:
 		_save_season()

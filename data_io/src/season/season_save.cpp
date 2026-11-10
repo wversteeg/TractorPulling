@@ -190,6 +190,24 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
     return std::nullopt;
 }
 
+// The tuning is the tractor's to hold to its ranges; a save only needs to
+// hold numbers that can be tuning at all.
+std::optional<LoadError> tuning_error(const vehicle::Tuning& tuning, std::string_view source) {
+    if (!std::isfinite(tuning.ballast_position) || tuning.ballast_position < 0.0 ||
+        tuning.ballast_position > 1.0) {
+        return detail::make_error(source, "tuning.ballast_position", "must be from 0 to 1");
+    }
+    if (!std::isfinite(tuning.rear_tire_pressure_bar) || tuning.rear_tire_pressure_bar < 0.0) {
+        return detail::make_error(source, "tuning.rear_tire_pressure_bar",
+                                  "must be a finite number of 0 or more");
+    }
+    if (!std::isfinite(tuning.hitch_height_m) || tuning.hitch_height_m < 0.0) {
+        return detail::make_error(source, "tuning.hitch_height_m",
+                                  "must be a finite number of 0 or more");
+    }
+    return std::nullopt;
+}
+
 Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
     const std::int64_t version = reader.integer("version");
@@ -206,6 +224,13 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
                                   "must be from " + std::to_string(kBeforeTheGarage) + " to " +
                                       std::to_string(kSeasonSaveVersion));
     }
+    // From version 5; before, the hitch in its top hole.
+    if (version > kBeforeTheChoices) {
+        save.tuning.hitch_height_m = reader.number("tuning.hitch_height_m");
+        if (const std::optional<LoadError>& error = reader.error()) {
+            return *error;
+        }
+    }
     if (version > kBeforeTheGarage) {
         SavedCareer career;
         if (const std::optional<LoadError> error = read_career(root, source, version, career)) {
@@ -213,16 +238,8 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
         }
         save.career = std::move(career);
     }
-    // The tuning is the tractor's to hold to its ranges; a save only needs
-    // to hold numbers that can be tuning at all.
-    if (!std::isfinite(save.tuning.ballast_position) || save.tuning.ballast_position < 0.0 ||
-        save.tuning.ballast_position > 1.0) {
-        return detail::make_error(source, "tuning.ballast_position", "must be from 0 to 1");
-    }
-    if (!std::isfinite(save.tuning.rear_tire_pressure_bar) ||
-        save.tuning.rear_tire_pressure_bar < 0.0) {
-        return detail::make_error(source, "tuning.rear_tire_pressure_bar",
-                                  "must be a finite number of 0 or more");
+    if (std::optional<LoadError> error = tuning_error(save.tuning, source)) {
+        return *error;
     }
     const std::optional<std::uint64_t> parsed = parse_seed(seed);
     if (!parsed) {
@@ -269,6 +286,7 @@ std::string write_season_save(const SeasonSave& save) {
     out += "\n[tuning]\n";
     out += "ballast_position = " + exact(save.tuning.ballast_position) + "\n";
     out += "rear_tire_pressure_bar = " + exact(save.tuning.rear_tire_pressure_bar) + "\n";
+    out += "hitch_height_m = " + exact(save.tuning.hitch_height_m) + "\n";
     const SavedCareer career = save.career.value_or(SavedCareer{});
     out += "\n[career]\n";
     out += "money_eur = " + std::to_string(career.money_eur) + "\n";

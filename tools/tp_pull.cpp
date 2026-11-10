@@ -3,13 +3,15 @@
 //   tp_pull engine-dyno <engine.toml> [-o <out.csv>]
 //   tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]
 //                [--steer-deg A] [--brake-left P] [--brake-right P]
-//                [--ballast B] [--pressure BAR] [-o <out.csv>]
+//                [--ballast B] [--pressure BAR] [--hitch M] [-o <out.csv>]
 //   tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N] [--dump]
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
-//               [--ballast B] [--pressure BAR] [--downshift S] [-o <out.csv>]
+//               [--ballast B] [--pressure BAR] [--hitch M] [--downshift S]
+//               [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
+//                          [--hitch M]
 //   tp_pull event <event.toml> [--seed N] [--hash]
 //   tp_pull season <season.toml> [--seed N]
 //   tp_pull check <tractor.toml> <class.toml>
@@ -38,8 +40,9 @@
 // --hash prints each run's state hash at its end, to compare with another
 // front end playing the same inputs (the Godot extension's headless test).
 //
-// --ballast and --pressure tune the tractor first (vehicle::Tuning): its
-// ballast moved to B (0 rearmost, 1 foremost) and its rear tires at BAR.
+// --ballast, --pressure and --hitch tune the tractor first
+// (vehicle::Tuning): its ballast moved to B (0 rearmost, 1 foremost), its
+// rear tires at BAR and its adjustable pulling hitch at M metres.
 //
 // Both write one CSV row every 10 ms so curves can be plotted and checked
 // for plausibility.
@@ -217,13 +220,15 @@ struct PullOptions {
     /// position (0 rearmost, 1 foremost) and the rear tires' pressure [bar].
     std::optional<double> ballast_position;
     std::optional<double> rear_pressure_bar;
+    /// The adjustable pulling hitch's height [m].
+    std::optional<double> hitch_height_m;
     /// run: shift down under load (the gearbox's powershift step, the
     /// clutch in) once the sled pulls the engine below this share of its
     /// rated speed, after the launch; as the scripted pullers do.
     std::optional<double> downshift_share;
 };
 
-// The tractor as --ballast and --pressure tune it; nothing (with a message)
+// The tractor as --ballast, --pressure and --hitch tune it; nothing (with a message)
 // for a setting outside its range or one the tractor does not have.
 std::optional<tp::vehicle::Params> tune(const tp::vehicle::Params& tractor,
                                         const PullOptions& options) {
@@ -248,6 +253,20 @@ std::optional<tp::vehicle::Params> tune(const tp::vehicle::Params& tractor,
             return std::nullopt;
         }
         tuning.rear_tire_pressure_bar = *options.rear_pressure_bar;
+    }
+    if (options.hitch_height_m) {
+        const tp::chassis::Params& chassis = tractor.chassis;
+        if (chassis.hitch_min_height_m <= 0.0) {
+            std::cerr << "--hitch: this tractor's hitch is fixed\n";
+            return std::nullopt;
+        }
+        if (*options.hitch_height_m < chassis.hitch_min_height_m ||
+            *options.hitch_height_m > chassis.hitch_height_m) {
+            std::cerr << "--hitch: must be " << chassis.hitch_min_height_m << " to "
+                      << chassis.hitch_height_m << " m on this tractor\n";
+            return std::nullopt;
+        }
+        tuning.hitch_height_m = *options.hitch_height_m;
     }
     return tp::vehicle::tuned(tractor, tuning);
 }
@@ -886,8 +905,9 @@ Parsed parse_driving_option(std::string_view arg, std::string_view value, PullOp
     return Parsed::kUnknown;
 }
 
-// A tuning option: `--ballast` (0 to 1) or `--pressure` [bar]; the tire's
-// own range is checked once the tractor is loaded.
+// A tuning option: `--ballast` (0 to 1), `--pressure` [bar] or `--hitch`
+// [m]; the tire's and hitch's own ranges are checked once the tractor is
+// loaded.
 Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOptions& pull) {
     if (arg == "--ballast") {
         const auto position = parse_number<double>(value);
@@ -903,6 +923,14 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
             return Parsed::kInvalid;
         }
         pull.rear_pressure_bar = bar;
+        return Parsed::kOk;
+    }
+    if (arg == "--hitch") {
+        const auto height_m = parse_number<double>(value);
+        if (!height_m || *height_m <= 0.0) {
+            return Parsed::kInvalid;
+        }
+        pull.hitch_height_m = height_m;
         return Parsed::kOk;
     }
     if (arg == "--downshift") {
@@ -978,15 +1006,17 @@ int usage() {
     std::cerr << "usage: tp_pull engine-dyno <engine.toml> [-o <out.csv>]\n"
                  "       tp_pull pull <tractor.toml> [--gear N] [--resistance-kn F] [--dump]\n"
                  "                    [--steer-deg A] [--brake-left P] [--brake-right P]\n"
-                 "                    [--ballast B] [--pressure BAR] [-o <out.csv>]\n"
+                 "                    [--ballast B] [--pressure BAR] [--hitch M]\n"
+                 "                    [-o <out.csv>]\n"
                  "       tp_pull run <tractor.toml> <sled.toml> <track.toml> [--gear N]\n"
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
-                 "                   [--hash] [--ballast B] [--pressure BAR] [--downshift S]\n"
+                 "                   [--hash] [--ballast B] [--pressure BAR] [--hitch M]\n"
+                 "                   [--downshift S]\n"
                  "                   [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump] [--ballast B]\n"
-                 "                              [--pressure BAR]\n"
+                 "                              [--pressure BAR] [--hitch M]\n"
                  "       tp_pull event <event.toml> [--seed N] [--hash]\n"
                  "       tp_pull season <season.toml> [--seed N]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";

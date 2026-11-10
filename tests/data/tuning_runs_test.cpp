@@ -51,7 +51,9 @@ double reach_m(const vehicle::Tuning& tuning, const std::string& track_file) {
 }
 
 vehicle::Tuning tuning(double ballast_position, double pressure_bar) {
-    return {.ballast_position = ballast_position, .rear_tire_pressure_bar = pressure_bar};
+    return {.ballast_position = ballast_position,
+            .rear_tire_pressure_bar = pressure_bar,
+            .hitch_height_m = 0.0};
 }
 
 // The settings matter in a whole pull, as the README says: the weights at

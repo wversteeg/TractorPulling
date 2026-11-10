@@ -196,16 +196,19 @@ public:
 
     /// The player's tractor as they set it before a pull (vehicle::Tuning),
     /// kept for the season: {ballast, ballast_position, rear_share,
-    /// pressure, pressure_bar, min_bar, max_bar}. `ballast` and `pressure`
-    /// say whether the tractor has weights to move and rear tires whose
-    /// pressure can be set; `ballast_position` runs from 0 (rearmost) to 1
-    /// (foremost), and `rear_share` is the share of the weight then on the
-    /// rear axle at rest (0 to 1). {} before a season.
+    /// pressure, pressure_bar, min_bar, max_bar, hitch, hitch_m,
+    /// min_hitch_m, max_hitch_m}. `ballast`, `pressure` and `hitch` say
+    /// whether the tractor has weights to move, rear tires whose pressure
+    /// can be set and an adjustable pulling hitch (from its lowest hole to
+    /// the top one its drawbar has); `ballast_position` runs from 0
+    /// (rearmost) to 1 (foremost), and `rear_share` is the share of the
+    /// weight then on the rear axle at rest (0 to 1). {} before a season.
     [[nodiscard]] godot::Dictionary get_tuning() const;
     /// Sets the player's tuning, each held to its range (a value that is not
     /// finite changes nothing); their next pulls and practice pulls are on
-    /// the tuned tractor.
-    void set_tuning(double ballast_position, double pressure_bar);
+    /// the tuned tractor. `hitch_m` 0 (the default) puts the hitch in its
+    /// top hole.
+    void set_tuning(double ballast_position, double pressure_bar, double hitch_m);
 
     /// The player's next pull, for TractorPullRun: nothing unless one is
     /// due.

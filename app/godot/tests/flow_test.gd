@@ -288,7 +288,8 @@ func _play() -> void:
 	_expect(start.visible and not settings.visible, "back from the settings")
 
 	# The garage: the start money buys the second powershift level once;
-	# then it is at its top.
+	# then it is at its top. Then the spare pump, which is fitted, taken
+	# off and fitted again for nothing.
 	var garage: GarageScreen = _pull.get("garage_screen")
 	_tap(start.garage_button)
 	await _frames(2)
@@ -302,9 +303,10 @@ func _play() -> void:
 	var bought := event.get_garage()
 	var powershift: Dictionary = bought["upgrades"][0]
 	_expect(int(bought["money_eur"]) == 400 and int(powershift["level"]) == 1
-			and bought["fully_upgraded"] and not garage.buy_buttons[0].visible,
+			and not bought["fully_upgraded"] and not garage.buy_buttons[0].visible,
 			"bought the powershift: %s" % bought)
 	_expect(event.buy_upgrade(0) == "top level", "nothing more to buy")
+	await _check_garage_choice(event, garage)
 	await _check_garage_columns(garage)
 	await _check_board_scrolls(_pull.get("board"))
 	_check_officials_flags(_pull.get("venue_view"))
@@ -320,7 +322,7 @@ func _play() -> void:
 	await _frames(2)
 	var built := event.get_tuning()
 	_expect(setup.visible and setup.ballast_slider.visible and setup.pressure_slider.visible
-			and is_equal_approx(float(built["ballast_position"]), 0.5)
+			and not setup.hitch_slider.visible and is_equal_approx(float(built["ballast_position"]), 0.5)
 			and is_equal_approx(float(built["pressure_bar"]), 1.0), "set up as built: %s" % built)
 	_slide_to_start(setup.ballast_slider)
 	_slide_to_start(setup.pressure_slider)
@@ -426,7 +428,7 @@ func _play() -> void:
 	_expect(points == event_points,
 			"the results' points are the championship's: %d, %d" % [event_points, points])
 	_expect(board.first_button.text == "Next event", "on to the next event")
-	_expect(int(event.get_garage()["money_eur"]) == 400 + prize and event.get_garage()["can_buy"],
+	_expect(int(event.get_garage()["money_eur"]) == 100 + prize and event.get_garage()["can_buy"],
 			"the prize paid: %s" % event.get_garage())
 	await _shot("6_season_top")
 
@@ -443,6 +445,34 @@ func _play() -> void:
 
 	print("flow test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# The pump choice: the spare pump bought (and fitted) with the money left,
+# the stock one fitted again for nothing, and the spare one again; then
+# everything is bought. The fitted alternative is picked out.
+func _check_garage_choice(event: TractorPullEvent, garage: GarageScreen) -> void:
+	_expect(garage.choice_buttons.size() == 1 and garage.choice_buttons[0].size() == 2
+			and garage.choice_buttons[0][0].selected and not garage.choice_buttons[0][1].selected
+			and not garage.choice_buttons[0][1].disabled, "the pumps on offer")
+	_tap(garage.choice_buttons[0][1])
+	await _frames(2)
+	var spare := event.get_garage()
+	var pump: Dictionary = spare["choices"][0]
+	_expect(int(spare["money_eur"]) == 100 and int(pump["fitted"]) == 1
+			and pump["alternatives"][1]["owned"] and spare["fully_upgraded"]
+			and garage.choice_buttons[0][1].selected, "bought the spare pump: %s" % spare)
+	await _shot("1d_garage_choice")
+	_tap(garage.choice_buttons[0][0])
+	await _frames(2)
+	var stock := event.get_garage()
+	_expect(int(stock["money_eur"]) == 100 and int(stock["choices"][0]["fitted"]) == 0
+			and garage.choice_buttons[0][0].selected
+			and garage.choice_buttons[0][1].text == "Fit: Spare pump", "the stock pump fitted again")
+	_tap(garage.choice_buttons[0][1])
+	await _frames(2)
+	_expect(int(event.get_garage()["money_eur"]) == 100
+			and int(event.get_garage()["choices"][0]["fitted"]) == 1, "and the spare one")
+	_expect(event.buy_alternative(0, 1) == "owned already", "nothing more to buy")
 
 
 # A title opened the level above (a save that says so: a season won, and

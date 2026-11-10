@@ -114,6 +114,12 @@ TEST(ChassisParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.hitch_height_m = -0.1; }), ParamError::kHitchHeightNegative);
     EXPECT_EQ(with([](Params& p) { p.hitch_behind_rear_axle_m = -0.1; }),
               ParamError::kHitchAheadOfRearAxle);
+    EXPECT_EQ(with([](Params& p) { p.hitch_min_height_m = -0.1; }), ParamError::kHitchRangeInvalid);
+    EXPECT_EQ(with([](Params& p) { p.hitch_min_height_m = p.hitch_height_m + 0.01; }),
+              ParamError::kHitchRangeInvalid);
+    EXPECT_EQ(with([](Params& p) { p.hitch_min_height_m = std::nan(""); }),
+              ParamError::kHitchRangeInvalid);
+    EXPECT_EQ(with([](Params& p) { p.hitch_min_height_m = p.hitch_height_m; }), std::nullopt);
     EXPECT_EQ(with([](Params& p) { p.front_tires.stiffness_n_per_m = 0.0; }),
               ParamError::kFrontTireStiffnessNotPositive);
     EXPECT_EQ(with([](Params& p) { p.front_tires.damping_n_s_per_m = -1.0; }),

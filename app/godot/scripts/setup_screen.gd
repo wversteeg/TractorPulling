@@ -2,33 +2,40 @@
 # a line naming the controls (picked in the settings). The weights slide from the rear wheels to the front
 # bracket (more on the rear axle grips harder but lifts the nose sooner),
 # and the rear tires' pressure from soft (a bigger footprint for soft
-# tracks) to hard (lugs that bite on firm ones). TractorPullEvent keeps the
-# setting for the season; the run takes it from there.
+# tracks) to hard (lugs that bite on firm ones). An adjustable pulling hitch
+# goes from its lowest hole to its top one (higher puts more of the sled's
+# pull on the rear tires, but lifts the nose sooner). TractorPullEvent keeps
+# the setting for the season; the run takes it from there.
 class_name SetupScreen
 extends MenuPanel
 
-signal tuning_changed(ballast_position: float, pressure_bar: float)
+signal tuning_changed(ballast_position: float, pressure_bar: float, hitch_m: float)
 signal pull_requested
 signal back_requested
 
-const SETUP_SIZE := Vector2(900.0, 640.0)
+const SETUP_SIZE := Vector2(900.0, 700.0)
 const TITLE_SIZE := 36
 const LINE_SIZE := 26
-const SLIDER_HEIGHT := 64.0
+const SLIDER_HEIGHT := 56.0
 # The pressure moves in steps of this much [bar].
 const PRESSURE_STEP_BAR := 0.05
+# The hitch's holes are this far apart [m].
+const HITCH_STEP_M := 0.02
 const WEIGHT_COLOUR := Color(0.85, 0.6, 0.2, 0.9)
 const TIRE_COLOUR := Color(0.6, 0.6, 0.65, 0.9)
+const HITCH_COLOUR := Color(0.35, 0.55, 0.85, 0.9)
 
 var ballast_slider := TouchSlider.new()
 var pressure_slider := TouchSlider.new()
+var hitch_slider := TouchSlider.new()
 var pull_button: TouchButton
 var back_button: TouchButton
 var _title: Label
 var _weights: Label
 var _pressure: Label
+var _hitch: Label
 var _controls: Label
-var _sent := Vector2(-1.0, -1.0)
+var _sent := Vector3(-1.0, -1.0, -1.0)
 
 
 func _init() -> void:
@@ -42,6 +49,8 @@ func _ready() -> void:
 	_add_slider(ballast_slider, "REAR  ·  WEIGHTS  ·  FRONT", WEIGHT_COLOUR)
 	_pressure = add_line(LINE_SIZE)
 	_add_slider(pressure_slider, "SOFT  ·  REAR TIRES  ·  HARD", TIRE_COLOUR)
+	_hitch = add_line(LINE_SIZE)
+	_add_slider(hitch_slider, "LOW  ·  HITCH  ·  HIGH", HITCH_COLOUR)
 	_controls = add_line(LINE_SIZE)
 	var go := add_button_row()
 	back_button = add_button(go, "Back")
@@ -66,9 +75,15 @@ func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool) -> voi
 	pressure_slider.visible = tuning.get("pressure", false)
 	pressure_slider.start_value = tuning.get("min_bar", 0.0)
 	pressure_slider.end_value = tuning.get("max_bar", 1.0)
+	var hitch: bool = tuning.get("hitch", false)
+	hitch_slider.visible = hitch
+	_hitch.visible = hitch
+	hitch_slider.start_value = tuning.get("min_hitch_m", 0.0)
+	hitch_slider.end_value = tuning.get("max_hitch_m", 1.0)
 	ballast_slider.value = tuning.get("ballast_position", 0.0)
 	pressure_slider.value = tuning.get("pressure_bar", 0.0)
-	_sent = Vector2(ballast_slider.value, pressure_slider.value)
+	hitch_slider.value = tuning.get("hitch_m", 0.0)
+	_sent = Vector3(ballast_slider.value, pressure_slider.value, _hitch_m())
 	show_values(tuning)
 	_controls.text = "Controls: %s, %s steering" % ["pro" if pro else "easy",
 			"tilt" if tilt else "slider"]
@@ -80,18 +95,30 @@ func show_values(tuning: Dictionary) -> void:
 			if tuning.get("ballast", false) else "No weights to move"
 	_pressure.text = "Rear tires: %.2f bar" % float(tuning.get("pressure_bar", 0.0)) \
 			if tuning.get("pressure", false) else "The tire pressure is fixed"
+	_hitch.text = "Hitch: %.2f m" % float(tuning.get("hitch_m", 0.0))
 
 
 func _process(_delta: float) -> void:
 	if not visible:
 		return
 	var bar := snappedf(pressure_slider.value, PRESSURE_STEP_BAR)
-	var now := Vector2(ballast_slider.value, bar)
+	var now := Vector3(ballast_slider.value, bar, _hitch_m())
 	if now != _sent:
 		_sent = now
-		tuning_changed.emit(now.x, now.y)
+		tuning_changed.emit(now.x, now.y, now.z)
+
+
+# The hitch's hole the slider is at, from the top one down; 0 for a fixed
+# hitch (the top hole).
+func _hitch_m() -> float:
+	if not hitch_slider.visible:
+		return 0.0
+	var top := hitch_slider.end_value
+	return clampf(top - snappedf(top - hitch_slider.value, HITCH_STEP_M), hitch_slider.start_value,
+			top)
 
 
 func release_sliders() -> void:
 	ballast_slider.release()
 	pressure_slider.release()
+	hitch_slider.release()

@@ -352,7 +352,8 @@ godot::String TractorPullEvent::resume_season(const godot::String& season_path,
             return "the saved events do not fit the season";
         }
     }
-    set_tuning(saved.tuning.ballast_position, saved.tuning.rear_tire_pressure_bar);
+    set_tuning(saved.tuning.ballast_position, saved.tuning.rear_tire_pressure_bar,
+               saved.tuning.hitch_height_m);
     return {};
 }
 
@@ -448,15 +449,23 @@ godot::Dictionary TractorPullEvent::get_tuning() const {
     out["pressure_bar"] = tuning_.rear_tire_pressure_bar;
     out["min_bar"] = pressure.min_bar;
     out["max_bar"] = pressure.max_bar;
+    out["hitch"] = tractor.chassis.hitch_min_height_m > 0.0;
+    out["hitch_m"] = set.chassis.hitch_height_m;
+    out["min_hitch_m"] = tractor.chassis.hitch_min_height_m;
+    out["max_hitch_m"] = tractor.chassis.hitch_height_m;
     return out;
 }
 
-void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar) {
+void TractorPullEvent::set_tuning(double ballast_position, double pressure_bar, double hitch_m) {
     // A setting that is not a number (a 0/0 in GDScript) leaves the tuning
     // as it is: std::clamp would keep it, and the save would refuse it.
-    if (!season_ || !std::isfinite(ballast_position) || !std::isfinite(pressure_bar)) {
+    if (!season_ || !std::isfinite(ballast_position) || !std::isfinite(pressure_bar) ||
+        !std::isfinite(hitch_m)) {
         return;
     }
+    // 0 (or below): the top hole; vehicle::tuned holds the rest to the
+    // tractor's holes, whatever its drawbar.
+    tuning_.hitch_height_m = std::max(hitch_m, 0.0);
     const tire::Pressure pressure = player_tractor().rear_tire.pressure;
     tuning_.ballast_position = std::clamp(ballast_position, 0.0, 1.0);
     if (pressure.reference_bar > 0.0) {
@@ -725,7 +734,7 @@ godot::String TractorPullEvent::buy_alternative(std::int64_t choice, std::int64_
                 return "not enough money";
         }
     }
-    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar);
+    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar, tuning_.hitch_height_m);
     return {};
 }
 
@@ -747,7 +756,7 @@ godot::String TractorPullEvent::fit_alternative(std::int64_t choice, std::int64_
                 return "not bought yet";
         }
     }
-    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar);
+    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar, tuning_.hitch_height_m);
     return {};
 }
 
@@ -773,7 +782,7 @@ godot::String TractorPullEvent::buy_upgrade(std::int64_t index) {
         }
     }
     // The tuning keeps its settings, held to the new tractor's ranges.
-    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar);
+    set_tuning(tuning_.ballast_position, tuning_.rear_tire_pressure_bar, tuning_.hitch_height_m);
     return {};
 }
 
@@ -842,8 +851,8 @@ void TractorPullEvent::_bind_methods() {
                          &TractorPullEvent::fit_alternative);
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
-    ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar"),
-                         &TractorPullEvent::set_tuning);
+    ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar", "hitch_m"),
+                         &TractorPullEvent::set_tuning, DEFVAL(0.0));
 }
 
 }  // namespace tp::godot_binding
