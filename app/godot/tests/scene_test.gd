@@ -200,18 +200,44 @@ func _check_engine_sound() -> void:
 			"a six at 2500 rpm fires at 125 Hz")
 	var sound := EngineSound.new()
 	sound.configure({"engine_cylinders": 6, "idle_omega_rad_s": 84.0, "rated_omega_rad_s": 262.0})
+	# The RMS level of a quarter second; the mean (no DC offset) and the
+	# share of samples past the saturation's knee kept for the checks below.
+	var mean := [0.0]
+	var bent := [0.0]
 	var level := func(snapshot: Dictionary) -> float:
 		sound.show_snapshot(snapshot)
 		sound.sample_frames(int(EngineSound.MIX_RATE_HZ))  # a second to settle
+		sound.peak_before_saturation()  # from here on
 		var frames := sound.sample_frames(int(EngineSound.MIX_RATE_HZ / 4.0))
 		var sum := 0.0
+		var total := 0.0
+		var over := 0
 		for frame in frames:
 			sum += frame.x * frame.x
+			total += frame.x
+			over += 1 if absf(frame.x) > EngineSound.SATURATION_KNEE else 0
+		mean[0] = total / frames.size()
+		bent[0] = float(over) / frames.size()
 		return sqrt(sum / frames.size())
 	var idle: float = level.call({"engine_running": true, "engine_omega_rad_s": 84.0,
 			"throttle": 0.0, "boost": 0.0})
 	var full: float = level.call({"engine_running": true, "engine_omega_rad_s": 262.0,
 			"throttle": 1.0, "boost": 1.0})
+	# Loudest, lugging at full throttle: the mix itself stays near the
+	# saturation's knee (only its peaks bend), and centred.
+	level.call({"engine_running": true, "engine_omega_rad_s": 160.0, "throttle": 1.0,
+			"boost": 0.8})
+	var mixed_peak := sound.peak_before_saturation()
+	_expect(mixed_peak <= 0.85 and bent[0] < 0.02 and absf(mean[0]) < 0.01,
+			"the loudest mix near the knee and centred: peak %.2f, %.1f %% bent, mean %.4f" % [
+			mixed_peak, 100.0 * bent[0], mean[0]])
+	# The saturation: untouched below the knee, a soft bend above it short
+	# of full scale at any level the mix reaches, never past it.
+	_expect(EngineSound.saturated(0.5) == 0.5 and EngineSound.saturated(-0.5) == -0.5
+			and EngineSound.saturated(0.7) < 0.7 and EngineSound.saturated(0.7) > 0.65
+			and EngineSound.saturated(2.0) < 1.0 and EngineSound.saturated(-2.0) > -1.0
+			and EngineSound.saturated(50.0) <= 1.0 and EngineSound.saturated(-50.0) >= -1.0,
+			"saturation linear below the knee, soft above")
 	var stopped: float = level.call({"engine_running": false, "engine_omega_rad_s": 0.0,
 			"throttle": 0.0, "boost": 0.0})
 	_expect(idle > 0.01 and full > 2.0 * idle and stopped < 1e-3,
