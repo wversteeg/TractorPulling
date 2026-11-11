@@ -15,9 +15,11 @@ const WHEELBASE_M := 2.75
 # the front bracket at their foremost.
 const REAR_WEIGHTS_X_M := -1.2
 const FRONT_WEIGHTS_X_M := 3.62
+# The wheelie bar's skid, behind the rear axle (data/tractors/sport_4500.toml).
+const WHEELIE_BAR_TIP_X_M := -1.05
 # What the drawing spans, from the wheelie bar's skid to the front weights
 # and from the ground to the top of the stack [m].
-const BOUNDS_M := Rect2(-1.62, -REAR_RADIUS_M - 0.02, 5.6, 2.98)
+const BOUNDS_M := Rect2(-1.4, -REAR_RADIUS_M - 0.02, 5.38, 2.98)
 
 const PAINT := Color(0.80, 0.33, 0.13)
 const PAINT_DARK := Color(0.62, 0.24, 0.09)
@@ -134,7 +136,7 @@ func _circle(centre_m: Vector2, radius_m: float, colour: Color) -> void:
 
 
 func _draw_wheelie_bar() -> void:
-	var tip := Vector2(-1.4, -REAR_RADIUS_M + 0.25)
+	var tip := Vector2(WHEELIE_BAR_TIP_X_M, -REAR_RADIUS_M + 0.25)
 	_line(Vector2(0.15, -0.28), tip, 0.09, STEEL_LIGHT)
 	_line(Vector2(-0.2, 0.05), tip + Vector2(0.12, 0.04), 0.06, STEEL)
 	# The skid pad.

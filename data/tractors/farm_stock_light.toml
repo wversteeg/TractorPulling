@@ -68,7 +68,7 @@ stiffness_n_per_m = 400000.0
 damping_n_s_per_m = 6000.0        # about 15 % of critical in pitch
 
 # Mandatory in the NTTO standard classes. Starting values to tune: the tip
-# touches down at about 7° nose-up.
+# touches down at about 9° nose-up.
 [tractor.chassis.wheelie_bar]
 behind_rear_axle_m = 1.0
 tip_height_m = 0.15
