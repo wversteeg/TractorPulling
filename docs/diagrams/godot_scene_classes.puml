@@ -81,7 +81,13 @@ package "GDScript (app/godot/scripts)" {
     +show_distance(sled_m)
     +excitement() : float
     +banner_at_m() : float
+    +set_look(event) : size, time, track soil
+    +look() : Dictionary
+    +celebrate() : a big event's full-pull show
+    +show_running() : bool
     +{static} environment() : WorldEnvironment
+    +{static} light(world, sun, time)
+    +{static} track_colours(clay_fraction, moisture) : Array[Color]
     +{static} past_lane_m(side) : float
     +show_signal(signal) : the gantry's light
     +signal_shown() : String

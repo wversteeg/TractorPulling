@@ -475,8 +475,12 @@ godot::Dictionary TractorPullEvent::get_event() const {
     // A pull stopped short of the restart line may move this many places
     // later (move_back()), if it may at all.
     out["move_back_places"] = event.may_defer_player() ? event::kDeferPlaces : 0;
+    // How big the event is and when it is pulled, for the venue's look.
+    const data::SeasonRound& round = definition_->rounds.at(static_cast<std::size_t>(index));
+    out["size"] = to_godot(std::string{data::name_of(round.size)});
+    out["time"] = to_godot(std::string{data::name_of(round.time_of_day)});
     // The track at the start line, for the pit board.
-    const data::Track& track = definition_->rounds.at(static_cast<std::size_t>(index)).track;
+    const data::Track& track = round.track;
     godot::Dictionary ground;
     if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
         const soil::Surface start = model->surface_at(0.0);
