@@ -69,7 +69,7 @@ package "GDScript (app/godot/scripts)" {
     +show_box_mass(box_mass_kg)
     +weights_shown() : int
     +hook_position() : Vector3
-    +rear_position() : Vector3
+    +camera_mount() : Vector3
     +{static} transport_wanted(snapshot) : float
     +{static} weight_count(box_mass_kg) : int
   }
@@ -226,6 +226,7 @@ package "GDScript (app/godot/scripts)" {
     +show_settings(pro, tilt, tilt_available, guidance, rungs, sound)
     +show_money(money_eur)
     +start_rung() : int
+    +release_buttons()
     ..signals..
     changed(pro, tilt, guidance), sound_changed(on), haptics_requested,
     done, new_career_requested(rung),
