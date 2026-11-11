@@ -13,6 +13,15 @@
 # the chalk line on the track shows that one. Only the scoreboard changes
 # during a pull.
 #
+# Each event dresses it its own way (set_look(), from the season file):
+# a small village pull has no grandstand, a thin crowd standing along the
+# fences and only a signal light on a pole at the full-pull line; a club
+# event the covered grandstand and the banner; a big event a longer, taller
+# grandstand, a crowd three deep and flames and fireworks for a full pull
+# (celebrate()). The time of day sets the sky, the sun and, in the evening,
+# floodlights along the track (light()); the track's soil sets its colour
+# (track_colours()).
+#
 # The people, trees, tents, barn, flags and clouds are Kenney's CC0 models
 # (assets/kenney); the rest is built here. Copies of a thing are one
 # MultiMesh each, and the scenery casts no shadows, for a phone's frame.
@@ -21,8 +30,6 @@ extends Node3D
 
 const GRASS_DARK := Color(0.13, 0.25, 0.08)
 const GRASS_LIGHT := Color(0.3, 0.43, 0.15)
-const CLAY_DARK := Color(0.33, 0.22, 0.13)
-const CLAY_LIGHT := Color(0.52, 0.37, 0.23)
 const STRAW := Color(0.86, 0.72, 0.38)
 const WOOD := Color(0.52, 0.36, 0.22)
 const STEEL := Color(0.55, 0.57, 0.6)
@@ -108,15 +115,64 @@ const POST_EVERY_M := 2.5
 const BALE_SIZE_M := Vector3(1.2, 0.5, 0.45)
 # The grandstand: from the fence back, rows rising like steps [m].
 const STAND_FROM_M := 9.5
-const STAND_ROWS := 4
 const ROW_DEPTH_M := 0.9
 const ROW_RISE_M := 0.5
-const STAND_ALONG_M := Vector2(5.0, 95.0)
 const SEAT_EVERY_M := 0.85
 # People are built at their size (People); each varies a little.
 const PERSON_SCALE := 1.0
-const SEAT_FILL := 0.75
-const STANDING_ROWS := 2
+# How each size of event fills the venue: the grandstand's rows (none at a
+# small pull) and length along the track, how full its seats are, the
+# standing crowd's rows on the right and how full, whether the left fence
+# has a standing crowd too (where there is no grandstand), whether a banner
+# spans the full-pull line, a show for a full pull, and the stand's sign.
+const SIZES := {
+	"small": {"stand_rows": 0, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.0,
+			"standing_rows": 1, "standing_fill": 0.45, "left_crowd": true, "banner": false,
+			"show": false, "sign": ""},
+	"club": {"stand_rows": 4, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.75,
+			"standing_rows": 2, "standing_fill": 0.8, "left_crowd": false, "banner": true,
+			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL"},
+	"big": {"stand_rows": 7, "stand_along_m": Vector2(-5.0, 110.0), "seat_fill": 0.95,
+			"standing_rows": 3, "standing_fill": 0.95, "left_crowd": false, "banner": true,
+			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX"},
+}
+# The track's colour: sand's and clay's, mixed by the soil's clay, and a
+# wet track darker, by this much per unit of moisture.
+const SAND := Color(0.72, 0.57, 0.33)
+const CLAY := Color(0.5, 0.3, 0.19)
+const WET_DARKENING := 1.6
+const TRACK_LIGHTER := 0.25
+# The evening's floodlights: masts this far apart down both sides, this
+# high, and their light [m, m, energy, m].
+const FLOODLIGHT_EVERY_M := 30.0
+const FLOODLIGHT_HEIGHT_M := 14.0
+const FLOODLIGHT_ENERGY := 5.0
+const FLOODLIGHT_RANGE_M := 55.0
+const FLOODLIGHT := Color(1.0, 0.93, 0.8)
+# The sky and the sun at each time of day (light()) [deg for the sun's
+# pitch and yaw].
+const TIMES := {
+	"day": {"sky_top": Color(0.13, 0.33, 0.72), "horizon": Color(0.66, 0.77, 0.9),
+			"ground_horizon": Color(0.6, 0.68, 0.6), "ground": Color(0.25, 0.32, 0.2),
+			"ambient": 0.55, "fog": Color(0.7, 0.78, 0.88), "exposure": 1.05,
+			"sun_pitch_deg": -48.0, "sun_yaw_deg": 35.0, "sun": Color(1.0, 0.97, 0.92),
+			"sun_energy": 1.2},
+	"sunset": {"sky_top": Color(0.2, 0.25, 0.5), "horizon": Color(0.98, 0.58, 0.32),
+			"ground_horizon": Color(0.55, 0.4, 0.3), "ground": Color(0.2, 0.18, 0.14),
+			"ambient": 0.42, "fog": Color(0.92, 0.62, 0.45), "exposure": 1.1,
+			"sun_pitch_deg": -9.0, "sun_yaw_deg": 70.0, "sun": Color(1.0, 0.6, 0.32),
+			"sun_energy": 1.05},
+	"evening": {"sky_top": Color(0.01, 0.02, 0.06), "horizon": Color(0.1, 0.11, 0.2),
+			"ground_horizon": Color(0.05, 0.06, 0.07), "ground": Color(0.02, 0.03, 0.02),
+			"ambient": 0.18, "fog": Color(0.07, 0.08, 0.13), "exposure": 1.15,
+			"sun_pitch_deg": -35.0, "sun_yaw_deg": -40.0, "sun": Color(0.55, 0.65, 1.0),
+			"sun_energy": 0.12},
+}
+# A full pull's show at a big event: flames from the banner's poles and
+# fireworks over the line, for this long [s].
+const SHOW_S := 3.0
+const FIREWORKS: Array[Color] = [Color(1.0, 0.3, 0.2), Color(0.3, 0.6, 1.0),
+		Color(1.0, 0.85, 0.3), Color(0.4, 1.0, 0.5)]
 # The bank the standing crowd is on [m].
 const BANK_HEIGHT_M := 0.9
 const BANK_DEPTH_M := 3.5
@@ -169,6 +225,11 @@ var _best_flag: Node3D = null
 var _test_pull := false
 var _best_m := -1.0
 var _lane_m := 12.0
+# The event's look (set_look()) and the one the venue was built for.
+var _look := {"size": "club", "time": "day", "clay_fraction": 0.4, "moisture": 0.15}
+var _built_look := {}
+# A full pull's show: the flames and fireworks, made with the banner.
+var _show: Array[CPUParticles3D] = []
 # The parking laid out now (PARKINGS), and the node that draws it.
 var _parking_layout := 0
 var _parking: Node3D = null
@@ -180,11 +241,13 @@ func build(d: Dictionary) -> void:
 	var lane_m: float = d["lane_width_m"]
 	var full_pull_m: float = d.get("banner_line_m", d["full_pull_line_m"])
 	var sizes := Vector2(length_m, lane_m)
-	if sizes != _sizes:
+	if sizes != _sizes or _look != _built_look:
 		for child: Node in get_children():
 			child.free()
 		_line = null
+		_show.clear()
 		_sizes = sizes
+		_built_look = _look.duplicate()
 		_full_pull_m = -1.0
 		# The same venue at every launch.
 		_random.seed = 2026
@@ -192,8 +255,13 @@ func build(d: Dictionary) -> void:
 		for side: float in [-1.0, 1.0]:
 			_add_fence(length_m, lane_m, side)
 			_add_boards(length_m, lane_m, side)
-		_add_grandstand(lane_m)
-		_add_standing_crowd(length_m, lane_m)
+		if int(_size()["stand_rows"]) > 0:
+			_add_grandstand(lane_m)
+		_add_standing_crowd(length_m, lane_m, -1.0)
+		if _size()["left_crowd"]:
+			_add_standing_crowd(length_m, lane_m, 1.0)
+		if _look["time"] == "evening":
+			_add_floodlights(length_m, lane_m)
 		_add_scenery(length_m, lane_m)
 		_add_farmland(length_m, lane_m)
 		_add_horizon(length_m)
@@ -214,9 +282,57 @@ func build(d: Dictionary) -> void:
 			_line.free()
 		_line = Node3D.new()
 		add_child(_line)
-		_add_banner(_line, full_pull_m, lane_m)
+		if _size()["banner"]:
+			_add_banner(_line, full_pull_m, lane_m)
+		else:
+			_add_signal_pole(_line, full_pull_m, lane_m)
+		if _size()["show"]:
+			_add_show(_line, full_pull_m, lane_m)
 		_add_scoreboard(_line, full_pull_m, lane_m)
 		_full_pull_m = full_pull_m
+
+
+# The event's look for the next build: TractorPullEvent.get_event()'s
+# "size" and "time", and its track's soil ("track": "clay_fraction",
+# "moisture"). Missing values keep a club event in the day.
+func set_look(event: Dictionary) -> void:
+	var track: Dictionary = event.get("track", {})
+	_look = {
+		"size": event.get("size", "club") if SIZES.has(event.get("size", "")) else "club",
+		"time": event.get("time", "day") if event.get("time", "") in ["day", "sunset", "evening"]
+				else "day",
+		"clay_fraction": float(track.get("clay_fraction", 0.4)),
+		"moisture": float(track.get("moisture", 0.15)),
+	}
+
+
+func look() -> Dictionary:
+	return _look
+
+
+func _size() -> Dictionary:
+	return SIZES[_look["size"]]
+
+
+# The track's two shades (dark, light) for `clay_fraction` and `moisture`:
+# sandy tracks pale and yellow, clay ones red-brown, wet ones darker.
+static func track_colours(clay_fraction: float, moisture: float) -> Array[Color]:
+	var dry := SAND.lerp(CLAY, clampf(clay_fraction, 0.0, 1.0))
+	var dark := dry.darkened(clampf(moisture * WET_DARKENING, 0.0, 0.6))
+	return [dark, dark.lightened(TRACK_LIGHTER)]
+
+
+# A full pull: at a big event the flames go up from the banner's poles and
+# fireworks burst over the line; elsewhere nothing.
+func celebrate() -> void:
+	for part in _show:
+		part.restart()
+		part.emitting = true
+
+
+# Whether the last full pull set off the show (for the tests).
+func show_running() -> bool:
+	return _show.any(func(part: CPUParticles3D) -> bool: return part.emitting)
 
 
 # The parking for the next build (an event's: PARKINGS, in turn).
@@ -302,6 +418,26 @@ static func environment() -> WorldEnvironment:
 	return world
 
 
+# The light for the time of day ("day", "sunset" or "evening") on the
+# scene's sky (environment()) and sun: a high afternoon sun; a low orange
+# sun under a red horizon; or night falling, the sky deep blue and a faint
+# cold light left, the floodlights lighting the track (_add_floodlights()).
+static func light(world: WorldEnvironment, sun: DirectionalLight3D, time: String) -> void:
+	var look: Dictionary = TIMES.get(time, TIMES["day"])
+	var env := world.environment
+	var sky := env.sky.sky_material as ProceduralSkyMaterial
+	sky.sky_top_color = look["sky_top"]
+	sky.sky_horizon_color = look["horizon"]
+	sky.ground_horizon_color = look["ground_horizon"]
+	sky.ground_bottom_color = look["ground"]
+	env.ambient_light_energy = look["ambient"]
+	env.fog_light_color = look["fog"]
+	env.tonemap_exposure = look["exposure"]
+	sun.rotation = Vector3(deg_to_rad(look["sun_pitch_deg"]), deg_to_rad(look["sun_yaw_deg"]), 0.0)
+	sun.light_color = look["sun"]
+	sun.light_energy = look["sun_energy"]
+
+
 func _add_ground(length_m: float, lane_m: float) -> void:
 	var grass_material := StandardMaterial3D.new()
 	grass_material.albedo_texture = Art.ground_texture(GRASS_DARK, GRASS_LIGHT, 0.02, 7)
@@ -319,7 +455,8 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 
 	var strip_length_m := CLAY_BEHIND_START_M + length_m + OVERRUN_M
 	var clay_material := StandardMaterial3D.new()
-	clay_material.albedo_texture = Art.ground_texture(CLAY_DARK, CLAY_LIGHT, 0.05, 11)
+	var shades := track_colours(float(_look["clay_fraction"]), float(_look["moisture"]))
+	clay_material.albedo_texture = Art.ground_texture(shades[0], shades[1], 0.05, 11)
 	var strip_width_m := lane_m + 2.0 * CLAY_PAST_LANE_M
 	# Clods catch the low sun: a fine normal map over the colour.
 	clay_material.normal_enabled = true
@@ -443,12 +580,15 @@ func _add_boards(length_m: float, lane_m: float, side: float) -> void:
 
 
 func _add_grandstand(lane_m: float) -> void:
+	var stand_rows: int = _size()["stand_rows"]
+	var stand_along_m: Vector2 = _size()["stand_along_m"]
+	var seat_fill: float = _size()["seat_fill"]
 	var base_y_m := lane_m / 2.0 + STAND_FROM_M
-	var along_m := STAND_ALONG_M.y - STAND_ALONG_M.x
-	var middle_m := (STAND_ALONG_M.x + STAND_ALONG_M.y) / 2.0
+	var along_m := stand_along_m.y - stand_along_m.x
+	var middle_m := (stand_along_m.x + stand_along_m.y) / 2.0
 	var seats: Array[Transform3D] = []
 	var colours: Array[Color] = []
-	for row in STAND_ROWS:
+	for row in stand_rows:
 		var y_m := base_y_m + row * ROW_DEPTH_M
 		var z_m := (row + 1) * ROW_RISE_M
 		var step := Art.box(Vector3(ROW_DEPTH_M, z_m, along_m), Color(0.75, 0.75, 0.72))
@@ -457,9 +597,9 @@ func _add_grandstand(lane_m: float) -> void:
 		var bench := Art.box(Vector3(0.35, 0.08, along_m), WOOD)
 		bench.position = TrackSpace.point(middle_m, y_m + 0.2, z_m + 0.4)
 		add_child(_quiet(bench))
-		var x_m := STAND_ALONG_M.x + 0.5
-		while x_m < STAND_ALONG_M.y - 0.5:
-			if _random.randf() < SEAT_FILL:
+		var x_m := stand_along_m.x + 0.5
+		while x_m < stand_along_m.y - 0.5:
+			if _random.randf() < seat_fill:
 				# Facing the track (the model faces +z: turned to +x, the
 				# track's right), a little turned towards the action.
 				var basis := Basis(Vector3.UP, PI / 2.0 + _random.randf_range(-0.35, 0.35))
@@ -472,24 +612,24 @@ func _add_grandstand(lane_m: float) -> void:
 	add_child(_crowd(seats, colours, true))
 
 	# A roof on posts over the stand, and flags along its front.
-	var back_y_m := base_y_m + STAND_ROWS * ROW_DEPTH_M + 0.3
-	var roof_z_m := STAND_ROWS * ROW_RISE_M + 3.2
-	var roof := Art.box(Vector3(STAND_ROWS * ROW_DEPTH_M + 1.6, 0.15, along_m + 1.0), ROOF)
-	roof.position = TrackSpace.point(middle_m, base_y_m + STAND_ROWS * ROW_DEPTH_M / 2.0, roof_z_m)
+	var back_y_m := base_y_m + stand_rows * ROW_DEPTH_M + 0.3
+	var roof_z_m := stand_rows * ROW_RISE_M + 3.2
+	var roof := Art.box(Vector3(stand_rows * ROW_DEPTH_M + 1.6, 0.15, along_m + 1.0), ROOF)
+	roof.position = TrackSpace.point(middle_m, base_y_m + stand_rows * ROW_DEPTH_M / 2.0, roof_z_m)
 	roof.rotation.z = -0.12
 	add_child(_quiet(roof))
 	var back := Art.box(Vector3(0.15, roof_z_m, along_m), Color(0.85, 0.85, 0.82))
 	back.position = TrackSpace.point(middle_m, back_y_m, roof_z_m / 2.0)
 	add_child(_quiet(back))
-	var x_m := STAND_ALONG_M.x
-	while x_m <= STAND_ALONG_M.y + 0.1:
+	var x_m := stand_along_m.x
+	while x_m <= stand_along_m.y + 0.1:
 		var pole := Art.cylinder(0.08, roof_z_m, STEEL, 8)
 		pole.position = TrackSpace.point(x_m, base_y_m - 0.5, roof_z_m / 2.0)
 		add_child(_quiet(pole))
 		_add_flag(TrackSpace.point(x_m, base_y_m - 0.5, roof_z_m),
 				FLAGS[int(x_m) % FLAGS.size()], x_m)
 		x_m += along_m / 6.0
-	var sign := Art.label("TRACTOR PULLING  ·  CLUB PULL", 180, Color.WHITE, ROOF.darkened(0.4))
+	var sign := Art.label(_size()["sign"], 180, Color.WHITE, ROOF.darkened(0.4))
 	sign.position = TrackSpace.point(middle_m, base_y_m - 1.0, roof_z_m - 0.5)
 	sign.rotation.y = PI / 2.0
 	add_child(sign)
@@ -516,23 +656,26 @@ func _add_flag(foot: Vector3, colour: Color, phase: float) -> void:
 	add_child(_quiet(flag))
 
 
-# People standing two deep on a grass bank behind the fence on the right,
-# so they see over it.
-func _add_standing_crowd(length_m: float, lane_m: float) -> void:
-	var bank_from_m := lane_m / 2.0 + FENCE_OUT_M + RETURN_LANE_M + 0.4
+# People standing on a grass bank behind the fence on the right (`side`
+# -1), so they see over it, as many rows deep as the event's size says; at
+# a small pull a thin row behind the left fence too (`side` 1).
+func _add_standing_crowd(length_m: float, lane_m: float, side: float) -> void:
+	var standing_rows: int = _size()["standing_rows"] if side < 0.0 else 1
+	var fill: float = _size()["standing_fill"]
+	var bank_from_m := lane_m / 2.0 + FENCE_OUT_M + (RETURN_LANE_M if side < 0.0 else 0.0) + 0.4
 	var bank := Art.box(Vector3(BANK_DEPTH_M, BANK_HEIGHT_M, length_m + 30.0), GRASS_LIGHT, 1.0)
-	bank.position = TrackSpace.point(length_m / 2.0, -(bank_from_m + BANK_DEPTH_M / 2.0),
+	bank.position = TrackSpace.point(length_m / 2.0, side * (bank_from_m + BANK_DEPTH_M / 2.0),
 			BANK_HEIGHT_M / 2.0 - 0.05)
 	add_child(_quiet(bank))
 	var people: Array[Transform3D] = []
 	var colours: Array[Color] = []
-	for row in STANDING_ROWS:
+	for row in standing_rows:
 		var x_m := -10.0
 		while x_m < length_m + 15.0:
-			if _random.randf() < 0.8:
-				var basis := Basis(Vector3.UP, -PI / 2.0 + _random.randf_range(-0.5, 0.5))
+			if _random.randf() < fill:
+				var basis := Basis(Vector3.UP, side * PI / 2.0 + _random.randf_range(-0.5, 0.5))
 				basis = basis.scaled(Vector3.ONE * PERSON_SCALE * _random.randf_range(0.85, 1.05))
-				var y_m := -(bank_from_m + 0.4 + row * 1.0 + _random.randf_range(0.0, 0.4))
+				var y_m := side * (bank_from_m + 0.4 + row * 1.0 + _random.randf_range(0.0, 0.4))
 				people.append(Transform3D(basis, TrackSpace.point(
 						x_m + _random.randf_range(-0.3, 0.3), y_m, BANK_HEIGHT_M - 0.05)))
 				colours.append(_shirt())
@@ -580,20 +723,145 @@ func _add_banner(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
 	var text := Art.label("FULL PULL", 120, Color.WHITE, BANNER.darkened(0.5))
 	text.position = TrackSpace.point(full_pull_m - 0.06, 0.0, height_m - 0.5)
 	parent.add_child(text)
-	# The signal light on top, facing down the track: red above green, as
-	# the officials' flags show (show_signal()).
+	# The signal light on top, facing down the track.
+	_add_lamps(parent, full_pull_m, 0.0, height_m)
+
+
+# At a small pull no banner: the signal light on a single pole beside the
+# full-pull line, on the left, facing down the track.
+func _add_signal_pole(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
+	var height_m := 3.2
+	var side_m := lane_m / 2.0 + 1.5
+	var pole := Art.cylinder(0.08, height_m, STEEL, 8, 0.4, 0.6)
+	pole.position = TrackSpace.point(full_pull_m, side_m, height_m / 2.0)
+	parent.add_child(_quiet(pole))
+	_add_lamps(parent, full_pull_m, side_m, height_m)
+
+
+# The signal light's housing and lamps on top of a pole or the banner, at
+# `side_m` across the track: red above green, as the officials' flags show
+# (show_signal()).
+func _add_lamps(parent: Node3D, full_pull_m: float, side_m: float, height_m: float) -> void:
 	var housing := Art.box(Vector3(0.7, 1.3, 0.35), Color(0.08, 0.08, 0.09))
-	housing.position = TrackSpace.point(full_pull_m, 0.0, height_m + 0.65)
+	housing.position = TrackSpace.point(full_pull_m, side_m, height_m + 0.65)
 	parent.add_child(_quiet(housing))
 	for lamp: Array in [[_red_lamp, 0.95], [_green_lamp, 0.35]]:
 		var sphere := SphereMesh.new()
 		sphere.radius = LAMP_RADIUS_M
 		sphere.height = 2.0 * LAMP_RADIUS_M
 		var bulb := Art.instance(sphere, lamp[0])
-		bulb.position = TrackSpace.point(full_pull_m - 0.18, 0.0, height_m + float(lamp[1]))
+		bulb.position = TrackSpace.point(full_pull_m - 0.18, side_m, height_m + float(lamp[1]))
 		parent.add_child(_quiet(bulb))
 	_signal = "?"
 	show_signal("off")
+
+
+# A big event's show for a full pull (celebrate()): a jet of flame from
+# beside each of the banner's poles and fireworks bursting high over the
+# line, all idle until then.
+func _add_show(parent: Node3D, full_pull_m: float, lane_m: float) -> void:
+	var half_m := lane_m / 2.0 + 2.5
+	for side: float in [-1.0, 1.0]:
+		var flame := CPUParticles3D.new()
+		flame.emitting = false
+		flame.one_shot = true
+		flame.amount = 60
+		flame.lifetime = 0.9
+		flame.explosiveness = 0.0
+		flame.direction = Vector3.UP
+		flame.spread = 8.0
+		flame.gravity = Vector3(0.0, 2.0, 0.0)
+		flame.initial_velocity_min = 7.0
+		flame.initial_velocity_max = 10.0
+		flame.scale_amount_min = 0.5
+		flame.scale_amount_max = 0.9
+		flame.mesh = _glow_mesh(0.35, Color(1.0, 0.55, 0.1))
+		flame.color_ramp = _fade(Color(1.0, 0.9, 0.4), Color(0.9, 0.2, 0.05, 0.0))
+		flame.position = TrackSpace.point(full_pull_m, side * half_m, 0.3)
+		parent.add_child(flame)
+		_show.append(flame)
+	for i in FIREWORKS.size():
+		var burst := CPUParticles3D.new()
+		burst.emitting = false
+		burst.one_shot = true
+		burst.amount = 70
+		burst.lifetime = 1.6
+		burst.explosiveness = 1.0
+		burst.direction = Vector3.UP
+		burst.spread = 180.0
+		burst.gravity = Vector3(0.0, -3.0, 0.0)
+		burst.initial_velocity_min = 7.0
+		burst.initial_velocity_max = 9.0
+		burst.mesh = _glow_mesh(0.2, FIREWORKS[i])
+		burst.color_ramp = _fade(FIREWORKS[i], Color(FIREWORKS[i], 0.0))
+		# Staggered: each bursts a moment after the last.
+		burst.preprocess = 0.0
+		burst.speed_scale = 1.0
+		burst.position = TrackSpace.point(full_pull_m + 6.0 + 4.0 * i, (i - 1.5) * 6.0,
+				22.0 + 3.0 * (i % 2))
+		parent.add_child(burst)
+		_show.append(burst)
+
+
+# A small glowing sphere for a particle.
+static func _glow_mesh(radius_m: float, colour: Color) -> SphereMesh:
+	var mesh := SphereMesh.new()
+	mesh.radius = radius_m
+	mesh.height = 2.0 * radius_m
+	mesh.radial_segments = 8
+	mesh.rings = 4
+	var glow := StandardMaterial3D.new()
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow.vertex_color_use_as_albedo = true
+	glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glow.albedo_color = colour
+	mesh.material = glow
+	return mesh
+
+
+static func _fade(from: Color, to: Color) -> Gradient:
+	var ramp := Gradient.new()
+	ramp.set_color(0, from)
+	ramp.set_color(1, to)
+	return ramp
+
+
+# Floodlight masts down both sides for an evening event: a lamp head on
+# each, glowing, and a spotlight down onto the track (no shadows, for a
+# phone).
+func _add_floodlights(length_m: float, lane_m: float) -> void:
+	var x_m := -10.0
+	while x_m <= length_m + 20.0:
+		for side: float in [-1.0, 1.0]:
+			var out_m := lane_m / 2.0 + FENCE_OUT_M + 1.0 + (RETURN_LANE_M if side < 0.0 else 0.0)
+			var mast := Art.cylinder(0.15, FLOODLIGHT_HEIGHT_M, STEEL, 8, 0.4, 0.6)
+			mast.position = TrackSpace.point(x_m, side * out_m, FLOODLIGHT_HEIGHT_M / 2.0)
+			add_child(_quiet(mast))
+			var head := Art.box(Vector3(1.6, 0.6, 0.4), Color(0.15, 0.15, 0.16))
+			head.position = TrackSpace.point(x_m, side * (out_m - 0.3), FLOODLIGHT_HEIGHT_M)
+			add_child(_quiet(head))
+			var face := MeshInstance3D.new()
+			var plate := BoxMesh.new()
+			plate.size = Vector3(1.4, 0.45, 0.05)
+			face.mesh = plate
+			var lit := StandardMaterial3D.new()
+			lit.albedo_color = FLOODLIGHT
+			lit.emission_enabled = true
+			lit.emission = FLOODLIGHT
+			lit.emission_energy_multiplier = 4.0
+			face.material_override = lit
+			face.position = TrackSpace.point(x_m, side * (out_m - 0.55), FLOODLIGHT_HEIGHT_M)
+			add_child(_quiet(face))
+			var spot := SpotLight3D.new()
+			spot.light_color = FLOODLIGHT
+			spot.light_energy = FLOODLIGHT_ENERGY
+			spot.spot_range = FLOODLIGHT_RANGE_M
+			spot.spot_angle = 50.0
+			spot.shadow_enabled = false
+			spot.position = TrackSpace.point(x_m, side * (out_m - 0.6), FLOODLIGHT_HEIGHT_M)
+			add_child(spot)
+			spot.look_at(TrackSpace.point(x_m + 6.0, -side * 1.0, 0.0), Vector3.UP)
+		x_m += FLOODLIGHT_EVERY_M
 
 
 # The signal light: "green" while the pull is good, "red" to stop, "off".

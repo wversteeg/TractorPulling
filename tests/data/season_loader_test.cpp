@@ -71,6 +71,37 @@ TEST(SeasonLoader, LoadsTheShippedSeason) {
     EXPECT_EQ(season.garage.catalogue.start_money_eur, 1000);
 }
 
+// Each event's size and time of day: a club event in the day when the file
+// says nothing, the names it gives otherwise; other names are errors.
+TEST(SeasonLoader, ReadsEachEventsSizeAndTime) {
+    const auto plain = parse_season(kTwoEvents, "season.toml", kSeasons);
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().rounds[0].size, EventSize::kClub);
+    EXPECT_EQ(plain.value().rounds[0].time_of_day, TimeOfDay::kDay);
+    const auto dressed =
+        parse_season(with("name = \"Clay-sand\"\n",
+                          "name = \"Clay-sand\"\nsize = \"big\"\ntime = \"evening\"\n"),
+                     "season.toml", kSeasons);
+    ASSERT_TRUE(dressed.ok()) << dressed.error().message;
+    EXPECT_EQ(dressed.value().rounds[0].size, EventSize::kBig);
+    EXPECT_EQ(dressed.value().rounds[0].time_of_day, TimeOfDay::kEvening);
+    EXPECT_EQ(dressed.value().rounds[1].size, EventSize::kClub);
+    EXPECT_NE(error_of(with("name = \"Clay-sand\"\n", "name = \"Clay-sand\"\nsize = \"huge\"\n"))
+                  .find("season.events.size: must be \"small\", \"club\" or \"big\""),
+              std::string::npos);
+    EXPECT_NE(error_of(with("name = \"Clay-sand\"\n", "name = \"Clay-sand\"\ntime = \"night\"\n"))
+                  .find("season.events.time"),
+              std::string::npos);
+    // The shipped season mixes them.
+    const auto club = load_season(kSeasons / "club_season.toml");
+    ASSERT_TRUE(club.ok()) << club.error().message;
+    EXPECT_EQ(club.value().rounds.front().size, EventSize::kClub);
+    EXPECT_EQ(club.value().rounds.back().size, EventSize::kBig);
+    EXPECT_EQ(club.value().rounds.back().time_of_day, TimeOfDay::kEvening);
+    EXPECT_EQ(name_of(EventSize::kSmall), "small");
+    EXPECT_EQ(name_of(TimeOfDay::kSunset), "sunset");
+}
+
 TEST(SeasonLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("points = [20, 17", "points = [17, 20"))
                   .find("season.points: must be >= 0, never more for a lower place"),

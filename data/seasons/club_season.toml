@@ -16,40 +16,63 @@ garage = "../garages/ntto_standard_3500.toml"   # what the player can upgrade
 
 [[season.events]]
 name = "Spring opener, watered start"
+# How big each event is ("small", "club" or "big": the crowd, the stands
+# and the show at a full pull) and when it is pulled ("day", "sunset" or
+# "evening", under floodlights): only how the game dresses the venue.
+size = "club"
+time = "day"
 track = "../tracks/watered_start.toml"
 
 [[season.events]]
 name = "Firm loam"
+size = "small"
+time = "day"
 track = "../tracks/firm_loam.toml"
 
 [[season.events]]
 name = "Rainy day, covered heavy clay"
+size = "small"
+time = "day"
 track = "../tracks/covered_heavy_clay.toml"
 
 [[season.events]]
 name = "Sandy clay"
+size = "club"
+time = "sunset"
 track = "../tracks/sandy_clay.toml"
 
 [[season.events]]
 name = "Summer, dry hard clay"
+size = "big"
+time = "evening"
 track = "../tracks/dry_hard_clay.toml"
 
 [[season.events]]
 name = "Clay-sand"
+size = "small"
+time = "sunset"
 track = "../tracks/ideal_clay_sand.toml"
 
 [[season.events]]
 name = "Dry hard clay again"
+size = "club"
+time = "day"
 track = "../tracks/dry_hard_clay.toml"
 
 [[season.events]]
 name = "Firm loam, late summer"
+size = "big"
+time = "sunset"
 track = "../tracks/firm_loam.toml"
 
 [[season.events]]
 name = "Autumn, covered heavy clay"
+size = "club"
+time = "evening"
 track = "../tracks/covered_heavy_clay.toml"
 
 [[season.events]]
 name = "Final, clay-sand"
+size = "big"
+time = "evening"
 track = "../tracks/ideal_clay_sand.toml"

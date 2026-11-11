@@ -127,6 +127,9 @@ var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
 var track_view := TrackView.new()
 var venue_view := VenueView.new()
+# The sky and the sun, lit for each event's time of day (VenueView.light()).
+var world := VenueView.environment()
+var sun := DirectionalLight3D.new()
 var track_marks := TrackMarks.new()
 var tractor_view := TractorView.new()
 var sled_view := SledView.new()
@@ -522,6 +525,10 @@ func _build(error: String) -> bool:
 	for child in track_view.get_children():
 		child.queue_free()
 	track_view.build(dimensions)
+	# The event's size, time of day and track dress the venue.
+	var info := event.get_event()
+	venue_view.set_look(info)
+	VenueView.light(world, sun, venue_view.look()["time"])
 	venue_view.build(dimensions)
 	# The chequered flag at the full-pull line; an event's pull sets the
 	# flags again (_start_event_pull).
@@ -973,8 +980,10 @@ func _show(delta: float) -> void:
 	if over != _ended_shown:
 		_ended_shown = over
 		var result := run.get_result() if over else {}
-		hud.show_ending(ResultScreen.ending_text(result),
-				ResultScreen.ending_name(result) == "full_pull")
+		var full_pull := ResultScreen.ending_name(result) == "full_pull"
+		hud.show_ending(ResultScreen.ending_text(result), full_pull)
+		if full_pull:
+			venue_view.celebrate()
 
 
 # The officials' signal from the run's stage: "green" while the pull is
@@ -1020,8 +1029,7 @@ func _show_officials(s: Dictionary, delta: float) -> void:
 
 
 func _add_world() -> void:
-	add_child(VenueView.environment())
-	var sun := DirectionalLight3D.new()
+	add_child(world)
 	sun.rotation = Vector3(deg_to_rad(-48.0), deg_to_rad(35.0), 0.0)
 	sun.light_energy = 1.2
 	sun.shadow_enabled = true

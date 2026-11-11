@@ -125,6 +125,7 @@ func _check() -> void:
 			"a wider lane builds the venue again: %d parts, board %s" % [
 			venue.get_child_count(), board.text if board != null else "none"])
 	venue.build(dimensions)
+	_check_looks(venue, dimensions)
 	# The fields round the venue lie above the clay, so none may reach the
 	# strip, from the run-up to the overrun, or the stands, banks and tents
 	# beside it.
@@ -209,6 +210,62 @@ static func _red_ticks(d: Dictionary) -> int:
 		if t / float(TractorView.DIAL_TICKS - 1) >= red_from - 1e-6:
 			count += 1
 	return count
+
+
+# Each event's look: the first event of the club season is a club event
+# in the day; a small pull has no banner and the thinnest crowd; a big one
+# the biggest, and a show for a full pull that only it has. The track's
+# colour follows its soil: sand paler than clay, wet darker than dry.
+func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
+	_expect(venue.look()["size"] == "club" and venue.look()["time"] == "day",
+			"the season opens with a club event in the day: %s" % venue.look())
+	var people := {}
+	var banners := {}
+	for size: String in ["small", "club", "big"]:
+		venue.set_look({"size": size, "time": "day"})
+		venue.build(dimensions)
+		people[size] = _people(venue)
+		banners[size] = _has_label(venue, "FULL PULL")
+		venue.celebrate()
+		_expect(venue.show_running() == (size == "big"),
+				"a full pull's show at a %s event: %s" % [size, venue.show_running()])
+	_expect(people["small"] < people["club"] and people["club"] < people["big"],
+			"bigger events, bigger crowds: %s" % people)
+	_expect(not banners["small"] and banners["club"] and banners["big"],
+			"no full-pull banner at a small pull: %s" % banners)
+	venue.set_look({"time": "nonsense", "size": "huge"})
+	_expect(venue.look()["size"] == "club" and venue.look()["time"] == "day",
+			"unknown looks fall back to a club event in the day")
+	var sand := VenueView.track_colours(0.1, 0.1)
+	var clay := VenueView.track_colours(0.8, 0.1)
+	var wet := VenueView.track_colours(0.8, 0.25)
+	_expect(sand[0].get_luminance() > clay[0].get_luminance()
+			and wet[0].get_luminance() < clay[0].get_luminance()
+			and clay[0].r - clay[0].b > sand[0].r - sand[0].b - 0.05,
+			"the track's colour: sand paler, clay redder, wet darker")
+	# Back to the event's own look.
+	venue.set_look(_pull.get("event").get_event())
+	venue.build(dimensions)
+
+
+# How many people a venue's crowds hold.
+static func _people(node: Node) -> int:
+	var count := 0
+	for child in node.get_children():
+		if child is MultiMeshInstance3D and (child as MultiMeshInstance3D).multimesh != null \
+				and (child as MultiMeshInstance3D).material_override is ShaderMaterial:
+			count += (child as MultiMeshInstance3D).multimesh.instance_count
+		count += _people(child)
+	return count
+
+
+static func _has_label(node: Node, text: String) -> bool:
+	for child in node.get_children():
+		if child is Label3D and (child as Label3D).text == text:
+			return true
+		if _has_label(child, text):
+			return true
+	return false
 
 
 # The engine's sound: a six at 2500 rpm fires at 125 Hz; louder at full
