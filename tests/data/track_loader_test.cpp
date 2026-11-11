@@ -158,6 +158,36 @@ TEST(TrackLoader, ReadsTheGrip) {
         << refused.error().message;
 }
 
+// The hard spots are optional: without them the drag is even, with them
+// the table's values; values out of range name the table.
+TEST(TrackLoader, ReadsTheHardSpots) {
+    const auto plain = parse_track(kPlainTrack, "t.toml");
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_FALSE(plain.value().ground.hard_spots.has_value());
+    const std::string spotted = std::string{kPlainTrack} +
+                                "\n[track.hard_spots]\nevery_m = 9.0\nlength_m = 1.5\n"
+                                "extra = 0.4\nseed = 12\n";
+    const auto read = parse_track(spotted, "t.toml");
+    ASSERT_TRUE(read.ok()) << read.error().message;
+    ASSERT_TRUE(read.value().ground.hard_spots.has_value());
+    const track::HardSpots& spots = *read.value().ground.hard_spots;
+    EXPECT_EQ(spots.every_m, 9.0);
+    EXPECT_EQ(spots.length_m, 1.5);
+    EXPECT_EQ(spots.extra, 0.4);
+    EXPECT_EQ(spots.seed, 12U);
+    for (const auto& [from, to, field] :
+         std::array<std::array<std::string_view, 3>, 2>{
+             {{"extra = 0.4", "extra = 5.0", "track.hard_spots: every_m must be at least 2"},
+              {"seed = 12", "seed = 0", "track.hard_spots.seed: must be in [1, 4294967295]"}}}) {
+        std::string bad = spotted;
+        bad.replace(bad.find(from), from.size(), to);
+        const auto refused = parse_track(bad, "t.toml");
+        ASSERT_FALSE(refused.ok()) << to;
+        EXPECT_NE(refused.error().message.find(field), std::string::npos)
+            << refused.error().message;
+    }
+}
+
 TEST(TrackLoader, RejectsNonsense) {
     struct Case {
         std::string_view from;

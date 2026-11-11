@@ -284,8 +284,10 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
     const double rolling = wheels_n > 0.0 ? tire::towed_rolling_resistance(
                                                 params.wheel, wheels_n / wheel_count, ground.wheels)
                                           : 0.0;
-    const double friction = pan_friction(params, pan_n, ground.pan);
-    const double cutting_n = pan_n > 0.0 ? knives_n(params.knives, ground.pan) : 0.0;
+    // On a hard spot the pan and the knives drag harder.
+    const double friction = pan_friction(params, pan_n, ground.pan) * ground.pan.drag_scale;
+    const double cutting_n =
+        pan_n > 0.0 ? knives_n(params.knives, ground.pan) * ground.pan.drag_scale : 0.0;
     const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
     return {.pan_n = pan_n,
             .wheels_n = wheels_n,

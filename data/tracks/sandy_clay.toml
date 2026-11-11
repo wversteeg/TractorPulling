@@ -20,3 +20,10 @@ compaction = 0.7
 [track.profile.compaction]
 x_m = [0.0, 20.0, 40.0]
 value = [0.8, 0.8, 0.6]
+
+# Hard spots: the loose sand gives the knives only a few firmer patches, so the sled's drag jumps as it crosses them (track::HardSpots).
+[track.hard_spots]
+every_m = 12.0   # on average one every this far
+length_m = 2.0
+extra = 0.25    # up to this much more drag at a spot's middle
+seed = 41

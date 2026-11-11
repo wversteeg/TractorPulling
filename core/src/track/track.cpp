@@ -24,8 +24,42 @@ bool profile_valid(const Params& params, const std::optional<math::Curve>& profi
 soil::Surface blend(const soil::Surface& a, const soil::Surface& b, double t) noexcept {
     return {.cone_index_pa = a.cone_index_pa + t * (b.cone_index_pa - a.cone_index_pa),
             .grip_factor = a.grip_factor + t * (b.grip_factor - a.grip_factor),
-            .spin_fall_off = a.spin_fall_off + t * (b.spin_fall_off - a.spin_fall_off)};
+            .spin_fall_off = a.spin_fall_off + t * (b.spin_fall_off - a.spin_fall_off),
+            .drag_scale = a.drag_scale + t * (b.drag_scale - a.drag_scale)};
 }
+
+bool hard_spots_valid(const HardSpots& spots) noexcept {
+    return std::isfinite(spots.every_m) && std::isfinite(spots.length_m) &&
+           std::isfinite(spots.extra) && spots.every_m >= kMinHardSpotSpacing_m &&
+           spots.length_m >= kMinHardSpotLength_m && spots.length_m <= kMaxHardSpotLength_m &&
+           spots.extra >= 0.0 && spots.extra <= kMaxHardSpotExtra && spots.seed != 0;
+}
+
+// A 32-bit xorshift: integer arithmetic only, so the hard spots fall in the
+// same places on every platform.
+class Xorshift32 {
+public:
+    explicit Xorshift32(std::uint32_t seed) noexcept : state_(seed) {}
+
+    // Uniform in [0, 1), exactly representable (24 bits).
+    double next() noexcept {
+        state_ ^= state_ << 13U;
+        state_ ^= state_ >> 17U;
+        state_ ^= state_ << 5U;
+        constexpr double kScale = 1.0 / 16777216.0;  // 2^-24
+        return static_cast<double>(state_ >> 8U) * kScale;
+    }
+
+private:
+    std::uint32_t state_;
+};
+
+// The first spot lies at most this many spacings past the start line, the
+// gap to the next between these shares of the spacing, and each peaks at
+// this share of the extra and above.
+constexpr double kFirstSpotSpacings = 1.0;
+constexpr double kGapLowShare = 0.5;
+constexpr double kPeakLowShare = 0.6;
 
 }  // namespace
 
@@ -42,6 +76,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (!std::isfinite(params.grip_scale) || params.grip_scale < kMinGripScale ||
         params.grip_scale > kMaxGripScale) {
         return ParamError::kGripScale;
+    }
+    if (params.hard_spots && !hard_spots_valid(*params.hard_spots)) {
+        return ParamError::kHardSpots;
     }
     return std::nullopt;
 }
@@ -83,6 +120,38 @@ Model::Model(const Params& params) noexcept : params_(params) {
         samples_[i] = soil::surface(composition_at(params_, x_m));
         samples_[i].grip_factor *= params_.grip_scale;
     }
+    drag_scale_.fill(1.0);
+    if (!params_.hard_spots) {
+        return;
+    }
+    // Each spot a triangle: up to its peak at its middle and down again.
+    const HardSpots& spots = *params_.hard_spots;
+    Xorshift32 random{spots.seed};
+    const double end_m = kDragSpacing_m * static_cast<double>(kDragSamples - 1);
+    double start_m = spots.every_m * kFirstSpotSpacings * random.next();
+    while (start_m < end_m) {
+        const double peak = spots.extra * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
+        const double half_m = spots.length_m / 2.0;
+        for (std::size_t i = 0; i < kDragSamples; ++i) {
+            const double x_m = kDragSpacing_m * static_cast<double>(i);
+            const double from_middle = std::abs(x_m - (start_m + half_m)) / half_m;
+            if (from_middle < 1.0) {
+                drag_scale_[i] = std::max(drag_scale_[i], 1.0 + peak * (1.0 - from_middle));
+            }
+        }
+        start_m += spots.length_m + spots.every_m * (kGapLowShare + random.next());
+    }
+}
+
+double Model::drag_scale_at(double x_m) const noexcept {
+    const auto last = static_cast<double>(kDragSamples - 1);
+    const double position = std::clamp(x_m / kDragSpacing_m, 0.0, last);
+    const auto index = static_cast<std::size_t>(position);
+    if (index + 1 >= kDragSamples) {
+        return drag_scale_[kDragSamples - 1];
+    }
+    const double t = position - static_cast<double>(index);
+    return drag_scale_[index] + t * (drag_scale_[index + 1] - drag_scale_[index]);
 }
 
 std::optional<Model> Model::create(const Params& params) noexcept {
@@ -97,10 +166,12 @@ soil::Surface Model::surface_at(double x_m) const noexcept {
     const double position = std::clamp((x_m - first_x_m_) / spacing_m_, 0.0, last);
     // Truncation is exact for these non-negative values on every platform.
     const auto index = static_cast<std::size_t>(position);
-    if (index + 1 >= count_) {
-        return samples_[count_ - 1];
-    }
-    return blend(samples_[index], samples_[index + 1], position - static_cast<double>(index));
+    soil::Surface surface = index + 1 >= count_
+                                ? samples_[count_ - 1]
+                                : blend(samples_[index], samples_[index + 1],
+                                        position - static_cast<double>(index));
+    surface.drag_scale = drag_scale_at(x_m);
+    return surface;
 }
 
 }  // namespace tp::track

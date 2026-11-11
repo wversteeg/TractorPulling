@@ -10,6 +10,25 @@
 
 namespace tp::track {
 
+/// Hard spots along the track: short patches where the sled drags harder
+/// (track preparation never makes the ground even), so its resistance comes
+/// in jumps rather than rising smoothly. Laid out once from `seed`, the
+/// same on every platform: on average one every `every_m`, each `length_m`
+/// long, rising to and falling from a peak of up to `extra` above the
+/// soil's own drag (60 to 100 % of it).
+struct HardSpots {
+    double every_m = 0.0;
+    double length_m = 0.0;
+    double extra = 0.0;
+    std::uint32_t seed = 1;
+};
+
+/// The limits a track's hard spots may have, inclusive [m, m, share].
+inline constexpr double kMinHardSpotSpacing_m = 2.0;
+inline constexpr double kMinHardSpotLength_m = 0.5;
+inline constexpr double kMaxHardSpotLength_m = 10.0;
+inline constexpr double kMaxHardSpotExtra = 2.0;
+
 /// A pulling track's ground: one soil, and optionally how its moisture and
 /// compaction change along the track (a wet patch where it was watered, a
 /// looser stretch where it was worked). Each profile gives the absolute
@@ -26,6 +45,7 @@ struct Params {
     /// tracks differ by tens of per cent, from one where tractors stand on
     /// their wheelie bars to one where they spin early.
     double grip_scale = 1.0;
+    std::optional<HardSpots> hard_spots = std::nullopt;
 };
 
 /// The grip scale a track may have, inclusive.
@@ -41,6 +61,10 @@ enum class ParamError : std::uint8_t {
     /// The grip scale is not finite or outside [kMinGripScale,
     /// kMaxGripScale].
     kGripScale,
+    /// Hard spots closer together than kMinHardSpotSpacing_m, shorter or
+    /// longer than the length limits, their extra outside [0,
+    /// kMaxHardSpotExtra], or a seed of 0.
+    kHardSpots,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
@@ -64,6 +88,11 @@ public:
     /// The surface at `x_m` along the track.
     [[nodiscard]] soil::Surface surface_at(double x_m) const noexcept;
 
+    /// The hard spots' drag scale is sampled this finely over this much
+    /// track from the start line (past it, 1) [m].
+    static constexpr double kDragSpacing_m = 0.25;
+    static constexpr std::size_t kDragSamples = 512;
+
 private:
     explicit Model(const Params& params) noexcept;
 
@@ -72,6 +101,9 @@ private:
     double spacing_m_ = kSampleSpacing_m;
     std::size_t count_ = 1;
     std::array<soil::Surface, kMaxSamples> samples_{};
+    // 1 everywhere without hard spots.
+    std::array<double, kDragSamples> drag_scale_{};
+    [[nodiscard]] double drag_scale_at(double x_m) const noexcept;
 };
 
 }  // namespace tp::track

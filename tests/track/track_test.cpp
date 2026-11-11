@@ -7,6 +7,9 @@
 #include <cstdlib>
 #include <limits>
 #include <span>
+#include <vector>
+#include <algorithm>
+#include <cstdint>
 
 #include "reference_track.hpp"
 
@@ -164,6 +167,73 @@ TEST(Track, LongProfilesAreCoveredToTheirEnd) {
     const soil::Surface mid = model.surface_at(1000.0);
     const soil::Surface exact = soil::surface(composition_at(params, 1000.0));
     EXPECT_NEAR(mid.cone_index_pa, exact.cone_index_pa, 0.01 * exact.cone_index_pa);
+}
+
+// The drag scale along the first 100 m, every 0.25 m.
+std::vector<double> drag_profile(const Model& model) {
+    std::vector<double> scales;
+    for (int i = 0; i <= 400; ++i) {
+        scales.push_back(model.surface_at(0.25 * i).drag_scale);
+    }
+    return scales;
+}
+
+Params with_hard_spots(std::uint32_t seed) {
+    Params params = reference_params();
+    params.hard_spots = HardSpots{.every_m = 8.0, .length_m = 1.5, .extra = 0.5, .seed = seed};
+    return params;
+}
+
+// Without hard spots the sled drags through the soil as it is.
+TEST(Track, WithoutHardSpotsTheDragIsEven) {
+    for (const double scale : drag_profile(model_of(reference_params()))) {
+        EXPECT_DOUBLE_EQ(scale, 1.0);
+    }
+}
+
+// Hard spots come and go along the track: the drag jumps up to at most the
+// extra and back to 1 between them, about once every every_m.
+TEST(Track, HardSpotsMakeTheDragJump) {
+    const std::vector<double> scales = drag_profile(model_of(with_hard_spots(7)));
+    int spots = 0;
+    bool in_spot = false;
+    for (const double scale : scales) {
+        EXPECT_GE(scale, 1.0);
+        EXPECT_LE(scale, 1.5);
+        if (scale > 1.0 && !in_spot) {
+            ++spots;
+        }
+        in_spot = scale > 1.0;
+    }
+    EXPECT_GE(*std::ranges::max_element(scales), 1.0 + 0.6 * 0.5 * 0.8);
+    // 100 m with a spot every 8 m on average (each 1.5 m long, gaps of 4 to
+    // 12 m): from about 6 to 18.
+    EXPECT_GE(spots, 6);
+    EXPECT_LE(spots, 18);
+}
+
+// The same seed lays the same spots; another seed others.
+TEST(Track, HardSpotsFollowTheirSeed) {
+    EXPECT_EQ(drag_profile(model_of(with_hard_spots(7))),
+              drag_profile(model_of(with_hard_spots(7))));
+    EXPECT_NE(drag_profile(model_of(with_hard_spots(7))),
+              drag_profile(model_of(with_hard_spots(8))));
+}
+
+TEST(Track, RejectsNonsenseHardSpots) {
+    for (const HardSpots spots :
+         {HardSpots{.every_m = 1.0, .length_m = 1.0, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 0.1, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 20.0, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = -0.1, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = 3.0, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = 0.5, .seed = 0},
+          HardSpots{.every_m = std::numeric_limits<double>::quiet_NaN(), .length_m = 1.0,
+                    .extra = 0.5, .seed = 1}}) {
+        Params params = reference_params();
+        params.hard_spots = spots;
+        EXPECT_EQ(validate(params), ParamError::kHardSpots);
+    }
 }
 
 }  // namespace

@@ -23,3 +23,10 @@ grip = 1.45
 clay_fraction = 0.75
 moisture = 0.19
 compaction = 0.8
+
+# Hard spots: heavy clay lies in lumps the knives catch on, so the sled's drag jumps as it crosses them (track::HardSpots).
+[track.hard_spots]
+every_m = 9.0   # on average one every this far
+length_m = 2.0
+extra = 0.4    # up to this much more drag at a spot's middle
+seed = 37

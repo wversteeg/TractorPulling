@@ -21,3 +21,10 @@ compaction = 0.95
 # The sled operator brings the push-down earlier on this fast track.
 [track.pushdown]
 start_m = 73.0
+
+# Hard spots: a dry, hard-rolled track breaks up into hard clods and firmer seams, so the sled's drag jumps as it crosses them (track::HardSpots).
+[track.hard_spots]
+every_m = 7.0   # on average one every this far
+length_m = 1.2
+extra = 0.6    # up to this much more drag at a spot's middle
+seed = 11
