@@ -8,7 +8,7 @@
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
 //               [--ballast B] [--pressure BAR] [--hitch M] [--downshift S]
-//               [-o <out.csv>]
+//               [--start-y M] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
 //                          [--hitch M]
@@ -36,6 +36,10 @@
 // zone and rate, as the game's pro layout steers: --steer-deg is then the
 // angle the steering control asks for, before the dead zone (a small angle
 // steers straight), and --stick holds the control itself instead.
+//
+// --start-y puts the sled (and the tractor in line with it) M metres to the
+// left of the lane's middle at the start (negative to the right), as far as
+// the lane allows (run::max_start_offset_m).
 //
 // --hash prints each run's state hash at its end, to compare with another
 // front end playing the same inputs (the Godot extension's headless test).
@@ -226,6 +230,9 @@ struct PullOptions {
     /// clutch in) once the sled pulls the engine below this share of its
     /// rated speed, after the launch; as the scripted pullers do.
     std::optional<double> downshift_share;
+    /// run: where the sled starts across the lane, to the left of the
+    /// middle [m].
+    double start_y_m = 0.0;
 };
 
 // The tractor as --ballast, --pressure and --hitch tune it; nothing (with a message)
@@ -312,7 +319,7 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     bool on_wheelie_bar = false;
     double max_pitch_rad = 0.0;
     const tp::soil::Surface surface = tp::soil::surface(kReferenceSoil);
-    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
+    const tp::vehicle::Ground ground = tp::vehicle::even(surface);
     double t_s = 0.0;
     for (int i = 0; t_s < kPullMaxDuration_s; ++i) {
         t_s = i * kDt_s;
@@ -443,6 +450,7 @@ tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
     if (options.pro) {
         setup.pro = *options.pro;
     }
+    setup.start_y_m = options.start_y_m;
     return setup;
 }
 
@@ -458,7 +466,13 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                                   int round, std::ostream& csv) {
     std::optional<tp::session::Session> session = tp::session::Session::create(setup);
     if (!session) {
-        std::cerr << "inconsistent tractor, sled or track\n";
+        if (tp::session::validate(setup) == tp::session::SetupError::kStartPosition) {
+            std::cerr << "--start-y: at most "
+                      << tp::run::max_start_offset_m(setup.tractor, setup.rules)
+                      << " m from the lane's middle either way for this tractor\n";
+        } else {
+            std::cerr << "inconsistent tractor, sled or track\n";
+        }
         return std::nullopt;
     }
     // --downshift: the scripted pullers' gear down under load, once; the
@@ -932,6 +946,11 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         }
         pull.hitch_height_m = height_m;
         return Parsed::kOk;
+    }
+    if (arg == "--start-y") {
+        const auto y_m = parse_number<double>(value);
+        pull.start_y_m = y_m.value_or(0.0);
+        return y_m ? Parsed::kOk : Parsed::kInvalid;
     }
     if (arg == "--downshift") {
         const auto share = parse_number<double>(value);

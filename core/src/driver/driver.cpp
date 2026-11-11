@@ -7,7 +7,8 @@
 namespace tp::driver {
 
 std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept {
-    const std::array times = {plan.select_gear_s, plan.launch_s, plan.clutch_slip_in_s};
+    const std::array times = {plan.select_gear_s, plan.launch_s, plan.clutch_slip_in_s,
+                              plan.start_y_m};
     if (!std::ranges::all_of(times, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }

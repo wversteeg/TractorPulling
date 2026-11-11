@@ -16,12 +16,19 @@ struct Params {
     vehicle::Params tractor;
     sled::Params sled;
     track::Params track;
+    /// Where the team puts the sled across the lane, the tractor hooked on
+    /// in line with it: to the left of the track's centre line (negative
+    /// to the right) [m]. Where it may go is the run's rules' to say
+    /// (run::max_start_offset_m).
+    double start_y_m = 0.0;
 };
 
 enum class ParamError : std::uint8_t {
     kTractor,
     kSled,
     kTrack,
+    /// The start offset is not finite.
+    kStartPosition,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
@@ -37,6 +44,10 @@ public:
     /// coordinates (the tractor's rear axle starts at 0) [m]. After the
     /// pull the sled is driven back here.
     [[nodiscard]] double sled_start_m() const noexcept { return sled_start_m_; }
+    /// Where the sled and the tractor start across the lane, to the left of
+    /// the centre line [m] (Params::start_y_m). After the pull the sled is
+    /// driven back here.
+    [[nodiscard]] double start_y_m() const noexcept { return start_y_m_; }
     /// Where the start line is in the pull's coordinates: at the sled's
     /// front (its hook) as it stands at the start. Distances down the track
     /// are measured from it, and a pull is how far the sled's front gets
@@ -46,12 +57,13 @@ public:
     }
 
 private:
-    Model(const vehicle::Model& tractor, const sled::Params& sled,
-          const track::Model& track) noexcept;
+    Model(const vehicle::Model& tractor, const sled::Params& sled, const track::Model& track,
+          double start_y_m) noexcept;
 
     vehicle::Model tractor_;
     sled::Params sled_;
     track::Model track_;
+    double start_y_m_ = 0.0;
     double sled_start_m_ = 0.0;
 };
 
@@ -105,7 +117,8 @@ struct Output {
 };
 
 /// Tractor idling in neutral at the start line, the sled behind it with the
-/// chain laid out with a millimetre of slack, hooked on, the sled on it.
+/// chain laid out with a millimetre of slack, hooked on, the sled on it;
+/// both at the start offset across the lane, straight down the track.
 [[nodiscard]] State initial_state(const Model& model) noexcept;
 
 /// One step: the chain force from where the hitch and hook are, the ground

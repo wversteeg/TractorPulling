@@ -89,13 +89,19 @@ FieldError describe(track::ParamError error) {
                     "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
                         ", length_m in " +
                         range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
-                        " and extra in " + range(0.0, track::kMaxHardSpotExtra)};
+                        ", width_m from " + number(track::kMinSpotWidth_m) +
+                        " to the lane's width and extra in " +
+                        range(0.0, track::kMaxHardSpotExtra)};
         case ParamError::kWeakSpots:
             return {"track.weak_spots",
                     "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
                         ", length_m in " +
                         range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
-                        " and grip_loss in " + range(0.0, track::kMaxWeakSpotGripLoss)};
+                        ", width_m from " + number(track::kMinSpotWidth_m) +
+                        " to the lane's width and grip_loss in " +
+                        range(0.0, track::kMaxWeakSpotGripLoss)};
+        case ParamError::kSpotsAcross:
+            return {"track.lane_width_m", "must be > 0"};
     }
     return {"track", "invalid"};
 }
@@ -126,6 +132,7 @@ std::optional<track::HardSpots> hard_spots(detail::Reader& reader) {
     return track::HardSpots{
         .every_m = reader.number("track.hard_spots.every_m"),
         .length_m = reader.number("track.hard_spots.length_m"),
+        .width_m = reader.number("track.hard_spots.width_m"),
         .extra = reader.number("track.hard_spots.extra"),
         .seed = seed_of(reader, "track.hard_spots.seed"),
     };
@@ -139,6 +146,7 @@ std::optional<track::WeakSpots> weak_spots(detail::Reader& reader) {
     return track::WeakSpots{
         .every_m = reader.number("track.weak_spots.every_m"),
         .length_m = reader.number("track.weak_spots.length_m"),
+        .width_m = reader.number("track.weak_spots.width_m"),
         .grip_loss = reader.number("track.weak_spots.grip_loss"),
         .seed = seed_of(reader, "track.weak_spots.seed"),
     };
@@ -174,6 +182,8 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
                 .grip_scale = reader.optional_number("track.grip").value_or(1.0),
                 .hard_spots = hard_spots(reader),
                 .weak_spots = weak_spots(reader),
+                // The spots lie in the lane.
+                .spots_across_m = reader.number("track.lane_width_m"),
             },
         .sled =
             {

@@ -28,7 +28,8 @@ compaction = 0.8
 # seams. A well-prepared track has only a few, and they are mild: the tires
 # slip a little more for a moment.
 [track.weak_spots]
-every_m = 45.0
+every_m = 15.0
 length_m = 2.0
+width_m = 2.0      # across the lane; each lies somewhere in it
 grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
 seed = 67

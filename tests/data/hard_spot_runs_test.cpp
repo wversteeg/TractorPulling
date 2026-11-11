@@ -1,3 +1,4 @@
+#include "tp/core/crew/crew.hpp"
 #include "tp/core/driver/driver.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/vehicle/tuning.hpp"
@@ -43,12 +44,14 @@ struct Sample {
 
 // The Sport 2.5 t tractor pulling its class's sled on `track`, its driver
 // in 5th without a downshift, so the engine alone answers the drag.
-std::vector<Sample> pull(const Track& track) {
+std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_offs = 0) {
     const vehicle::Params built = loaded(load_tractor(data("tractors/sport_2500.toml")));
     const sled::Params sled = loaded(load_sled(data("sleds/sport_2500.toml")));
-    const session::Setup setup = run_setup(built, sled, track, 0);
-    const std::optional<pull::Model> model =
-        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    const session::Setup setup = run_setup(built, sled, track, pull_offs);
+    const std::optional<pull::Model> model = pull::Model::create({.tractor = setup.tractor,
+                                                                  .sled = setup.sled,
+                                                                  .track = setup.ground,
+                                                                  .start_y_m = start_y_m});
     if (!model) {
         throw std::runtime_error("the pull was refused");
     }
@@ -137,13 +140,43 @@ TEST(HardSpotRuns, TheDragJumpsAndTheEngineDipsAtHardSpots) {
 // spots, so this one has them closer and deeper, to show them clearly.
 TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
     Track weak = even(only_hard_spots());
-    weak.ground.weak_spots =
-        track::WeakSpots{.every_m = 10.0, .length_m = 2.0, .grip_loss = 0.3, .seed = 3};
+    weak.ground.weak_spots = track::WeakSpots{
+        .every_m = 10.0, .length_m = 2.0, .width_m = 12.0, .grip_loss = 0.3, .seed = 3};
     const Jumps with = jumps(pull(weak));
     const Jumps without = jumps(pull(even(weak)));
     EXPECT_LT(with.drag_rise, 0.05) << "the sled drags as before";
     EXPECT_GT(with.slip_rise, 2.0 * without.slip_rise)
         << with.slip_rise << " vs " << without.slip_rise;
+}
+
+// The crew that knows the track puts the sled where the spots cost least:
+// on the dry hard clay its line pulls further than the middle and than the
+// worst line across the lane, close to the best of them. The stakes are
+// small (the spots are mild): tenths of a metre in a pull-off.
+TEST(HardSpotRuns, TheCrewsLineCrossesTheFewestSpots) {
+    const vehicle::Params built = loaded(load_tractor(data("tractors/sport_2500.toml")));
+    const Track track = loaded(load_track(data("tracks/dry_hard_clay.toml")));
+    const std::optional<track::Model> model = track::Model::create(track.ground);
+    if (!model) {
+        FAIL() << "the track was refused";
+    }
+    const crew::Report knows = crew::report(*model, {.pulls_seen = 100, .pull_off = true},
+                                            track.rules.full_pull_line_m, 1);
+    const double max_m = run::max_start_offset_m(built, track.rules);
+    const double line_m = crew::best_line_m(knows, built, max_m);
+    constexpr int kPullOffs = 4;
+    const auto reached = [&](double y_m) { return pull(track, y_m, kPullOffs).back().pulled_m; };
+    double worst_m = reached(line_m);
+    double best_m = worst_m;
+    for (int i = -3; i <= 3; ++i) {
+        const double here_m = reached(max_m * i / 3.0);
+        worst_m = std::min(worst_m, here_m);
+        best_m = std::max(best_m, here_m);
+    }
+    const double crews_m = reached(line_m);
+    EXPECT_GT(crews_m, reached(0.0) + 0.1);
+    EXPECT_GT(crews_m, worst_m + 0.2);
+    EXPECT_GT(crews_m, best_m - 0.1);
 }
 
 }  // namespace

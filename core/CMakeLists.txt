@@ -3,6 +3,7 @@ add_library(tp_core STATIC
     src/chassis/chassis.cpp
     src/clutch/clutch.cpp
     src/controls/controls.cpp
+    src/crew/crew.cpp
     src/driveline/driveline.cpp
     src/driver/driver.cpp
     src/engine/engine.cpp

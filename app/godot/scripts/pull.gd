@@ -261,6 +261,7 @@ func _ready() -> void:
 			hitch_m: float) -> void:
 		event.set_tuning(ballast_position, bar, hitch_m)
 		setup_screen.show_values(event.get_tuning()))
+	setup_screen.start_changed.connect(func(y_m: float) -> void: event.set_start(y_m))
 	setup_screen.pull_requested.connect(func() -> void:
 		_save_season()
 		if practice:
@@ -456,7 +457,7 @@ func _show_setup(for_practice: bool) -> void:
 			info.get("pull_off_round", 0))
 	setup_screen.show_setup("%s  ·  %s" % [which, info.get("name", "")], event.get_tuning(), pro,
 			tilt and controls.tilt_steering.available(), info.get("track", {}),
-			String(info.get("name", "")))
+			String(info.get("name", "")), event.get_crew_report())
 	_set_screen(Screen.SETUP)
 
 

@@ -223,6 +223,28 @@ public:
     /// top hole.
     void set_tuning(double ballast_position, double pressure_bar, double hitch_m);
 
+    /// What the player's crew reports of the track's hard and weak spots
+    /// before their next pull (field::LiveEvent::player_crew_report),
+    /// sharper with every pull already pulled and in the pull-off:
+    /// {spots, uncertainty, pulls_seen, pull_off, suggested_y_m, max_y_m,
+    /// start_y_m, lane_width_m, full_pull_m, rear_track_m,
+    /// rear_tire_width_m, pan_half_width_m, along_error_m,
+    /// across_error_m}; the last two say how far off a reported spot may
+    /// be. Each spot is {kind ("hard" or
+    /// "weak"), at_m (its middle, from the start line), y_m (its middle,
+    /// to the left of the lane's middle), width_m, length_m, strength (a
+    /// hard spot's extra drag, a weak spot's grip lost, as shares)}.
+    /// `suggested_y_m` is where the crew would put the sled
+    /// (crew::best_line_m), `max_y_m` how far off the middle it may go
+    /// either way, `start_y_m` where the player has put it. {} before an
+    /// event.
+    [[nodiscard]] godot::Dictionary get_crew_report() const;
+    /// Where the player puts the sled across the lane for their next pulls
+    /// and practice pulls, to the left of the middle [m]; held to the
+    /// lane's limits for the tractor (run::max_start_offset_m) when a pull
+    /// is set up. Back to the middle at each new event.
+    void set_start(double y_m);
+
     /// The player's next pull, for TractorPullRun: nothing unless one is
     /// due.
     [[nodiscard]] std::optional<session::Setup> player_setup() const;
@@ -237,6 +259,8 @@ protected:
 
 private:
     [[nodiscard]] godot::String name_of(int puller) const;
+    /// `setup` starting where the player put the sled, within its limits.
+    [[nodiscard]] session::Setup started(session::Setup setup) const;
     /// `line_before_m`: the full-pull line in force before the pull.
     [[nodiscard]] godot::Dictionary entry(const field::LogEntry& entry, double line_before_m) const;
     /// The full-pull line each event starts with.
@@ -260,6 +284,7 @@ private:
     std::uint64_t seed_ = 0;
     std::vector<std::string> names_;
     vehicle::Tuning tuning_;
+    double start_y_m_ = 0.0;
     /// Kept from season to season; set by the first start_season().
     std::optional<garage::Career> career_;
     // Large plain data: on the heap.

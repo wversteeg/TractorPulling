@@ -20,8 +20,9 @@ compaction = 0.9
 # roller crossed. A well-prepared track has only a few, and mild: the sled's
 # drag jumps a little as it crosses one, and the engine dips with it.
 [track.hard_spots]
-every_m = 14.0   # on average one every this far
+every_m = 5.0   # on average one every this far
 length_m = 1.5
+width_m = 3.0      # across the lane; each lies somewhere in it
 extra = 0.25    # up to this much more drag at a spot's middle
 seed = 23
 
@@ -29,7 +30,8 @@ seed = 23
 # has only a few, and they are mild: the tires slip a little more for a
 # moment.
 [track.weak_spots]
-every_m = 50.0
+every_m = 15.0
 length_m = 1.5
+width_m = 2.0      # across the lane; each lies somewhere in it
 grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
 seed = 73

@@ -219,8 +219,10 @@ std::optional<run::Result> run_pull(const Puller& puller, const sled::Params& sl
                                     const track::Params& track, const run::Rules& rules) noexcept {
     constexpr double kDt_s =
         static_cast<double>(kSimulationStepNs) / static_cast<double>(kNanosecondsPerSecond);
-    const auto model =
-        pull::Model::create({.tractor = puller.tractor, .sled = sled, .track = track});
+    const auto model = pull::Model::create({.tractor = puller.tractor,
+                                            .sled = sled,
+                                            .track = track,
+                                            .start_y_m = puller.driver.start_y_m});
     if (!model || run::validate(rules)) {
         return std::nullopt;
     }
@@ -313,6 +315,37 @@ ThisPull on_this_pull(const Puller& puller, const sled::Params& sled, const Pull
         out.sled.pan_plough_coefficient *= scale;
     }
     return out;
+}
+
+}  // namespace tp::field
+
+namespace tp::field {
+
+namespace {
+
+// Spreads a crew's puller and pulls seen over the seed's bits.
+constexpr std::uint64_t kCrewStream = 0xd1b54a32d192ed03ULL;
+constexpr std::uint64_t kPullerStride = 0x632be59bd9b4e019ULL;
+constexpr std::uint64_t kSeenStride = 0x8cb92ba72f3d8dd7ULL;
+
+}  // namespace
+
+std::uint64_t crew_seed(std::uint64_t event_seed, int puller, int pulls_seen) noexcept {
+    return (event_seed ^ kCrewStream) + kPullerStride * static_cast<std::uint64_t>(puller) +
+           kSeenStride * static_cast<std::uint64_t>(pulls_seen);
+}
+
+crew::Report crew_report(const track::Model& track, event::PullKind kind, int pulls_seen,
+                         const run::Rules& rules, std::uint64_t seed) noexcept {
+    return crew::report(track,
+                        {.pulls_seen = pulls_seen, .pull_off = kind == event::PullKind::kPullOff},
+                        rules.full_pull_line_m, seed);
+}
+
+double crew_line(const crew::Report& report, const Puller& puller,
+                 const run::Rules& rules) noexcept {
+    return crew::best_line_m(report, puller.tractor,
+                             run::max_start_offset_m(puller.tractor, rules));
 }
 
 }  // namespace tp::field

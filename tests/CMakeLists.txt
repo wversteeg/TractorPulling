@@ -6,6 +6,7 @@ add_executable(tp_core_tests
     clutch/clutch_engine_test.cpp
     clutch/clutch_test.cpp
     controls/controls_test.cpp
+    crew/crew_test.cpp
     driveline/driveline_chain_test.cpp
     driveline/driveline_test.cpp
     driver/driver_test.cpp

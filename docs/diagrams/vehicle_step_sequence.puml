@@ -10,20 +10,20 @@ participant "tire" as Tire
 participant "solve_chain" as Solve
 participant "clutch::resolve" as Clutch
 
-Caller -> Step : step(state, model, {throttle, clutch_pedal, gear, steering, brakes},\n  Ground{rear, front surface}, Drawbar{pull, lift, side}, dt_s)
+Caller -> Step : step(state, model, {throttle, clutch_pedal, gear, steering, brakes},\n  Ground{rear_left, rear_right, front surface}, Drawbar{pull, lift, side}, dt_s)
 opt requested gear differs
   Step -> Driveline : shift(gear, clutch capacity == 0)
 end
 Step -> Chassis : axle_loads(state, drawbar)
 Chassis --> Step : rear / front / wheelie bar load
 loop left and right side (wheel speed = axle ∓ differential,\n  ground speed = u ∓ yaw rate · track / 2)
-  Step -> Tire : traction(wheel speed, ground speed, load per tire, rear surface)
+  Step -> Tire : traction(wheel speed, ground speed, load per tire, that side's surface)
   Tire --> Step : force, slope (linearized), slip
 end
-Step -> Tire : driven_rolling_resistance(rear load per tire, slip, rear surface)
-Step -> Tire : thrown_soil_m3_s(rear load per tire, slip, wheel speed, rear surface)
+Step -> Tire : driven_rolling_resistance(rear load per tire, slip, each side's surface)
+Step -> Tire : thrown_soil_m3_s(rear load per tire, slip, wheel speed, each side's surface)
 Step -> Tire : towed_rolling_resistance(front load per tire, front surface)
-Step -> Tire : side_grip(front, rear); with_traction(rear grip, traction, full bite, slip)
+Step -> Tire : side_grip(front, each rear side); with_traction(that side's grip, traction, full bite, slip)
 Step -> Tire : side_force_n(grip, patch deflection) for front and rear
 Step -> Engine : predict(throttle)
 Step -> Chassis : predict(drawbar pull + front tire and bar rolling drag\n  + steered front tires' side force along the body)

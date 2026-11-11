@@ -1,0 +1,61 @@
+@startuml crew_classes
+title Crew (tp::crew): what a team knows of the lane, and where it starts the sled
+hide empty members
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "other components" {
+  class "track::Model\n+ hard_spots(), weak_spots() : span<const Spot>" as Track
+  class "vehicle::Params\n(rear track, rear tires)" as Vehicle
+  class "math::SplitMix64" as Random
+  class "sled::kPanHalfWidth_m" as Pan
+}
+
+package "tp::crew" {
+  enum SpotKind {
+    kHard
+    kWeak
+  }
+  class Knowledge <<struct>> {
+    +pulls_seen : int
+    +pull_off : bool
+  }
+  class ReportedSpot <<struct>> {
+    +kind : SpotKind
+    +at_m, centre_y_m : double (about where)
+    +width_m, length_m : double
+    +strength : double (a guess)
+  }
+  class Report <<struct>> {
+    +spots : array<ReportedSpot, 320>
+    +count : size_t
+    +uncertainty : double, 1 .. towards 0
+    +view() : span<const ReportedSpot>
+  }
+  class "crew functions" as CrewFns <<free functions>> {
+    +uncertainty(const Knowledge&) : double
+    +report(const track::Model&, const Knowledge&, until_m, seed) : Report
+    +best_line_m(const Report&, const vehicle::Params&, max_offset_m) : double
+    +kMissedShare, kAlongError_m, kAcrossError_m, kStrengthError
+    +kLineStep_m = 0.1
+  }
+  Report *-- ReportedSpot
+  ReportedSpot --> SpotKind
+  CrewFns ..> Knowledge
+  CrewFns ..> Report
+}
+CrewFns ..> Track : the spots as laid
+CrewFns ..> Random : what it misses,\nhow far off
+CrewFns ..> Vehicle : where the\nrear tires run
+CrewFns ..> Pan : where the\npan runs
+note bottom of CrewFns
+  uncertainty: 1 / (1 + pulls_seen / 4), halved in the pull-off;
+  each spot is missed with chance kMissedShare x uncertainty, else reported
+  off by up to the errors x uncertainty (four draws per spot, seen or not);
+  best_line_m: every line 0.1 m apart within max_offset_m, the middle first:
+  a weak spot under either rear side costs its strength x length (the open
+  differential), a hard spot under the pan half that per share it covers;
+  the cheapest, nearest the middle; the field's rivals and the player's
+  crew chief both use it
+end note
+@enduml

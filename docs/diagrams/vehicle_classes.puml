@@ -64,7 +64,7 @@ package "tp::vehicle" {
     +brake_torque_nm : double
   }
   class Ground <<struct>> {
-    +rear : soil::Surface
+    +rear_left, rear_right : soil::Surface (each side's own)
     +front : soil::Surface
   }
   class Output <<struct>> {
@@ -108,6 +108,7 @@ package "tp::vehicle" {
     +initial_state(const Model&) : State
     +travel_direction(const State&, bool drive_out, double drawbar_pull_n) : double
     +step(State&, const Model&, const Input&, const Ground&,\n      const chassis::Drawbar&, dt_s) : Output
+    +even(const soil::Surface&) : Ground
     +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
     +hash_append(Fnv1a&, const State&)
   }

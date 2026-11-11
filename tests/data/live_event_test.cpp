@@ -1,6 +1,7 @@
 #include "tp/core/field/live.hpp"
 #include "tp/core/field/play.hpp"
 #include "tp/data/event/event_loader.hpp"
+#include "tp/data/track/track_loader.hpp"
 
 #include <gtest/gtest.h>
 
@@ -35,14 +36,22 @@ struct EventSetup {
     }
 };
 
-// The shipped club event, with a smaller field; throws if it cannot load.
-EventSetup shipped() {
-    const auto definition =
+// The shipped club event, with a smaller field, on its own track or on
+// `track_file` (in data/tracks); throws if it cannot load.
+EventSetup shipped(const char* track_file = nullptr) {
+    auto definition =
         data::load_event(std::filesystem::path{TP_DATA_DIR} / "events" / "club_pull.toml");
     if (!definition) {
         throw std::runtime_error("cannot load the club event");
     }
-    const data::EventDefinition& d = definition.value();
+    data::EventDefinition d = definition.value();
+    if (track_file != nullptr) {
+        auto track = data::load_track(std::filesystem::path{TP_DATA_DIR} / "tracks" / track_file);
+        if (!track) {
+            throw std::runtime_error("cannot load the track");
+        }
+        d.track = track.value();
+    }
     Variation variation = d.variation;
     variation.lowest_gear = 5;
     const auto field = generate(d.reference, variation, d.class_rules, kPullers, d.seed);
@@ -128,48 +137,52 @@ std::unique_ptr<LiveEvent> replay(const EventSetup& s, const PlayedEvent& played
 }
 
 // With the player pulling what the scripted puller pulled, the live event
-// is play_event's, line for line: the rivals' gears, every pull, the
-// operator's verdicts, the decisions and the standings. So the game's event
-// is the tools' event, whoever the player is.
+// is play_event's, line for line: the rivals' gears, every pull (each from
+// where its crew put the sled), the operator's verdicts, the decisions and
+// the standings. So the game's event is the tools' event, whoever the
+// player is: on the even club track and on one with hard and weak spots.
 TEST(LiveEvent, IsPlayEventWithThePlayerPullingAsScripted) {
-    const EventSetup s = shipped();
-    const std::optional<PlayedEvent> scripted = play_event(
-        s.rules, s.venue, s.field, s.variation, s.pull_to_pull, s.running_order(), kSeed);
-    if (!scripted.has_value()) {
-        FAIL() << "play_event refused the setup";
-    }
-    const auto played = std::make_unique<PlayedEvent>(*scripted);
-    for (const int player : {s.order[0], s.order[3]}) {
-        const std::unique_ptr<LiveEvent> live = replay(s, *played, player);
-        ASSERT_NE(live, nullptr);
-        ASSERT_EQ(live->turn(), LiveEvent::Turn::kFinished) << "player " << player;
-        ASSERT_EQ(live->log().size(), played->log_size) << "player " << player;
-        for (std::size_t i = 0; i < played->log_size; ++i) {
-            const LogEntry& a = played->log[i];
-            const LogEntry& b = live->log()[i];
-            EXPECT_EQ(a.deciding, b.deciding) << i;
-            EXPECT_EQ(a.keep, b.keep) << i;
-            EXPECT_EQ(a.pull.puller, b.pull.puller) << i;
-            EXPECT_EQ(a.pull.kind, b.pull.kind) << i;
-            EXPECT_EQ(a.reached_m, b.reached_m) << i;
-            EXPECT_EQ(a.outcome.change, b.outcome.change) << i;
-            EXPECT_EQ(a.outcome.steps, b.outcome.steps) << i;
-            EXPECT_EQ(a.full_pull_m, b.full_pull_m) << i;
-            EXPECT_EQ(a.knives, b.knives) << i;
+    for (const char* track_file : {static_cast<const char*>(nullptr), "dry_hard_clay.toml"}) {
+        SCOPED_TRACE(track_file == nullptr ? "the club track" : track_file);
+        const EventSetup s = shipped(track_file);
+        const std::optional<PlayedEvent> scripted = play_event(
+            s.rules, s.venue, s.field, s.variation, s.pull_to_pull, s.running_order(), kSeed);
+        if (!scripted.has_value()) {
+            FAIL() << "play_event refused the setup";
         }
-        for (int p = 0; p < kPullers; ++p) {
-            if (p != player) {
-                EXPECT_EQ(live->gear(p), played->gears[static_cast<std::size_t>(p)]) << p;
+        const auto played = std::make_unique<PlayedEvent>(*scripted);
+        for (const int player : {s.order[0], s.order[3]}) {
+            const std::unique_ptr<LiveEvent> live = replay(s, *played, player);
+            ASSERT_NE(live, nullptr);
+            ASSERT_EQ(live->turn(), LiveEvent::Turn::kFinished) << "player " << player;
+            ASSERT_EQ(live->log().size(), played->log_size) << "player " << player;
+            for (std::size_t i = 0; i < played->log_size; ++i) {
+                const LogEntry& a = played->log[i];
+                const LogEntry& b = live->log()[i];
+                EXPECT_EQ(a.deciding, b.deciding) << i;
+                EXPECT_EQ(a.keep, b.keep) << i;
+                EXPECT_EQ(a.pull.puller, b.pull.puller) << i;
+                EXPECT_EQ(a.pull.kind, b.pull.kind) << i;
+                EXPECT_EQ(a.reached_m, b.reached_m) << i;
+                EXPECT_EQ(a.outcome.change, b.outcome.change) << i;
+                EXPECT_EQ(a.outcome.steps, b.outcome.steps) << i;
+                EXPECT_EQ(a.full_pull_m, b.full_pull_m) << i;
+                EXPECT_EQ(a.knives, b.knives) << i;
             }
-        }
-        event::Event ended = played->event;
-        const auto expected = ended.standings();
-        const auto actual = live->standings();
-        ASSERT_EQ(actual.size(), expected.size());
-        for (std::size_t i = 0; i < expected.size(); ++i) {
-            EXPECT_EQ(actual[i].puller, expected[i].puller) << i;
-            EXPECT_EQ(actual[i].place, expected[i].place) << i;
-            EXPECT_EQ(actual[i].distance_m, expected[i].distance_m) << i;
+            for (int p = 0; p < kPullers; ++p) {
+                if (p != player) {
+                    EXPECT_EQ(live->gear(p), played->gears[static_cast<std::size_t>(p)]) << p;
+                }
+            }
+            event::Event ended = played->event;
+            const auto expected = ended.standings();
+            const auto actual = live->standings();
+            ASSERT_EQ(actual.size(), expected.size());
+            for (std::size_t i = 0; i < expected.size(); ++i) {
+                EXPECT_EQ(actual[i].puller, expected[i].puller) << i;
+                EXPECT_EQ(actual[i].place, expected[i].place) << i;
+                EXPECT_EQ(actual[i].distance_m, expected[i].distance_m) << i;
+            }
         }
     }
 }

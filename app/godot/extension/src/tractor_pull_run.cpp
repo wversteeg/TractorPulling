@@ -81,6 +81,8 @@ const char* describe(session::SetupError error) {
             return "the sled's fenders stop this tractor out of the chain's reach";
         case session::SetupError::kMaxStepsPerFrame:
             return "invalid steps per frame";
+        case session::SetupError::kStartPosition:
+            return "the sled must start well inside the lane";
     }
     return "invalid setup";
 }

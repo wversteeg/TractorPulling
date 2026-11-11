@@ -180,7 +180,8 @@ std::vector<double> drag_profile(const Model& model) {
 
 Params with_hard_spots(std::uint32_t seed) {
     Params params = reference_params();
-    params.hard_spots = HardSpots{.every_m = 8.0, .length_m = 1.5, .extra = 0.5, .seed = seed};
+    params.hard_spots =
+        HardSpots{.every_m = 8.0, .length_m = 1.5, .width_m = 12.0, .extra = 0.5, .seed = seed};
     return params;
 }
 
@@ -191,52 +192,62 @@ TEST(Track, WithoutHardSpotsTheDragIsEven) {
     }
 }
 
-// Hard spots come and go along the track: the drag jumps up to at most the
-// extra and back to 1 between them, about once every every_m.
+// Hard spots come and go along the track: along each one's middle the
+// drag jumps up to its peak (60 to 100 % of the extra) and back to 1
+// between them, about once every every_m.
 TEST(Track, HardSpotsMakeTheDragJump) {
-    const std::vector<double> scales = drag_profile(model_of(with_hard_spots(7)));
+    const Model model = model_of(with_hard_spots(7));
     int spots = 0;
-    bool in_spot = false;
-    for (const double scale : scales) {
-        EXPECT_GE(scale, 1.0);
-        EXPECT_LE(scale, 1.5);
-        if (scale > 1.0 && !in_spot) {
-            ++spots;
+    for (const Spot& spot : model.hard_spots()) {
+        if (spot.start_m >= 100.0) {
+            break;
         }
-        in_spot = scale > 1.0;
+        ++spots;
+        EXPECT_GE(spot.peak, 0.6 * 0.5);
+        EXPECT_LE(spot.peak, 0.5);
+        double highest = 1.0;
+        for (int i = 0; i <= 40; ++i) {
+            const double x_m = spot.start_m + spot.length_m * i / 40.0;
+            const double scale = model.surface_at(x_m, spot.centre_y_m).drag_scale;
+            EXPECT_GE(scale, 1.0);
+            highest = std::max(highest, scale);
+        }
+        EXPECT_DOUBLE_EQ(highest, 1.0 + spot.peak);
+        // Just before and after it, at any line across, even.
+        for (const double y_m : {-5.0, 0.0, spot.centre_y_m, 5.0}) {
+            EXPECT_DOUBLE_EQ(model.surface_at(spot.start_m - 0.01, y_m).drag_scale, 1.0);
+            EXPECT_DOUBLE_EQ(model.surface_at(spot.start_m + spot.length_m + 0.01, y_m).drag_scale,
+                             1.0);
+        }
     }
-    EXPECT_GE(*std::ranges::max_element(scales), 1.0 + 0.6 * 0.5 * 0.8);
     // 100 m with a spot every 8 m on average (each 1.5 m long, gaps of 4 to
     // 12 m): from about 6 to 18.
     EXPECT_GE(spots, 6);
     EXPECT_LE(spots, 18);
 }
 
-// Even the shortest spot reaches its full peak (they are evaluated, not
-// sampled), and past where the spots are laid the drag is even again.
+// Even the shortest spot reaches its full peak along its middle (they are
+// evaluated, not sampled), and past where the spots are laid the drag is
+// even again.
 TEST(Track, EveryHardSpotReachesItsPeak) {
     Params params = reference_params();
-    params.hard_spots =
-        HardSpots{.every_m = 4.0, .length_m = kMinHardSpotLength_m, .extra = 1.0, .seed = 3};
+    params.hard_spots = HardSpots{
+        .every_m = 4.0, .length_m = kMinHardSpotLength_m, .width_m = 12.0, .extra = 1.0, .seed = 3};
     const Model model = model_of(params);
-    double previous = 1.0;
-    double peak = 1.0;
-    int spots = 0;
-    for (int i = 0; i <= 20000; ++i) {
-        const double scale = model.surface_at(0.005 * i).drag_scale;
-        if (scale > 1.0) {
-            peak = std::max(peak, scale);
-        } else if (previous > 1.0) {
-            ++spots;
-            EXPECT_GE(peak, 1.0 + 0.6 - 0.02) << "spot " << spots;
-            EXPECT_LE(peak, 2.0);
-            peak = 1.0;
+    ASSERT_GT(model.hard_spots().size(), 40U);
+    for (const Spot& spot : model.hard_spots()) {
+        double peak = 1.0;
+        for (int i = 0; i <= 100; ++i) {
+            const double x_m = spot.start_m + 0.005 * i;
+            peak = std::max(peak, model.surface_at(x_m, spot.centre_y_m).drag_scale);
         }
-        previous = scale;
+        EXPECT_GE(peak, 1.0 + 0.6 - 0.02) << "spot at " << spot.start_m;
+        EXPECT_LE(peak, 2.0);
     }
-    EXPECT_GT(spots, 10);
-    EXPECT_DOUBLE_EQ(model.surface_at(Model::kHardSpotsUntil_m + 5.0).drag_scale, 1.0);
-    EXPECT_DOUBLE_EQ(model.surface_at(1000.0).drag_scale, 1.0);
+    for (const double y_m : {-5.0, 0.0, 5.0}) {
+        EXPECT_DOUBLE_EQ(model.surface_at(Model::kHardSpotsUntil_m + 5.0, y_m).drag_scale, 1.0);
+        EXPECT_DOUBLE_EQ(model.surface_at(1000.0, y_m).drag_scale, 1.0);
+    }
 }
 
 // The same seed lays the same spots; another seed others.
@@ -249,14 +260,17 @@ TEST(Track, HardSpotsFollowTheirSeed) {
 
 TEST(Track, RejectsNonsenseHardSpots) {
     for (const HardSpots spots :
-         {HardSpots{.every_m = 1.0, .length_m = 1.0, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 0.1, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 20.0, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = -0.1, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = 3.0, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = 0.5, .seed = 0},
+         {HardSpots{.every_m = 1.0, .length_m = 1.0, .width_m = 12.0, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 0.1, .width_m = 12.0, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 20.0, .width_m = 12.0, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 12.0, .extra = -0.1, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 12.0, .extra = 3.0, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 12.0, .extra = 0.5, .seed = 0},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 0.2, .extra = 0.5, .seed = 1},
+          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 13.0, .extra = 0.5, .seed = 1},
           HardSpots{.every_m = std::numeric_limits<double>::quiet_NaN(),
                     .length_m = 1.0,
+                    .width_m = 12.0,
                     .extra = 0.5,
                     .seed = 1}}) {
         Params params = reference_params();
@@ -267,7 +281,8 @@ TEST(Track, RejectsNonsenseHardSpots) {
 
 Params with_weak_spots(std::uint32_t seed) {
     Params params = reference_params();
-    params.weak_spots = WeakSpots{.every_m = 10.0, .length_m = 2.0, .grip_loss = 0.2, .seed = seed};
+    params.weak_spots = WeakSpots{
+        .every_m = 10.0, .length_m = 2.0, .width_m = 12.0, .grip_loss = 0.2, .seed = seed};
     return params;
 }
 
@@ -295,8 +310,10 @@ TEST(Track, WeakSpotsTakeSomeGrip) {
         in_spot = share < 1.0;
     }
     EXPECT_LE(least, 1.0 - 0.6 * 0.2);
-    // 100 m with one every 10 m on average (gaps of 5 to 15 m): 5 to 15.
-    EXPECT_GE(spots, 5);
+    // 100 m with one every 10 m on average (gaps of 5 to 15 m), the middle
+    // line crossing about half of them (as wide as the lane, any point of
+    // it as likely to lie in one): 2 to 15.
+    EXPECT_GE(spots, 2);
     EXPECT_LE(spots, 15);
 }
 
@@ -316,14 +333,71 @@ TEST(Track, WeakSpotsFollowTheirSeed) {
 
 TEST(Track, RejectsNonsenseWeakSpots) {
     for (const WeakSpots spots :
-         {WeakSpots{.every_m = 1.0, .length_m = 1.0, .grip_loss = 0.1, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 0.1, .grip_loss = 0.1, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 1.0, .grip_loss = -0.1, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 1.0, .grip_loss = 0.6, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 1.0, .grip_loss = 0.1, .seed = 0}}) {
+         {WeakSpots{.every_m = 1.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = 0.1, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 0.1, .width_m = 12.0, .grip_loss = 0.1, .seed = 1},
+          WeakSpots{
+              .every_m = 10.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = -0.1, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = 0.6, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = 0.1, .seed = 0},
+          WeakSpots{.every_m = 10.0, .length_m = 1.0, .width_m = 0.2, .grip_loss = 0.1, .seed = 1},
+          WeakSpots{
+              .every_m = 10.0, .length_m = 1.0, .width_m = 13.0, .grip_loss = 0.1, .seed = 1}}) {
         Params params = reference_params();
         params.weak_spots = spots;
         EXPECT_EQ(validate(params), ParamError::kWeakSpots);
+    }
+}
+
+// A spot lies somewhere across the lane, at least partly in it, any point
+// of the lane as likely to be in one: at full strength over the middle
+// half of its width, fading to nothing at its edges, and nothing beside it.
+TEST(Track, SpotsLieAcrossTheLane) {
+    Params params = reference_params();
+    params.weak_spots =
+        WeakSpots{.every_m = 6.0, .length_m = 2.0, .width_m = 3.0, .grip_loss = 0.2, .seed = 9};
+    const Model model = model_of(params);
+    const double even = model_of(reference_params()).surface_at(10.0).grip_factor;
+    ASSERT_GT(model.weak_spots().size(), 20U);
+    double lowest_y_m = 0.0;
+    double highest_y_m = 0.0;
+    for (const Spot& spot : model.weak_spots()) {
+        EXPECT_GE(spot.centre_y_m + spot.width_m / 2.0, -6.0);
+        EXPECT_LE(spot.centre_y_m - spot.width_m / 2.0, 6.0);
+        lowest_y_m = std::min(lowest_y_m, spot.centre_y_m);
+        highest_y_m = std::max(highest_y_m, spot.centre_y_m);
+        const double middle_m = spot.start_m + spot.length_m / 2.0;
+        const double y_m = spot.centre_y_m;
+        EXPECT_DOUBLE_EQ(model.surface_at(middle_m, y_m).grip_factor, even * (1.0 - spot.peak));
+        EXPECT_DOUBLE_EQ(model.surface_at(middle_m, y_m + 0.7).grip_factor,
+                         even * (1.0 - spot.peak));
+        const double fading = model.surface_at(middle_m, y_m + 1.2).grip_factor;
+        EXPECT_GT(fading, even * (1.0 - spot.peak));
+        EXPECT_LT(fading, even);
+        EXPECT_DOUBLE_EQ(model.surface_at(middle_m, y_m + 1.5).grip_factor, even);
+        EXPECT_DOUBLE_EQ(model.surface_at(middle_m, y_m - 2.0).grip_factor, even);
+    }
+    // Spread over the lane, out to its edges.
+    EXPECT_LT(lowest_y_m, -4.0);
+    EXPECT_GT(highest_y_m, 4.0);
+}
+
+// Any line down the lane, the middle or near a chalk line, crosses about
+// as many spots: none is the safe side by the way they are laid.
+TEST(Track, EveryLineIsAsLikelyToCrossASpot) {
+    Params params = reference_params();
+    params.weak_spots =
+        WeakSpots{.every_m = 2.0, .length_m = 0.5, .width_m = 3.0, .grip_loss = 0.2, .seed = 4};
+    const Model model = model_of(params);
+    const std::size_t laid = model.weak_spots().size();
+    ASSERT_GT(laid, 70U);
+    for (const double y_m : {-5.5, -3.0, 0.0, 3.0, 5.5}) {
+        const auto crossed = std::ranges::count_if(model.weak_spots(), [&](const Spot& spot) {
+            return std::abs(spot.centre_y_m - y_m) < spot.width_m / 2.0;
+        });
+        // A share of width / (lane + width) = 0.2 of them, give or take.
+        const double share = static_cast<double>(crossed) / static_cast<double>(laid);
+        EXPECT_GT(share, 0.1) << y_m;
+        EXPECT_LT(share, 0.3) << y_m;
     }
 }
 

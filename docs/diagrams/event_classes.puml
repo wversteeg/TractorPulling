@@ -72,6 +72,7 @@ package "tp::event" {
     +suggested_keep() : bool
     +decide(keep : bool)
     +finished() : bool
+    +pulls_done() : int
     +standings() : span<const Standing>
   }
   class "event functions" as EventFns <<free functions>> {

@@ -18,12 +18,30 @@ for the big features; they are repeated at the end for completeness.
   that persists between runs.
 - **Lane-to-lane differences.** Lanes are prepared and worn differently;
   one lane per track for now.
-- **Left and right differences, one-sided weak spots.** The two halves of
-  a lane can grip differently (a wetter side, a softer edge), which makes
-  a tractor drift on its own; a weak spot under one side only would do the
-  same for a moment (track::WeakSpots cover the lane's whole width).
-  Equal sides stay the default. Deferred to be built together with more
-  track changes; the track is one surface across its width for now.
+- **Left and right differences.** The two halves of a lane can grip
+  differently (a wetter side, a softer edge), which makes a tractor drift
+  on its own. The hard and weak spots now lie somewhere across the lane
+  (one under one rear side spins that side), but the soil itself is one
+  surface across the width. Equal sides stay the default. Deferred to be
+  built together with more track changes.
+- **The lane wears.** Every pull leaves its tracks: ruts, a groove from the
+  knives, firmer and looser lines. A crew sees more with every pull (the
+  crew's report sharpens), but the spots themselves stay as laid; the lane
+  could change with the pulls on it, and a line others have pulled could
+  grip differently.
+- **Weak spots only bite near the grip limit.** In most pulls the engine
+  against the sled's drag limits the tractor, not the tires' grip, so a
+  short patch with a few per cent less grip costs next to nothing (the
+  crew's line across the lane gains tenths of a metre on the tracks with
+  hard spots, about nothing on those with weak spots only). They matter in
+  a launch with wheelspin and in the heavier classes; stronger or longer
+  weak spots would make the line count more.
+- **The pan's width.** Where the sled meets the spots its pan is taken as
+  2 m wide for every sled (sled::kPanHalfWidth_m): the sleds' data give the
+  pan's area, not its width.
+- **Scripted pullers do not steer.** The rivals' crews choose where their
+  sled starts, and the drivers then pull straight; one that drifts off its
+  line does not correct.
 - **Automatic test pull.** The sled operator sets the push-down from a test
   pull on the day's track. A reference tractor could run that test pull and
   choose the push-down for a target distance.
@@ -565,5 +583,5 @@ for the big features; they are repeated at the end for completeness.
 
 ## Roadmap features (from CLAUDE.md "Later")
 
-- Track changes: left and right differences, one-sided weak spots; pullers that
+- Track changes: left and right differences, a lane that wears; pullers that
   keep the lane.

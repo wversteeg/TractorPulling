@@ -50,6 +50,7 @@ LiveEvent::LiveEvent(const event::Rules& rules, const Venue& venue, const Field&
       pull_to_pull_(pull_to_pull),
       event_(event),
       player_(player),
+      seed_(seed),
       guesses_(seed),
       pulls_(seed ^ kPullStream),
       trial_gear_(variation.lowest_gear) {}
@@ -132,9 +133,21 @@ void LiveEvent::start_next() noexcept {
         failed_ = true;
         return;
     }
-    const ThisPull pull = on_this_pull(field_.pullers[static_cast<std::size_t>(next->puller)],
-                                       event_.sled(), pull_to_pull_, pulls_);
-    if (start_job(pull.puller, pull.sled, pull_rules())) {
+    ThisPull pull = on_this_pull(field_.pullers[static_cast<std::size_t>(next->puller)],
+                                 event_.sled(), pull_to_pull_, pulls_);
+    const run::Rules rules = pull_rules();
+    // The crew walks the lane and puts the sled where it reads it best, as
+    // in play_event.
+    const std::optional<track::Model> track = track::Model::create(venue_.track);
+    if (!track) {
+        failed_ = true;
+        return;
+    }
+    pull.puller.driver.start_y_m =
+        crew_line(crew_report(*track, next->kind, event_.pulls_done(), rules,
+                              crew_seed(seed_, next->puller, event_.pulls_done())),
+                  pull.puller, rules);
+    if (start_job(pull.puller, pull.sled, rules)) {
         job_pull_ = next;
         job_gear_ = pull.puller.driver.gear;
     }
@@ -143,7 +156,10 @@ void LiveEvent::start_next() noexcept {
 bool LiveEvent::start_job(const Puller& puller, const sled::Params& sled,
                           const run::Rules& rules) noexcept {
     const std::optional<pull::Model> model =
-        pull::Model::create({.tractor = puller.tractor, .sled = sled, .track = venue_.track});
+        pull::Model::create({.tractor = puller.tractor,
+                             .sled = sled,
+                             .track = venue_.track,
+                             .start_y_m = puller.driver.start_y_m});
     if (!model) {
         failed_ = true;
         return false;
@@ -312,6 +328,17 @@ LogEntry* LiveEvent::next_entry() noexcept {
     LogEntry& entry = log_[log_size_++];
     entry = LogEntry{};
     return &entry;
+}
+
+crew::Report LiveEvent::player_crew_report() const noexcept {
+    const std::optional<track::Model> track = track::Model::create(venue_.track);
+    if (!track) {
+        return {};
+    }
+    const std::optional<event::Pull> pull = pending_pull();
+    const event::PullKind kind = pull ? pull->kind : event::PullKind::kCompetition;
+    return crew_report(*track, kind, event_.pulls_done(), pull_rules(),
+                       crew_seed(seed_, player_, event_.pulls_done()));
 }
 
 }  // namespace tp::field

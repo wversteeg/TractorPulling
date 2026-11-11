@@ -208,6 +208,8 @@ public:
     [[nodiscard]] bool finished() const noexcept;
 
     [[nodiscard]] int puller_count() const noexcept { return count_; }
+    /// The pulls pulled so far, test pulls and re-pulls included.
+    [[nodiscard]] int pulls_done() const noexcept { return completed_; }
     /// The standings so far, best first.
     [[nodiscard]] std::span<const Standing> standings() noexcept;
 
