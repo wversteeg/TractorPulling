@@ -29,8 +29,8 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	add_line(TITLE_SIZE).text = "Haptics"
-	var hint := add_line(HINT_SIZE)
+	add_title("Haptics", TITLE_SIZE, "Settings")
+	var hint := add_line(HINT_SIZE, GarageArt.DIM)
 	hint.text = "Lit: the phone vibrates for it. Tap to switch."
 	var row: HBoxContainer = null
 	for kind: int in Haptics.Kind.values():
@@ -45,6 +45,7 @@ func _ready() -> void:
 	all_on_button = add_button(last, "All on")
 	all_off_button = add_button(last, "All off")
 	back_button = add_button(last, "Back")
+	back_button.primary = true
 	for button: TouchButton in [all_on_button, all_off_button, back_button]:
 		button.custom_minimum_size = ROW_BUTTON_SIZE
 	all_on_button.tapped.connect(func() -> void: _set_all(true))

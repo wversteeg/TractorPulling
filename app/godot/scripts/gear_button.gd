@@ -18,7 +18,10 @@ const HOLE_COLOUR := Color(0.15, 0.15, 0.18)
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), HELD_COLOUR if is_held() else COLOUR)
+	if rounded:
+		draw_card()
+	else:
+		draw_rect(Rect2(Vector2.ZERO, size), HELD_COLOUR if is_held() else COLOUR)
 	var centre := size / 2.0
 	var half := minf(size.x, size.y) / 2.0
 	var tip := half * TIP_SHARE

@@ -24,8 +24,8 @@ const ENDINGS := {
 }
 const RESULT_SIZE := Vector2(820.0, 520.0)
 const ENDING_SIZE := 36
-const ENDING_COLOUR := Color(1.0, 0.55, 0.4)
-const FULL_PULL_COLOUR := Color(0.45, 1.0, 0.5)
+const ENDING_COLOUR := GarageArt.RED
+const FULL_PULL_COLOUR := GarageArt.GREEN
 
 var again_button: TouchButton
 var menu_button: TouchButton
@@ -43,15 +43,18 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	_pull = add_line(LINE_SIZE)
-	_distance = add_line(DISTANCE_SIZE)
+	_distance = add_title("", DISTANCE_SIZE)
+	_pull = eyebrow_label
+	_pull.visible = true
 	_ending = add_line(ENDING_SIZE)
-	_speed = add_line(LINE_SIZE)
+	_speed = add_line(LINE_SIZE - 4, GarageArt.DIM)
 	_verdict = add_line(LINE_SIZE)
 	var row := add_button_row()
-	again_button = add_button(row, "Again")
+	again_button = add_button(row, "Again", "restart")
+	again_button.primary = true
 	menu_button = add_button(row, "Menu")
-	continue_button = add_button(row, "Continue")
+	continue_button = add_button(row, "Continue", "continue")
+	continue_button.primary = true
 	again_button.tapped.connect(func() -> void: again_requested.emit())
 	menu_button.tapped.connect(func() -> void: menu_requested.emit())
 	continue_button.tapped.connect(func() -> void: continue_requested.emit())
@@ -62,7 +65,7 @@ func _ready() -> void:
 # for a practice pull.
 func show_result(title: String, result: Dictionary, entry: Dictionary) -> void:
 	var distance_m: float = result["distance_m"]
-	_pull.text = title
+	_pull.text = title.to_upper()
 	_distance.text = "%.2f m" % distance_m
 	var ending := ending_name(result)
 	_ending.text = ENDINGS.get(ending, ending)

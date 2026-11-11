@@ -27,7 +27,6 @@ const TITLE_SIZE := 36
 const LINE_SIZE := 26
 const HINT_SIZE := 20
 const BUILD_SIZE := 16
-const BUILD_COLOUR := Color(0.75, 0.75, 0.75)
 # Lower than the other screens' buttons: four rows fit the screen's height.
 const SETTING_BUTTON_SIZE := Vector2(200.0, 70.0)
 # Narrower, so the last row's four buttons fit the panel.
@@ -76,33 +75,34 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	add_line(TITLE_SIZE).text = "Settings"
-	add_line(LINE_SIZE).text = "Controls"
+	add_title("Settings", TITLE_SIZE, "Game")
+	add_heading("Controls")
 	var layouts := add_button_row()
 	easy_button = add_button(layouts, "easy")
 	pro_button = add_button(layouts, "pro")
-	add_line(LINE_SIZE).text = "Steering"
+	add_heading("Steering")
 	var steering := add_button_row()
 	slider_button = add_button(steering, "slider")
 	tilt_button = add_button(steering, "tilt")
 	# The guidance, the sound and the haptics share a row: the panel keeps
 	# its height.
-	add_line(LINE_SIZE).text = "Guidance  ·  Sound  ·  Haptics"
+	add_heading("Guidance  ·  Sound  ·  Haptics")
 	var guidance := add_button_row()
 	guidance_on_button = add_button(guidance, "guide on")
 	guidance_off_button = add_button(guidance, "guide off")
 	sound_on_button = add_button(guidance, "sound on")
 	sound_off_button = add_button(guidance, "sound off")
 	haptics_button = add_button(guidance, "haptics")
-	_hint = add_line(HINT_SIZE)
+	_hint = add_line(HINT_SIZE, GarageArt.DIM)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	# New career beside Done: the panel keeps its height.
 	var go := add_button_row()
-	new_career_button = add_button(go, "New career")
+	new_career_button = add_button(go, "New career", "new")
 	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
 	start_button = add_button(go, "Start: 1")
 	money_button = add_button(go, "+ € %d" % TEST_MONEY_EUR)
 	done_button = add_button(go, "Done")
+	done_button.primary = true
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
 			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
 			start_button, money_button, done_button]:
@@ -131,7 +131,7 @@ func _ready() -> void:
 	build_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	build_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	build_label.add_theme_font_size_override("font_size", BUILD_SIZE)
-	build_label.add_theme_color_override("font_color", BUILD_COLOUR)
+	build_label.add_theme_color_override("font_color", GarageArt.DIM)
 	build_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	build_label.set_anchors_preset(Control.PRESET_CENTER)
 	build_label.offset_left = -panel_size.x / 2.0
