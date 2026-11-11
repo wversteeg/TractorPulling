@@ -14,8 +14,8 @@ const BOARD_SIZE := Vector2(1000.0, 660.0)
 const TITLE_SIZE := 36
 const ROW_SIZE := 24
 const COLUMN_GAP := 28
-const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
-const PLAYER_COLOUR := Color(1.0, 0.8, 0.2)
+const TEXT_COLOUR := GarageArt.TEXT
+const PLAYER_COLOUR := GarageArt.ORANGE_LIGHT
 # How much heavier a bold row's strokes are (FontVariation).
 const BOLD_EMBOLDEN := 1.0
 # Wider than the other screens' buttons: "Next event", "Pull again".
@@ -40,7 +40,7 @@ func _ready() -> void:
 	super()
 	_bold.base_font = ThemeDB.fallback_font
 	_bold.variation_embolden = BOLD_EMBOLDEN
-	_title = add_line(TITLE_SIZE)
+	_title = add_title("", TITLE_SIZE)
 	_table.add_theme_constant_override("h_separation", COLUMN_GAP)
 	_table.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -54,12 +54,13 @@ func _ready() -> void:
 		if _follow:
 			_scroll.scroll_vertical = int(bar.max_value))
 	add_item(_scroll)
-	_status = add_line(ROW_SIZE)
+	_status = add_line(ROW_SIZE - 2, GarageArt.DIM)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var row := add_button_row()
 	first_button = add_button(row, "")
 	second_button = add_button(row, "")
 	first_button.custom_minimum_size = WIDE_BUTTON
+	first_button.primary = true
 	second_button.custom_minimum_size = WIDE_BUTTON
 	first_button.tapped.connect(func() -> void: first_tapped.emit())
 	second_button.tapped.connect(func() -> void: second_tapped.emit())

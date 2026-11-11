@@ -69,7 +69,7 @@ package "GDScript (app/godot/scripts)" {
     +show_box_mass(box_mass_kg)
     +weights_shown() : int
     +hook_position() : Vector3
-    +rear_position() : Vector3
+    +camera_mount() : Vector3
     +{static} transport_wanted(snapshot) : float
     +{static} weight_count(box_mass_kg) : int
   }
@@ -195,10 +195,13 @@ package "GDScript (app/godot/scripts)" {
   }
   class MenuPanel {
     +panel_size : Vector2
-    +add_line(font_size) : Label
+    +eyebrow_label : Label
+    +add_line(font_size, colour) : Label
+    +add_title(title, font_size, eyebrow) : Label
+    +add_heading(text) : Label
     +add_item(control)
     +add_button_row() : HBoxContainer
-    +add_button(row, text) : TouchButton
+    +add_button(row, text, icon) : TouchButton
     +release_buttons()
   }
   class StartScreen {
@@ -223,6 +226,7 @@ package "GDScript (app/godot/scripts)" {
     +show_settings(pro, tilt, tilt_available, guidance, rungs, sound)
     +show_money(money_eur)
     +start_rung() : int
+    +release_buttons()
     ..signals..
     changed(pro, tilt, guidance), sound_changed(on), haptics_requested,
     done, new_career_requested(rung),
@@ -276,7 +280,7 @@ package "GDScript (app/godot/scripts)" {
     +show_curves(curves)
   }
   class GarageArt {
-    the parts' icons, drawn
+    the parts' and the menus' icons, drawn
     +{static} draw_icon(canvas, part, centre, size, colour)
     +{static} draw_tread(canvas, rect, depth, colour)
   }
@@ -360,10 +364,14 @@ package "GDScript (app/godot/scripts)" {
     +text : String
     +fires_on_release : bool
     +selected : bool
+    +rounded : bool
+    +primary : bool
+    +icon : String
     +readout : bool
     +disabled : bool
     +is_held() : bool
     +release()
+    +draw_card() : Color
     ..signals..
     tapped
   }

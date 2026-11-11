@@ -54,18 +54,21 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	add_line(TITLE_SIZE).text = "Tractor Pulling"
-	_event = add_line(LINE_SIZE)
+	add_title("Tractor Pulling", TITLE_SIZE)
+	_event = add_line(LINE_SIZE - 6, GarageArt.DIM)
 	_name = add_line(LINE_SIZE)
 	var go := add_button_row()
-	practice_button = add_button(go, "Practice")
-	garage_button = add_button(go, "Garage")
-	event_button = add_button(go, "Event")
+	practice_button = add_button(go, "Practice", "practice")
+	garage_button = add_button(go, "Garage", "garage")
+	event_button = add_button(go, "Event", "event")
+	event_button.primary = true
 	var choice := add_button_row()
-	new_career_button = add_button(choice, "New career")
-	new_season_button = add_button(choice, "New season")
-	continue_button = add_button(choice, "Continue")
-	move_up_button = add_button(choice, "Move up")
+	new_career_button = add_button(choice, "New career", "new")
+	new_season_button = add_button(choice, "New season", "new")
+	continue_button = add_button(choice, "Continue", "continue")
+	continue_button.primary = true
+	move_up_button = add_button(choice, "Move up", "move_up")
+	move_up_button.primary = true
 	for button: TouchButton in [new_career_button, new_season_button, continue_button,
 			move_up_button]:
 		button.custom_minimum_size = CHOICE_BUTTON_SIZE
@@ -78,6 +81,7 @@ func _ready() -> void:
 	new_career_button.tapped.connect(_ask_new_career)
 	move_up_button.tapped.connect(func() -> void: move_up_requested.emit())
 	settings_button.fires_on_release = true
+	settings_button.rounded = true
 	settings_button.anchor_left = 1.0
 	settings_button.anchor_right = 1.0
 	settings_button.offset_left = -GEAR_MARGIN - GEAR_SIZE
@@ -97,13 +101,14 @@ func release_buttons() -> void:
 # what went wrong setting it up, if anything; `career`
 # TractorPullEvent.get_career(), {} without one.
 func show_event(event: Dictionary, error: String, career: Dictionary = {}) -> void:
-	var in_class := "%s · %s  ·  " % [career["class_name"], career["level_name"]] \
+	eyebrow_label.text = ("%s  ·  %s" % [career["class_name"], career["level_name"]]).to_upper() \
 			if career.has("class_name") else ""
+	eyebrow_label.visible = not eyebrow_label.text.is_empty()
 	if event.is_empty():
-		_event.text = in_class.trim_suffix("  ·  ")
+		_event.text = ""
 		_name.text = ""
 	else:
-		_event.text = "%sEvent %d of %d" % [in_class, int(event["index"]) + 1, event["count"]]
+		_event.text = "Event %d of %d" % [int(event["index"]) + 1, event["count"]]
 		_name.text = event["name"]
 	var can_move_up: bool = error.is_empty() and career.get("can_move_up", false)
 	move_up_button.visible = can_move_up

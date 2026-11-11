@@ -27,10 +27,11 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	_title = add_line(TITLE_SIZE)
-	_line = add_line(LINE_SIZE)
+	_title = add_title("", TITLE_SIZE, "Pull stopped")
+	_line = add_line(LINE_SIZE, GarageArt.DIM)
 	var row := add_button_row()
-	restart_button = add_button(row, "Restart")
+	restart_button = add_button(row, "Restart", "restart")
+	restart_button.primary = true
 	move_back_button = add_button(row, "")
 	finish_button = add_button(row, "Finish")
 	for button: TouchButton in [restart_button, move_back_button, finish_button]:

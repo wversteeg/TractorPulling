@@ -300,26 +300,43 @@ func _check_web_loops() -> void:
 	sound.queue_free()
 
 
-# The close camera has the whole sled in view, from its rear to the
-# tractor; the cab camera rides on the tractor; next() goes round every
-# view and back.
+# The close camera sees the hook and the tractor from a little behind and
+# over the sled's canopy; the cab camera rides on the tractor; next() goes
+# round every view and back.
 func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) -> void:
 	var close: Camera3D = cameras.get("_cameras")[CameraRig.View.CLOSE]
-	var sled_rear := sled.rear_position()
-	_expect(close.is_position_in_frustum(sled_rear) and close.is_position_in_frustum(sled.hook_position())
+	var mount := sled.camera_mount()
+	_expect(close.is_position_in_frustum(sled.hook_position())
 			and close.is_position_in_frustum(tractor.global_position),
-			"the close camera sees the whole sled and the tractor")
+			"the close camera sees the hook and the tractor")
 	# Down the track is -z (TrackSpace): behind is +z.
-	var behind_m := (close.global_position - sled_rear).z
-	_expect(behind_m > 0.0, "the close camera behind the sled: %.1f m" % behind_m)
-	# On the dog-tail, the tractor turned and the sled's rear off to one
-	# side: the camera stands behind where the sled really is.
+	var behind_m := (close.global_position - mount).z
+	var over_m := close.global_position.y - mount.y
+	_expect(behind_m > 0.0 and behind_m < CameraRig.CLOSE_PAST_SLED_M + 2.0 and over_m > 0.0,
+			"the close camera a little behind and over the sled's canopy: %.1f m, %.1f m"
+			% [behind_m, over_m])
+	# The tractor turned: the camera turns with it, still as far back.
 	var target := tractor.global_position
 	var heading_rad := 0.3
-	var trailing := sled_rear + TrackSpace.point(0.0, -1.5, 0.0)
-	cameras.follow(target, 0.0, false, heading_rad, trailing)
-	_expect(close.is_position_in_frustum(trailing) and close.is_position_in_frustum(target),
-			"on the dog-tail, the close camera sees the sled's rear and the tractor")
+	cameras.follow(target, 0.0, false, heading_rad, mount)
+	var back := TrackSpace.point(-cos(heading_rad), -sin(heading_rad), 0.0)
+	_expect(close.is_position_in_frustum(target) and (close.global_position - target).dot(back) > 0.0,
+			"turned, the close camera behind the tractor along its heading")
+	# On the dog-tail: the tractor turned and the sled off to one side; the
+	# camera still sees the sled's box, the hook and the whole tractor, its
+	# roof (where the driver's eyes are) too.
+	var aside := TrackSpace.point(0.0, -1.5, 0.0)
+	var box: Node3D = sled.get("_box")
+	var box_top := box.global_position + aside + Vector3.UP * SledView.BOX_SIZE_M.y / 2.0
+	cameras.follow(target, 0.0, false, heading_rad, mount + aside)
+	_expect(close.is_position_in_frustum(box_top)
+			and close.is_position_in_frustum(sled.hook_position() + aside)
+			and close.is_position_in_frustum(target)
+			and close.is_position_in_frustum(cameras.cab.global_position),
+			"on the dog-tail, the close camera sees the sled's box, the hook and the whole tractor")
+	var chase: Camera3D = cameras.get("_cameras")[CameraRig.View.CHASE]
+	_expect((chase.global_position - target).dot(back) > -CameraRig.CHASE_OFFSET.x * 0.9,
+			"the chase camera turns with the tractor too")
 	# Off the chain, it stands behind the tractor.
 	cameras.follow(target, 0.0, false, 0.0)
 	_expect(close.is_position_in_frustum(target)
@@ -327,6 +344,21 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 			"off the chain, the close camera behind the tractor")
 	_expect(cameras.cab != null and tractor.is_ancestor_of(cameras.cab),
 			"the cab camera rides on the tractor")
+	# In reverse it looks back over the seat: the backs of both rear wheels
+	# (the tractor's own reference) and the chain leaving the hitch in view.
+	cameras.set_reversing(true)
+	cameras.follow(target, 0.0, false, 0.0)
+	var r: float = tractor.get("_rear_radius_m")
+	var basis := tractor.global_transform.basis
+	var wheel_backs := true
+	for wheel: Node3D in [tractor.get("_rear_left"), tractor.get("_rear_right")]:
+		wheel_backs = wheel_backs and cameras.cab.is_position_in_frustum(
+				wheel.global_position + basis * TrackSpace.point(-0.8 * r, 0.0, 0.7 * r))
+	var chain := tractor.hitch_position() + basis * TrackSpace.point(-1.0, 0.0, 0.0)
+	_expect(wheel_backs and cameras.cab.is_position_in_frustum(chain),
+			"in reverse the cab camera sees the backs of the rear wheels and the chain at the hitch")
+	cameras.set_reversing(false)
+	cameras.follow(target, 0.0, false, 0.0)
 	var seen: Array[Camera3D] = []
 	for i in CameraRig.View.size():
 		var current := cameras.current_camera()

@@ -2,7 +2,8 @@
 # any CanvasItem, so the workshop's pins, the part screens and the pit
 # board share them. Parts are named as the garage files name them
 # (data/garages/: engine_torque, rear_traction, ...) and a choice by its
-# slot (engine, rear_tire, driveline).
+# slot (engine, rear_tire, driveline). The menus' buttons have icons here
+# too, named for what they do (practice, garage, event, ...).
 class_name GarageArt
 extends RefCounted
 
@@ -43,8 +44,65 @@ static func draw_icon(ci: CanvasItem, part: String, centre: Vector2, size: float
 			_shift(ci, centre, s, w, colour)
 		"rated_rpm":
 			_governor(ci, centre, s, w, colour)
+		"practice":
+			_flag(ci, centre, s, w, colour)
+		"garage":
+			_wrench(ci, centre, s, w, colour)
+		"event":
+			_trophy(ci, centre, s, w, colour)
+		"continue":
+			_play(ci, centre, s, colour)
+		"new":
+			ci.draw_line(centre + Vector2(-0.6, 0.0) * s, centre + Vector2(0.6, 0.0) * s, colour, w * 1.4)
+			ci.draw_line(centre + Vector2(0.0, -0.6) * s, centre + Vector2(0.0, 0.6) * s, colour, w * 1.4)
+		"move_up":
+			_arrow_up(ci, centre, s, w, colour)
+		"restart":
+			_restart(ci, centre, s, w, colour)
 		_:
 			ci.draw_arc(centre, s * 0.8, 0.0, TAU, 24, colour, w)
+
+
+# The menus' icons.
+static func _flag(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	var p := func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * s
+	ci.draw_line(p.call(-0.55, -0.85), p.call(-0.55, 0.85), colour, w * 1.3)
+	ci.draw_colored_polygon(PackedVector2Array([p.call(-0.55, -0.8), p.call(0.15, -0.65),
+			p.call(0.7, -0.75), p.call(0.7, 0.0), p.call(0.15, 0.1), p.call(-0.55, -0.05)]), colour)
+
+
+static func _wrench(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	var head := c + Vector2(0.38, -0.38) * s
+	ci.draw_line(c + Vector2(-0.65, 0.65) * s, head, colour, w * 2.2)
+	ci.draw_arc(head, s * 0.32, PI * 0.5, PI * 2.0, 20, colour, w * 1.6, true)
+
+
+static func _trophy(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	var p := func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * s
+	ci.draw_colored_polygon(PackedVector2Array([p.call(-0.5, -0.8), p.call(0.5, -0.8),
+			p.call(0.42, -0.2), p.call(0.15, 0.1), p.call(-0.15, 0.1), p.call(-0.42, -0.2)]), colour)
+	ci.draw_arc(p.call(-0.5, -0.45), s * 0.25, PI * 0.5, PI * 1.5, 12, colour, w, true)
+	ci.draw_arc(p.call(0.5, -0.45), s * 0.25, -PI * 0.5, PI * 0.5, 12, colour, w, true)
+	ci.draw_line(p.call(0.0, 0.1), p.call(0.0, 0.5), colour, w * 1.5)
+	ci.draw_rect(Rect2(p.call(-0.4, 0.5), Vector2(0.8, 0.28) * s), colour)
+
+
+static func _play(ci: CanvasItem, c: Vector2, s: float, colour: Color) -> void:
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(-0.45, -0.7) * s,
+			c + Vector2(0.7, 0.0) * s, c + Vector2(-0.45, 0.7) * s]), colour)
+
+
+static func _arrow_up(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	ci.draw_line(c + Vector2(0.0, 0.75) * s, c + Vector2(0.0, -0.55) * s, colour, w * 1.6)
+	ci.draw_colored_polygon(PackedVector2Array([c + Vector2(0.0, -0.85) * s,
+			c + Vector2(0.55, -0.2) * s, c + Vector2(-0.55, -0.2) * s]), colour)
+
+
+static func _restart(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	ci.draw_arc(c, s * 0.6, -PI * 0.35, PI * 1.45, 28, colour, w * 1.4, true)
+	var tip := c + Vector2.from_angle(-PI * 0.35) * s * 0.6
+	ci.draw_colored_polygon(PackedVector2Array([tip + Vector2(0.3, -0.05) * s,
+			tip + Vector2(-0.25, -0.3) * s, tip + Vector2(-0.05, 0.3) * s]), colour)
 
 
 static func _engine(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:

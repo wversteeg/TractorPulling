@@ -21,19 +21,29 @@ signal done
 signal new_career_requested(rung: int)
 signal money_requested(amount_eur: int)
 
-# Wide enough for New career and three buttons beside it.
-const SETTINGS_SIZE := Vector2(960.0, 680.0)
-const TITLE_SIZE := 36
-const LINE_SIZE := 26
-const HINT_SIZE := 20
-const BUILD_SIZE := 16
-const BUILD_COLOUR := Color(0.75, 0.75, 0.75)
-# Lower than the other screens' buttons: four rows fit the screen's height.
-const SETTING_BUTTON_SIZE := Vector2(200.0, 70.0)
-# Narrower, so the last row's four buttons fit the panel.
-const LAST_ROW_BUTTON_WIDTH := 160.0
-# Narrower, so the guidance, sound and haptics row's five fit.
-const FEEDBACK_BUTTON_WIDTH := 160.0
+# Laid out as the pit board: the title with Done beside it, a card of the
+# driving settings and one of sound and feel, each a row with its name, a
+# short note and a pair of buttons, the hint under them and the career's
+# strip at the bottom [px].
+const SETTINGS_SIZE := Vector2(1180.0, 664.0)
+const TITLE_SIZE := 34
+const NAME_SIZE := 24
+const NOTE_SIZE := 15
+const HINT_SIZE := 18
+const BUILD_SIZE := 15
+const SETTING_FONT_SIZE := 24
+const DONE_RECT := Rect2(928.0, 4.0, 180.0, 64.0)
+const DRIVING_RECT := Rect2(0.0, 88.0, 640.0, 318.0)
+const FEEL_RECT := Rect2(660.0, 88.0, 448.0, 318.0)
+const HINT_RECT := Rect2(0.0, 414.0, 1108.0, 52.0)
+const CAREER_RECT := Rect2(0.0, 476.0, 1108.0, 112.0)
+const CARD_PADDING := 24.0
+const CARD_HEADING_M := 46.0
+const ROW_HEIGHT := 88.0
+const PAIR_BUTTON := Vector2(120.0, 58.0)
+const PAIR_GAP := 8.0
+const CAREER_GAP := 16.0
+const CAREER_BUTTON := Vector2(220.0, 64.0)
 # What "+ € 1000" adds to the bank [EUR].
 const TEST_MONEY_EUR := 1000
 
@@ -76,44 +86,50 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	add_line(TITLE_SIZE).text = "Settings"
-	add_line(LINE_SIZE).text = "Controls"
-	var layouts := add_button_row()
-	easy_button = add_button(layouts, "easy")
-	pro_button = add_button(layouts, "pro")
-	add_line(LINE_SIZE).text = "Steering"
-	var steering := add_button_row()
-	slider_button = add_button(steering, "slider")
-	tilt_button = add_button(steering, "tilt")
-	# The guidance, the sound and the haptics share a row: the panel keeps
-	# its height.
-	add_line(LINE_SIZE).text = "Guidance  ·  Sound  ·  Haptics"
-	var guidance := add_button_row()
-	guidance_on_button = add_button(guidance, "guide on")
-	guidance_off_button = add_button(guidance, "guide off")
-	sound_on_button = add_button(guidance, "sound on")
-	sound_off_button = add_button(guidance, "sound off")
-	haptics_button = add_button(guidance, "haptics")
-	_hint = add_line(HINT_SIZE)
+	var layout := Control.new()
+	layout.custom_minimum_size = panel_size - 2.0 * Vector2(PADDING, PADDING)
+	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_item(layout)
+	_text(layout, "GAME", Rect2(0.0, 0.0, 600.0, 22.0), MenuPanel.EYEBROW_SIZE, GarageArt.ORANGE)
+	_text(layout, "Settings", Rect2(0.0, 20.0, 600.0, 48.0), TITLE_SIZE, GarageArt.TEXT)
+	done_button = _button(layout, "Done", DONE_RECT)
+	done_button.primary = true
+	var driving := _card(layout, DRIVING_RECT, "Driving")
+	var pair := _row(driving, 0, "Controls", "Easy works the clutch for you",
+			"Easy", "Pro")
+	easy_button = pair[0]
+	pro_button = pair[1]
+	pair = _row(driving, 1, "Steering", "A slider, or tilt the phone",
+			"Slider", "Tilt")
+	slider_button = pair[0]
+	tilt_button = pair[1]
+	pair = _row(driving, 2, "Guidance", "What to do next, on screen", "On", "Off")
+	guidance_on_button = pair[0]
+	guidance_off_button = pair[1]
+	var feel := _card(layout, FEEL_RECT, "Sound and feel")
+	pair = _row(feel, 0, "Engine", "Heard on the track", "On", "Off")
+	sound_on_button = pair[0]
+	sound_off_button = pair[1]
+	_row_text(feel, 1, "Haptics", "Vibrations in the pull")
+	var inner := FEEL_RECT.size.x - 2.0 * CARD_PADDING
+	haptics_button = _button(feel, "Choose  ›", Rect2(
+			Vector2(CARD_PADDING + inner - 2.0 * PAIR_BUTTON.x - PAIR_GAP, _row_y(1)),
+			Vector2(2.0 * PAIR_BUTTON.x + PAIR_GAP, PAIR_BUTTON.y)))
+	_hint = _text(layout, "", HINT_RECT, HINT_SIZE, GarageArt.DIM)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# New career beside Done: the panel keeps its height.
-	var go := add_button_row()
-	new_career_button = add_button(go, "New career")
-	new_career_button.custom_minimum_size = StartScreen.CHOICE_BUTTON_SIZE
-	start_button = add_button(go, "Start: 1")
-	money_button = add_button(go, "+ € %d" % TEST_MONEY_EUR)
-	done_button = add_button(go, "Done")
-	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
-			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
-			start_button, money_button, done_button]:
-		button.custom_minimum_size = SETTING_BUTTON_SIZE
-	for button: TouchButton in [start_button, money_button, done_button]:
-		button.custom_minimum_size.x = LAST_ROW_BUTTON_WIDTH
-	haptics_button.custom_minimum_size = SETTING_BUTTON_SIZE
-	for button: TouchButton in [guidance_on_button, guidance_off_button, sound_on_button,
-			sound_off_button, haptics_button]:
-		button.custom_minimum_size.x = FEEDBACK_BUTTON_WIDTH
-	new_career_button.custom_minimum_size.y = SETTING_BUTTON_SIZE.y
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var career := _card(layout, CAREER_RECT, "Career")
+	var y := (CAREER_RECT.size.y - CAREER_BUTTON.y) / 2.0
+	var x := CAREER_RECT.size.x - CARD_PADDING - 3.0 * CAREER_BUTTON.x - 2.0 * CAREER_GAP
+	new_career_button = _button(career, "New career", Rect2(Vector2(x, y), CAREER_BUTTON), "new")
+	x += CAREER_BUTTON.x + CAREER_GAP
+	start_button = _button(career, "Start: 1", Rect2(Vector2(x, y), CAREER_BUTTON))
+	x += CAREER_BUTTON.x + CAREER_GAP
+	money_button = _button(career, "+ € %d" % TEST_MONEY_EUR, Rect2(Vector2(x, y), CAREER_BUTTON))
+	_text(career, "Start over. For testing: the class to start in, money",
+			Rect2(CARD_PADDING, CARD_HEADING_M - 4.0, 330.0, 50.0), NOTE_SIZE, GarageArt.DIM) \
+			.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	easy_button.tapped.connect(func() -> void: _pick(false, _tilt, _guidance))
 	pro_button.tapped.connect(func() -> void: _pick(true, _tilt, _guidance))
 	slider_button.tapped.connect(func() -> void: _pick(_pro, false, _guidance))
@@ -131,7 +147,7 @@ func _ready() -> void:
 	build_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	build_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	build_label.add_theme_font_size_override("font_size", BUILD_SIZE)
-	build_label.add_theme_color_override("font_color", BUILD_COLOUR)
+	build_label.add_theme_color_override("font_color", GarageArt.DIM)
 	build_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	build_label.set_anchors_preset(Control.PRESET_CENTER)
 	build_label.offset_left = -panel_size.x / 2.0
@@ -139,6 +155,83 @@ func _ready() -> void:
 	build_label.offset_top = panel_size.y / 2.0 - PADDING
 	build_label.offset_bottom = panel_size.y / 2.0
 	add_child(build_label)
+
+
+# The buttons are laid out by hand, not in the panel's rows.
+func release_buttons() -> void:
+	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
+			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
+			haptics_button, new_career_button, start_button, money_button, done_button]:
+		button.release()
+
+
+# A card with its heading, at `rect` in `parent`.
+func _card(parent: Control, rect: Rect2, heading: String) -> Panel:
+	var card := Panel.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = GarageArt.PANEL_LIGHT
+	style.border_color = GarageArt.LINE
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(TouchButton.CARD_CORNER)
+	card.add_theme_stylebox_override("panel", style)
+	card.position = rect.position
+	card.size = rect.size
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(card)
+	_text(card, heading.to_upper(), Rect2(CARD_PADDING, 14.0, rect.size.x, 22.0),
+			MenuPanel.HEADING_SIZE, GarageArt.ORANGE)
+	return card
+
+
+func _row_y(row: int) -> float:
+	return CARD_HEADING_M + row * ROW_HEIGHT
+
+
+# A row's name and note, on the left of the card.
+func _row_text(card: Panel, row: int, name: String, note: String) -> void:
+	var y := _row_y(row)
+	_text(card, name, Rect2(CARD_PADDING, y - 2.0, 300.0, 32.0), NAME_SIZE, GarageArt.TEXT)
+	var width := card.size.x - 2.0 * CARD_PADDING - 2.0 * PAIR_BUTTON.x - PAIR_GAP - 16.0
+	var label := _text(card, note, Rect2(CARD_PADDING, y + 30.0, width, 40.0), NOTE_SIZE,
+			GarageArt.DIM)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+
+# A row with a pair of buttons on the right: returns them.
+func _row(card: Panel, row: int, name: String, note: String, first: String,
+		second: String) -> Array[TouchButton]:
+	_row_text(card, row, name, note)
+	var right := card.size.x - CARD_PADDING
+	var y := _row_y(row)
+	var a := _button(card, first, Rect2(Vector2(right - 2.0 * PAIR_BUTTON.x - PAIR_GAP, y),
+			PAIR_BUTTON))
+	var b := _button(card, second, Rect2(Vector2(right - PAIR_BUTTON.x, y), PAIR_BUTTON))
+	return [a, b]
+
+
+func _text(parent: Control, text: String, rect: Rect2, font_size: int, colour: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.position = rect.position
+	label.size = rect.size
+	label.add_theme_font_size_override("font_size", font_size)
+	label.add_theme_color_override("font_color", colour)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(label)
+	return label
+
+
+func _button(parent: Control, text: String, rect: Rect2, icon: String = "") -> TouchButton:
+	var button := TouchButton.new()
+	button.text = text
+	button.icon = icon
+	button.rounded = true
+	button.font_size = SETTING_FONT_SIZE
+	button.fires_on_release = true
+	button.position = rect.position
+	button.size = rect.size
+	parent.add_child(button)
+	return button
 
 
 # Shows the settings as they are; `tilt_available` whether the device can

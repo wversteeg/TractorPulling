@@ -51,6 +51,10 @@ const REAR_BEHIND_WHEELS_M := 0.7
 # sit high at the back with the box running beneath them.
 const PLATFORM_FRONT_M := -0.5
 const PLATFORM_GAP_M := 0.1
+# Where the close camera sees from: over the canopy's front edge, behind
+# the wheels, this high over the canopy, as a TV camera on the sled [m].
+const CAMERA_MOUNT_X_M := -0.45
+const CAMERA_MOUNT_UP_M := 0.35
 const STILT_M := 0.08
 # The box rides this far above the rails [m].
 const BOX_LIFT_M := 0.12
@@ -93,6 +97,9 @@ var _transport_spin: Array[Node3D] = []
 var transport := 0.0
 var _transport_angle := 0.0
 var _hook := Marker3D.new()
+# Where the close camera sees from (CameraRig), on the sled: over the
+# canopy's front edge, set as the platform is built.
+var _camera_mount_m := TrackSpace.point(CAMERA_MOUNT_X_M, 0.0, CANOPY_M + CAMERA_MOUNT_UP_M)
 var _wheels := Node3D.new()
 var _lamp := MeshInstance3D.new()
 var _lamp_material := StandardMaterial3D.new()
@@ -381,6 +388,8 @@ func _build_platform(rail_z_m: float) -> void:
 	var canopy := _painted(Vector3(1.5, 0.05, 1.1), PAINT)
 	canopy.position = TrackSpace.point(-0.95, 0.0, deck_z_m + CANOPY_M)
 	add_child(canopy)
+	_camera_mount_m = TrackSpace.point(CAMERA_MOUNT_X_M, 0.0,
+			deck_z_m + CANOPY_M + CAMERA_MOUNT_UP_M)
 	var mast := Art.cylinder(0.04, CANOPY_M + 0.5, STEEL, 8, 0.4, 0.6)
 	mast.position = TrackSpace.point(-1.4, -0.5,
 			deck_z_m + (CANOPY_M + 0.5) / 2.0)
@@ -407,10 +416,11 @@ func hook_position() -> Vector3:
 	return _hook.global_position
 
 
-# The middle of the sled's rear on the ground, in the world: where it sits
-# and points, the dog-tail included.
-func rear_position() -> Vector3:
-	return global_transform * TrackSpace.point(_rear_m, 0.0, 0.0)
+# Over the sled's canopy, in the world: the close camera stands as far
+# behind the tractor (CameraRig.follow).
+func camera_mount() -> Vector3:
+	return transform * _camera_mount_m if not is_inside_tree() \
+			else global_transform * _camera_mount_m
 
 
 func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:

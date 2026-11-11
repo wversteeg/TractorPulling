@@ -18,6 +18,13 @@ const FONT_SIZE := 36
 const KEY_CORNER_SHARE := 0.18
 const KEY_BORDER := 3
 const KEY_BORDER_COLOUR := Color(1.0, 1.0, 1.0, 0.35)
+# The menus' cards: corner radius, and the text on an orange card.
+const CARD_CORNER := 12
+const CARD_BORDER := 2
+const PRIMARY_TEXT_COLOUR := Color(0.13, 0.08, 0.02)
+# An icon's size, a share of the font's, and the gap to the text.
+const ICON_SHARE := 1.05
+const ICON_GAP := 14.0
 
 @export var text := ""
 @export var font_size := FONT_SIZE
@@ -26,6 +33,21 @@ const KEY_BORDER_COLOUR := Color(1.0, 1.0, 1.0, 0.35)
 @export var selected := false:
 	set(value):
 		selected = value
+		queue_redraw()
+# The menus' look (MenuPanel): a rounded card with a thin rim, picked in
+# blue, held in orange; `primary` fills it orange, the screen's main
+# action; `icon` (GarageArt.draw_icon()'s names) stands before the text.
+@export var rounded := false:
+	set(value):
+		rounded = value
+		queue_redraw()
+@export var primary := false:
+	set(value):
+		primary = value
+		queue_redraw()
+@export var icon := "":
+	set(value):
+		icon = value
 		queue_redraw()
 # Shows something, not to be tapped, drawn as a button (the gear in).
 @export var readout := false:
@@ -88,18 +110,54 @@ func _notification(what: int) -> void:
 
 
 func _draw() -> void:
-	var colour := COLOUR
-	if _held:
-		colour = HELD_COLOUR
-	elif selected:
-		colour = SELECTED_COLOUR
-	draw_rect(Rect2(Vector2.ZERO, size), colour)
+	var text_colour := DISABLED_TEXT_COLOUR if disabled else TEXT_COLOUR
+	if rounded:
+		text_colour = draw_card()
+	else:
+		var colour := COLOUR
+		if _held:
+			colour = HELD_COLOUR
+		elif selected:
+			colour = SELECTED_COLOUR
+		draw_rect(Rect2(Vector2.ZERO, size), colour)
 	var font := get_theme_default_font()
 	var line := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	var at := Vector2((size.x - line.x) / 2.0, (size.y + font.get_ascent(font_size)
+	var icon_size := font_size * ICON_SHARE if not icon.is_empty() else 0.0
+	var gap := ICON_GAP if not icon.is_empty() and not text.is_empty() else 0.0
+	var left := (size.x - line.x - icon_size - gap) / 2.0
+	if not icon.is_empty():
+		GarageArt.draw_icon(self, icon, Vector2(left + icon_size / 2.0, size.y / 2.0), icon_size,
+				text_colour)
+	var at := Vector2(left + icon_size + gap, (size.y + font.get_ascent(font_size)
 			- font.get_descent(font_size)) / 2.0)
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
-			DISABLED_TEXT_COLOUR if disabled else TEXT_COLOUR)
+	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_colour)
+
+
+# The menus' card behind the text (GearButton's too); returns the text's
+# colour on it.
+func draw_card() -> Color:
+	var fill := GarageArt.PANEL_LIGHT
+	var rim := GarageArt.LINE
+	var text_colour := GarageArt.TEXT
+	if _held:
+		fill = GarageArt.ORANGE_LIGHT
+		rim = GarageArt.ORANGE_LIGHT
+		text_colour = PRIMARY_TEXT_COLOUR
+	elif primary and not disabled:
+		fill = GarageArt.ORANGE
+		rim = GarageArt.ORANGE_LIGHT
+		text_colour = PRIMARY_TEXT_COLOUR
+	elif selected:
+		fill = Color(GarageArt.BLUE, 0.9)
+		rim = GarageArt.BLUE_LIGHT
+	if disabled:
+		text_colour = DISABLED_TEXT_COLOUR
+	_key.bg_color = fill
+	_key.set_corner_radius_all(CARD_CORNER)
+	_key.set_border_width_all(CARD_BORDER)
+	_key.border_color = rim
+	draw_style_box(_key, Rect2(Vector2.ZERO, size))
+	return text_colour
 
 
 # The rounded key behind an icon button (ShiftButton, CameraButton), in

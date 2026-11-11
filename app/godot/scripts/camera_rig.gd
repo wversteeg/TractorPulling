@@ -1,6 +1,6 @@
-# The cameras on the pull: behind the tractor, close behind the sled
-# turning with the tractor, in the cab, beside the tractor, and above the
-# track. next() switches between them. In reverse the cab camera turns to
+# The cameras on the pull: far behind the tractor and close, about where
+# the sled's canopy is, both turning with the tractor; in the cab, beside the tractor,
+# and above the track. next() switches between them. In reverse the cab camera turns to
 # look back over the hitch. While the hitch meets the hook (backing up to
 # the sled, and backing off to release the chain), the rig shows the hitch
 # from the side instead, unless the player is in the cab or taps the
@@ -10,8 +10,9 @@ extends Node3D
 
 enum View { CHASE, CLOSE, CAB, SIDE, OVERHEAD }
 
-# Where the fixed-direction cameras sit from what they follow, in the
-# track's axes (x along, y left, z up) [m].
+# Where the chase camera sits from what it follows, along the tractor's
+# heading (x ahead, y left, z up) [m]; and the fixed-direction cameras, in
+# the track's axes (x along, y left, z up) [m].
 const CHASE_OFFSET := Vector3(-20.0, 3.0, 9.0)
 # On the right, inside the straw bales: the grandstand is on the left.
 const SIDE_OFFSET := Vector3(-2.0, -10.0, 3.5)
@@ -26,22 +27,27 @@ const HITCH_BACK_PER_M := 0.9
 # How fast the cab camera turns to look back in reverse, and forward again
 # [1/s].
 const CAB_TURN_RATE_PER_S := 6.0
-# Looking back the eyes are behind the seat, over the right shoulder, and
-# tipped down to the hitch: from where they look ahead, along, left and up
-# on the tractor [m]; and how far down [rad].
-const CAB_BACK_SHIFT := Vector3(-0.47, -0.15, 0.05)
-const CAB_BACK_PITCH_RAD := -0.3
-# The close camera: this far behind the sled's rear (where it really is,
-# the dog-tail included) and this high, along the tractor's heading,
-# looking at a point this far ahead of the tractor, so the whole sled is
-# just in view [m]. Off the chain, the sled no guide, it stands this far
-# behind the tractor instead [m].
-const CLOSE_BEHIND_SLED_M := 3.5
-const CLOSE_HEIGHT_M := 5.0
-const CLOSE_LOOK_AHEAD_M := 3.0
+# Looking back the driver turns round and raises up over the seat back,
+# over the right shoulder, and looks down past the hitch: from where the
+# eyes look ahead, along, left and up on the tractor [m]; and how far down
+# [rad]. So the back of the fenders, a little of the rear wheels and the
+# chain leaving the hitch stay in the bottom of the view, as the tractor's
+# own reference.
+const CAB_BACK_SHIFT := Vector3(-0.3, -0.12, 0.22)
+const CAB_BACK_PITCH_RAD := -0.62
+# The close camera: on the chain it stands behind the tractor along its
+# heading as far as the top of the sled's canopy (SledView.camera_mount())
+# is, and this much farther back and higher, as a TV camera on the sled
+# would see it but not shaken by the sled; looking at a point this far
+# ahead of the tractor [m]. Off the chain, the sled no guide, it stands
+# this far behind the tractor and this high instead [m].
+const CLOSE_PAST_SLED_M := 0.5
+const CLOSE_OVER_SLED_M := 1.3
+const CLOSE_LOOK_AHEAD_M := 1.0
 const CLOSE_UNHOOKED_BACK_M := 11.0
-# How fast the close camera turns to the tractor's heading [1/s].
-const CLOSE_TURN_RATE_PER_S := 3.0
+const CLOSE_UNHOOKED_UP_M := 5.0
+# How fast the chase and close cameras turn to the tractor's heading [1/s].
+const HEADING_TURN_RATE_PER_S := 3.0
 # How fast a camera catches up with its place [1/s].
 const FOLLOW_RATE_PER_S := 6.0
 # Far enough to see the hills round the field (VenueView) [m].
@@ -78,7 +84,7 @@ var _hitch_dismissed := false
 var _hitch_camera := Camera3D.new()
 var _hitch_apart_m := 0.0
 var _hitch_heading_rad := 0.0
-var _close_heading_rad := 0.0
+var _heading_rad := 0.0
 # The rig's own cameras, by View. The cab's slot holds one never placed or
 # shown: the cab view is the tractor's camera (`cab`).
 var _cameras: Array[Camera3D] = []
@@ -153,24 +159,31 @@ func reset_framing() -> void:
 
 
 # Follows a point on the track (the tractor, or between it and the sled),
-# the close camera along `heading_rad` (the tractor's, TrackSpace) behind
-# `sled_rear` (SledView.rear_position(), INF off the chain); `smooth` false
-# to jump there.
+# the chase and close cameras along `heading_rad` (the tractor's,
+# TrackSpace), the close one as far back as `sled_mount`
+# (SledView.camera_mount(), INF off the chain); `smooth` false to jump
+# there.
 func follow(target: Vector3, delta: float, smooth: bool = true, heading_rad: float = 0.0,
-		sled_rear: Vector3 = Vector3.INF) -> void:
+		sled_mount: Vector3 = Vector3.INF) -> void:
 	var weight := 1.0 - exp(-FOLLOW_RATE_PER_S * delta) if smooth else 1.0
-	_close_heading_rad = lerp_angle(_close_heading_rad, heading_rad,
-			1.0 - exp(-CLOSE_TURN_RATE_PER_S * delta) if smooth else 1.0)
+	_heading_rad = lerp_angle(_heading_rad, heading_rad,
+			1.0 - exp(-HEADING_TURN_RATE_PER_S * delta) if smooth else 1.0)
 	_time_s += delta
 	# A small, quick wobble, out of step on each axis; not from above.
 	var t := _time_s * SHAKE_RATE
 	var shake := Vector3(sin(t), sin(1.3 * t + 1.0), sin(0.7 * t + 2.0)) * SHAKE_M * rumble
-	var ahead := TrackSpace.point(cos(_close_heading_rad), sin(_close_heading_rad), 0.0)
-	var up := TrackSpace.point(0.0, 0.0, CLOSE_HEIGHT_M)
-	var close_from := target - ahead * CLOSE_UNHOOKED_BACK_M if sled_rear == Vector3.INF \
-			else Vector3(sled_rear.x, target.y, sled_rear.z) - ahead * CLOSE_BEHIND_SLED_M
-	_places[View.CHASE] = target + TrackSpace.point(CHASE_OFFSET.x, CHASE_OFFSET.y, CHASE_OFFSET.z)
-	_places[View.CLOSE] = close_from + up
+	var along := cos(_heading_rad)
+	var across := sin(_heading_rad)
+	var ahead := TrackSpace.point(along, across, 0.0)
+	_places[View.CHASE] = target + TrackSpace.point(CHASE_OFFSET.x * along - CHASE_OFFSET.y * across,
+			CHASE_OFFSET.x * across + CHASE_OFFSET.y * along, CHASE_OFFSET.z)
+	var back_m := CLOSE_UNHOOKED_BACK_M
+	var up_m := CLOSE_UNHOOKED_UP_M
+	if sled_mount != Vector3.INF:
+		var to_mount := sled_mount - target
+		back_m = -to_mount.dot(ahead) + CLOSE_PAST_SLED_M
+		up_m = to_mount.dot(Vector3.UP) + CLOSE_OVER_SLED_M
+	_places[View.CLOSE] = target - ahead * back_m + Vector3.UP * up_m
 	_places[View.SIDE] = target + TrackSpace.point(SIDE_OFFSET.x, SIDE_OFFSET.y, SIDE_OFFSET.z)
 	_places[View.OVERHEAD] = target + TrackSpace.point(OVERHEAD_OFFSET.x, OVERHEAD_OFFSET.y,
 			OVERHEAD_OFFSET.z)
