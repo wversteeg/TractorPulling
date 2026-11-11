@@ -344,6 +344,15 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 			"off the chain, the close camera behind the tractor")
 	_expect(cameras.cab != null and tractor.is_ancestor_of(cameras.cab),
 			"the cab camera rides on the tractor")
+	# Looking ahead the driver sees the dashboard's dials and the wheel's rim.
+	var rev: Node3D = tractor.get("_rev_needle")
+	var boost: Node3D = tractor.get("_boost_needle")
+	var steering_wheel: Node3D = tractor.get("_steering_wheel")
+	_expect(cameras.cab.is_position_in_frustum(rev.global_position)
+			and cameras.cab.is_position_in_frustum(boost.global_position)
+			and cameras.cab.is_position_in_frustum(steering_wheel.global_transform
+				* Vector3(0.0, 0.0, -TractorView.WHEEL_RADIUS_M)),
+			"the cab camera sees the dials and the steering wheel")
 	# In reverse it looks back over the seat: the backs of both rear wheels
 	# (the tractor's own reference) and the chain leaving the hitch in view.
 	cameras.set_reversing(true)
