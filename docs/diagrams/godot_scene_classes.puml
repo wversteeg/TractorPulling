@@ -58,6 +58,7 @@ package "GDScript (app/godot/scripts)" {
     +paint, paint_dark, driver_shirt : Color
     +build(dimensions)
     +show_snapshot(snapshot, delta)
+    +show_cockpit(snapshot) : wheel and gauges
     +hitch_position() : Vector3
     +cab_camera() : Camera3D
   }

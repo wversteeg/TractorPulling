@@ -353,6 +353,17 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 			and cameras.cab.is_position_in_frustum(steering_wheel.global_transform
 				* Vector3(0.0, 0.0, -TractorView.WHEEL_RADIUS_M)),
 			"the cab camera sees the dials and the steering wheel")
+	# The needles sweep clockwise (rotation.z falls) as the engine speeds up
+	# and the boost builds; the wheel turns with the front wheels, left
+	# (positive) one way.
+	tractor.show_cockpit({"steering_rad": 0.0, "engine_omega_rad_s": 80.0, "boost": 0.1})
+	var slow_rev := rev.rotation.z
+	var low_boost := boost.rotation.z
+	tractor.show_cockpit({"steering_rad": 0.1, "engine_omega_rad_s": 220.0, "boost": 0.8})
+	_expect(rev.rotation.z < slow_rev and boost.rotation.z < low_boost,
+			"the needles rise with the engine's speed and the boost")
+	_expect(is_equal_approx(steering_wheel.rotation.y, 0.1 * TractorView.STEERING_RATIO),
+			"the steering wheel turns with the front wheels")
 	# In reverse it looks back over the seat: the backs of both rear wheels
 	# (the tractor's own reference) and the chain leaving the hitch in view.
 	cameras.set_reversing(true)

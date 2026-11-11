@@ -64,8 +64,9 @@ const DASH_SIZE := Vector3(0.5, 0.2, 0.06)
 const DASH_TILT_RAD := 0.6
 const GAUGE_RADIUS_M := 0.06
 const NEEDLE_SWEEP_RAD := 4.2
-# The rev counter's top, a share past the rated speed.
+# The rev counter's top, a share past the rated speed; its dial's ticks.
 const REV_COUNTER_HEADROOM := 1.25
+const DIAL_TICKS := 9
 const DIAL := Color(0.93, 0.93, 0.9)
 const NEEDLE := Color(0.9, 0.2, 0.1)
 const LUGS_PER_SIDE := 23
@@ -117,6 +118,8 @@ var _steering_wheel := Node3D.new()
 var _rev_needle := Node3D.new()
 var _boost_needle := Node3D.new()
 var _stall_rad_s := 70.0
+# The governor's limit: the rev counter's red zone starts there.
+var _high_idle_rad_s := 250.0
 var _rear_left_angle := 0.0
 var _rear_right_angle := 0.0
 var _front_angle := 0.0
@@ -140,6 +143,7 @@ func build(d: Dictionary) -> void:
 		_built = true
 		_build_body(d)
 	_rated_rad_s = d["rated_omega_rad_s"]
+	_high_idle_rad_s = d.get("high_idle_omega_rad_s", _rated_rad_s)
 	_stall_rad_s = d["stall_omega_rad_s"]
 	_show_weights(d)
 
@@ -367,8 +371,12 @@ func _add_dashboard() -> void:
 	var cowl := Art.box(Vector3(DASH_SIZE.x, 0.03, 0.12), FRAME, 0.7)
 	cowl.position = Vector3(0.0, DASH_SIZE.y / 2.0, -0.03)
 	panel.add_child(cowl)
-	for gauge: Array in [[-0.1, _rev_needle], [0.1, _boost_needle]]:
+	# Red on the rev counter from the governor's limit up; the boost gauge
+	# has none.
+	var red_from := _high_idle_rad_s / (_rated_rad_s * REV_COUNTER_HEADROOM)
+	for gauge: Array in [[-0.1, _rev_needle, red_from], [0.1, _boost_needle, 2.0]]:
 		var x_m: float = gauge[0]
+		var red_share: float = gauge[2]
 		var bezel := Art.cylinder(GAUGE_RADIUS_M + 0.012, 0.012, CHROME, 24, 0.25, 0.8)
 		bezel.rotation.x = PI / 2.0
 		bezel.position = Vector3(x_m, 0.0, DASH_SIZE.z / 2.0)
@@ -380,10 +388,12 @@ func _add_dashboard() -> void:
 		face.position = Vector3(x_m, 0.0, DASH_SIZE.z / 2.0 + 0.002)
 		panel.add_child(face)
 		# Ticks round the dial, its top quarter red.
-		for t in 9:
-			var a := -NEEDLE_SWEEP_RAD / 2.0 + NEEDLE_SWEEP_RAD * t / 8.0
-			var tick := Art.box(Vector3(0.006, 0.016, 0.004), NEEDLE if t >= 7 else FRAME)
-			tick.material_override = _backlit(NEEDLE if t >= 7 else FRAME)
+		for t in DIAL_TICKS:
+			var share := t / float(DIAL_TICKS - 1)
+			var a := NEEDLE_SWEEP_RAD * (share - 0.5)
+			var colour := NEEDLE if share >= red_share - 1e-6 else FRAME
+			var tick := Art.box(Vector3(0.006, 0.016, 0.004), colour)
+			tick.material_override = _backlit(colour)
 			tick.position = Vector3(x_m + sin(a) * GAUGE_RADIUS_M * 0.8,
 					cos(a) * GAUGE_RADIUS_M * 0.8, DASH_SIZE.z / 2.0 + 0.011)
 			tick.rotation.z = -a
@@ -690,8 +700,7 @@ func show_snapshot(s: Dictionary, delta: float) -> void:
 	var steering: float = s["steering_rad"]
 	_front_left_steer.rotation.y = steering
 	_front_right_steer.rotation.y = steering
-	_steering_wheel.rotation.y = steering * STEERING_RATIO
-	_show_gauges(s)
+	show_cockpit(s)
 	# Rolling forward turns a wheel about -x (TrackSpace): the angle grows
 	# with the wheel's speed, and the front wheels roll with the ground.
 	_rear_left_angle -= float(s["rear_left_omega_rad_s"]) * delta
@@ -715,8 +724,10 @@ func show_snapshot(s: Dictionary, delta: float) -> void:
 		dust.color = Color(1.0, 1.0, 1.0, clampf(0.35 + 0.65 * throwing, 0.0, 1.0))
 
 
-# The rev counter from standing to past the rated speed, and the boost.
-func _show_gauges(s: Dictionary) -> void:
+# The steering wheel turned with the front wheels; the rev counter from
+# standing to past the rated speed, and the boost.
+func show_cockpit(s: Dictionary) -> void:
+	_steering_wheel.rotation.y = float(s["steering_rad"]) * STEERING_RATIO
 	var revs := clampf(float(s["engine_omega_rad_s"]) / (_rated_rad_s * REV_COUNTER_HEADROOM),
 			0.0, 1.0)
 	_rev_needle.rotation.z = NEEDLE_SWEEP_RAD * (0.5 - revs)
