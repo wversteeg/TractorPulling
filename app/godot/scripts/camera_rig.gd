@@ -26,19 +26,22 @@ const HITCH_BACK_PER_M := 0.9
 # How fast the cab camera turns to look back in reverse, and forward again
 # [1/s].
 const CAB_TURN_RATE_PER_S := 6.0
-# Looking back the eyes are behind the seat, over the right shoulder, and
-# tipped down to the hitch: from where they look ahead, along, left and up
-# on the tractor [m]; and how far down [rad].
-const CAB_BACK_SHIFT := Vector3(-0.47, -0.15, 0.05)
-const CAB_BACK_PITCH_RAD := -0.3
+# Looking back the driver turns round and raises up over the seat back,
+# over the right shoulder, and looks down past the hitch: from where the
+# eyes look ahead, along, left and up on the tractor [m]; and how far down
+# [rad]. So the hitch, the back of the fenders and a little of the rear
+# wheels stay in the bottom of the view, as the tractor's own reference.
+const CAB_BACK_SHIFT := Vector3(-0.3, -0.12, 0.22)
+const CAB_BACK_PITCH_RAD := -0.62
 # The close camera: this far behind the sled's rear (where it really is,
 # the dog-tail included) and this high, along the tractor's heading,
-# looking at a point this far ahead of the tractor, so the whole sled is
-# just in view [m]. Off the chain, the sled no guide, it stands this far
+# looking at a point this far ahead of the tractor [m]: high enough to see
+# the tractor over the operator's raised platform and canopy, the sled
+# below it. Off the chain, the sled no guide, it stands this far
 # behind the tractor instead [m].
-const CLOSE_BEHIND_SLED_M := 3.5
-const CLOSE_HEIGHT_M := 5.0
-const CLOSE_LOOK_AHEAD_M := 3.0
+const CLOSE_BEHIND_SLED_M := 5.0
+const CLOSE_HEIGHT_M := 8.5
+const CLOSE_LOOK_AHEAD_M := 4.0
 const CLOSE_UNHOOKED_BACK_M := 11.0
 # How fast the close camera turns to the tractor's heading [1/s].
 const CLOSE_TURN_RATE_PER_S := 3.0
