@@ -270,5 +270,44 @@ TEST(LiveEvent, RefusesWhatPlayEventWould) {
                                    s.running_order().first(kPullers - 1), 0, kSeed));
 }
 
+// Each event lays the track's spots from its own seed (another season's
+// event, other spots), and a crew sees them roughest when its puller pulls
+// first: with every pull before its own it knows more, the player's crew
+// as the rivals'.
+TEST(LiveEvent, EachEventHasItsOwnSpotsAndEarlyCrewsKnowLess) {
+    const EventSetup s = shipped("dry_hard_clay.toml");
+    // The crew's report when `player` is first due to pull.
+    const auto report_when_due = [&](int player, std::uint64_t seed) -> crew::Report {
+        std::optional<LiveEvent> created =
+            LiveEvent::create(s.rules, s.venue, s.field, s.variation, s.pull_to_pull,
+                              s.running_order(), player, seed);
+        if (!created) {
+            ADD_FAILURE() << "the live event refused the setup";
+            return {};
+        }
+        auto live = std::make_unique<LiveEvent>(*created);
+        for (int guard = 0; guard < 100'000 && live->turn() == LiveEvent::Turn::kRivals; ++guard) {
+            live->advance(kSlice);
+        }
+        EXPECT_EQ(live->turn(), LiveEvent::Turn::kPlayerPull);
+        return live->player_crew_report();
+    };
+    const crew::Report first = report_when_due(s.order[0], kSeed);
+    const crew::Report last = report_when_due(s.order[kPullers - 1], kSeed);
+    EXPECT_DOUBLE_EQ(first.uncertainty, 1.0);
+    EXPECT_LT(last.uncertainty, 0.5);
+    EXPECT_GT(last.count, first.count);
+
+    const auto spots_seed = [&](std::uint64_t seed) {
+        std::optional<LiveEvent> created = LiveEvent::create(
+            s.rules, s.venue, s.field, s.variation, s.pull_to_pull, s.running_order(), 0, seed);
+        const auto live = created ? std::make_unique<LiveEvent>(*created) : nullptr;
+        return live && live->venue().track.hard_spots ? live->venue().track.hard_spots->seed : 0U;
+    };
+    EXPECT_EQ(spots_seed(kSeed), spots_seed(kSeed));
+    EXPECT_NE(spots_seed(kSeed), spots_seed(kSeed + 1));
+    EXPECT_NE(spots_seed(kSeed), s.venue.track.hard_spots.value_or(track::HardSpots{}).seed);
+}
+
 }  // namespace
 }  // namespace tp::field

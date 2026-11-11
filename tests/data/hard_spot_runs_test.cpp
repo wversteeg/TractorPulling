@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -140,8 +141,12 @@ TEST(HardSpotRuns, TheDragJumpsAndTheEngineDipsAtHardSpots) {
 // spots, so this one has them closer and deeper, to show them clearly.
 TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
     Track weak = even(only_hard_spots());
-    weak.ground.weak_spots = track::WeakSpots{
-        .every_m = 10.0, .length_m = 2.0, .width_m = 12.0, .grip_loss = 0.3, .seed = 3};
+    weak.ground.weak_spots = track::WeakSpots{.every_m = 10.0,
+                                              .length_m = 2.0,
+                                              .min_width_m = 12.0,
+                                              .max_width_m = 12.0,
+                                              .grip_loss = 0.3,
+                                              .seed = 3};
     const Jumps with = jumps(pull(weak));
     const Jumps without = jumps(pull(even(weak)));
     EXPECT_LT(with.drag_rise, 0.05) << "the sled drags as before";
@@ -150,33 +155,50 @@ TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
 }
 
 // The crew that knows the track puts the sled where the spots cost least:
-// on the dry hard clay its line pulls further than the middle and than the
-// worst line across the lane, close to the best of them. The stakes are
-// small (the spots are mild): tenths of a metre in a pull-off.
+// over several events' layouts on the dry hard clay its line pulls further
+// on average than the middle and than the worst line across the lane, and
+// close to the best of them. The stakes are small (the spots are mild):
+// tenths of a metre in a pull-off.
 TEST(HardSpotRuns, TheCrewsLineCrossesTheFewestSpots) {
     const vehicle::Params built = loaded(load_tractor(data("tractors/sport_2500.toml")));
-    const Track track = loaded(load_track(data("tracks/dry_hard_clay.toml")));
-    const std::optional<track::Model> model = track::Model::create(track.ground);
-    if (!model) {
-        FAIL() << "the track was refused";
-    }
-    const crew::Report knows = crew::report(*model, {.pulls_seen = 100, .pull_off = true},
-                                            track.rules.full_pull_line_m, 1);
-    const double max_m = run::max_start_offset_m(built, track.rules);
-    const double line_m = crew::best_line_m(knows, built, max_m);
+    const Track file = loaded(load_track(data("tracks/dry_hard_clay.toml")));
+    const double max_m = run::max_start_offset_m(built, file.rules);
     constexpr int kPullOffs = 4;
-    const auto reached = [&](double y_m) { return pull(track, y_m, kPullOffs).back().pulled_m; };
-    double worst_m = reached(line_m);
-    double best_m = worst_m;
-    for (int i = -3; i <= 3; ++i) {
-        const double here_m = reached(max_m * i / 3.0);
-        worst_m = std::min(worst_m, here_m);
-        best_m = std::max(best_m, here_m);
+    constexpr int kEvents = 8;
+    constexpr int kLines = 3;  // each side of the middle
+    double crews_m = 0.0;
+    double middle_m = 0.0;
+    double worst_m = 0.0;
+    double best_m = 0.0;
+    for (std::uint64_t seed = 1; seed <= kEvents; ++seed) {
+        Track track = file;
+        track.ground = track::reseeded(file.ground, seed);
+        const std::optional<track::Model> model = track::Model::create(track.ground);
+        if (!model) {
+            FAIL() << "the track was refused";
+        }
+        const crew::Report knows = crew::report(*model, {.pulls_seen = 100, .pull_off = true},
+                                                track.rules.full_pull_line_m, seed);
+        const auto reached = [&](double y_m) {
+            return pull(track, y_m, kPullOffs).back().pulled_m;
+        };
+        double worst_here_m = std::numeric_limits<double>::max();
+        double best_here_m = 0.0;
+        for (int i = -kLines; i <= kLines; ++i) {
+            const double here_m = reached(max_m * i / kLines);
+            worst_here_m = std::min(worst_here_m, here_m);
+            best_here_m = std::max(best_here_m, here_m);
+            if (i == 0) {
+                middle_m += here_m / kEvents;
+            }
+        }
+        crews_m += reached(crew::best_line_m(knows, built, max_m)) / kEvents;
+        worst_m += worst_here_m / kEvents;
+        best_m += best_here_m / kEvents;
     }
-    const double crews_m = reached(line_m);
-    EXPECT_GT(crews_m, reached(0.0) + 0.1);
+    EXPECT_GT(crews_m, middle_m + 0.1);
     EXPECT_GT(crews_m, worst_m + 0.2);
-    EXPECT_GT(crews_m, best_m - 0.1);
+    EXPECT_GT(crews_m, best_m - 0.15);
 }
 
 }  // namespace

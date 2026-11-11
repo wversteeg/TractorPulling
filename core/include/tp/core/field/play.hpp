@@ -89,7 +89,13 @@ struct PlayedEvent {
     }
 };
 
-/// Plays one class's event with scripted pullers: each driver guesses a
+/// `venue` as an event seeded `seed` finds it: its track's hard and weak
+/// spots laid for that event (track::reseeded), so every season's events
+/// have their own, and the same seed the same.
+[[nodiscard]] Venue on_the_day(const Venue& venue, std::uint64_t seed) noexcept;
+
+/// Plays one class's event with scripted pullers on `venue` on_the_day(),
+/// so its spots are the event's own: each driver guesses a
 /// gear for the day's track (between `variation`'s gears), every pull
 /// differs a little (`pull_to_pull`), and test pullers decide as
 /// suggested. Deterministic for `seed`. Runs whole pulls: for tools,

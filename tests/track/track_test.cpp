@@ -180,8 +180,12 @@ std::vector<double> drag_profile(const Model& model) {
 
 Params with_hard_spots(std::uint32_t seed) {
     Params params = reference_params();
-    params.hard_spots =
-        HardSpots{.every_m = 8.0, .length_m = 1.5, .width_m = 12.0, .extra = 0.5, .seed = seed};
+    params.hard_spots = HardSpots{.every_m = 8.0,
+                                  .length_m = 1.5,
+                                  .min_width_m = 12.0,
+                                  .max_width_m = 12.0,
+                                  .extra = 0.5,
+                                  .seed = seed};
     return params;
 }
 
@@ -231,8 +235,12 @@ TEST(Track, HardSpotsMakeTheDragJump) {
 // even again.
 TEST(Track, EveryHardSpotReachesItsPeak) {
     Params params = reference_params();
-    params.hard_spots = HardSpots{
-        .every_m = 4.0, .length_m = kMinHardSpotLength_m, .width_m = 12.0, .extra = 1.0, .seed = 3};
+    params.hard_spots = HardSpots{.every_m = 4.0,
+                                  .length_m = kMinHardSpotLength_m,
+                                  .min_width_m = 12.0,
+                                  .max_width_m = 12.0,
+                                  .extra = 1.0,
+                                  .seed = 3};
     const Model model = model_of(params);
     ASSERT_GT(model.hard_spots().size(), 40U);
     for (const Spot& spot : model.hard_spots()) {
@@ -259,20 +267,60 @@ TEST(Track, HardSpotsFollowTheirSeed) {
 }
 
 TEST(Track, RejectsNonsenseHardSpots) {
-    for (const HardSpots spots :
-         {HardSpots{.every_m = 1.0, .length_m = 1.0, .width_m = 12.0, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 0.1, .width_m = 12.0, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 20.0, .width_m = 12.0, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 12.0, .extra = -0.1, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 12.0, .extra = 3.0, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 12.0, .extra = 0.5, .seed = 0},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 0.2, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = 8.0, .length_m = 1.0, .width_m = 13.0, .extra = 0.5, .seed = 1},
-          HardSpots{.every_m = std::numeric_limits<double>::quiet_NaN(),
-                    .length_m = 1.0,
-                    .width_m = 12.0,
-                    .extra = 0.5,
-                    .seed = 1}}) {
+    for (const HardSpots spots : {HardSpots{.every_m = 1.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = 0.5,
+                                            .seed = 1},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 0.1,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = 0.5,
+                                            .seed = 1},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 20.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = 0.5,
+                                            .seed = 1},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = -0.1,
+                                            .seed = 1},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = 3.0,
+                                            .seed = 1},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = 0.5,
+                                            .seed = 0},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 0.2,
+                                            .max_width_m = 0.2,
+                                            .extra = 0.5,
+                                            .seed = 1},
+                                  HardSpots{.every_m = 8.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 13.0,
+                                            .max_width_m = 13.0,
+                                            .extra = 0.5,
+                                            .seed = 1},
+                                  HardSpots{.every_m = std::numeric_limits<double>::quiet_NaN(),
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .extra = 0.5,
+                                            .seed = 1}}) {
         Params params = reference_params();
         params.hard_spots = spots;
         EXPECT_EQ(validate(params), ParamError::kHardSpots);
@@ -281,8 +329,12 @@ TEST(Track, RejectsNonsenseHardSpots) {
 
 Params with_weak_spots(std::uint32_t seed) {
     Params params = reference_params();
-    params.weak_spots = WeakSpots{
-        .every_m = 10.0, .length_m = 2.0, .width_m = 12.0, .grip_loss = 0.2, .seed = seed};
+    params.weak_spots = WeakSpots{.every_m = 10.0,
+                                  .length_m = 2.0,
+                                  .min_width_m = 12.0,
+                                  .max_width_m = 12.0,
+                                  .grip_loss = 0.2,
+                                  .seed = seed};
     return params;
 }
 
@@ -332,16 +384,48 @@ TEST(Track, WeakSpotsFollowTheirSeed) {
 }
 
 TEST(Track, RejectsNonsenseWeakSpots) {
-    for (const WeakSpots spots :
-         {WeakSpots{.every_m = 1.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = 0.1, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 0.1, .width_m = 12.0, .grip_loss = 0.1, .seed = 1},
-          WeakSpots{
-              .every_m = 10.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = -0.1, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = 0.6, .seed = 1},
-          WeakSpots{.every_m = 10.0, .length_m = 1.0, .width_m = 12.0, .grip_loss = 0.1, .seed = 0},
-          WeakSpots{.every_m = 10.0, .length_m = 1.0, .width_m = 0.2, .grip_loss = 0.1, .seed = 1},
-          WeakSpots{
-              .every_m = 10.0, .length_m = 1.0, .width_m = 13.0, .grip_loss = 0.1, .seed = 1}}) {
+    for (const WeakSpots spots : {WeakSpots{.every_m = 1.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .grip_loss = 0.1,
+                                            .seed = 1},
+                                  WeakSpots{.every_m = 10.0,
+                                            .length_m = 0.1,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .grip_loss = 0.1,
+                                            .seed = 1},
+                                  WeakSpots{.every_m = 10.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .grip_loss = -0.1,
+                                            .seed = 1},
+                                  WeakSpots{.every_m = 10.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .grip_loss = 0.6,
+                                            .seed = 1},
+                                  WeakSpots{.every_m = 10.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 12.0,
+                                            .max_width_m = 12.0,
+                                            .grip_loss = 0.1,
+                                            .seed = 0},
+                                  WeakSpots{.every_m = 10.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 0.2,
+                                            .max_width_m = 0.2,
+                                            .grip_loss = 0.1,
+                                            .seed = 1},
+                                  WeakSpots{.every_m = 10.0,
+                                            .length_m = 1.0,
+                                            .min_width_m = 13.0,
+                                            .max_width_m = 13.0,
+                                            .grip_loss = 0.1,
+                                            .seed = 1}}) {
         Params params = reference_params();
         params.weak_spots = spots;
         EXPECT_EQ(validate(params), ParamError::kWeakSpots);
@@ -353,8 +437,12 @@ TEST(Track, RejectsNonsenseWeakSpots) {
 // half of its width, fading to nothing at its edges, and nothing beside it.
 TEST(Track, SpotsLieAcrossTheLane) {
     Params params = reference_params();
-    params.weak_spots =
-        WeakSpots{.every_m = 6.0, .length_m = 2.0, .width_m = 3.0, .grip_loss = 0.2, .seed = 9};
+    params.weak_spots = WeakSpots{.every_m = 6.0,
+                                  .length_m = 2.0,
+                                  .min_width_m = 3.0,
+                                  .max_width_m = 3.0,
+                                  .grip_loss = 0.2,
+                                  .seed = 9};
     const Model model = model_of(params);
     const double even = model_of(reference_params()).surface_at(10.0).grip_factor;
     ASSERT_GT(model.weak_spots().size(), 20U);
@@ -385,8 +473,12 @@ TEST(Track, SpotsLieAcrossTheLane) {
 // as many spots: none is the safe side by the way they are laid.
 TEST(Track, EveryLineIsAsLikelyToCrossASpot) {
     Params params = reference_params();
-    params.weak_spots =
-        WeakSpots{.every_m = 2.0, .length_m = 0.5, .width_m = 3.0, .grip_loss = 0.2, .seed = 4};
+    params.weak_spots = WeakSpots{.every_m = 2.0,
+                                  .length_m = 0.5,
+                                  .min_width_m = 3.0,
+                                  .max_width_m = 3.0,
+                                  .grip_loss = 0.2,
+                                  .seed = 4};
     const Model model = model_of(params);
     const std::size_t laid = model.weak_spots().size();
     ASSERT_GT(laid, 70U);
@@ -399,6 +491,78 @@ TEST(Track, EveryLineIsAsLikelyToCrossASpot) {
         EXPECT_GT(share, 0.1) << y_m;
         EXPECT_LT(share, 0.3) << y_m;
     }
+}
+
+// Each spot gets its own width between the table's narrowest and widest:
+// some a patch, some across much of the lane.
+TEST(Track, SpotWidthsVaryWithinTheirRange) {
+    Params params = reference_params();
+    params.hard_spots = HardSpots{.every_m = 4.0,
+                                  .length_m = 1.0,
+                                  .min_width_m = 1.0,
+                                  .max_width_m = 6.0,
+                                  .extra = 0.3,
+                                  .seed = 8};
+    const Model model = model_of(params);
+    double narrowest_m = 6.0;
+    double widest_m = 1.0;
+    for (const Spot& spot : model.hard_spots()) {
+        EXPECT_GE(spot.width_m, 1.0);
+        EXPECT_LE(spot.width_m, 6.0);
+        narrowest_m = std::min(narrowest_m, spot.width_m);
+        widest_m = std::max(widest_m, spot.width_m);
+    }
+    EXPECT_LT(narrowest_m, 2.0);
+    EXPECT_GT(widest_m, 5.0);
+    params.hard_spots = HardSpots{.every_m = 4.0,
+                                  .length_m = 1.0,
+                                  .min_width_m = 7.0,
+                                  .max_width_m = 6.0,
+                                  .extra = 0.3,
+                                  .seed = 8};
+    EXPECT_EQ(validate(params), ParamError::kHardSpots) << "narrowest wider than widest";
+}
+
+// An event lays the track's spots afresh from its own seed: the same seed
+// the same spots, another seed others, of the same kinds and sizes; the
+// rest of the track as it was, and a track without spots unchanged.
+TEST(Track, AnEventLaysItsOwnSpots) {
+    Params params = reference_params();
+    params.hard_spots = HardSpots{.every_m = 6.0,
+                                  .length_m = 1.2,
+                                  .min_width_m = 1.0,
+                                  .max_width_m = 6.0,
+                                  .extra = 0.3,
+                                  .seed = 11};
+    params.weak_spots = WeakSpots{.every_m = 15.0,
+                                  .length_m = 1.5,
+                                  .min_width_m = 1.0,
+                                  .max_width_m = 3.0,
+                                  .grip_loss = 0.06,
+                                  .seed = 79};
+    const Params first = reseeded(params, 1001);
+    const Params again = reseeded(params, 1001);
+    const Params other = reseeded(params, 1002);
+    const HardSpots hard = first.hard_spots.value_or(HardSpots{});
+    const WeakSpots weak = first.weak_spots.value_or(WeakSpots{});
+    const HardSpots given = params.hard_spots.value_or(HardSpots{});
+    EXPECT_EQ(hard.seed, again.hard_spots.value_or(HardSpots{}).seed);
+    EXPECT_EQ(weak.seed, again.weak_spots.value_or(WeakSpots{}).seed);
+    EXPECT_NE(hard.seed, other.hard_spots.value_or(HardSpots{}).seed);
+    EXPECT_NE(weak.seed, other.weak_spots.value_or(WeakSpots{}).seed);
+    EXPECT_NE(hard.seed, given.seed);
+    EXPECT_EQ(hard.extra, given.extra);
+    EXPECT_EQ(weak.max_width_m, 3.0);
+    EXPECT_EQ(first.grip_scale, params.grip_scale);
+    EXPECT_EQ(validate(first), std::nullopt);
+    const Model a = model_of(first);
+    const Model b = model_of(other);
+    ASSERT_FALSE(a.hard_spots().empty());
+    ASSERT_FALSE(b.hard_spots().empty());
+    EXPECT_NE(a.hard_spots().front().start_m, b.hard_spots().front().start_m);
+    const Params even = reseeded(reference_params(), 1001);
+    EXPECT_FALSE(even.hard_spots.has_value());
+    EXPECT_FALSE(even.weak_spots.has_value());
 }
 
 }  // namespace

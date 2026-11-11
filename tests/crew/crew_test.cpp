@@ -16,10 +16,18 @@ namespace {
 track::Params spotted_track() {
     track::Params params;
     params.soil = {.clay_fraction = 0.3, .moisture = 0.15, .compaction = 0.8};
-    params.hard_spots =
-        track::HardSpots{.every_m = 6.0, .length_m = 1.5, .width_m = 3.0, .extra = 0.4, .seed = 5};
-    params.weak_spots = track::WeakSpots{
-        .every_m = 8.0, .length_m = 2.0, .width_m = 2.0, .grip_loss = 0.2, .seed = 6};
+    params.hard_spots = track::HardSpots{.every_m = 6.0,
+                                         .length_m = 1.5,
+                                         .min_width_m = 3.0,
+                                         .max_width_m = 3.0,
+                                         .extra = 0.4,
+                                         .seed = 5};
+    params.weak_spots = track::WeakSpots{.every_m = 8.0,
+                                         .length_m = 2.0,
+                                         .min_width_m = 2.0,
+                                         .max_width_m = 2.0,
+                                         .grip_loss = 0.2,
+                                         .seed = 6};
     return params;
 }
 

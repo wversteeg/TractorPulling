@@ -20,12 +20,14 @@ package "tp::track" {
     +spots_across_m : double, the lane's width
   }
   class HardSpots <<struct>> {
-    +every_m, length_m, width_m : double
+    +every_m, length_m : double
+    +min_width_m, max_width_m : double
     +extra : double, 0 to 2
     +seed : uint32
   }
   class WeakSpots <<struct>> {
-    +every_m, length_m, width_m : double
+    +every_m, length_m : double
+    +min_width_m, max_width_m : double
     +grip_loss : double, 0 to 0.5
     +seed : uint32
   }
@@ -37,7 +39,7 @@ package "tp::track" {
   class SpotLayout {
     -spots_ : array<Spot, 160>, by start
     -count_ : size_t
-    +lay(every_m, length_m, width_m, across_m, size, seed)
+    +lay(const Pattern&) (every_m, length_m,\n      min/max_width_m, across_m, size, seed)
     +at(x_m, y_m) : double, 0 to the spot's peak
     +spots() : span<const Spot>
   }
@@ -70,6 +72,7 @@ package "tp::track" {
     +validate(const Params&) : optional<ParamError>
     +composition_at(const Params&, x_m) : soil::Composition
     +strength_at(const Spot&, x_m, y_m) : double
+    +reseeded(const Params&, seed) : Params (an event's own spots)
   }
   Model *-- Params
   Params *-- HardSpots
@@ -87,8 +90,9 @@ note bottom of Model
   profiles hold their end values beyond their ends;
   in the step: a lookup and a blend of two samples, no soil model;
   hard and weak spots laid from their seeds at setup (xorshift), the
-  same on every platform, over the first 200 m, each somewhere across
-  the lane (any line as likely to cross one): surface_at() evaluates
+  same on every platform, over the first 200 m, each its own width and
+  somewhere across the lane (any line as likely to cross one); an event
+  reseeds them (reseeded), so each season's events have their own: surface_at() evaluates
   the spot under (x, y) exactly (a binary search along x): a hard spot
   raises the drag_scale, a weak spot lowers the grip_factor;
   surface_across() takes their mean over a width (the sled's pan)

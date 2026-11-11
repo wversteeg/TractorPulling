@@ -89,16 +89,16 @@ FieldError describe(track::ParamError error) {
                     "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
                         ", length_m in " +
                         range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
-                        ", width_m from " + number(track::kMinSpotWidth_m) +
-                        " to the lane's width and extra in " +
+                        ", min_width_m from " + number(track::kMinSpotWidth_m) +
+                        " up to max_width_m, at most the lane's width, and extra in " +
                         range(0.0, track::kMaxHardSpotExtra)};
         case ParamError::kWeakSpots:
             return {"track.weak_spots",
                     "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
                         ", length_m in " +
                         range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
-                        ", width_m from " + number(track::kMinSpotWidth_m) +
-                        " to the lane's width and grip_loss in " +
+                        ", min_width_m from " + number(track::kMinSpotWidth_m) +
+                        " up to max_width_m, at most the lane's width, and grip_loss in " +
                         range(0.0, track::kMaxWeakSpotGripLoss)};
         case ParamError::kSpotsAcross:
             return {"track.lane_width_m", "must be > 0"};
@@ -132,7 +132,8 @@ std::optional<track::HardSpots> hard_spots(detail::Reader& reader) {
     return track::HardSpots{
         .every_m = reader.number("track.hard_spots.every_m"),
         .length_m = reader.number("track.hard_spots.length_m"),
-        .width_m = reader.number("track.hard_spots.width_m"),
+        .min_width_m = reader.number("track.hard_spots.min_width_m"),
+        .max_width_m = reader.number("track.hard_spots.max_width_m"),
         .extra = reader.number("track.hard_spots.extra"),
         .seed = seed_of(reader, "track.hard_spots.seed"),
     };
@@ -146,7 +147,8 @@ std::optional<track::WeakSpots> weak_spots(detail::Reader& reader) {
     return track::WeakSpots{
         .every_m = reader.number("track.weak_spots.every_m"),
         .length_m = reader.number("track.weak_spots.length_m"),
-        .width_m = reader.number("track.weak_spots.width_m"),
+        .min_width_m = reader.number("track.weak_spots.min_width_m"),
+        .max_width_m = reader.number("track.weak_spots.max_width_m"),
         .grip_loss = reader.number("track.weak_spots.grip_loss"),
         .seed = seed_of(reader, "track.weak_spots.seed"),
     };

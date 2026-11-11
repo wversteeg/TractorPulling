@@ -1,6 +1,9 @@
 #include "tp/core/track/track.hpp"
 
+#include "tp/core/math/random.hpp"
+
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -35,18 +38,28 @@ soil::Surface blend(const soil::Surface& a, const soil::Surface& b, double t) no
 struct SpotShape {
     double every_m = 0.0;
     double length_m = 0.0;
-    double width_m = 0.0;
+    double min_width_m = 0.0;
+    double max_width_m = 0.0;
     double size = 0.0;
     std::uint32_t seed = 1;
 };
 
 bool spots_valid(const SpotShape& shape, double max_size, double across_m) noexcept {
-    return std::isfinite(shape.every_m) && std::isfinite(shape.length_m) &&
-           std::isfinite(shape.width_m) && std::isfinite(shape.size) &&
+    const std::array values = {shape.every_m, shape.length_m, shape.min_width_m, shape.max_width_m,
+                               shape.size};
+    return std::ranges::all_of(values, [](double v) { return std::isfinite(v); }) &&
            shape.every_m >= kMinHardSpotSpacing_m && shape.length_m >= kMinHardSpotLength_m &&
-           shape.length_m <= kMaxHardSpotLength_m && shape.width_m >= kMinSpotWidth_m &&
-           shape.width_m <= across_m && shape.size >= 0.0 && shape.size <= max_size &&
-           shape.seed != 0;
+           shape.length_m <= kMaxHardSpotLength_m && shape.min_width_m >= kMinSpotWidth_m &&
+           shape.min_width_m <= shape.max_width_m && shape.max_width_m <= across_m &&
+           shape.size >= 0.0 && shape.size <= max_size && shape.seed != 0;
+}
+
+// A spot table's seed for an event seeded `seed`: never 0.
+std::uint32_t mixed_seed(std::uint32_t own, std::uint64_t seed) noexcept {
+    math::SplitMix64 random{seed ^ (static_cast<std::uint64_t>(own) << 32U)};
+    constexpr unsigned kHighHalf = 32U;
+    const auto mixed = static_cast<std::uint32_t>(random.next() >> kHighHalf);
+    return mixed == 0 ? 1 : mixed;
 }
 
 // A 32-bit xorshift: integer arithmetic only, so the hard spots fall in the
@@ -104,24 +117,38 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (!std::isfinite(across_m) || across_m <= 0.0) {
         return ParamError::kSpotsAcross;
     }
-    if (const auto& hard = params.hard_spots; hard && !spots_valid({.every_m = hard->every_m,
-                                                                    .length_m = hard->length_m,
-                                                                    .width_m = hard->width_m,
-                                                                    .size = hard->extra,
-                                                                    .seed = hard->seed},
-                                                                   kMaxHardSpotExtra, across_m)) {
+    if (const auto& hard = params.hard_spots;
+        hard && !spots_valid({.every_m = hard->every_m,
+                              .length_m = hard->length_m,
+                              .min_width_m = hard->min_width_m,
+                              .max_width_m = hard->max_width_m,
+                              .size = hard->extra,
+                              .seed = hard->seed},
+                             kMaxHardSpotExtra, across_m)) {
         return ParamError::kHardSpots;
     }
     if (const auto& weak = params.weak_spots;
         weak && !spots_valid({.every_m = weak->every_m,
                               .length_m = weak->length_m,
-                              .width_m = weak->width_m,
+                              .min_width_m = weak->min_width_m,
+                              .max_width_m = weak->max_width_m,
                               .size = weak->grip_loss,
                               .seed = weak->seed},
                              kMaxWeakSpotGripLoss, across_m)) {
         return ParamError::kWeakSpots;
     }
     return std::nullopt;
+}
+
+Params reseeded(const Params& params, std::uint64_t seed) noexcept {
+    Params out = params;
+    if (out.hard_spots) {
+        out.hard_spots->seed = mixed_seed(out.hard_spots->seed, seed);
+    }
+    if (out.weak_spots) {
+        out.weak_spots->seed = mixed_seed(out.weak_spots->seed, seed);
+    }
+    return out;
 }
 
 soil::Composition composition_at(const Params& params, double x_m) noexcept {
@@ -162,12 +189,22 @@ Model::Model(const Params& params) noexcept : params_(params) {
         samples_[i].grip_factor *= params_.grip_scale;
     }
     if (const auto& hard = params_.hard_spots) {
-        hard_.lay(hard->every_m, hard->length_m, hard->width_m, params_.spots_across_m, hard->extra,
-                  hard->seed);
+        hard_.lay({.every_m = hard->every_m,
+                   .length_m = hard->length_m,
+                   .min_width_m = hard->min_width_m,
+                   .max_width_m = hard->max_width_m,
+                   .across_m = params_.spots_across_m,
+                   .size = hard->extra,
+                   .seed = hard->seed});
     }
     if (const auto& weak = params_.weak_spots) {
-        weak_.lay(weak->every_m, weak->length_m, weak->width_m, params_.spots_across_m,
-                  weak->grip_loss, weak->seed);
+        weak_.lay({.every_m = weak->every_m,
+                   .length_m = weak->length_m,
+                   .min_width_m = weak->min_width_m,
+                   .max_width_m = weak->max_width_m,
+                   .across_m = params_.spots_across_m,
+                   .size = weak->grip_loss,
+                   .seed = weak->seed});
     }
 }
 
@@ -184,23 +221,23 @@ double strength_at(const Spot& spot, double x_m, double y_m) noexcept {
     return spot.peak * (1.0 - along) * across;
 }
 
-void Model::SpotLayout::lay(double every_m, double length_m, double width_m, double across_m,
-                            double size, std::uint32_t seed) noexcept {
-    Xorshift32 random{seed};
-    // Centres spread so that every point of the band is as likely to lie
-    // in a spot, its edges too: a spot may reach past the band's edge.
-    const double lowest_centre_m = -(across_m + width_m) / 2.0;
-    const double centre_room_m = across_m + width_m;
-    double start_m = every_m * kFirstSpotSpacings * random.next();
+void Model::SpotLayout::lay(const Pattern& pattern) noexcept {
+    Xorshift32 random{pattern.seed};
+    double start_m = pattern.every_m * kFirstSpotSpacings * random.next();
     while (start_m < kHardSpotsUntil_m && count_ < kMaxHardSpots) {
-        const double peak = size * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
-        const double centre_y_m = lowest_centre_m + centre_room_m * random.next();
+        const double peak = pattern.size * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
+        const double width_m =
+            pattern.min_width_m + (pattern.max_width_m - pattern.min_width_m) * random.next();
+        // Centres spread so that every point of the band is as likely to
+        // lie in a spot, its edges too: a spot may reach past the band's
+        // edge.
+        const double centre_y_m = (pattern.across_m + width_m) * (random.next() - 0.5);
         spots_[count_++] = {.start_m = start_m,
-                            .length_m = length_m,
+                            .length_m = pattern.length_m,
                             .centre_y_m = centre_y_m,
                             .width_m = width_m,
                             .peak = peak};
-        start_m += length_m + every_m * (kGapLowShare + random.next());
+        start_m += pattern.length_m + pattern.every_m * (kGapLowShare + random.next());
     }
 }
 

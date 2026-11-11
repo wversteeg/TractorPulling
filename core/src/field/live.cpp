@@ -13,11 +13,13 @@ constexpr double kDt_s =
 
 }  // namespace
 
-std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venue& venue,
+std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venue& track_venue,
                                            const Field& field, const Variation& variation,
                                            const PullToPull& pull_to_pull,
                                            std::span<const int> running_order, int player,
                                            std::uint64_t seed) noexcept {
+    // The track's spots where they lie today, as play_event lays them.
+    const Venue venue = on_the_day(track_venue, seed);
     if (running_order.size() != static_cast<std::size_t>(field.count) || player < 0 ||
         player >= field.count ||
         run::validate(field::trial_pull_rules(rules, venue, rules.full_pull_m))) {

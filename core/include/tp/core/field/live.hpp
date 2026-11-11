@@ -69,7 +69,8 @@ public:
     /// until the sled stops for a test pull or a pull-off (field::
     /// pull_rules); a practice pull, with none due, as a competition pull.
     [[nodiscard]] const sled::Params& sled() const noexcept { return event_.sled(); }
-    /// Where the event is pulled: the track's ground for the player's run.
+    /// Where the event is pulled: the track's ground for the player's run,
+    /// its spots laid for this event (on_the_day).
     [[nodiscard]] const Venue& venue() const noexcept { return venue_; }
     [[nodiscard]] run::Rules pull_rules() const noexcept;
     /// What the player's crew reports of the track before their next pull

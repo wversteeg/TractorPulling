@@ -52,11 +52,19 @@ std::uint64_t log_hash(std::span<const LogEntry> log) noexcept {
     return hash.value();
 }
 
-std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& venue,
+Venue on_the_day(const Venue& venue, std::uint64_t seed) noexcept {
+    Venue out = venue;
+    out.track = track::reseeded(venue.track, seed);
+    return out;
+}
+
+std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& track_venue,
                                       const Field& field, const Variation& variation,
                                       const PullToPull& pull_to_pull,
                                       std::span<const int> running_order,
                                       std::uint64_t seed) noexcept {
+    // The track's hard and weak spots, where they lie today.
+    const Venue venue = on_the_day(track_venue, seed);
     if (running_order.size() != static_cast<std::size_t>(field.count)) {
         return std::nullopt;
     }

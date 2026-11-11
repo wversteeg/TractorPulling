@@ -7,6 +7,7 @@ participant "event::Event" as Event
 participant "pull + run\n(a job, stepped)" as Run
 
 Game -> Live : create(rules, venue, field, ..., running_order, player, seed)
+Live -> Live : on_the_day(venue, seed): the track's spots laid for this event
 loop until turn() is kFinished
   alt turn() == kRivals
     Game -> Live : advance(max_steps)

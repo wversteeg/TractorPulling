@@ -14,16 +14,18 @@ namespace tp::track {
 /// Hard spots along the track: short patches where the sled drags harder
 /// (track preparation never makes the ground even), so its resistance comes
 /// in jumps rather than rising smoothly. Laid out once from `seed`, the
-/// same on every platform: on average one every `every_m` along the track,
-/// each `length_m` long and `width_m` wide somewhere across the lane (any
-/// line down the lane as likely to cross one; a spot may reach past a
-/// chalk line),
-/// rising to and falling from a peak of up to `extra` above the soil's own
-/// drag (60 to 100 % of it).
+/// same on every platform (an event lays its own: reseeded()): on average
+/// one every `every_m` along the track, each `length_m` long and from
+/// `min_width_m` to `max_width_m` wide (a patch or a seam across most of
+/// the lane), somewhere across the lane (any line down the lane as likely
+/// to cross one; a spot may reach past a chalk line), rising to and
+/// falling from a peak of up to `extra` above the soil's own drag (60 to
+/// 100 % of it).
 struct HardSpots {
     double every_m = 0.0;
     double length_m = 0.0;
-    double width_m = 0.0;
+    double min_width_m = 0.0;
+    double max_width_m = 0.0;
     double extra = 0.0;
     std::uint32_t seed = 1;
 };
@@ -35,14 +37,15 @@ struct HardSpots {
 struct WeakSpots {
     double every_m = 0.0;
     double length_m = 0.0;
-    double width_m = 0.0;
+    double min_width_m = 0.0;
+    double max_width_m = 0.0;
     double grip_loss = 0.0;
     std::uint32_t seed = 1;
 };
 
 /// The limits a track's hard and weak spots may have, inclusive [m, m, m,
 /// share, share]. A spot is at most as wide as the band it lies in
-/// (Params::spots_across_m).
+/// (Params::spots_across_m), its narrowest no wider than its widest.
 inline constexpr double kMinHardSpotSpacing_m = 2.0;
 inline constexpr double kMinHardSpotLength_m = 0.5;
 inline constexpr double kMaxHardSpotLength_m = 10.0;
@@ -124,6 +127,13 @@ enum class ParamError : std::uint8_t {
 /// The soil's composition at `x_m` along the track.
 [[nodiscard]] soil::Composition composition_at(const Params& params, double x_m) noexcept;
 
+/// `params` with its hard and weak spots laid afresh for `seed` (an
+/// event's): the same kinds, sizes and number, elsewhere. Each spot table's
+/// own seed is mixed with `seed`, so the same track and seed give the same
+/// spots on every platform, and another seed (another season's event)
+/// others.
+[[nodiscard]] Params reseeded(const Params& params, std::uint64_t seed) noexcept;
+
 /// The track sampled once at setup: in the step a surface is a lookup and a
 /// blend between two samples, never the soil model itself.
 class Model {
@@ -175,12 +185,21 @@ private:
     // step (no sampling, so a short spot keeps its peak); 0 between them.
     class SpotLayout {
     public:
-        // Laid end to end along the track with gaps between, from `seed`:
-        // one every `every_m` on average, each `length_m` long and
-        // `width_m` wide somewhere across `across_m` (every point of it as
-        // likely to be in one), peaking at 60 to 100 % of `size`.
-        void lay(double every_m, double length_m, double width_m, double across_m, double size,
-                 std::uint32_t seed) noexcept;
+        // How spots are laid: one every `every_m` on average, each
+        // `length_m` long and `min_width_m` to `max_width_m` wide somewhere
+        // across `across_m` (every point of it as likely to be in one),
+        // peaking at 60 to 100 % of `size`, drawn from `seed`.
+        struct Pattern {
+            double every_m = 0.0;
+            double length_m = 0.0;
+            double min_width_m = 0.0;
+            double max_width_m = 0.0;
+            double across_m = 0.0;
+            double size = 0.0;
+            std::uint32_t seed = 1;
+        };
+        // Laid end to end along the track with gaps between.
+        void lay(const Pattern& pattern) noexcept;
         [[nodiscard]] double at(double x_m, double y_m) const noexcept;
         [[nodiscard]] std::span<const Spot> spots() const noexcept {
             return std::span{spots_}.first(count_);
