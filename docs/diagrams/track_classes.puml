@@ -28,7 +28,7 @@ package "tp::track" {
     -params_ : Params
     -first_x_m_, spacing_m_ : double
     -samples_ : array<soil::Surface, 512>
-    -drag_scale_ : array<double, 512>, every 0.25 m
+    -spots_ : array<Spot{start_m, peak}, 160>, sorted
     +{static} create(const Params&) : optional<Model>
     +params() : const Params&
     +surface_at(x_m) : soil::Surface
@@ -57,6 +57,7 @@ note bottom of Model
   profiles hold their end values beyond their ends;
   in the step: a lookup and a blend of two samples, no soil model;
   hard spots laid from their seed at setup (xorshift), the same on
-  every platform: surface_at() gives their drag_scale
+  every platform, over the first 200 m: surface_at() evaluates the
+  spot under x exactly (a binary search) for its drag_scale
 end note
 @enduml

@@ -20,4 +20,3 @@ compaction = 0.7
 [track.profile.compaction]
 x_m = [0.0, 20.0, 40.0]
 value = [0.8, 0.8, 0.6]
-

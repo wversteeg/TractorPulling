@@ -2,6 +2,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <functional>
+#include <iterator>
+#include <span>
 
 namespace tp::track {
 
@@ -24,8 +28,7 @@ bool profile_valid(const Params& params, const std::optional<math::Curve>& profi
 soil::Surface blend(const soil::Surface& a, const soil::Surface& b, double t) noexcept {
     return {.cone_index_pa = a.cone_index_pa + t * (b.cone_index_pa - a.cone_index_pa),
             .grip_factor = a.grip_factor + t * (b.grip_factor - a.grip_factor),
-            .spin_fall_off = a.spin_fall_off + t * (b.spin_fall_off - a.spin_fall_off),
-            .drag_scale = a.drag_scale + t * (b.drag_scale - a.drag_scale)};
+            .spin_fall_off = a.spin_fall_off + t * (b.spin_fall_off - a.spin_fall_off)};
 }
 
 bool hard_spots_valid(const HardSpots& spots) noexcept {
@@ -120,38 +123,32 @@ Model::Model(const Params& params) noexcept : params_(params) {
         samples_[i] = soil::surface(composition_at(params_, x_m));
         samples_[i].grip_factor *= params_.grip_scale;
     }
-    drag_scale_.fill(1.0);
     if (!params_.hard_spots) {
         return;
     }
-    // Each spot a triangle: up to its peak at its middle and down again.
+    // Laid end to end with gaps between, so they never overlap.
     const HardSpots& spots = *params_.hard_spots;
+    spot_length_m_ = spots.length_m;
     Xorshift32 random{spots.seed};
-    const double end_m = kDragSpacing_m * static_cast<double>(kDragSamples - 1);
     double start_m = spots.every_m * kFirstSpotSpacings * random.next();
-    while (start_m < end_m) {
+    while (start_m < kHardSpotsUntil_m && spot_count_ < kMaxHardSpots) {
         const double peak = spots.extra * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
-        const double half_m = spots.length_m / 2.0;
-        for (std::size_t i = 0; i < kDragSamples; ++i) {
-            const double x_m = kDragSpacing_m * static_cast<double>(i);
-            const double from_middle = std::abs(x_m - (start_m + half_m)) / half_m;
-            if (from_middle < 1.0) {
-                drag_scale_[i] = std::max(drag_scale_[i], 1.0 + peak * (1.0 - from_middle));
-            }
-        }
+        spots_[spot_count_++] = {.start_m = start_m, .peak = peak};
         start_m += spots.length_m + spots.every_m * (kGapLowShare + random.next());
     }
 }
 
 double Model::drag_scale_at(double x_m) const noexcept {
-    const auto last = static_cast<double>(kDragSamples - 1);
-    const double position = std::clamp(x_m / kDragSpacing_m, 0.0, last);
-    const auto index = static_cast<std::size_t>(position);
-    if (index + 1 >= kDragSamples) {
-        return drag_scale_[kDragSamples - 1];
+    // The last spot starting at or before x_m, if x_m is within it.
+    const auto spots = std::span{spots_}.first(spot_count_);
+    const auto after = std::ranges::upper_bound(spots, x_m, std::less{}, &Spot::start_m);
+    if (after == spots.begin()) {
+        return 1.0;
     }
-    const double t = position - static_cast<double>(index);
-    return drag_scale_[index] + t * (drag_scale_[index + 1] - drag_scale_[index]);
+    const Spot& spot = *std::prev(after);
+    const double half_m = spot_length_m_ / 2.0;
+    const double from_middle = std::abs(x_m - (spot.start_m + half_m)) / half_m;
+    return from_middle < 1.0 ? 1.0 + spot.peak * (1.0 - from_middle) : 1.0;
 }
 
 std::optional<Model> Model::create(const Params& params) noexcept {

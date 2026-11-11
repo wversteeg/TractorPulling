@@ -22,7 +22,7 @@ struct FieldError {
     std::string reason;
 };
 
-// A value in the shortest form that reads back as it.
+// A value as a stream writes it (six significant digits).
 std::string number(double value) {
     std::ostringstream text;
     text << value;

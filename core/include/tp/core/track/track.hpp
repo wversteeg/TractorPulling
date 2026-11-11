@@ -88,10 +88,10 @@ public:
     /// The surface at `x_m` along the track.
     [[nodiscard]] soil::Surface surface_at(double x_m) const noexcept;
 
-    /// The hard spots' drag scale is sampled this finely over this much
-    /// track from the start line (past it, 1) [m].
-    static constexpr double kDragSpacing_m = 0.25;
-    static constexpr std::size_t kDragSamples = 512;
+    /// Hard spots are laid out over this much track from the start line
+    /// (past it the drag is even), at most this many of them [m].
+    static constexpr double kHardSpotsUntil_m = 200.0;
+    static constexpr std::size_t kMaxHardSpots = 160;
 
 private:
     explicit Model(const Params& params) noexcept;
@@ -101,8 +101,15 @@ private:
     double spacing_m_ = kSampleSpacing_m;
     std::size_t count_ = 1;
     std::array<soil::Surface, kMaxSamples> samples_{};
-    // 1 everywhere without hard spots.
-    std::array<double, kDragSamples> drag_scale_{};
+    // The hard spots, by where they start: each a triangle, evaluated
+    // exactly in the step (no sampling, so a short spot keeps its peak).
+    struct Spot {
+        double start_m = 0.0;
+        double peak = 0.0;
+    };
+    std::array<Spot, kMaxHardSpots> spots_{};
+    std::size_t spot_count_ = 0;
+    double spot_length_m_ = 1.0;
     [[nodiscard]] double drag_scale_at(double x_m) const noexcept;
 };
 

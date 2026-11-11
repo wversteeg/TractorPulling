@@ -212,6 +212,33 @@ TEST(Track, HardSpotsMakeTheDragJump) {
     EXPECT_LE(spots, 18);
 }
 
+// Even the shortest spot reaches its full peak (they are evaluated, not
+// sampled), and past where the spots are laid the drag is even again.
+TEST(Track, EveryHardSpotReachesItsPeak) {
+    Params params = reference_params();
+    params.hard_spots =
+        HardSpots{.every_m = 4.0, .length_m = kMinHardSpotLength_m, .extra = 1.0, .seed = 3};
+    const Model model = model_of(params);
+    double previous = 1.0;
+    double peak = 1.0;
+    int spots = 0;
+    for (int i = 0; i <= 20000; ++i) {
+        const double scale = model.surface_at(0.005 * i).drag_scale;
+        if (scale > 1.0) {
+            peak = std::max(peak, scale);
+        } else if (previous > 1.0) {
+            ++spots;
+            EXPECT_GE(peak, 1.0 + 0.6 - 0.02) << "spot " << spots;
+            EXPECT_LE(peak, 2.0);
+            peak = 1.0;
+        }
+        previous = scale;
+    }
+    EXPECT_GT(spots, 10);
+    EXPECT_DOUBLE_EQ(model.surface_at(Model::kHardSpotsUntil_m + 5.0).drag_scale, 1.0);
+    EXPECT_DOUBLE_EQ(model.surface_at(1000.0).drag_scale, 1.0);
+}
+
 // The same seed lays the same spots; another seed others.
 TEST(Track, HardSpotsFollowTheirSeed) {
     EXPECT_EQ(drag_profile(model_of(with_hard_spots(7))),
