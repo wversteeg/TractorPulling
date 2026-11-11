@@ -171,7 +171,7 @@ func _card(parent: Control, rect: Rect2, heading: String) -> Panel:
 	style.bg_color = GarageArt.PANEL_LIGHT
 	style.border_color = GarageArt.LINE
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(12)
+	style.set_corner_radius_all(TouchButton.CARD_CORNER)
 	card.add_theme_stylebox_override("panel", style)
 	card.position = rect.position
 	card.size = rect.size

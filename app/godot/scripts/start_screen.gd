@@ -55,7 +55,6 @@ func _init() -> void:
 func _ready() -> void:
 	super()
 	add_title("Tractor Pulling", TITLE_SIZE)
-	eyebrow_label.visible = true
 	_event = add_line(LINE_SIZE - 6, GarageArt.DIM)
 	_name = add_line(LINE_SIZE)
 	var go := add_button_row()
@@ -104,6 +103,7 @@ func release_buttons() -> void:
 func show_event(event: Dictionary, error: String, career: Dictionary = {}) -> void:
 	eyebrow_label.text = ("%s  ·  %s" % [career["class_name"], career["level_name"]]).to_upper() \
 			if career.has("class_name") else ""
+	eyebrow_label.visible = not eyebrow_label.text.is_empty()
 	if event.is_empty():
 		_event.text = ""
 		_name.text = ""

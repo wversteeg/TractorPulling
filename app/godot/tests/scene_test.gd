@@ -322,6 +322,18 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 	var back := TrackSpace.point(-cos(heading_rad), -sin(heading_rad), 0.0)
 	_expect(close.is_position_in_frustum(target) and (close.global_position - target).dot(back) > 0.0,
 			"turned, the close camera behind the tractor along its heading")
+	# On the dog-tail: the tractor turned and the sled off to one side; the
+	# camera still sees the sled's box, the hook and the whole tractor, its
+	# roof (where the driver's eyes are) too.
+	var aside := TrackSpace.point(0.0, -1.5, 0.0)
+	var box: Node3D = sled.get("_box")
+	var box_top := box.global_position + aside + Vector3.UP * SledView.BOX_SIZE_M.y / 2.0
+	cameras.follow(target, 0.0, false, heading_rad, mount + aside)
+	_expect(close.is_position_in_frustum(box_top)
+			and close.is_position_in_frustum(sled.hook_position() + aside)
+			and close.is_position_in_frustum(target)
+			and close.is_position_in_frustum(cameras.cab.global_position),
+			"on the dog-tail, the close camera sees the sled's box, the hook and the whole tractor")
 	var chase: Camera3D = cameras.get("_cameras")[CameraRig.View.CHASE]
 	_expect((chase.global_position - target).dot(back) > -CameraRig.CHASE_OFFSET.x * 0.9,
 			"the chase camera turns with the tractor too")
