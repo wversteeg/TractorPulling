@@ -180,6 +180,17 @@ func _check() -> void:
 		_expect(view.weight_counts() == case[2], "%s kg at %s: %s weights, not %s" % [
 				case[0], case[1], view.weight_counts(), case[2]])
 	view.build(dimensions)
+	# The rev counter's red zone starts at the engine's governed limit:
+	# 2400 of a dial to 1.25 × 2200 rpm is the last two of nine ticks; a
+	# governor at 0.75 of the rated speed would redden four (0.6 of the dial).
+	_expect(view.rev_red_ticks == _red_ticks(dimensions), "the reference engine's red zone: %d ticks"
+			% view.rev_red_ticks)
+	var low_governor := dimensions.duplicate()
+	low_governor["high_idle_omega_rad_s"] = float(dimensions["rated_omega_rad_s"]) * 0.75
+	var other := TractorView.new()
+	other.build(low_governor)
+	_expect(other.rev_red_ticks == 4, "a lower governor reddens more: %d ticks" % other.rev_red_ticks)
+	other.free()
 
 	var cameras: Node = _pull.get("cameras")
 	var camera: Camera3D = cameras.call("current_camera")
@@ -187,6 +198,17 @@ func _check() -> void:
 	_expect(camera.global_position.distance_to(tractor.global_position) < 50.0,
 			"the camera follows the tractor")
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
+
+
+# The rev counter's ticks at or past the engine's high idle.
+static func _red_ticks(d: Dictionary) -> int:
+	var red_from := float(d["high_idle_omega_rad_s"]) / (float(d["rated_omega_rad_s"])
+			* TractorView.REV_COUNTER_HEADROOM)
+	var count := 0
+	for t in TractorView.DIAL_TICKS:
+		if t / float(TractorView.DIAL_TICKS - 1) >= red_from - 1e-6:
+			count += 1
+	return count
 
 
 # The engine's sound: a six at 2500 rpm fires at 125 Hz; louder at full

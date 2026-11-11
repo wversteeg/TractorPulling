@@ -120,6 +120,8 @@ var _boost_needle := Node3D.new()
 var _stall_rad_s := 70.0
 # The governor's limit: the rev counter's red zone starts there.
 var _high_idle_rad_s := 250.0
+# How many of the rev counter's ticks are red (for the tests).
+var rev_red_ticks := 0
 var _rear_left_angle := 0.0
 var _rear_right_angle := 0.0
 var _front_angle := 0.0
@@ -139,12 +141,13 @@ func _notification(what: int) -> void:
 # The tractor from the run's sizes, once; every pull after that only moves
 # the weights to where the puller set them.
 func build(d: Dictionary) -> void:
-	if not _built:
-		_built = true
-		_build_body(d)
+	# The engine's speeds first: the dashboard's rev counter is drawn from them.
 	_rated_rad_s = d["rated_omega_rad_s"]
 	_high_idle_rad_s = d.get("high_idle_omega_rad_s", _rated_rad_s)
 	_stall_rad_s = d["stall_omega_rad_s"]
+	if not _built:
+		_built = true
+		_build_body(d)
 	_show_weights(d)
 
 
@@ -387,11 +390,13 @@ func _add_dashboard() -> void:
 		face.rotation.x = PI / 2.0
 		face.position = Vector3(x_m, 0.0, DASH_SIZE.z / 2.0 + 0.002)
 		panel.add_child(face)
-		# Ticks round the dial, its top quarter red.
+		# Ticks round the dial, red from `red_share` of its sweep up.
 		for t in DIAL_TICKS:
 			var share := t / float(DIAL_TICKS - 1)
 			var a := NEEDLE_SWEEP_RAD * (share - 0.5)
 			var colour := NEEDLE if share >= red_share - 1e-6 else FRAME
+			if colour == NEEDLE and gauge[1] == _rev_needle:
+				rev_red_ticks += 1
 			var tick := Art.box(Vector3(0.006, 0.016, 0.004), colour)
 			tick.material_override = _backlit(colour)
 			tick.position = Vector3(x_m + sin(a) * GAUGE_RADIUS_M * 0.8,
