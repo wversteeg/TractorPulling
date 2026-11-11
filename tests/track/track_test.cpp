@@ -2,14 +2,14 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <limits>
 #include <span>
 #include <vector>
-#include <algorithm>
-#include <cstdint>
 
 #include "reference_track.hpp"
 
@@ -228,8 +228,10 @@ TEST(Track, RejectsNonsenseHardSpots) {
           HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = -0.1, .seed = 1},
           HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = 3.0, .seed = 1},
           HardSpots{.every_m = 8.0, .length_m = 1.0, .extra = 0.5, .seed = 0},
-          HardSpots{.every_m = std::numeric_limits<double>::quiet_NaN(), .length_m = 1.0,
-                    .extra = 0.5, .seed = 1}}) {
+          HardSpots{.every_m = std::numeric_limits<double>::quiet_NaN(),
+                    .length_m = 1.0,
+                    .extra = 0.5,
+                    .seed = 1}}) {
         Params params = reference_params();
         params.hard_spots = spots;
         EXPECT_EQ(validate(params), ParamError::kHardSpots);

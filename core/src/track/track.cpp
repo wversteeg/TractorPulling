@@ -166,10 +166,9 @@ soil::Surface Model::surface_at(double x_m) const noexcept {
     const double position = std::clamp((x_m - first_x_m_) / spacing_m_, 0.0, last);
     // Truncation is exact for these non-negative values on every platform.
     const auto index = static_cast<std::size_t>(position);
-    soil::Surface surface = index + 1 >= count_
-                                ? samples_[count_ - 1]
-                                : blend(samples_[index], samples_[index + 1],
-                                        position - static_cast<double>(index));
+    soil::Surface surface = index + 1 >= count_ ? samples_[count_ - 1]
+                                                : blend(samples_[index], samples_[index + 1],
+                                                        position - static_cast<double>(index));
     surface.drag_scale = drag_scale_at(x_m);
     return surface;
 }

@@ -170,13 +170,12 @@ TEST(TrackLoader, ReadsTheHardSpots) {
     const auto read = parse_track(spotted, "t.toml");
     ASSERT_TRUE(read.ok()) << read.error().message;
     ASSERT_TRUE(read.value().ground.hard_spots.has_value());
-    const track::HardSpots& spots = *read.value().ground.hard_spots;
+    const track::HardSpots spots = read.value().ground.hard_spots.value_or(track::HardSpots{});
     EXPECT_EQ(spots.every_m, 9.0);
     EXPECT_EQ(spots.length_m, 1.5);
     EXPECT_EQ(spots.extra, 0.4);
     EXPECT_EQ(spots.seed, 12U);
-    for (const auto& [from, to, field] :
-         std::array<std::array<std::string_view, 3>, 2>{
+    for (const auto& [from, to, field] : std::array<std::array<std::string_view, 3>, 2>{
              {{"extra = 0.4", "extra = 5.0", "track.hard_spots: every_m must be at least 2"},
               {"seed = 12", "seed = 0", "track.hard_spots.seed: must be in [1, 4294967295]"}}}) {
         std::string bad = spotted;

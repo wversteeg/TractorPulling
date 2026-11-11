@@ -21,9 +21,3 @@ compaction = 0.8
 x_m = [0.0, 30.0, 35.0]
 value = [0.18, 0.18, 0.14]
 
-# Hard spots: where the water did not reach, the track dried in harder patches, so the sled's drag jumps as it crosses them (track::HardSpots).
-[track.hard_spots]
-every_m = 10.0   # on average one every this far
-length_m = 1.5
-extra = 0.35    # up to this much more drag at a spot's middle
-seed = 53

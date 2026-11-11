@@ -15,6 +15,12 @@ package "tp::track" {
     +moisture_along_m : optional<Curve>
     +compaction_along_m : optional<Curve>
     +grip_scale : double, 0.5 to 1.5 (how it was prepared)
+    +hard_spots : optional<HardSpots>
+  }
+  class HardSpots <<struct>> {
+    +every_m, length_m : double
+    +extra : double, 0 to 2
+    +seed : uint32
   }
   class Model {
     +{static} kMaxSamples = 512
@@ -22,6 +28,7 @@ package "tp::track" {
     -params_ : Params
     -first_x_m_, spacing_m_ : double
     -samples_ : array<soil::Surface, 512>
+    -drag_scale_ : array<double, 512>, every 0.25 m
     +{static} create(const Params&) : optional<Model>
     +params() : const Params&
     +surface_at(x_m) : soil::Surface
@@ -31,12 +38,14 @@ package "tp::track" {
     kMoistureProfile
     kCompactionProfile
     kGripScale
+    kHardSpots
   }
   class "track functions" as TrackFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +composition_at(const Params&, x_m) : soil::Composition
   }
   Model *-- Params
+  Params *-- HardSpots
   TrackFns ..> Params
   TrackFns ..> ParamError
 }
@@ -46,6 +55,8 @@ Model ..> Soil : samples surface()\nat setup
 note bottom of Model
   x from the start line (the sled's rear wheels at the start);
   profiles hold their end values beyond their ends;
-  in the step: a lookup and a blend of two samples, no soil model
+  in the step: a lookup and a blend of two samples, no soil model;
+  hard spots laid from their seed at setup (xorshift), the same on
+  every platform: surface_at() gives their drag_scale
 end note
 @enduml

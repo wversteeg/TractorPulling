@@ -22,7 +22,10 @@ compaction = 0.95
 [track.pushdown]
 start_m = 73.0
 
-# Hard spots: a dry, hard-rolled track breaks up into hard clods and firmer seams, so the sled's drag jumps as it crosses them (track::HardSpots).
+# Hard spots (track::HardSpots): a dry, hard-rolled track breaks up into hard clods and firmer seams.
+# The sled's drag jumps as it crosses them; a tire that keeps a little
+# wheelspin rides through them where one that grips hard pulls the engine
+# down.
 [track.hard_spots]
 every_m = 7.0   # on average one every this far
 length_m = 1.2

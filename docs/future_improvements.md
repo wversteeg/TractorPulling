@@ -92,10 +92,14 @@ for the big features; they are repeated at the end for completeness.
   clutch, taking the sled's sudden jumps in drag (the knives biting, the
   push-down coming on, a soft spot) while the engine stays in its power
   and boost band; a tire that bites hands each jump to the engine, which
-  drops out of boost and stalls. The sled's drag here rises smoothly, so
+  drops out of boost and stalls. On most tracks the drag rises smoothly, so
   more grip never costs: a too-soft tire loses only by its lugs squirming.
-  Drag that jumps along the track would let wheelspin pay (the owner's
-  next step for the tire pressure). The nose does not come up from the
+  The dry, hard tracks now have hard spots where the drag jumps
+  (track::HardSpots), and there a tire that slips a little more lets the
+  engine dip less at each spot; but the spots are short and the tractor's
+  momentum carries it through, so it does not yet decide the best
+  pressure. Longer or stronger spots, or soft patches where the pan digs
+  in, could make it count. The nose does not come up from the
   grip itself: the pull at the hitch is what the sled asks, so more grip
   only lets the tractor hold a heavier drag before it spins.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
