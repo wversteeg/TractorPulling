@@ -19,13 +19,15 @@ const FRONT_WEIGHTS_X_M := 3.62
 # and its skid pad's rear edge behind the tip [m].
 const WHEELIE_BAR_TIP_X_M := -1.05
 const SKID_BEHIND_TIP_M := 0.14
-# A column of weight blocks, as wide as it is drawn [m].
+# A column of weight blocks, as wide as it is drawn, and how far the rear
+# carrier reaches past its blocks [m].
 const WEIGHT_COLUMN_M := 0.42
-# What the drawing spans: from the rear weights' back edge (two columns on
-# the carrier, behind the wheelie bar's skid) to past the front weights,
-# and from the ground to the top of the stack [m].
-const BOUNDS_LEFT_M := REAR_WEIGHTS_X_M - WEIGHT_COLUMN_M
-const BOUNDS_RIGHT_M := 3.98
+const CARRIER_LIP_M := 0.04
+# What the drawing spans: from the rear carrier's back edge (two columns of
+# weights, behind the wheelie bar's skid) to the front weights' (two
+# columns), and from the ground to the top of the stack [m].
+const BOUNDS_LEFT_M := REAR_WEIGHTS_X_M - WEIGHT_COLUMN_M - CARRIER_LIP_M
+const BOUNDS_RIGHT_M := FRONT_WEIGHTS_X_M + WEIGHT_COLUMN_M
 const BOUNDS_M := Rect2(BOUNDS_LEFT_M, -REAR_RADIUS_M - 0.02, BOUNDS_RIGHT_M - BOUNDS_LEFT_M, 2.98)
 
 const PAINT := Color(0.80, 0.33, 0.13)
@@ -280,7 +282,8 @@ func _weight_stack(x_m: float, kg: float, carrier: bool) -> void:
 	var columns := 2 if blocks > 4 else 1
 	var base := Vector2(x_m - WEIGHT_COLUMN_M / 2.0 * columns, -0.36 if carrier else -0.2)
 	if carrier:
-		_box(base + Vector2(-0.04, -0.06), base + Vector2(WEIGHT_COLUMN_M * columns + 0.04, 0.0), STEEL)
+		_box(base + Vector2(-CARRIER_LIP_M, -0.06),
+				base + Vector2(WEIGHT_COLUMN_M * columns + CARRIER_LIP_M, 0.0), STEEL)
 		_line(base + Vector2(WEIGHT_COLUMN_M * columns, -0.03), Vector2(-0.3, -0.25), 0.06, STEEL)
 	for i in blocks:
 		var column := int(i / 4.0) if columns == 2 else 0
