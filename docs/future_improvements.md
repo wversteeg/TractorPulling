@@ -83,8 +83,8 @@ for the big features; they are repeated at the end for completeness.
   rarely wrong. A tractor stays up on its bar only while the sled's pull
   times the hitch's height outweighs its weight times the centre of
   gravity's distance ahead of the rear axle: the Sport 2.5 t with its
-  weights back rides its bar for seconds (about 13°), the Sport 4.5 t
-  (82 % on the rear axle) only pops up at the launch (about 11°). Real
+  weights back rides its bar for seconds (about 17°), the Sport 4.5 t
+  (82 % on the rear axle) only pops up at the launch (about 15°). Real
   4.5 t pullers likely carry more on the rear; a tractor balance from
   measurements would settle it.
 - **A tire that bites too hard does not bog the engine.** Pullers keep
