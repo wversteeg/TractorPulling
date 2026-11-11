@@ -157,6 +157,13 @@ var _load_loop_omega_rad_s := 1.0
 static var _loop_cache := {}
 
 
+# The noise and the firings' spread from a fixed seed, whether or not the
+# sound joins the tree (the tests make samples from one that does not), so
+# the same snapshots always sound the same.
+func _init() -> void:
+	_random.seed = 1
+
+
 # The loops' players are made with the node; outside the web they never
 # join the tree, so they are freed here.
 func _notification(what: int) -> void:
