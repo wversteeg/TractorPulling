@@ -15,9 +15,20 @@ const WHEELBASE_M := 2.75
 # the front bracket at their foremost.
 const REAR_WEIGHTS_X_M := -1.2
 const FRONT_WEIGHTS_X_M := 3.62
-# What the drawing spans, from the wheelie bar's skid to the front weights
-# and from the ground to the top of the stack [m].
-const BOUNDS_M := Rect2(-1.62, -REAR_RADIUS_M - 0.02, 5.6, 2.98)
+# The wheelie bar's tip, behind the rear axle (data/tractors/sport_4500.toml),
+# and its skid pad's rear edge behind the tip [m].
+const WHEELIE_BAR_TIP_X_M := -1.05
+const SKID_BEHIND_TIP_M := 0.14
+# A column of weight blocks, as wide as it is drawn, and how far the rear
+# carrier reaches past its blocks [m].
+const WEIGHT_COLUMN_M := 0.42
+const CARRIER_LIP_M := 0.04
+# What the drawing spans: from the rear carrier's back edge (two columns of
+# weights, behind the wheelie bar's skid) to the front weights' (two
+# columns), and from the ground to the top of the stack [m].
+const BOUNDS_LEFT_M := REAR_WEIGHTS_X_M - WEIGHT_COLUMN_M - CARRIER_LIP_M
+const BOUNDS_RIGHT_M := FRONT_WEIGHTS_X_M + WEIGHT_COLUMN_M
+const BOUNDS_M := Rect2(BOUNDS_LEFT_M, -REAR_RADIUS_M - 0.02, BOUNDS_RIGHT_M - BOUNDS_LEFT_M, 2.98)
 
 const PAINT := Color(0.80, 0.33, 0.13)
 const PAINT_DARK := Color(0.62, 0.24, 0.09)
@@ -134,11 +145,11 @@ func _circle(centre_m: Vector2, radius_m: float, colour: Color) -> void:
 
 
 func _draw_wheelie_bar() -> void:
-	var tip := Vector2(-1.4, -REAR_RADIUS_M + 0.25)
+	var tip := Vector2(WHEELIE_BAR_TIP_X_M, -REAR_RADIUS_M + 0.25)
 	_line(Vector2(0.15, -0.28), tip, 0.09, STEEL_LIGHT)
 	_line(Vector2(-0.2, 0.05), tip + Vector2(0.12, 0.04), 0.06, STEEL)
 	# The skid pad.
-	_box(tip + Vector2(-0.14, -0.06), tip + Vector2(0.16, 0.03), STEEL)
+	_box(tip + Vector2(-SKID_BEHIND_TIP_M, -0.06), tip + Vector2(0.16, 0.03), STEEL)
 
 
 func _draw_drawbar() -> void:
@@ -269,14 +280,15 @@ func _draw_fender() -> void:
 func _weight_stack(x_m: float, kg: float, carrier: bool) -> void:
 	var blocks := clampi(int(round(kg / 60.0)), 0, 8)
 	var columns := 2 if blocks > 4 else 1
-	var base := Vector2(x_m - 0.21 * columns, -0.36 if carrier else -0.2)
+	var base := Vector2(x_m - WEIGHT_COLUMN_M / 2.0 * columns, -0.36 if carrier else -0.2)
 	if carrier:
-		_box(base + Vector2(-0.04, -0.06), base + Vector2(0.42 * columns + 0.04, 0.0), STEEL)
-		_line(base + Vector2(0.42 * columns, -0.03), Vector2(-0.3, -0.25), 0.06, STEEL)
+		_box(base + Vector2(-CARRIER_LIP_M, -0.06),
+				base + Vector2(WEIGHT_COLUMN_M * columns + CARRIER_LIP_M, 0.0), STEEL)
+		_line(base + Vector2(WEIGHT_COLUMN_M * columns, -0.03), Vector2(-0.3, -0.25), 0.06, STEEL)
 	for i in blocks:
 		var column := int(i / 4.0) if columns == 2 else 0
 		var row := i % 4 if columns == 2 else i
-		var x := base.x + column * 0.42
+		var x := base.x + column * WEIGHT_COLUMN_M
 		var y := base.y + row * 0.11
 		_box(Vector2(x, y), Vector2(x + 0.4, y + 0.1), WEIGHT)
 		_box(Vector2(x, y + 0.08), Vector2(x + 0.4, y + 0.1), WEIGHT_EDGE)

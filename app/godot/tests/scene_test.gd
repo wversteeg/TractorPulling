@@ -180,6 +180,17 @@ func _check() -> void:
 		_expect(view.weight_counts() == case[2], "%s kg at %s: %s weights, not %s" % [
 				case[0], case[1], view.weight_counts(), case[2]])
 	view.build(dimensions)
+	# The rev counter's red zone starts at the engine's governed limit:
+	# 2400 of a dial to 1.25 × 2200 rpm is the last two of nine ticks; a
+	# governor at 0.75 of the rated speed would redden four (0.6 of the dial).
+	_expect(view.rev_red_ticks == _red_ticks(dimensions), "the reference engine's red zone: %d ticks"
+			% view.rev_red_ticks)
+	var low_governor := dimensions.duplicate()
+	low_governor["high_idle_omega_rad_s"] = float(dimensions["rated_omega_rad_s"]) * 0.75
+	var other := TractorView.new()
+	other.build(low_governor)
+	_expect(other.rev_red_ticks == 4, "a lower governor reddens more: %d ticks" % other.rev_red_ticks)
+	other.free()
 
 	var cameras: Node = _pull.get("cameras")
 	var camera: Camera3D = cameras.call("current_camera")
@@ -187,6 +198,17 @@ func _check() -> void:
 	_expect(camera.global_position.distance_to(tractor.global_position) < 50.0,
 			"the camera follows the tractor")
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
+
+
+# The rev counter's ticks at or past the engine's high idle.
+static func _red_ticks(d: Dictionary) -> int:
+	var red_from := float(d["high_idle_omega_rad_s"]) / (float(d["rated_omega_rad_s"])
+			* TractorView.REV_COUNTER_HEADROOM)
+	var count := 0
+	for t in TractorView.DIAL_TICKS:
+		if t / float(TractorView.DIAL_TICKS - 1) >= red_from - 1e-6:
+			count += 1
+	return count
 
 
 # The engine's sound: a six at 2500 rpm fires at 125 Hz; louder at full
@@ -344,6 +366,26 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 			"off the chain, the close camera behind the tractor")
 	_expect(cameras.cab != null and tractor.is_ancestor_of(cameras.cab),
 			"the cab camera rides on the tractor")
+	# Looking ahead the driver sees the dashboard's dials and the wheel's rim.
+	var rev: Node3D = tractor.get("_rev_needle")
+	var boost: Node3D = tractor.get("_boost_needle")
+	var steering_wheel: Node3D = tractor.get("_steering_wheel")
+	_expect(cameras.cab.is_position_in_frustum(rev.global_position)
+			and cameras.cab.is_position_in_frustum(boost.global_position)
+			and cameras.cab.is_position_in_frustum(steering_wheel.global_transform
+				* Vector3(0.0, 0.0, -TractorView.WHEEL_RADIUS_M)),
+			"the cab camera sees the dials and the steering wheel")
+	# The needles sweep clockwise (rotation.z falls) as the engine speeds up
+	# and the boost builds; the wheel turns with the front wheels, left
+	# (positive) one way.
+	tractor.show_cockpit({"steering_rad": 0.0, "engine_omega_rad_s": 80.0, "boost": 0.1})
+	var slow_rev := rev.rotation.z
+	var low_boost := boost.rotation.z
+	tractor.show_cockpit({"steering_rad": 0.1, "engine_omega_rad_s": 220.0, "boost": 0.8})
+	_expect(rev.rotation.z < slow_rev and boost.rotation.z < low_boost,
+			"the needles rise with the engine's speed and the boost")
+	_expect(is_equal_approx(steering_wheel.rotation.y, 0.1 * TractorView.STEERING_RATIO),
+			"the steering wheel turns with the front wheels")
 	# In reverse it looks back over the seat: the backs of both rear wheels
 	# (the tractor's own reference) and the chain leaving the hitch in view.
 	cameras.set_reversing(true)

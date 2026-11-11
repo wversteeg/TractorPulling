@@ -46,6 +46,29 @@ const ROLL_BAR_TUBE_M := 0.035
 const EYES_AHEAD_M := 0.12
 const EYES_UP_M := 1.38
 const CAB_NEAR_M := 0.05
+# The eyes look a little down, at the road ahead over the dashboard, so the
+# wheel and the gauges sit in the bottom of the view [rad].
+const EYES_DOWN_RAD := 0.2
+# The steering wheel: its hub ahead of and above the rear axle, tilted back
+# towards the driver [m, rad]; turned this many times the front wheels'
+# angle (the steering box's ratio).
+const WHEEL_AT := Vector3(0.43, 0.0, 1.03)
+const WHEEL_TILT_RAD := 0.85
+const WHEEL_RADIUS_M := 0.18
+const STEERING_RATIO := 12.0
+# The dashboard behind the wheel: a panel leaning back towards the driver
+# with a rev counter and a boost gauge [m, rad]. The needles sweep this far
+# from rest to the top of their dial [rad].
+const DASH_AT := Vector3(0.7, 0.0, 0.92)
+const DASH_SIZE := Vector3(0.5, 0.2, 0.06)
+const DASH_TILT_RAD := 0.6
+const GAUGE_RADIUS_M := 0.06
+const NEEDLE_SWEEP_RAD := 4.2
+# The rev counter's top, a share past the rated speed; its dial's ticks.
+const REV_COUNTER_HEADROOM := 1.25
+const DIAL_TICKS := 9
+const DIAL := Color(0.93, 0.93, 0.9)
+const NEEDLE := Color(0.9, 0.2, 0.1)
 const LUGS_PER_SIDE := 23
 # The weights at the sizes they come in, so any class's ballast draws
 # right: a suitcase weight on the front bracket, a wheel weight on a rear
@@ -90,7 +113,15 @@ var _built := false
 var _rear_radius_m := 1.0
 var _front_radius_m := 0.5
 var _rated_rad_s := 230.0
+# The steering wheel, turned about its own axis, and the gauges' needles.
+var _steering_wheel := Node3D.new()
+var _rev_needle := Node3D.new()
+var _boost_needle := Node3D.new()
 var _stall_rad_s := 70.0
+# The governor's limit: the rev counter's red zone starts there.
+var _high_idle_rad_s := 250.0
+# How many of the rev counter's ticks are red (for the tests).
+var rev_red_ticks := 0
 var _rear_left_angle := 0.0
 var _rear_right_angle := 0.0
 var _front_angle := 0.0
@@ -102,7 +133,7 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
 		for part: Node in [_body, _hitch, _rear_left, _rear_right, _front_left_steer,
 				_front_right_steer, _front_left, _front_right, _front_weights, _rear_weights,
-				_smoke]:
+				_smoke, _steering_wheel, _rev_needle, _boost_needle]:
 			if part.get_parent() == null:
 				part.free()
 
@@ -110,11 +141,13 @@ func _notification(what: int) -> void:
 # The tractor from the run's sizes, once; every pull after that only moves
 # the weights to where the puller set them.
 func build(d: Dictionary) -> void:
+	# The engine's speeds first: the dashboard's rev counter is drawn from them.
+	_rated_rad_s = d["rated_omega_rad_s"]
+	_high_idle_rad_s = d.get("high_idle_omega_rad_s", _rated_rad_s)
+	_stall_rad_s = d["stall_omega_rad_s"]
 	if not _built:
 		_built = true
 		_build_body(d)
-	_rated_rad_s = d["rated_omega_rad_s"]
-	_stall_rad_s = d["stall_omega_rad_s"]
 	_show_weights(d)
 
 
@@ -296,20 +329,101 @@ func _add_seat_and_driver() -> void:
 	var back := Art.box(Vector3(0.45, 0.45, 0.08), FRAME, 0.7)
 	back.position = TrackSpace.point(-0.27, 0.0, 0.85)
 	_body.add_child(back)
-	var column := Art.cylinder(0.03, 0.55, FRAME, 8)
-	column.position = TrackSpace.point(0.5, 0.0, 0.75)
-	column.rotation.x = -0.6
-	_body.add_child(column)
-	var wheel := Art.instance(_torus(0.19, 0.022), Art.material(FRAME, 0.5))
-	wheel.position = TrackSpace.point(0.4, 0.0, 0.98)
-	wheel.rotation.x = -0.6
-	_body.add_child(wheel)
+	_add_dashboard()
+	_add_steering_wheel()
 	# The driver in blue overalls, seated: People face +z, the tractor -z
 	# (TrackSpace's x); their hips 0.42 m behind their feet, on the seat.
 	var driver := People.one(true, driver_shirt)
 	driver.rotation.y = PI
 	driver.position = TrackSpace.point(0.37, 0.0, 0.3)
 	_body.add_child(driver)
+
+
+# The steering wheel on its column, tilted back towards the driver: a rim,
+# three spokes and a hub, turned with the front wheels (show_snapshot).
+func _add_steering_wheel() -> void:
+	var mount := Node3D.new()
+	mount.position = TrackSpace.point(WHEEL_AT.x, WHEEL_AT.y, WHEEL_AT.z)
+	mount.rotation.x = WHEEL_TILT_RAD
+	_body.add_child(mount)
+	var column := Art.cylinder(0.03, 0.5, FRAME, 8)
+	column.position = Vector3(0.0, -0.27, 0.0)
+	mount.add_child(column)
+	mount.add_child(_steering_wheel)
+	var rim := Art.instance(_torus(WHEEL_RADIUS_M, 0.02), Art.material(FRAME, 0.45))
+	_steering_wheel.add_child(rim)
+	var hub := Art.cylinder(0.045, 0.04, FRAME, 12, 0.4)
+	_steering_wheel.add_child(hub)
+	# A T: two spokes across and one down towards the driver.
+	for angle: float in [0.0, PI / 2.0, -PI / 2.0]:
+		var spoke := Art.box(Vector3(0.025, 0.012, WHEEL_RADIUS_M), IRON, 0.4, 0.5)
+		spoke.position = Vector3(sin(angle), 0.0, cos(angle)) * WHEEL_RADIUS_M / 2.0
+		spoke.rotation.y = angle
+		_steering_wheel.add_child(spoke)
+
+
+# The dashboard: a panel leaning back towards the driver, its rev counter
+# and boost gauge with needles (show_snapshot), a warning lamp each side.
+func _add_dashboard() -> void:
+	var panel := Node3D.new()
+	panel.position = TrackSpace.point(DASH_AT.x, DASH_AT.y, DASH_AT.z)
+	panel.rotation.x = -DASH_TILT_RAD
+	_body.add_child(panel)
+	var board := Art.box(DASH_SIZE, FRAME, 0.7)
+	panel.add_child(board)
+	var cowl := Art.box(Vector3(DASH_SIZE.x, 0.03, 0.12), FRAME, 0.7)
+	cowl.position = Vector3(0.0, DASH_SIZE.y / 2.0, -0.03)
+	panel.add_child(cowl)
+	# Red on the rev counter from the governor's limit up; the boost gauge
+	# has none.
+	var red_from := _high_idle_rad_s / (_rated_rad_s * REV_COUNTER_HEADROOM)
+	for gauge: Array in [[-0.1, _rev_needle, red_from], [0.1, _boost_needle, 2.0]]:
+		var x_m: float = gauge[0]
+		var red_share: float = gauge[2]
+		var bezel := Art.cylinder(GAUGE_RADIUS_M + 0.012, 0.012, CHROME, 24, 0.25, 0.8)
+		bezel.rotation.x = PI / 2.0
+		bezel.position = Vector3(x_m, 0.0, DASH_SIZE.z / 2.0)
+		panel.add_child(bezel)
+		# The dials lit from behind, so they read in the cab's shade.
+		var face := Art.cylinder(GAUGE_RADIUS_M, 0.014, DIAL, 24, 0.6)
+		face.material_override = _backlit(DIAL)
+		face.rotation.x = PI / 2.0
+		face.position = Vector3(x_m, 0.0, DASH_SIZE.z / 2.0 + 0.002)
+		panel.add_child(face)
+		# Ticks round the dial, red from `red_share` of its sweep up.
+		for t in DIAL_TICKS:
+			var share := t / float(DIAL_TICKS - 1)
+			var a := NEEDLE_SWEEP_RAD * (share - 0.5)
+			var colour := NEEDLE if share >= red_share - 1e-6 else FRAME
+			if colour == NEEDLE and gauge[1] == _rev_needle:
+				rev_red_ticks += 1
+			var tick := Art.box(Vector3(0.006, 0.016, 0.004), colour)
+			tick.material_override = _backlit(colour)
+			tick.position = Vector3(x_m + sin(a) * GAUGE_RADIUS_M * 0.8,
+					cos(a) * GAUGE_RADIUS_M * 0.8, DASH_SIZE.z / 2.0 + 0.011)
+			tick.rotation.z = -a
+			panel.add_child(tick)
+		var needle: Node3D = gauge[1]
+		needle.position = Vector3(x_m, 0.0, DASH_SIZE.z / 2.0 + 0.014)
+		panel.add_child(needle)
+		var pointer := Art.box(Vector3(0.008, GAUGE_RADIUS_M * 0.85, 0.004), NEEDLE, 0.5)
+		pointer.material_override = _backlit(NEEDLE)
+		pointer.position = Vector3(0.0, GAUGE_RADIUS_M * 0.4, 0.0)
+		needle.add_child(pointer)
+		needle.rotation.z = NEEDLE_SWEEP_RAD / 2.0
+	for x_m: float in [-0.21, 0.21]:
+		var lamp := Art.cylinder(0.014, 0.01, Color(0.95, 0.6, 0.1), 10, 0.3)
+		lamp.rotation.x = PI / 2.0
+		lamp.position = Vector3(x_m, 0.05, DASH_SIZE.z / 2.0 + 0.003)
+		panel.add_child(lamp)
+
+
+# A colour that shows as it is, unshaded: a backlit dial.
+static func _backlit(colour: Color) -> StandardMaterial3D:
+	var lit := StandardMaterial3D.new()
+	lit.albedo_color = colour
+	lit.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	return lit
 
 
 # Fenders over the rear wheels: an arc of panels from the cab to the front
@@ -574,6 +688,7 @@ func cab_camera() -> Camera3D:
 		_cab_camera.near = CAB_NEAR_M
 		_cab_camera.far = CameraRig.FAR_M
 		_cab_camera.position = TrackSpace.point(EYES_AHEAD_M, 0.0, EYES_UP_M)
+		_cab_camera.rotation.x = -EYES_DOWN_RAD
 		_body.add_child(_cab_camera)
 	return _cab_camera
 
@@ -590,6 +705,7 @@ func show_snapshot(s: Dictionary, delta: float) -> void:
 	var steering: float = s["steering_rad"]
 	_front_left_steer.rotation.y = steering
 	_front_right_steer.rotation.y = steering
+	show_cockpit(s)
 	# Rolling forward turns a wheel about -x (TrackSpace): the angle grows
 	# with the wheel's speed, and the front wheels roll with the ground.
 	_rear_left_angle -= float(s["rear_left_omega_rad_s"]) * delta
@@ -611,6 +727,17 @@ func show_snapshot(s: Dictionary, delta: float) -> void:
 	for dust in _dust:
 		dust.emitting = moving or throwing > 0.0
 		dust.color = Color(1.0, 1.0, 1.0, clampf(0.35 + 0.65 * throwing, 0.0, 1.0))
+
+
+# The steering wheel turned with the front wheels; the rev counter from
+# standing to past the rated speed, and the boost.
+func show_cockpit(s: Dictionary) -> void:
+	_steering_wheel.rotation.y = float(s["steering_rad"]) * STEERING_RATIO
+	var revs := clampf(float(s["engine_omega_rad_s"]) / (_rated_rad_s * REV_COUNTER_HEADROOM),
+			0.0, 1.0)
+	_rev_needle.rotation.z = NEEDLE_SWEEP_RAD * (0.5 - revs)
+	var boost := clampf(float(s.get("boost", 0.0)), 0.0, 1.0)
+	_boost_needle.rotation.z = NEEDLE_SWEEP_RAD * (0.5 - boost)
 
 
 # More smoke with more throttle, and blacker as the sled pulls the engine

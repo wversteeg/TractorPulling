@@ -71,11 +71,12 @@ damping_n_s_per_m = 8000.0        # about 15 % of critical in pitch
 
 # Mandatory (ETPC FS 2026, 1.2.4, Level 2 and 3): at least half a tire
 # diameter behind the rear axle, its pad at most 250 mm off the ground and
-# at least 15000 mm² (a skid, not a wheel). Set at the limit, as pullers
-# do: the tip touches down at about 11° nose-up, and the pad slides.
+# at least 15000 mm² (a skid, not a wheel). Close behind the rear tire
+# and its pad at the height limit, as pullers set it: the tip touches
+# down at about 15° nose-up, and the pad slides.
 [tractor.chassis.wheelie_bar]
-behind_rear_axle_m = 1.4
+behind_rear_axle_m = 1.05
 tip_height_m = 0.25
-stiffness_n_per_m = 2.0e6
-damping_n_s_per_m = 40000.0
+stiffness_n_per_m = 3.6e6         # 2.0e6 × (1.4 / 1.05)², as stiff in pitch as at 1.4 m
+damping_n_s_per_m = 71000.0
 rolling_resistance_coefficient = 0.35  # a steel pad sliding on the track

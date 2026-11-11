@@ -34,7 +34,9 @@ const CAB_TURN_RATE_PER_S := 6.0
 # chain leaving the hitch stay in the bottom of the view, as the tractor's
 # own reference.
 const CAB_BACK_SHIFT := Vector3(-0.3, -0.12, 0.22)
-const CAB_BACK_PITCH_RAD := -0.62
+# The tilt comes on top of the eyes' own look down ahead
+# (TractorView.EYES_DOWN_RAD): together 0.62 rad down.
+const CAB_BACK_PITCH_RAD := -0.62 + TractorView.EYES_DOWN_RAD
 # The close camera: on the chain it stands behind the tractor along its
 # heading as far as the top of the sled's canopy (SledView.camera_mount())
 # is, and this much farther back and higher, as a TV camera on the sled
