@@ -74,7 +74,7 @@ damping_n_s_per_m = 8000.0        # about 15 % of critical in pitch
 # at least 15000 mm² (a skid, not a wheel). Set at the limit, as pullers
 # do: the tip touches down at about 11° nose-up, and the pad slides.
 [tractor.chassis.wheelie_bar]
-behind_rear_axle_m = 1.4
+behind_rear_axle_m = 1.05
 tip_height_m = 0.25
 stiffness_n_per_m = 2.0e6
 damping_n_s_per_m = 40000.0
