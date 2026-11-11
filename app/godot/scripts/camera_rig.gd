@@ -30,8 +30,9 @@ const CAB_TURN_RATE_PER_S := 6.0
 # Looking back the driver turns round and raises up over the seat back,
 # over the right shoulder, and looks down past the hitch: from where the
 # eyes look ahead, along, left and up on the tractor [m]; and how far down
-# [rad]. So the hitch, the back of the fenders and a little of the rear
-# wheels stay in the bottom of the view, as the tractor's own reference.
+# [rad]. So the back of the fenders, a little of the rear wheels and the
+# chain leaving the hitch stay in the bottom of the view, as the tractor's
+# own reference.
 const CAB_BACK_SHIFT := Vector3(-0.3, -0.12, 0.22)
 const CAB_BACK_PITCH_RAD := -0.62
 # The close camera: on the chain it stands behind the tractor along its

@@ -42,6 +42,7 @@ const CARD_HEADING_M := 46.0
 const ROW_HEIGHT := 88.0
 const PAIR_BUTTON := Vector2(120.0, 58.0)
 const PAIR_GAP := 8.0
+const CAREER_GAP := 16.0
 const CAREER_BUTTON := Vector2(220.0, 64.0)
 # What "+ € 1000" adds to the bank [EUR].
 const TEST_MONEY_EUR := 1000
@@ -120,11 +121,11 @@ func _ready() -> void:
 	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var career := _card(layout, CAREER_RECT, "Career")
 	var y := (CAREER_RECT.size.y - CAREER_BUTTON.y) / 2.0
-	var x := CAREER_RECT.size.x - CARD_PADDING - 3.0 * CAREER_BUTTON.x - 2.0 * PAIR_GAP * 2.0
+	var x := CAREER_RECT.size.x - CARD_PADDING - 3.0 * CAREER_BUTTON.x - 2.0 * CAREER_GAP
 	new_career_button = _button(career, "New career", Rect2(Vector2(x, y), CAREER_BUTTON), "new")
-	x += CAREER_BUTTON.x + 2.0 * PAIR_GAP
+	x += CAREER_BUTTON.x + CAREER_GAP
 	start_button = _button(career, "Start: 1", Rect2(Vector2(x, y), CAREER_BUTTON))
-	x += CAREER_BUTTON.x + 2.0 * PAIR_GAP
+	x += CAREER_BUTTON.x + CAREER_GAP
 	money_button = _button(career, "+ € %d" % TEST_MONEY_EUR, Rect2(Vector2(x, y), CAREER_BUTTON))
 	_text(career, "Start over. For testing: the class to start in, money",
 			Rect2(CARD_PADDING, CARD_HEADING_M - 4.0, 330.0, 50.0), NOTE_SIZE, GarageArt.DIM) \

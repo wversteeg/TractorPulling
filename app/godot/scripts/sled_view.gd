@@ -97,8 +97,9 @@ var _transport_spin: Array[Node3D] = []
 var transport := 0.0
 var _transport_angle := 0.0
 var _hook := Marker3D.new()
-# Where the close camera sees from (CameraRig): over the canopy's front edge.
-var _camera_mount := Marker3D.new()
+# Where the close camera sees from (CameraRig), on the sled: over the
+# canopy's front edge, set as the platform is built.
+var _camera_mount_m := TrackSpace.point(CAMERA_MOUNT_X_M, 0.0, CANOPY_M + CAMERA_MOUNT_UP_M)
 var _wheels := Node3D.new()
 var _lamp := MeshInstance3D.new()
 var _lamp_material := StandardMaterial3D.new()
@@ -116,7 +117,7 @@ var lamp_tension_n := 1000.0
 # As TractorView's: parts never added to the tree are freed here.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PREDELETE:
-		for part: Node in [_box, _hook, _wheels, _lamp, _berm, _pan, _camera_mount]:
+		for part: Node in [_box, _hook, _wheels, _lamp, _berm, _pan]:
 			if part.get_parent() == null:
 				part.free()
 
@@ -387,9 +388,8 @@ func _build_platform(rail_z_m: float) -> void:
 	var canopy := _painted(Vector3(1.5, 0.05, 1.1), PAINT)
 	canopy.position = TrackSpace.point(-0.95, 0.0, deck_z_m + CANOPY_M)
 	add_child(canopy)
-	_camera_mount.position = TrackSpace.point(CAMERA_MOUNT_X_M, 0.0,
+	_camera_mount_m = TrackSpace.point(CAMERA_MOUNT_X_M, 0.0,
 			deck_z_m + CANOPY_M + CAMERA_MOUNT_UP_M)
-	add_child(_camera_mount)
 	var mast := Art.cylinder(0.04, CANOPY_M + 0.5, STEEL, 8, 0.4, 0.6)
 	mast.position = TrackSpace.point(-1.4, -0.5,
 			deck_z_m + (CANOPY_M + 0.5) / 2.0)
@@ -419,7 +419,8 @@ func hook_position() -> Vector3:
 # Over the sled's canopy, in the world: the close camera stands as far
 # behind the tractor (CameraRig.follow).
 func camera_mount() -> Vector3:
-	return _camera_mount.global_position
+	return transform * _camera_mount_m if not is_inside_tree() \
+			else global_transform * _camera_mount_m
 
 
 func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
