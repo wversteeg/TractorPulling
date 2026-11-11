@@ -77,6 +77,6 @@ damping_n_s_per_m = 8000.0        # about 15 % of critical in pitch
 [tractor.chassis.wheelie_bar]
 behind_rear_axle_m = 1.05
 tip_height_m = 0.25
-stiffness_n_per_m = 2.0e6
-damping_n_s_per_m = 40000.0
+stiffness_n_per_m = 3.6e6         # 2.0e6 × (1.4 / 1.05)², as stiff in pitch as at 1.4 m
+damping_n_s_per_m = 71000.0
 rolling_resistance_coefficient = 0.35  # a steel pad sliding on the track
