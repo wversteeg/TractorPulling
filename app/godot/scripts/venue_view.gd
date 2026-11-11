@@ -293,8 +293,9 @@ func build(d: Dictionary) -> void:
 
 
 # The event's look for the next build: TractorPullEvent.get_event()'s
-# "size" and "time", and its track's soil ("track": "clay_fraction",
-# "moisture"). Missing values keep a club event in the day.
+# "size" and "time", and the track's soil ("track": "clay_fraction",
+# "moisture", from TractorPullRun.get_dimensions()). Missing values keep a
+# club event in the day.
 func set_look(event: Dictionary) -> void:
 	var track: Dictionary = event.get("track", {})
 	_look = {

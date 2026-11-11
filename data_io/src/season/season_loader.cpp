@@ -54,6 +54,16 @@ std::optional<std::vector<std::int64_t>> whole_euros(const std::vector<double>& 
     return out;
 }
 
+// A text field's value, `fallback` when it is missing, "" (no name) when it
+// is there but not text.
+std::string text_or(const toml::table& table, std::string_view key, std::string_view fallback) {
+    const toml::node_view<const toml::node> node = table[key];
+    if (!node) {
+        return std::string{fallback};
+    }
+    return node.value<std::string>().value_or(std::string{});
+}
+
 // One [[season.events]] entry: its name and track, and how the game dresses
 // it (a club event in the day when the file says nothing).
 Result<SeasonRound> read_round(const toml::table* round, std::string_view source,
@@ -65,14 +75,12 @@ Result<SeasonRound> read_round(const toml::table* round, std::string_view source
     if (!name || !track_path) {
         return detail::make_error(source, "season.events", "every event needs a name and a track");
     }
-    const std::optional<EventSize> size =
-        size_named(round->at_path("size").value_or(std::string{"club"}));
+    const std::optional<EventSize> size = size_named(text_or(*round, "size", "club"));
     if (!size) {
         return detail::make_error(source, "season.events.size",
                                   R"(must be "small", "club" or "big")");
     }
-    const std::optional<TimeOfDay> time_of_day =
-        time_named(round->at_path("time").value_or(std::string{"day"}));
+    const std::optional<TimeOfDay> time_of_day = time_named(text_or(*round, "time", "day"));
     if (!time_of_day) {
         return detail::make_error(source, "season.events.time",
                                   R"(must be "day", "sunset" or "evening")");

@@ -92,6 +92,13 @@ TEST(SeasonLoader, ReadsEachEventsSizeAndTime) {
     EXPECT_NE(error_of(with("name = \"Clay-sand\"\n", "name = \"Clay-sand\"\ntime = \"night\"\n"))
                   .find("season.events.time"),
               std::string::npos);
+    // A name of the wrong type is no name either.
+    EXPECT_NE(error_of(with("name = \"Clay-sand\"\n", "name = \"Clay-sand\"\nsize = 3\n"))
+                  .find("season.events.size"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("name = \"Clay-sand\"\n", "name = \"Clay-sand\"\ntime = true\n"))
+                  .find("season.events.time"),
+              std::string::npos);
     // The shipped season mixes them.
     const auto club = load_season(kSeasons / "club_season.toml");
     ASSERT_TRUE(club.ok()) << club.error().message;

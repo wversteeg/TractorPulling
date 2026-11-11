@@ -525,9 +525,12 @@ func _build(error: String) -> bool:
 	for child in track_view.get_children():
 		child.queue_free()
 	track_view.build(dimensions)
-	# The event's size, time of day and track dress the venue.
-	var info := event.get_event()
-	venue_view.set_look(info)
+	# The event's size and time of day dress the venue (a scripted run, on
+	# no event, a club event in the day), the loaded track's soil its colour.
+	var look: Dictionary = {} if autoplay else event.get_event().duplicate()
+	look["track"] = {"clay_fraction": dimensions.get("clay_fraction", 0.4),
+			"moisture": dimensions.get("moisture", 0.15)}
+	venue_view.set_look(look)
 	VenueView.light(world, sun, venue_view.look()["time"])
 	venue_view.build(dimensions)
 	# The chequered flag at the full-pull line; an event's pull sets the
@@ -1030,8 +1033,8 @@ func _show_officials(s: Dictionary, delta: float) -> void:
 
 func _add_world() -> void:
 	add_child(world)
-	sun.rotation = Vector3(deg_to_rad(-48.0), deg_to_rad(35.0), 0.0)
-	sun.light_energy = 1.2
+	# Lit for the day until the first pull's event says otherwise.
+	VenueView.light(world, sun, "day")
 	sun.shadow_enabled = true
 	# Shadows only near the camera, where the tractor and the sled are.
 	sun.directional_shadow_max_distance = 60.0
