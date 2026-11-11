@@ -63,6 +63,12 @@ private:
 constexpr double kFirstSpotSpacings = 1.0;
 constexpr double kGapLowShare = 0.5;
 constexpr double kPeakLowShare = 0.6;
+// Even the closest-packed spots the limits allow fit the table: none is
+// dropped from the first kHardSpotsUntil_m.
+static_assert(Model::kHardSpotsUntil_m /
+                      (kMinHardSpotLength_m + kMinHardSpotSpacing_m * kGapLowShare) <
+                  static_cast<double>(Model::kMaxHardSpots),
+              "kMaxHardSpots too small for the hard spots' limits");
 
 }  // namespace
 
