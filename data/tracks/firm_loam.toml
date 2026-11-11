@@ -16,12 +16,20 @@ clay_fraction = 0.4
 moisture = 0.12
 compaction = 0.9
 
-# Hard spots (track::HardSpots): the rolled loam has firmer seams where the roller crossed.
-# The sled's drag jumps as it crosses them; a tire that keeps a little
-# wheelspin rides through them where one that grips hard pulls the engine
-# down.
+# Hard spots (track::HardSpots): the rolled loam has firmer seams where the
+# roller crossed. A well-prepared track has only a few, and mild: the sled's
+# drag jumps a little as it crosses one, and the engine dips with it.
 [track.hard_spots]
-every_m = 8.0   # on average one every this far
+every_m = 14.0   # on average one every this far
 length_m = 1.5
-extra = 0.5    # up to this much more drag at a spot's middle
+extra = 0.25    # up to this much more drag at a spot's middle
 seed = 23
+
+# Weak spots (track::WeakSpots): a few looser patches. A well-prepared track
+# has only a few, and they are mild: the tires slip a little more for a
+# moment.
+[track.weak_spots]
+every_m = 50.0
+length_m = 1.5
+grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
+seed = 73

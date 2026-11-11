@@ -23,3 +23,12 @@ grip = 1.45
 clay_fraction = 0.75
 moisture = 0.19
 compaction = 0.8
+
+# Weak spots (track::WeakSpots): a softer, wetter patch under the cover's
+# seams. A well-prepared track has only a few, and they are mild: the tires
+# slip a little more for a moment.
+[track.weak_spots]
+every_m = 45.0
+length_m = 2.0
+grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
+seed = 67

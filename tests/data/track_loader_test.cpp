@@ -187,6 +187,29 @@ TEST(TrackLoader, ReadsTheHardSpots) {
     }
 }
 
+// The weak spots likewise: optional, read from their table, checked.
+TEST(TrackLoader, ReadsTheWeakSpots) {
+    const auto plain = parse_track(kPlainTrack, "t.toml");
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_FALSE(plain.value().ground.weak_spots.has_value());
+    const std::string spotted = std::string{kPlainTrack} +
+                                "\n[track.weak_spots]\nevery_m = 25.0\nlength_m = 2.0\n"
+                                "grip_loss = 0.12\nseed = 9\n";
+    const auto read = parse_track(spotted, "t.toml");
+    ASSERT_TRUE(read.ok()) << read.error().message;
+    const track::WeakSpots spots = read.value().ground.weak_spots.value_or(track::WeakSpots{});
+    EXPECT_EQ(spots.every_m, 25.0);
+    EXPECT_EQ(spots.length_m, 2.0);
+    EXPECT_EQ(spots.grip_loss, 0.12);
+    EXPECT_EQ(spots.seed, 9U);
+    std::string bad = spotted;
+    bad.replace(bad.find("grip_loss = 0.12"), 16, "grip_loss = 0.9");
+    const auto refused = parse_track(bad, "t.toml");
+    ASSERT_FALSE(refused.ok());
+    EXPECT_NE(refused.error().message.find("track.weak_spots: "), std::string::npos)
+        << refused.error().message;
+}
+
 TEST(TrackLoader, RejectsNonsense) {
     struct Case {
         std::string_view from;

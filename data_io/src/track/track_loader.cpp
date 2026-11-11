@@ -90,6 +90,12 @@ FieldError describe(track::ParamError error) {
                         ", length_m in " +
                         range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
                         " and extra in " + range(0.0, track::kMaxHardSpotExtra)};
+        case ParamError::kWeakSpots:
+            return {"track.weak_spots",
+                    "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
+                        ", length_m in " +
+                        range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
+                        " and grip_loss in " + range(0.0, track::kMaxWeakSpotGripLoss)};
     }
     return {"track", "invalid"};
 }
@@ -102,22 +108,39 @@ std::optional<math::Curve> profile(detail::Reader& reader, std::string_view tabl
     return reader.curve(table, "x_m", "value", kMetresToSi);
 }
 
-// The optional hard spots: where the sled's drag jumps along the track.
-std::optional<track::HardSpots> hard_spots(detail::Reader& reader) {
-    constexpr std::string_view kTable = "track.hard_spots";
-    if (!reader.has(kTable)) {
-        return std::nullopt;
-    }
-    const std::int64_t seed = reader.integer("track.hard_spots.seed");
+// A spots table's seed: a whole number that fits 32 bits, above 0.
+std::uint32_t seed_of(detail::Reader& reader, const std::string& path) {
+    const std::int64_t seed = reader.integer(path);
     constexpr std::int64_t kMaxSeed = 0xFFFFFFFF;
     if (seed < 1 || seed > kMaxSeed) {
-        reader.fail("track.hard_spots.seed", "must be in [1, 4294967295]");
+        reader.fail(path, "must be in [1, 4294967295]");
+    }
+    return static_cast<std::uint32_t>(std::clamp<std::int64_t>(seed, 1, kMaxSeed));
+}
+
+// The optional hard spots: where the sled's drag jumps along the track.
+std::optional<track::HardSpots> hard_spots(detail::Reader& reader) {
+    if (!reader.has("track.hard_spots")) {
+        return std::nullopt;
     }
     return track::HardSpots{
         .every_m = reader.number("track.hard_spots.every_m"),
         .length_m = reader.number("track.hard_spots.length_m"),
         .extra = reader.number("track.hard_spots.extra"),
-        .seed = static_cast<std::uint32_t>(std::clamp<std::int64_t>(seed, 1, kMaxSeed)),
+        .seed = seed_of(reader, "track.hard_spots.seed"),
+    };
+}
+
+// The optional weak spots: where the tires grip less for a moment.
+std::optional<track::WeakSpots> weak_spots(detail::Reader& reader) {
+    if (!reader.has("track.weak_spots")) {
+        return std::nullopt;
+    }
+    return track::WeakSpots{
+        .every_m = reader.number("track.weak_spots.every_m"),
+        .length_m = reader.number("track.weak_spots.length_m"),
+        .grip_loss = reader.number("track.weak_spots.grip_loss"),
+        .seed = seed_of(reader, "track.weak_spots.seed"),
     };
 }
 
@@ -150,6 +173,7 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
                 // Optional: a well-prepared track's grip without it.
                 .grip_scale = reader.optional_number("track.grip").value_or(1.0),
                 .hard_spots = hard_spots(reader),
+                .weak_spots = weak_spots(reader),
             },
         .sled =
             {

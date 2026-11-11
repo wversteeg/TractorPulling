@@ -23,11 +23,24 @@ struct HardSpots {
     std::uint32_t seed = 1;
 };
 
-/// The limits a track's hard spots may have, inclusive [m, m, share].
+/// Weak spots along the track: short patches where the tires grip less (a
+/// looser or wetter bit the preparation missed), so the wheels slip for a
+/// moment. Laid out as hard spots are, from their own `seed`: the grip
+/// falls by up to `grip_loss` (60 to 100 % of it) at a spot's middle.
+struct WeakSpots {
+    double every_m = 0.0;
+    double length_m = 0.0;
+    double grip_loss = 0.0;
+    std::uint32_t seed = 1;
+};
+
+/// The limits a track's hard and weak spots may have, inclusive [m, m,
+/// share, share].
 inline constexpr double kMinHardSpotSpacing_m = 2.0;
 inline constexpr double kMinHardSpotLength_m = 0.5;
 inline constexpr double kMaxHardSpotLength_m = 10.0;
 inline constexpr double kMaxHardSpotExtra = 2.0;
+inline constexpr double kMaxWeakSpotGripLoss = 0.5;
 
 /// A pulling track's ground: one soil, and optionally how its moisture and
 /// compaction change along the track (a wet patch where it was watered, a
@@ -46,6 +59,7 @@ struct Params {
     /// their wheelie bars to one where they spin early.
     double grip_scale = 1.0;
     std::optional<HardSpots> hard_spots = std::nullopt;
+    std::optional<WeakSpots> weak_spots = std::nullopt;
 };
 
 /// The grip scale a track may have, inclusive.
@@ -65,6 +79,9 @@ enum class ParamError : std::uint8_t {
     /// longer than the length limits, their extra outside [0,
     /// kMaxHardSpotExtra], or a seed of 0.
     kHardSpots,
+    /// Weak spots outside the same spacing and length limits, their grip
+    /// loss outside [0, kMaxWeakSpotGripLoss], or a seed of 0.
+    kWeakSpots,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
@@ -88,8 +105,9 @@ public:
     /// The surface at `x_m` along the track.
     [[nodiscard]] soil::Surface surface_at(double x_m) const noexcept;
 
-    /// Hard spots are laid out over this much track from the start line
-    /// (past it the drag is even), at most this many of them [m].
+    /// Hard and weak spots are laid out over this much track from the
+    /// start line (past it the ground is even), at most this many of each
+    /// [m].
     static constexpr double kHardSpotsUntil_m = 200.0;
     static constexpr std::size_t kMaxHardSpots = 160;
 
@@ -101,16 +119,27 @@ private:
     double spacing_m_ = kSampleSpacing_m;
     std::size_t count_ = 1;
     std::array<soil::Surface, kMaxSamples> samples_{};
-    // The hard spots, by where they start: each a triangle, evaluated
-    // exactly in the step (no sampling, so a short spot keeps its peak).
-    struct Spot {
-        double start_m = 0.0;
-        double peak = 0.0;
+    // Spots along the track, by where they start: each a triangle up to
+    // its peak, evaluated exactly in the step (no sampling, so a short spot
+    // keeps its peak); 0 between them.
+    class SpotLayout {
+    public:
+        // Laid end to end with gaps between, from `seed`: one every `every_m`
+        // on average, each `length_m` long, peaking at 60 to 100 % of `size`.
+        void lay(double every_m, double length_m, double size, std::uint32_t seed) noexcept;
+        [[nodiscard]] double at(double x_m) const noexcept;
+
+    private:
+        struct Spot {
+            double start_m = 0.0;
+            double peak = 0.0;
+        };
+        std::array<Spot, kMaxHardSpots> spots_{};
+        std::size_t count_ = 0;
+        double length_m_ = 1.0;
     };
-    std::array<Spot, kMaxHardSpots> spots_{};
-    std::size_t spot_count_ = 0;
-    double spot_length_m_ = 1.0;
-    [[nodiscard]] double drag_scale_at(double x_m) const noexcept;
+    SpotLayout hard_;
+    SpotLayout weak_;
 };
 
 }  // namespace tp::track

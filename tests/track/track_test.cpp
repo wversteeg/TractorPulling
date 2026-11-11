@@ -265,5 +265,67 @@ TEST(Track, RejectsNonsenseHardSpots) {
     }
 }
 
+Params with_weak_spots(std::uint32_t seed) {
+    Params params = reference_params();
+    params.weak_spots = WeakSpots{.every_m = 10.0, .length_m = 2.0, .grip_loss = 0.2, .seed = seed};
+    return params;
+}
+
+// Weak spots take a share of the tires' grip, at most their grip loss, and
+// nothing between them; the cone index and the drag stay as they were.
+TEST(Track, WeakSpotsTakeSomeGrip) {
+    const Model even = model_of(reference_params());
+    const Model weak = model_of(with_weak_spots(5));
+    int spots = 0;
+    bool in_spot = false;
+    double least = 1.0;
+    for (int i = 0; i <= 4000; ++i) {
+        const double x_m = 0.025 * i;
+        const soil::Surface plain = even.surface_at(x_m);
+        const soil::Surface spot = weak.surface_at(x_m);
+        const double share = spot.grip_factor / plain.grip_factor;
+        EXPECT_LE(share, 1.0);
+        EXPECT_GE(share, 1.0 - 0.2 - 1e-12);
+        EXPECT_DOUBLE_EQ(spot.cone_index_pa, plain.cone_index_pa);
+        EXPECT_DOUBLE_EQ(spot.drag_scale, 1.0);
+        least = std::min(least, share);
+        if (share < 1.0 && !in_spot) {
+            ++spots;
+        }
+        in_spot = share < 1.0;
+    }
+    EXPECT_LE(least, 1.0 - 0.6 * 0.2);
+    // 100 m with one every 10 m on average (gaps of 5 to 15 m): 5 to 15.
+    EXPECT_GE(spots, 5);
+    EXPECT_LE(spots, 15);
+}
+
+// The same seed lays the same weak spots; another seed, others.
+TEST(Track, WeakSpotsFollowTheirSeed) {
+    const Model first = model_of(with_weak_spots(5));
+    const Model again = model_of(with_weak_spots(5));
+    const Model other = model_of(with_weak_spots(6));
+    bool differs = false;
+    for (int i = 0; i <= 4000; ++i) {
+        const double x_m = 0.025 * i;
+        EXPECT_EQ(first.surface_at(x_m).grip_factor, again.surface_at(x_m).grip_factor);
+        differs = differs || first.surface_at(x_m).grip_factor != other.surface_at(x_m).grip_factor;
+    }
+    EXPECT_TRUE(differs);
+}
+
+TEST(Track, RejectsNonsenseWeakSpots) {
+    for (const WeakSpots spots :
+         {WeakSpots{.every_m = 1.0, .length_m = 1.0, .grip_loss = 0.1, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 0.1, .grip_loss = 0.1, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 1.0, .grip_loss = -0.1, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 1.0, .grip_loss = 0.6, .seed = 1},
+          WeakSpots{.every_m = 10.0, .length_m = 1.0, .grip_loss = 0.1, .seed = 0}}) {
+        Params params = reference_params();
+        params.weak_spots = spots;
+        EXPECT_EQ(validate(params), ParamError::kWeakSpots);
+    }
+}
+
 }  // namespace
 }  // namespace tp::track

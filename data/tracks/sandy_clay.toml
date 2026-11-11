@@ -20,3 +20,12 @@ compaction = 0.7
 [track.profile.compaction]
 x_m = [0.0, 20.0, 40.0]
 value = [0.8, 0.8, 0.6]
+
+# Weak spots (track::WeakSpots): looser sand the roller did not firm. A
+# well-prepared track has only a few, and they are mild: the tires slip a
+# little more for a moment.
+[track.weak_spots]
+every_m = 45.0
+length_m = 2.0
+grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
+seed = 71

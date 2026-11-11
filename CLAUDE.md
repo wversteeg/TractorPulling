@@ -123,7 +123,7 @@ First get something working, then give it more possibilities. In order:
 
 ## Later (do not build yet)
 
-- Track changes: left and right halves of a lane that grip differently (equal by default), weaker patches and more along-track variation; scripted pullers that steer and brake to stay in the lane once the track can push them off line.
+- Track changes: left and right halves of a lane that grip differently (equal by default), one-sided weak spots and more along-track variation; scripted pullers that steer and brake to stay in the lane once the track can push them off line.
 
 ## Build and test
 

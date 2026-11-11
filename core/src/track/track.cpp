@@ -31,11 +31,11 @@ soil::Surface blend(const soil::Surface& a, const soil::Surface& b, double t) no
             .spin_fall_off = a.spin_fall_off + t * (b.spin_fall_off - a.spin_fall_off)};
 }
 
-bool hard_spots_valid(const HardSpots& spots) noexcept {
-    return std::isfinite(spots.every_m) && std::isfinite(spots.length_m) &&
-           std::isfinite(spots.extra) && spots.every_m >= kMinHardSpotSpacing_m &&
-           spots.length_m >= kMinHardSpotLength_m && spots.length_m <= kMaxHardSpotLength_m &&
-           spots.extra >= 0.0 && spots.extra <= kMaxHardSpotExtra && spots.seed != 0;
+bool spots_valid(double every_m, double length_m, double size, double max_size,
+                 std::uint32_t seed) noexcept {
+    return std::isfinite(every_m) && std::isfinite(length_m) && std::isfinite(size) &&
+           every_m >= kMinHardSpotSpacing_m && length_m >= kMinHardSpotLength_m &&
+           length_m <= kMaxHardSpotLength_m && size >= 0.0 && size <= max_size && seed != 0;
 }
 
 // A 32-bit xorshift: integer arithmetic only, so the hard spots fall in the
@@ -86,8 +86,15 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.grip_scale > kMaxGripScale) {
         return ParamError::kGripScale;
     }
-    if (params.hard_spots && !hard_spots_valid(*params.hard_spots)) {
+    if (const auto& hard = params.hard_spots;
+        hard &&
+        !spots_valid(hard->every_m, hard->length_m, hard->extra, kMaxHardSpotExtra, hard->seed)) {
         return ParamError::kHardSpots;
+    }
+    if (const auto& weak = params.weak_spots;
+        weak && !spots_valid(weak->every_m, weak->length_m, weak->grip_loss, kMaxWeakSpotGripLoss,
+                             weak->seed)) {
+        return ParamError::kWeakSpots;
     }
     return std::nullopt;
 }
@@ -129,32 +136,37 @@ Model::Model(const Params& params) noexcept : params_(params) {
         samples_[i] = soil::surface(composition_at(params_, x_m));
         samples_[i].grip_factor *= params_.grip_scale;
     }
-    if (!params_.hard_spots) {
-        return;
+    if (const auto& hard = params_.hard_spots) {
+        hard_.lay(hard->every_m, hard->length_m, hard->extra, hard->seed);
     }
-    // Laid end to end with gaps between, so they never overlap.
-    const HardSpots& spots = *params_.hard_spots;
-    spot_length_m_ = spots.length_m;
-    Xorshift32 random{spots.seed};
-    double start_m = spots.every_m * kFirstSpotSpacings * random.next();
-    while (start_m < kHardSpotsUntil_m && spot_count_ < kMaxHardSpots) {
-        const double peak = spots.extra * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
-        spots_[spot_count_++] = {.start_m = start_m, .peak = peak};
-        start_m += spots.length_m + spots.every_m * (kGapLowShare + random.next());
+    if (const auto& weak = params_.weak_spots) {
+        weak_.lay(weak->every_m, weak->length_m, weak->grip_loss, weak->seed);
     }
 }
 
-double Model::drag_scale_at(double x_m) const noexcept {
+void Model::SpotLayout::lay(double every_m, double length_m, double size,
+                            std::uint32_t seed) noexcept {
+    length_m_ = length_m;
+    Xorshift32 random{seed};
+    double start_m = every_m * kFirstSpotSpacings * random.next();
+    while (start_m < kHardSpotsUntil_m && count_ < kMaxHardSpots) {
+        const double peak = size * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
+        spots_[count_++] = {.start_m = start_m, .peak = peak};
+        start_m += length_m + every_m * (kGapLowShare + random.next());
+    }
+}
+
+double Model::SpotLayout::at(double x_m) const noexcept {
     // The last spot starting at or before x_m, if x_m is within it.
-    const auto spots = std::span{spots_}.first(spot_count_);
+    const auto spots = std::span{spots_}.first(count_);
     const auto after = std::ranges::upper_bound(spots, x_m, std::less{}, &Spot::start_m);
     if (after == spots.begin()) {
-        return 1.0;
+        return 0.0;
     }
     const Spot& spot = *std::prev(after);
-    const double half_m = spot_length_m_ / 2.0;
+    const double half_m = length_m_ / 2.0;
     const double from_middle = std::abs(x_m - (spot.start_m + half_m)) / half_m;
-    return from_middle < 1.0 ? 1.0 + spot.peak * (1.0 - from_middle) : 1.0;
+    return from_middle < 1.0 ? spot.peak * (1.0 - from_middle) : 0.0;
 }
 
 std::optional<Model> Model::create(const Params& params) noexcept {
@@ -172,7 +184,8 @@ soil::Surface Model::surface_at(double x_m) const noexcept {
     soil::Surface surface = index + 1 >= count_ ? samples_[count_ - 1]
                                                 : blend(samples_[index], samples_[index + 1],
                                                         position - static_cast<double>(index));
-    surface.drag_scale = drag_scale_at(x_m);
+    surface.drag_scale = 1.0 + hard_.at(x_m);
+    surface.grip_factor *= 1.0 - weak_.at(x_m);
     return surface;
 }
 

@@ -18,9 +18,10 @@ for the big features; they are repeated at the end for completeness.
   that persists between runs.
 - **Lane-to-lane differences.** Lanes are prepared and worn differently;
   one lane per track for now.
-- **Left and right differences, weaker patches.** The two halves of a lane
-  can grip differently (a wetter side, a softer edge), which makes a
-  tractor drift on its own; a weaker patch does the same for a moment.
+- **Left and right differences, one-sided weak spots.** The two halves of
+  a lane can grip differently (a wetter side, a softer edge), which makes
+  a tractor drift on its own; a weak spot under one side only would do the
+  same for a moment (track::WeakSpots cover the lane's whole width).
   Equal sides stay the default. Deferred to be built together with more
   track changes; the track is one surface across its width for now.
 - **Automatic test pull.** The sled operator sets the push-down from a test
@@ -94,7 +95,7 @@ for the big features; they are repeated at the end for completeness.
   and boost band; a tire that bites hands each jump to the engine, which
   drops out of boost and stalls. On most tracks the drag rises smoothly, so
   more grip never costs: a too-soft tire loses only by its lugs squirming.
-  The dry, hard tracks now have hard spots where the drag jumps
+  The dry, hard tracks now have a few mild hard spots where the drag jumps
   (track::HardSpots), and there a tire that slips a little more lets the
   engine dip less at each spot; but the spots are short and the tractor's
   momentum carries it through, so it does not yet decide the best
@@ -564,5 +565,5 @@ for the big features; they are repeated at the end for completeness.
 
 ## Roadmap features (from CLAUDE.md "Later")
 
-- Track changes: left and right differences, weaker patches; pullers that
+- Track changes: left and right differences, one-sided weak spots; pullers that
   keep the lane.
