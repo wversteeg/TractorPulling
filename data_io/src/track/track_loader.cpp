@@ -86,17 +86,15 @@ FieldError describe(track::ParamError error) {
                     "must be in " + range(track::kMinGripScale, track::kMaxGripScale)};
         case ParamError::kHardSpots:
             return {"track.hard_spots",
-                    "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
-                        ", length_m in " +
-                        range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
+                    "every_m must be at least " + number(track::kMinSpotSpacing_m) +
+                        ", length_m in " + range(track::kMinSpotLength_m, track::kMaxSpotLength_m) +
                         ", min_width_m from " + number(track::kMinSpotWidth_m) +
                         " up to max_width_m, at most the lane's width, and extra in " +
                         range(0.0, track::kMaxHardSpotExtra)};
         case ParamError::kWeakSpots:
             return {"track.weak_spots",
-                    "every_m must be at least " + number(track::kMinHardSpotSpacing_m) +
-                        ", length_m in " +
-                        range(track::kMinHardSpotLength_m, track::kMaxHardSpotLength_m) +
+                    "every_m must be at least " + number(track::kMinSpotSpacing_m) +
+                        ", length_m in " + range(track::kMinSpotLength_m, track::kMaxSpotLength_m) +
                         ", min_width_m from " + number(track::kMinSpotWidth_m) +
                         " up to max_width_m, at most the lane's width, and grip_loss in " +
                         range(0.0, track::kMaxWeakSpotGripLoss)};

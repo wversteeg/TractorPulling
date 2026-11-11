@@ -46,9 +46,9 @@ struct WeakSpots {
 /// The limits a track's hard and weak spots may have, inclusive [m, m, m,
 /// share, share]. A spot is at most as wide as the band it lies in
 /// (Params::spots_across_m), its narrowest no wider than its widest.
-inline constexpr double kMinHardSpotSpacing_m = 2.0;
-inline constexpr double kMinHardSpotLength_m = 0.5;
-inline constexpr double kMaxHardSpotLength_m = 10.0;
+inline constexpr double kMinSpotSpacing_m = 2.0;
+inline constexpr double kMinSpotLength_m = 0.5;
+inline constexpr double kMaxSpotLength_m = 10.0;
 inline constexpr double kMinSpotWidth_m = 0.5;
 inline constexpr double kMaxHardSpotExtra = 2.0;
 inline constexpr double kMaxWeakSpotGripLoss = 0.5;
@@ -110,7 +110,7 @@ enum class ParamError : std::uint8_t {
     /// The grip scale is not finite or outside [kMinGripScale,
     /// kMaxGripScale].
     kGripScale,
-    /// Hard spots closer together than kMinHardSpotSpacing_m, shorter or
+    /// Hard spots closer together than kMinSpotSpacing_m, shorter or
     /// longer than the length limits, narrower than kMinSpotWidth_m or
     /// wider than spots_across_m, their extra outside [0,
     /// kMaxHardSpotExtra], or a seed of 0.
@@ -168,8 +168,8 @@ public:
     /// Hard and weak spots are laid out over this much track from the
     /// start line (past it the ground is even), at most this many of each
     /// [m].
-    static constexpr double kHardSpotsUntil_m = 200.0;
-    static constexpr std::size_t kMaxHardSpots = 160;
+    static constexpr double kSpotsUntil_m = 200.0;
+    static constexpr std::size_t kMaxSpots = 160;
 
 private:
     explicit Model(const Params& params) noexcept;
@@ -206,7 +206,7 @@ private:
         }
 
     private:
-        std::array<Spot, kMaxHardSpots> spots_{};
+        std::array<Spot, kMaxSpots> spots_{};
         std::size_t count_ = 0;
     };
     SpotLayout hard_;

@@ -49,7 +49,7 @@ struct ReportedSpot {
 };
 
 /// At most this many spots in a report: every spot the track can have.
-inline constexpr std::size_t kMaxReported = 2 * track::Model::kMaxHardSpots;
+inline constexpr std::size_t kMaxReported = 2 * track::Model::kMaxSpots;
 
 struct Report {
     std::array<ReportedSpot, kMaxReported> spots{};

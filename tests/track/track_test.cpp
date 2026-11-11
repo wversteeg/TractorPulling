@@ -236,7 +236,7 @@ TEST(Track, HardSpotsMakeTheDragJump) {
 TEST(Track, EveryHardSpotReachesItsPeak) {
     Params params = reference_params();
     params.hard_spots = HardSpots{.every_m = 4.0,
-                                  .length_m = kMinHardSpotLength_m,
+                                  .length_m = kMinSpotLength_m,
                                   .min_width_m = 12.0,
                                   .max_width_m = 12.0,
                                   .extra = 1.0,
@@ -253,7 +253,7 @@ TEST(Track, EveryHardSpotReachesItsPeak) {
         EXPECT_LE(peak, 2.0);
     }
     for (const double y_m : {-5.0, 0.0, 5.0}) {
-        EXPECT_DOUBLE_EQ(model.surface_at(Model::kHardSpotsUntil_m + 5.0, y_m).drag_scale, 1.0);
+        EXPECT_DOUBLE_EQ(model.surface_at(Model::kSpotsUntil_m + 5.0, y_m).drag_scale, 1.0);
         EXPECT_DOUBLE_EQ(model.surface_at(1000.0, y_m).drag_scale, 1.0);
     }
 }

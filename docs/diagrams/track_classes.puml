@@ -49,8 +49,8 @@ package "tp::track" {
     -params_ : Params
     -first_x_m_, spacing_m_ : double
     -samples_ : array<soil::Surface, 512>
-    +{static} kHardSpotsUntil_m = 200
-    +{static} kMaxHardSpots = 160
+    +{static} kSpotsUntil_m = 200
+    +{static} kMaxSpots = 160
     -hard_, weak_ : SpotLayout
     +{static} create(const Params&) : optional<Model>
     +params() : const Params&

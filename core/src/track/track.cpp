@@ -48,8 +48,8 @@ bool spots_valid(const SpotShape& shape, double max_size, double across_m) noexc
     const std::array values = {shape.every_m, shape.length_m, shape.min_width_m, shape.max_width_m,
                                shape.size};
     return std::ranges::all_of(values, [](double v) { return std::isfinite(v); }) &&
-           shape.every_m >= kMinHardSpotSpacing_m && shape.length_m >= kMinHardSpotLength_m &&
-           shape.length_m <= kMaxHardSpotLength_m && shape.min_width_m >= kMinSpotWidth_m &&
+           shape.every_m >= kMinSpotSpacing_m && shape.length_m >= kMinSpotLength_m &&
+           shape.length_m <= kMaxSpotLength_m && shape.min_width_m >= kMinSpotWidth_m &&
            shape.min_width_m <= shape.max_width_m && shape.max_width_m <= across_m &&
            shape.size >= 0.0 && shape.size <= max_size && shape.seed != 0;
 }
@@ -91,11 +91,12 @@ constexpr double kPeakLowShare = 0.6;
 // width, in the middle, and fades to nothing at its edges.
 constexpr double kFullAcrossShare = 0.5;
 // Even the closest-packed spots the limits allow fit the table: none is
-// dropped from the first kHardSpotsUntil_m.
-static_assert(Model::kHardSpotsUntil_m /
-                      (kMinHardSpotLength_m + kMinHardSpotSpacing_m * kGapLowShare) <
-                  static_cast<double>(Model::kMaxHardSpots),
-              "kMaxHardSpots too small for the hard spots' limits");
+// dropped from the first kSpotsUntil_m. This holds while the first spot
+// starts at 0 or later and each next one at least a minimum length and
+// half a minimum spacing on (random.next() is never negative).
+static_assert(Model::kSpotsUntil_m / (kMinSpotLength_m + kMinSpotSpacing_m * kGapLowShare) <
+                  static_cast<double>(Model::kMaxSpots),
+              "kMaxSpots too small for the hard spots' limits");
 
 }  // namespace
 
@@ -224,7 +225,7 @@ double strength_at(const Spot& spot, double x_m, double y_m) noexcept {
 void Model::SpotLayout::lay(const Pattern& pattern) noexcept {
     Xorshift32 random{pattern.seed};
     double start_m = pattern.every_m * kFirstSpotSpacings * random.next();
-    while (start_m < kHardSpotsUntil_m && count_ < kMaxHardSpots) {
+    while (start_m < kSpotsUntil_m && count_ < kMaxSpots) {
         const double peak = pattern.size * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
         const double width_m =
             pattern.min_width_m + (pattern.max_width_m - pattern.min_width_m) * random.next();

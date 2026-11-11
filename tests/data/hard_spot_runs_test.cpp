@@ -110,13 +110,14 @@ Jumps jumps(const std::vector<Sample>& samples) {
     return out;
 }
 
-// The dry hard clay without its weak spots, and without its hard spots.
+// The dry hard clay with its hard spots alone: its weak spots taken away.
 Track only_hard_spots() {
     Track track = loaded(load_track(data("tracks/dry_hard_clay.toml")));
     track.ground.weak_spots.reset();
     return track;
 }
 
+// `track` without any spots: neither hard nor weak.
 Track even(Track track) {
     track.ground.hard_spots.reset();
     track.ground.weak_spots.reset();
