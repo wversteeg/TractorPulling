@@ -721,10 +721,10 @@ static func driving_back(s: Dictionary, before: bool) -> bool:
 	return before or speed < -DRIVING_BACK_M_S
 
 
-# What the close camera stands behind: the sled's rear while it is on the
-# chain, else nothing (CameraRig.follow).
+# How far back the close camera stands: over the sled's canopy while it is
+# on the chain, else nothing (CameraRig.follow).
 func _close_behind() -> Vector3:
-	return sled_view.rear_position() if _snapshot.get("chain_hooked", true) else Vector3.INF
+	return sled_view.camera_mount() if _snapshot.get("chain_hooked", true) else Vector3.INF
 
 
 # The rivals' work, a slice at a time until the frame's budget is spent.
