@@ -43,6 +43,8 @@ package "tp::run" {
     +validate(const Rules&) : optional<ParamError>
     +start(const pull::Model&) : State
     +touches_line(const pull::Model&, const pull::State&, const Rules&) : bool
+    +max_start_offset_m(const vehicle::Params&, const Rules&) : double
+    +kStartClearance_m = 1.5
     +step(State&, const pull::Model&, const Rules&, const vehicle::Input&, dt_s) : pull::Output
     +hash_append(Fnv1a&, const State&)
   }

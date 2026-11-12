@@ -21,3 +21,26 @@ compaction = 0.95
 # The sled operator brings the push-down earlier on this fast track.
 [track.pushdown]
 start_m = 80.0
+
+# Hard spots (track::HardSpots): a dry, hard-rolled track breaks up into
+# hard clods and firmer seams. A well-prepared track has only a few, and
+# mild: the sled's drag jumps a little as it crosses one, and the engine
+# dips with it.
+[track.hard_spots]
+every_m = 4.0   # on average one every this far
+length_m = 1.2
+min_width_m = 1.0  # across the lane: from a patch under one wheel
+max_width_m = 6.0  # to a seam across half the lane; each lies somewhere in it
+extra = 0.3    # up to this much more drag at a spot's middle
+seed = 11   # mixed with each event's own: every season's events lay their own
+
+# Weak spots (track::WeakSpots): dust the sweeper missed. A well-prepared
+# track has only a few, and they are mild: the tires slip a little more for
+# a moment.
+[track.weak_spots]
+every_m = 15.0
+length_m = 1.5
+min_width_m = 1.0  # across the lane: from a patch under one wheel
+max_width_m = 3.0  # to one under both; each lies somewhere in it
+grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
+seed = 79

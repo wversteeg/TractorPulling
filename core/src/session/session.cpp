@@ -63,6 +63,10 @@ std::optional<SetupError> validate(const Setup& setup) noexcept {
     if (!make_clock(setup)) {
         return SetupError::kMaxStepsPerFrame;
     }
+    if (!std::isfinite(setup.start_y_m) ||
+        std::abs(setup.start_y_m) > run::max_start_offset_m(setup.tractor, setup.rules)) {
+        return SetupError::kStartPosition;
+    }
     return std::nullopt;
 }
 
@@ -107,8 +111,10 @@ std::optional<Session> Session::create(const Setup& setup) noexcept {
     if (validate(setup)) {
         return std::nullopt;
     }
-    const std::optional<pull::Model> model =
-        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    const std::optional<pull::Model> model = pull::Model::create({.tractor = setup.tractor,
+                                                                  .sled = setup.sled,
+                                                                  .track = setup.ground,
+                                                                  .start_y_m = setup.start_y_m});
     const std::optional<FixedStepClock> clock = make_clock(setup);
     if (!model || !clock) {
         return std::nullopt;

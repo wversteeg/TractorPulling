@@ -1,6 +1,10 @@
 # Just before a pull (or a practice pull), the pit board: how to set the
 # tractor up for today's track. On the left the track's card (its grip,
-# how firm it is, and a tip); on the right the tractor (TractorSketch) with
+# how firm it is, the crew chief's tip, and the lane as the crew walked it,
+# LaneMap: the hard and weak spots they found, rougher the fewer pulls
+# they have seen) with where the sled starts across the lane, from full
+# left to full right (the crew's own choice marked); on the right the
+# tractor (TractorSketch) with
 # the weights drawn where they sit, the hitch's hole and the rear tires'
 # footprint, and under it the three settings:
 #
@@ -18,6 +22,7 @@ class_name SetupScreen
 extends Control
 
 signal tuning_changed(ballast_position: float, pressure_bar: float, hitch_m: float)
+signal start_changed(y_m: float)
 signal pull_requested
 signal back_requested
 
@@ -28,6 +33,9 @@ const SLIDER_HEIGHT := 58.0
 const PRESSURE_STEP_BAR := 0.05
 # The hitch's holes are this far apart [m].
 const HITCH_STEP_M := 0.02
+# The sled is placed to this much across the lane [m].
+const START_STEP_M := 0.1
+const START_COLOUR := Color(0.42, 0.77, 0.42, 0.9)
 const WEIGHT_COLOUR := Color(0.85, 0.6, 0.2, 0.9)
 const TIRE_COLOUR := Color(0.6, 0.6, 0.65, 0.9)
 const HITCH_COLOUR := Color(0.35, 0.55, 0.85, 0.9)
@@ -41,12 +49,19 @@ const FIRM_HIGH_KPA := 7000.0
 var ballast_slider := TouchSlider.new()
 var pressure_slider := TouchSlider.new()
 var hitch_slider := TouchSlider.new()
+var start_slider := TouchSlider.new()
 var pull_button: TouchButton
 var back_button: TouchButton
 var _stage := Control.new()
 var _title: Label
 var _track_name: Label
 var _grip: Label
+var _lane := LaneMap.new()
+var _lane_note: Label
+var _start_note: Label
+var _sent_start := 0.0
+# Where the crew would start the sled [m, to the left].
+var _crew_y_m := 0.0
 var _grip_bar := ColorRect.new()
 var _firm: Label
 var _firm_bar := ColorRect.new()
@@ -86,29 +101,36 @@ func _ready() -> void:
 	back_button.tapped.connect(func() -> void: back_requested.emit())
 
 	var card := _panel(_stage, Rect2(28, 84, 330, 560), GarageArt.PANEL, 14)
-	_label(card, Rect2(16, 12, 300, 20), 13, GarageArt.DIM).text = "TODAY'S TRACK"
-	var ground := Control.new()
-	ground.position = Vector2(16, 40)
-	ground.size = Vector2(298, 130)
-	ground.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ground.clip_contents = true
-	ground.draw.connect(func() -> void: _draw_ground(ground))
-	card.add_child(ground)
-	_track_name = _label(card, Rect2(16, 180, 300, 64), 20, GarageArt.TEXT)
-	_track_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_grip = _scale_row(card, 258, "Grip", _grip_bar, GarageArt.GREEN)
-	_firm = _scale_row(card, 306, "Firmness", _firm_bar, Color(0.79, 0.75, 0.42))
-	var tip_box := _panel(card, Rect2(16, 362, 298, 128), Color(0.16, 0.13, 0.08), 10)
-	_tip = _label(tip_box, Rect2(12, 10, 274, 112), 16, Color(0.91, 0.83, 0.67))
+	_label(card, Rect2(16, 10, 300, 20), 13, GarageArt.DIM).text = "TODAY'S TRACK"
+	_track_name = _label(card, Rect2(16, 28, 300, 28), 19, GarageArt.TEXT)
+	_track_name.clip_text = true
+	_grip = _scale_row(card, 60, "Grip", _grip_bar, GarageArt.GREEN)
+	_firm = _scale_row(card, 98, "Firmness", _firm_bar, Color(0.79, 0.75, 0.42))
+	var tip_box := _panel(card, Rect2(16, 140, 298, 86), Color(0.16, 0.13, 0.08), 10)
+	_tip = _label(tip_box, Rect2(10, 6, 278, 76), 14, Color(0.91, 0.83, 0.67))
 	_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_controls = _label(card, Rect2(16, 506, 300, 40), 14, GarageArt.DIM)
-	_controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label(card, Rect2(16, 232, 140, 20), 13, GarageArt.DIM).text = "THE LANE"
+	_lane_note = _label(card, Rect2(90, 232, 224, 20), 13, GarageArt.DIM)
+	_lane_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_lane.position = Vector2(16, 254)
+	_lane.size = Vector2(298, 198)
+	card.add_child(_lane)
+	start_slider.colour = START_COLOUR
+	start_slider.label = "start"
+	start_slider.position = Vector2(16, 458)
+	start_slider.size = Vector2(298, 52)
+	start_slider.custom_minimum_size = start_slider.size
+	card.add_child(start_slider)
+	_start_note = _label(card, Rect2(16, 514, 298, 40), 14, GarageArt.TEXT)
+	_start_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	var view := _panel(_stage, Rect2(380, 84, 872, 340), GarageArt.PANEL, 14)
 	_sketch.position = Vector2(30, 34)
 	_sketch.size = Vector2(812, 296)
 	view.add_child(_sketch)
 	_shares = _label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
+	_controls = _label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
+	_controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	_weights = _setting(Rect2(380, 440, 280, 204), "WEIGHTS", "ballast_kg", ballast_slider,
 			WEIGHT_COLOUR, "rear", "front")
@@ -122,10 +144,11 @@ func _ready() -> void:
 # `title` names the pull to come; `tuning` is TractorPullEvent.get_tuning();
 # `pro` and `tilt` the controls that will drive (`tilt` only where the
 # phone can steer by tilting); `track` the event's track
-# (TractorPullEvent.get_event()["track"]: grip, cone_index_kpa, tip) and
-# `track_name` its name.
+# (TractorPullEvent.get_event()["track"]: grip, cone_index_kpa, tip),
+# `track_name` its name and `crew` what the crew found walking the lane
+# (TractorPullEvent.get_crew_report()).
 func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool,
-		track: Dictionary = {}, track_name: String = "") -> void:
+		track: Dictionary = {}, track_name: String = "", crew: Dictionary = {}) -> void:
 	_title.text = title
 	ballast_slider.visible = tuning.get("ballast", false)
 	pressure_slider.visible = tuning.get("pressure", false)
@@ -143,6 +166,7 @@ func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool,
 	for slider: TouchSlider in [ballast_slider, pressure_slider, hitch_slider]:
 		slider.queue_redraw()
 	_show_track(track, track_name)
+	_show_crew(crew)
 	show_values(tuning)
 	_controls.text = "Controls: %s, %s steering" % ["pro" if pro else "easy",
 			"tilt" if tilt else "slider"]
@@ -185,6 +209,18 @@ func _process(_delta: float) -> void:
 	if now != _sent:
 		_sent = now
 		tuning_changed.emit(now.x, now.y, now.z)
+	var start := start_y_m()
+	if start != _sent_start:
+		_sent_start = start
+		_lane.show_start(start)
+		_start_note.text = _start_words(start)
+		start_changed.emit(start)
+
+
+# Where the start slider puts the sled, to the left of the lane's middle,
+# in START_STEP_M steps [m].
+func start_y_m() -> float:
+	return snappedf(start_slider.value, START_STEP_M)
 
 
 # The hitch's hole the slider is at, from the top one down; 0 for the top
@@ -202,6 +238,7 @@ func release_sliders() -> void:
 	ballast_slider.release()
 	pressure_slider.release()
 	hitch_slider.release()
+	start_slider.release()
 
 
 func release_buttons() -> void:
@@ -224,16 +261,56 @@ func _show_track(track: Dictionary, track_name: String) -> void:
 			"Set the weights, tires and hitch for the track."
 
 
-func _draw_ground(ground: Control) -> void:
-	# A strip of track: worked soil in furrows, darker where it is wetter.
-	var base := Color(0.32, 0.23, 0.16)
-	ground.draw_rect(Rect2(Vector2.ZERO, ground.size), base)
-	for i in 18:
-		var x := i * 18.0 - 10.0
-		ground.draw_line(Vector2(x, 0), Vector2(x + 30.0, ground.size.y),
-				Color(0.26, 0.18, 0.12), 7.0)
-	ground.draw_rect(Rect2(0, ground.size.y * 0.72, ground.size.x, 14),
-			Color(0.2, 0.14, 0.1, 0.8))
+# The lane as the crew found it, and the start slider from full left (its
+# left end) to full right, at the player's start; the crew's own line
+# marked on it.
+func _show_crew(crew: Dictionary) -> void:
+	_lane.show_report(crew)
+	var max_m := float(crew.get("max_y_m", 0.0))
+	start_slider.visible = max_m > 0.0
+	start_slider.start_value = max_m
+	start_slider.end_value = -max_m
+	start_slider.value = float(crew.get("start_y_m", 0.0))
+	var suggested := float(crew.get("suggested_y_m", 0.0))
+	start_slider.set_band(suggested, suggested, suggested)
+	_sent_start = start_y_m()
+	_lane.show_start(_sent_start)
+	_crew_y_m = suggested
+	_start_note.text = _start_words(_sent_start)
+	if crew.is_empty():
+		_lane_note.text = ""
+		return
+	var hard := 0
+	var weak := 0
+	for spot: Dictionary in crew.get("spots", []):
+		if spot.get("kind", "") == "hard":
+			hard += 1
+		else:
+			weak += 1
+	_lane_note.text = "%d hard · %d weak · %s" % [hard, weak, _seen_words(crew)]
+
+
+# How well the crew knows the lane, from what it has seen.
+func _seen_words(crew: Dictionary) -> String:
+	if crew.get("pull_off", false):
+		return "well known"
+	var seen := int(crew.get("pulls_seen", 0))
+	return "a rough guess" if seen == 0 else ("well known" if seen >= 8 else "known better")
+
+
+# Where the player starts the sled, and where the crew would.
+func _start_words(y_m: float) -> String:
+	if not start_slider.visible:
+		return ""
+	return "Start %s; the crew says %s." % [_side_words(y_m), _side_words(_crew_y_m)]
+
+
+func _side_words(y_m: float) -> String:
+	if absf(y_m) < START_STEP_M / 2.0:
+		return "in the middle"
+	return "%.1f m %s" % [absf(y_m), "left" if y_m > 0.0 else "right"]
+
+
 
 
 # A labelled bar on the track card; returns the label for its word.

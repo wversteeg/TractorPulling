@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <optional>
 
 #include "../controls/reference_controls.hpp"
@@ -125,6 +126,42 @@ TEST(Session, ValidatesItsSetup) {
     setup = reference_setup(Layout::kPro);
     setup.sled.fenders.depth_m = 0.0;
     EXPECT_EQ(validate(setup), SetupError::kSled);
+}
+
+// The sled may start off the centre line, as far as keeps the tractor's
+// tires kStartClearance_m inside the chalk lines, and no further.
+TEST(SessionSetup, TheStartStaysWellInsideTheLane) {
+    session::Setup setup = reference_setup(Layout::kPro);
+    const double max_m = run::max_start_offset_m(setup.tractor, setup.rules);
+    const double rear_edge_m =
+        0.5 * (setup.tractor.chassis.rear_track_m + setup.tractor.rear_tire.size.section_width_m);
+    const double front_edge_m =
+        0.5 * (setup.tractor.chassis.front_track_m + setup.tractor.front_tire.section_width_m);
+    EXPECT_DOUBLE_EQ(max_m, 0.5 * setup.rules.lane_width_m - std::max(rear_edge_m, front_edge_m) -
+                                run::kStartClearance_m);
+    ASSERT_GT(max_m, 2.0);
+    for (const double y_m : {-max_m, 0.0, max_m}) {
+        setup.start_y_m = y_m;
+        EXPECT_FALSE(validate(setup)) << y_m;
+    }
+    for (const double y_m :
+         {-max_m - 0.01, max_m + 0.01, std::numeric_limits<double>::infinity()}) {
+        setup.start_y_m = y_m;
+        EXPECT_EQ(validate(setup), SetupError::kStartPosition) << y_m;
+    }
+    setup.rules.lane_width_m = 4.0;
+    EXPECT_EQ(run::max_start_offset_m(setup.tractor, setup.rules), 0.0);
+    setup.start_y_m = 0.0;
+    EXPECT_FALSE(validate(setup));
+    // A session starts the sled where the setup puts it.
+    setup = reference_setup(Layout::kPro);
+    setup.start_y_m = -max_m;
+    const std::optional<Session> session = Session::create(setup);
+    if (!session) {
+        FAIL() << "the session was refused";
+    }
+    EXPECT_DOUBLE_EQ(session->current().sled_y_m, -max_m);
+    EXPECT_DOUBLE_EQ(session->current().tractor_y_m, -max_m);
 }
 
 // The easy layout's parameters only matter when the easy layout is played.

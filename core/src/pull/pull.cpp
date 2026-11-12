@@ -17,12 +17,15 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (track::validate(params.track)) {
         return ParamError::kTrack;
     }
+    if (!std::isfinite(params.start_y_m)) {
+        return ParamError::kStartPosition;
+    }
     return std::nullopt;
 }
 
-Model::Model(const vehicle::Model& tractor, const sled::Params& sled,
-             const track::Model& track) noexcept
-    : tractor_(tractor), sled_(sled), track_(track) {
+Model::Model(const vehicle::Model& tractor, const sled::Params& sled, const track::Model& track,
+             double start_y_m) noexcept
+    : tractor_(tractor), sled_(sled), track_(track), start_y_m_(start_y_m) {
     sled_start_m_ = initial_state(*this).sled.position_m;
 }
 
@@ -35,7 +38,7 @@ std::optional<Model> Model::create(const Params& params) noexcept {
     if (!tractor || !track) {
         return std::nullopt;
     }
-    return Model{*tractor, params.sled, *track};
+    return Model{*tractor, params.sled, *track, params.start_y_m};
 }
 
 ChainForce chain_force(const sled::Chain& chain, const ChainEnd& hitch,
@@ -73,6 +76,7 @@ namespace {
 // At the start line the chain lies with a little slack: nothing pulls until
 // the tractor moves.
 constexpr double kStartSlack_m = 0.001;
+constexpr double kSides = 2.0;
 
 ChainEnd hitch_at(const Model& model, const State& state) noexcept {
     const chassis::Hitch hitch =
@@ -106,6 +110,8 @@ ChainEnd hook_end(const Model& model, const State& state) noexcept {
 
 State initial_state(const Model& model) noexcept {
     State state{.tractor = vehicle::initial_state(model.tractor()), .sled = {}};
+    state.tractor.chassis.lateral_position_m = model.start_y_m();
+    state.sled.lateral_position_m = model.start_y_m();
     const sled::Params& sled = model.sled();
     const ChainEnd hitch = hitch_at(model, state);
     const double rise_m = hitch.z_m - sled.hook_height_m;
@@ -138,18 +144,30 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
         .up_n = along_z_n,
         .side_n = along_y_n * sled_heading.cos - along_x_n * sled_heading.sin};
 
-    // The ground under each contact, by where it is along the track. The
-    // front tires are taken a wheelbase ahead: pitch moves them by
-    // centimetres, far less than the track changes over.
+    // The ground under each contact, by where it is along and across the
+    // track. Along it the rear tires are taken at their axle and the front
+    // tires a wheelbase ahead, the pan its distance ahead of the sled's
+    // wheels: heading and pitch move them by centimetres, far less than the
+    // soil changes over. Across it each rear side is half the rear track to
+    // its side of the axle, the front pair and the pan ahead along their
+    // heading: a spot under one side's wheels only is felt there.
     const track::Model& track = model.track();
-    const double rear_axle_m = state.tractor.chassis.position_m - model.start_line_m();
+    const chassis::State& body = state.tractor.chassis;
+    const chassis::Params& frame = model.tractor().params().chassis;
+    const double rear_axle_m = body.position_m - model.start_line_m();
     const double sled_wheels_m = state.sled.position_m - model.start_line_m();
+    const double half_track_y_m = frame.rear_track_m / kSides * heading.cos;
     const vehicle::Ground tractor_ground{
-        .rear = track.surface_at(rear_axle_m),
-        .front = track.surface_at(rear_axle_m + model.tractor().params().chassis.wheelbase_m)};
+        .rear_left = track.surface_at(rear_axle_m, body.lateral_position_m + half_track_y_m),
+        .rear_right = track.surface_at(rear_axle_m, body.lateral_position_m - half_track_y_m),
+        .front = track.surface_at(rear_axle_m + frame.wheelbase_m,
+                                  body.lateral_position_m + frame.wheelbase_m * heading.sin)};
     const sled::Ground sled_ground{
-        .pan = track.surface_at(sled_wheels_m + sled.pan_ahead_of_wheels_m),
-        .wheels = track.surface_at(sled_wheels_m)};
+        .pan = track.surface_across(
+            sled_wheels_m + sled.pan_ahead_of_wheels_m,
+            state.sled.lateral_position_m + sled.pan_ahead_of_wheels_m * sled_heading.sin,
+            sled::kPanHalfWidth_m),
+        .wheels = track.surface_at(sled_wheels_m, state.sled.lateral_position_m)};
 
     out.tractor =
         vehicle::step(state.tractor, model.tractor(), input, tractor_ground, drawbar, dt_s);
@@ -173,7 +191,7 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
             state.sled.yaw_rate_rad_s = 0.0;
             break;
         case SledMode::kDrivingBack:
-            sled::drive_back(state.sled, sled, model.sled_start_m(), dt_s);
+            sled::drive_back(state.sled, sled, model.sled_start_m(), model.start_y_m(), dt_s);
             break;
     }
     return out;

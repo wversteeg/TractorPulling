@@ -152,12 +152,20 @@ struct Input {
 [[nodiscard]] double travel_direction(const State& state, bool drive_out,
                                       double drawbar_pull_n) noexcept;
 
-/// The ground under the tractor's tires this step. The track decides it from
-/// where each axle is; tests and tools may pass one surface for both.
+/// The ground under the tractor's tires this step: each rear side's own (a
+/// weak spot under one side's wheels only) and the front pair's. The track
+/// decides it from where each tire is; tests and tools may pass one surface
+/// for all (even()).
 struct Ground {
-    soil::Surface rear;
+    soil::Surface rear_left;
+    soil::Surface rear_right;
     soil::Surface front;
 };
+
+/// The same surface under every tire.
+[[nodiscard]] constexpr Ground even(const soil::Surface& surface) noexcept {
+    return {.rear_left = surface, .rear_right = surface, .front = surface};
+}
 
 struct Output {
     engine::Output engine;

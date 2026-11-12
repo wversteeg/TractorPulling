@@ -46,6 +46,7 @@ package "tp::godot_binding" {
     -names_ : vector<string>
     -season_ : unique_ptr<field::LiveSeason>
     -tuning_ : vehicle::Tuning
+    -start_y_m_ : double
     -career_ : optional<garage::Career>
     +load_career(career_path) : String
     +get_career() : Dictionary
@@ -80,6 +81,8 @@ package "tp::godot_binding" {
     +add_money(amount_eur) : bool, for testing
     +get_tuning() : Dictionary
     +set_tuning(ballast_position, pressure_bar, hitch_m = 0)
+    +get_crew_report() : Dictionary
+    +set_start(y_m)
     ..C++ only..
     +player_setup() : optional<session::Setup>
     +practice_setup() : optional<session::Setup>

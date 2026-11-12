@@ -16,11 +16,13 @@ package "tp::pull" {
     +tractor : vehicle::Params
     +sled : sled::Params
     +track : track::Params
+    +start_y_m : double (the sled across the lane, + left)
   }
   class Model {
     -tractor_ : vehicle::Model
     -sled_ : sled::Params
     -track_ : track::Model
+    -start_y_m_ : double
     -sled_start_m_ : double
     +{static} create(const Params&) : optional<Model>
     +tractor() : const vehicle::Model&
@@ -28,6 +30,7 @@ package "tp::pull" {
     +track() : const track::Model&
     +sled_start_m() : double, the sled's rear wheels at the start
     +start_line_m() : double, the sled's front at the start
+    +start_y_m() : double, where the sled and tractor start across
   }
   class State <<struct>> {
     +tractor : vehicle::State
@@ -57,6 +60,7 @@ package "tp::pull" {
     kTractor
     kSled
     kTrack
+    kStartPosition
   }
   class "pull functions" as PullFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
@@ -87,6 +91,9 @@ note bottom of PullFns
   the tractor feels it in its body frame (pull, lift, side);
   the sled follows the tractor's line sideways (hook behind the hitch);
   unhooked the chain pulls neither end; a held sled stands still;
-  one driving back goes its own way (sled::drive_back)
+  one driving back goes its own way (sled::drive_back), to its start;
+  both start at start_y_m across the lane, in line, straight;
+  the ground per contact: each rear side's, the front pair's,
+  the pan's across its width (track::surface_across)
 end note
 @enduml

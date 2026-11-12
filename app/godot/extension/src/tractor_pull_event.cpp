@@ -1,6 +1,8 @@
 #include "tractor_pull_event.hpp"
 
+#include "tp/core/crew/crew.hpp"
 #include "tp/core/engine/engine.hpp"
+#include "tp/core/run/run.hpp"
 #include "tp/core/soil/soil.hpp"
 #include "tp/core/track/track.hpp"
 #include "tp/core/units/conversions.hpp"
@@ -450,6 +452,7 @@ godot::String TractorPullEvent::start_event() {
                               vehicle::tuned(player_tractor(), tuning_))) {
         return godot::vformat("cannot start %s", to_godot(round.name));
     }
+    start_y_m_ = 0.0;
     return {};
 }
 
@@ -637,19 +640,73 @@ godot::Array TractorPullEvent::get_standings() const {
     return out;
 }
 
+session::Setup TractorPullEvent::started(session::Setup setup) const {
+    const double max_m = run::max_start_offset_m(setup.tractor, setup.rules);
+    setup.start_y_m = std::clamp(start_y_m_, -max_m, max_m);
+    return setup;
+}
+
 std::optional<session::Setup> TractorPullEvent::player_setup() const {
     if (!season_ || season_->event() == nullptr ||
         season_->event()->turn() != field::LiveEvent::Turn::kPlayerPull) {
         return std::nullopt;
     }
-    return data::run_setup(vehicle::tuned(player_tractor(), tuning_), *season_->event());
+    return started(data::run_setup(vehicle::tuned(player_tractor(), tuning_), *season_->event()));
 }
 
 std::optional<session::Setup> TractorPullEvent::practice_setup() const {
     if (!season_ || season_->event() == nullptr) {
         return std::nullopt;
     }
-    return data::run_setup(vehicle::tuned(player_tractor(), tuning_), *season_->event());
+    return started(data::run_setup(vehicle::tuned(player_tractor(), tuning_), *season_->event()));
+}
+
+godot::Dictionary TractorPullEvent::get_crew_report() const {
+    godot::Dictionary out;
+    if (!season_ || season_->event() == nullptr) {
+        return out;
+    }
+    const field::LiveEvent& event = *season_->event();
+    const run::Rules rules = event.pull_rules();
+    const vehicle::Params tractor = vehicle::tuned(player_tractor(), tuning_);
+    const double max_m = run::max_start_offset_m(tractor, rules);
+    // About 15 KB: on the heap, not the stack of a Godot call.
+    const auto report = std::make_unique<crew::Report>(event.player_crew_report());
+    godot::Array spots;
+    for (const crew::ReportedSpot& spot : report->view()) {
+        godot::Dictionary line;
+        line["kind"] = spot.kind == crew::SpotKind::kHard ? "hard" : "weak";
+        line["at_m"] = spot.at_m;
+        line["y_m"] = spot.centre_y_m;
+        line["width_m"] = spot.width_m;
+        line["length_m"] = spot.length_m;
+        line["strength"] = spot.strength;
+        spots.push_back(line);
+    }
+    const std::optional<event::Pull> pull = event.pending_pull();
+    out["spots"] = spots;
+    out["uncertainty"] = report->uncertainty;
+    out["pulls_seen"] = event.pulls_done();
+    out["pull_off"] = pull.has_value() && pull->kind == event::PullKind::kPullOff;
+    out["suggested_y_m"] = crew::best_line_m(*report, tractor, max_m);
+    out["max_y_m"] = max_m;
+    out["start_y_m"] = std::clamp(start_y_m_, -max_m, max_m);
+    out["lane_width_m"] = rules.lane_width_m;
+    out["full_pull_m"] = rules.full_pull_line_m;
+    // For drawing the line: the rear tires' track and width, the pan's
+    // width, and how far off a reported spot may be.
+    out["rear_track_m"] = tractor.chassis.rear_track_m;
+    out["rear_tire_width_m"] = tractor.rear_tire.size.section_width_m;
+    out["pan_half_width_m"] = sled::kPanHalfWidth_m;
+    out["along_error_m"] = crew::kAlongError_m * report->uncertainty;
+    out["across_error_m"] = crew::kAcrossError_m * report->uncertainty;
+    return out;
+}
+
+void TractorPullEvent::set_start(double y_m) {
+    if (std::isfinite(y_m)) {
+        start_y_m_ = y_m;
+    }
 }
 
 godot::Dictionary TractorPullEvent::record_pull(const godot::Ref<TractorPullRun>& run) {
@@ -986,6 +1043,8 @@ void TractorPullEvent::_bind_methods() {
                          &TractorPullEvent::fit_alternative);
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
+    ClassDB::bind_method(D_METHOD("get_crew_report"), &TractorPullEvent::get_crew_report);
+    ClassDB::bind_method(D_METHOD("set_start", "y_m"), &TractorPullEvent::set_start);
     ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar", "hitch_m"),
                          &TractorPullEvent::set_tuning, DEFVAL(0.0));
 }

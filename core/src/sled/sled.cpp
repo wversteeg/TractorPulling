@@ -294,8 +294,10 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
                                                 params.wheel, wheels_n / wheel_count, ground.wheels,
                                                 params.wheel_rolling_losses)
                                           : 0.0;
-    const double friction = pan_friction(params, pan_n, ground.pan);
-    const double cutting_n = pan_n > 0.0 ? knives_n(params.knives, ground.pan) : 0.0;
+    // On a hard spot the pan and the knives drag harder.
+    const double friction = pan_friction(params, pan_n, ground.pan) * ground.pan.drag_scale;
+    const double cutting_n =
+        pan_n > 0.0 ? knives_n(params.knives, ground.pan) * ground.pan.drag_scale : 0.0;
     const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
     return {.pan_n = pan_n,
             .wheels_n = wheels_n,
@@ -393,7 +395,8 @@ void advance(State& state, const Prediction& prediction, double forward_n, doubl
     state.distance_m += velocity_m_s * dt_s;
 }
 
-bool drive_back(State& state, const Params& params, double start_x_m, double dt_s) noexcept {
+bool drive_back(State& state, const Params& params, double start_x_m, double start_y_m,
+                double dt_s) noexcept {
     state.berm_kg = 0.0;
     state.velocity_m_s = 0.0;
     state.lateral_velocity_m_s = 0.0;
@@ -421,7 +424,7 @@ bool drive_back(State& state, const Params& params, double start_x_m, double dt_
         state.position_m = start_x_m;
         state.velocity_m_s = 0.0;
         state.distance_m = 0.0;
-        state.lateral_position_m = 0.0;
+        state.lateral_position_m = start_y_m;
         state.heading_rad = 0.0;
         return true;
     }
@@ -430,7 +433,7 @@ bool drive_back(State& state, const Params& params, double start_x_m, double dt_
     const double kept = (remaining_m - step_m) / remaining_m;
     state.position_m -= step_m;
     state.velocity_m_s = -kDriveBack_m_s;
-    state.lateral_position_m *= kept;
+    state.lateral_position_m = start_y_m + (state.lateral_position_m - start_y_m) * kept;
     state.heading_rad *= kept;
     return false;
 }

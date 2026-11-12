@@ -324,7 +324,24 @@ func _play() -> void:
 			and float(tuned["rear_share"]) > float(built["rear_share"])
 			and is_equal_approx(float(tuned["pressure_bar"]), float(tuned["min_bar"])),
 			"the weights to the rear, the tires soft: %s" % tuned)
+	# The lane as the crew walked it, and the start: the slider's left end
+	# puts the sled at full left, as far as the lane allows; then back to
+	# the middle.
+	var crew := event.get_crew_report()
+	var max_y := float(crew.get("max_y_m", 0.0))
+	var seen := int(crew.get("pulls_seen", -1))
+	_expect(setup.start_slider.visible and max_y > 2.0 and crew.has("spots") and seen >= 0
+			and is_equal_approx(float(crew.get("uncertainty", 0.0)), 1.0 / (1.0 + 0.25 * seen)),
+			"the crew's report: %s" % crew)
+	_slide_to_start(setup.start_slider)
+	await _frames(2)
+	var left := float(event.get_crew_report().get("start_y_m", 0.0))
+	_expect(is_equal_approx(left, clampf(snappedf(max_y, SetupScreen.START_STEP_M), -max_y, max_y)),
+			"the sled at full left: %f of %f" % [left, max_y])
 	await _shot("1b_setup")
+	setup.start_slider.value = 0.0
+	await _frames(2)
+	_expect(float(event.get_crew_report().get("start_y_m", 1.0)) == 0.0, "the sled back in the middle")
 	_check_hitch_slider(setup)
 	_tap(setup.back_button)
 	await _frames(2)

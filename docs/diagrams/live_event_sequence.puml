@@ -7,6 +7,7 @@ participant "event::Event" as Event
 participant "pull + run\n(a job, stepped)" as Run
 
 Game -> Live : create(rules, venue, field, ..., running_order, player, seed)
+Live -> Live : on_the_day(venue, seed): the track's spots laid for this event
 loop until turn() is kFinished
   alt turn() == kRivals
     Game -> Live : advance(max_steps)
@@ -16,15 +17,17 @@ loop until turn() is kFinished
         Live -> Live : guess_gear: the rival's gear for the day
       else a rival's pull
         Live -> Live : on_this_pull (the same draw as play_event)
-        Live -> Run : step the pull on sled() until it stops\n(may be cut across advance calls)
+        Live -> Live : crew_line(crew_report(track, kind, pulls_done)):\nthe rival's crew puts the sled across the lane
+        Live -> Run : step the pull on sled() from there until it stops\n(may be cut across advance calls)
         Live -> Event : record(reached_m) or record_disqualified()
         Live -> Event : decide(suggested_keep()) for a rival's decision
       end
     end
     Live --> Game : steps run
   else turn() == kPlayerPull
-    Game -> Live : pending_pull(), sled(), pull_rules()
-    Game -> Game : the player's run on that sled, frame by frame
+    Game -> Live : pending_pull(), sled(), pull_rules(), player_crew_report()
+    Game -> Game : the pit board: the lane as the crew saw it;\nthe player sets the start
+    Game -> Game : the player's run on that sled from there, frame by frame
     Game -> Live : record_player(result, gear)
     Live -> Event : record (the player's on_this_pull draw is taken)
   else turn() == kPlayerDecision

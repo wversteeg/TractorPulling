@@ -6,6 +6,7 @@ add_executable(tp_core_tests
     clutch/clutch_engine_test.cpp
     clutch/clutch_test.cpp
     controls/controls_test.cpp
+    crew/crew_test.cpp
     driveline/driveline_chain_test.cpp
     driveline/driveline_test.cpp
     driver/driver_test.cpp
@@ -76,7 +77,8 @@ if(TP_BUILD_DATA_IO)
         data/track_setup_test.cpp
         data/tuning_runs_test.cpp
         data/turbo_choice_test.cpp
-        data/wheelie_runs_test.cpp)
+        data/wheelie_runs_test.cpp
+        data/hard_spot_runs_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE
         TP_DATA_DIR="${TP_DATA_DIR}"

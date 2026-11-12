@@ -8,7 +8,7 @@
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
 //               [--ballast B] [--pressure BAR] [--hitch M] [--downshift S]
-//               [--launch-hold S] [-o <out.csv>]
+//               [--launch-hold S] [--start-y M] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
 //                          [--hitch M]
@@ -38,6 +38,10 @@
 // steers straight), and --stick holds the control itself instead.
 // --launch-hold S lets the clutch in as the events' drivers do: eased back
 // while the engine is below S of its rated speed, for up to 8 s.
+//
+// --start-y puts the sled (and the tractor in line with it) M metres to the
+// left of the lane's middle at the start (negative to the right), as far as
+// the lane allows (run::max_start_offset_m).
 //
 // --hash prints each run's state hash at its end, to compare with another
 // front end playing the same inputs (the Godot extension's headless test).
@@ -233,6 +237,9 @@ struct PullOptions {
     /// --launch-hold: the clutch eased back while the engine is below this
     /// share of its rated speed, as the events' drivers launch.
     std::optional<double> launch_hold_share;
+    /// run: where the sled starts across the lane, to the left of the
+    /// middle [m].
+    double start_y_m = 0.0;
 };
 
 // The tractor as --ballast, --pressure and --hitch tune it; nothing (with a message)
@@ -319,7 +326,7 @@ int pull(const tp::vehicle::Model& model, const PullOptions& options, std::ostre
     bool on_wheelie_bar = false;
     double max_pitch_rad = 0.0;
     const tp::soil::Surface surface = tp::soil::surface(kReferenceSoil);
-    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
+    const tp::vehicle::Ground ground = tp::vehicle::even(surface);
     double t_s = 0.0;
     for (int i = 0; t_s < kPullMaxDuration_s; ++i) {
         t_s = i * kDt_s;
@@ -450,6 +457,7 @@ tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
     if (options.pro) {
         setup.pro = *options.pro;
     }
+    setup.start_y_m = options.start_y_m;
     return setup;
 }
 
@@ -465,7 +473,13 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                                   int round, std::ostream& csv) {
     std::optional<tp::session::Session> session = tp::session::Session::create(setup);
     if (!session) {
-        std::cerr << "inconsistent tractor, sled or track\n";
+        if (tp::session::validate(setup) == tp::session::SetupError::kStartPosition) {
+            std::cerr << "--start-y: at most "
+                      << tp::run::max_start_offset_m(setup.tractor, setup.rules)
+                      << " m from the lane's middle either way for this tractor\n";
+        } else {
+            std::cerr << "inconsistent tractor, sled or track\n";
+        }
         return std::nullopt;
     }
     // --downshift: the scripted pullers' gear down under load, once; the
@@ -963,6 +977,11 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         pull.launch_hold_share = share;
         return Parsed::kOk;
     }
+    if (arg == "--start-y") {
+        const auto y_m = parse_number<double>(value);
+        pull.start_y_m = y_m.value_or(0.0);
+        return y_m ? Parsed::kOk : Parsed::kInvalid;
+    }
     if (arg == "--downshift") {
         const auto share = parse_number<double>(value);
         if (!share || *share <= 0.0 || *share >= 1.0) {
@@ -1042,7 +1061,7 @@ int usage() {
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
                  "                   [--hash] [--ballast B] [--pressure BAR] [--hitch M]\n"
-                 "                   [--downshift S] [--launch-hold S]\n"
+                 "                   [--downshift S] [--launch-hold S] [--start-y M]\n"
                  "                   [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump] [--ballast B]\n"
