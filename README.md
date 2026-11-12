@@ -157,8 +157,8 @@ tandems), its weight box holding up to 11 t. Each class's sled file names
 it as its base and sets the box's weight and where the push-down starts
 (the light class 1.5 t in the box with one knife, Sport 2.5 t 1 t, Sport
 4.5 t 8 t). Its own rolling is most of what a tractor pulls at the start;
-for the light class and Sport 2.5 t the box starts at the sled's back,
-under the operator's cab, which takes weight off the pan, so a new
+for the light class and Sport 2.5 t the box starts at the frame's tail,
+4 m behind the wheels, which takes weight off the pan, so a new
 tractor on its farm drawbar and worn tires gets it going (some 10 kN for
 the light class). The weight box rides forward to over the pan along
 the first 88 m, so the drag grows
