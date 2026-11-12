@@ -21,8 +21,25 @@ const PILE_PAST_STRIP_M := 2.0
 const PILE_DARKER := 0.15
 # The trailers stand this far past the pile's far foot [m].
 const TRAILERS_PAST_PILE_M := 8.0
+# A trailer: its depth along the track, height and length across it, its
+# wheels' radius and width, how far they stand either side of its middle
+# (a tandem axle), and its drawbar's length [m].
 const TRAILER_SIZE_M := Vector3(2.4, 2.6, 7.0)
 const TRAILER_WHEEL_M := 0.4
+const TRAILER_WHEEL_WIDTH_M := 0.3
+const TRAILER_AXLES_APART_M := 1.2
+const DRAWBAR_M := 1.6
+const TYRE := Color(0.06, 0.06, 0.06)
+const DRAWBAR := Color(0.2, 0.2, 0.2)
+# The trailers stand in a row across the track, from this far right of the
+# clay strip, this far apart (drawbar to tail), each a step further from
+# the pile; the screen trailer left of the middle, this far over [m].
+const TRAILERS_OUT_M := 1.0
+const TRAILER_GAP_M := 1.5
+const TRAILER_STEP_BACK_M := 2.0
+const SCREEN_LEFT_SHARE := 0.25
+# The screen trailer's base, and how high its mast lifts it [m].
+const SCREEN_BASE_HEIGHT_M := 1.2
 const SOUND_TRAILER := Color(0.12, 0.13, 0.15)
 const GENERATOR := Color(0.85, 0.65, 0.12)
 const SCREEN_TRAILER := Color(0.75, 0.76, 0.78)
@@ -80,11 +97,15 @@ func build(length_m: float, lane_m: float, strip_m: float, shades: Array[Color],
 	var at_m := from_m + PILE_LENGTH_M + TRAILERS_PAST_PILE_M
 	_trailers = 0
 	var colours: Array[Color] = [SOUND_TRAILER, GENERATOR]
+	# Each trailer's middle: half its length out from where the last one's
+	# drawbar ends, with a gap between.
+	var y_m := -(strip_m / 2.0 + TRAILERS_OUT_M + TRAILER_SIZE_M.z / 2.0)
 	for i in mini(trailers, colours.size()):
-		_add_trailer(at_m + 2.0 * i, -(strip_m / 2.0 + 1.0 + 6.0 * i), colours[i], i == 0)
+		_add_trailer(at_m + TRAILER_STEP_BACK_M * i, y_m, colours[i], i == 0)
+		y_m -= TRAILER_SIZE_M.z + DRAWBAR_M + TRAILER_GAP_M
 		_trailers += 1
 	if screen:
-		_add_screen(at_m, strip_m / 4.0)
+		_add_screen(at_m, strip_m * SCREEN_LEFT_SHARE)
 
 
 # Where the pile lies along the track, from and to [m].
@@ -152,17 +173,7 @@ func _add_trailer(x_m: float, y_m: float, colour: Color, speakers: bool) -> void
 	var body := Art.box(Vector3(TRAILER_SIZE_M.z, TRAILER_SIZE_M.y, TRAILER_SIZE_M.x), colour, 0.6)
 	body.position = Vector3(0.0, TRAILER_WHEEL_M * 2.0 + TRAILER_SIZE_M.y / 2.0, 0.0)
 	trailer.add_child(VenueView._quiet(body))
-	for side: float in [-1.0, 1.0]:
-		var wheel := Art.cylinder(TRAILER_WHEEL_M, 0.3, Color(0.06, 0.06, 0.06), 16)
-		wheel.rotation.x = PI / 2.0
-		wheel.position = Vector3(0.6 * side, TRAILER_WHEEL_M, TRAILER_SIZE_M.x / 2.0)
-		trailer.add_child(VenueView._quiet(wheel))
-		var far := wheel.duplicate() as MeshInstance3D
-		far.position.z = -TRAILER_SIZE_M.x / 2.0
-		trailer.add_child(far)
-	var drawbar := Art.box(Vector3(1.6, 0.12, 0.12), Color(0.2, 0.2, 0.2))
-	drawbar.position = Vector3(TRAILER_SIZE_M.z / 2.0 + 0.8, TRAILER_WHEEL_M * 2.0, 0.0)
-	trailer.add_child(VenueView._quiet(drawbar))
+	_add_running_gear(trailer)
 	if not speakers:
 		return
 	# Its side towards the start open: speaker cabinets in two stacks.
@@ -183,15 +194,36 @@ func _add_trailer(x_m: float, y_m: float, colour: Color, speakers: bool) -> void
 	trailer.add_child(sign)
 
 
+# A trailer's wheels (two axles under its middle, a wheel at each end) and
+# its drawbar to the right, under `trailer` (lying across the track).
+func _add_running_gear(trailer: Node3D) -> void:
+	for along: float in [-1.0, 1.0]:
+		for side: float in [-1.0, 1.0]:
+			var wheel := Art.cylinder(TRAILER_WHEEL_M, TRAILER_WHEEL_WIDTH_M, TYRE, 16)
+			wheel.rotation.x = PI / 2.0
+			wheel.position = Vector3(along * TRAILER_AXLES_APART_M / 2.0, TRAILER_WHEEL_M,
+					side * TRAILER_SIZE_M.x / 2.0)
+			trailer.add_child(VenueView._quiet(wheel))
+	var drawbar := Art.box(Vector3(DRAWBAR_M, 0.12, 0.12), DRAWBAR)
+	drawbar.position = Vector3(TRAILER_SIZE_M.z / 2.0 + DRAWBAR_M / 2.0, TRAILER_WHEEL_M * 2.0, 0.0)
+	trailer.add_child(VenueView._quiet(drawbar))
+
+
 # The screen trailer: a mast lifting the screen high over the pile, facing
 # the start line; what it shows is drawn into a SubViewport.
 func _add_screen(x_m: float, y_m: float) -> void:
 	var foot := TrackSpace.point(x_m, y_m, 0.0)
-	var base := Art.box(Vector3(TRAILER_SIZE_M.z, 1.2, TRAILER_SIZE_M.x), SCREEN_TRAILER, 0.5)
-	base.position = foot + Vector3(0.0, TRAILER_WHEEL_M * 2.0 + 0.6, 0.0)
-	add_child(VenueView._quiet(base))
-	var mast := Art.box(Vector3(0.35, SCREEN_FOOT_M, 0.35), Color(0.2, 0.2, 0.22), 0.5, 0.5)
-	mast.position = foot + Vector3(0.0, SCREEN_FOOT_M / 2.0 + 1.0, 0.0)
+	var trailer := Node3D.new()
+	trailer.position = foot
+	add_child(trailer)
+	var base := Art.box(Vector3(TRAILER_SIZE_M.z, SCREEN_BASE_HEIGHT_M, TRAILER_SIZE_M.x),
+			SCREEN_TRAILER, 0.5)
+	base.position = Vector3(0.0, TRAILER_WHEEL_M * 2.0 + SCREEN_BASE_HEIGHT_M / 2.0, 0.0)
+	trailer.add_child(VenueView._quiet(base))
+	_add_running_gear(trailer)
+	var deck_m := TRAILER_WHEEL_M * 2.0 + SCREEN_BASE_HEIGHT_M
+	var mast := Art.box(Vector3(0.35, SCREEN_FOOT_M - deck_m, 0.35), DRAWBAR, 0.5, 0.5)
+	mast.position = foot + Vector3(0.0, (SCREEN_FOOT_M + deck_m) / 2.0, 0.0)
 	add_child(VenueView._quiet(mast))
 	var middle := foot + Vector3(0.0, SCREEN_FOOT_M + SCREEN_SIZE_M.y / 2.0, 0.0)
 	var frame := Art.box(Vector3(SCREEN_SIZE_M.x + 2.0 * SCREEN_FRAME_M,
@@ -208,7 +240,6 @@ func _add_screen(x_m: float, y_m: float) -> void:
 	_tv.fov = TV_FOV_DEG
 	_tv.far = 600.0
 	_screen_view.add_child(_tv)
-	_tv.position = TrackSpace.point(40.0, -TV_OUT_M, TV_HEIGHT_M)
 	_add_standings_panel()
 
 	var quad := QuadMesh.new()

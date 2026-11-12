@@ -52,6 +52,8 @@ enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, E
 # the 3D world is not drawn behind it.
 # A whole turn's stages up to and through the pull: no result yet.
 const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling"]
+# The stages once the pull is over: the chain coming off, the drive back.
+const AFTER_PULL_STAGES := ["releasing", "to_the_parking", "parked"]
 const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
 		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
 
@@ -962,13 +964,13 @@ func _show(delta: float) -> void:
 	# After the pull its distance stays on the boards while the sled drives
 	# back, until the turn is over.
 	var pulled_m: float = s["pulled_m"]
-	if s.get("stage", "pulling") in ["releasing", "to_the_parking", "parked"]:
+	if s.get("stage", "pulling") in AFTER_PULL_STAGES:
 		pulled_m = float(run.get_result().get("distance_m", pulled_m))
 	venue_view.show_distance(pulled_m)
 	hud.hold_distance(pulled_m)
 	# The big screen: the TV camera on the tractor while the pull is on,
 	# the day's standings once it is over.
-	if s.get("stage", "pulling") in ["releasing", "to_the_parking", "parked"]:
+	if s.get("stage", "pulling") in AFTER_PULL_STAGES:
 		if not _screen_standings:
 			_show_screen_standings()
 	else:
@@ -998,7 +1000,7 @@ func _show(delta: float) -> void:
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
 	# Why the pull ended, read once as it ends (and cleared for a new run).
-	var over := stage in ["releasing", "to_the_parking", "parked"]
+	var over := stage in AFTER_PULL_STAGES
 	if over != _ended_shown:
 		_ended_shown = over
 		var result := run.get_result() if over else {}
