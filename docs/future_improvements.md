@@ -629,4 +629,10 @@ for the big features; they are repeated at the end for completeness.
   the farm classes pull in 4th and 5th only and slowly (about 7 to 11
   km/h). Real standard-class pulls may be quicker; the farm engines are
   not yet set from videos.
-
+- **The crew's hitch tip is one rule.** The crew chief says to raise a
+  hitch in its lowest hole, which pulls clearly further on every track
+  but the moist heavy clay, where a low hitch may gain a metre. The crew
+  could try the player's tractor at the top and lowest holes in its gear
+  trials (two more pulls, spread over the frames as the rivals' work is)
+  and advise per track, or re-try the gears when the player changes the
+  setup on the pit board.
