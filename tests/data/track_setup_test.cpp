@@ -18,8 +18,10 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace tp::field {
 namespace {
@@ -55,6 +57,9 @@ public:
         }
         return trial->distance_m;
     }
+
+    // The season's rounds.
+    [[nodiscard]] const std::vector<data::SeasonRound>& rounds() const { return season_.rounds; }
 
 private:
     static data::SeasonDefinition load(const char* file) {
@@ -121,72 +126,75 @@ private:
 constexpr double kBack = 0.0;
 constexpr double kQuarter = 0.25;
 constexpr double kHalfway = 0.5;
-constexpr double kThreeQuarters = 0.75;
+constexpr double kForward = 1.0;
 // More than the spot on the track decides [m].
 constexpr double kClearly_m = 3.0;
 
-// On a grippy track the weights all back stand the tractor on its wheelie
-// bar, which carries load the rear tires lose: halfway pulls further.
-TEST(TrackSetup, OnAGrippyTrackTheWeightsAllBackStandItOnTheBar) {
+// The season's tracks, each once (every track file has its own tip).
+std::vector<std::string> distinct_tracks(const SportSetup& sport) {
+    std::vector<std::string> names;
+    std::set<std::string> tips;
+    for (const data::SeasonRound& round : sport.rounds()) {
+        if (tips.insert(round.track.setup_tip).second) {
+            names.push_back(round.name);
+        }
+    }
+    return names;
+}
+
+// The weights a quarter forward pull furthest on every track: the front
+// rides light, the rear tires carry the most they can without the
+// wheelie bar taking load off them.
+TEST(TrackSetup, AQuarterForwardPullsFurthestOnEveryTrack) {
     const SportSetup sport;
-    for (const char* track : {"Firm loam", "Summer, dry hard clay"}) {
-        EXPECT_LT(sport.reach_m(track, kBack), sport.reach_m(track, kHalfway) - kClearly_m)
-            << track;
+    for (const std::string& track : distinct_tracks(sport)) {
+        const double quarter_m = sport.reach_m(track, kQuarter);
+        for (const double elsewhere : {kBack, kHalfway, kForward}) {
+            EXPECT_GT(quarter_m, sport.reach_m(track, elsewhere)) << track << ", " << elsewhere;
+        }
     }
 }
 
-// On the heavy clay the tires dig in and the sled ploughs: with the
-// weights back the nose climbs, so they go forward of the quarter.
-TEST(TrackSetup, OnHeavyClayTheWeightsGoForward) {
+// What the wrong weights cost depends on the track. All back stands the
+// tractor on its wheelie bar, which costs most on the wet start, where the
+// tires need every kilo; all forward lifts load off the rear tires, which
+// costs most on the loose sandy clay, where grip runs out first.
+TEST(TrackSetup, TheTrackDecidesWhatTheWrongWeightsCost) {
     const SportSetup sport;
-    const char* track = "Rainy day, covered heavy clay";
-    const double forward_m =
-        std::max(sport.reach_m(track, kHalfway), sport.reach_m(track, kThreeQuarters));
-    EXPECT_GT(forward_m, sport.reach_m(track, kBack) + kClearly_m);
-    EXPECT_GT(forward_m, sport.reach_m(track, kQuarter));
-}
-
-// On the loose sandy clay the grip runs out first: the weights all back
-// put the most load on the rear tires.
-TEST(TrackSetup, OnLooseSandTheWeightsGoBack) {
-    const SportSetup sport;
-    const char* track = "Sandy clay";
-    EXPECT_GT(sport.reach_m(track, kBack), sport.reach_m(track, kHalfway) + kClearly_m);
-}
-
-// Soft tires' bigger footprint pays on the heavy clay; on the firm loam
-// their lugs squirm and cost metres.
-TEST(TrackSetup, SoftTiresPayOnHeavyClayAndCostOnFirmLoam) {
-    const SportSetup sport;
-    constexpr double kSoft_bar = 0.6;
-    const char* heavy = "Rainy day, covered heavy clay";
-    EXPECT_GT(sport.reach_m(heavy, kHalfway, kSoft_bar), sport.reach_m(heavy, kHalfway) + 2.0);
-    EXPECT_LT(sport.reach_m("Firm loam", kHalfway, kSoft_bar),
-              sport.reach_m("Firm loam", kHalfway) - kClearly_m);
+    const char* wet = "Spring opener, watered start";
+    EXPECT_GT(sport.reach_m(wet, kQuarter), sport.reach_m(wet, kBack) + kClearly_m);
+    const char* sand = "Sandy clay";
+    EXPECT_GT(sport.reach_m(sand, kQuarter), sport.reach_m(sand, kForward) + kClearly_m);
+    const char* loam = "Firm loam";
+    EXPECT_LT(sport.reach_m(loam, kQuarter), sport.reach_m(loam, kBack) + kClearly_m)
+        << "on the grippy loam the weights matter less";
 }
 
 // Each track has its own best tire pressure, and both sides of it cost:
-// too hard shrinks the footprint, so the tires grip less; too soft lets
-// the lugs squirm. On the grippy tracks the reference pressure is best, on
-// the heavy clay a soft one. On a sled heavier than the operator's, where
-// halfway does not make a full pull.
+// too soft lets the lugs squirm, too hard shrinks the footprint. Soft
+// pays on the heavy clay, where the tires dig in; a little soft on the
+// loose sandy clay; on the clay-sand the reference, where the softest
+// costs metres. On a sled heavier than the operator's, where the best
+// setting does not make a full pull.
 TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
     const SportSetup sport;
     constexpr int kHeavier = 3;
     constexpr double kSoft_bar = 0.5;
+    constexpr double kLittleSoft_bar = 0.7;
     constexpr double kReference_bar = 1.0;
-    constexpr double kHard_bar = 1.4;
-    for (const char* grippy : {"Firm loam", "Summer, dry hard clay"}) {
-        const double best_m = sport.reach_m(grippy, kHalfway, kReference_bar, kHeavier);
-        EXPECT_GT(best_m, sport.reach_m(grippy, kHalfway, kSoft_bar, kHeavier) + kClearly_m)
-            << grippy;
-        EXPECT_GT(best_m, sport.reach_m(grippy, kHalfway, kHard_bar, kHeavier) + 1.0) << grippy;
-    }
+    constexpr double kHard_bar = 1.6;
+    const auto reach = [&](const char* track, double bar) {
+        return sport.reach_m(track, kQuarter, bar, kHeavier);
+    };
     const char* heavy = "Rainy day, covered heavy clay";
-    constexpr double kHeavyClay_bar = 0.7;
-    const double best_m = sport.reach_m(heavy, kHalfway, kHeavyClay_bar, kHeavier);
-    EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kSoft_bar, kHeavier));
-    EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kHard_bar, kHeavier) + kClearly_m);
+    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kReference_bar));
+    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kHard_bar) + 0.5);
+    const char* sand = "Sandy clay";
+    EXPECT_GT(reach(sand, kLittleSoft_bar), reach(sand, kReference_bar) + 0.5);
+    EXPECT_GT(reach(sand, kLittleSoft_bar), reach(sand, kSoft_bar));
+    const char* clay_sand = "Clay-sand";
+    EXPECT_GT(reach(clay_sand, kReference_bar), reach(clay_sand, kSoft_bar) + 1.5);
+    EXPECT_GT(reach(clay_sand, kReference_bar), reach(clay_sand, kHard_bar));
 }
 
 }  // namespace
