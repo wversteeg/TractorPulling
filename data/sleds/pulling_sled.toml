@@ -1,0 +1,96 @@
+# The transfer sled every class pulls: 12.5 m long, 15 t empty, its weight
+# box holding up to 11 t. Each class's file (light_class.toml,
+# sport_2500.toml, sport_4500.toml) names this one as its base and sets the
+# class's weight in the box and where the push-down starts; the sled
+# operator adjusts those, the knives and the box on the day.
+#
+# Lengths are measured forward from the rear wheels' contact, the middle of
+# the tandem. From the back: the operator's cab and the engine over the
+# wheels, the weight box on rails running forward from just behind them,
+# the pan (a steel plate) from about half the sled's length to the front,
+# and the hook between rubber fenders at the front, 8.5 m ahead of the
+# wheels; the frame runs 4 m behind them.
+
+[sled]
+frame_mass_kg = 15000.0
+frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
+frame_yaw_inertia_kg_m2 = 195000.0   # about the frame's own centre of gravity; m L² / 12, L = 12.5 m
+pan_ahead_of_wheels_m = 5.5          # centre of the pan's contact
+pan_friction_coefficient = 0.46      # steel sliding on a firm track
+pan_area_m2 = 2.4                    # the pan's contact with the track
+pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
+
+# Dual tandem axles: eight wide flotation tires, pumped hard for the
+# sled's weight, rolling as towed tires on the track's soil.
+[sled.wheels]
+count = 8
+radius_m = 0.75
+section_width_m = 0.6
+section_height_m = 0.45
+deflection_m = 0.05
+rolling_losses = 0.015               # the carcass's own losses: a hard sled tire loses far less than a soft tractor tire
+
+# The wheels' side grip (see tp::tire::Cornering): they keep the sled's
+# tail in line; the pan, sliding forward, resists sideways far less, so a
+# sled swings behind a tractor that wanders (the dog-tail).
+[sled.wheels.cornering]
+stiffness_per_rad = 4.0
+limit = 0.8
+mobility_rate = 0.1
+relaxation_length_m = 0.75           # about the wheel's radius
+
+[sled.hook]
+ahead_of_wheels_m = 8.5              # on the drawbar at the front, fenders either side
+height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
+
+# Rubber fenders either side of the drawbar: a tractor backing up stops
+# with its rear tires against them (their faces 0.1 m behind the hook),
+# with its hitch within 1 m of the sled's line, up to 1 m past them.
+[sled.fenders]
+behind_hook_m = 0.1
+half_span_m = 1.0
+depth_m = 1.0
+
+# The box starts just behind the wheels, where its weight takes some off
+# the pan for the start (no further back than the sled balances with a
+# full box), and rides forward over the pan.
+[sled.weight_box]
+max_mass_kg = 11000.0
+start_ahead_of_wheels_m = -0.65
+end_ahead_of_wheels_m = 5.5
+travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop as the push-down is fully set
+
+# Engages at a set distance on the track, chosen per class and per event
+# from the test pull and the track's state.
+[sled.pushdown]
+ramp_m = 10.0                        # travel until the wheels are fully off
+
+[sled.chain]
+length_m = 1.15                      # 1.1 to 1.2 m
+stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
+damping_n_s_per_m = 80000.0          # about half of critical for a 2.5 to 4.5 t tractor
+# on the held sled: links and shackles take a jolt's energy, so a tractor
+# that creeps into the chain is not sprung back off it like a rubber band
+
+# Knives under the pan cut grooves in the track; the sled operator sets
+# how many and how deep.
+[sled.knives]
+count = 4
+depth_m = 0.04
+width_m = 0.05
+
+# Soil the tractor's tires throw back piles up in front of the pan and has
+# to be pushed along; it spills off to the sides as the sled moves.
+[sled.berm]
+collected_share = 0.15               # of what the rear tires throw back
+spill_distance_m = 40.0              # the berm spills its own size over this travel
+friction_coefficient = 0.6           # soil sliding on soil
+
+# After the full pulls, the qualifiers pull off on a heavier sled: as many
+# of these steps as the sled operator judges they need. Between qualifying
+# and the pull-off the operator may change the box's weight too.
+[sled.pull_off_step]
+box_mass_kg = 500.0
+knives = 1
+knife_depth_m = 0.0
+pushdown_earlier_m = 0.0
