@@ -6,11 +6,10 @@
 # level; Sport 2.5 t, an introduction to the Sport classes, only promo and
 # top.
 #
-# Finishing a level's championship first or second opens the next level,
-# and the same at a class's last level the next class's first, once the
-# player has pulled at least `min_seasons` seasons on the level (a
-# promotion in the first season opens it after the second); the player is
-# asked whether to move up or stay, and what is opened stays open. Money and upgrades
+# Finishing a level's championship first or second opens the next level
+# at once, and the same at a class's last level the next class's first
+# (`min_seasons = 1`: no level asks more than the season that earned it);
+# the player is asked whether to move up or stay, and what is opened stays open. Money and upgrades
 # carry over, by the upgrade's name.
 #
 # Standard 3.5 t, Sport 2.5 t and Sport 4.5 t so far. Supersport 3.4, 3.6
@@ -20,7 +19,7 @@
 [career]
 name = "Tractor path"
 promotion_place = 2   # the first two of the championship move up
-min_seasons = 2       # at least two seasons on every level: six a class
+min_seasons = 1       # a promotion opens the level above at once
 
 [[career.classes]]
 name = "Standard 3.5 t"
