@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <iostream>
 #include <cmath>
 #include <filesystem>
 #include <limits>
@@ -44,9 +45,9 @@ struct FrontLoads {
 };
 
 constexpr double kLaunchUntil_m = 10.0;
-constexpr double kMiddleFrom_m = 25.0;
-constexpr double kMiddleUntil_m = 65.0;
-constexpr double kEndFrom_m = 80.0;
+constexpr double kMiddleFrom_m = 55.0;
+constexpr double kMiddleUntil_m = 85.0;
+constexpr double kEndFrom_m = 90.0;
 
 // A pull on `track_file` with `tractor_file` tuned to `ballast_position`
 // (0 rearmost, 1 foremost) and the class's sled, driven as `plan` says.
@@ -215,5 +216,22 @@ TEST(WheelieRuns, TheStandardTractorKeepsItsFrontDown) {
     }
 }
 
+}  // namespace
+}  // namespace tp::data
+
+namespace tp::data {
+namespace {
+TEST(WheelieRuns, ZProbe) {
+    const auto show = [](const char* name, const FrontLoads& f) {
+        std::cout << name << ": launch " << f.launch_n << " middle " << f.middle_n << " end "
+                  << f.end_n << " ending " << static_cast<int>(f.result.ending) << " "
+                  << f.result.distance_m << " m " << f.result.time_s << " s\n";
+    };
+    show("ideal 0.25 shift", sport("ideal_clay_sand.toml", 0.25));
+    show("ideal 0.25 noshift", sport_no_shift("ideal_clay_sand.toml", 0.25));
+    show("ideal 0.0 noshift", sport_no_shift("ideal_clay_sand.toml", 0.0));
+    show("ideal 1.0 shift", sport("ideal_clay_sand.toml", 1.0));
+    show("sandy 0.25 shift", sport("sandy_clay.toml", 0.25));
+}
 }  // namespace
 }  // namespace tp::data
