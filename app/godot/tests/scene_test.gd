@@ -377,8 +377,8 @@ func _check_class_looks(dimensions: Dictionary) -> void:
 			[4.0, TractorView.BODY_MOST_SCALE]]:
 		pulling["wheelbase_m"] = case[0]
 		view.build(pulling)
-		_expect(is_equal_approx(view.body_scale(), case[1]), "a %.2f m wheelbase drawn %.2f×: %.2f"
-				% [case[0], case[1], view.body_scale()])
+		_expect(is_equal_approx(view.body_scale(), case[1]),
+				"a %.2f m wheelbase drawn %.2f×: %.2f" % [case[0], case[1], view.body_scale()])
 	view.look = TractorLook.for_class("Standard 3.5 t", "cab")
 	view.build(dimensions)
 	_expect(view.body_scale() == 1.0, "the farm tractor as drawn: %.2f×" % view.body_scale())

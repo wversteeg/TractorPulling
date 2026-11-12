@@ -427,14 +427,16 @@ func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 	var from_m := wheelbase_m - 0.6
 	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + FRAME_PAST_HOOD_M
 	var z_m := _front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M
+	var rail_size := Vector3(FRAME_RAIL_M.x * _body_scale, FRAME_RAIL_M.y * _body_scale,
+			to_m - from_m)
+	var rails_apart_m := FRAME_RAILS_APART_M * _body_scale
 	for side: float in [-1.0, 1.0]:
-		var rail := Art.instance(Art.rounded_box(Vector3(FRAME_RAIL_M.x * _body_scale, FRAME_RAIL_M.y * _body_scale,
-				to_m - from_m), 0.03, Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
-		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * FRAME_RAILS_APART_M * _body_scale / 2.0,
-				z_m)
+		var rail := Art.instance(Art.rounded_box(rail_size, 0.03, Vector3.AXIS_Z),
+				Art.material(BONNET_DARK, 0.5, 0.3))
+		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * rails_apart_m / 2.0, z_m)
 		_body.add_child(rail)
-	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + 0.1, 0.18 * _body_scale,
-			BUMPER_DEPTH_M), 0.05,
+	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + 0.1,
+			0.18 * _body_scale, BUMPER_DEPTH_M), 0.05,
 			Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
 	bumper.name = "Bumper"
 	bumper.position = TrackSpace.point(to_m, 0.0, z_m)
