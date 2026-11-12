@@ -81,7 +81,8 @@ Each class is pulled at its levels, belofte, promo and top; the standard
 class, the warming-up, at one level, and the Sport 2.5 t introduction
 class at promo and top (see "Levels within a class"): a season finished
 first or second opens the next level at once, and a class's last level
-the next class (`tp::career`, `promotion_place = 2`, `min_seasons = 1`); the player chooses to move up or stay.
+the next class (`tp::career`, `promotion_place = 2`, `min_seasons = 1`);
+the player chooses to move up or stay.
 
 Not in the game: the heavier standard classes.
 

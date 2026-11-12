@@ -9,8 +9,8 @@
 # Finishing a level's championship first or second opens the next level
 # at once, and the same at a class's last level the next class's first
 # (`min_seasons = 1`: no level asks more than the season that earned it);
-# the player is asked whether to move up or stay, and what is opened stays open. Money and upgrades
-# carry over, by the upgrade's name.
+# the player is asked whether to move up or stay, and what is opened
+# stays open. Money and upgrades carry over, by the upgrade's name.
 #
 # Standard 3.5 t, Sport 2.5 t and Sport 4.5 t so far. Supersport 3.4, 3.6
 # and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a class
