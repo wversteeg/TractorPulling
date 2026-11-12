@@ -129,7 +129,7 @@ TEST(Career, StartsOnAnyRungForTesting) {
     EXPECT_FALSE(starting_at(kTractorPath, -1).has_value());
 }
 
-// A ladder that asks two seasons on every rung (the tractor path's).
+// A ladder that asks two seasons on every rung.
 constexpr Ladder kTwoSeasons{.rungs = 27, .promotion_place = 1, .min_seasons = 2};
 
 TEST(Career, ValidatesTheMinimumSeasons) {

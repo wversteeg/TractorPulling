@@ -9,7 +9,7 @@ points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # Prize money per place at every event [EUR]; the class's garage costs
 # about € 20,000 (garages/standard_3500.toml). The career's start pays
 # well, so the first upgrades come quickly: a player who buys as they earn
-# wins the class in about two seasons, the career's minimum. Every place
+# wins the class in about two seasons. Every place
 # pays, the 15th a cheap upgrade (€ 250), so a new tractor at the back can
 # still be built up; a disqualified pull earns nothing.
 prize_money_eur = [1860, 1440, 1180, 1000, 870, 740, 620, 560, 490, 430, 400, 360, 330, 290, 260]

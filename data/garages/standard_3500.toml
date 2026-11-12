@@ -12,8 +12,7 @@
 # stages dearer as they go (the last about three times the first), the
 # powershift a fifth of it. With the field and prize money, a player who
 # buys as they earn wins the class in about two seasons, with about two
-# thirds of the stages bought; the career asks at least two seasons on it
-# (careers/tractor_path.toml).
+# thirds of the stages bought (careers/tractor_path.toml).
 
 [garage]
 start_money_eur = 1000

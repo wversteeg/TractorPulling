@@ -80,9 +80,9 @@ garage's upgrade levels by name from one class's garage to the next.
 Each class is pulled at its levels, belofte, promo and top; the standard
 class, the warming-up, at one level, and the Sport 2.5 t introduction
 class at promo and top (see "Levels within a class"): a season finished
-first or second opens the next level, and a class's last level the next
-class (`tp::career`, `promotion_place = 2`, at least `min_seasons` on a
-level); the player chooses to move up or stay.
+first or second opens the next level at once, and a class's last level
+the next class (`tp::career`, `promotion_place = 2`, `min_seasons = 1`);
+the player chooses to move up or stay.
 
 Not in the game: the heavier standard classes.
 
@@ -378,11 +378,11 @@ tractor:
   at the class's first level; a **fully upgraded** one **wins at the
   class's last level**
   (tests/data/rival_difficulty_test.cpp).
-- **At least two seasons on every level.** Finishing a level's
+- **A promotion opens the level above at once.** Finishing a level's
   championship first or second opens the level above (at a class's last
-  level the next class's first) once the level has had two seasons; a
-  promotion in the first season opens it after the second (`min_seasons` in the career
-  file, `career::Ladder`). The player is asked whether to move up or
+  level the next class's first), in any season, the first too
+  (`min_seasons = 1` in the career file, `career::Ladder`; the core can
+  still ask more seasons on a rung). The player is asked whether to move up or
   stay. No relegation (for now).
 - The money is set so that the rule rarely has to hold anyone back: each
   part's stages dearer as they go, each level paying about 30 % more than
@@ -401,7 +401,7 @@ tractor:
   costs about € 20,000; a new tractor finishes near the back, two thirds
   of the garage fights for the win with the strongest two or three
   rivals, and a player who buys as they earn wins it in
-  about two seasons, the minimum.
+  about two seasons.
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
 - The NTTO's standard class has no levels (nor has the game's) and Pro
