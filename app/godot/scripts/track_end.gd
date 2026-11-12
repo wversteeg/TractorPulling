@@ -1,8 +1,9 @@
 # Where the track ends: the clay runs out 30 m past the 100 m line, and a
 # pile of dirt across the lane from there stops anything that would roll on
 # (130 to 140 m on a 100 m track). Past the pile stand the event's trailers:
-# the sound trailer with its speakers, and at a club or a big event a
-# generator and a trailer with a big LED screen facing the start.
+# a plain box trailer, and at a club or a big event a generator and a
+# trailer with a big LED screen facing the start; beside them a row of
+# pop-up tents.
 #
 # The screen shows another camera during the run: a TV camera beside the
 # track that follows the tractor (show_live()), drawn into a small
@@ -40,10 +41,21 @@ const TRAILER_STEP_BACK_M := 2.0
 const SCREEN_LEFT_SHARE := 0.25
 # The screen trailer's base, and how high its mast lifts it [m].
 const SCREEN_BASE_HEIGHT_M := 1.2
-const SOUND_TRAILER := Color(0.12, 0.13, 0.15)
+const BOX_TRAILER := Color(0.9, 0.9, 0.88)
 const GENERATOR := Color(0.85, 0.65, 0.12)
 const SCREEN_TRAILER := Color(0.75, 0.76, 0.78)
-const SPEAKER := Color(0.05, 0.05, 0.06)
+# The pop-up tents: square, this wide, their legs this high and their
+# roofs' peak over that; in a row on the left past the pile, from this far
+# out of the strip, this far apart; their roofs' colours in turn [m].
+const TENT_M := 3.0
+const TENT_LEGS_M := 2.1
+const TENT_PEAK_M := 0.8
+const TENTS_PAST_PILE_M := 4.5
+const TENTS_OUT_M := 2.0
+const TENT_GAP_M := 0.5
+const TENT_LEG := Color(0.75, 0.76, 0.78)
+const TENT_ROOFS: Array[Color] = [Color(0.92, 0.92, 0.9), Color(0.15, 0.35, 0.75),
+		Color(0.8, 0.12, 0.1), Color(0.2, 0.55, 0.25)]
 # The screen: its size, how high its foot stands, and its frame [m].
 const SCREEN_SIZE_M := Vector2(6.4, 3.6)
 const SCREEN_FOOT_M := 4.2
@@ -78,13 +90,15 @@ var _since_s := 0.0
 var _lane_m := 12.0
 var _pile_at_m := Vector2.ZERO
 var _trailers := 0
+var _tents := 0
 
 
 # Built for a track `length_m` long with a lane `lane_m` wide, the clay in
 # `shades` (VenueView.track_colours()), `strip_m` wide; `trailers` of them
-# (the sound trailer first, then a generator), and a screen if `screen`.
+# (the box trailer first, then a generator), a screen if `screen`, and
+# `tents` pop-up tents.
 func build(length_m: float, lane_m: float, strip_m: float, shades: Array[Color],
-		trailers: int, screen: bool) -> void:
+		trailers: int, screen: bool, tents: int) -> void:
 	for child: Node in get_children():
 		child.free()
 	_screen_view = null
@@ -96,21 +110,31 @@ func build(length_m: float, lane_m: float, strip_m: float, shades: Array[Color],
 	_add_pile(from_m, strip_m, shades)
 	var at_m := from_m + PILE_LENGTH_M + TRAILERS_PAST_PILE_M
 	_trailers = 0
-	var colours: Array[Color] = [SOUND_TRAILER, GENERATOR]
+	var colours: Array[Color] = [BOX_TRAILER, GENERATOR]
 	# Each trailer's middle: half its length out from where the last one's
 	# drawbar ends, with a gap between.
 	var y_m := -(strip_m / 2.0 + TRAILERS_OUT_M + TRAILER_SIZE_M.z / 2.0)
 	for i in mini(trailers, colours.size()):
-		_add_trailer(at_m + TRAILER_STEP_BACK_M * i, y_m, colours[i], i == 0)
+		_add_trailer(at_m + TRAILER_STEP_BACK_M * i, y_m, colours[i])
 		y_m -= TRAILER_SIZE_M.z + DRAWBAR_M + TRAILER_GAP_M
 		_trailers += 1
 	if screen:
 		_add_screen(at_m, strip_m * SCREEN_LEFT_SHARE)
+	_tents = 0
+	for i in tents:
+		_add_tent(from_m + PILE_LENGTH_M + TENTS_PAST_PILE_M,
+				strip_m / 2.0 + TENTS_OUT_M + TENT_M / 2.0 + (TENT_M + TENT_GAP_M) * i,
+				TENT_ROOFS[i % TENT_ROOFS.size()])
+		_tents += 1
 
 
 # Where the pile lies along the track, from and to [m].
 func pile_at_m() -> Vector2:
 	return _pile_at_m
+
+
+func tent_count() -> int:
+	return _tents
 
 
 func trailer_count() -> int:
@@ -164,9 +188,8 @@ func _add_pile(from_m: float, strip_m: float, shades: Array[Color]) -> void:
 	add_child(VenueView._quiet(Art.many(sphere, lumps, dirt)))
 
 
-# A box trailer facing across the track, its drawbar to the right; the
-# sound trailer has its side open on speakers stacked facing the start.
-func _add_trailer(x_m: float, y_m: float, colour: Color, speakers: bool) -> void:
+# A box trailer facing across the track, its drawbar to the right.
+func _add_trailer(x_m: float, y_m: float, colour: Color) -> void:
 	var trailer := Node3D.new()
 	trailer.position = TrackSpace.point(x_m, y_m, 0.0)
 	add_child(trailer)
@@ -174,24 +197,29 @@ func _add_trailer(x_m: float, y_m: float, colour: Color, speakers: bool) -> void
 	body.position = Vector3(0.0, TRAILER_WHEEL_M * 2.0 + TRAILER_SIZE_M.y / 2.0, 0.0)
 	trailer.add_child(VenueView._quiet(body))
 	_add_running_gear(trailer)
-	if not speakers:
-		return
-	# Its side towards the start open: speaker cabinets in two stacks.
-	for stack: float in [-1.0, 1.0]:
-		for level in 3:
-			var cabinet := Art.box(Vector3(1.1, 0.75, 0.8), SPEAKER, 0.9)
-			cabinet.position = Vector3(stack * 1.8, TRAILER_WHEEL_M * 2.0 + 0.45 + 0.8 * level,
-					TRAILER_SIZE_M.x / 2.0 + 0.4)
-			trailer.add_child(VenueView._quiet(cabinet))
-			var cone := Art.cylinder(0.26, 0.05, Color(0.2, 0.2, 0.22), 16)
-			cone.rotation.x = PI / 2.0
-			cone.position = cabinet.position + Vector3(0.0, 0.0, 0.42)
-			trailer.add_child(VenueView._quiet(cone))
-	# The sign between the stacks, under the roof.
-	var sign := Art.label("SOUND", 55, Color.WHITE, Color(0.0, 0.0, 0.0, 0.0))
-	sign.position = Vector3(0.0, TRAILER_WHEEL_M * 2.0 + TRAILER_SIZE_M.y - 0.4,
-			TRAILER_SIZE_M.x / 2.0 + 0.02)
-	trailer.add_child(sign)
+
+
+# A pop-up tent: four legs, a valance round the top and a pyramid roof in
+# `roof`, at (`x_m`, `y_m`) on the track's ground.
+func _add_tent(x_m: float, y_m: float, roof: Color) -> void:
+	var tent := Node3D.new()
+	tent.position = TrackSpace.point(x_m, y_m, 0.0)
+	add_child(tent)
+	var half_m := TENT_M / 2.0
+	for along: float in [-1.0, 1.0]:
+		for across: float in [-1.0, 1.0]:
+			var leg := Art.box(Vector3(0.05, TENT_LEGS_M, 0.05), TENT_LEG, 0.4, 0.6)
+			leg.position = Vector3(across * half_m, TENT_LEGS_M / 2.0, along * half_m)
+			tent.add_child(VenueView._quiet(leg))
+	var valance := Art.box(Vector3(TENT_M, 0.25, TENT_M), roof, 0.8)
+	valance.position = Vector3(0.0, TENT_LEGS_M - 0.125, 0.0)
+	tent.add_child(VenueView._quiet(valance))
+	# A four-sided cone: the roof's corners over the legs.
+	var pyramid := Art.cylinder_mesh(0.02, half_m * sqrt(2.0), TENT_PEAK_M, 4)
+	var cover := Art.instance(pyramid, Art.material(roof, 0.8))
+	cover.rotation.y = PI / 4.0
+	cover.position = Vector3(0.0, TENT_LEGS_M + TENT_PEAK_M / 2.0, 0.0)
+	tent.add_child(VenueView._quiet(cover))
 
 
 # A trailer's wheels (two axles under its middle, a wheel at each end) and

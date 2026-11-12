@@ -36,6 +36,64 @@ static func box(size: Vector3, colour: Color, roughness: float = 0.8,
 	return instance(mesh, material(colour, roughness, metallic))
 
 
+# A box `size` with the four edges along `along` (Vector3.AXIS_X, _Y or
+# _Z) rounded to `radius_m` in `segments` steps each: a rounded rectangle
+# drawn across the other two axes and run along `along`, with flat ends.
+static func rounded_box(size: Vector3, radius_m: float, along: int = Vector3.AXIS_Z,
+		segments: int = 4) -> ArrayMesh:
+	# The profile's two axes, and the run's.
+	var u_axis := (along + 1) % 3
+	var v_axis := (along + 2) % 3
+	var half_u := size[u_axis] / 2.0
+	var half_v := size[v_axis] / 2.0
+	var half_w := size[along] / 2.0
+	var r := clampf(radius_m, 0.0, minf(half_u, half_v))
+	# The rounded rectangle, anticlockwise, with each point's outward normal.
+	var outline: Array[Vector2] = []
+	var normals: Array[Vector2] = []
+	var corners: Array[Vector2] = [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
+	for c in corners.size():
+		var centre := Vector2(corners[c].x * (half_u - r), corners[c].y * (half_v - r))
+		for i in segments + 1:
+			var angle := PI / 2.0 * (c + float(i) / segments)
+			var out := Vector2(cos(angle), sin(angle))
+			outline.append(centre + out * r)
+			normals.append(out)
+	var point := func(u: float, v: float, w: float) -> Vector3:
+		var p := Vector3.ZERO
+		p[u_axis] = u
+		p[v_axis] = v
+		p[along] = w
+		return p
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var count := outline.size()
+	for i in count:
+		var j := (i + 1) % count
+		var a: Vector2 = outline[i]
+		var b: Vector2 = outline[j]
+		var na: Vector3 = point.call(normals[i].x, normals[i].y, 0.0)
+		var nb: Vector3 = point.call(normals[j].x, normals[j].y, 0.0)
+		# Godot's front faces wind clockwise seen from outside.
+		var quad := [[a, na, -half_w], [b, nb, half_w], [b, nb, -half_w],
+				[a, na, -half_w], [a, na, half_w], [b, nb, half_w]]
+		for corner: Array in quad:
+			var at: Vector2 = corner[0]
+			tool.set_normal(corner[1])
+			tool.add_vertex(point.call(at.x, at.y, corner[2]))
+	# The two flat ends, fans from the middle.
+	for end: float in [-1.0, 1.0]:
+		var normal: Vector3 = point.call(0.0, 0.0, end)
+		for i in count:
+			var j := (i + 1) % count
+			var first: Vector2 = outline[j] if end > 0.0 else outline[i]
+			var second: Vector2 = outline[i] if end > 0.0 else outline[j]
+			for at: Vector2 in [Vector2.ZERO, first, second]:
+				tool.set_normal(normal)
+				tool.add_vertex(point.call(at.x, at.y, end * half_w))
+	return tool.commit()
+
+
 # A cylinder standing along y (Godot's own axis).
 static func cylinder(radius_m: float, height_m: float, colour: Color, segments: int = 16,
 		roughness: float = 0.8, metallic: float = 0.0) -> MeshInstance3D:

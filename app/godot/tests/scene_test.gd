@@ -250,9 +250,9 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 
 
 # Past the track's end: a pile of dirt across the track from 130 to 140 m
-# (on a 100 m track), the sound trailer behind it, at a club or big event a
-# generator and a big screen too. The screen follows the tractor during the
-# run and shows the standings after it. In the evening floodlights also
+# (on a 100 m track), a box trailer and pop-up tents behind it, at a club
+# or big event a generator, a big screen and more tents too. The screen
+# follows the tractor during the run and shows the standings after it. In the evening floodlights also
 # stand past the 120 m mark and over the parking.
 func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	var length_m := float(dimensions["track_length_m"])
@@ -263,8 +263,10 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 		_expect(end != null and end.pile_at_m() == Vector2(length_m + 30.0, length_m + 40.0),
 				"the pile at the track's end at a %s event: %s" % [size, end.pile_at_m()])
 		_expect(end.trailer_count() == (1 if size == "small" else 2)
-				and end.has_screen() == (size != "small"),
-				"%s event: %d trailers, screen %s" % [size, end.trailer_count(), end.has_screen()])
+				and end.has_screen() == (size != "small")
+				and end.tent_count() == {"small": 2, "club": 3, "big": 4}[size],
+				"%s event: %d trailers, screen %s, %d tents" % [size, end.trailer_count(),
+				end.has_screen(), end.tent_count()])
 		_expect(venue.floodlight_masts().is_empty(), "no floodlights in the day")
 	var end := venue.track_end()
 	venue.show_screen_live(TrackSpace.point(40.0, 0.0, 0.0), 1.0)
