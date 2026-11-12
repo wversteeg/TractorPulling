@@ -39,6 +39,7 @@ package "GDScript (app/godot/scripts)" {
     -_start_event_pull()
     -_place_parking()
     -_build(error) : bool
+    +class_look(dimensions) : TractorLook
     -_build_turn(dimensions)
     -_camera_target(delta) : Vector3
     -_show_officials(snapshot, delta)
@@ -55,14 +56,23 @@ package "GDScript (app/godot/scripts)" {
     +build(dimensions)
   }
   class TractorView {
-    +paint, paint_dark, driver_shirt : Color
+    +look : TractorLook
     +pulling_look() : bool : a roll bar draws a pulling tractor
     +front_weights_position() : Vector3
-    +build(dimensions)
+    +build(dimensions) : built again for another look or sizes
     +show_snapshot(snapshot, delta)
     +show_cockpit(snapshot) : wheel and gauges
     +hitch_position() : Vector3
     +cab_camera() : Camera3D
+  }
+  class TractorLook {
+    +name : String : the class
+    +paint, paint_dark, trim, rim, disc, ring : Color
+    +number : String
+    +driver_shirt : Color
+    +{static} schemes() : Dictionary : by class name
+    +{static} for_class(class_name, protection) : TractorLook
+    +rival(i) : TractorLook : the class's trim, own paint
   }
   class SledView {
     +build(dimensions)
@@ -527,6 +537,8 @@ VenueView ..> KenneyModels : CC0 models (assets/kenney):\ntents, barn, clouds
 VenueView ..> Trees : copses and\nthe tree line
 VenueView ..> People : the crowd, one\nMultiMesh a pose
 TractorView ..> People : the driver
+TractorView o-- TractorLook : its colours and number
+Pull ..> TractorLook : the class's, and the rivals'
 CameraRig ..> TractorView : the cab camera, at the driver's eyes
 Flagman ..> People : the official
 SledView ..> People : the operator

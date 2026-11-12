@@ -72,6 +72,10 @@ var cab: Camera3D = null:
 		if cab != null:
 			_cab_ahead = cab.position
 			_cab_ahead_rotation = cab.rotation
+			# A tractor built again brings a new cab camera: the view stays
+			# in the cab.
+			if view == View.CAB and cab.is_inside_tree() and not _cameras.is_empty():
+				current_camera().make_current()
 var _time_s := 0.0
 # Reversing: the cab camera looks back (set_reversing).
 var _reversing := false
