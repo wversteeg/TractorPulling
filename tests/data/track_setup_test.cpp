@@ -21,6 +21,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace tp::field {
@@ -32,7 +33,8 @@ namespace {
 // is due (the field's first event on that track), until the sled stops.
 class SportSetup {
 public:
-    SportSetup() : season_(load("sport_4500_top.toml")), built_(built(season_)) {}
+    explicit SportSetup(const char* season_file = "sport_4500_top.toml")
+        : season_(load(season_file)), built_(built(season_)) {}
 
     double reach_m(const std::string& round, double ballast_position, double pressure_bar = 1.0,
                    int heavier_steps = 0, std::optional<double> hitch_m = std::nullopt) const {
@@ -198,22 +200,57 @@ TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
     EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kHard_bar, kHeavier) + kClearly_m);
 }
 
-// The top hitch hole puts most of the sled's pull on the rear tires: on
-// every track of the season, with the weights back or halfway, it pulls
-// further than the lowest hole, where the tires spin out. So the crew
-// chief may always say to raise a low hitch (U-23).
-TEST(TrackSetup, TheTopHitchHolePullsFurthestOnEveryTrack) {
-    const SportSetup sport;
-    // Each track once: every track file has its own tip.
-    std::set<std::string> tracks_seen;
+// The season's rounds on different tracks, by their ground (the soil's
+// make-up and the track's grip), not their names: a track may come round
+// twice in a season under another name.
+std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
+    std::vector<std::string> names;
+    std::set<std::tuple<double, double, double, double>> grounds;
     for (const data::SeasonRound& round : sport.rounds()) {
-        if (!tracks_seen.insert(round.track.setup_tip).second) {
-            continue;
+        const track::Params& ground = round.track.ground;
+        if (grounds
+                .insert({ground.soil.clay_fraction, ground.soil.moisture, ground.soil.compaction,
+                         ground.grip_scale})
+                .second) {
+            names.push_back(round.name);
         }
-        for (const double ballast : {kBack, kHalfway}) {
-            EXPECT_GT(sport.reach_m(round.name, ballast),
-                      sport.reach_m(round.name, ballast, 1.0, 0, sport.lowest_hitch_m()) + 1.0)
-                << round.name << ", weights at " << ballast;
+    }
+    return names;
+}
+
+// The lowest hitch hole takes most of the sled's pull off the rear tires:
+// at every level of the class, on every track, with the weights back,
+// halfway or well forward, the top hole pulls clearly further. So the crew
+// chief may always say to raise a hitch in its lowest hole (U-23). (The
+// holes between are another matter: with the weights all back on a grippy
+// track the top hole stands the tractor on its wheelie bar, and one a
+// little lower pulls further.) On a sled heavy enough that the tractor
+// stops short of the line, where a setting shows.
+TEST(TrackSetup, TheLowestHitchHoleNeverPullsFurthest) {
+    constexpr double kAsBuilt_bar = 1.0;
+    // Further than a pull-to-pull difference [m].
+    constexpr double kFurther_m = 0.5;
+    // Short of the pull-off's line: the run's limit hides the rest [m].
+    constexpr double kShortOfTheLine_m = 115.0;
+    constexpr int kStepsAtATime = 2;
+    constexpr int kMostSteps = 16;
+    for (const char* season :
+         {"sport_4500_belofte.toml", "sport_4500_promo.toml", "sport_4500_top.toml"}) {
+        const SportSetup sport{season};
+        for (const std::string& round : rounds_on_their_own_tracks(sport)) {
+            for (const double ballast : {kBack, kHalfway, kThreeQuarters}) {
+                int steps = 0;
+                double top_m = sport.reach_m(round, ballast, kAsBuilt_bar, steps);
+                while (top_m > kShortOfTheLine_m && steps < kMostSteps) {
+                    steps += kStepsAtATime;
+                    top_m = sport.reach_m(round, ballast, kAsBuilt_bar, steps);
+                }
+                const auto at_hole = [&](double hole_m) {
+                    return sport.reach_m(round, ballast, kAsBuilt_bar, steps, hole_m);
+                };
+                EXPECT_GT(top_m, at_hole(sport.lowest_hitch_m()) + kFurther_m)
+                    << season << ", " << round << ", weights at " << ballast;
+            }
         }
     }
 }

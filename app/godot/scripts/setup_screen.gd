@@ -63,7 +63,7 @@ var _sent_start := 0.0
 # Where the crew would start the sled [m, to the left].
 var _crew_y_m := 0.0
 # What the crew chief says: the track's tip, the gear the crew's trials
-# liked (0 none) and whether the hitch is below its top hole.
+# liked (0 none) and whether the hitch is in its lowest hole.
 var _track_tip := ""
 var _crew_gear := 0
 var _hitch_low := false
@@ -189,7 +189,7 @@ func show_values(tuning: Dictionary) -> void:
 	_hitch.text = "%.2f m" % float(tuning.get("hitch_m", 0.0)) \
 			if tuning.get("hitch", false) else "Fixed hitch"
 	var hitch_low: bool = tuning.get("hitch", false) and float(tuning.get("hitch_m", 0.0)) \
-			< float(tuning.get("max_hitch_m", 0.0)) - HITCH_STEP_M / 2.0
+			< float(tuning.get("min_hitch_m", 0.0)) + HITCH_STEP_M / 2.0
 	if hitch_low != _hitch_low:
 		_hitch_low = hitch_low
 		_show_tip()
@@ -271,9 +271,10 @@ func _show_track(track: Dictionary, track_name: String) -> void:
 
 
 # The crew chief's word before the pull: the track's tip, the gear that
-# went furthest in the crew's trials with this tractor this morning, and,
-# with the hitch below its top hole, to raise it: a low hitch takes the
-# sled's pull off the rear tires, and on a heavy sled they spin out.
+# went furthest in the crew's trials with the tractor as it was brought,
+# and, with the hitch in its lowest hole, to raise it: the lowest hole
+# takes the sled's pull off the rear tires, and on a heavy sled they spin
+# out. (The holes above it depend on the weights and the track: no tip.)
 func _show_tip() -> void:
 	var words: Array[String] = []
 	if not _track_tip.is_empty():
@@ -281,7 +282,7 @@ func _show_tip() -> void:
 	if _crew_gear > 0:
 		words.append("Try %s gear." % _ordinal(_crew_gear))
 	if _hitch_low:
-		words.append("Hitch in the top hole, or the tires spin.")
+		words.append("Raise the hitch, or the tires spin.")
 	_tip.text = "Crew chief: \"%s\"" % " ".join(words) if not words.is_empty() else \
 			"Set the weights, tires and hitch for the track."
 

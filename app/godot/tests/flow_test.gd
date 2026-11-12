@@ -484,22 +484,26 @@ func _check_hitch_slider(setup: SetupScreen) -> void:
 
 
 # The crew chief names the gear the crew's trials liked and, with the hitch
-# below its top hole, says to raise it; the hitch back in the top hole,
-# the warning goes. Shown for a tractor with a hitch to set, then the
-# pit board put back as it was.
+# in its lowest hole, says to raise it; one hole up, the warning goes. Shown
+# for a tractor with a hitch to set, then the pit board put back as it was.
+# The event's own report names a gear of the class's, once the trials are
+# done.
 func _check_crew_tip(setup: SetupScreen, event: TractorPullEvent) -> void:
 	var tuning := {"hitch": true, "hitch_m": 0.40, "min_hitch_m": 0.40, "max_hitch_m": 0.50}
 	setup.show_setup("test", tuning, true, false, {"tip": "A fair track."}, "Test",
 			{"gear": 5})
 	var low := setup.tip_text()
-	tuning["hitch_m"] = 0.50
+	tuning["hitch_m"] = 0.42
 	setup.show_values(tuning)
-	var top := setup.tip_text()
-	setup.show_setup("put back", event.get_tuning(), false, false, {}, "",
-			event.get_crew_report())
-	_expect(low.contains("5th gear") and low.contains("top hole") and low.contains("fair track")
-			and top.contains("5th gear") and not top.contains("top hole"),
-			"the crew chief's tip: %s | %s" % [low, top])
+	var up := setup.tip_text()
+	var crew := event.get_crew_report()
+	setup.show_setup("put back", event.get_tuning(), false, false, {}, "", crew)
+	_expect(low.contains("5th gear") and low.contains("Raise the hitch")
+			and low.contains("fair track") and up.contains("5th gear")
+			and not up.contains("Raise the hitch"),
+			"the crew chief's tip: %s | %s" % [low, up])
+	var gear := int(crew.get("gear", -1))
+	_expect(gear == 0 or (gear >= 1 and gear <= 8), "the crew's gear: %d" % gear)
 
 
 # The pump choice, from its pin: the spare pump bought (and fitted) with

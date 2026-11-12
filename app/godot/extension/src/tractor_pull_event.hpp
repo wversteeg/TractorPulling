@@ -238,8 +238,10 @@ public:
     /// (crew::best_line_m), `max_y_m` how far off the middle it may go
     /// either way, `start_y_m` where the player has put it; `gear` the gear
     /// the player's tractor, as tuned when the event started, went
-    /// furthest in at the event's gear trials (0 before them). {} before
-    /// an event.
+    /// furthest in at the event's gear trials
+    /// (field::LiveEvent::player_best_gear; 0 before them): set up
+    /// differently on the pit board, it may pull best in another. {}
+    /// before an event.
     [[nodiscard]] godot::Dictionary get_crew_report() const;
     /// Where the player puts the sled across the lane for their next pulls
     /// and practice pulls, to the left of the middle [m]; held to the

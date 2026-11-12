@@ -132,6 +132,7 @@ package "tp::field" {
     +suggested_keep() : bool
     +decide_player(keep)
     +player(), puller_count(), gear(puller), pulls_done() : int
+    +player_best_gear() : int : the player's trials' best, for the crew
     +log() : span<const LogEntry>
     +standings() : span<const event::Standing>
     +full_pull_m() : double
