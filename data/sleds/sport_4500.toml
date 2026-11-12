@@ -21,6 +21,7 @@ radius_m = 0.55
 section_width_m = 0.43
 section_height_m = 0.35
 deflection_m = 0.04
+rolling_losses = 0.04               # the tire's own losses, on top of sinking in
 
 # The wheels' side grip (see tp::tire::Cornering): they keep the sled's
 # tail in line; the pan, sliding forward, resists sideways far less, so a
@@ -45,6 +46,7 @@ half_span_m = 1.0
 depth_m = 1.0
 
 [sled.weight_box]
+max_mass_kg = 11000.0                # what the box holds at most
 mass_kg = 6000.0
 start_ahead_of_wheels_m = -0.5       # behind the rear wheels: its weight lifts the pan for the start
 end_ahead_of_wheels_m = 3.0          # over the pan

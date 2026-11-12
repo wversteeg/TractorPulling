@@ -27,6 +27,7 @@ radius_m = 0.45
 section_width_m = 0.3
 section_height_m = 0.25
 deflection_m = 0.03
+rolling_losses = 0.04
 
 [sled.wheels.cornering]
 stiffness_per_rad = 3.5
@@ -40,6 +41,7 @@ height_m = 0.5
 
 [sled.weight_box]
 mass_kg = 2500.0
+max_mass_kg = 11000.0
 start_ahead_of_wheels_m = 0.2
 end_ahead_of_wheels_m = 2.8
 travel_distance_m = 90.0
