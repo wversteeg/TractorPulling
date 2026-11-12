@@ -184,8 +184,8 @@ Params with_conditions(const Params& params, const Conditions& conditions) noexc
 Params adjusted(const Params& params, const Adjustment& adjustment, int times) noexcept {
     const double n = times;
     Params out = params;
-    out.box_mass_kg = std::clamp(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0,
-                                 params.box_max_mass_kg);
+    out.box_mass_kg =
+        std::clamp(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0, params.box_max_mass_kg);
     out.knives.count = std::clamp(params.knives.count + times * adjustment.knives, 0, kMaxKnives);
     out.knives.depth_m =
         std::clamp(params.knives.depth_m + n * adjustment.knife_depth_m, 0.0, kMaxKnifeDepth_m);
@@ -290,10 +290,10 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
     wheels_n -= pushdown * wheels_n;
 
     const double wheel_count = params.wheel_count;
-    const double rolling = wheels_n > 0.0 ? tire::towed_rolling_resistance(
-                                                params.wheel, wheels_n / wheel_count, ground.wheels,
-                                                params.wheel_rolling_losses)
-                                          : 0.0;
+    const double rolling =
+        wheels_n > 0.0 ? tire::towed_rolling_resistance(params.wheel, wheels_n / wheel_count,
+                                                        ground.wheels, params.wheel_rolling_losses)
+                       : 0.0;
     // On a hard spot the pan and the knives drag harder.
     const double friction = pan_friction(params, pan_n, ground.pan) * ground.pan.drag_scale;
     const double cutting_n =

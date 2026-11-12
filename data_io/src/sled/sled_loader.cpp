@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "../common/toml_reader.hpp"
 #include "../tire/tire_fields.hpp"
@@ -168,15 +169,22 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
 constexpr std::string_view kBase = "sled.base";
 
 // Copies every value of `over` into `into`, table by table: what `over`
-// sets wins, what it leaves out keeps `into`'s value.
+// sets wins, what it leaves out keeps `into`'s value. A work list rather
+// than recursion: the tables nest only a few deep, but no call depth is
+// left to the file.
 void overlay(toml::table& into, const toml::table& over) {
-    for (const auto& [key, node] : over) {
-        const toml::table* over_table = node.as_table();
-        toml::table* into_table = into[key].as_table();
-        if (over_table != nullptr && into_table != nullptr) {
-            overlay(*into_table, *over_table);
-        } else {
-            into.insert_or_assign(key, node);
+    std::vector<std::pair<toml::table*, const toml::table*>> work{{&into, &over}};
+    while (!work.empty()) {
+        const auto [to, from] = work.back();
+        work.pop_back();
+        for (const auto& [key, node] : *from) {
+            const toml::table* from_table = node.as_table();
+            toml::table* to_table = (*to)[key].as_table();
+            if (from_table != nullptr && to_table != nullptr) {
+                work.emplace_back(to_table, from_table);
+            } else {
+                to->insert_or_assign(key, node);
+            }
         }
     }
 }

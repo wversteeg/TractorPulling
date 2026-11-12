@@ -241,8 +241,8 @@ ReadFile files(std::map<std::string, std::string> texts) {
 // over it: what it sets wins, what it leaves out is the base's.
 TEST(SledLoader, AClassSledSetsItsValuesOverTheBase) {
     const auto result =
-        load_sled("sleds/class.toml", files({{"sleds/base.toml", std::string{kValidSled}},
-                                             {"sleds/class.toml", R"(
+        load_sled("sleds/class.toml",
+                  files({{"sleds/base.toml", std::string{kValidSled}}, {"sleds/class.toml", R"(
 [sled]
 base = "base.toml"
 [sled.weight_box]
@@ -278,11 +278,11 @@ TEST(SledLoader, ReportsABadBase) {
                   .find("a base sled names no base of its own"),
               std::string::npos);
     // The class's value is checked as any other: the box over its maximum.
-    EXPECT_NE(message(files({{"sleds/class.toml",
-                              class_text + "[sled.weight_box]\nmass_kg = 20000.0\n"},
-                             {"sleds/base.toml", std::string{kValidSled}}}))
-                  .find("sled.weight_box.mass_kg: must not be over max_mass_kg"),
-              std::string::npos);
+    EXPECT_NE(
+        message(files({{"sleds/class.toml", class_text + "[sled.weight_box]\nmass_kg = 20000.0\n"},
+                       {"sleds/base.toml", std::string{kValidSled}}}))
+            .find("sled.weight_box.mass_kg: must not be over max_mass_kg"),
+        std::string::npos);
     // Text alone cannot find the base.
     const auto parsed = parse_sled(class_text, "class.toml");
     ASSERT_FALSE(parsed.ok());

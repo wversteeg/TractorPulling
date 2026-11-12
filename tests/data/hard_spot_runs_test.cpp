@@ -70,10 +70,10 @@ std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_of
         const pull::Output step =
             run::step(state, *model, setup.rules,
                       driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
-        samples.push_back({.pulled_m = state.pull.sled.position_m - model->sled_start_m(),
-                           .pan_drag_n = step.sled.pan_friction * step.sled.pan_n +
-                                         step.sled.knives_n,
-                           .slip_ratio = step.tractor.slip_ratio});
+        samples.push_back(
+            {.pulled_m = state.pull.sled.position_m - model->sled_start_m(),
+             .pan_drag_n = step.sled.pan_friction * step.sled.pan_n + step.sled.knives_n,
+             .slip_ratio = step.tractor.slip_ratio});
     }
     return samples;
 }

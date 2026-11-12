@@ -417,7 +417,7 @@ TEST(Sled, WheelsRollAsTowedTires) {
 // A sled's hard-pumped tires lose less in their carcass than a tractor's
 // soft ones: their own losses, on top of sinking in.
 TEST(Sled, TheWheelsOwnLossesAddToTheirRolling) {
-    Params soft = reference_params();
+    const Params soft = reference_params();
     Params hard = soft;
     hard.wheel_rolling_losses = soft.wheel_rolling_losses / 2.0;
     const Loads soft_loads = at(soft, 0.0);
