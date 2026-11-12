@@ -88,6 +88,17 @@ struct State {
 [[nodiscard]] bool touches_line(const pull::Model& model, const pull::State& state,
                                 const Rules& rules) noexcept;
 
+/// The team keeps the tractor at least this far inside the chalk lines at
+/// the start: room to steer back before a tire touches one [m].
+inline constexpr double kStartClearance_m = 1.5;
+
+/// How far from the centre line the team may put the sled (and the tractor
+/// in line with it) at the start, either way: the tractor's widest tire
+/// edges kStartClearance_m inside the chalk lines; 0 for a lane too narrow
+/// for that [m].
+[[nodiscard]] double max_start_offset_m(const vehicle::Params& tractor,
+                                        const Rules& rules) noexcept;
+
 /// The tractor at the start line, ready to pull.
 [[nodiscard]] State start(const pull::Model& model) noexcept;
 

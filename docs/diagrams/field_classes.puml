@@ -10,6 +10,7 @@ package "other components" {
   class "math::SplitMix64" as Random
   class "pull + run" as Run
   class "garage::Career\n+ prize_eur()" as Garage
+  class "crew::report()\n+ best_line_m()" as Crew
 }
 
 package "tp::driver" {
@@ -21,6 +22,7 @@ package "tp::driver" {
     +downshift_share : double
     +launch_hold_share : double
     +launch_hold_max_s : double
+    +start_y_m : double (where the team puts the sled across the lane)
   }
   class "State" as DriverState <<struct>> {
     +watching : bool
@@ -101,8 +103,12 @@ package "tp::field" {
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
     +on_this_pull(const Puller&, const sled::Params&, const PullToPull&,\n      SplitMix64&) : ThisPull
     +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
+    +on_the_day(const Venue&, seed) : Venue (the event's own spots)
     +trial_pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
     +pull_rules(const event::Rules&, const Venue&, full_pull_m, event::PullKind) : run::Rules
+    +crew_seed(event_seed, puller, pulls_seen) : uint64
+    +crew_report(const track::Model&, event::PullKind, pulls_seen, const run::Rules&,\n      seed) : crew::Report
+    +crew_line(const crew::Report&, const Puller&, const run::Rules&) : double
     +kPullStream : uint64
     +event_seed(season_seed, number) : uint64
     +log_hash(span<const LogEntry>) : uint64
@@ -121,15 +127,18 @@ package "tp::field" {
     +pending_pull() : optional<event::Pull>
     +sled() : const sled::Params&
     +pull_rules() : run::Rules
+    +player_crew_report() : crew::Report
     +record_player(const run::Result&, gear) : event::Outcome
     +suggested_keep() : bool
     +decide_player(keep)
-    +player(), puller_count(), gear(puller) : int
+    +player(), puller_count(), gear(puller), pulls_done() : int
     +log() : span<const LogEntry>
     +standings() : span<const event::Standing>
     +full_pull_m() : double
     --
     -event_ : event::Event
+    -seed_ : uint64 (the crews' reports)
+    -track_ : track::Model (the day's, built once)
     -guesses_, pulls_ : SplitMix64
     -job_ : optional<Job{model, state, plan, driver, rules}>
     -log_ : array<LogEntry, 160>
@@ -181,12 +190,15 @@ FieldFns ..> Rules : every puller\nmay compete
 FieldFns ..> Random
 FieldFns ..> Run : run_pull runs\na whole pull
 LiveSeason ..> Garage : pays the\nplayer's prize
+FieldFns ..> Crew : each puller's crew\nchooses the start
 note bottom of FieldFns
   each puller: the reference with torque, mass, tire grip, gear and clutch drawn;
   torque tuned down to the class's PTO limit (bisection), mass capped at its limit;
   pitch inertia follows the mass; the same seed gives the same field everywhere;
   at each event every driver guesses a gear (the best as often as they read the track),
-  and every pull differs a little in grip and clutch timing
+  and every pull differs a little in grip and clutch timing; before each pull the
+  puller's crew walks the lane (sharper with every pull pulled before) and puts the
+  sled where its report says the spots cost least (crew_line)
 end note
 note right of LiveEvent
   play_event with one puller the player: the rivals'

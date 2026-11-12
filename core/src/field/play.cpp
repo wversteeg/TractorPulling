@@ -52,11 +52,19 @@ std::uint64_t log_hash(std::span<const LogEntry> log) noexcept {
     return hash.value();
 }
 
-std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& venue,
+Venue on_the_day(const Venue& venue, std::uint64_t seed) noexcept {
+    Venue out = venue;
+    out.track = track::reseeded(venue.track, seed);
+    return out;
+}
+
+std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& track_venue,
                                       const Field& field, const Variation& variation,
                                       const PullToPull& pull_to_pull,
                                       std::span<const int> running_order,
                                       std::uint64_t seed) noexcept {
+    // The track's hard and weak spots, where they lie today.
+    const Venue venue = on_the_day(track_venue, seed);
     if (running_order.size() != static_cast<std::size_t>(field.count)) {
         return std::nullopt;
     }
@@ -85,6 +93,12 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
     }
 
     math::SplitMix64 pulls{seed ^ kPullStream};
+    // The track the crews walk.
+    const std::optional<track::Model> walked = track::Model::create(venue.track);
+    if (!walked) {
+        return std::nullopt;
+    }
+    const track::Model& track = *walked;
     event::Event& ev = played.event;
     while (!ev.finished() && played.log_size < kMaxLog) {
         LogEntry& entry = played.log[played.log_size++];
@@ -98,12 +112,17 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& ve
         if (!pull) {
             return std::nullopt;
         }
-        const ThisPull this_pull = on_this_pull(
-            today.pullers[static_cast<std::size_t>(pull->puller)], ev.sled(), pull_to_pull, pulls);
+        ThisPull this_pull = on_this_pull(today.pullers[static_cast<std::size_t>(pull->puller)],
+                                          ev.sled(), pull_to_pull, pulls);
+        const run::Rules this_rules = pull_rules(rules, venue, ev.full_pull_m(), pull->kind);
+        // The crew walks the lane and puts the sled where it reads it best.
+        this_pull.puller.driver.start_y_m =
+            crew_line(crew_report(track, pull->kind, ev.pulls_done(), this_rules,
+                                  crew_seed(seed, pull->puller, ev.pulls_done())),
+                      this_pull.puller, this_rules);
         const Puller& puller = this_pull.puller;
         const std::optional<run::Result> result =
-            run_pull(puller, this_pull.sled, venue.track,
-                     pull_rules(rules, venue, ev.full_pull_m(), pull->kind));
+            run_pull(puller, this_pull.sled, venue.track, this_rules);
         if (!result) {
             return std::nullopt;
         }

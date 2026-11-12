@@ -39,6 +39,10 @@ struct Plan {
     double launch_hold_share = 0.0;
     /// The longest the launch is held, in all [s].
     double launch_hold_max_s = 0.0;
+    /// Where the team puts the sled across the lane, the tractor in line
+    /// with it, to the left of the centre line (pull::Params::start_y_m)
+    /// [m]. The driver steers straight from there.
+    double start_y_m = 0.0;
 };
 
 /// What the driver remembers during a pull; a new pull starts from {}.
@@ -56,6 +60,7 @@ struct State {
 };
 
 enum class ParamError : std::uint8_t {
+    /// A time or the start offset is not finite.
     kNotFinite,
     kGearOutOfRange,
     kTimesOutOfOrder,

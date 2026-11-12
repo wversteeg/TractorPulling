@@ -285,6 +285,20 @@ TEST(Sled, KnivesCutWithTheSoilsStrength) {
 
 // Soil thrown back lands in front of the pan; standing still, nothing
 // spills, so a tractor spinning in place buries its own sled.
+// On a hard spot the pan's friction and the knives' cutting grow with the
+// ground's drag scale; the weights on pan and wheels do not change.
+TEST(Sled, AHardSpotDragsHarder) {
+    const Params params = reference_params();
+    Ground hard_spot = reference_ground();
+    hard_spot.pan.drag_scale = 1.5;
+    const Loads even = at(params, 30.0);
+    const Loads spot = at(params, 30.0, {}, hard_spot);
+    EXPECT_DOUBLE_EQ(spot.pan_n, even.pan_n);
+    EXPECT_DOUBLE_EQ(spot.pan_friction, 1.5 * even.pan_friction);
+    EXPECT_DOUBLE_EQ(spot.knives_n, 1.5 * even.knives_n);
+    EXPECT_GT(spot.resistance_n, 1.3 * even.resistance_n);
+}
+
 TEST(Sled, ThrownSoilBuildsABermAtRest) {
     const Params params = reference_params();
     State state;

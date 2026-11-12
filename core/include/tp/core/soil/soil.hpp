@@ -43,6 +43,11 @@ struct Surface {
     /// Share of grip lost at full wheelspin: tires smear wet clay and dig
     /// into sand.
     double spin_fall_off = 0.0;
+    /// Scale on what the sled's pan and knives drag through it, 1 where
+    /// the soil is as its make-up says: above 1 on a hard spot along the
+    /// track (track::HardSpots), a firmer seam or clods the knives bite
+    /// into. The soil model alone always gives 1.
+    double drag_scale = 1.0;
 };
 
 /// The surface of a soil, from a semi-empirical model (see soil.cpp). Sand

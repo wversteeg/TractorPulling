@@ -535,7 +535,8 @@ TEST(Vehicle, SofterGroundRollsHarder) {
     Pull firm;
     firm.run(4, 5000.0, false, 15.0);
     Pull soft;
-    soft.ground.rear.cone_index_pa *= 0.3;
+    soft.ground.rear_left.cone_index_pa *= 0.3;
+    soft.ground.rear_right.cone_index_pa *= 0.3;
     soft.ground.front.cone_index_pa *= 0.3;
     soft.run(4, 5000.0, false, 15.0);
     ASSERT_TRUE(firm.state.engine.running);
@@ -544,6 +545,21 @@ TEST(Vehicle, SofterGroundRollsHarder) {
     EXPECT_GT(soft.last.rear_rolling_resistance, firm.last.rear_rolling_resistance);
     EXPECT_GT(soft.last.tire_force_n, firm.last.tire_force_n);
     EXPECT_GT(soft.last.slip_ratio, firm.last.slip_ratio);
+}
+
+// Less grip under the left wheels only (a weak spot on that side): the
+// open differential lets the left side spin up while the right keeps its
+// bite, and the pull drops to what the weaker side holds.
+TEST(Vehicle, LessGripOnOneSideSpinsThatSide) {
+    Pull even_pull;
+    even_pull.run(3, 14000.0, false, 6.0);
+    Pull one_side;
+    one_side.ground.rear_left.grip_factor *= 0.7;
+    one_side.run(3, 14000.0, false, 6.0);
+    EXPECT_DOUBLE_EQ(even_pull.last.rear_left.slip_ratio, even_pull.last.rear_right.slip_ratio);
+    EXPECT_GT(one_side.last.rear_left.slip_ratio, one_side.last.rear_right.slip_ratio + 0.02);
+    EXPECT_GT(one_side.last.rear_left.slip_ratio, even_pull.last.rear_left.slip_ratio);
+    EXPECT_LT(one_side.state.chassis.position_m, even_pull.state.chassis.position_m);
 }
 
 // Pulling with grip throws back a little soil for every metre gained;

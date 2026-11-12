@@ -30,6 +30,7 @@ package "tp::session" {
     +pro : controls::ProParams
     +max_steps_per_frame : uint32
     +parking : optional<turn::Parking>
+    +start_y_m : double (the sled across the lane, within\n      run::max_start_offset_m)
   }
   enum SetupError
   class Controls <<struct>> {

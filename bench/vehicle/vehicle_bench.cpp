@@ -32,7 +32,7 @@ void BM_VehicleStep(benchmark::State& state) {
         return;
     }
     const tp::soil::Surface surface = tp::soil::surface(kSoil);
-    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
+    const tp::vehicle::Ground ground = tp::vehicle::even(surface);
     // Get to a steady pull before timing.
     tp::vehicle::State vehicle = tp::vehicle::initial_state(*model);
     for (int i = 0; i < 20000; ++i) {
@@ -74,7 +74,7 @@ void BM_VehicleStepBrakeHeld(benchmark::State& state) {
         return;
     }
     const tp::soil::Surface surface = tp::soil::surface(kSoil);
-    const tp::vehicle::Ground ground{.rear = surface, .front = surface};
+    const tp::vehicle::Ground ground = tp::vehicle::even(surface);
     constexpr int kFirstGear = 1;
     constexpr double kHeavyDrawbar_n = 20000.0;
     const auto input = [](double t_s) {

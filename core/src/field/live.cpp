@@ -13,11 +13,13 @@ constexpr double kDt_s =
 
 }  // namespace
 
-std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venue& venue,
+std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venue& track_venue,
                                            const Field& field, const Variation& variation,
                                            const PullToPull& pull_to_pull,
                                            std::span<const int> running_order, int player,
                                            std::uint64_t seed) noexcept {
+    // The track's spots where they lie today, as play_event lays them.
+    const Venue venue = on_the_day(track_venue, seed);
     if (running_order.size() != static_cast<std::size_t>(field.count) || player < 0 ||
         player >= field.count ||
         run::validate(field::trial_pull_rules(rules, venue, rules.full_pull_m))) {
@@ -35,21 +37,27 @@ std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venu
             return std::nullopt;
         }
     }
-    LiveEvent live{rules, venue, field, variation, pull_to_pull, *event, player, seed};
+    const std::optional<track::Model> track = track::Model::create(venue.track);
+    if (!track) {
+        return std::nullopt;
+    }
+    LiveEvent live{rules, venue, *track, field, variation, pull_to_pull, *event, player, seed};
     live.settle();
     return live;
 }
 
-LiveEvent::LiveEvent(const event::Rules& rules, const Venue& venue, const Field& field,
-                     const Variation& variation, const PullToPull& pull_to_pull,
+LiveEvent::LiveEvent(const event::Rules& rules, const Venue& venue, const track::Model& track,
+                     const Field& field, const Variation& variation, const PullToPull& pull_to_pull,
                      const event::Event& event, int player, std::uint64_t seed) noexcept
     : rules_(rules),
       venue_(venue),
+      track_(track),
       field_(field),
       variation_(variation),
       pull_to_pull_(pull_to_pull),
       event_(event),
       player_(player),
+      seed_(seed),
       guesses_(seed),
       pulls_(seed ^ kPullStream),
       trial_gear_(variation.lowest_gear) {}
@@ -132,9 +140,16 @@ void LiveEvent::start_next() noexcept {
         failed_ = true;
         return;
     }
-    const ThisPull pull = on_this_pull(field_.pullers[static_cast<std::size_t>(next->puller)],
-                                       event_.sled(), pull_to_pull_, pulls_);
-    if (start_job(pull.puller, pull.sled, pull_rules())) {
+    ThisPull pull = on_this_pull(field_.pullers[static_cast<std::size_t>(next->puller)],
+                                 event_.sled(), pull_to_pull_, pulls_);
+    const run::Rules rules = pull_rules();
+    // The crew walks the lane and puts the sled where it reads it best, as
+    // in play_event.
+    pull.puller.driver.start_y_m =
+        crew_line(crew_report(track_, next->kind, event_.pulls_done(), rules,
+                              crew_seed(seed_, next->puller, event_.pulls_done())),
+                  pull.puller, rules);
+    if (start_job(pull.puller, pull.sled, rules)) {
         job_pull_ = next;
         job_gear_ = pull.puller.driver.gear;
     }
@@ -143,7 +158,10 @@ void LiveEvent::start_next() noexcept {
 bool LiveEvent::start_job(const Puller& puller, const sled::Params& sled,
                           const run::Rules& rules) noexcept {
     const std::optional<pull::Model> model =
-        pull::Model::create({.tractor = puller.tractor, .sled = sled, .track = venue_.track});
+        pull::Model::create({.tractor = puller.tractor,
+                             .sled = sled,
+                             .track = venue_.track,
+                             .start_y_m = puller.driver.start_y_m});
     if (!model) {
         failed_ = true;
         return false;
@@ -312,6 +330,13 @@ LogEntry* LiveEvent::next_entry() noexcept {
     LogEntry& entry = log_[log_size_++];
     entry = LogEntry{};
     return &entry;
+}
+
+crew::Report LiveEvent::player_crew_report() const noexcept {
+    const std::optional<event::Pull> pull = pending_pull();
+    const event::PullKind kind = pull ? pull->kind : event::PullKind::kCompetition;
+    return crew_report(track_, kind, event_.pulls_done(), pull_rules(),
+                       crew_seed(seed_, player_, event_.pulls_done()));
 }
 
 }  // namespace tp::field

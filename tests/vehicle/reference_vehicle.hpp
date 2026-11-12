@@ -33,7 +33,7 @@ inline Params reference_params() {
 // The reference track's surface under both axles.
 inline Ground reference_ground() {
     const soil::Surface surface = tire::testing::reference_surface();
-    return Ground{.rear = surface, .front = surface};
+    return even(surface);
 }
 
 inline Model reference_model() {

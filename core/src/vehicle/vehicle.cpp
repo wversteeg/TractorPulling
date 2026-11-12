@@ -507,20 +507,23 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const double axle_rad_s = state.driveline.output_omega_rad_s;
     const double ground_m_s = state.chassis.velocity_m_s;
     const double turning_m_s = state.chassis.yaw_rate_rad_s * params.chassis.rear_track_m / kSides;
-    // Both sides stand on the same ground with the same load.
-    const tire::Footing footing = tire::footing(tire_params, load_per_tire_n, ground.rear);
-    const Side left = rear_side(tire_params, footing, axle_rad_s - state.differential_rad_s,
-                                ground_m_s - turning_m_s, load_per_tire_n, ground.rear);
-    const Side right = rear_side(tire_params, footing, axle_rad_s + state.differential_rad_s,
-                                 ground_m_s + turning_m_s, load_per_tire_n, ground.rear);
+    // Both sides carry the same load, each on its own ground.
+    const tire::Footing left_footing =
+        tire::footing(tire_params, load_per_tire_n, ground.rear_left);
+    const tire::Footing right_footing =
+        tire::footing(tire_params, load_per_tire_n, ground.rear_right);
+    const Side left = rear_side(tire_params, left_footing, axle_rad_s - state.differential_rad_s,
+                                ground_m_s - turning_m_s, load_per_tire_n, ground.rear_left);
+    const Side right = rear_side(tire_params, right_footing, axle_rad_s + state.differential_rad_s,
+                                 ground_m_s + turning_m_s, load_per_tire_n, ground.rear_right);
     out.slip_ratio = std::max(left.traction.slip_ratio, right.traction.slip_ratio);
     out.rear_left.slip_ratio = left.traction.slip_ratio;
     out.rear_right.slip_ratio = right.traction.slip_ratio;
     out.rear_rolling_resistance = (left.rolling_resistance + right.rolling_resistance) / kSides;
     out.thrown_soil_m3_s =
-        tires_per_side * (tire::thrown_soil_m3_s(tire_params.size, footing, load_per_tire_n,
+        tires_per_side * (tire::thrown_soil_m3_s(tire_params.size, left_footing, load_per_tire_n,
                                                  left.traction.slip_ratio, left.wheel_m_s) +
-                          tire::thrown_soil_m3_s(tire_params.size, footing, load_per_tire_n,
+                          tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
                                                  right.traction.slip_ratio, right.wheel_m_s));
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
@@ -537,14 +540,13 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const tire::SideGrip front_grip =
         tire::side_grip(params.front_tire, params.steering.front_tires,
                         out.axle_loads.front_n / kFrontTires, ground.front);
-    const tire::SideGrip rear_grip =
-        tire::side_grip(tire_params.cornering, footing, load_per_tire_n, ground.rear);
-    const tire::SideGrip rear_left_grip =
-        tire::with_traction(rear_grip, left.traction.force_n,
-                            left.traction.full_bite * load_per_tire_n, left.traction.slip_ratio);
-    const tire::SideGrip rear_right_grip =
-        tire::with_traction(rear_grip, right.traction.force_n,
-                            right.traction.full_bite * load_per_tire_n, right.traction.slip_ratio);
+    const tire::SideGrip rear_left_grip = tire::with_traction(
+        tire::side_grip(tire_params.cornering, left_footing, load_per_tire_n, ground.rear_left),
+        left.traction.force_n, left.traction.full_bite * load_per_tire_n, left.traction.slip_ratio);
+    const tire::SideGrip rear_right_grip = tire::with_traction(
+        tire::side_grip(tire_params.cornering, right_footing, load_per_tire_n, ground.rear_right),
+        right.traction.force_n, right.traction.full_bite * load_per_tire_n,
+        right.traction.slip_ratio);
     out.front_side_force_n =
         kFrontTires * tire::side_force_n(front_grip, state.front_side_deflection_m);
     out.rear_side_force_n =

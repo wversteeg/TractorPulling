@@ -18,6 +18,7 @@ package "tp::soil" {
     +cone_index_pa : double
     +grip_factor : double
     +spin_fall_off : double
+    +drag_scale : double, 1 (a track's hard spots raise it)
   }
   enum ParamError {
     kNotFinite

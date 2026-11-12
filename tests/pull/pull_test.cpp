@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 
 #include "../sled/reference_sled.hpp"
 #include "../track/reference_track.hpp"
@@ -95,6 +96,46 @@ TEST(PullParams, NamesTheInvalidPart) {
               .track = track::testing::reference_params()};
     params.track.soil.moisture = -0.1;
     EXPECT_EQ(validate(params), ParamError::kTrack);
+    params = {.tractor = vehicle::testing::reference_params(),
+              .sled = sled::testing::reference_params(),
+              .track = track::testing::reference_params(),
+              .start_y_m = std::numeric_limits<double>::quiet_NaN()};
+    EXPECT_EQ(validate(params), ParamError::kStartPosition);
+}
+
+// The team puts the sled off the centre line: the tractor stands in line
+// with it, both straight down the track, and a straight pull stays on that
+// line; after the pull the sled drives back to it.
+TEST(Pull, StartsWhereTheTeamPutsTheSled) {
+    constexpr double kOffset_m = -2.5;
+    const auto model = Model::create({.tractor = vehicle::testing::reference_params(),
+                                      .sled = sled::testing::reference_params(),
+                                      .track = track::testing::reference_params(),
+                                      .start_y_m = kOffset_m});
+    if (!model) {
+        FAIL() << "the pull was refused";
+    }
+    Driver run;
+    run.model = *model;
+    run.state = initial_state(run.model);
+    EXPECT_EQ(run.state.tractor.chassis.lateral_position_m, kOffset_m);
+    EXPECT_EQ(run.state.sled.lateral_position_m, kOffset_m);
+    EXPECT_EQ(run.state.tractor.chassis.heading_rad, 0.0);
+    // In line: the chain's pull has nothing sideways.
+    EXPECT_DOUBLE_EQ(hitch_end(run.model, run.state).y_m, kOffset_m);
+    EXPECT_DOUBLE_EQ(hook_end(run.model, run.state).y_m, kOffset_m);
+    run.drive(6, false, 20.0);
+    ASSERT_GT(run.state.sled.position_m - run.model.sled_start_m(), 10.0);
+    EXPECT_NEAR(run.state.tractor.chassis.lateral_position_m, kOffset_m, 1e-6);
+    EXPECT_NEAR(run.state.sled.lateral_position_m, kOffset_m, 1e-6);
+    run.state.hooked = false;
+    run.state.sled_mode = SledMode::kDrivingBack;
+    run.state.sled.lateral_position_m = kOffset_m + 0.4;
+    for (int i = 0; i < 200000 && run.state.sled.position_m > run.model.sled_start_m(); ++i) {
+        step(run.state, run.model, vehicle::Input{}, kDt_s);
+    }
+    EXPECT_EQ(run.state.sled.position_m, run.model.sled_start_m());
+    EXPECT_EQ(run.state.sled.lateral_position_m, kOffset_m);
 }
 
 TEST(Chain, PullsOnlyWhenStretched) {

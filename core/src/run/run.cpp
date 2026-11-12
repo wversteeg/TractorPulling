@@ -73,16 +73,31 @@ bool edge_touches(const chassis::State& body, const math::SinCos& heading, doubl
     return along_m < rules.full_pull_line_m && std::abs(across_m) >= 0.5 * rules.lane_width_m;
 }
 
+// How far each pair of tires' outer edges reach to either side of the
+// tractor's middle [m].
+struct TireEdges {
+    double rear_m = 0.0;
+    double front_m = 0.0;
+};
+
+TireEdges tire_edges(const vehicle::Params& tractor) noexcept {
+    return {.rear_m = 0.5 * (tractor.chassis.rear_track_m + tractor.rear_tire.size.section_width_m),
+            .front_m = 0.5 * (tractor.chassis.front_track_m + tractor.front_tire.section_width_m)};
+}
+
 }  // namespace
+
+double max_start_offset_m(const vehicle::Params& tractor, const Rules& rules) noexcept {
+    const TireEdges edges = tire_edges(tractor);
+    return std::max(
+        0.5 * rules.lane_width_m - std::max(edges.rear_m, edges.front_m) - kStartClearance_m, 0.0);
+}
 
 bool touches_line(const pull::Model& model, const pull::State& state, const Rules& rules) noexcept {
     const vehicle::Params& tractor = model.tractor().params();
     const chassis::State& body = state.tractor.chassis;
     const math::SinCos heading = math::sin_cos_any(body.heading_rad);
-    const double rear_m =
-        0.5 * (tractor.chassis.rear_track_m + tractor.rear_tire.size.section_width_m);
-    const double front_m =
-        0.5 * (tractor.chassis.front_track_m + tractor.front_tire.section_width_m);
+    const auto [rear_m, front_m] = tire_edges(tractor);
     const double wheelbase_m = tractor.chassis.wheelbase_m;
     const double start_m = model.start_line_m();
     return edge_touches(body, heading, start_m, 0.0, rear_m, rules) ||

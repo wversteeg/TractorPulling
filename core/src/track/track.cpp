@@ -1,7 +1,14 @@
 #include "tp/core/track/track.hpp"
 
+#include "tp/core/math/random.hpp"
+
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
+#include <functional>
+#include <iterator>
+#include <span>
 
 namespace tp::track {
 
@@ -27,6 +34,70 @@ soil::Surface blend(const soil::Surface& a, const soil::Surface& b, double t) no
             .spin_fall_off = a.spin_fall_off + t * (b.spin_fall_off - a.spin_fall_off)};
 }
 
+// The shape every spot table shares, and its size within [0, max_size].
+struct SpotShape {
+    double every_m = 0.0;
+    double length_m = 0.0;
+    double min_width_m = 0.0;
+    double max_width_m = 0.0;
+    double size = 0.0;
+    std::uint32_t seed = 1;
+};
+
+bool spots_valid(const SpotShape& shape, double max_size, double across_m) noexcept {
+    const std::array values = {shape.every_m, shape.length_m, shape.min_width_m, shape.max_width_m,
+                               shape.size};
+    return std::ranges::all_of(values, [](double v) { return std::isfinite(v); }) &&
+           shape.every_m >= kMinSpotSpacing_m && shape.length_m >= kMinSpotLength_m &&
+           shape.length_m <= kMaxSpotLength_m && shape.min_width_m >= kMinSpotWidth_m &&
+           shape.min_width_m <= shape.max_width_m && shape.max_width_m <= across_m &&
+           shape.size >= 0.0 && shape.size <= max_size && shape.seed != 0;
+}
+
+// A spot table's seed for an event seeded `seed`: never 0.
+std::uint32_t mixed_seed(std::uint32_t own, std::uint64_t seed) noexcept {
+    math::SplitMix64 random{seed ^ (static_cast<std::uint64_t>(own) << 32U)};
+    constexpr unsigned kHighHalf = 32U;
+    const auto mixed = static_cast<std::uint32_t>(random.next() >> kHighHalf);
+    return mixed == 0 ? 1 : mixed;
+}
+
+// A 32-bit xorshift: integer arithmetic only, so the hard spots fall in the
+// same places on every platform.
+class Xorshift32 {
+public:
+    explicit Xorshift32(std::uint32_t seed) noexcept : state_(seed) {}
+
+    // Uniform in [0, 1), exactly representable (24 bits).
+    double next() noexcept {
+        state_ ^= state_ << 13U;
+        state_ ^= state_ >> 17U;
+        state_ ^= state_ << 5U;
+        constexpr double kScale = 1.0 / 16777216.0;  // 2^-24
+        return static_cast<double>(state_ >> 8U) * kScale;
+    }
+
+private:
+    std::uint32_t state_;
+};
+
+// The first spot lies at most this many spacings past the start line, the
+// gap to the next between these shares of the spacing, and each peaks at
+// this share of the extra and above.
+constexpr double kFirstSpotSpacings = 1.0;
+constexpr double kGapLowShare = 0.5;
+constexpr double kPeakLowShare = 0.6;
+// Across the track a spot is at full strength over this share of its
+// width, in the middle, and fades to nothing at its edges.
+constexpr double kFullAcrossShare = 0.5;
+// Even the closest-packed spots the limits allow fit the table: none is
+// dropped from the first kSpotsUntil_m. This holds while the first spot
+// starts at 0 or later and each next one at least a minimum length and
+// half a minimum spacing on (random.next() is never negative).
+static_assert(Model::kSpotsUntil_m / (kMinSpotLength_m + kMinSpotSpacing_m * kGapLowShare) <
+                  static_cast<double>(Model::kMaxSpots),
+              "kMaxSpots too small for the hard spots' limits");
+
 }  // namespace
 
 std::optional<ParamError> validate(const Params& params) noexcept {
@@ -43,7 +114,42 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.grip_scale > kMaxGripScale) {
         return ParamError::kGripScale;
     }
+    const double across_m = params.spots_across_m;
+    if (!std::isfinite(across_m) || across_m <= 0.0) {
+        return ParamError::kSpotsAcross;
+    }
+    if (const auto& hard = params.hard_spots;
+        hard && !spots_valid({.every_m = hard->every_m,
+                              .length_m = hard->length_m,
+                              .min_width_m = hard->min_width_m,
+                              .max_width_m = hard->max_width_m,
+                              .size = hard->extra,
+                              .seed = hard->seed},
+                             kMaxHardSpotExtra, across_m)) {
+        return ParamError::kHardSpots;
+    }
+    if (const auto& weak = params.weak_spots;
+        weak && !spots_valid({.every_m = weak->every_m,
+                              .length_m = weak->length_m,
+                              .min_width_m = weak->min_width_m,
+                              .max_width_m = weak->max_width_m,
+                              .size = weak->grip_loss,
+                              .seed = weak->seed},
+                             kMaxWeakSpotGripLoss, across_m)) {
+        return ParamError::kWeakSpots;
+    }
     return std::nullopt;
+}
+
+Params reseeded(const Params& params, std::uint64_t seed) noexcept {
+    Params out = params;
+    if (out.hard_spots) {
+        out.hard_spots->seed = mixed_seed(out.hard_spots->seed, seed);
+    }
+    if (out.weak_spots) {
+        out.weak_spots->seed = mixed_seed(out.weak_spots->seed, seed);
+    }
+    return out;
 }
 
 soil::Composition composition_at(const Params& params, double x_m) noexcept {
@@ -83,6 +189,68 @@ Model::Model(const Params& params) noexcept : params_(params) {
         samples_[i] = soil::surface(composition_at(params_, x_m));
         samples_[i].grip_factor *= params_.grip_scale;
     }
+    if (const auto& hard = params_.hard_spots) {
+        hard_.lay({.every_m = hard->every_m,
+                   .length_m = hard->length_m,
+                   .min_width_m = hard->min_width_m,
+                   .max_width_m = hard->max_width_m,
+                   .across_m = params_.spots_across_m,
+                   .size = hard->extra,
+                   .seed = hard->seed});
+    }
+    if (const auto& weak = params_.weak_spots) {
+        weak_.lay({.every_m = weak->every_m,
+                   .length_m = weak->length_m,
+                   .min_width_m = weak->min_width_m,
+                   .max_width_m = weak->max_width_m,
+                   .across_m = params_.spots_across_m,
+                   .size = weak->grip_loss,
+                   .seed = weak->seed});
+    }
+}
+
+double strength_at(const Spot& spot, double x_m, double y_m) noexcept {
+    const double half_length_m = spot.length_m / 2.0;
+    const double along = std::abs(x_m - (spot.start_m + half_length_m)) / half_length_m;
+    const double half_width_m = spot.width_m / 2.0;
+    const double full_m = kFullAcrossShare * half_width_m;
+    const double off_m = std::abs(y_m - spot.centre_y_m);
+    if (along >= 1.0 || off_m >= half_width_m) {
+        return 0.0;
+    }
+    const double across = off_m <= full_m ? 1.0 : (half_width_m - off_m) / (half_width_m - full_m);
+    return spot.peak * (1.0 - along) * across;
+}
+
+void Model::SpotLayout::lay(const Pattern& pattern) noexcept {
+    Xorshift32 random{pattern.seed};
+    double start_m = pattern.every_m * kFirstSpotSpacings * random.next();
+    while (start_m < kSpotsUntil_m && count_ < kMaxSpots) {
+        const double peak = pattern.size * (kPeakLowShare + (1.0 - kPeakLowShare) * random.next());
+        const double width_m =
+            pattern.min_width_m + (pattern.max_width_m - pattern.min_width_m) * random.next();
+        // Centres spread so that every point of the band is as likely to
+        // lie in a spot, its edges too: a spot may reach past the band's
+        // edge.
+        const double centre_y_m = (pattern.across_m + width_m) * (random.next() - 0.5);
+        spots_[count_++] = {.start_m = start_m,
+                            .length_m = pattern.length_m,
+                            .centre_y_m = centre_y_m,
+                            .width_m = width_m,
+                            .peak = peak};
+        start_m += pattern.length_m + pattern.every_m * (kGapLowShare + random.next());
+    }
+}
+
+const Spot* Model::SpotLayout::under(double x_m) const noexcept {
+    const std::span<const Spot> laid = spots();
+    const auto after = std::ranges::upper_bound(laid, x_m, std::less{}, &Spot::start_m);
+    return after == laid.begin() ? nullptr : &*std::prev(after);
+}
+
+double Model::SpotLayout::at(double x_m, double y_m) const noexcept {
+    const Spot* spot = under(x_m);
+    return spot != nullptr ? strength_at(*spot, x_m, y_m) : 0.0;
 }
 
 std::optional<Model> Model::create(const Params& params) noexcept {
@@ -92,15 +260,38 @@ std::optional<Model> Model::create(const Params& params) noexcept {
     return Model{params};
 }
 
-soil::Surface Model::surface_at(double x_m) const noexcept {
+soil::Surface Model::surface_without_spots(double x_m) const noexcept {
     const auto last = static_cast<double>(count_ - 1);
     const double position = std::clamp((x_m - first_x_m_) / spacing_m_, 0.0, last);
     // Truncation is exact for these non-negative values on every platform.
     const auto index = static_cast<std::size_t>(position);
-    if (index + 1 >= count_) {
-        return samples_[count_ - 1];
-    }
-    return blend(samples_[index], samples_[index + 1], position - static_cast<double>(index));
+    return index + 1 >= count_
+               ? samples_[count_ - 1]
+               : blend(samples_[index], samples_[index + 1], position - static_cast<double>(index));
+}
+
+soil::Surface Model::surface_at(double x_m, double y_m) const noexcept {
+    soil::Surface surface = surface_without_spots(x_m);
+    surface.drag_scale = 1.0 + hard_.at(x_m, y_m);
+    surface.grip_factor *= 1.0 - weak_.at(x_m, y_m);
+    return surface;
+}
+
+soil::Surface Model::surface_across(double x_m, double y_m, double half_width_m) const noexcept {
+    constexpr double kPoints = 3.0;
+    soil::Surface surface = surface_without_spots(x_m);
+    // One search per kind: the same spot is under all three points.
+    const auto across = [&](const Spot* spot) {
+        return spot == nullptr
+                   ? 0.0
+                   : strength_at(*spot, x_m, y_m - half_width_m) + strength_at(*spot, x_m, y_m) +
+                         strength_at(*spot, x_m, y_m + half_width_m);
+    };
+    const double hard = across(hard_.under(x_m));
+    const double weak = across(weak_.under(x_m));
+    surface.drag_scale = 1.0 + hard / kPoints;
+    surface.grip_factor *= 1.0 - weak / kPoints;
+    return surface;
 }
 
 }  // namespace tp::track
