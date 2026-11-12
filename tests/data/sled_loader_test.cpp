@@ -307,6 +307,10 @@ TEST(SledLoader, EveryClassPullsTheSameSled) {
         EXPECT_EQ(sled->hook_ahead_of_wheels_m, light.value().hook_ahead_of_wheels_m);
         EXPECT_EQ(sled->wheel_count, light.value().wheel_count);
     }
+    // Between qualifying and the pull-off the operator adds weight to the
+    // box as well as knives.
+    EXPECT_GT(light.value().pull_off_step.box_mass_kg, 0.0);
+    EXPECT_GT(light.value().pull_off_step.knives, 0);
     EXPECT_LT(light.value().box_mass_kg, sport_45.value().box_mass_kg);
     EXPECT_LT(sport_25.value().box_mass_kg, sport_45.value().box_mass_kg);
 }

@@ -221,6 +221,54 @@ TEST(WheelieRuns, TheStandardTractorKeepsItsFrontDown) {
     }
 }
 
+// How long a class's reference tractor (fully built) takes from moving off
+// to `metre` on the class's sled on ideal clay-sand, in `gear`, launched as
+// the events' drivers do [s]; infinity if it never gets there.
+double seconds_to(const std::string& klass, int gear, double metre) {
+    const vehicle::Params built = loaded(load_tractor(data("tractors/" + klass + ".toml")));
+    const sled::Params sled = loaded(load_sled(data("sleds/" + klass + ".toml")));
+    const Track track = loaded(load_track(data("tracks/ideal_clay_sand.toml")));
+    const session::Setup setup = run_setup(built, sled, track, 0);
+    const std::optional<pull::Model> model =
+        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    if (!model) {
+        throw std::runtime_error("the pull was refused");
+    }
+    driver::Plan plan = kSportDriver;
+    plan.gear = gear;
+    run::State state = run::start(*model);
+    driver::State driver;
+    constexpr double kMovingFrom_m = 0.1;
+    double moved_s = -1.0;
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        run::step(state, *model, setup.rules,
+                  driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
+        const double pulled_m = state.pull.sled.position_m - model->sled_start_m();
+        if (moved_s < 0.0 && pulled_m > kMovingFrom_m) {
+            moved_s = t_s;
+        }
+        if (pulled_m >= metre) {
+            return t_s - moved_s;
+        }
+    }
+    return std::numeric_limits<double>::infinity();
+}
+
+// The Sport engines and puller tires are set from videos of the classes'
+// top tractors on ordinary tracks: a 2.6 t tractor pulls 100 m in about
+// 20 s from moving off, a 4.5 t one about 115 m in a pull-off in about
+// 15 s. The fully built tractors in their pulling gears reach 80 m about
+// that fast.
+TEST(SportPace, TheTopTractorsPullAsFastAsInTheVideos) {
+    const double sport_25_s = seconds_to("sport_2500", 6, 80.0);
+    const double sport_45_s = seconds_to("sport_4500", 7, 80.0);
+    EXPECT_GT(sport_25_s, 14.0);
+    EXPECT_LT(sport_25_s, 18.5);
+    EXPECT_GT(sport_45_s, 11.0);
+    EXPECT_LT(sport_45_s, 14.5);
+    EXPECT_LT(sport_45_s, sport_25_s);
+}
+
 }  // namespace
 }  // namespace tp::data
-
