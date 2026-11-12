@@ -80,9 +80,9 @@ garage's upgrade levels by name from one class's garage to the next.
 Each class is pulled at its levels, belofte, promo and top; the standard
 class, the warming-up, at one level, and the Sport 2.5 t introduction
 class at promo and top (see "Levels within a class"): a season finished
-first or second opens the next level, and a class's last level the next
-class (`tp::career`, `promotion_place = 2`, at least `min_seasons` on a
-level); the player chooses to move up or stay.
+first opens the next level at once, and a class's last level the next
+class; second does after at least `min_seasons` on the level
+(`tp::career`, `promotion_place = 2`); the player chooses to move up or stay.
 
 Not in the game: the heavier standard classes.
 
@@ -378,10 +378,11 @@ tractor:
   at the class's first level; a **fully upgraded** one **wins at the
   class's last level**
   (tests/data/rival_difficulty_test.cpp).
-- **At least two seasons on every level.** Finishing a level's
-  championship first or second opens the level above (at a class's last
-  level the next class's first) once the level has had two seasons; a
-  promotion in the first season opens it after the second (`min_seasons` in the career
+- **A title moves up at once; second place after two seasons.** Winning
+  a level's championship opens the level above (at a class's last level
+  the next class's first) straight away. Finishing second opens it once
+  the level has had two seasons; a second place in the first season
+  opens it after the second (`min_seasons` in the career
   file, `career::Ladder`). The player is asked whether to move up or
   stay. No relegation (for now).
 - The money is set so that the rule rarely has to hold anyone back: each

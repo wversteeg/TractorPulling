@@ -14,10 +14,9 @@
 # from its blended snapshot) or, after a test pull, keep it or pull again. After the
 # event its results, every puller, then the season's standings (both
 # scroll); then the next event, or a new
-# season after the last. A championship finished first or second (the
-# career's promotion_place) opens the level above (or,
-# at top, the next class) once the level has had the career's minimum
-# seasons: the season's board then asks whether to move up or stay and
+# season after the last. A championship won opens the level above (or,
+# at top, the next class) at once; one finished second (the career's
+# promotion_place) once the level has had the career's minimum seasons: the season's board then asks whether to move up or stay and
 # defend the title (and the start screen offers it until the next season's
 # first pull). The season is saved after every event (and the
 # tuning on every pull): at the next launch the start screen offers to
@@ -878,8 +877,8 @@ func _show_season() -> void:
 	var to_go: int = int(career.get("min_seasons", 0)) - int(career.get("seasons", 0))
 	if over and not career.get("can_move_up", false) and career.get("title", false) \
 			and not next.is_empty() and to_go > 0:
-		# A title before the level's last required season: the level above
-		# opens after it.
+		# A promotion place below first before the level's last required
+		# season: the level above opens after it.
 		status += " %s opens after %s here." % [next,
 				"another season" if to_go == 1 else "%d more seasons" % to_go]
 		board.set_buttons("New season")

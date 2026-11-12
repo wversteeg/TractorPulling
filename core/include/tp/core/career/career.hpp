@@ -14,7 +14,8 @@ inline constexpr int kMaxRungs = 36;
 /// The rungs a career climbs, lowest first, and what opens the next one: a
 /// season on a rung finished at `promotion_place` or better (1: the
 /// championship won; a shared place counts), once the player has pulled at
-/// least `min_seasons` seasons on the rung. A rung is a class at one of its
+/// least `min_seasons` seasons on the rung. A championship won opens it at
+/// once, whatever the seasons. A rung is a class at one of its
 /// levels (belofte, promo, top); which is which (its season, garage and
 /// rules) is the data's, the core only counts them.
 struct Ladder {
@@ -59,9 +60,9 @@ struct Progress {
 /// Counts a finished season on the progress's rung, in which the player
 /// finished the championship at `championship_place` (1 the champion): a
 /// title (the place earns it) is kept, and the rung above opens once there
-/// is one and the rung has had its `min_seasons`; a title in the first
-/// season opens it after the last of them, whatever their places. True if
-/// it opened a rung.
+/// is one and the rung has had its `min_seasons`; a promotion place in the
+/// first season opens it after the last of them, whatever their places. A
+/// championship won (place 1) opens it at once. True if it opened a rung.
 bool finish_season(Progress& progress, const Ladder& ladder, int championship_place) noexcept;
 
 /// As finish_season() for `player`'s place in a finished season's
