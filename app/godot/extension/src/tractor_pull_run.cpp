@@ -1,6 +1,7 @@
 #include "tractor_pull_run.hpp"
 
 #include "tp/core/chassis/chassis.hpp"
+#include "tp/core/track/track.hpp"
 #include "tp/core/turn/turn.hpp"
 #include "tp/core/units/conversions.hpp"
 #include "tp/data/controls/controls_loader.hpp"
@@ -326,6 +327,10 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["track_length_m"] = rules.track_length_m;
     out["lane_width_m"] = rules.lane_width_m;
     out["full_pull_line_m"] = rules.full_pull_line_m;
+    // The track's soil at the start line, for its colour.
+    const soil::Composition soil = track::composition_at(setup_->ground, 0.0);
+    out["clay_fraction"] = soil.clay_fraction;
+    out["moisture"] = soil.moisture;
     out["fender_behind_hook_m"] = setup_->sled.fenders.behind_hook_m;
     out["take_up_tension_n"] = turn::kTakeUpTension_n;
     out["restart_before_m"] = turn::kRestartBefore_m;

@@ -1,5 +1,6 @@
 #include "tp/data/season/season_loader.hpp"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <optional>
@@ -13,6 +14,28 @@
 namespace tp::data {
 
 namespace {
+
+constexpr std::array<EventSize, 3> kSizes = {EventSize::kSmall, EventSize::kClub, EventSize::kBig};
+constexpr std::array<TimeOfDay, 3> kTimes = {TimeOfDay::kDay, TimeOfDay::kSunset,
+                                             TimeOfDay::kEvening};
+
+std::optional<EventSize> size_named(std::string_view text) {
+    for (const EventSize size : kSizes) {
+        if (name_of(size) == text) {
+            return size;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<TimeOfDay> time_named(std::string_view text) {
+    for (const TimeOfDay time : kTimes) {
+        if (name_of(time) == text) {
+            return time;
+        }
+    }
+    return std::nullopt;
+}
 
 // The prize money by place: whole euros, 0 or more, never more for a lower
 // place; nothing if not.
@@ -29,6 +52,45 @@ std::optional<std::vector<std::int64_t>> whole_euros(const std::vector<double>& 
         out.push_back(static_cast<std::int64_t>(prizes[i]));
     }
     return out;
+}
+
+// A text field's value, `fallback` when it is missing, "" (no name) when it
+// is there but not text.
+std::string text_or(const toml::table& table, std::string_view key, std::string_view fallback) {
+    const toml::node_view<const toml::node> node = table[key];
+    if (!node) {
+        return std::string{fallback};
+    }
+    return node.value<std::string>().value_or(std::string{});
+}
+
+// One [[season.events]] entry: its name and track, and how the game dresses
+// it (a club event in the day when the file says nothing).
+Result<SeasonRound> read_round(const toml::table* round, std::string_view source,
+                               std::string_view base, const ReadFile& read) {
+    const std::optional<std::string> name =
+        round != nullptr ? round->at_path("name").value<std::string>() : std::nullopt;
+    const std::optional<std::string> track_path =
+        round != nullptr ? round->at_path("track").value<std::string>() : std::nullopt;
+    if (!name || !track_path) {
+        return detail::make_error(source, "season.events", "every event needs a name and a track");
+    }
+    const std::optional<EventSize> size = size_named(text_or(*round, "size", "club"));
+    if (!size) {
+        return detail::make_error(source, "season.events.size",
+                                  R"(must be "small", "club" or "big")");
+    }
+    const std::optional<TimeOfDay> time_of_day = time_named(text_or(*round, "time", "day"));
+    if (!time_of_day) {
+        return detail::make_error(source, "season.events.time",
+                                  R"(must be "day", "sunset" or "evening")");
+    }
+    auto track = load_track(resolve(base, *track_path), read);
+    if (!track) {
+        return track.error();
+    }
+    return SeasonRound{
+        .name = *name, .track = track.value(), .size = *size, .time_of_day = *time_of_day};
 }
 
 Result<SeasonDefinition> read_season(const toml::table& root, std::string_view source,
@@ -95,25 +157,40 @@ Result<SeasonDefinition> read_season(const toml::table& root, std::string_view s
                                 .rounds = {},
                                 .seed = static_cast<std::uint64_t>(seed)};
     for (const toml::node& node : *events) {
-        const toml::table* round = node.as_table();
-        const std::optional<std::string> name =
-            round != nullptr ? round->at_path("name").value<std::string>() : std::nullopt;
-        const std::optional<std::string> track_path =
-            round != nullptr ? round->at_path("track").value<std::string>() : std::nullopt;
-        if (!name || !track_path) {
-            return detail::make_error(source, "season.events",
-                                      "every event needs a name and a track");
+        auto round = read_round(node.as_table(), source, base, read);
+        if (!round) {
+            return round.error();
         }
-        auto track = load_track(resolve(base, *track_path), read);
-        if (!track) {
-            return track.error();
-        }
-        definition.rounds.push_back({.name = *name, .track = track.value()});
+        definition.rounds.push_back(std::move(round).value());
     }
     return definition;
 }
 
 }  // namespace
+
+std::string_view name_of(EventSize size) noexcept {
+    switch (size) {
+        case EventSize::kSmall:
+            return "small";
+        case EventSize::kClub:
+            return "club";
+        case EventSize::kBig:
+            return "big";
+    }
+    return "club";
+}
+
+std::string_view name_of(TimeOfDay time) noexcept {
+    switch (time) {
+        case TimeOfDay::kDay:
+            return "day";
+        case TimeOfDay::kSunset:
+            return "sunset";
+        case TimeOfDay::kEvening:
+            return "evening";
+    }
+    return "day";
+}
 
 Result<SeasonDefinition> parse_season(std::string_view toml_text, std::string_view source_name,
                                       std::string_view base_directory, const ReadFile& read) {

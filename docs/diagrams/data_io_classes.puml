@@ -78,12 +78,24 @@ package "tp::data" {
     +points : season::Points
     +prize_money_eur : vector<int64>
     +garage : GarageDefinition
-    +rounds : vector<SeasonRound{name, Track}>
+    +rounds : vector<SeasonRound{name, Track, size, time_of_day}>
     +seed : uint64
   }
   class "season_loader" as SeasonLoader <<free functions>> {
     +load_season(path, read) : Result<SeasonDefinition>
     +parse_season(text, source, base_directory, read) : Result<SeasonDefinition>
+    +name_of(EventSize) : string_view
+    +name_of(TimeOfDay) : string_view
+  }
+  enum EventSize {
+    kSmall
+    kClub
+    kBig
+  }
+  enum TimeOfDay {
+    kDay
+    kSunset
+    kEvening
   }
   class CareerDefinition <<struct>> {
     +name : string

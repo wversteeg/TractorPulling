@@ -15,10 +15,26 @@
 
 namespace tp::data {
 
-/// One event of a season: where it is pulled.
+/// How big an event is, for the game to dress the venue: a small village
+/// pull, a club event, or a big event with a full grandstand. The
+/// simulation does not use it.
+enum class EventSize : std::uint8_t { kSmall, kClub, kBig };
+
+/// When an event is pulled, for the game's light: in the day, at sunset, or
+/// in the evening under floodlights.
+enum class TimeOfDay : std::uint8_t { kDay, kSunset, kEvening };
+
+/// The names season files use for them ("small", "club", "big"; "day",
+/// "sunset", "evening").
+[[nodiscard]] std::string_view name_of(EventSize size) noexcept;
+[[nodiscard]] std::string_view name_of(TimeOfDay time) noexcept;
+
+/// One event of a season: where it is pulled, and how big and when.
 struct SeasonRound {
     std::string name;
     Track track;
+    EventSize size = EventSize::kClub;
+    TimeOfDay time_of_day = TimeOfDay::kDay;
 };
 
 /// Everything a season file describes (see data/seasons/): the class's
