@@ -52,6 +52,8 @@ enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, E
 # the 3D world is not drawn behind it.
 # A whole turn's stages up to and through the pull: no result yet.
 const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", "pulling"]
+# The stages once the pull is over: the chain coming off, the drive back.
+const AFTER_PULL_STAGES := ["releasing", "to_the_parking", "parked"]
 const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
 		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
 
@@ -123,6 +125,8 @@ const CHAIN_LYING_SHARE := 0.9
 # chain's length, where the hitch hooks on.
 const MARKER_SHARE := 0.6
 
+# The big screen shows the standings (after a pull), not the TV camera.
+var _screen_standings := false
 var run := TractorPullRun.new()
 var event := TractorPullEvent.new()
 var track_view := TrackView.new()
@@ -783,7 +787,16 @@ func _show_result() -> void:
 	if not practice and entry.is_empty():
 		entry = event.record_pull(run)
 	result_screen.show_result(_title, run.get_result(), entry)
+	# The standings again, now with this pull in them.
+	_show_screen_standings()
 	_set_screen(Screen.RESULT)
+
+
+# The big screen's standings: the day's event so far (none outside an
+# event).
+func _show_screen_standings() -> void:
+	_screen_standings = true
+	venue_view.show_screen_standings(EventTexts.standing_rows(event.get_standings()))
 
 
 # The event's board: the pulls so far, and what is up next.
@@ -952,10 +965,18 @@ func _show(delta: float) -> void:
 	# After the pull its distance stays on the boards while the sled drives
 	# back, until the turn is over.
 	var pulled_m: float = s["pulled_m"]
-	if s.get("stage", "pulling") in ["releasing", "to_the_parking", "parked"]:
+	if s.get("stage", "pulling") in AFTER_PULL_STAGES:
 		pulled_m = float(run.get_result().get("distance_m", pulled_m))
 	venue_view.show_distance(pulled_m)
 	hud.hold_distance(pulled_m)
+	# The big screen: the TV camera on the tractor while the pull is on,
+	# the day's standings once it is over.
+	if s.get("stage", "pulling") in AFTER_PULL_STAGES:
+		if not _screen_standings:
+			_show_screen_standings()
+	else:
+		_screen_standings = false
+		venue_view.show_screen_live(tractor_view.global_position, delta)
 	track_marks.show_snapshot(s)
 	# The cameras shake with the work: the throttle, more as the tires slip.
 	cameras.rumble = clampf(RUMBLE_PER_THROTTLE * float(s["throttle"])
@@ -980,7 +1001,7 @@ func _show(delta: float) -> void:
 		hitch_marker.rotation.y = float(s["sled_heading_rad"])
 	hud.show_snapshot(s, _title, controls.pro)
 	# Why the pull ended, read once as it ends (and cleared for a new run).
-	var over := stage in ["releasing", "to_the_parking", "parked"]
+	var over := stage in AFTER_PULL_STAGES
 	if over != _ended_shown:
 		_ended_shown = over
 		var result := run.get_result() if over else {}

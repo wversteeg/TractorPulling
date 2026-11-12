@@ -508,6 +508,20 @@ for the big features; they are repeated at the end for completeness.
   cosine. The hook's position and the sled's heading could share one
   sine and cosine per step.
 
+- **The big screen's second view.** The LED screen at a club or big event
+  draws the scene a second time from its TV camera, at 384 × 216 and 12
+  times a second, to keep a phone's frame. If that still costs too much on
+  a phone it could drop lower, or show a still frame between redraws.
+
+## The venue
+
+- **A replay on the big screen.** After a run the screen shows the day's
+  standings; a real event often replays the run first. That needs the
+  run's snapshots kept and played back through a second tractor and sled
+  view, or the screen's frames kept as video: left for later.
+- **The pile of dirt is scenery.** It stands past the 30 m run-off, where
+  no sled reaches; nothing in the simulation stops on it.
+
 ## Garage and career
 
 - **The parts are values, not parts.** An upgrade sets one value (a torque

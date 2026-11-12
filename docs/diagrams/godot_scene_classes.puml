@@ -91,6 +91,25 @@ package "GDScript (app/godot/scripts)" {
     +{static} past_lane_m(side) : float
     +show_signal(signal) : the gantry's light
     +signal_shown() : String
+    +floodlight_masts() : Array[Vector2], the evening's
+    +track_end() : TrackEnd
+    +show_screen_live(target, delta)
+    +show_screen_standings(rows)
+  }
+  class TrackEnd {
+    the pile of dirt past the run-off, the trailers
+    behind it, a big screen at a club or big event
+    +build(length_m, lane_m, strip_m, shades, trailers, screen)
+    +pile_at_m() : Vector2
+    +trailer_count() : int
+    +has_screen() : bool
+    +show_live(target, delta) : a TV camera, 12 Hz
+    +show_standings(rows)
+    +screen_mode() : String
+    +screen_lines() : PackedStringArray
+    --
+    -_screen_view : SubViewport (384 x 216)
+    -_tv : Camera3D
   }
   class Flagman {
     +stand(at, facing)
@@ -496,6 +515,8 @@ TractorView ..> Art
 SledView ..> Art
 ChainView ..> Art
 VenueView ..> Art
+VenueView *-- TrackEnd : past the\ntrack's end
+TrackEnd ..> Art
 VenueView ..> TrackSpace
 VenueView ..> KenneyModels : CC0 models (assets/kenney):\ntents, barn, clouds
 VenueView ..> Trees : copses and\nthe tree line
