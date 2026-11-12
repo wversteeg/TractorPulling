@@ -58,6 +58,7 @@ package "GDScript (app/godot/scripts)" {
   class TractorView {
     +look : TractorLook
     +pulling_look() : bool : a roll bar draws a pulling tractor
+    +body_scale() : float : bigger with a longer wheelbase
     +front_weights_position() : Vector3
     +build(dimensions) : built again for another look or sizes
     +show_snapshot(snapshot, delta)

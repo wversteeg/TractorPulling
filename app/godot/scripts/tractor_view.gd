@@ -46,6 +46,12 @@ const FRAME_RAILS_APART_M := 0.5
 const FRAME_PAST_HOOD_M := 0.15
 const FRAME_ABOVE_FRONT_AXLE_M := 0.3
 const BUMPER_DEPTH_M := 0.14
+# A pulling tractor's bonnet, frame and stack are drawn for one of this
+# wheelbase (the Sport 2.5 t's) and grow with a longer one: a heavier class
+# pulls a bigger tractor, its bonnet wider and taller [m]. No smaller than
+# drawn, and at most this much bigger.
+const BODY_WHEELBASE_M := 2.2
+const BODY_MOST_SCALE := 1.4
 # The front weights hang this far ahead of the pulling tractor's bumper [m].
 const WEIGHTS_AHEAD_OF_BUMPER_M := 0.03
 # The pulling seat's back: this tall over the seat [m].
@@ -148,6 +154,8 @@ var _dust: Array[CPUParticles3D] = []
 var _built_for := ""
 # Drawn as a pulling tractor (a roll bar, the Sport classes) or a farm one.
 var _pulling_look := false
+# How much bigger than drawn the pulling tractor's body is (BODY_WHEELBASE_M).
+var _body_scale := 1.0
 var _rear_radius_m := 1.0
 var _front_radius_m := 0.5
 var _rated_rad_s := 230.0
@@ -248,6 +256,8 @@ func _build_body(d: Dictionary) -> void:
 	# A tractor behind a roll bar is a pulling tractor, drawn as one.
 	var pulling: bool = d.get("protection", "cab") == "roll_bar"
 	_pulling_look = pulling
+	_body_scale = clampf(wheelbase_m / BODY_WHEELBASE_M, 1.0, BODY_MOST_SCALE) \
+			if pulling else 1.0
 	_body.position = TrackSpace.point(0.0, 0.0, axle_height_m)
 	add_child(_body)
 	_add_driveline(wheelbase_m, rear_track_m, front_track_m, axle_height_m)
@@ -362,23 +372,25 @@ func _add_bonnet(wheelbase_m: float) -> void:
 	var front_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M
 	var back_m := 0.75
 	var length_m := front_m - back_m
+	var width_m := BONNET_WIDTH_M * _body_scale
+	var height_m := BONNET_HEIGHT_M * _body_scale
 	# Everything below hangs from the bonnet's back top edge, tilted down
 	# to the front: x along the bonnet, z down from its top.
 	var bonnet := Node3D.new()
 	bonnet.name = "Bonnet"
-	bonnet.position = TrackSpace.point(back_m, 0.0, BONNET_TOP_M)
+	bonnet.position = TrackSpace.point(back_m, 0.0, BONNET_TOP_M * _body_scale)
 	bonnet.rotation.x = -BONNET_FALL_RAD
 	_body.add_child(bonnet)
 	var middle_m := length_m / 2.0
-	var body := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M, BONNET_HEIGHT_M, length_m),
-			BONNET_ROUND_M, Vector3.AXIS_Z), Art.paint(look.paint))
-	body.position = TrackSpace.point(middle_m, 0.0, -BONNET_HEIGHT_M / 2.0)
+	var body := Art.instance(Art.rounded_box(Vector3(width_m, height_m, length_m),
+			BONNET_ROUND_M * _body_scale, Vector3.AXIS_Z), Art.paint(look.paint))
+	body.position = TrackSpace.point(middle_m, 0.0, -height_m / 2.0)
 	bonnet.add_child(body)
-	var lower := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M + 0.02, 0.22, length_m - 0.1),
+	var lower := Art.instance(Art.rounded_box(Vector3(width_m + 0.02, 0.22, length_m - 0.1),
 			0.06, Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.6))
-	lower.position = TrackSpace.point(middle_m, 0.0, -BONNET_HEIGHT_M + 0.1)
+	lower.position = TrackSpace.point(middle_m, 0.0, -height_m + 0.1)
 	bonnet.add_child(lower)
-	var top := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M - 0.08, 0.1, length_m * 0.92),
+	var top := Art.instance(Art.rounded_box(Vector3(width_m - 0.08, 0.1, length_m * 0.92),
 			0.05, Vector3.AXIS_Z), Art.paint(look.trim))
 	top.position = TrackSpace.point(middle_m + length_m * 0.03, 0.0, -0.02)
 	bonnet.add_child(top)
@@ -386,17 +398,17 @@ func _add_bonnet(wheelbase_m: float) -> void:
 	for side: float in [-1.0, 1.0]:
 		var vent := Art.instance(Art.rounded_box(Vector3(0.02, 0.14, length_m * 0.35), 0.01,
 				Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5))
-		vent.position = TrackSpace.point(length_m * 0.72, side * (BONNET_WIDTH_M / 2.0 + 0.004),
+		vent.position = TrackSpace.point(length_m * 0.72, side * (width_m / 2.0 + 0.004),
 				-0.2)
 		bonnet.add_child(vent)
 		var number := Art.label(look.number, 70, Color.WHITE, Color.BLACK)
-		number.position = TrackSpace.point(length_m * 0.3, side * (BONNET_WIDTH_M / 2.0 + 0.012),
+		number.position = TrackSpace.point(length_m * 0.3, side * (width_m / 2.0 + 0.012),
 				-0.38)
 		number.rotation.y = side * -PI / 2.0
 		bonnet.add_child(number)
-	var nose := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M - 0.04, BONNET_HEIGHT_M - 0.1,
+	var nose := Art.instance(Art.rounded_box(Vector3(width_m - 0.04, height_m - 0.1,
 			0.12), 0.14, Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.4))
-	nose.position = TrackSpace.point(length_m + 0.03, 0.0, -BONNET_HEIGHT_M / 2.0)
+	nose.position = TrackSpace.point(length_m + 0.03, 0.0, -height_m / 2.0)
 	bonnet.add_child(nose)
 	var strip := StandardMaterial3D.new()
 	strip.albedo_color = LAMP
@@ -405,7 +417,7 @@ func _add_bonnet(wheelbase_m: float) -> void:
 	strip.emission_energy_multiplier = 1.5
 	for side: float in [-1.0, 1.0]:
 		var lamp := Art.instance(_box_mesh(LAMP_STRIP_M), strip)
-		lamp.position = TrackSpace.point(length_m + 0.095, side * 0.2, -0.14)
+		lamp.position = TrackSpace.point(length_m + 0.095, side * 0.2 * _body_scale, -0.14)
 		bonnet.add_child(lamp)
 
 
@@ -416,12 +428,12 @@ func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + FRAME_PAST_HOOD_M
 	var z_m := _front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M
 	for side: float in [-1.0, 1.0]:
-		var rail := Art.instance(Art.rounded_box(Vector3(FRAME_RAIL_M.x, FRAME_RAIL_M.y,
+		var rail := Art.instance(Art.rounded_box(Vector3(FRAME_RAIL_M.x * _body_scale, FRAME_RAIL_M.y * _body_scale,
 				to_m - from_m), 0.03, Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
-		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * FRAME_RAILS_APART_M / 2.0,
+		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * FRAME_RAILS_APART_M * _body_scale / 2.0,
 				z_m)
 		_body.add_child(rail)
-	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M + 0.1, 0.18,
+	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + 0.1, 0.18 * _body_scale,
 			BUMPER_DEPTH_M), 0.05,
 			Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
 	bumper.name = "Bumper"
@@ -819,13 +831,15 @@ func _show_weights(d: Dictionary) -> void:
 
 func _add_smoke(wheelbase_m: float) -> void:
 	var x_m := wheelbase_m - 0.55
-	var stack := Art.cylinder(0.055, 1.0, CHROME, 12, 0.2, 0.9)
-	stack.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.45)
+	# A bigger bonnet: the stack as much higher, and thicker.
+	var lift_m := BONNET_TOP_M * (_body_scale - 1.0)
+	var stack := Art.cylinder(0.055 * _body_scale, 1.0, CHROME, 12, 0.2, 0.9)
+	stack.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.45 + lift_m)
 	_body.add_child(stack)
-	var cap := Art.cylinder(0.075, 0.05, FRAME, 12)
-	cap.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.97)
+	var cap := Art.cylinder(0.075 * _body_scale, 0.05, FRAME, 12)
+	cap.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.97 + lift_m)
 	_body.add_child(cap)
-	_smoke.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 1.0)
+	_smoke.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 1.0 + lift_m)
 	_smoke.amount = 60
 	_smoke.lifetime = 2.2
 	_smoke.emitting = false
@@ -925,6 +939,12 @@ func _puff_mesh(radius_m: float) -> SphereMesh:
 # Drawn as a pulling tractor (behind a roll bar) rather than a farm one.
 func pulling_look() -> bool:
 	return _pulling_look
+
+
+# How much bigger than drawn the pulling tractor's body is: 1 for the
+# Sport 2.5 t's wheelbase and a farm tractor, more for a longer one.
+func body_scale() -> float:
+	return _body_scale
 
 
 # Where the front weights hang, in the world.
