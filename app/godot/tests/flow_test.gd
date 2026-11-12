@@ -367,6 +367,9 @@ func _play() -> void:
 			_expect(await _drive_to_result(controls, result), "the pull ends in a result")
 			_expect(result.continue_button.visible and not result.again_button.visible,
 					"after an event's pull: continue")
+			var sound: EngineSound = _pull.get("engine_sound")
+			_expect(sound.target_volume() == 0.0,
+					"the engine silent behind the result: %f" % sound.target_volume())
 			await _shot("3_result_%d" % my_pulls)
 			my_pulls += 1
 			_tap(result.continue_button)
