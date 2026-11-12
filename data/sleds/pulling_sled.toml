@@ -28,7 +28,7 @@ radius_m = 0.75
 section_width_m = 0.6
 section_height_m = 0.45
 deflection_m = 0.05
-rolling_losses = 0.015               # the carcass's own losses: a hard sled tire loses far less than a soft tractor tire
+rolling_losses = 0.015               # the carcass's own losses: about 3/8 of a soft tractor tire's (0.04)
 
 # The wheels' side grip (see tp::tire::Cornering): they keep the sled's
 # tail in line; the pan, sliding forward, resists sideways far less, so a

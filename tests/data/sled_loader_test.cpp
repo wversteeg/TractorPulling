@@ -371,6 +371,14 @@ TEST(SledLoader, ReportsABadBase) {
                        {"sleds/base.toml", std::string{kValidSled}}}))
             .find("sled.weight_box.mass_kg: must not be over max_mass_kg"),
         std::string::npos);
+    // A bad value from the base: the message names the base too.
+    std::string bad_base{kValidSled};
+    const std::string mass = "frame_mass_kg = ";
+    bad_base.replace(bad_base.find(mass), mass.size(), mass + "-");
+    const std::string from_base =
+        message(files({{"sleds/class.toml", class_text}, {"sleds/base.toml", bad_base}}));
+    EXPECT_NE(from_base.find("sled.frame_mass_kg"), std::string::npos) << from_base;
+    EXPECT_NE(from_base.find("over the base sled sleds/base.toml"), std::string::npos) << from_base;
     // Text alone cannot find the base.
     const auto parsed = parse_sled(class_text, "class.toml");
     ASSERT_FALSE(parsed.ok());

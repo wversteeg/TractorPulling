@@ -1138,6 +1138,11 @@ int run_command(const Options& options) {
         std::cerr << "--easy and --pro are two layouts: pick one\n";
         return EXIT_FAILURE;
     }
+    if (options.pull.launch_hold_share && (options.pull.dump || options.easy_path)) {
+        std::cerr << "--launch-hold works the clutch as the events' drivers do: not with "
+                     "--dump or --easy\n";
+        return EXIT_FAILURE;
+    }
     PullOptions pull = options.pull;
     if (options.pro_path) {
         pull.pro = load_or_report(tp::data::load_pro_controls(*options.pro_path));

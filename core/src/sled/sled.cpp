@@ -184,8 +184,10 @@ Params with_conditions(const Params& params, const Conditions& conditions) noexc
 Params adjusted(const Params& params, const Adjustment& adjustment, int times) noexcept {
     const double n = times;
     Params out = params;
-    out.box_mass_kg =
-        std::clamp(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0, params.box_max_mass_kg);
+    // max then min, not clamp: safe even on a sled whose maximum is
+    // negative (validate() refuses one, but this need not have seen it).
+    out.box_mass_kg = std::min(std::max(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0),
+                               params.box_max_mass_kg);
     out.knives.count = std::clamp(params.knives.count + times * adjustment.knives, 0, kMaxKnives);
     out.knives.depth_m =
         std::clamp(params.knives.depth_m + n * adjustment.knife_depth_m, 0.0, kMaxKnifeDepth_m);
