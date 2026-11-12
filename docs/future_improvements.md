@@ -547,10 +547,12 @@ for the big features; they are repeated at the end for completeness.
   engine's build (cylinders, displacement, valves, the turbo's inlet, no
   intercooler at 2500 kg), not its power; the class rules have no PTO
   limit for them, and the core checks only mass, engine speed and hitch.
-  The Sport engines' 220 and 520 hp are estimates from those limits.
-- **Puller-tire grip is an estimate.** The Sport tires' grip (1.2 times
-  a farm tire's, building at a third of its rate with slip) is set so that
-  a too tall gear bogs and a too low one spins out, not from measurements.
+  The Sport engines' 350 and 780 hp are set from videos of top tractors
+  (their pace and wheelies), not measured on a dyno.
+- **Puller-tire grip is an estimate.** The Sport tires' grip (1.5 times
+  a farm tire's, building at a third of its rate with slip) is set with
+  the engines from the videos and so that a too tall gear bogs and a too
+  low one spins out, not from measurements.
   Every stage of the Sport garages' tires, the worn farm tires too, uses
   the puller tire's curve; only the limit changes.
 - **The operator's box step is one share for every class.** A lighter
@@ -599,3 +601,32 @@ for the big features; they are repeated at the end for completeness.
 
 - Track changes: left and right differences, a lane that wears; pullers that
   keep the lane.
+
+## The 15 t sled
+
+- **The push-down is a wall.** With the whole 15 t sled on the pan once
+  the push-down is fully on, every tractor stops within a few metres of
+  where it engages, so a field finishes closer together than on the light
+  sled the game had before, and the difficulty bands in the middle of the
+  garage are a place or two wider (`RivalDifficulty.*`). A gentler
+  push-down (a longer ramp, or one that takes only part of the wheels'
+  load) would spread the field by power again; tried with a 25 m ramp it
+  spread it by about a third and changed the wheelies, so it is left for
+  a balancing pass.
+- **The weights' best position is the same on every track.** On the 15 t
+  sled a fully built Sport 4.5 t pulls furthest with its weights a
+  quarter forward everywhere; the track decides only what the wrong
+  setting costs. Tracks that want the weights elsewhere (a heavy clay
+  that lifts the nose) would bring back a reason to move them per track.
+- **The spots barely show on the heavy sled.** A hard spot bites the pan,
+  which carries a small share of the 15 t until the box comes forward,
+  and a weak spot costs grip the push-down then takes anyway: the crew's
+  line gains tenths of a metre. More impact (a weak spot under one tire
+  turning the tractor) is planned.
+- **The sled's own rolling dominates the start.** Its eight tires roll
+  with about 6 % of its weight on a prepared track (1/Bn and their own
+  losses), some 13 kN, most of what a farm tractor pulls at the start, so
+  the farm classes pull in 4th and 5th only and slowly (about 7 to 11
+  km/h). Real standard-class pulls may be quicker; the farm engines are
+  not yet set from videos.
+

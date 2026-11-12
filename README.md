@@ -27,8 +27,9 @@ Try a run:
 ```bash
 cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 -o run.csv
-# run: 92.61 m, engine stalled (36.9 s, top 11.8 km/h)
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 5 \
+    --launch-hold 0.8 -o run.csv
+# run: 95.12 m, wheels spun out (42.3 s, top 10.7 km/h)
 ```
 
 ### Steering
@@ -69,8 +70,9 @@ wanders out of its lane:
 
 ```bash
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 --steer-deg 0.5
-# run: 0.00 m, out of bounds: a tire touched the chalk line (22.6 s, top 11.9 km/h)
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 5 --launch-hold 0.8 \
+    --steer-deg 0.5
+# run: 0.00 m, out of bounds: a tire touched the chalk line (29.6 s, top 10.7 km/h)
 ```
 
 A pull is measured down the track. In the run CSV, `sled_distance_m` is how
@@ -96,16 +98,16 @@ clutch in by hand, but the sled stops with the engine running:
 
 ```bash
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 6 \
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 5 \
     --easy data/controls/easy.toml
-# run: 92.09 m, stopped (33.7 s, top 11.9 km/h)
+# run: 95.11 m, wheels spun out (39.7 s, top 10.7 km/h)
 ```
 
 `--stick S` holds the steering control at S (-1 right to 1 left) from the
 launch. The middle 3 % either side is a dead zone, so a thumb resting on a
 touch slider steers straight, and the steering follows the control at a
 rate, as a driver turns a wheel (both in `easy.toml`): 0.05 is 1.2° of
-wheel angle, and leaves the lane 10 s after the launch.
+wheel angle, and leaves the lane about 14 s after the launch.
 
 The pro layout's steering has the same dead zone and rate when the game
 plays it, from `data/controls/pro.toml`; `--pro data/controls/pro.toml`
@@ -125,39 +127,46 @@ the shipped tracks:
 
 ```bash
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/*.toml --gear 6
+    data/sleds/light_class.toml data/tracks/*.toml --gear 5 --launch-hold 0.8
 # track                         cone index   grip  fall-off  push-down  result
-# covered_heavy_clay                875 kPa   1.45      0.21     78.0 m  91.48 m, engine stalled
-# dry_hard_clay                    6000 kPa   1.20      0.19     73.0 m  90.73 m, engine stalled
-# firm_loam                        1943 kPa   1.30      0.24     78.0 m  92.81 m, engine stalled
-# ideal_clay_sand                  1485 kPa   1.00      0.22     78.0 m  92.01 m, engine stalled
-# sandy_clay                       2107 kPa   0.92      0.26     78.0 m  90.56 m, wheels spun out
-# watered_start                     812 kPa   1.00      0.22     78.0 m  91.84 m, engine stalled
+# covered_heavy_clay                875 kPa   1.45      0.21     90.0 m  95.16 m, engine stalled
+# dry_hard_clay                    6000 kPa   1.20      0.19     80.0 m  86.60 m, engine stalled
+# firm_loam                        1943 kPa   1.30      0.24     90.0 m  95.83 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     90.0 m  95.12 m, wheels spun out
+# sandy_clay                       2107 kPa   0.92      0.26     90.0 m  94.59 m, wheels spun out
+# watered_start                     812 kPa   1.00      0.22     90.0 m  95.10 m, wheels spun out
 ```
 
 Pulling tracks are clay mixes, prepared and covered when it rains, so they
-differ by a metre or two for this light tractor, which runs out of engine
-before grip on all but the loose sandy clay; the sled operator evens out
-the rest with the push-down and the knives on the day. On the fast dry
-clay the operator brings the push-down 5 m earlier. For the heavier,
-stronger classes the track matters far more (the grip, `grip` per track):
-on the grippy firm loam and dry clay a Sport tractor with its weights all
-back stands on its wheelie bar, and halfway pulls further; on the heavy
-clay the tires dig in, the engine stalls before they spin out, and the
-weights go forward; on the loose sandy clay they go back
-(`TrackSetup.*`).
+differ by a metre or so for this light tractor: on the grippy loam and the
+heavy clay its engine gives out first, elsewhere its tires; the sled
+operator evens out the rest with the push-down and the knives on the day.
+On the fast dry clay the operator brings the push-down 10 m earlier. For
+the heavier,
+stronger classes the setup matters more: a fully built Sport 4.5 t pulls
+furthest with its weights a quarter forward on every track, and the track
+decides what the wrong setup costs (all back costs most on the watered
+start, all forward on the loose sandy clay; soft tires pay on the heavy
+clay and cost on the clay-sand; `TrackSetup.*`).
 
 ### The sled tops out after the push-down
 
-The weight box rides forward from over the rear wheels to over the pan
-along the first 88 m, so the drag grows steadily. At the push-down (78 m
-on the class sled, set per track and by the operator) the sled's rear
-wheels come off the track over 10 m: from 88 m the pan carries all of the
-sled and the box is at its stop, so the drag is at its most and stays
-there (`Sled.TopsOutShortlyAfterThePushdown`; only the berm the tires
-throw still grows a little). Where the operator brings the push-down
-earlier (73 m on the dry hard clay) the wheels are off by 83 m, but the
-drag still rises until the box reaches its stop at 88 m. A tractor that
+Every class pulls the same sled (`data/sleds/pulling_sled.toml`), as in
+the Netherlands: 12.5 m long and 15 t empty, on eight wide tires (dual
+tandems), its weight box holding up to 11 t. Each class's sled file names
+it as its base and sets the box's weight and where the push-down starts
+(the light class and Sport 2.5 t 1 t in the box, Sport 4.5 t 8 t). Its
+own rolling (some 13 kN for the light class) is most of what a tractor
+pulls at the start. The weight box rides forward from just behind the
+rear wheels to over the pan along the first 88 m, so the drag grows
+steadily. At the push-down (90 m on the light class's sled, 85 m on Sport
+2.5 t's, set per track and by the operator) the sled's rear wheels come
+off the track over 10 m and the pan takes the whole sled, so the drag
+climbs steeply and stays there (`Sled.TopsOutShortlyAfterThePushdown`;
+only the berm the tires throw still grows a little): a wall that every
+tractor stops at within a few metres. Between qualifying and the
+pull-off the operator adds weight to the box (500 kg a step) as well as
+knives. A tractor that
 can hold that drag goes on to a full pull; one that cannot slows and stops
 a few metres on, as momentum runs out. So the operator sets the push-down by the test pulls, and a
 step (a knife) changes the distance little until the tractor can hold the
@@ -181,19 +190,19 @@ The puller sets two things on the tractor before a pull
   better on soft ground, but lets the lugs squirm, which costs grip, most
   on firm ground; harder than 1.0 bar only shrinks the footprint. This
   light tractor runs out of engine before grip, so a pressure changes its
-  pull by under a metre; a Sport 4.5 t gains metres on soft tires on the
-  heavy clay and loses more on the firm loam
-  (`TrackSetup.SoftTiresPayOnHeavyClayAndCostOnFirmLoam`):
+  pull by tenths of a metre; a Sport 4.5 t gains on soft tires on the
+  heavy clay and loses metres on the clay-sand
+  (`TrackSetup.EachTrackHasItsOwnBestTirePressure`):
 
 ```bash
 for bar in 0.7 1.0 1.6; do
   ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
       data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
-      data/tracks/dry_hard_clay.toml --gear 5 --pressure $bar
+      data/tracks/dry_hard_clay.toml --gear 5 --launch-hold 0.8 --pressure $bar
 done
-# 0.7 bar: covered heavy clay 93.95 m, dry hard clay 96.93 m
-# 1.0 bar: covered heavy clay 93.40 m, dry hard clay 96.75 m
-# 1.6 bar: covered heavy clay 92.73 m, dry hard clay 96.34 m
+# 0.7 bar: covered heavy clay 95.27 m, dry hard clay 86.57 m
+# 1.0 bar: covered heavy clay 95.16 m, dry hard clay 86.60 m
+# 1.6 bar: covered heavy clay 94.99 m, dry hard clay 86.59 m
 ```
 
 `--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the
@@ -241,34 +250,26 @@ step, not again after the last, and not with the clutch pressed either
 without a powershift pulls in the gear it moves off in, or higher.
 
 It is for the end of a pull, when the sled has the engine pulled down
-towards the stall. It pays where the sled's most drag (see "The sled tops
-out after the push-down") lies between what 6th holds before the engine
-stalls and what 5th's grip holds: on a sled lighter than shipped (two
-knives, the pull-off setting at the shipped event, whose field pulls on
-one), not on the sled as shipped (four), where neither gear holds it. In
-6th (the clutch slipped in over 3 s), one shift to 5th once the engine
-falls below 90 % of its rated speed past 40 m:
+towards the stall. On the 15 t sled the light class's farm tractor runs
+out of grip before engine, so a shift gains it nothing; it pays for an
+engine-limited tractor in a tall gear: a fully built Sport 4.5 t in 8th
+on the top level's pull-off sled two steps heavier, whose drag past the
+push-down lies between what 8th holds before the engine stalls and what
+7th's grip holds. One shift to 7th once the engine falls below 90 % of
+its rated speed takes it from 97.15 m, stalled, to 99.19 m, about what
+7th gets without a shift; in 5th and 6th the tires end the pull before the
+engine is pulled down, and the driver never shifts (`LoadDownshiftRuns`).
 
-| track (two knives) | stays in 6th | shifts to 5th (at) |
-|---|---|---|
-| ideal clay-sand | 94.00 m, stalled | **97.66 m** (85.6 m) |
-| covered heavy clay | 92.46 m, stalled | **95.04 m** (84.4 m) |
-| watered start | 93.97 m, stalled | **97.67 m** (85.5 m) |
-| dry hard clay | 96.07 m, stalled | **full pull** (82.3 m) |
-
-Late is too late: shifting at 60 % of rated speed (about 90 m) gains only
-half a metre to a metre. A test pins the first row (`LoadDownshiftRuns`).
-
-The scripted rivals shift too. Once the clutch is fully in, a driver waits
-for the engine to come back from the launch's dip and then watches the rev
-counter: when the sled pulls it below their `downshift_share` of the rated
-speed, they shift one gear down under load (`driver::Plan`). Each rival
-draws their own share (`event.field.downshift_share`, 82 to 95 %), so some
-shift at the right moment and some a little early. On ideal clay-sand and
-the two-knife sled it takes the reference rival in 6th from 94.03 to
-97.61 m (at 90 %), about what 5th gets without a shift; in 3rd and 4th the
-tires, not the engine, end the pull, so the engine is never pulled down and
-the driver never shifts.
+The scripted rivals shift the same way. Once the clutch is fully in, a
+driver waits for the engine to come back from the launch's dip and then
+watches the rev counter: when the sled pulls it below their
+`downshift_share` of the rated speed, they shift one gear down under load
+(`driver::Plan`). Each rival draws their own share
+(`event.field.downshift_share`, 82 to 95 %), so some shift at the right
+moment and some a little early. `tp_pull run --downshift S` shifts as they
+do, and `--launch-hold S` lets the clutch in as they do: held back while
+the engine is below S of its rated speed, which a tall gear needs to get
+the 15 t sled going.
 
 ### From the parking to the sled and back
 
@@ -436,12 +437,12 @@ The tractor path holds the standard class, Sport 2.5 t and Sport 4.5 t.
 A new class is a new tractor: Sport's (`data/tractors/sport_2500.toml`) is smaller, pulls
 under a roll bar instead of a cab, in tall close gears with a powershift
 (see docs/career.md, "How the Sport classes pull"), and its engine
-builds from a stock 90 hp to about 220 hp (`data/garages/sport_2500.toml`,
+builds from a stock 145 hp to about 350 hp (`data/garages/sport_2500.toml`,
 € 51,050, its parts named apart from the standard class's so only the
 money carries over). A new Sport tractor starts at the back of promo and
 wins it with about half its garage; only a fully built one wins at top.
 Sport 4.5 t's tractor (`data/tractors/sport_4500.toml`) is a big
-six-cylinder of about 520 hp fully built, pulled at belofte, promo and top
+six-cylinder of about 780 hp fully built, pulled at belofte, promo and top
 (`data/garages/sport_4500.toml`, € 73,000). Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
 Stock and Super Stock follow, a class at a time, each with its NTTO and
 ETPC rules.
