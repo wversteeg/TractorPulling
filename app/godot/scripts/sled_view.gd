@@ -48,6 +48,12 @@ const FLAG := Color(0.9, 0.08, 0.06)
 # The tandem axle: each axle this far ahead and behind of the wheels' point
 # of contact the simulation has [m].
 const TANDEM_HALF_M := 0.55
+# The rear wheels stand this far clear outside the weight box, which runs
+# between them over the axles [m].
+const WHEEL_CLEAR_M := 0.08
+# How round the sled's parts are: the edges' radius [m].
+const ROUND_M := 0.12
+const ROUND_SMALL_M := 0.05
 # The cab: glass over a steel frame, beside the engine's housing.
 const GLASS := Color(0.55, 0.7, 0.8, 0.35)
 const ENGINE := Color(0.13, 0.2, 0.32)
@@ -63,7 +69,7 @@ const RUBBER := Color(0.06, 0.06, 0.06)
 # The sled's look: its width, its rails' height above the wheels' axle and
 # the weight box's size [m].
 const WIDTH_M := 2.4
-const CANOPY_M := 1.9             # the canopy above the platform
+const CANOPY_M := 1.5             # the cab's roof above the platform
 const BERM := Color(0.44, 0.31, 0.19)
 const OPERATOR := Color(0.78, 0.88, 0.15)
 const BERM_FLATNESS := 0.6        # its height, a share of its depth
@@ -85,7 +91,7 @@ const STILT_M := 0.08
 # The box rides this far above the rails [m].
 const BOX_LIFT_M := 0.12
 const RAIL_GAP_M := 1.7
-const BOX_SIZE_M := Vector3(2.0, 1.0, 1.6)
+const BOX_SIZE_M := Vector3(2.0, 0.8, 1.6)
 const PAN_DEPTH_M := 1.2
 # How far the wheels are drawn lifted with the push-down fully set [m].
 const WHEEL_LIFT_M := 0.15
@@ -167,13 +173,15 @@ func build(d: Dictionary) -> void:
 	var rail_from_m := _rear_m
 	var rail_to_m := pan_ahead_m + 0.2
 	for side: float in [-1.0, 1.0]:
-		var rail := _painted(Vector3(0.16, 0.24, rail_to_m - rail_from_m), PAINT)
+		var rail := _rounded(Vector3(0.16, 0.24, rail_to_m - rail_from_m), PAINT, ROUND_SMALL_M,
+				Vector3.AXIS_Z)
 		rail.position = TrackSpace.point((rail_from_m + rail_to_m) / 2.0, side * RAIL_GAP_M / 2.0,
 				rail_z_m)
 		add_child(rail)
 		var neck_from := TrackSpace.point(rail_to_m, side * RAIL_GAP_M / 2.0, rail_z_m)
 		var neck_to := TrackSpace.point(hook_ahead_m - 0.1, side * 0.15, hook_height_m)
-		var neck := _painted(Vector3(0.14, 0.18, neck_from.distance_to(neck_to)), PAINT)
+		var neck := _rounded(Vector3(0.14, 0.18, neck_from.distance_to(neck_to)), PAINT,
+				ROUND_SMALL_M, Vector3.AXIS_Z)
 		neck.position = (neck_from + neck_to) / 2.0
 		neck.basis = Basis.looking_at(neck_to - neck_from, Vector3.UP)
 		add_child(neck)
@@ -212,12 +220,14 @@ func build(d: Dictionary) -> void:
 
 	# The tandem axle at the back, two wheels on each.
 	add_child(_wheels)
+	# Each wheel's middle outside the box's side.
+	var wheel_out_m := BOX_SIZE_M.x / 2.0 + WHEEL_CLEAR_M + wheel_width_m / 2.0
 	for axle_m: float in [-TANDEM_HALF_M, TANDEM_HALF_M]:
-		var axle := Art.axle_cylinder(0.08, WIDTH_M - 0.1, DARK, 12)
+		var axle := Art.axle_cylinder(0.08, 2.0 * wheel_out_m, DARK, 12)
 		axle.position = TrackSpace.point(axle_m, 0.0, _wheel_height_m)
 		_wheels.add_child(axle)
 		for side: float in [-1.0, 1.0]:
-			_add_wheel(axle_m, side * (WIDTH_M / 2.0 - wheel_width_m / 2.0), wheel_width_m)
+			_add_wheel(axle_m, side * wheel_out_m, wheel_width_m)
 	_add_flag_post(pan_ahead_m, rail_z_m)
 
 	# The berm, built at a unit size; show_snapshot scales it to the soil.
@@ -323,8 +333,9 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 		add_child(leg)
 	# The wide rubber plate behind the fenders: what the tractor's tires see
 	# coming back to the sled.
-	var plate := Art.box(Vector3(2.0 * (FENDER_SIDE_M + FENDER_SIZE_M.x / 2.0 + STOP_PLATE_PAST_M),
-			STOP_PLATE_HEIGHT_M, 0.08), RUBBER, 0.95)
+	var plate := Art.instance(Art.rounded_box(Vector3(2.0 * (FENDER_SIDE_M + FENDER_SIZE_M.x / 2.0
+			+ STOP_PLATE_PAST_M), STOP_PLATE_HEIGHT_M, 0.08), ROUND_M, Vector3.AXIS_Z),
+			Art.material(RUBBER, 0.95))
 	plate.position = TrackSpace.point(beam_m - 0.1, 0.0,
 			hook_height_m + 0.1 + STOP_PLATE_HEIGHT_M / 2.0 - FENDER_SIZE_M.y / 2.0)
 	add_child(plate)
@@ -375,30 +386,24 @@ func _build_box() -> void:
 	var tray := _painted(Vector3(size.x, 0.08, size.z), PAINT_DARK)
 	tray.position = Vector3(0.0, -size.y / 2.0 + 0.04, 0.0)
 	_box.add_child(tray)
+	# The closed body, its edges along the track rounded, a dark band low
+	# along each side.
+	var body := _rounded(Vector3(size.x, size.y, size.z), PAINT, ROUND_M, Vector3.AXIS_Z)
+	_box.add_child(body)
 	for side: float in [-1.0, 1.0]:
-		var wall := _painted(Vector3(0.06, size.y, size.z), PAINT)
-		wall.position = Vector3(side * size.x / 2.0, 0.0, 0.0)
-		_box.add_child(wall)
-		var end := _painted(Vector3(size.x, size.y, 0.06), PAINT)
-		end.position = Vector3(0.0, 0.0, side * size.z / 2.0)
-		_box.add_child(end)
-		# A dark band along each side, low down, as the sled's frame shows.
-		var band := Art.box(Vector3(0.02, 0.12, size.z - 0.1), DARK, 0.6)
-		band.position = Vector3(side * (size.x / 2.0 + 0.035), -size.y / 2.0 + 0.2, 0.0)
+		var band := Art.box(Vector3(0.02, 0.1, size.z - 2.0 * ROUND_M), DARK, 0.6)
+		band.position = Vector3(side * (size.x / 2.0 + 0.005), -size.y / 2.0 + 0.18, 0.0)
 		_box.add_child(band)
-	var deck := _painted(Vector3(size.x + 0.12, 0.06, size.z + 0.12), PAINT)
-	deck.position = Vector3(0.0, size.y / 2.0, 0.0)
-	_box.add_child(deck)
 	# Every place a weight can go, bottom layer first: show_box_mass()
 	# loads as many as the box's mass makes.
 	var blocks: Array[Transform3D] = []
 	var block := BoxMesh.new()
-	block.size = Vector3(0.6, 0.22, 0.45)
+	block.size = Vector3(0.6, 0.16, 0.45)
 	for layer in BLOCK_LAYERS:
 		for column in BLOCK_COLUMNS:
 			for row in BLOCK_ROWS:
 				blocks.append(Transform3D(Basis(), Vector3((column - 1) * 0.62,
-						-size.y / 2.0 + 0.19 + layer * 0.23, (row - 1) * 0.48)))
+						-size.y / 2.0 + 0.16 + layer * 0.17, (row - 1) * 0.48)))
 	_box_weights = Art.many(block, blocks, Art.material(WEIGHT, 0.6, 0.4))
 	_box.add_child(_box_weights)
 	add_child(_box)
@@ -413,7 +418,8 @@ func _build_platform(rail_z_m: float) -> void:
 		for x_m: float in [-1.35, -0.55]:
 			for side: float in [-1.0, 1.0]:
 				var stilt := _painted(Vector3(STILT_M, _platform_up_m, STILT_M), PAINT_DARK)
-				stilt.position = TrackSpace.point(x_m, side * (BOX_SIZE_M.x / 2.0 + STILT_M),
+				stilt.position = TrackSpace.point(x_m, side * (BOX_SIZE_M.x / 2.0 + STILT_M / 2.0
+						+ 0.01),
 						rail_z_m + _platform_up_m / 2.0)
 				add_child(stilt)
 	var deck_z_m := rail_z_m + _platform_up_m
@@ -441,7 +447,8 @@ func _build_platform(rail_z_m: float) -> void:
 	# sled's paint; the engine's housing beside it, with its exhaust.
 	var cab_x_m := -0.95
 	var cab_y_m := CAB_OFFSET_M
-	var glass := Art.box(Vector3(CAB_ACROSS_M, CANOPY_M, CAB_LENGTH_M), GLASS, 0.1)
+	var glass := Art.instance(Art.rounded_box(Vector3(CAB_ACROSS_M, CANOPY_M, CAB_LENGTH_M),
+			ROUND_M, Vector3.AXIS_Y), Art.material(GLASS))
 	var glass_material := StandardMaterial3D.new()
 	glass_material.albedo_color = GLASS
 	glass_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -453,13 +460,16 @@ func _build_platform(rail_z_m: float) -> void:
 	for x_m: float in [cab_x_m - CAB_LENGTH_M / 2.0, cab_x_m + CAB_LENGTH_M / 2.0]:
 		for side: float in [-1.0, 1.0]:
 			var post := Art.box(Vector3(0.06, CANOPY_M, 0.06), DARK, 0.5, 0.4)
-			post.position = TrackSpace.point(x_m, cab_y_m + side * CAB_ACROSS_M / 2.0,
+			post.position = TrackSpace.point(x_m - signf(x_m - cab_x_m) * ROUND_M * 0.3,
+					cab_y_m + side * (CAB_ACROSS_M / 2.0 - ROUND_M * 0.3),
 					deck_z_m + CANOPY_M / 2.0)
 			add_child(post)
-	var canopy := _painted(Vector3(CAB_ACROSS_M + 0.15, 0.08, CAB_LENGTH_M + 0.15), PAINT)
+	var canopy := _rounded(Vector3(CAB_ACROSS_M + 0.15, 0.1, CAB_LENGTH_M + 0.15), PAINT,
+			ROUND_M, Vector3.AXIS_Y)
 	canopy.position = TrackSpace.point(cab_x_m, cab_y_m, deck_z_m + CANOPY_M)
 	add_child(canopy)
-	var engine := Art.box(ENGINE_SIZE_M, ENGINE, 0.5, 0.3)
+	var engine := Art.instance(Art.rounded_box(ENGINE_SIZE_M, ROUND_M, Vector3.AXIS_Z),
+			Art.paint(ENGINE, 0.5))
 	engine.position = TrackSpace.point(cab_x_m, cab_y_m - CAB_ACROSS_M / 2.0
 			- ENGINE_SIZE_M.x / 2.0 - 0.05, deck_z_m + ENGINE_SIZE_M.y / 2.0)
 	add_child(engine)
@@ -482,6 +492,11 @@ func _build_platform(rail_z_m: float) -> void:
 	_lamp.material_override = _lamp_material
 	_lamp.position = TrackSpace.point(LAMP_AT_M.x, LAMP_AT_M.y, deck_z_m + CANOPY_M + 0.6)
 	add_child(_lamp)
+
+
+# A part in the sled's glossy paint with its edges along `along` rounded.
+static func _rounded(size: Vector3, colour: Color, radius_m: float, along: int) -> MeshInstance3D:
+	return Art.instance(Art.rounded_box(size, radius_m, along), Art.paint(colour, 0.45))
 
 
 # A part in the sled's glossy paint.

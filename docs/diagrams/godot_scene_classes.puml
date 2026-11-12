@@ -133,6 +133,7 @@ package "GDScript (app/godot/scripts)" {
     +{static} material(colour, roughness, metallic) : StandardMaterial3D
     +{static} box(size, colour), cylinder(...), sphere(...)
     +{static} axle_cylinder(radius_m, width_m, colour)
+    +{static} rounded_box(size, radius_m, along, segments) : ArrayMesh
     +{static} many(mesh, transforms, material, colours, custom) : MultiMeshInstance3D
     +{static} label(text, size_px, colour, outline) : Label3D
     +{static} ground_texture(dark, light, frequency, seed) : NoiseTexture2D
