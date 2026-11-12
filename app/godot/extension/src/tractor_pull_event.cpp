@@ -689,6 +689,10 @@ godot::Dictionary TractorPullEvent::get_crew_report() const {
     out["pulls_seen"] = event.pulls_done();
     out["pull_off"] = pull.has_value() && pull->kind == event::PullKind::kPullOff;
     out["suggested_y_m"] = crew::best_line_m(*report, tractor, max_m);
+    // The gear the player's own tractor went furthest in at the event's
+    // gear trials (field::LiveEvent::gear): the crew's idea, not the
+    // rivals' choices.
+    out["gear"] = event.gear(event.player());
     out["max_y_m"] = max_m;
     out["start_y_m"] = std::clamp(start_y_m_, -max_m, max_m);
     out["lane_width_m"] = rules.lane_width_m;

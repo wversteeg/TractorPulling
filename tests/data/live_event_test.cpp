@@ -226,6 +226,35 @@ TEST(LiveEvent, WaitsForThePlayer) {
     EXPECT_EQ(live->log().back().gear, 5);
 }
 
+// The player's crew names a gear before their pulls: the one their own
+// tractor went furthest in at the event's gear trials, as best_gear_trial
+// finds it on the event's sled (a player reads the track as a puller who
+// always reads it right: the reference's).
+TEST(LiveEvent, ThePlayersCrewNamesTheGearTheirTrialsLiked) {
+    EventSetup s = shipped();
+    const int player = s.order[2];
+    s.field.pullers.at(static_cast<std::size_t>(player)).track_reading = 1.0;
+    std::optional<LiveEvent> created = LiveEvent::create(
+        s.rules, s.venue, s.field, s.variation, s.pull_to_pull, s.running_order(), player, kSeed);
+    if (!created.has_value()) {
+        FAIL() << "the live event refused the setup";
+    }
+    auto live = std::make_unique<LiveEvent>(*created);
+    while (live->turn() == LiveEvent::Turn::kRivals) {
+        live->advance(kSlice);
+    }
+    const std::optional<GearTrial> trial =
+        best_gear_trial(s.field.pullers.at(static_cast<std::size_t>(player)), s.venue.sled,
+                        live->venue().track, s.variation.lowest_gear, s.variation.highest_gear,
+                        trial_pull_rules(s.rules, s.venue, s.rules.full_pull_m));
+    if (!trial) {
+        FAIL() << "the trial was refused";
+    }
+    EXPECT_EQ(live->gear(player), trial->gear);
+    EXPECT_GE(live->gear(player), s.variation.lowest_gear);
+    EXPECT_LE(live->gear(player), s.variation.highest_gear);
+}
+
 // The player stopped short of the restart line and moves back: the move is
 // logged, the rivals pull on, and the player is due again
 // event::kDeferPlaces pulls later (or last).

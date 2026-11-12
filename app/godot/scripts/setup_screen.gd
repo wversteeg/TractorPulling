@@ -62,6 +62,11 @@ var _start_note: Label
 var _sent_start := 0.0
 # Where the crew would start the sled [m, to the left].
 var _crew_y_m := 0.0
+# What the crew chief says: the track's tip, the gear the crew's trials
+# liked (0 none) and whether the hitch is below its top hole.
+var _track_tip := ""
+var _crew_gear := 0
+var _hitch_low := false
 var _grip_bar := ColorRect.new()
 var _firm: Label
 var _firm_bar := ColorRect.new()
@@ -183,6 +188,11 @@ func show_values(tuning: Dictionary) -> void:
 			if tuning.get("pressure", false) else "Fixed pressure"
 	_hitch.text = "%.2f m" % float(tuning.get("hitch_m", 0.0)) \
 			if tuning.get("hitch", false) else "Fixed hitch"
+	var hitch_low: bool = tuning.get("hitch", false) and float(tuning.get("hitch_m", 0.0)) \
+			< float(tuning.get("max_hitch_m", 0.0)) - HITCH_STEP_M / 2.0
+	if hitch_low != _hitch_low:
+		_hitch_low = hitch_low
+		_show_tip()
 	_shares.text = "At rest: %d %% on the rear axle, %d %% on the front" % [roundi(share * 100.0),
 			roundi((1.0 - share) * 100.0)] if share > 0.0 else ""
 	_sketch.ballast_share = float(tuning.get("ballast_position", 0.0)) if ballast else -1.0
@@ -256,15 +266,50 @@ func _show_track(track: Dictionary, track_name: String) -> void:
 	_grip.text = "low" if grip < 0.95 else ("fair" if grip < 1.15 else
 			("high" if grip < 1.35 else "very high"))
 	_firm.text = "soft" if kpa < 1000.0 else ("firm" if kpa < 3000.0 else "hard")
-	var tip := String(track.get("tip", ""))
-	_tip.text = "Crew chief: \"%s\"" % tip if not tip.is_empty() else \
+	_track_tip = String(track.get("tip", ""))
+	_show_tip()
+
+
+# The crew chief's word before the pull: the track's tip, the gear that
+# went furthest in the crew's trials with this tractor this morning, and,
+# with the hitch below its top hole, to raise it: a low hitch takes the
+# sled's pull off the rear tires, and on a heavy sled they spin out.
+func _show_tip() -> void:
+	var words: Array[String] = []
+	if not _track_tip.is_empty():
+		words.append(_track_tip)
+	if _crew_gear > 0:
+		words.append("Try %s gear." % _ordinal(_crew_gear))
+	if _hitch_low:
+		words.append("Hitch in the top hole, or the tires spin.")
+	_tip.text = "Crew chief: \"%s\"" % " ".join(words) if not words.is_empty() else \
 			"Set the weights, tires and hitch for the track."
+
+
+# What the crew chief says now.
+func tip_text() -> String:
+	return _tip.text
+
+
+static func _ordinal(n: int) -> String:
+	if n % 100 >= 11 and n % 100 <= 13:
+		return "%dth" % n
+	match n % 10:
+		1:
+			return "%dst" % n
+		2:
+			return "%dnd" % n
+		3:
+			return "%drd" % n
+	return "%dth" % n
 
 
 # The lane as the crew found it, and the start slider from full left (its
 # left end) to full right, at the player's start; the crew's own line
 # marked on it.
 func _show_crew(crew: Dictionary) -> void:
+	_crew_gear = int(crew.get("gear", 0))
+	_show_tip()
 	_lane.show_report(crew)
 	var max_m := float(crew.get("max_y_m", 0.0))
 	start_slider.visible = max_m > 0.0

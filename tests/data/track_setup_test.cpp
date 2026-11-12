@@ -18,8 +18,10 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace tp::field {
 namespace {
@@ -33,7 +35,7 @@ public:
     SportSetup() : season_(load("sport_4500_top.toml")), built_(built(season_)) {}
 
     double reach_m(const std::string& round, double ballast_position, double pressure_bar = 1.0,
-                   int heavier_steps = 0) const {
+                   int heavier_steps = 0, std::optional<double> hitch_m = std::nullopt) const {
         const data::SeasonRound& r = round_named(round);
         const data::EventDefinition& e = season_.event;
         Venue venue = data::venue(e.sled, r.track);
@@ -45,6 +47,9 @@ public:
         vehicle::Tuning tuning = vehicle::as_built(built_);
         tuning.ballast_position = ballast_position;
         tuning.rear_tire_pressure_bar = pressure_bar;
+        if (hitch_m) {
+            tuning.hitch_height_m = *hitch_m;
+        }
         Puller puller = e.reference;
         puller.tractor = vehicle::tuned(built_, tuning);
         const std::optional<GearTrial> trial = best_gear_trial(
@@ -55,6 +60,10 @@ public:
         }
         return trial->distance_m;
     }
+
+    // The tractor's lowest hitch hole, and the season's rounds [m].
+    [[nodiscard]] double lowest_hitch_m() const { return built_.chassis.hitch_min_height_m; }
+    [[nodiscard]] const std::vector<data::SeasonRound>& rounds() const { return season_.rounds; }
 
 private:
     static data::SeasonDefinition load(const char* file) {
@@ -187,6 +196,26 @@ TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
     const double best_m = sport.reach_m(heavy, kHalfway, kHeavyClay_bar, kHeavier);
     EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kSoft_bar, kHeavier));
     EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kHard_bar, kHeavier) + kClearly_m);
+}
+
+// The top hitch hole puts most of the sled's pull on the rear tires: on
+// every track of the season, with the weights back or halfway, it pulls
+// further than the lowest hole, where the tires spin out. So the crew
+// chief may always say to raise a low hitch (U-23).
+TEST(TrackSetup, TheTopHitchHolePullsFurthestOnEveryTrack) {
+    const SportSetup sport;
+    // Each track once: every track file has its own tip.
+    std::set<std::string> tracks_seen;
+    for (const data::SeasonRound& round : sport.rounds()) {
+        if (!tracks_seen.insert(round.track.setup_tip).second) {
+            continue;
+        }
+        for (const double ballast : {kBack, kHalfway}) {
+            EXPECT_GT(sport.reach_m(round.name, ballast),
+                      sport.reach_m(round.name, ballast, 1.0, 0, sport.lowest_hitch_m()) + 1.0)
+                << round.name << ", weights at " << ballast;
+        }
+    }
 }
 
 }  // namespace

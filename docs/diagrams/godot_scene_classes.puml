@@ -342,6 +342,7 @@ package "GDScript (app/godot/scripts)" {
     +show_setup(title, tuning, pro, tilt, track, track_name, crew)
     +show_values(tuning)
     +start_y_m() : float
+    +tip_text() : String : the crew chief: track, gear, hitch
     +release_sliders()
     +release_buttons()
     ..signals..
