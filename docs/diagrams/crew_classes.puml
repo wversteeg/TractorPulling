@@ -23,7 +23,7 @@ package "tp::crew" {
   class ReportedSpot <<struct>> {
     +kind : SpotKind
     +at_m, centre_y_m : double (about where)
-    +width_m, length_m : double
+    +width_m, length_m : double (about how big)
     +strength : double (a guess)
   }
   class Report <<struct>> {
@@ -36,7 +36,7 @@ package "tp::crew" {
     +uncertainty(const Knowledge&) : double
     +report(const track::Model&, const Knowledge&, until_m, seed) : Report
     +best_line_m(const Report&, const vehicle::Params&, max_offset_m) : double
-    +kMissedShare, kAlongError_m, kAcrossError_m, kStrengthError
+    +kMissedShare, kAlongError_m, kAcrossError_m,\n      kStrengthError, kSizeError
     +kLineStep_m = 0.1
   }
   Report *-- ReportedSpot
@@ -51,7 +51,8 @@ CrewFns ..> Pan : where the\npan runs
 note bottom of CrewFns
   uncertainty: 1 / (1 + pulls_seen / 4), halved in the pull-off;
   each spot is missed with chance kMissedShare x uncertainty, else reported
-  off by up to the errors x uncertainty (four draws per spot, seen or not);
+  off by up to the errors x uncertainty, in place, strength and size
+  (five draws per spot, seen or not);
   best_line_m: every line 0.1 m apart within max_offset_m, the middle first:
   a weak spot under either rear side costs its strength x length (the open
   differential), a hard spot under the pan half that per share it covers;

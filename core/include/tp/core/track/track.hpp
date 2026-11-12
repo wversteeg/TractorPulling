@@ -201,6 +201,9 @@ private:
         // Laid end to end along the track with gaps between.
         void lay(const Pattern& pattern) noexcept;
         [[nodiscard]] double at(double x_m, double y_m) const noexcept;
+        // The one spot that may be under x_m (spots never overlap along
+        // the track): the last to start at or before it; nullptr if none.
+        [[nodiscard]] const Spot* under(double x_m) const noexcept;
         [[nodiscard]] std::span<const Spot> spots() const noexcept {
             return std::span{spots_}.first(count_);
         }

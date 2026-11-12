@@ -41,6 +41,7 @@ package "tp::track" {
     -count_ : size_t
     +lay(const Pattern&) (every_m, length_m,\n      min/max_width_m, across_m, size, seed)
     +at(x_m, y_m) : double, 0 to the spot's peak
+    +under(x_m) : const Spot*, the one spot that may be there
     +spots() : span<const Spot>
   }
   class Model {

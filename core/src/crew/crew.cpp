@@ -21,7 +21,7 @@ constexpr double kHardWeight = 0.5;
 constexpr double kSides = 2.0;
 
 // Adds `spots` of `kind` to `out` as the crew sees them. Every spot draws
-// the same four numbers, seen or not, so one spot's luck never moves
+// the same five numbers, seen or not, so one spot's luck never moves
 // another's.
 void add_seen(Report& out, std::span<const track::Spot> spots, SpotKind kind, double until_m,
               math::SplitMix64& random) noexcept {
@@ -31,6 +31,7 @@ void add_seen(Report& out, std::span<const track::Spot> spots, SpotKind kind, do
         const double along = random.uniform(-1.0, 1.0);
         const double across = random.uniform(-1.0, 1.0);
         const double strength = random.uniform(-1.0, 1.0);
+        const double size = 1.0 + kSizeError * u * random.uniform(-1.0, 1.0);
         if (spot.start_m >= until_m || notice < kMissedShare * u || out.count >= out.spots.size()) {
             continue;
         }
@@ -38,8 +39,8 @@ void add_seen(Report& out, std::span<const track::Spot> spots, SpotKind kind, do
             .kind = kind,
             .at_m = spot.start_m + spot.length_m / 2.0 + kAlongError_m * u * along,
             .centre_y_m = spot.centre_y_m + kAcrossError_m * u * across,
-            .width_m = spot.width_m,
-            .length_m = spot.length_m,
+            .width_m = spot.width_m * size,
+            .length_m = spot.length_m * size,
             .strength = spot.peak * (1.0 + kStrengthError * u * strength)};
     }
 }

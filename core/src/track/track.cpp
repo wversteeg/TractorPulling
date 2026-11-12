@@ -242,15 +242,15 @@ void Model::SpotLayout::lay(const Pattern& pattern) noexcept {
     }
 }
 
-double Model::SpotLayout::at(double x_m, double y_m) const noexcept {
-    // The last spot starting at or before x_m: spots never overlap along
-    // the track, so only it can be under x_m.
+const Spot* Model::SpotLayout::under(double x_m) const noexcept {
     const std::span<const Spot> laid = spots();
     const auto after = std::ranges::upper_bound(laid, x_m, std::less{}, &Spot::start_m);
-    if (after == laid.begin()) {
-        return 0.0;
-    }
-    return strength_at(*std::prev(after), x_m, y_m);
+    return after == laid.begin() ? nullptr : &*std::prev(after);
+}
+
+double Model::SpotLayout::at(double x_m, double y_m) const noexcept {
+    const Spot* spot = under(x_m);
+    return spot != nullptr ? strength_at(*spot, x_m, y_m) : 0.0;
 }
 
 std::optional<Model> Model::create(const Params& params) noexcept {
@@ -280,10 +280,15 @@ soil::Surface Model::surface_at(double x_m, double y_m) const noexcept {
 soil::Surface Model::surface_across(double x_m, double y_m, double half_width_m) const noexcept {
     constexpr double kPoints = 3.0;
     soil::Surface surface = surface_without_spots(x_m);
-    const double hard =
-        hard_.at(x_m, y_m - half_width_m) + hard_.at(x_m, y_m) + hard_.at(x_m, y_m + half_width_m);
-    const double weak =
-        weak_.at(x_m, y_m - half_width_m) + weak_.at(x_m, y_m) + weak_.at(x_m, y_m + half_width_m);
+    // One search per kind: the same spot is under all three points.
+    const auto across = [&](const Spot* spot) {
+        return spot == nullptr
+                   ? 0.0
+                   : strength_at(*spot, x_m, y_m - half_width_m) + strength_at(*spot, x_m, y_m) +
+                         strength_at(*spot, x_m, y_m + half_width_m);
+    };
+    const double hard = across(hard_.under(x_m));
+    const double weak = across(weak_.under(x_m));
     surface.drag_scale = 1.0 + hard / kPoints;
     surface.grip_factor *= 1.0 - weak / kPoints;
     return surface;

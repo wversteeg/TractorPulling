@@ -72,7 +72,8 @@ struct Report {
 /// the same seed, the same report, on every platform. A crew that has seen
 /// nothing misses up to kMissedShare of the spots; their place is off by
 /// up to kAlongError_m along and kAcrossError_m across, their strength by
-/// kStrengthError of itself, each shrinking with the uncertainty.
+/// kStrengthError of itself and their size (width and length) by
+/// kSizeError of itself, each shrinking with the uncertainty.
 [[nodiscard]] Report report(const track::Model& track, const Knowledge& knowledge, double until_m,
                             std::uint64_t seed) noexcept;
 
@@ -80,6 +81,7 @@ inline constexpr double kMissedShare = 0.6;
 inline constexpr double kAlongError_m = 4.0;
 inline constexpr double kAcrossError_m = 1.5;
 inline constexpr double kStrengthError = 0.4;
+inline constexpr double kSizeError = 0.4;
 
 /// Where the crew puts the sled across the lane for `tractor`, at most
 /// `max_offset_m` from the centre line either way: the line that keeps the

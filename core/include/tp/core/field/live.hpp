@@ -27,7 +27,7 @@ namespace tp::field {
 /// the player's pull on sled() by pull_rules() and hands the result to
 /// record_player(), or their decision to decide_player().
 ///
-/// Plain data, no allocation. Large (about 70 KB: every puller and a pull
+/// Plain data, no allocation. Large (about 100 KB: every puller and a pull
 /// in progress): create() returns it on the stack, so keep the long-lived
 /// copy on the heap.
 class LiveEvent {
@@ -127,9 +127,9 @@ private:
         run::Rules rules;
     };
 
-    LiveEvent(const event::Rules& rules, const Venue& venue, const Field& field,
-              const Variation& variation, const PullToPull& pull_to_pull, const event::Event& event,
-              int player, std::uint64_t seed) noexcept;
+    LiveEvent(const event::Rules& rules, const Venue& venue, const track::Model& track,
+              const Field& field, const Variation& variation, const PullToPull& pull_to_pull,
+              const event::Event& event, int player, std::uint64_t seed) noexcept;
 
     /// Starts `job_` for `puller` on `sled`; false if the model is invalid.
     bool start_job(const Puller& puller, const sled::Params& sled,
@@ -153,6 +153,8 @@ private:
 
     event::Rules rules_;
     Venue venue_;
+    /// venue_'s track, built once: what the crews walk.
+    track::Model track_;
     Field field_;
     Variation variation_;
     PullToPull pull_to_pull_;

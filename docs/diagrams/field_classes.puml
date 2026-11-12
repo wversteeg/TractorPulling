@@ -138,6 +138,7 @@ package "tp::field" {
     --
     -event_ : event::Event
     -seed_ : uint64 (the crews' reports)
+    -track_ : track::Model (the day's, built once)
     -guesses_, pulls_ : SplitMix64
     -job_ : optional<Job{model, state, plan, driver, rules}>
     -log_ : array<LogEntry, 160>

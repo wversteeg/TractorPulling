@@ -48,27 +48,40 @@ std::size_t laid(const track::Model& model) {
                                     std::ranges::count_if(model.weak_spots(), before));
 }
 
-// A crew that has seen nothing misses some spots; after many pulls, and in
-// the pull-off, it misses fewer.
+// A crew that has seen nothing misses some spots (about kMissedShare of
+// them, over many crews); after many pulls, and in the pull-off, it misses
+// fewer.
 TEST(Crew, SeesMoreWithEveryPull) {
     const track::Model model = model_of(spotted_track());
     const std::size_t all = laid(model);
     ASSERT_GT(all, 20U);
+    constexpr std::uint64_t kCrews = 20;
+    std::size_t first_seen = 0;
+    std::size_t later_seen = 0;
+    std::size_t pull_off_seen = 0;
+    for (std::uint64_t seed = 1; seed <= kCrews; ++seed) {
+        first_seen += report(model, {.pulls_seen = 0, .pull_off = false}, kUntil_m, seed).count;
+        later_seen += report(model, {.pulls_seen = 14, .pull_off = false}, kUntil_m, seed).count;
+        pull_off_seen += report(model, {.pulls_seen = 14, .pull_off = true}, kUntil_m, seed).count;
+    }
+    const auto share = [&](std::size_t seen) {
+        return static_cast<double>(seen) / static_cast<double>(all * kCrews);
+    };
+    EXPECT_NEAR(share(first_seen), 1.0 - kMissedShare, 0.1);
+    EXPECT_GT(later_seen, first_seen);
+    EXPECT_GE(pull_off_seen, later_seen);
+    EXPECT_GT(share(pull_off_seen), 0.9);
+    EXPECT_LE(share(pull_off_seen), 1.0);
     const Report first = report(model, {.pulls_seen = 0, .pull_off = false}, kUntil_m, 1);
     const Report later = report(model, {.pulls_seen = 14, .pull_off = false}, kUntil_m, 1);
     const Report pull_off = report(model, {.pulls_seen = 14, .pull_off = true}, kUntil_m, 1);
-    EXPECT_LT(first.count, all);
-    EXPECT_GT(first.count, all / 4);
-    EXPECT_GT(later.count, first.count);
-    EXPECT_GE(pull_off.count, later.count);
-    EXPECT_LE(pull_off.count, all);
     EXPECT_DOUBLE_EQ(first.uncertainty, 1.0);
     EXPECT_LT(later.uncertainty, 0.25);
     EXPECT_DOUBLE_EQ(pull_off.uncertainty, 0.5 * later.uncertainty);
 }
 
-// Each reported spot is a real one, off by no more than the errors allow
-// at the crew's uncertainty.
+// Each reported spot is a real one, its place, strength and size off by no
+// more than the errors allow at the crew's uncertainty.
 TEST(Crew, ReportsSpotsRoughlyWhereTheyAre) {
     const track::Model model = model_of(spotted_track());
     for (const int seen : {0, 4, 20}) {
@@ -82,7 +95,12 @@ TEST(Crew, ReportsSpotsRoughlyWhereTheyAre) {
                 const double middle_m = real.start_m + real.length_m / 2.0;
                 return std::abs(spot.at_m - middle_m) <= kAlongError_m * u + 1e-9 &&
                        std::abs(spot.centre_y_m - real.centre_y_m) <= kAcrossError_m * u + 1e-9 &&
-                       std::abs(spot.strength - real.peak) <= kStrengthError * u * real.peak + 1e-9;
+                       std::abs(spot.strength - real.peak) <=
+                           kStrengthError * u * real.peak + 1e-9 &&
+                       std::abs(spot.width_m - real.width_m) <=
+                           kSizeError * u * real.width_m + 1e-9 &&
+                       std::abs(spot.length_m - real.length_m) <=
+                           kSizeError * u * real.length_m + 1e-9;
             });
             EXPECT_TRUE(matches) << "seen " << seen << ", at " << spot.at_m;
         }

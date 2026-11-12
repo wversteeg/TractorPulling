@@ -666,7 +666,7 @@ godot::Dictionary TractorPullEvent::get_crew_report() const {
     const run::Rules rules = event.pull_rules();
     const vehicle::Params tractor = vehicle::tuned(player_tractor(), tuning_);
     const double max_m = run::max_start_offset_m(tractor, rules);
-    // About 30 KB: on the heap, not the stack of a Godot call.
+    // About 15 KB: on the heap, not the stack of a Godot call.
     const auto report = std::make_unique<crew::Report>(event.player_crew_report());
     godot::Array spots;
     for (const crew::ReportedSpot& spot : report->view()) {
