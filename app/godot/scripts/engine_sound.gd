@@ -185,7 +185,6 @@ func _ready() -> void:
 	generator.mix_rate = MIX_RATE_HZ
 	generator.buffer_length = BUFFER_S
 	stream = generator
-	_random.seed = 1
 	play()
 	_playback = get_stream_playback() as AudioStreamGeneratorPlayback
 

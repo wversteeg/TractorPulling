@@ -27,7 +27,7 @@ namespace tp::field {
 /// the player's pull on sled() by pull_rules() and hands the result to
 /// record_player(), or their decision to decide_player().
 ///
-/// Plain data, no allocation. Large (about 70 KB: every puller and a pull
+/// Plain data, no allocation. Large (about 100 KB: every puller and a pull
 /// in progress): create() returns it on the stack, so keep the long-lived
 /// copy on the heap.
 class LiveEvent {
@@ -69,9 +69,15 @@ public:
     /// until the sled stops for a test pull or a pull-off (field::
     /// pull_rules); a practice pull, with none due, as a competition pull.
     [[nodiscard]] const sled::Params& sled() const noexcept { return event_.sled(); }
-    /// Where the event is pulled: the track's ground for the player's run.
+    /// Where the event is pulled: the track's ground for the player's run,
+    /// its spots laid for this event (on_the_day).
     [[nodiscard]] const Venue& venue() const noexcept { return venue_; }
     [[nodiscard]] run::Rules pull_rules() const noexcept;
+    /// What the player's crew reports of the track before their next pull
+    /// (a practice pull, with none due, as a competition pull): as the
+    /// rivals' crews do, sharper with every pull already pulled and in the
+    /// pull-off (field::crew_report).
+    [[nodiscard]] crew::Report player_crew_report() const noexcept;
 
     /// Records the player's pull (`gear` the gear they pulled in): out of
     /// bounds counts 0 m, as for every puller. Only while turn() is
@@ -92,6 +98,8 @@ public:
     void decide_player(bool keep) noexcept;
 
     [[nodiscard]] int player() const noexcept { return player_; }
+    /// The pulls pulled so far at the event, the player's too.
+    [[nodiscard]] int pulls_done() const noexcept { return event_.pulls_done(); }
     [[nodiscard]] int puller_count() const noexcept { return field_.count; }
     /// The gear each puller chose for the day (the player's is the field's
     /// guess for them, unused).
@@ -119,9 +127,9 @@ private:
         run::Rules rules;
     };
 
-    LiveEvent(const event::Rules& rules, const Venue& venue, const Field& field,
-              const Variation& variation, const PullToPull& pull_to_pull, const event::Event& event,
-              int player, std::uint64_t seed) noexcept;
+    LiveEvent(const event::Rules& rules, const Venue& venue, const track::Model& track,
+              const Field& field, const Variation& variation, const PullToPull& pull_to_pull,
+              const event::Event& event, int player, std::uint64_t seed) noexcept;
 
     /// Starts `job_` for `puller` on `sled`; false if the model is invalid.
     bool start_job(const Puller& puller, const sled::Params& sled,
@@ -145,11 +153,14 @@ private:
 
     event::Rules rules_;
     Venue venue_;
+    /// venue_'s track, built once: what the crews walk.
+    track::Model track_;
     Field field_;
     Variation variation_;
     PullToPull pull_to_pull_;
     event::Event event_;
     int player_ = 0;
+    std::uint64_t seed_ = 0;
     math::SplitMix64 guesses_;
     math::SplitMix64 pulls_;
     /// Choosing gears: the puller and gear being tried, and the best so far.

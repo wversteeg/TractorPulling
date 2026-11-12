@@ -70,6 +70,11 @@ struct Adjustment {
     double pushdown_earlier_m = 0.0;
 };
 
+/// Simplified: every sled's pan is taken as this wide either side of its
+/// middle where it meets the track's hard and weak spots (the sleds' data
+/// give its area, not its width) [m].
+inline constexpr double kPanHalfWidth_m = 1.0;
+
 /// A transfer sled: a frame on rear wheels with a pan (a steel plate) at the
 /// front that drags on the track, and a weight box that moves forward as the
 /// sled advances. Lengths along the sled are measured forward from the rear
@@ -309,10 +314,12 @@ inline constexpr double kBoxBack_m_s = 0.75;
 /// light (the push-down eases off with the box, and at once past where the
 /// box stops); then it drives
 /// itself back, the pan lifted (the berm is dropped: the track keeps no
-/// soil), straight towards its start at `start_x_m` on the centre line at
-/// kDriveBack_m_s. Returns true once it stands there, straight, ready for
-/// the next pull. Its velocity is negative while it drives.
-bool drive_back(State& state, const Params& params, double start_x_m, double dt_s) noexcept;
+/// soil), straight towards its start at `start_x_m`, `start_y_m` across
+/// the track, at kDriveBack_m_s. Returns true once it stands there,
+/// straight, ready for the next pull. Its velocity is negative while it
+/// drives.
+bool drive_back(State& state, const Params& params, double start_x_m, double start_y_m,
+                double dt_s) noexcept;
 
 constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.position_m);

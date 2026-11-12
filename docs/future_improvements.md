@@ -18,11 +18,30 @@ for the big features; they are repeated at the end for completeness.
   that persists between runs.
 - **Lane-to-lane differences.** Lanes are prepared and worn differently;
   one lane per track for now.
-- **Left and right differences, weaker patches.** The two halves of a lane
-  can grip differently (a wetter side, a softer edge), which makes a
-  tractor drift on its own; a weaker patch does the same for a moment.
-  Equal sides stay the default. Deferred to be built together with more
-  track changes; the track is one surface across its width for now.
+- **Left and right differences.** The two halves of a lane can grip
+  differently (a wetter side, a softer edge), which makes a tractor drift
+  on its own. The hard and weak spots now lie somewhere across the lane
+  (one under one rear side spins that side), but the soil itself is one
+  surface across the width. Equal sides stay the default. Deferred to be
+  built together with more track changes.
+- **The lane wears.** Every pull leaves its tracks: ruts, a groove from the
+  knives, firmer and looser lines. A crew sees more with every pull (the
+  crew's report sharpens), but the spots themselves stay as laid; the lane
+  could change with the pulls on it, and a line others have pulled could
+  grip differently.
+- **Weak spots only bite near the grip limit.** In most pulls the engine
+  against the sled's drag limits the tractor, not the tires' grip, so a
+  short patch with a few per cent less grip costs next to nothing (the
+  crew's line across the lane gains tenths of a metre on the tracks with
+  hard spots, about nothing on those with weak spots only). They matter in
+  a launch with wheelspin and in the heavier classes; stronger or longer
+  weak spots would make the line count more.
+- **The pan's width.** Where the sled meets the spots its pan is taken as
+  2 m wide for every sled (sled::kPanHalfWidth_m): the sleds' data give the
+  pan's area, not its width.
+- **Scripted pullers do not steer.** The rivals' crews choose where their
+  sled starts, and the drivers then pull straight; one that drifts off its
+  line does not correct.
 - **Automatic test pull.** The sled operator sets the push-down from a test
   pull on the day's track. A reference tractor could run that test pull and
   choose the push-down for a target distance.
@@ -92,10 +111,14 @@ for the big features; they are repeated at the end for completeness.
   clutch, taking the sled's sudden jumps in drag (the knives biting, the
   push-down coming on, a soft spot) while the engine stays in its power
   and boost band; a tire that bites hands each jump to the engine, which
-  drops out of boost and stalls. The sled's drag here rises smoothly, so
+  drops out of boost and stalls. On most tracks the drag rises smoothly, so
   more grip never costs: a too-soft tire loses only by its lugs squirming.
-  Drag that jumps along the track would let wheelspin pay (the owner's
-  next step for the tire pressure). The nose does not come up from the
+  The dry, hard tracks now have a few mild hard spots where the drag jumps
+  (track::HardSpots), and there a tire that slips a little more lets the
+  engine dip less at each spot; but the spots are short and the tractor's
+  momentum carries it through, so it does not yet decide the best
+  pressure. Longer or stronger spots, or soft patches where the pan digs
+  in, could make it count. The nose does not come up from the
   grip itself: the pull at the hitch is what the sled asks, so more grip
   only lets the tractor hold a heavier drag before it spins.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
@@ -574,5 +597,5 @@ for the big features; they are repeated at the end for completeness.
 
 ## Roadmap features (from CLAUDE.md "Later")
 
-- Track changes: left and right differences, weaker patches; pullers that
+- Track changes: left and right differences, a lane that wears; pullers that
   keep the lane.

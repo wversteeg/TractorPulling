@@ -42,6 +42,10 @@ struct Setup {
     /// the whole turn from there (turn::from_the_parking); without it, the
     /// pull alone, hooked at the start line.
     std::optional<turn::Parking> parking = std::nullopt;
+    /// Where the team puts the sled across the lane, to the left of the
+    /// centre line (pull::Params::start_y_m); at most
+    /// run::max_start_offset_m either way [m].
+    double start_y_m = 0.0;
 };
 
 enum class SetupError : std::uint8_t {
@@ -56,6 +60,9 @@ enum class SetupError : std::uint8_t {
     /// hook on: at or behind the hook, or out of the chain's reach.
     kFenders,
     kMaxStepsPerFrame,
+    /// The start offset is not finite or further from the centre line than
+    /// run::max_start_offset_m.
+    kStartPosition,
 };
 
 /// What went wrong with `setup`, if anything.

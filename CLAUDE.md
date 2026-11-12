@@ -123,7 +123,7 @@ First get something working, then give it more possibilities. In order:
 
 ## Later (do not build yet)
 
-- Track changes: left and right halves of a lane that grip differently (equal by default), weaker patches and more along-track variation; scripted pullers that steer and brake to stay in the lane once the track can push them off line.
+- Track changes: left and right halves of a lane that grip differently (equal by default), a lane that wears with the pulls on it, and more along-track variation; scripted pullers that steer and brake to stay in the lane once the track can push them off line.
 
 ## Build and test
 
@@ -147,10 +147,12 @@ cmake --preset release && cmake --build --preset release
 # A run: the tractor pulls the sled on its chain until the sled's first stop
 # or a full pull (then pull-offs on a heavier sled); prints each result.
 # --downshift S shifts a gear down under load (the powershift step) once the
-# engine falls below S of its rated speed, as the scripted pullers do
+# engine falls below S of its rated speed, as the scripted pullers do;
+# --start-y M puts the sled M metres left of the lane's middle (negative
+# right), as the team may before a pull
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] \
-    [--steer-deg 1] [--downshift 0.9] [--hash] -o run.csv
+    [--steer-deg 1] [--downshift 0.9] [--start-y -2] [--hash] -o run.csv
 
 # The same run with the easy control layout: the clutch assist works the
 # clutch; --stick holds the steering control (-1 right to 1 left). Or with

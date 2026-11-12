@@ -1,5 +1,6 @@
 #pragma once
 
+#include "tp/core/crew/crew.hpp"
 #include "tp/core/driver/driver.hpp"
 #include "tp/core/event/event.hpp"
 #include "tp/core/math/random.hpp"
@@ -164,5 +165,22 @@ struct ThisPull {
 /// `variation`.
 [[nodiscard]] ThisPull on_this_pull(const Puller& puller, const sled::Params& sled,
                                     const PullToPull& variation, math::SplitMix64& random) noexcept;
+
+/// The seed of `puller`'s crew's report before a pull at an event seeded
+/// `event_seed`, with `pulls_seen` pulls pulled before it: a stream of its
+/// own, apart from the gear guesses and the pulls.
+[[nodiscard]] std::uint64_t crew_seed(std::uint64_t event_seed, int puller,
+                                      int pulls_seen) noexcept;
+
+/// What `puller`'s crew reports of `track` before a pull of `kind` with
+/// `pulls_seen` pulls pulled before it, up to `rules`' full-pull line.
+[[nodiscard]] crew::Report crew_report(const track::Model& track, event::PullKind kind,
+                                       int pulls_seen, const run::Rules& rules,
+                                       std::uint64_t seed) noexcept;
+
+/// Where `puller`'s crew puts the sled across the lane from `report`:
+/// crew::best_line_m within the start offsets `rules` allow the tractor.
+[[nodiscard]] double crew_line(const crew::Report& report, const Puller& puller,
+                               const run::Rules& rules) noexcept;
 
 }  // namespace tp::field

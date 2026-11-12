@@ -334,16 +334,29 @@ package "GDScript (app/godot/scripts)" {
   }
   class GearButton
   class SetupScreen {
-    the pit board: the track's card, the tractor set up
+    the pit board: the track's card, the lane as the
+    crew walked it, the start, the tractor set up
     +ballast_slider, pressure_slider, hitch_slider : TouchSlider
+    +start_slider : TouchSlider, full left .. full right
     +pull_button, back_button : TouchButton
-    +show_setup(title, tuning, pro, tilt, track, track_name)
+    +show_setup(title, tuning, pro, tilt, track, track_name, crew)
     +show_values(tuning)
+    +start_y_m() : float
     +release_sliders()
     +release_buttons()
     ..signals..
     tuning_changed(ballast_position, pressure_bar, hitch_m),
+    start_changed(y_m),
     pull_requested, back_requested
+  }
+  class LaneMap {
+    the lane from above: the crew's spots, blurred
+    by how sure it is; the tires' tracks, the pan;
+    the crew's own start marked
+    +report : Dictionary (get_crew_report())
+    +start_y_m : float
+    +show_report(crew)
+    +show_start(y_m)
   }
   class ResultScreen {
     +again_button, menu_button : TouchButton
@@ -481,7 +494,8 @@ MenuPanel <|-- SettingsScreen
 DriveControls *-- TiltSteering : steering by tilt,\ncentred at the pull's start
 Pull *-- ResultScreen
 Pull *-- SetupScreen : before every pull
-SetupScreen *-- "3" TouchSlider : weights,\ntire pressure, hitch
+SetupScreen *-- "4" TouchSlider : weights,\ntire pressure, hitch, start
+SetupScreen *-- LaneMap : the lane
 SetupScreen *-- TractorSketch : the setup shown
 Pull *-- BoardScreen : the event, its results,\nthe season's standings
 Pull ..> EventTexts

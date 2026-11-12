@@ -42,9 +42,23 @@ a tire spins (sand digs, wet clay smears).
 
 A track's soil and how its moisture and compaction change along it (a wet
 patch, a worked stretch). Sampled into a fixed table at setup, so the step
-only looks up and blends the surface under each contact.
+only looks up and blends the surface under each contact. A few hard spots
+(the sled drags harder) and weak spots (the tires grip less) lie somewhere
+across the lane, laid from a seed at setup: the surface depends on where a
+contact is across the lane too, so each rear side, the front pair and the
+sled's pan each get their own.
 
 ![Track classes](diagrams/svg/track_classes.svg)
+
+### Crew (`tp::crew`)
+
+What a team's crew finds walking the lane before a pull: the spots, a little
+off and some missed, sharper with every pull it has seen and in the
+pull-off; and where it puts the sled across the lane because of it. The
+field's rivals start where their crews say; the player sees their crew's
+report on the pit board and sets the start themselves.
+
+![Crew classes](diagrams/svg/crew_classes.svg)
 
 ### Tire (`tp::tire`)
 
