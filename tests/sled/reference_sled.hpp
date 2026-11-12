@@ -4,7 +4,8 @@
 
 namespace tp::sled::testing {
 
-// Mirrors data/sleds/light_class.toml.
+// A light transfer sled (the light class's before the 15 t sled), the
+// core's test bench; tests/data/test_sled.toml is the same in TOML.
 inline Params reference_params() {
     return Params{
         .frame_mass_kg = 3200.0,

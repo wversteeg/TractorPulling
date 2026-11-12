@@ -1,4 +1,7 @@
+#include "tp/core/driver/driver.hpp"
 #include "tp/core/run/run.hpp"
+#include "tp/core/sled/sled.hpp"
+#include "tp/core/track/track.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
 #include "tp/data/vehicle/tractor_loader.hpp"
@@ -14,7 +17,15 @@ namespace {
 
 const std::filesystem::path kDataDir{TP_DATA_DIR};
 constexpr double kDt_s = 0.001;
-constexpr int kPullingGear = 6;
+// The reference tractor's pulling gear on the 15 t sled, launched as the
+// events' drivers do: the clutch eased back while the engine is below
+// 80 % of its rated speed.
+constexpr driver::Plan kDriver{.gear = 5,
+                               .select_gear_s = 0.5,
+                               .launch_s = 3.0,
+                               .clutch_slip_in_s = 3.0,
+                               .launch_hold_share = 0.8,
+                               .launch_hold_max_s = 8.0};
 
 // The reference tractor on the class's sled, with its own push-down, in its
 // pulling gear: only the ground differs between tracks.
@@ -33,12 +44,10 @@ run::Result pull_on(const std::string& track_file) {
         return {};
     }
     run::State state = run::start(*model);
+    driver::State driver;
     for (int i = 0; !state.result; ++i) {
-        const double t_s = i * kDt_s;
-        const vehicle::Input input{
-            .throttle = t_s < 0.5 ? 0.0 : 1.0,
-            .clutch_pedal = t_s < 3.0 ? 1.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0),
-            .gear = t_s < 0.5 ? driveline::kNeutral : kPullingGear};
+        const vehicle::Input input =
+            driver::input(kDriver, driver, i * kDt_s, state.pull.tractor, tractor.value());
         run::step(state, *model, track.value().rules, input, kDt_s);
     }
     return state.result.value_or(run::Result{});
@@ -67,9 +76,9 @@ TEST(ShippedTracks, EveryTrackIsPullable) {
 }
 
 // How a track was prepared (its grip) decides how a pull ends: on the
-// grippiest, firm loam, and the reference the engine gives out first; on
-// the heavy clay the tires dig in and bite, so the engine stalls before
-// they spin out; on the loose sandy clay, which grips least, the wheels
+// grippiest, firm loam, the engine gives out first; on the heavy clay the
+// tires dig in and bite, so the engine stalls before they spin out; on the
+// reference and on the loose sandy clay, which grips least, the wheels
 // spin out.
 TEST(ShippedTracks, TheTracksGripDecidesHowAPullEnds) {
     const run::Result grippy = pull_on("firm_loam.toml");
@@ -77,18 +86,45 @@ TEST(ShippedTracks, TheTracksGripDecidesHowAPullEnds) {
     const run::Result heavy = pull_on("covered_heavy_clay.toml");
     const run::Result loose = pull_on("sandy_clay.toml");
     EXPECT_EQ(grippy.ending, run::Ending::kStalled);
-    EXPECT_EQ(reference.ending, run::Ending::kStalled);
+    EXPECT_EQ(reference.ending, run::Ending::kSpunOut);
     EXPECT_EQ(heavy.ending, run::Ending::kStalled);
     EXPECT_EQ(loose.ending, run::Ending::kSpunOut);
     EXPECT_GE(grippy.distance_m, reference.distance_m);
     EXPECT_LT(loose.distance_m, reference.distance_m);
 }
 
+// The class's sled at `metre` of its travel on a track, the chain pulling
+// 20 kN: what it drags [N].
+double sled_drag_n(const std::string& track_file, double metre) {
+    const auto sled = load_sled(kDataDir / "sleds/light_class.toml");
+    const auto track = load_track(kDataDir / "tracks" / track_file);
+    EXPECT_TRUE(sled.ok() && track.ok());
+    if (!sled.ok() || !track.ok()) {
+        return 0.0;
+    }
+    const auto ground = track::Model::create(track.value().ground);
+    EXPECT_TRUE(ground.has_value());
+    if (!ground) {
+        return 0.0;
+    }
+    const soil::Surface surface = ground->surface_at(metre);
+    constexpr double kChainPull_n = 20000.0;
+    return sled::loads(sled.value(), {.distance_m = metre}, {.forward_n = kChainPull_n},
+                       {.pan = surface, .wheels = surface})
+        .resistance_n;
+}
+
 // The heavy clay, moist after the rain, is softer and stickier than the
-// reference: the pan ploughs deeper and the same tractor gets less far.
-TEST(ShippedTracks, MoistHeavyClayPullsShorter) {
-    EXPECT_LT(pull_on("covered_heavy_clay.toml").distance_m,
-              pull_on("ideal_clay_sand.toml").distance_m);
+// reference: the pan ploughs deeper and the wheels sink further, so the
+// sled drags harder all the way. (A pull's distance hardly shows it: on
+// the 15 t sled the push-down stops the light class, and the clay's grip
+// makes up the rest.)
+TEST(ShippedTracks, MoistHeavyClayDragsHarder) {
+    for (int metre = 0; metre <= 90; metre += 10) {
+        EXPECT_GT(sled_drag_n("covered_heavy_clay.toml", metre),
+                  sled_drag_n("ideal_clay_sand.toml", metre))
+            << metre << " m";
+    }
 }
 
 }  // namespace
