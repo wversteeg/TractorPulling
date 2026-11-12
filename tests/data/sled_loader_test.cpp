@@ -84,9 +84,97 @@ std::string with(std::string_view from, std::string_view to) {
     return text;
 }
 
-// The core tests' sled, as a file, loads to the parameters they use.
-TEST(SledLoader, TestSledFileMatchesTestReference) {
-    const auto result = load_sled(std::string{TP_TEST_DATA_DIR} + "/test_sled.toml");
+// The core tests' light sled (tests/sled/reference_sled.hpp) as a sled
+// file: 3.2 t on two wheels, as the light class pulled before the 15 t
+// sled (data/sleds/pulling_sled.toml). The loader reads it to the
+// parameters the core tests use.
+constexpr std::string_view kTestSled = R"(
+[sled]
+frame_mass_kg = 3200.0
+frame_cg_ahead_of_wheels_m = 0.75
+frame_yaw_inertia_kg_m2 = 5000.0     # about the frame's own centre of gravity; m L² / 12, L ≈ 4.3 m
+pan_ahead_of_wheels_m = 3.0          # centre of the pan's contact
+pan_friction_coefficient = 0.46      # steel sliding on a firm track
+pan_area_m2 = 1.8                    # the pan's contact with the track
+pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
+
+# The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
+[sled.wheels]
+count = 2
+radius_m = 0.55
+section_width_m = 0.43
+section_height_m = 0.35
+deflection_m = 0.04
+rolling_losses = 0.04               # the tire's own losses, on top of sinking in
+
+# The wheels' side grip (see tp::tire::Cornering): they keep the sled's
+# tail in line; the pan, sliding forward, resists sideways far less, so a
+# sled swings behind a tractor that wanders (the dog-tail). Starting values
+# to tune, as for the tractor's tires.
+[sled.wheels.cornering]
+stiffness_per_rad = 4.0
+limit = 0.8
+mobility_rate = 0.1
+relaxation_length_m = 0.55           # about the wheel's radius
+
+[sled.hook]
+ahead_of_wheels_m = 4.0               # on a drawbar ahead of the pan, fenders either side
+height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
+
+# Rubber fenders either side of the drawbar: a tractor backing up stops
+# with its rear tires against them (their faces 0.1 m behind the hook),
+# with its hitch within 1 m of the sled's line, up to 1 m past them.
+[sled.fenders]
+behind_hook_m = 0.1
+half_span_m = 1.0
+depth_m = 1.0
+
+[sled.weight_box]
+max_mass_kg = 11000.0                # what the box holds at most
+mass_kg = 1500.0
+start_ahead_of_wheels_m = -0.5       # behind the rear wheels: its weight lifts the pan for the start
+end_ahead_of_wheels_m = 3.0          # over the pan
+travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop as the push-down is fully set
+
+# Engages at a set distance on the track, chosen per event from the test
+# pull and the track's state (for example 70 or 80 m).
+[sled.pushdown]
+start_m = 78.0
+ramp_m = 10.0                        # travel until the wheels are fully off
+
+[sled.chain]
+length_m = 1.15                      # 1.1 to 1.2 m
+stiffness_n_per_m = 2.0e6            # chain, shackles and hitch
+damping_n_s_per_m = 80000.0          # about half of critical for a 2.5 to 4.5 t tractor
+# on the held sled: links and shackles take a jolt's energy, so a tractor
+# that creeps into the chain is not sprung back off it like a rubber band
+
+# Knives under the pan cut grooves in the track; the sled operator sets
+# how many and how deep.
+[sled.knives]
+count = 4
+depth_m = 0.04
+width_m = 0.05
+
+# Soil the tractor's tires throw back piles up in front of the pan and has
+# to be pushed along; it spills off to the sides as the sled moves.
+[sled.berm]
+collected_share = 0.15               # of what the rear tires throw back
+spill_distance_m = 40.0              # the berm spills its own size over this travel
+friction_coefficient = 0.6           # soil sliding on soil
+
+# After the full pulls, the qualifiers pull off on a heavier sled: as many
+# of these steps as the sled operator judges they need. One step costs the
+# reference tractor about 5 m.
+[sled.pull_off_step]
+box_mass_kg = 0.0
+knives = 1
+knife_depth_m = 0.0
+pushdown_earlier_m = 0.0
+)";
+
+TEST(SledLoader, TestSledTextMatchesTestReference) {
+    const auto result = parse_sled(kTestSled, "test_sled.toml");
     ASSERT_TRUE(result.ok()) << result.error().message;
     const sled::Params& loaded = result.value();
     const sled::Params reference = sled::testing::reference_params();

@@ -12,7 +12,7 @@
 namespace {
 
 constexpr double kDt_s = 0.001;
-constexpr int kPullingGear = 6;
+constexpr int kPullingGear = 5;  // the light class's on the 15 t sled
 // Millions of timed steps would carry the sled past the push-down and stall
 // the engine; out of reach, the pull stays steady and the cost per step is
 // the same.

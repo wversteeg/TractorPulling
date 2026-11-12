@@ -81,8 +81,7 @@ if(TP_BUILD_DATA_IO)
         data/hard_spot_runs_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)
     target_compile_definitions(tp_data_tests PRIVATE
-        TP_DATA_DIR="${TP_DATA_DIR}"
-        TP_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+        TP_DATA_DIR="${TP_DATA_DIR}")
     tp_configure_target(tp_data_tests)
     gtest_discover_tests(tp_data_tests DISCOVERY_MODE PRE_TEST)
 endif()
