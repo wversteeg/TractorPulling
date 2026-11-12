@@ -47,6 +47,13 @@ const RIM_DISC := Color(0.25, 0.26, 0.28)
 # axle to a bumper, where the weights hang [m].
 const FRAME_RAIL_M := Vector2(0.1, 0.16)
 const FRAME_RAILS_APART_M := 0.5
+# The pulling tractor's front frame: past the bonnet's nose to the bumper,
+# at this height above the front axle, and the bumper's depth [m].
+const FRAME_PAST_HOOD_M := 0.15
+const FRAME_ABOVE_FRONT_AXLE_M := 0.3
+const BUMPER_DEPTH_M := 0.14
+# The front weights hang this far ahead of the pulling tractor's bumper [m].
+const WEIGHTS_AHEAD_OF_BUMPER_M := 0.03
 # The pulling seat's back: this tall over the seat [m].
 const RACING_SEAT_BACK_M := 0.7
 
@@ -133,7 +140,7 @@ var _dirt: Array[CPUParticles3D] = []
 var _dust: Array[CPUParticles3D] = []
 var _built := false
 # Drawn as a pulling tractor (a roll bar, the Sport classes) or a farm one.
-var pulling_look := false
+var _pulling_look := false
 var _rear_radius_m := 1.0
 var _front_radius_m := 0.5
 var _rated_rad_s := 230.0
@@ -187,7 +194,7 @@ func _build_body(d: Dictionary) -> void:
 
 	# A tractor behind a roll bar is a pulling tractor, drawn as one.
 	var pulling: bool = d.get("protection", "cab") == "roll_bar"
-	pulling_look = pulling
+	_pulling_look = pulling
 	_body.position = TrackSpace.point(0.0, 0.0, axle_height_m)
 	add_child(_body)
 	_add_driveline(wheelbase_m, rear_track_m, front_track_m, axle_height_m)
@@ -212,8 +219,14 @@ func _build_body(d: Dictionary) -> void:
 		_body.add_child(steer)
 		_add_front_wheel(steer, pair[1], front_width_m, float(pair[2]))
 
-	_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.05, 0.0,
-			_front_radius_m - axle_height_m + 0.35)
+	# On the farm hood's front; on a pulling tractor, from its bumper.
+	if pulling:
+		_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M
+				+ FRAME_PAST_HOOD_M + BUMPER_DEPTH_M / 2.0 + WEIGHTS_AHEAD_OF_BUMPER_M, 0.0,
+				_front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M)
+	else:
+		_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.05,
+				0.0, _front_radius_m - axle_height_m + 0.35)
 	_body.add_child(_front_weights)
 	_body.add_child(_rear_weights)
 	_add_smoke(wheelbase_m)
@@ -247,6 +260,7 @@ func _add_hood(wheelbase_m: float) -> void:
 	var back_m := 0.75
 	var length_m := front_m - back_m
 	var hood := Art.box(Vector3(HOOD_WIDTH_M, 0.5, length_m), paint, 0.35)
+	hood.name = "Hood"
 	hood.material_override = Art.paint(paint)
 	hood.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M - 0.25)
 	_body.add_child(hood)
@@ -298,6 +312,7 @@ func _add_bonnet(wheelbase_m: float) -> void:
 	# Everything below hangs from the bonnet's back top edge, tilted down
 	# to the front: x along the bonnet, z down from its top.
 	var bonnet := Node3D.new()
+	bonnet.name = "Bonnet"
 	bonnet.position = TrackSpace.point(back_m, 0.0, BONNET_TOP_M)
 	bonnet.rotation.x = -BONNET_FALL_RAD
 	_body.add_child(bonnet)
@@ -345,16 +360,18 @@ func _add_bonnet(wheelbase_m: float) -> void:
 # under the bonnet and a bumper ahead of the nose.
 func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 	var from_m := wheelbase_m - 0.6
-	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.15
-	var z_m := _front_radius_m - axle_height_m + 0.3
+	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + FRAME_PAST_HOOD_M
+	var z_m := _front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M
 	for side: float in [-1.0, 1.0]:
 		var rail := Art.instance(Art.rounded_box(Vector3(FRAME_RAIL_M.x, FRAME_RAIL_M.y,
 				to_m - from_m), 0.03, Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
 		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * FRAME_RAILS_APART_M / 2.0,
 				z_m)
 		_body.add_child(rail)
-	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M + 0.1, 0.18, 0.14), 0.05,
+	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M + 0.1, 0.18,
+			BUMPER_DEPTH_M), 0.05,
 			Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
+	bumper.name = "Bumper"
 	bumper.position = TrackSpace.point(to_m, 0.0, z_m)
 	_body.add_child(bumper)
 
@@ -424,7 +441,7 @@ func _add_cab_frame(half_width_m: float) -> void:
 	_body.add_child(screen)
 
 
-func _add_seat_and_driver(racing: bool = false) -> void:
+func _add_seat_and_driver(racing: bool) -> void:
 	var seat := Art.box(Vector3(0.45, 0.1, 0.45), FRAME, 0.7)
 	seat.position = TrackSpace.point(-0.05, 0.0, 0.62)
 	_body.add_child(seat)
@@ -598,6 +615,7 @@ func _add_rear_wheel(spin: Node3D, side_m: float, width_m: float, disc: bool) ->
 	if disc:
 		# A pulling tractor's rim under a flat disc, a white ring round it.
 		var cover := Art.axle_cylinder(_rear_radius_m * 0.6, 0.015, RIM_DISC, 32, 0.5)
+		cover.name = "RimDisc"
 		cover.position = TrackSpace.point(0.0, outward * (width_m * 0.5 + Art.RIM_PROUD_M + 0.01),
 				0.0)
 		spin.add_child(cover)
@@ -780,6 +798,16 @@ func _puff_mesh(radius_m: float) -> SphereMesh:
 	m.roughness = 1.0
 	mesh.material = m
 	return mesh
+
+
+# Drawn as a pulling tractor (behind a roll bar) rather than a farm one.
+func pulling_look() -> bool:
+	return _pulling_look
+
+
+# Where the front weights hang, in the world.
+func front_weights_position() -> Vector3:
+	return _front_weights.global_position
 
 
 # The weights drawn: suitcase weights on the front bracket (x) and wheel

@@ -56,7 +56,8 @@ package "GDScript (app/godot/scripts)" {
   }
   class TractorView {
     +paint, paint_dark, driver_shirt : Color
-    +pulling_look : bool : a roll bar draws a pulling tractor
+    +pulling_look() : bool : a roll bar draws a pulling tractor
+    +front_weights_position() : Vector3
     +build(dimensions)
     +show_snapshot(snapshot, delta)
     +show_cockpit(snapshot) : wheel and gauges

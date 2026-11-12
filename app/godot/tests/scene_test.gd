@@ -293,16 +293,31 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 
 # A tractor behind a roll bar (the Sport classes) is drawn as a pulling
 # tractor, one with a cab as a farm tractor: the run's tractor here is the
-# farm one.
+# farm one. The pulling tractor gets its own parts, and its front weights
+# hang ahead of its bumper, not inside it.
 func _check_pulling_look(dimensions: Dictionary) -> void:
 	var farm: TractorView = _pull.get("tractor_view")
-	_expect(not farm.pulling_look, "the farm tractor drawn as one")
+	_expect(not farm.pulling_look(), "the farm tractor drawn as one")
+	_expect(farm.find_child("Hood", true, false) != null, "the farm tractor's hood")
+	_expect(farm.find_child("Bonnet", true, false) == null, "no pulling bonnet on a farm tractor")
 	var pulling := TractorView.new()
 	root.add_child(pulling)
 	var d := dimensions.duplicate()
 	d["protection"] = "roll_bar"
+	d["ballast_position"] = 1.0
 	pulling.build(d)
-	_expect(pulling.pulling_look, "a roll-bar tractor drawn as a pulling tractor")
+	_expect(pulling.pulling_look(), "a roll-bar tractor drawn as a pulling tractor")
+	for part: String in ["Bonnet", "Bumper", "RimDisc"]:
+		_expect(pulling.find_child(part, true, false) != null, "the pulling tractor's %s" % part)
+	_expect(pulling.find_child("Hood", true, false) == null, "no farm hood on a pulling tractor")
+	_expect(pulling.weight_counts().x > 0, "the weights forward hang on the pulling tractor")
+	var bumper := pulling.find_child("Bumper", true, false) as MeshInstance3D
+	var weights := pulling.front_weights_position()
+	# Along the track is -z (TrackSpace.point).
+	var bumper_front_m := -bumper.global_position.z + TractorView.BUMPER_DEPTH_M / 2.0
+	_expect(-weights.z > bumper_front_m,
+			"the front weights ahead of the bumper (%.2f m, bumper to %.2f m)" % [
+			-weights.z, bumper_front_m])
 	pulling.free()
 
 
