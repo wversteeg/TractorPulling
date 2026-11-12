@@ -112,5 +112,12 @@ if(TARGET tp_pull AND NOT CMAKE_CROSSCOMPILING)
         COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
             "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
             --gear 5 --launch-hold 0.8 --dump)
-    set_tests_properties(TpPull.LaunchHoldIsNotForADump PROPERTIES WILL_FAIL TRUE)
+    set_tests_properties(TpPull.LaunchHoldIsNotForADump PROPERTIES
+        PASS_REGULAR_EXPRESSION "not with --dump or --easy")
+    add_test(NAME TpPull.LaunchHoldIsNotForTheEasyLayout
+        COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
+            "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
+            --gear 5 --launch-hold 0.8 --easy "${TP_DATA_DIR}/controls/easy.toml")
+    set_tests_properties(TpPull.LaunchHoldIsNotForTheEasyLayout PROPERTIES
+        PASS_REGULAR_EXPRESSION "not with --dump or --easy")
 endif()

@@ -378,7 +378,8 @@ TEST(SledLoader, ReportsABadBase) {
     const std::string from_base =
         message(files({{"sleds/class.toml", class_text}, {"sleds/base.toml", bad_base}}));
     EXPECT_NE(from_base.find("sled.frame_mass_kg"), std::string::npos) << from_base;
-    EXPECT_NE(from_base.find("over the base sled sleds/base.toml"), std::string::npos) << from_base;
+    EXPECT_NE(from_base.find("laid over the base sled sleds/base.toml"), std::string::npos)
+        << from_base;
     // Text alone cannot find the base.
     const auto parsed = parse_sled(class_text, "class.toml");
     ASSERT_FALSE(parsed.ok());

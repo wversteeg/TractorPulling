@@ -7,6 +7,7 @@
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
+#include "tp/data/track/track_loader.hpp"
 
 #include <gtest/gtest.h>
 
@@ -66,6 +67,9 @@ public:
     // The tractor's lowest hitch hole [m], and the season's rounds.
     [[nodiscard]] double lowest_hitch_m() const { return built_.chassis.hitch_min_height_m; }
     [[nodiscard]] const std::vector<data::SeasonRound>& rounds() const { return season_.rounds; }
+    [[nodiscard]] const data::SeasonRound& round(const std::string& name) const {
+        return round_named(name);
+    }
 
 private:
     static data::SeasonDefinition load(const char* file) {
@@ -213,19 +217,23 @@ TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
 // The lowest hitch hole takes most of the sled's pull off the rear tires:
 // at every level of the class, with the weights back, halfway or well
 // forward, the top hole pulls clearly further on every track but the
-// moist heavy clay, where a low hitch keeps the nose down and may gain up
-// to a metre; there the hitch matters little either way. So the crew
+// moist heavy clay, where a low hitch keeps the nose down and may gain
+// about a metre; there the hitch matters little either way. So the crew
 // chief may always say to raise a hitch in its lowest hole (U-23): it
-// costs a metre at most. (The holes between are another matter: with the
+// costs about a metre at most. (The holes between are another matter: with the
 // weights all back on a grippy track the top hole stands the tractor on
 // its wheelie bar, and one a little lower pulls further.) On a sled heavy
 // enough that the tractor stops short of the line, where a setting shows.
-TEST(TrackSetup, TheLowestHitchHoleNeverPullsFurthest) {
+TEST(TrackSetup, TheLowestHitchHoleCostsEverywhereButTheHeavyClay) {
     constexpr double kAsBuilt_bar = 1.0;
     // Further than a pull-to-pull difference; at most this much shorter [m].
     constexpr double kFurther_m = 0.5;
-    constexpr double kAtMostShorter_m = 1.5;
-    const std::string heavy_clay = "covered heavy clay";
+    constexpr double kAtMostShorter_m = 1.2;
+    // The moist heavy clay, by its ground: a renamed round is still it.
+    const auto heavy_clay =
+        data::load_track(std::filesystem::path{TP_DATA_DIR} / "tracks" / "covered_heavy_clay.toml");
+    ASSERT_TRUE(heavy_clay.ok()) << heavy_clay.error().message;
+    const soil::Composition& clay = heavy_clay.value().ground.soil;
     // Short of the pull-off's line: the run's limit hides the rest [m].
     constexpr double kShortOfTheLine_m = 115.0;
     constexpr int kStepsAtATime = 2;
@@ -245,7 +253,11 @@ TEST(TrackSetup, TheLowestHitchHoleNeverPullsFurthest) {
                     return sport.reach_m(round, ballast, kAsBuilt_bar, steps, hole_m);
                 };
                 const double lowest_m = at_hole(sport.lowest_hitch_m());
-                if (round.find(heavy_clay) == std::string::npos) {
+                const soil::Composition& soil = sport.round(round).track.ground.soil;
+                const bool on_heavy_clay = soil.clay_fraction == clay.clay_fraction &&
+                                           soil.moisture == clay.moisture &&
+                                           soil.compaction == clay.compaction;
+                if (!on_heavy_clay) {
                     EXPECT_GT(top_m, lowest_m + kFurther_m)
                         << season << ", " << round << ", weights at " << ballast;
                 } else {

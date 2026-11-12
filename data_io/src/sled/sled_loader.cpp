@@ -227,10 +227,11 @@ Result<sled::Params> read_with_base(const toml::table& root, std::string_view so
     if (toml::table* sled = merged["sled"].as_table()) {
         sled->erase("base");
     }
-    // A value may be the base's: the message names both files.
+    // The value may be this file's or the base's: the message names both.
     Result<sled::Params> out = read_sled(merged, source);
     if (!out) {
-        return LoadError{out.error().message + " (over the base sled " + base_path + ")"};
+        return LoadError{out.error().message + " (this sled laid over the base sled " + base_path +
+                         ")"};
     }
     return out;
 }
