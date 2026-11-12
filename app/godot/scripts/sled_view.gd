@@ -64,7 +64,7 @@ const ENGINE_SIZE_M := Vector3(0.85, 0.75, 0.9)
 const EXHAUST_M := 0.9
 # The lamp's mast: at the cab's back corner on the left, clear of the
 # engine (along, across) [m].
-const LAMP_AT_M := Vector2(-1.5, CAB_OFFSET_M + CAB_ACROSS_M / 2.0)
+const LAMP_AT_M := Vector2(-1.5, CAB_OFFSET_M + CAB_ACROSS_M / 2.0 + 0.08)
 const RUBBER := Color(0.06, 0.06, 0.06)
 # The sled's look: its width, its rails' height above the wheels' axle and
 # the weight box's size [m].
@@ -90,8 +90,8 @@ const CAMERA_MOUNT_UP_M := 0.35
 const STILT_M := 0.08
 # The box rides this far above the rails [m].
 const BOX_LIFT_M := 0.12
-const RAIL_GAP_M := 1.7
-const BOX_SIZE_M := Vector3(2.0, 0.8, 1.6)
+const RAIL_GAP_M := 1.2
+const BOX_SIZE_M := Vector3(1.4, 0.8, 1.6)
 const PAN_DEPTH_M := 1.2
 # How far the wheels are drawn lifted with the push-down fully set [m].
 const WHEEL_LIFT_M := 0.15
@@ -220,8 +220,10 @@ func build(d: Dictionary) -> void:
 
 	# The tandem axle at the back, two wheels on each.
 	add_child(_wheels)
-	# Each wheel's middle outside the box's side.
-	var wheel_out_m := BOX_SIZE_M.x / 2.0 + WHEEL_CLEAR_M + wheel_width_m / 2.0
+	# Each wheel's middle outside the box's side, the wheels within the
+	# sled's width.
+	var wheel_out_m := minf(BOX_SIZE_M.x / 2.0 + WHEEL_CLEAR_M + wheel_width_m / 2.0,
+			WIDTH_M / 2.0 - wheel_width_m / 2.0)
 	for axle_m: float in [-TANDEM_HALF_M, TANDEM_HALF_M]:
 		var axle := Art.axle_cylinder(0.08, 2.0 * wheel_out_m, DARK, 12)
 		axle.position = TrackSpace.point(axle_m, 0.0, _wheel_height_m)
@@ -398,11 +400,11 @@ func _build_box() -> void:
 	# loads as many as the box's mass makes.
 	var blocks: Array[Transform3D] = []
 	var block := BoxMesh.new()
-	block.size = Vector3(0.6, 0.16, 0.45)
+	block.size = Vector3(0.42, 0.16, 0.45)
 	for layer in BLOCK_LAYERS:
 		for column in BLOCK_COLUMNS:
 			for row in BLOCK_ROWS:
-				blocks.append(Transform3D(Basis(), Vector3((column - 1) * 0.62,
+				blocks.append(Transform3D(Basis(), Vector3((column - 1) * 0.44,
 						-size.y / 2.0 + 0.16 + layer * 0.17, (row - 1) * 0.48)))
 	_box_weights = Art.many(block, blocks, Art.material(WEIGHT, 0.6, 0.4))
 	_box.add_child(_box_weights)
@@ -447,13 +449,12 @@ func _build_platform(rail_z_m: float) -> void:
 	# sled's paint; the engine's housing beside it, with its exhaust.
 	var cab_x_m := -0.95
 	var cab_y_m := CAB_OFFSET_M
-	var glass := Art.instance(Art.rounded_box(Vector3(CAB_ACROSS_M, CANOPY_M, CAB_LENGTH_M),
-			ROUND_M, Vector3.AXIS_Y), Art.material(GLASS))
 	var glass_material := StandardMaterial3D.new()
 	glass_material.albedo_color = GLASS
 	glass_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glass_material.roughness = 0.1
-	glass.material_override = glass_material
+	var glass := Art.instance(Art.rounded_box(Vector3(CAB_ACROSS_M, CANOPY_M, CAB_LENGTH_M),
+			ROUND_M, Vector3.AXIS_Y), glass_material)
 	glass.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	glass.position = TrackSpace.point(cab_x_m, cab_y_m, deck_z_m + CANOPY_M / 2.0)
 	add_child(glass)

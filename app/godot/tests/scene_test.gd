@@ -251,8 +251,8 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 
 # Past the track's end: a pile of dirt across the track from 130 to 140 m
 # (on a 100 m track), a box trailer and pop-up tents behind it, at a club
-# or big event a generator, a big screen and more tents too. The screen follows the tractor during the
-# run and shows the standings after it. In the evening floodlights also
+# or big event a generator, a big screen and more tents too. The screen
+# follows the tractor during the run and shows the standings after it. In the evening floodlights also
 # stand past the 120 m mark and over the parking.
 func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	var length_m := float(dimensions["track_length_m"])

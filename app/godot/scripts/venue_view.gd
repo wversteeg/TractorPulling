@@ -136,10 +136,12 @@ const SIZES := {
 			"show": false, "sign": "", "trailers": 1, "screen": false, "tents": 2},
 	"club": {"stand_rows": 4, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.75,
 			"standing_rows": 2, "standing_fill": 0.8, "left_crowd": false, "banner": true,
-			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL", "trailers": 2, "screen": true, "tents": 3},
+			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL", "trailers": 2, "screen": true,
+			"tents": 3},
 	"big": {"stand_rows": 7, "stand_along_m": Vector2(-5.0, 110.0), "seat_fill": 0.95,
 			"standing_rows": 3, "standing_fill": 0.95, "left_crowd": false, "banner": true,
-			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX", "trailers": 2, "screen": true, "tents": 4},
+			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX", "trailers": 2, "screen": true,
+			"tents": 4},
 }
 # The track's colour: sand's and clay's, mixed by the soil's clay, and a
 # wet track darker, by this much per unit of moisture.
@@ -285,7 +287,8 @@ func build(d: Dictionary) -> void:
 		add_child(_track_end)
 		_track_end.build(length_m, lane_m, lane_m + 2.0 * CLAY_PAST_LANE_M,
 				track_colours(float(_look["clay_fraction"]), float(_look["moisture"])),
-				int(_size()["trailers"]), bool(_size()["screen"]), int(_size()["tents"]))
+				int(_size()["trailers"]), bool(_size()["screen"]),
+				int(_size()["tents"]))
 		_add_scenery(length_m, lane_m)
 		_add_farmland(length_m, lane_m)
 		_add_horizon(length_m)
