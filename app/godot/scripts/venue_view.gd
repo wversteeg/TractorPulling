@@ -19,8 +19,11 @@
 # event the covered grandstand and the banner; a big event a longer, taller
 # grandstand, a crowd three deep and flames and fireworks for a full pull
 # (celebrate()). The time of day sets the sky, the sun and, in the evening,
-# floodlights along the track (light()); the track's soil sets its colour
-# (track_colours()).
+# floodlights along the track, over the parking and at the track's end
+# (light()); the track's soil sets its colour (track_colours()). Past the
+# end a pile of dirt across the track, and the event's trailers behind it:
+# at a club or big event one with a big screen showing the run and the
+# standings (TrackEnd).
 #
 # The people, trees, tents, barn, flags and clouds are Kenney's CC0 models
 # (assets/kenney); the rest is built here. Copies of a thing are one
@@ -124,17 +127,19 @@ const PERSON_SCALE := 1.0
 # small pull) and length along the track, how full its seats are, the
 # standing crowd's rows on the right and how full, whether the left fence
 # has a standing crowd too (where there is no grandstand), whether a banner
-# spans the full-pull line, a show for a full pull, and the stand's sign.
+# spans the full-pull line, a show for a full pull, the stand's sign, how
+# many trailers stand past the track's end and whether one is a big screen
+# (TrackEnd).
 const SIZES := {
 	"small": {"stand_rows": 0, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.0,
 			"standing_rows": 1, "standing_fill": 0.45, "left_crowd": true, "banner": false,
-			"show": false, "sign": ""},
+			"show": false, "sign": "", "trailers": 1, "screen": false},
 	"club": {"stand_rows": 4, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.75,
 			"standing_rows": 2, "standing_fill": 0.8, "left_crowd": false, "banner": true,
-			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL"},
+			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL", "trailers": 2, "screen": true},
 	"big": {"stand_rows": 7, "stand_along_m": Vector2(-5.0, 110.0), "seat_fill": 0.95,
 			"standing_rows": 3, "standing_fill": 0.95, "left_crowd": false, "banner": true,
-			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX"},
+			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX", "trailers": 2, "screen": true},
 }
 # The track's colour: sand's and clay's, mixed by the soil's clay, and a
 # wet track darker, by this much per unit of moisture.
@@ -149,6 +154,15 @@ const FLOODLIGHT_HEIGHT_M := 14.0
 const FLOODLIGHT_ENERGY := 5.0
 const FLOODLIGHT_RANGE_M := 55.0
 const FLOODLIGHT := Color(1.0, 0.93, 0.8)
+# One more pair of masts this far past the track's end (over the run-off,
+# by the pile), and two over the parking at these distances behind the
+# start line, beyond its far edge [m].
+const END_LIGHTS_PAST_M := 25.0
+const PARKING_LIGHTS_X_M: Array[float] = [-12.0, -30.0]
+const PARKING_LIGHTS_OUT_M := 2.0
+# The fields stay this far clear past the track's end: the pile and the
+# trailers behind it [m].
+const END_CLEAR_M := 40.0
 # The sky and the sun at each time of day (light()) [deg for the sun's
 # pitch and yaw].
 const TIMES := {
@@ -234,6 +248,10 @@ var _show: Array[CPUParticles3D] = []
 var _parking_layout := 0
 var _parking: Node3D = null
 var _parking_built := -1
+var _track_end: TrackEnd = null
+# Where the floodlight masts stand (x down the track, y to the left) [m].
+var _masts: Array[Vector2] = []
+var _parking_masts: Array[Vector2] = []
 
 
 func build(d: Dictionary) -> void:
@@ -246,6 +264,8 @@ func build(d: Dictionary) -> void:
 			child.free()
 		_line = null
 		_show.clear()
+		_masts.clear()
+		_track_end = TrackEnd.new()
 		_sizes = sizes
 		_built_look = _look.duplicate()
 		_full_pull_m = -1.0
@@ -262,6 +282,10 @@ func build(d: Dictionary) -> void:
 			_add_standing_crowd(length_m, lane_m, 1.0)
 		if _look["time"] == "evening":
 			_add_floodlights(length_m, lane_m)
+		add_child(_track_end)
+		_track_end.build(length_m, lane_m, lane_m + 2.0 * CLAY_PAST_LANE_M,
+				track_colours(float(_look["clay_fraction"]), float(_look["moisture"])),
+				int(_size()["trailers"]), bool(_size()["screen"]))
 		_add_scenery(length_m, lane_m)
 		_add_farmland(length_m, lane_m)
 		_add_horizon(length_m)
@@ -273,6 +297,9 @@ func build(d: Dictionary) -> void:
 		_parking = Node3D.new()
 		add_child(_parking)
 		_add_parking(_parking, lane_m)
+		_parking_masts.clear()
+		if _look["time"] == "evening":
+			_add_parking_lights(_parking, lane_m)
 		_parking_built = _parking_layout
 	_lane_m = lane_m
 	# A rebuild freed the flags: up again as they were.
@@ -827,42 +854,89 @@ static func _fade(from: Color, to: Color) -> Gradient:
 	return ramp
 
 
-# Floodlight masts down both sides for an evening event: a lamp head on
-# each, glowing, and a spotlight down onto the track (no shadows, for a
-# phone).
+# Floodlight masts down both sides for an evening event, and a pair past
+# the track's end over the run-off and the pile.
 func _add_floodlights(length_m: float, lane_m: float) -> void:
+	var xs: Array[float] = []
 	var x_m := -10.0
 	while x_m <= length_m + 20.0:
-		for side: float in [-1.0, 1.0]:
-			var out_m := lane_m / 2.0 + FENCE_OUT_M + 1.0 + (RETURN_LANE_M if side < 0.0 else 0.0)
-			var mast := Art.cylinder(0.15, FLOODLIGHT_HEIGHT_M, STEEL, 8, 0.4, 0.6)
-			mast.position = TrackSpace.point(x_m, side * out_m, FLOODLIGHT_HEIGHT_M / 2.0)
-			add_child(_quiet(mast))
-			var head := Art.box(Vector3(1.6, 0.6, 0.4), Color(0.15, 0.15, 0.16))
-			head.position = TrackSpace.point(x_m, side * (out_m - 0.3), FLOODLIGHT_HEIGHT_M)
-			add_child(_quiet(head))
-			var face := MeshInstance3D.new()
-			var plate := BoxMesh.new()
-			plate.size = Vector3(1.4, 0.45, 0.05)
-			face.mesh = plate
-			var lit := StandardMaterial3D.new()
-			lit.albedo_color = FLOODLIGHT
-			lit.emission_enabled = true
-			lit.emission = FLOODLIGHT
-			lit.emission_energy_multiplier = 4.0
-			face.material_override = lit
-			face.position = TrackSpace.point(x_m, side * (out_m - 0.55), FLOODLIGHT_HEIGHT_M)
-			add_child(_quiet(face))
-			var spot := SpotLight3D.new()
-			spot.light_color = FLOODLIGHT
-			spot.light_energy = FLOODLIGHT_ENERGY
-			spot.spot_range = FLOODLIGHT_RANGE_M
-			spot.spot_angle = 50.0
-			spot.shadow_enabled = false
-			spot.position = TrackSpace.point(x_m, side * (out_m - 0.6), FLOODLIGHT_HEIGHT_M)
-			add_child(spot)
-			spot.look_at(TrackSpace.point(x_m + 6.0, -side * 1.0, 0.0), Vector3.UP)
+		xs.append(x_m)
 		x_m += FLOODLIGHT_EVERY_M
+	xs.append(length_m + END_LIGHTS_PAST_M)
+	for along_m in xs:
+		for side: float in [-1.0, 1.0]:
+			var out_m := lane_m / 2.0 + FENCE_OUT_M + 1.0 + past_lane_m(side)
+			_add_mast(self, Vector2(along_m, side * out_m),
+					Vector2(along_m + 6.0, -side * 1.0), side * 0.3)
+			_masts.append(Vector2(along_m, side * out_m))
+
+
+# Two masts beyond the parking's far edge, lighting the bays.
+func _add_parking_lights(parent: Node3D, lane_m: float) -> void:
+	var out_m := lane_m / 2.0 + PARKING_FROM_LANE_M.y + PARKING_LIGHTS_OUT_M
+	for x_m: float in PARKING_LIGHTS_X_M:
+		var middle := Vector2(x_m, -(lane_m / 2.0 + (PARKING_FROM_LANE_M.x
+				+ PARKING_FROM_LANE_M.y) / 2.0))
+		_add_mast(parent, Vector2(x_m, -out_m), middle, -0.3)
+		_parking_masts.append(Vector2(x_m, -out_m))
+
+
+# A floodlight mast at `at` (down the track, to the left) with its lamp
+# head `inward` metres towards the track, glowing, and a spotlight aimed at
+# `aim` on the ground (no shadows, for a phone).
+func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float) -> void:
+	var mast := Art.cylinder(0.15, FLOODLIGHT_HEIGHT_M, STEEL, 8, 0.4, 0.6)
+	mast.position = TrackSpace.point(at.x, at.y, FLOODLIGHT_HEIGHT_M / 2.0)
+	parent.add_child(_quiet(mast))
+	var head := Art.box(Vector3(1.6, 0.6, 0.4), Color(0.15, 0.15, 0.16))
+	head.position = TrackSpace.point(at.x, at.y - inward, FLOODLIGHT_HEIGHT_M)
+	parent.add_child(_quiet(head))
+	var face := MeshInstance3D.new()
+	var plate := BoxMesh.new()
+	plate.size = Vector3(1.4, 0.45, 0.05)
+	face.mesh = plate
+	var lit := StandardMaterial3D.new()
+	lit.albedo_color = FLOODLIGHT
+	lit.emission_enabled = true
+	lit.emission = FLOODLIGHT
+	lit.emission_energy_multiplier = 4.0
+	face.material_override = lit
+	face.position = TrackSpace.point(at.x, at.y - 1.8 * inward, FLOODLIGHT_HEIGHT_M)
+	parent.add_child(_quiet(face))
+	var spot := SpotLight3D.new()
+	spot.light_color = FLOODLIGHT
+	spot.light_energy = FLOODLIGHT_ENERGY
+	spot.spot_range = FLOODLIGHT_RANGE_M
+	spot.spot_angle = 50.0
+	spot.shadow_enabled = false
+	spot.position = TrackSpace.point(at.x, at.y - 2.0 * inward, FLOODLIGHT_HEIGHT_M)
+	parent.add_child(spot)
+	spot.look_at(TrackSpace.point(aim.x, aim.y, 0.0), Vector3.UP)
+
+
+# Where the floodlight masts stand, along the track and over the parking
+# (x down the track, y to the left) [m]: none but in the evening.
+func floodlight_masts() -> Array[Vector2]:
+	return _masts + _parking_masts
+
+
+# The track's end: the pile and the trailers (TrackEnd); null before the
+# first build().
+func track_end() -> TrackEnd:
+	return _track_end
+
+
+# The big screen during the run: the TV camera on `target`.
+func show_screen_live(target: Vector3, delta: float) -> void:
+	if _track_end != null:
+		_track_end.show_live(target, delta)
+
+
+# The big screen after the run: the day's standings
+# (EventTexts.standing_rows()).
+func show_screen_standings(rows: Array) -> void:
+	if _track_end != null:
+		_track_end.show_standings(rows)
 
 
 # The signal light: "green" while the pull is good, "red" to stop, "off".
@@ -951,7 +1025,8 @@ func _add_farmland(length_m: float, lane_m: float) -> void:
 	# beside it, in track space: no field reaches into it, since a field
 	# lies above the clay and would cover the lane.
 	var half_m := lane_m / 2.0 + FIELDS_CLEAR_OF_LANE_M
-	var keep_clear := Rect2(-RUN_UP_M, -half_m, RUN_UP_M + length_m + OVERRUN_M, 2.0 * half_m)
+	var keep_clear := Rect2(-RUN_UP_M, -half_m, RUN_UP_M + length_m + OVERRUN_M + END_CLEAR_M,
+			2.0 * half_m)
 	# Each field's circle (its centre and half its diagonal), so the next
 	# can be kept off it: fields that overlapped would fight for depth.
 	var taken: Array[Vector4] = []
