@@ -233,6 +233,7 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 			"bigger events, bigger crowds: %s" % people)
 	_expect(not banners["small"] and banners["club"] and banners["big"],
 			"no full-pull banner at a small pull: %s" % banners)
+	_check_track_end(venue, dimensions)
 	venue.set_look({"time": "nonsense", "size": "huge"})
 	_expect(venue.look()["size"] == "club" and venue.look()["time"] == "day",
 			"unknown looks fall back to a club event in the day")
@@ -246,6 +247,45 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 	# Back to the event's own look.
 	venue.set_look(_pull.get("event").get_event())
 	venue.build(dimensions)
+
+
+# Past the track's end: a pile of dirt across the track from 130 to 140 m
+# (on a 100 m track), the sound trailer behind it, at a club or big event a
+# generator and a big screen too. The screen follows the tractor during the
+# run and shows the standings after it. In the evening floodlights also
+# stand past the 120 m mark and over the parking.
+func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
+	var length_m := float(dimensions["track_length_m"])
+	for size: String in ["small", "club", "big"]:
+		venue.set_look({"size": size, "time": "day"})
+		venue.build(dimensions)
+		var end := venue.track_end()
+		_expect(end != null and end.pile_at_m() == Vector2(length_m + 30.0, length_m + 40.0),
+				"the pile at the track's end at a %s event: %s" % [size, end.pile_at_m()])
+		_expect(end.trailer_count() == (1 if size == "small" else 2)
+				and end.has_screen() == (size != "small"),
+				"%s event: %d trailers, screen %s" % [size, end.trailer_count(), end.has_screen()])
+		_expect(venue.floodlight_masts().is_empty(), "no floodlights in the day")
+	var end := venue.track_end()
+	venue.show_screen_live(TrackSpace.point(40.0, 0.0, 0.0), 1.0)
+	_expect(end.screen_mode() == "live", "the screen follows the run: %s" % end.screen_mode())
+	var rows: Array[PackedStringArray] = [PackedStringArray(["1.", "Henk", "96.20 m", "20"]),
+			PackedStringArray(["2.", "You", "95.10 m", "17"])]
+	venue.show_screen_standings(rows)
+	_expect(end.screen_mode() == "standings" and end.screen_lines().size() == 2
+			and end.screen_lines()[0].contains("Henk") and end.screen_lines()[0].contains("96.20 m"),
+			"the screen shows the standings after the run: %s" % end.screen_lines())
+	venue.set_look({"size": "club", "time": "evening"})
+	venue.set_parking_layout(0)
+	venue.build(dimensions)
+	var past_120 := false
+	var at_parking := 0
+	for mast in venue.floodlight_masts():
+		past_120 = past_120 or mast.x >= length_m + 20.0 + 1.0
+		at_parking += 1 if mast.x < -5.0 and mast.y < -float(dimensions["lane_width_m"]) / 2.0 \
+				- VenueView.PARKING_FROM_LANE_M.y else 0
+	_expect(past_120 and at_parking == VenueView.PARKING_LIGHTS_X_M.size(),
+			"evening lights past 120 m and over the parking: %s" % [venue.floodlight_masts()])
 
 
 # How many people a venue's crowds hold.
