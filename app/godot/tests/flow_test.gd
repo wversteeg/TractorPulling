@@ -343,6 +343,7 @@ func _play() -> void:
 	await _frames(2)
 	_expect(float(event.get_crew_report().get("start_y_m", 1.0)) == 0.0, "the sled back in the middle")
 	_check_hitch_slider(setup)
+	_check_crew_tip(setup, event)
 	_tap(setup.back_button)
 	await _frames(2)
 	_expect(start.visible and not setup.visible, "back to the start screen")
@@ -480,6 +481,29 @@ func _check_hitch_slider(setup: SetupScreen) -> void:
 	slider.visible = was_visible
 	_expect(top == 0.0 and is_equal_approx(lower, 0.44),
 			"the hitch's top hole is 0, a lower hole its height: %f, %f" % [top, lower])
+
+
+# The crew chief names the gear the crew's trials liked and, with the hitch
+# in its lowest hole, says to raise it; one hole up, the warning goes. Shown
+# for a tractor with a hitch to set, then the pit board put back as it was.
+# The event's own report names a gear of the class's, once the trials are
+# done.
+func _check_crew_tip(setup: SetupScreen, event: TractorPullEvent) -> void:
+	var tuning := {"hitch": true, "hitch_m": 0.40, "min_hitch_m": 0.40, "max_hitch_m": 0.50}
+	setup.show_setup("test", tuning, true, false, {"tip": "A fair track."}, "Test",
+			{"gear": 5})
+	var low := setup.tip_text()
+	tuning["hitch_m"] = 0.42
+	setup.show_values(tuning)
+	var up := setup.tip_text()
+	var crew := event.get_crew_report()
+	setup.show_setup("put back", event.get_tuning(), false, false, {}, "", crew)
+	_expect(low.contains("5th gear") and low.contains("Raise the hitch")
+			and low.contains("fair track") and up.contains("5th gear")
+			and not up.contains("Raise the hitch"),
+			"the crew chief's tip: %s | %s" % [low, up])
+	var gear := int(crew.get("gear", -1))
+	_expect(gear == 0 or (gear >= 1 and gear <= 8), "the crew's gear: %d" % gear)
 
 
 # The pump choice, from its pin: the spare pump bought (and fitted) with

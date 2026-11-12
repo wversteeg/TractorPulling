@@ -226,7 +226,7 @@ public:
     /// What the player's crew reports of the track's hard and weak spots
     /// before their next pull (field::LiveEvent::player_crew_report),
     /// sharper with every pull already pulled and in the pull-off:
-    /// {spots, uncertainty, pulls_seen, pull_off, suggested_y_m, max_y_m,
+    /// {spots, uncertainty, pulls_seen, pull_off, suggested_y_m, gear, max_y_m,
     /// start_y_m, lane_width_m, full_pull_m, rear_track_m,
     /// rear_tire_width_m, pan_half_width_m, along_error_m,
     /// across_error_m}; the last two say how far off a reported spot may
@@ -236,8 +236,12 @@ public:
     /// hard spot's extra drag, a weak spot's grip lost, as shares)}.
     /// `suggested_y_m` is where the crew would put the sled
     /// (crew::best_line_m), `max_y_m` how far off the middle it may go
-    /// either way, `start_y_m` where the player has put it. {} before an
-    /// event.
+    /// either way, `start_y_m` where the player has put it; `gear` the gear
+    /// the player's tractor, as tuned when the event started, went
+    /// furthest in at the event's gear trials
+    /// (field::LiveEvent::player_best_gear; 0 before them): set up
+    /// differently on the pit board, it may pull best in another. {}
+    /// before an event.
     [[nodiscard]] godot::Dictionary get_crew_report() const;
     /// Where the player puts the sled across the lane for their next pulls
     /// and practice pulls, to the left of the middle [m]; held to the

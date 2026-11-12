@@ -104,6 +104,10 @@ public:
     /// The gear each puller chose for the day (the player's is the field's
     /// guess for them, unused).
     [[nodiscard]] int gear(int puller) const noexcept;
+    /// The gear the player's tractor (as it was when the event was created)
+    /// went furthest in at the gear trials (gear_for_the_day), unlike
+    /// gear(), which is the field's guess for them; 0 before the trials.
+    [[nodiscard]] int player_best_gear() const noexcept { return player_best_gear_; }
     /// Every pull and decision so far, in order.
     [[nodiscard]] std::span<const LogEntry> log() const noexcept {
         return {log_.data(), log_size_};
@@ -168,6 +172,7 @@ private:
     int trial_puller_ = 0;
     int trial_gear_ = 0;
     int best_gear_ = 0;
+    int player_best_gear_ = 0;
     double best_m_ = -1.0;
     /// How far the trial puller's lowest gear went [m].
     double lowest_m_ = 0.0;
