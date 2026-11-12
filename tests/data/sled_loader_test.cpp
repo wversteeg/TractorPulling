@@ -290,8 +290,8 @@ TEST(SledLoader, ReportsABadBase) {
 }
 
 // Every class pulls the same sled, 15 t empty with a box for up to 11 t
-// (pulling_sled.toml); the classes differ in the box's weight, the heavier
-// the class the heavier the box.
+// (pulling_sled.toml); the classes differ in the box's weight and where
+// the push-down starts, the Sport 4.5 t's box the heaviest.
 TEST(SledLoader, EveryClassPullsTheSameSled) {
     const std::string dir = std::string{TP_DATA_DIR} + "/sleds/";
     const auto light = load_sled(dir + "light_class.toml");
@@ -307,7 +307,7 @@ TEST(SledLoader, EveryClassPullsTheSameSled) {
         EXPECT_EQ(sled->hook_ahead_of_wheels_m, light.value().hook_ahead_of_wheels_m);
         EXPECT_EQ(sled->wheel_count, light.value().wheel_count);
     }
-    EXPECT_LT(light.value().box_mass_kg, sport_25.value().box_mass_kg);
+    EXPECT_LT(light.value().box_mass_kg, sport_45.value().box_mass_kg);
     EXPECT_LT(sport_25.value().box_mass_kg, sport_45.value().box_mass_kg);
 }
 

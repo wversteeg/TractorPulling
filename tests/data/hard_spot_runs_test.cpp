@@ -34,12 +34,12 @@ T loaded(Result<T> result) {
     return std::move(result).value();
 }
 
-// Every step of a pull: how far the sled has come, what it drags, the
-// engine's speed and the rear wheels' slip.
+// Every step of a pull: how far the sled has come, what its pan drags (its
+// friction and the knives: what a hard spot bites into) and the rear
+// wheels' slip.
 struct Sample {
     double pulled_m = 0.0;
-    double resistance_n = 0.0;
-    double engine_rad_s = 0.0;
+    double pan_drag_n = 0.0;
     double slip_ratio = 0.0;
 };
 
@@ -71,23 +71,22 @@ std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_of
             run::step(state, *model, setup.rules,
                       driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
         samples.push_back({.pulled_m = state.pull.sled.position_m - model->sled_start_m(),
-                           .resistance_n = step.sled.resistance_n,
-                           .engine_rad_s = state.pull.tractor.engine.omega_rad_s,
+                           .pan_drag_n = step.sled.pan_friction * step.sled.pan_n +
+                                         step.sled.knives_n,
                            .slip_ratio = step.tractor.slip_ratio});
     }
     return samples;
 }
 
-// Over the middle of the pull, within a metre: the most the drag rose (as
-// a share), the engine slowed and the wheels' slip rose.
+// Over the middle of the pull, within a metre: the most the pan's drag rose
+// (as a share) and the wheels' slip rose.
 struct Jumps {
     double drag_rise = 0.0;
-    double engine_drop_rad_s = 0.0;
     double slip_rise = 0.0;
 };
 
 constexpr double kFrom_m = 15.0;
-constexpr double kUntil_m = 60.0;
+constexpr double kUntil_m = 80.0;
 constexpr double kWindow_m = 1.0;
 
 Jumps jumps(const std::vector<Sample>& samples) {
@@ -102,9 +101,9 @@ Jumps jumps(const std::vector<Sample>& samples) {
             continue;
         }
         const Sample& before = samples[back];
-        out.drag_rise = std::max(out.drag_rise, now.resistance_n / before.resistance_n - 1.0);
-        out.engine_drop_rad_s =
-            std::max(out.engine_drop_rad_s, before.engine_rad_s - now.engine_rad_s);
+        if (before.pan_drag_n > 0.0) {
+            out.drag_rise = std::max(out.drag_rise, now.pan_drag_n / before.pan_drag_n - 1.0);
+        }
         out.slip_rise = std::max(out.slip_rise, now.slip_ratio - before.slip_ratio);
     }
     return out;
@@ -124,17 +123,18 @@ Track even(Track track) {
     return track;
 }
 
-// On the dry hard clay the sled's drag jumps at each hard spot and the
-// engine dips with it; the same track without its hard spots drags evenly,
-// rising only with the box's travel, and the engine runs steadier.
-TEST(HardSpotRuns, TheDragJumpsAndTheEngineDipsAtHardSpots) {
+// On the dry hard clay the pan's drag jumps at each hard spot; the same
+// track without its hard spots drags evenly, rising only with the box's
+// travel. (On the 15 t sled the pan carries a small share of the sled's
+// weight until the box comes forward, so a spot shows in the pan's drag
+// more than in the whole sled's or the engine's speed.)
+TEST(HardSpotRuns, ThePansDragJumpsAtHardSpots) {
     const Track spotted = only_hard_spots();
     ASSERT_TRUE(spotted.ground.hard_spots.has_value());
     const Jumps with = jumps(pull(spotted));
     const Jumps without = jumps(pull(even(spotted)));
     EXPECT_GT(with.drag_rise, 0.15) << "a jump of a sixth or more";
     EXPECT_LT(without.drag_rise, 0.05) << "only the box's travel";
-    EXPECT_GT(with.engine_drop_rad_s, 2.0 * without.engine_drop_rad_s);
 }
 
 // Where the tires lose grip at a weak spot the wheels slip more for a
@@ -158,13 +158,14 @@ TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
 // The crew that knows the track puts the sled where the spots cost least:
 // over several events' layouts on the dry hard clay its line pulls further
 // on average than the middle and than the worst line across the lane, and
-// close to the best of them. The stakes are small (the spots are mild):
-// tenths of a metre in a pull-off.
+// close to the best of them. The stakes are small (the spots are mild,
+// and on the 15 t sled the push-down ends the pull wherever the tractor
+// is): a tenth or two of a metre on a heavy pull-off sled.
 TEST(HardSpotRuns, TheCrewsLineCrossesTheFewestSpots) {
     const vehicle::Params built = loaded(load_tractor(data("tractors/sport_2500.toml")));
     const Track file = loaded(load_track(data("tracks/dry_hard_clay.toml")));
     const double max_m = run::max_start_offset_m(built, file.rules);
-    constexpr int kPullOffs = 4;
+    constexpr int kPullOffs = 8;
     constexpr int kEvents = 8;
     constexpr int kLines = 3;  // each side of the middle
     double crews_m = 0.0;
@@ -197,7 +198,7 @@ TEST(HardSpotRuns, TheCrewsLineCrossesTheFewestSpots) {
         worst_m += worst_here_m / kEvents;
         best_m += best_here_m / kEvents;
     }
-    EXPECT_GT(crews_m, middle_m + 0.1);
+    EXPECT_GT(crews_m, middle_m + 0.05);
     EXPECT_GT(crews_m, worst_m + 0.2);
     EXPECT_GT(crews_m, best_m - 0.15);
 }

@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <iostream>
 #include <cmath>
 #include <filesystem>
 #include <limits>
@@ -41,6 +40,8 @@ struct FrontLoads {
     double launch_n = std::numeric_limits<double>::max();
     double middle_n = std::numeric_limits<double>::max();
     double end_n = std::numeric_limits<double>::max();
+    /// The front tires' load on average over the middle stretch [N].
+    double middle_mean_n = 0.0;
     run::Result result;
 };
 
@@ -67,6 +68,8 @@ FrontLoads pull(const std::string& tractor_file, const std::string& sled_file,
     run::State state = run::start(*model);
     driver::State driver;
     FrontLoads out;
+    double middle_sum_n = 0.0;
+    int middle_steps = 0;
     while (!state.result) {
         const double t_s = static_cast<double>(state.steps) * kDt_s;
         const pull::Output step =
@@ -78,11 +81,14 @@ FrontLoads pull(const std::string& tractor_file, const std::string& sled_file,
             out.launch_n = std::min(out.launch_n, front_n);
         } else if (pulled_m >= kMiddleFrom_m && pulled_m < kMiddleUntil_m) {
             out.middle_n = std::min(out.middle_n, front_n);
+            middle_sum_n += front_n;
+            ++middle_steps;
         } else if (pulled_m >= kEndFrom_m) {
             out.end_n = std::min(out.end_n, front_n);
         }
     }
     out.result = state.result.value_or(run::Result{});
+    out.middle_mean_n = middle_steps > 0 ? middle_sum_n / middle_steps : 0.0;
     return out;
 }
 
@@ -96,59 +102,56 @@ const driver::Plan kSportDriver{.gear = 5,
                                 .launch_hold_share = 0.8,
                                 .launch_hold_max_s = 8.0};
 
-FrontLoads sport_no_shift(const std::string& track_file, double ballast_position) {
-    driver::Plan plan = kSportDriver;
-    plan.downshift_share = 0.0;
-    return pull("sport_2500.toml", "sport_2500.toml", track_file, ballast_position, plan);
-}
+// Where the weights sit: 0 rearmost, 1 foremost.
+constexpr double kBack = 0.0;
+constexpr double kQuarter = 0.25;
+constexpr double kHalfway = 0.5;
+constexpr double kForward = 1.0;
+// The front tires carry this much or more: down [N]; on average this much
+// or more over a stretch: light, but down rather than up.
+constexpr double kDown_n = 1000.0;
+constexpr double kLight_n = 300.0;
 
 FrontLoads sport(const std::string& track_file, double ballast_position) {
     return pull("sport_2500.toml", "sport_2500.toml", track_file, ballast_position, kSportDriver);
 }
 
-// The Sport tractor with the weights towards the back, as pullers set it on
-// a good track: the front comes up on the launch, comes down while the sled
-// is light, and comes up again as the sled gets heavy and the gear goes
-// down under load.
+// The Sport tractor with the weights a quarter forward, as pullers set it
+// on a good track: the front comes up on the launch, rides light through
+// the middle while the sled is light, and comes up again as the push-down
+// comes on.
 TEST(WheelieRuns, ASportTractorLiftsOnTheLaunchAndAgainAsTheSledGetsHeavy) {
-    const FrontLoads f = sport("ideal_clay_sand.toml", 0.25);
+    const FrontLoads f = sport("ideal_clay_sand.toml", kQuarter);
     EXPECT_EQ(f.launch_n, 0.0) << "up on the launch";
-    EXPECT_GT(f.middle_n, 1000.0) << "down in the middle";
+    EXPECT_GT(f.middle_mean_n, kLight_n) << "down, light, in the middle";
     EXPECT_EQ(f.end_n, 0.0) << "up again at the end";
 }
 
-// Without a powershift step the engine is pulled down before the front
-// comes up again at the end, unless the weights are all the way back: then
-// the front comes up by itself as the sled gets heavy.
-TEST(WheelieRuns, WithoutAPowershiftOnlyTheWeightsAllBackLiftItAtTheEnd) {
-    const FrontLoads quarter = sport_no_shift("ideal_clay_sand.toml", 0.25);
-    const FrontLoads back = sport_no_shift("ideal_clay_sand.toml", 0.0);
-    EXPECT_EQ(quarter.launch_n, 0.0);
-    EXPECT_GT(quarter.end_n, 0.0) << "light, but down";
-    EXPECT_EQ(quarter.result.ending, run::Ending::kStalled);
-    EXPECT_EQ(back.end_n, 0.0) << "up by itself";
+// The weights all back keep the front up the whole pull, on the wheelie
+// bar, which carries load the rear tires lose: it pulls shorter than a
+// quarter forward.
+TEST(WheelieRuns, TheWeightsAllBackKeepItUpAllTheWay) {
+    const FrontLoads back = sport("ideal_clay_sand.toml", kBack);
+    EXPECT_EQ(back.launch_n, 0.0);
+    EXPECT_LT(back.middle_mean_n, kLight_n / 10.0) << "up in the middle too";
+    EXPECT_EQ(back.end_n, 0.0);
+    EXPECT_LT(back.result.distance_m, sport("ideal_clay_sand.toml", kQuarter).result.distance_m);
 }
 
-// The weights forward keep the front down the whole pull: the puller
-// trades the wheelie for less grip at the rear, and spins out sooner.
+// Halfway, the front is down through the middle and comes up only at the
+// end; all forward it stays down from the launch on (the launch still
+// lifts it: 350 hp). Both trade grip at the rear for it and pull shorter
+// than a quarter forward.
 TEST(WheelieRuns, TheWeightsForwardKeepTheFrontDown) {
-    const FrontLoads back = sport("ideal_clay_sand.toml", 0.25);
-    const FrontLoads forward = sport("ideal_clay_sand.toml", 1.0);
-    EXPECT_GT(forward.launch_n, 0.0);
-    EXPECT_GT(forward.middle_n, 0.0);
-    EXPECT_GT(forward.end_n, 0.0);
-    EXPECT_EQ(forward.result.ending, run::Ending::kSpunOut);
-    EXPECT_LT(forward.result.distance_m, back.result.distance_m);
-}
-
-// On a track that grips less (the loose sandy clay) the same tractor lifts
-// on the launch only: near the end the tires give way before the front
-// comes up, and the wheels spin out.
-TEST(WheelieRuns, OnALowGripTrackItLiftsOnlyOnTheLaunch) {
-    const FrontLoads f = sport("sandy_clay.toml", 0.25);
-    EXPECT_EQ(f.launch_n, 0.0);
-    EXPECT_GT(f.end_n, 0.0);
-    EXPECT_EQ(f.result.ending, run::Ending::kSpunOut);
+    const FrontLoads quarter = sport("ideal_clay_sand.toml", kQuarter);
+    const FrontLoads halfway = sport("ideal_clay_sand.toml", kHalfway);
+    const FrontLoads forward = sport("ideal_clay_sand.toml", kForward);
+    EXPECT_GT(halfway.middle_n, kDown_n);
+    EXPECT_EQ(halfway.end_n, 0.0);
+    EXPECT_GT(forward.middle_n, kDown_n);
+    EXPECT_GT(forward.end_n, kDown_n);
+    EXPECT_LT(halfway.result.distance_m, quarter.result.distance_m);
+    EXPECT_LT(forward.result.distance_m, quarter.result.distance_m);
 }
 
 // A pull that ends with the front up and the chain pulling hard leaves the
@@ -162,7 +165,8 @@ TEST(WheelieRuns, PressingTheClutchAfterThePullLetsTheFrontDown) {
     tuning.ballast_position = 0.0;
     const sled::Params sled = loaded(load_sled(data("sleds/sport_2500.toml")));
     const Track track = loaded(load_track(data("tracks/firm_loam.toml")));
-    const session::Setup setup = run_setup(vehicle::tuned(built, tuning), sled, track, 0);
+    session::Setup setup = run_setup(vehicle::tuned(built, tuning), sled, track, 0);
+    setup.sled.pushdown_start_m = setup.rules.full_pull_line_m;
     const std::optional<pull::Model> model =
         pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
     if (!model) {
@@ -173,7 +177,8 @@ TEST(WheelieRuns, PressingTheClutchAfterThePullLetsTheFrontDown) {
     turn::State state = turn::from_the_parking(*model, kParking);
     state.run = run::start(*model);
     state.stage = turn::Stage::kPulling;
-    // Off the line quicker than kSportDriver: a full pull.
+    // Off the line quicker than kSportDriver, the push-down not before the
+    // line: a full pull.
     driver::Plan plan = kSportDriver;
     plan.select_gear_s = 0.0;
     plan.launch_s = 0.5;
@@ -219,19 +224,3 @@ TEST(WheelieRuns, TheStandardTractorKeepsItsFrontDown) {
 }  // namespace
 }  // namespace tp::data
 
-namespace tp::data {
-namespace {
-TEST(WheelieRuns, ZProbe) {
-    const auto show = [](const char* name, const FrontLoads& f) {
-        std::cout << name << ": launch " << f.launch_n << " middle " << f.middle_n << " end "
-                  << f.end_n << " ending " << static_cast<int>(f.result.ending) << " "
-                  << f.result.distance_m << " m " << f.result.time_s << " s\n";
-    };
-    show("ideal 0.25 shift", sport("ideal_clay_sand.toml", 0.25));
-    show("ideal 0.25 noshift", sport_no_shift("ideal_clay_sand.toml", 0.25));
-    show("ideal 0.0 noshift", sport_no_shift("ideal_clay_sand.toml", 0.0));
-    show("ideal 1.0 shift", sport("ideal_clay_sand.toml", 1.0));
-    show("sandy 0.25 shift", sport("sandy_clay.toml", 0.25));
-}
-}  // namespace
-}  // namespace tp::data

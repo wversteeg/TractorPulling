@@ -3,7 +3,7 @@
 base = "pulling_sled.toml"
 
 [sled.weight_box]
-mass_kg = 0.0
+mass_kg = 1000.0
 
 [sled.pushdown]
 start_m = 85.0
