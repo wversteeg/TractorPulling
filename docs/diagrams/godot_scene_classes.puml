@@ -97,9 +97,10 @@ package "GDScript (app/godot/scripts)" {
     +show_screen_standings(rows)
   }
   class TrackEnd {
-    the pile of dirt past the run-off, the trailers
-    behind it, a big screen at a club or big event
-    +build(length_m, lane_m, strip_m, shades, trailers, screen)
+    the pile of dirt past the run-off, the trailers and
+    pop-up tents behind it, a big screen at a club or big event
+    +build(length_m, lane_m, strip_m, shades, trailers, screen, tents)
+    +tent_count() : int
     +pile_at_m() : Vector2
     +trailer_count() : int
     +has_screen() : bool
@@ -132,6 +133,7 @@ package "GDScript (app/godot/scripts)" {
     +{static} material(colour, roughness, metallic) : StandardMaterial3D
     +{static} box(size, colour), cylinder(...), sphere(...)
     +{static} axle_cylinder(radius_m, width_m, colour)
+    +{static} rounded_box(size, radius_m, along, segments) : ArrayMesh
     +{static} many(mesh, transforms, material, colours, custom) : MultiMeshInstance3D
     +{static} label(text, size_px, colour, outline) : Label3D
     +{static} ground_texture(dark, light, frequency, seed) : NoiseTexture2D

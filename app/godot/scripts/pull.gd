@@ -668,9 +668,9 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
-	# The engine is heard on the track (the pull and its result), not
-	# behind the menus.
-	engine_sound.show_snapshot(_snapshot if screen in [Screen.PULLING, Screen.RESULT] else {})
+	# The engine is heard on the track during the turn, not behind the
+	# result or the menus: it fades out as the result comes up.
+	engine_sound.show_snapshot(_snapshot if screen == Screen.PULLING else {})
 	# The phone vibrates in the pull only (the driver's hands on it).
 	# Not while the restart choice is up: the run stands still then.
 	if screen == Screen.PULLING and not autoplay and not _choosing:

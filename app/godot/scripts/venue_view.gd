@@ -21,9 +21,9 @@
 # (celebrate()). The time of day sets the sky, the sun and, in the evening,
 # floodlights along the track, over the parking and at the track's end
 # (light()); the track's soil sets its colour (track_colours()). Past the
-# end a pile of dirt across the track, and the event's trailers behind it:
-# at a club or big event one with a big screen showing the run and the
-# standings (TrackEnd).
+# end a pile of dirt across the track, and the event's trailers and pop-up
+# tents behind it: at a club or big event a trailer with a big screen
+# showing the run and the standings (TrackEnd).
 #
 # The people, trees, tents, barn, flags and clouds are Kenney's CC0 models
 # (assets/kenney); the rest is built here. Copies of a thing are one
@@ -128,18 +128,20 @@ const PERSON_SCALE := 1.0
 # standing crowd's rows on the right and how full, whether the left fence
 # has a standing crowd too (where there is no grandstand), whether a banner
 # spans the full-pull line, a show for a full pull, the stand's sign, how
-# many trailers stand past the track's end and whether one is a big screen
-# (TrackEnd).
+# many trailers stand past the track's end, whether one is a big screen
+# and how many pop-up tents stand beside them (TrackEnd).
 const SIZES := {
 	"small": {"stand_rows": 0, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.0,
 			"standing_rows": 1, "standing_fill": 0.45, "left_crowd": true, "banner": false,
-			"show": false, "sign": "", "trailers": 1, "screen": false},
+			"show": false, "sign": "", "trailers": 1, "screen": false, "tents": 2},
 	"club": {"stand_rows": 4, "stand_along_m": Vector2(5.0, 95.0), "seat_fill": 0.75,
 			"standing_rows": 2, "standing_fill": 0.8, "left_crowd": false, "banner": true,
-			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL", "trailers": 2, "screen": true},
+			"show": false, "sign": "TRACTOR PULLING  ·  CLUB PULL", "trailers": 2, "screen": true,
+			"tents": 3},
 	"big": {"stand_rows": 7, "stand_along_m": Vector2(-5.0, 110.0), "seat_fill": 0.95,
 			"standing_rows": 3, "standing_fill": 0.95, "left_crowd": false, "banner": true,
-			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX", "trailers": 2, "screen": true},
+			"show": true, "sign": "TRACTOR PULLING  ·  GRAND PRIX", "trailers": 2, "screen": true,
+			"tents": 4},
 }
 # The track's colour: sand's and clay's, mixed by the soil's clay, and a
 # wet track darker, by this much per unit of moisture.
@@ -285,7 +287,8 @@ func build(d: Dictionary) -> void:
 		add_child(_track_end)
 		_track_end.build(length_m, lane_m, lane_m + 2.0 * CLAY_PAST_LANE_M,
 				track_colours(float(_look["clay_fraction"]), float(_look["moisture"])),
-				int(_size()["trailers"]), bool(_size()["screen"]))
+				int(_size()["trailers"]), bool(_size()["screen"]),
+				int(_size()["tents"]))
 		_add_scenery(length_m, lane_m)
 		_add_farmland(length_m, lane_m)
 		_add_horizon(length_m)
