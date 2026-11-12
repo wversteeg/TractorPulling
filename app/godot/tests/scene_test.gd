@@ -199,6 +199,7 @@ func _check() -> void:
 	_expect(camera.global_position.distance_to(tractor.global_position) < 50.0,
 			"the camera follows the tractor")
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
+	_check_pulling_look(dimensions)
 
 
 # The rev counter's ticks at or past the engine's high idle.
@@ -288,6 +289,21 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 				- VenueView.PARKING_FROM_LANE_M.y else 0
 	_expect(past_120 and at_parking == VenueView.PARKING_LIGHTS_X_M.size(),
 			"evening lights past 120 m and over the parking: %s" % [venue.floodlight_masts()])
+
+
+# A tractor behind a roll bar (the Sport classes) is drawn as a pulling
+# tractor, one with a cab as a farm tractor: the run's tractor here is the
+# farm one.
+func _check_pulling_look(dimensions: Dictionary) -> void:
+	var farm: TractorView = _pull.get("tractor_view")
+	_expect(not farm.pulling_look, "the farm tractor drawn as one")
+	var pulling := TractorView.new()
+	root.add_child(pulling)
+	var d := dimensions.duplicate()
+	d["protection"] = "roll_bar"
+	pulling.build(d)
+	_expect(pulling.pulling_look, "a roll-bar tractor drawn as a pulling tractor")
+	pulling.free()
 
 
 # How many people a venue's crowds hold.
