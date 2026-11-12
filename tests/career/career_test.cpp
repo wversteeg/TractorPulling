@@ -140,24 +140,14 @@ TEST(Career, ValidatesTheMinimumSeasons) {
               ParamError::kMinSeasonsOutOfRange);
 }
 
-// Two seasons on every rung, the first two moving up (the tractor path's).
-constexpr Ladder kTwoSeasonsTopTwo{.rungs = 27, .promotion_place = 2, .min_seasons = 2};
-
-TEST(Career, AChampionshipWonInTheFirstSeasonOpensTheRungAtOnce) {
+TEST(Career, ATitleInTheFirstSeasonOpensTheRungAfterTheSecond) {
     Progress p;
-    EXPECT_TRUE(finish_season(p, kTwoSeasonsTopTwo, 1));
-    EXPECT_TRUE(may_move_up(p));
-    EXPECT_EQ(p.unlocked, 1);
-}
-
-TEST(Career, ASecondPlaceInTheFirstSeasonOpensTheRungAfterTheSecond) {
-    Progress p;
-    EXPECT_FALSE(finish_season(p, kTwoSeasonsTopTwo, 2));
+    EXPECT_FALSE(finish_season(p, kTwoSeasons, 1));
     EXPECT_TRUE(p.title);
     EXPECT_EQ(p.seasons, 1);
     EXPECT_FALSE(may_move_up(p));
     // The second season opens it, whatever its place.
-    EXPECT_TRUE(finish_season(p, kTwoSeasonsTopTwo, 6));
+    EXPECT_TRUE(finish_season(p, kTwoSeasons, 6));
     EXPECT_TRUE(may_move_up(p));
 }
 
@@ -175,13 +165,13 @@ TEST(Career, NoTitleNoRungHoweverManySeasons) {
 
 TEST(Career, MovingUpStartsTheNewRungsSeasonsAfresh) {
     Progress p;
-    ASSERT_TRUE(finish_season(p, kTwoSeasonsTopTwo, 1));
+    finish_season(p, kTwoSeasons, 1);
+    ASSERT_TRUE(finish_season(p, kTwoSeasons, 1));
     ASSERT_TRUE(move_up(p));
     EXPECT_EQ(p.seasons, 0);
     EXPECT_FALSE(p.title);
-    // A second place on the new rung counts its seasons from there.
-    EXPECT_FALSE(finish_season(p, kTwoSeasonsTopTwo, 2));
-    EXPECT_TRUE(finish_season(p, kTwoSeasonsTopTwo, 3));
+    EXPECT_FALSE(finish_season(p, kTwoSeasons, 1));
+    EXPECT_TRUE(finish_season(p, kTwoSeasons, 1));
     EXPECT_EQ(p.unlocked, 2);
 }
 
