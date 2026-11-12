@@ -28,8 +28,8 @@ const SMOKE := Color(0.16, 0.16, 0.16, 0.8)
 const DIRT := Color(0.45, 0.31, 0.19)
 const DUST := Color(0.66, 0.54, 0.42)
 # A pulling tractor's bonnet: the dark of its lower panels and grille
-# (its top is the look's trim), its width and height and how round it is, how far its
-# top falls to the nose [m, rad]; its lamp strips; the rear rims' discs.
+# (its top is the look's trim), its width and height and how round it is,
+# how far its top falls to the nose [m, rad]; its lamp strips.
 const BONNET_DARK := Color(0.08, 0.08, 0.09)
 const BONNET_WIDTH_M := 0.72
 const BONNET_TOP_M := 0.82        # its back top edge, above the rear axle

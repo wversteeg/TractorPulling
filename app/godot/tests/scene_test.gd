@@ -342,7 +342,7 @@ func _check_class_looks(dimensions: Dictionary) -> void:
 			var rival := look.rival(i)
 			_expect(rival.trim == look.trim and rival.rim == look.rim,
 					"%s's rivals in its trim" % class_label)
-			_expect(TractorLook._distance(rival.paint, look.paint) >= TractorLook.TOO_CLOSE,
+			_expect(TractorLook.distance(rival.paint, look.paint) >= TractorLook.TOO_CLOSE,
 					"%s's rival %d unlike the player: %s" % [class_label, i, rival.paint])
 			_expect(not rivals.has(rival.paint), "%s's rivals each their own paint" % class_label)
 			rivals.append(rival.paint)

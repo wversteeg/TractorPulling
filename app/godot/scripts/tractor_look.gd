@@ -80,8 +80,10 @@ static func for_class(class_label: String, protection: String) -> TractorLook:
 func rival(i: int) -> TractorLook:
 	var paints: Array[Color] = []
 	for colour: Color in RIVAL_PAINTS:
-		if _distance(colour, paint) >= TOO_CLOSE:
+		if distance(colour, paint) >= TOO_CLOSE:
 			paints.append(colour)
+	# Enough left for every bay, each its own (VenueView.RIVAL_BAYS).
+	assert(paints.size() >= VenueView.RIVAL_BAYS, "too few rival paints unlike %s" % paint)
 	var other := TractorLook.new()
 	other.name = name
 	other.paint = paints[i % paints.size()]
@@ -95,5 +97,6 @@ func rival(i: int) -> TractorLook:
 	return other
 
 
-static func _distance(a: Color, b: Color) -> float:
+# How far apart two paints are (RGB distance).
+static func distance(a: Color, b: Color) -> float:
 	return Vector3(a.r - b.r, a.g - b.g, a.b - b.b).length()
