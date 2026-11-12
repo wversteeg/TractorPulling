@@ -208,6 +208,9 @@ void LiveEvent::finish_trial(double reached_m) noexcept {
 void LiveEvent::choose(const GearTrial& day) noexcept {
     const auto at = static_cast<std::size_t>(trial_puller_);
     event_.expect(trial_puller_, day.distance_m);
+    if (trial_puller_ == player_) {
+        player_best_gear_ = day.gear;
+    }
     const int guess = guess_gear(field_.pullers[at], day.gear, variation_.lowest_gear,
                                  variation_.highest_gear, guesses_);
     field_.pullers[at].driver.gear = guess;

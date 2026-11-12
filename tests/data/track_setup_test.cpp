@@ -21,6 +21,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace tp::field {
@@ -32,10 +33,11 @@ namespace {
 // is due (the field's first event on that track), until the sled stops.
 class SportSetup {
 public:
-    SportSetup() : season_(load("sport_4500_top.toml")), built_(built(season_)) {}
+    explicit SportSetup(const char* season_file = "sport_4500_top.toml")
+        : season_(load(season_file)), built_(built(season_)) {}
 
     double reach_m(const std::string& round, double ballast_position, double pressure_bar = 1.0,
-                   int heavier_steps = 0) const {
+                   int heavier_steps = 0, std::optional<double> hitch_m = std::nullopt) const {
         const data::SeasonRound& r = round_named(round);
         const data::EventDefinition& e = season_.event;
         Venue venue = data::venue(e.sled, r.track);
@@ -47,6 +49,9 @@ public:
         vehicle::Tuning tuning = vehicle::as_built(built_);
         tuning.ballast_position = ballast_position;
         tuning.rear_tire_pressure_bar = pressure_bar;
+        if (hitch_m) {
+            tuning.hitch_height_m = *hitch_m;
+        }
         Puller puller = e.reference;
         puller.tractor = vehicle::tuned(built_, tuning);
         const std::optional<GearTrial> trial = best_gear_trial(
@@ -58,7 +63,8 @@ public:
         return trial->distance_m;
     }
 
-    // The season's rounds.
+    // The tractor's lowest hitch hole [m], and the season's rounds.
+    [[nodiscard]] double lowest_hitch_m() const { return built_.chassis.hitch_min_height_m; }
     [[nodiscard]] const std::vector<data::SeasonRound>& rounds() const { return season_.rounds; }
 
 private:
@@ -130,12 +136,18 @@ constexpr double kForward = 1.0;
 // More than the spot on the track decides [m].
 constexpr double kClearly_m = 3.0;
 
-// The season's tracks, each once (every track file has its own tip).
-std::vector<std::string> distinct_tracks(const SportSetup& sport) {
+// The season's rounds on different tracks, by their ground (the soil's
+// make-up and the track's grip), not their names: a track may come round
+// twice in a season under another name.
+std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
     std::vector<std::string> names;
-    std::set<std::string> tips;
+    std::set<std::tuple<double, double, double, double>> grounds;
     for (const data::SeasonRound& round : sport.rounds()) {
-        if (tips.insert(round.track.setup_tip).second) {
+        const track::Params& ground = round.track.ground;
+        if (grounds
+                .insert({ground.soil.clay_fraction, ground.soil.moisture, ground.soil.compaction,
+                         ground.grip_scale})
+                .second) {
             names.push_back(round.name);
         }
     }
@@ -147,7 +159,7 @@ std::vector<std::string> distinct_tracks(const SportSetup& sport) {
 // wheelie bar taking load off them.
 TEST(TrackSetup, AQuarterForwardPullsFurthestOnEveryTrack) {
     const SportSetup sport;
-    for (const std::string& track : distinct_tracks(sport)) {
+    for (const std::string& track : rounds_on_their_own_tracks(sport)) {
         const double quarter_m = sport.reach_m(track, kQuarter);
         for (const double elsewhere : {kBack, kHalfway, kForward}) {
             EXPECT_GT(quarter_m, sport.reach_m(track, elsewhere)) << track << ", " << elsewhere;
@@ -195,6 +207,43 @@ TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
     const char* clay_sand = "Clay-sand";
     EXPECT_GT(reach(clay_sand, kReference_bar), reach(clay_sand, kSoft_bar) + 1.5);
     EXPECT_GT(reach(clay_sand, kReference_bar), reach(clay_sand, kHard_bar));
+}
+
+// The lowest hitch hole takes most of the sled's pull off the rear tires:
+// at every level of the class, on every track, with the weights back,
+// halfway or well forward, the top hole pulls clearly further. So the crew
+// chief may always say to raise a hitch in its lowest hole (U-23). (The
+// holes between are another matter: with the weights all back on a grippy
+// track the top hole stands the tractor on its wheelie bar, and one a
+// little lower pulls further.) On a sled heavy enough that the tractor
+// stops short of the line, where a setting shows.
+TEST(TrackSetup, TheLowestHitchHoleNeverPullsFurthest) {
+    constexpr double kAsBuilt_bar = 1.0;
+    // Further than a pull-to-pull difference [m].
+    constexpr double kFurther_m = 0.5;
+    // Short of the pull-off's line: the run's limit hides the rest [m].
+    constexpr double kShortOfTheLine_m = 115.0;
+    constexpr int kStepsAtATime = 2;
+    constexpr int kMostSteps = 16;
+    for (const char* season :
+         {"sport_4500_belofte.toml", "sport_4500_promo.toml", "sport_4500_top.toml"}) {
+        const SportSetup sport{season};
+        for (const std::string& round : rounds_on_their_own_tracks(sport)) {
+            for (const double ballast : {kBack, kHalfway, kThreeQuarters}) {
+                int steps = 0;
+                double top_m = sport.reach_m(round, ballast, kAsBuilt_bar, steps);
+                while (top_m > kShortOfTheLine_m && steps < kMostSteps) {
+                    steps += kStepsAtATime;
+                    top_m = sport.reach_m(round, ballast, kAsBuilt_bar, steps);
+                }
+                const auto at_hole = [&](double hole_m) {
+                    return sport.reach_m(round, ballast, kAsBuilt_bar, steps, hole_m);
+                };
+                EXPECT_GT(top_m, at_hole(sport.lowest_hitch_m()) + kFurther_m)
+                    << season << ", " << round << ", weights at " << ballast;
+            }
+        }
+    }
 }
 
 }  // namespace
