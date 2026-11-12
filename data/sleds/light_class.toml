@@ -2,8 +2,16 @@
 [sled]
 base = "pulling_sled.toml"
 
+# Far back at the start, under the operator's cab, the box takes some of
+# the frame's weight off the pan, and two knives cut: a new farm tractor
+# on its farm drawbar (0.40 m) and worn tires gets the 15 t sled going,
+# on a wet start too.
 [sled.weight_box]
-mass_kg = 1000.0
+mass_kg = 1500.0
+start_ahead_of_wheels_m = -4.0
 
 [sled.pushdown]
 start_m = 90.0
+
+[sled.knives]
+count = 1

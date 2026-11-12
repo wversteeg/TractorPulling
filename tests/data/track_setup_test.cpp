@@ -238,6 +238,7 @@ TEST(TrackSetup, TheLowestHitchHoleCostsEverywhereButTheHeavyClay) {
     constexpr double kShortOfTheLine_m = 115.0;
     constexpr int kStepsAtATime = 2;
     constexpr int kMostSteps = 16;
+    int on_heavy_clay_rounds = 0;
     for (const char* season :
          {"sport_4500_belofte.toml", "sport_4500_promo.toml", "sport_4500_top.toml"}) {
         const SportSetup sport{season};
@@ -261,12 +262,14 @@ TEST(TrackSetup, TheLowestHitchHoleCostsEverywhereButTheHeavyClay) {
                     EXPECT_GT(top_m, lowest_m + kFurther_m)
                         << season << ", " << round << ", weights at " << ballast;
                 } else {
+                    ++on_heavy_clay_rounds;
                     EXPECT_GT(top_m, lowest_m - kAtMostShorter_m)
                         << season << ", " << round << ", weights at " << ballast;
                 }
             }
         }
     }
+    EXPECT_GT(on_heavy_clay_rounds, 0) << "the heavy clay's exception was never tried";
 }
 
 }  // namespace

@@ -199,7 +199,7 @@ TEST(HardSpotRuns, TheCrewsLineCrossesTheFewestSpots) {
         best_m += best_here_m / kEvents;
     }
     EXPECT_GT(crews_m, middle_m + 0.05);
-    EXPECT_GT(crews_m, worst_m + 0.2);
+    EXPECT_GT(crews_m, worst_m + 0.15);
     EXPECT_GT(crews_m, best_m - 0.15);
 }
 

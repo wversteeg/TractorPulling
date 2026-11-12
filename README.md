@@ -29,7 +29,7 @@ cmake --preset release && cmake --build --preset release
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 5 \
     --launch-hold 0.8 -o run.csv
-# run: 95.12 m, wheels spun out (42.3 s, top 10.7 km/h)
+# run: 95.04 m, wheels spun out (40.0 s, top 11.3 km/h)
 ```
 
 ### Steering
@@ -72,7 +72,7 @@ wanders out of its lane:
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 5 --launch-hold 0.8 \
     --steer-deg 0.5
-# run: 0.00 m, out of bounds: a tire touched the chalk line (29.6 s, top 10.7 km/h)
+# run: 0.00 m, out of bounds: a tire touched the chalk line (26.7 s, top 11.2 km/h)
 ```
 
 A pull is measured down the track. In the run CSV, `sled_distance_m` is how
@@ -100,14 +100,14 @@ clutch in by hand, but the sled stops with the engine running:
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml --gear 5 \
     --easy data/controls/easy.toml
-# run: 95.11 m, wheels spun out (39.7 s, top 10.7 km/h)
+# run: 95.04 m, wheels spun out (37.1 s, top 11.2 km/h)
 ```
 
 `--stick S` holds the steering control at S (-1 right to 1 left) from the
 launch. The middle 3 % either side is a dead zone, so a thumb resting on a
 touch slider steers straight, and the steering follows the control at a
 rate, as a driver turns a wheel (both in `easy.toml`): 0.05 is 1.2° of
-wheel angle, and leaves the lane about 14 s after the launch.
+wheel angle, and leaves the lane about 12 s after the launch.
 
 The pro layout's steering has the same dead zone and rate when the game
 plays it, from `data/controls/pro.toml`; `--pro data/controls/pro.toml`
@@ -129,12 +129,12 @@ the shipped tracks:
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/*.toml --gear 5 --launch-hold 0.8
 # track                         cone index   grip  fall-off  push-down  result
-# covered_heavy_clay                875 kPa   1.45      0.21     90.0 m  95.16 m, engine stalled
-# dry_hard_clay                    6000 kPa   1.20      0.19     80.0 m  86.60 m, engine stalled
-# firm_loam                        1943 kPa   1.30      0.24     90.0 m  95.83 m, engine stalled
-# ideal_clay_sand                  1485 kPa   1.00      0.22     90.0 m  95.12 m, wheels spun out
-# sandy_clay                       2107 kPa   0.92      0.26     90.0 m  94.59 m, wheels spun out
-# watered_start                     812 kPa   1.00      0.22     90.0 m  95.10 m, wheels spun out
+# covered_heavy_clay                875 kPa   1.45      0.21     90.0 m  94.72 m, engine stalled
+# dry_hard_clay                    6000 kPa   1.20      0.19     80.0 m  86.71 m, engine stalled
+# firm_loam                        1943 kPa   1.30      0.24     90.0 m  95.90 m, engine stalled
+# ideal_clay_sand                  1485 kPa   1.00      0.22     90.0 m  95.04 m, wheels spun out
+# sandy_clay                       2107 kPa   0.92      0.26     90.0 m  94.82 m, wheels spun out
+# watered_start                     812 kPa   1.00      0.22     90.0 m  95.07 m, wheels spun out
 ```
 
 Pulling tracks are clay mixes, prepared and covered when it rains, so they
@@ -155,10 +155,13 @@ Every class pulls the same sled (`data/sleds/pulling_sled.toml`), as in
 the Netherlands: 12.5 m long and 15 t empty, on eight wide tires (dual
 tandems), its weight box holding up to 11 t. Each class's sled file names
 it as its base and sets the box's weight and where the push-down starts
-(the light class and Sport 2.5 t 1 t in the box, Sport 4.5 t 8 t). Its
-own rolling (some 13 kN for the light class) is most of what a tractor
-pulls at the start. The weight box rides forward from just behind the
-rear wheels to over the pan along the first 88 m, so the drag grows
+(the light class 1.5 t in the box with one knife, Sport 2.5 t 1 t, Sport
+4.5 t 8 t). Its own rolling is most of what a tractor pulls at the start;
+for the light class and Sport 2.5 t the box starts at the sled's back,
+under the operator's cab, which takes weight off the pan, so a new
+tractor on its farm drawbar and worn tires gets it going (some 10 kN for
+the light class). The weight box rides forward to over the pan along
+the first 88 m, so the drag grows
 steadily. At the push-down (90 m on the light class's sled, 85 m on Sport
 2.5 t's, set per track and by the operator) the sled's rear wheels come
 off the track over 10 m and the pan takes the whole sled, so the drag
@@ -200,9 +203,9 @@ for bar in 0.7 1.0 1.6; do
       data/sleds/light_class.toml data/tracks/covered_heavy_clay.toml \
       data/tracks/dry_hard_clay.toml --gear 5 --launch-hold 0.8 --pressure $bar
 done
-# 0.7 bar: covered heavy clay 95.27 m, dry hard clay 86.57 m
-# 1.0 bar: covered heavy clay 95.16 m, dry hard clay 86.60 m
-# 1.6 bar: covered heavy clay 94.99 m, dry hard clay 86.59 m
+# 0.7 bar: covered heavy clay 94.84 m, dry hard clay 86.68 m
+# 1.0 bar: covered heavy clay 94.72 m, dry hard clay 86.71 m
+# 1.6 bar: covered heavy clay 94.53 m, dry hard clay 86.70 m
 ```
 
 `--ballast B` (0 rearmost, 1 foremost) and `--pressure BAR` tune the

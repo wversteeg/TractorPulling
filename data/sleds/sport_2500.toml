@@ -2,8 +2,12 @@
 [sled]
 base = "pulling_sled.toml"
 
+# Far back at the start, under the operator's cab, the box takes some of
+# the frame's weight off the pan: a new Sport tractor gets the 15 t sled
+# going on a loose or wet track too.
 [sled.weight_box]
 mass_kg = 1000.0
+start_ahead_of_wheels_m = -4.0
 
 [sled.pushdown]
 start_m = 85.0

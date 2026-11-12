@@ -20,6 +20,12 @@ select_gear_s = 0.5
 launch_s = 3.0
 clutch_slip_in_s = 3.0
 downshift_share = 0.9
+# On the 15 t sled the clutch comes up over clutch_slip_in_s, eased back
+# while the engine is below 80 % of its rated speed, for up to 8 s in all:
+# let in plainly, it stalls the farm engine before the sled moves,
+# worst on a wet start.
+launch_hold_share = 0.8
+launch_hold_max_s = 8.0
 
 # The field: tractors from barely improved to nearly all of the class's
 # garage (garages/standard_3500.toml), a few with a powershift. A new
