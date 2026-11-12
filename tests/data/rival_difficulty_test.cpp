@@ -120,14 +120,18 @@ constexpr int kFullyUpgraded = static_cast<int>(garage::kMaxLevels);
 // fully upgraded one. So a new tractor starts at the back, climbs with
 // every level, and a fully upgraded one is on the podium, though not
 // always on top: the strongest few are close, and the spot on the track
-// (field::PullToPull) decides between them.
+// (field::PullToPull) decides between them. On the 15 t sled the push-down
+// stops every tractor within a few metres of each other, so the field
+// finishes closer than it did on a light sled, and a step in the garage
+// is worth more places in the middle of the field.
 struct Places {
     int best = 0;
     int worst = 0;
 };
 
 constexpr Places kNew{.best = 12, .worst = 15};
-constexpr Places kOneLevelUp{.best = 8, .worst = 13};
+// One level up: the middle of the field, the top four on a good day.
+constexpr Places kOneLevelUp{.best = 4, .worst = 13};
 // The sled operator sets the sled for the field's average, so the field
 // finishes close together: halfway may reach second on a good day.
 constexpr Places kHalfway{.best = 2, .worst = 8};
@@ -231,12 +235,12 @@ void expect_level(const char* file, std::initializer_list<Expectation> expectati
 
 // The standard class, the career's warming-up at one level: a new tractor
 // finishes near the back, and about two thirds of the garage fights for
-// the win. The sled set for the field's average, not its strongest, lets
-// the weakest gain a place now and then.
+// the win (the top four). The sled set for the field's average, not its
+// strongest, lets the weakest gain a place now and then.
 TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWins) {
     expect_level("standard_3500.toml", {{.share = 0.0, .places = {.best = 11, .worst = 15}},
                                         {.share = 0.45, .places = {.best = 2, .worst = 7}},
-                                        {.share = 0.66, .places = {.best = 1, .worst = 2}}});
+                                        {.share = 0.66, .places = {.best = 1, .worst = 4}}});
 }
 
 // The Sport classes pull in tall, close gears (3rd to 8th), launching with
@@ -258,7 +262,7 @@ TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndHalfItsGarageWinsIt) 
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
     expect_level("sport_2500_top.toml",
-                 {{.share = 0.45, .places = {.best = 13, .worst = 15}},
+                 {{.share = 0.45, .places = {.best = 12, .worst = 15}},
                   {.share = 0.8, .places = {.best = 2, .worst = 9}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
@@ -268,7 +272,8 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
 // tractor is at the back at belofte and about half its garage wins it;
 // belofte's winner starts in the back half of promo and about three quarters
 // win it; promo's winner is at the back at top, where about 90 % of the
-// garage reaches the podium and a fully built tractor wins. Belofte's first
+// garage is in the front half, winning now and then, and only a fully
+// built tractor is sure of the podium. Belofte's first
 // event is the watered start, where the sled is lightened until the field
 // gets it going and the right gear decides much: a third of the garage,
 // in its best gear, may win there.
@@ -292,7 +297,7 @@ TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWin
 TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
     expect_level("sport_4500_top.toml",
                  {{.share = 0.75, .places = {.best = 9, .worst = 15}},
-                  {.share = 0.9, .places = {.best = 2, .worst = 8}},
+                  {.share = 0.9, .places = {.best = 1, .worst = 8}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }

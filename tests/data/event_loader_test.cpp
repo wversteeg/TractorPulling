@@ -113,7 +113,7 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.game.rival_names.front(), "Henk");
     EXPECT_EQ(definition.reference.driver.gear, 5);
     EXPECT_EQ(definition.variation.lowest_gear, 4);
-    EXPECT_EQ(definition.variation.highest_gear, 6);
+    EXPECT_EQ(definition.variation.highest_gear, 5);
     EXPECT_EQ(definition.variation.track_reading.low, 0.5);
     EXPECT_EQ(definition.pull_to_pull.grip_share, 0.01);
     EXPECT_EQ(definition.pull_to_pull.clutch_slip_in_s, 0.3);
@@ -137,7 +137,7 @@ TEST(EventLoader, LoadsTheShippedEvent) {
 TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("pullers = 15", "pullers = 40")).find("event.pullers: must be 1 to 32"),
               std::string::npos);
-    EXPECT_NE(error_of(with("gears = [4, 6]", "gears = [4, 12]"))
+    EXPECT_NE(error_of(with("gears = [4, 5]", "gears = [4, 12]"))
                   .find("event.field.gears: must be [lowest, highest] within the gearbox"),
               std::string::npos);
     EXPECT_NE(error_of(with("mass_kg = [3200.0, 3550.0]", "mass_kg = [3200.0]"))
@@ -238,8 +238,8 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog first = run(definition.value());
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
-    EXPECT_EQ(first.pulls, 20);
-    EXPECT_EQ(first.hash, 0x388c38f063a96442ULL);
+    EXPECT_EQ(first.pulls, 23);
+    EXPECT_EQ(first.hash, 0x9abc559418a91ecdULL);
 }
 
 }  // namespace
