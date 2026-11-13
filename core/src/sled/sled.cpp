@@ -117,6 +117,23 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     return std::nullopt;
 }
 
+// The push-down's start, ramp and shares (finite: checked first).
+std::optional<ParamError> pushdown_error(const Params& params) noexcept {
+    if (params.pushdown_start_m < 0.0) {
+        return ParamError::kPushdownStartNegative;
+    }
+    if (params.pushdown_ramp_m <= 0.0) {
+        return ParamError::kPushdownRampNotPositive;
+    }
+    if (params.pushdown_most_pan_share <= 0.0 || params.pushdown_most_pan_share > 1.0) {
+        return ParamError::kPushdownShareOutOfRange;
+    }
+    if (params.pan_held_share < 0.0 || params.pan_held_share >= 1.0) {
+        return ParamError::kPanHeldShareOutOfRange;
+    }
+    return std::nullopt;
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const Params& params) noexcept {
@@ -160,17 +177,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto error = layout_error(params)) {
         return error;
     }
-    if (params.pushdown_start_m < 0.0) {
-        return ParamError::kPushdownStartNegative;
-    }
-    if (params.pushdown_ramp_m <= 0.0) {
-        return ParamError::kPushdownRampNotPositive;
-    }
-    if (!(params.pushdown_most_pan_share > 0.0) || params.pushdown_most_pan_share > 1.0) {
-        return ParamError::kPushdownShareOutOfRange;
-    }
-    if (!(params.pan_held_share >= 0.0 && params.pan_held_share < 1.0)) {
-        return ParamError::kPanHeldShareOutOfRange;
+    if (const auto error = pushdown_error(params)) {
+        return error;
     }
     if (params.pan_friction_coefficient <= 0.0 ||
         params.pan_friction_coefficient > kMaxPanFrictionCoefficient) {
