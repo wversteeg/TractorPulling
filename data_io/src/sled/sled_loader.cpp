@@ -43,6 +43,11 @@ FieldError describe(sled::ParamError error) {
                     "too far behind the wheels: the sled would tip onto its tail"};
         case ParamError::kBoxTravelNotPositive:
             return {"sled.weight_box.travel_distance_m", "must be > 0"};
+        case ParamError::kBoxGearboxInvalid:
+            return {"sled.weight_box.gearbox", "first_m and step_m must be > 0, gears 1 to 16"};
+        case ParamError::kBoxTravelNotAGear:
+            return {"sled.weight_box.travel_distance_m",
+                    "must be one of the gearbox's settings (first_m + n step_m)"};
         case ParamError::kHookInvalid:
             return {"sled.hook", "position and height must be > 0"};
         case ParamError::kPushdownStartNegative:
@@ -87,12 +92,16 @@ FieldError describe(sled::ParamError error) {
 }
 
 constexpr std::string_view kWheels = "sled.wheels";
+constexpr std::string_view kGearbox = "sled.weight_box.gearbox";
 
 Result<sled::Params> read_sled(const toml::table& root, std::string_view source) {
     detail::Reader reader{root, source};
     const std::int64_t wheel_count = reader.integer("sled.wheels.count");
     const std::int64_t knife_count = reader.integer("sled.knives.count");
     const std::int64_t step_knives = reader.integer("sled.pull_off_step.knives");
+    // Optional: a sled without a gearbox lets its box take any travel.
+    const bool has_gearbox = static_cast<bool>(root.at_path(kGearbox));
+    const std::int64_t gears = has_gearbox ? reader.integer("sled.weight_box.gearbox.gears") : 0;
     sled::Params params{
         .frame_mass_kg = reader.number("sled.frame_mass_kg"),
         .frame_cg_ahead_of_wheels_m = reader.number("sled.frame_cg_ahead_of_wheels_m"),
@@ -105,6 +114,12 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .box_start_ahead_of_wheels_m = reader.number("sled.weight_box.start_ahead_of_wheels_m"),
         .box_end_ahead_of_wheels_m = reader.number("sled.weight_box.end_ahead_of_wheels_m"),
         .box_travel_distance_m = reader.number("sled.weight_box.travel_distance_m"),
+        .box_gearbox =
+            {
+                .first_m = has_gearbox ? reader.number("sled.weight_box.gearbox.first_m") : 0.0,
+                .step_m = has_gearbox ? reader.number("sled.weight_box.gearbox.step_m") : 0.0,
+                .gears = 0,  // checked below
+            },
         .pushdown_start_m = reader.number("sled.pushdown.start_m"),
         .pushdown_ramp_m = reader.number("sled.pushdown.ramp_m"),
         .pushdown_most_pan_share =
@@ -158,6 +173,10 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         return detail::make_error(source, "sled.pull_off_step.knives", "must be 0 to 24");
     }
     params.pull_off_step.knives = static_cast<int>(step_knives);
+    if (has_gearbox && (gears < 1 || gears > sled::kMaxBoxGears)) {
+        return detail::make_error(source, "sled.weight_box.gearbox.gears", "must be 1 to 16");
+    }
+    params.box_gearbox.gears = static_cast<int>(gears);
     if (const auto tire_error = tire::validate(params.wheel)) {
         const detail::TireFieldError field_error = detail::describe(*tire_error);
         return detail::make_error(source, detail::field_path(kWheels, field_error.field),

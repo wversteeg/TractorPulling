@@ -19,6 +19,7 @@ inline Params reference_params() {
         .box_start_ahead_of_wheels_m = -0.5,
         .box_end_ahead_of_wheels_m = 3.0,
         .box_travel_distance_m = 88.0,
+        .box_gearbox = {},
         .pushdown_start_m = 78.0,
         .pushdown_ramp_m = 10.0,
         .pan_friction_coefficient = 0.46,

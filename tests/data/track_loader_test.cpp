@@ -35,6 +35,9 @@ value = [0.8, 0.6]
 
 [track.pushdown]
 start_m = 70.0
+
+[track.weight_box]
+travel_distance_m = 80.0
 )";
 
 constexpr std::string_view kGrippyTrack = R"(
@@ -115,6 +118,7 @@ TEST(TrackLoader, ParsesValues) {
     EXPECT_EQ(track::composition_at(track.ground, 40.0).moisture, 0.22);
     EXPECT_EQ(track::composition_at(track.ground, 100.0).compaction, 0.6);
     EXPECT_EQ(track.sled.pushdown_start_m, 70.0);
+    EXPECT_EQ(track.sled.box_travel_distance_m, 80.0);
 }
 
 // Profiles and push-down are optional: without them the soil holds
@@ -124,6 +128,7 @@ TEST(TrackLoader, ProfileAndPushdownAreOptional) {
     ASSERT_TRUE(result.ok()) << result.error().message;
     EXPECT_FALSE(result.value().ground.moisture_along_m.has_value());
     EXPECT_FALSE(result.value().sled.pushdown_start_m.has_value());
+    EXPECT_FALSE(result.value().sled.box_travel_distance_m.has_value()) << "the class's gear";
     EXPECT_EQ(result.value().ground.grip_scale, 1.0) << "a well-prepared track's grip";
     EXPECT_EQ(result.value().setup_tip, "") << "no tip";
 }
@@ -234,7 +239,7 @@ TEST(TrackLoader, RejectsNonsense) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 11> cases = {{
+    const std::array<Case, 12> cases = {{
         {"lane_width_m = 11.0", "lane_width_m = 0.0", "t.toml: track.lane_width_m: must be > 0"},
         {"lane_width_m = 11.0", "", "track.lane_width_m: missing or not a number"},
         {"length_m = 100.0", "length_m = -5.0", "t.toml: track.length_m: must be > 0"},
@@ -250,6 +255,8 @@ TEST(TrackLoader, RejectsNonsense) {
         {"start_m = 70.0", "start_m = -1.0", "track.pushdown.start_m: must be >= 0"},
         {"start_m = 70.0", "start_m = \"early\"",
          "track.pushdown.start_m: missing or not a number"},
+        {"travel_distance_m = 80.0", "travel_distance_m = 0.0",
+         "track.weight_box.travel_distance_m: must be > 0"},
     }};
     for (const Case& c : cases) {
         const auto result = parse_track(with(c.from, c.to), "t.toml");

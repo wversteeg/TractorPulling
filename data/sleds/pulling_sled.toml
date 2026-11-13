@@ -53,12 +53,19 @@ depth_m = 1.0
 
 # The box starts just behind the wheels, where its weight takes some off
 # the pan for the start (no further back than the sled balances with a
-# full box), and rides forward over the pan.
+# full box), and rides forward over the pan. Its gearbox sets the sled
+# travel by which it reaches its end: 75, 80, 85 or 90 m, chosen per event
+# (a track may set it: track.weight_box.travel_distance_m).
 [sled.weight_box]
 max_mass_kg = 11000.0
 start_ahead_of_wheels_m = -0.65
 end_ahead_of_wheels_m = 5.5
-travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop while the push-down comes on
+travel_distance_m = 90.0             # at its stop while the push-down comes on
+
+[sled.weight_box.gearbox]
+first_m = 75.0
+step_m = 5.0
+gears = 4
 
 # Engages at a set distance on the track, chosen per class and per event
 # from the test pull and the track's state, and presses the pan down over

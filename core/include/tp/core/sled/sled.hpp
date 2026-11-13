@@ -54,6 +54,18 @@ struct Berm {
     double friction_coefficient = 0.0;
 };
 
+/// The weight box's gearbox: the sled operator chooses the sled travel by
+/// which the box reaches its end, from first_m in steps of step_m, one of
+/// `gears` settings (a Dutch sled's: 75, 80, 85 or 90 m). No gears: a sled
+/// without a gearbox, whose box may take any travel.
+struct BoxGearbox {
+    double first_m = 0.0;
+    double step_m = 0.0;
+    int gears = 0;
+};
+
+inline constexpr int kMaxBoxGears = 16;
+
 inline constexpr int kMaxKnives = 24;
 /// Knives deeper than this would dig the pan in: a data error [m].
 inline constexpr double kMaxKnifeDepth_m = 0.15;
@@ -81,9 +93,10 @@ inline constexpr double kPanHalfWidth_m = 1.0;
 /// wheels' contact.
 ///
 /// The weights are shared between the wheels and the pan by their levers,
-/// quasi-statically (the sled does not pitch). The chain's pull at the hook
-/// height presses the pan down, its vertical part lifts or presses the
-/// front. As the box moves forward, more weight goes onto the pan, which
+/// quasi-statically (the sled does not pitch). The hook is on the pan's
+/// front: the chain's pull at the hook height presses the pan down, and
+/// its vertical part lifts or presses the pan itself, one for one, leaving
+/// the wheels' load as it was. As the box moves forward, more weight goes onto the pan, which
 /// drags far harder than the wheels roll. At a set distance the push-down
 /// engages: over a short ramp it presses the pan down and takes the weight
 /// off the wheels, until the pan carries its set share of the sled (all of
@@ -127,8 +140,10 @@ struct Params {
     double box_max_mass_kg = 0.0;
     double box_start_ahead_of_wheels_m = 0.0;
     double box_end_ahead_of_wheels_m = 0.0;
-    /// Sled travel over which the box moves from start to end [m].
+    /// Sled travel over which the box moves from start to end: one of the
+    /// gearbox's settings, where it has one [m].
     double box_travel_distance_m = 0.0;
+    BoxGearbox box_gearbox;
     /// Sled travel at which the push-down starts to engage [m]; set per
     /// event from the test pull and the track's state.
     double pushdown_start_m = 0.0;
@@ -176,6 +191,11 @@ enum class ParamError : std::uint8_t {
     /// gravity is behind them: it would sit on its tail.
     kSledTipsBack,
     kBoxTravelNotPositive,
+    /// The gearbox's first setting or step is not positive, or it has
+    /// more than kMaxBoxGears gears.
+    kBoxGearboxInvalid,
+    /// The box's travel is not one of the gearbox's settings.
+    kBoxTravelNotAGear,
     kHookInvalid,
     kPushdownStartNegative,
     kPushdownRampNotPositive,
@@ -204,10 +224,12 @@ inline constexpr double kMaxWheelRollingLosses = 0.2;
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
 /// What the day's track changes about a class's sled: the sled operator
-/// keeps the class's sled but may set the push-down for the track's state.
+/// keeps the class's sled but may set the push-down, and the weight box's
+/// gear (the travel by which it reaches its end), for the track's state.
 /// Unset keeps the sled's value.
 struct Conditions {
     std::optional<double> pushdown_start_m;
+    std::optional<double> box_travel_distance_m;
 };
 
 /// The sled with the day's conditions applied.
