@@ -61,9 +61,14 @@ end_ahead_of_wheels_m = 5.5
 travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop as the push-down is fully set
 
 # Engages at a set distance on the track, chosen per class and per event
-# from the test pull and the track's state.
+# from the test pull and the track's state, and presses the pan down over
+# its ramp until the pan carries its share of the sled: the rest stays on
+# the wheels, so the drag rises gradually and levels out, and the strongest
+# tractors pull on past it (a push-down that lifts the wheels off makes a
+# wall every tractor stops at within a metre or so).
 [sled.pushdown]
-ramp_m = 10.0                        # travel until the wheels are fully off
+ramp_m = 30.0                        # travel until it is fully engaged
+most_pan_share = 0.5                 # of the sled's weight on the pan, fully engaged
 
 [sled.chain]
 length_m = 1.15                      # 1.1 to 1.2 m

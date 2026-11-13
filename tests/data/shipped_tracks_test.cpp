@@ -76,17 +76,18 @@ TEST(ShippedTracks, EveryTrackIsPullable) {
 }
 
 // How a track was prepared (its grip) decides how a pull ends: on the
-// grippiest, firm loam, the engine gives out first; on the heavy clay the
-// tires dig in and bite, so the engine stalls before they spin out; on the
-// reference and on the loose sandy clay, which grips least, the wheels
-// spin out.
+// grippiest, firm loam, and on the reference the engine gives out first;
+// on the heavy clay the tires dig in and bite, so the engine stalls before
+// they spin out; on the loose sandy clay, which grips least, the wheels
+// spin out. (With the push-down putting at most part of the sled on the
+// pan, the drag levels out where the farm engine is pulled down.)
 TEST(ShippedTracks, TheTracksGripDecidesHowAPullEnds) {
     const run::Result grippy = pull_on("firm_loam.toml");
     const run::Result reference = pull_on("ideal_clay_sand.toml");
     const run::Result heavy = pull_on("covered_heavy_clay.toml");
     const run::Result loose = pull_on("sandy_clay.toml");
     EXPECT_EQ(grippy.ending, run::Ending::kStalled);
-    EXPECT_EQ(reference.ending, run::Ending::kSpunOut);
+    EXPECT_EQ(reference.ending, run::Ending::kStalled);
     EXPECT_EQ(heavy.ending, run::Ending::kStalled);
     EXPECT_EQ(loose.ending, run::Ending::kSpunOut);
     EXPECT_GE(grippy.distance_m, reference.distance_m);

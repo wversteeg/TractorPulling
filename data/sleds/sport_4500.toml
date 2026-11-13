@@ -2,8 +2,13 @@
 [sled]
 base = "pulling_sled.toml"
 
+# The box starts a little behind the wheels, as far back as 9 t may
+# without the sled sitting on its tail: a new tractor gets it going on
+# the watered start too.
 [sled.weight_box]
-mass_kg = 8000.0
+mass_kg = 9000.0
+start_ahead_of_wheels_m = -0.8
 
+# The push-down from 70 m takes the pan to half the sled (the base's).
 [sled.pushdown]
-start_m = 90.0
+start_m = 70.0

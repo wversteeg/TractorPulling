@@ -141,39 +141,39 @@ Pulling tracks are clay mixes, prepared and covered when it rains, so they
 differ by a metre or so for this light tractor: on the grippy loam and the
 heavy clay its engine gives out first, elsewhere its tires; the sled
 operator evens out the rest with the push-down and the knives on the day.
-On the fast dry clay the operator brings the push-down 10 m earlier. For
-the heavier,
-stronger classes the setup matters more: a fully built Sport 4.5 t pulls
-furthest with its weights a quarter forward on every track, and the track
-decides what the wrong setup costs (all back costs most on the watered
-start, all forward on the loose sandy clay; soft tires pay on the heavy
-clay and cost on the clay-sand; `TrackSetup.*`).
+On the fast dry clay the operator brings the push-down earlier. For the
+heavier, stronger classes the setup matters more: each track has its own
+best place for a fully built Sport 4.5 t's weights (a quarter forward on
+the watered start, the sandy clay and the clay-sand, halfway or further on
+the firm loam and the dry clay, all forward on the heavy clay), and the
+track decides what the wrong setup costs (all back costs most on the
+watered start, all forward on the loose sandy clay; soft tires pay on the
+heavy clay and cost on the clay-sand and the dry clay; `TrackSetup.*`).
 
-### The sled tops out after the push-down
+### The push-down puts part of the sled on the pan
 
 Every class pulls the same sled (`data/sleds/pulling_sled.toml`), as in
 the Netherlands: 12.5 m long and 15 t empty, on eight wide tires (dual
 tandems), its weight box holding up to 11 t. Each class's sled file names
-it as its base and sets the box's weight and where the push-down starts
-(the light class 1.5 t in the box with one knife, Sport 2.5 t 1 t, Sport
-4.5 t 8 t). Its own rolling is most of what a tractor pulls at the start;
-for the light class and Sport 2.5 t the box starts at the frame's tail,
-4 m behind the wheels, which takes weight off the pan, so a new
-tractor on its farm drawbar and worn tires gets it going (some 10 kN for
-the light class). The weight box rides forward to over the pan along
-the first 88 m, so the drag grows
-steadily. At the push-down (90 m on the light class's sled, 85 m on Sport
-2.5 t's, set per track and by the operator) the sled's rear wheels come
-off the track over 10 m and the pan takes the whole sled, so the drag
-climbs steeply and stays there (`Sled.TopsOutShortlyAfterThePushdown`;
-only the berm the tires throw still grows a little): a wall that every
-tractor stops at within a few metres. Between qualifying and the
-pull-off the operator adds weight to the box (500 kg a step) as well as
-knives. A tractor that
-can hold that drag goes on to a full pull; one that cannot slows and stops
-a few metres on, as momentum runs out. So the operator sets the push-down by the test pulls, and a
-step (a knife) changes the distance little until the tractor can hold the
-sled, then a lot. In the game the HUD marks the push-down's stretch on the
+it as its base and sets the box's weight, where the push-down starts and
+how much of the sled it puts on the pan (the light class 1.8 t in the box
+with one knife, the push-down from 70 m taking the pan to 40 % of the
+sled; Sport 2.5 t 2.2 t, from 65 m to 45 %; Sport 4.5 t 9 t, from 70 m to
+half). Its own rolling is most of what a tractor pulls at the start; the
+box starts behind the wheels (4 m on the light class's sled, at the
+frame's tail), which takes weight off the pan, so a new tractor on its
+farm drawbar and worn tires gets it going. The weight box rides forward
+to over the pan along the first 88 m, so the drag grows steadily. The
+push-down (set per track and by the operator) comes on over 30 m and
+presses the pan down until it carries its set share of the sled, then
+holds (`Sled.APushdownSetToAShareLeavesTheRestOnTheWheels`): the drag
+rises gradually and levels out where the strongest tractors can still
+pull on, so each tractor stops where its own power and grip give out and
+a field spreads over metres, not within one (`FieldSpread.*`; with the
+whole sled on the pan it rose like a wall and ten of fifteen stopped
+within a metre). Between qualifying and the pull-off the operator adds
+weight to the box (500 kg a step) as well as knives, and sets the sled
+lighter after the test pulls when the field would stop short. In the game the HUD marks the push-down's stretch on the
 track bar and shows "PUSH-DOWN" while it comes on; on the sled the rear
 wheels lift and its lamp turns from green to red.
 

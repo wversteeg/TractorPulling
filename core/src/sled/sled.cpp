@@ -99,6 +99,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.box_travel_distance_m,
                                 params.pushdown_start_m,
                                 params.pushdown_ramp_m,
+                                params.pushdown_most_pan_share,
                                 params.pan_friction_coefficient,
                                 params.pan_area_m2,
                                 params.pan_plough_coefficient,
@@ -125,6 +126,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.pushdown_ramp_m <= 0.0) {
         return ParamError::kPushdownRampNotPositive;
+    }
+    if (!(params.pushdown_most_pan_share > 0.0) || params.pushdown_most_pan_share > 1.0) {
+        return ParamError::kPushdownShareOutOfRange;
     }
     if (params.pan_friction_coefficient <= 0.0 ||
         params.pan_friction_coefficient > kMaxPanFrictionCoefficient) {
@@ -285,11 +289,14 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
     double pan_n = std::clamp(pan_lever_n, 0.0, down_n);
     double wheels_n = down_n - pan_n;
 
-    // The push-down lifts the wheels: their share moves onto the pan.
+    // The push-down presses the pan down and takes the weight off the
+    // wheels, up to its set share of the sled on the pan.
     const double pushdown =
         std::clamp((state.distance_m - params.pushdown_start_m) / params.pushdown_ramp_m, 0.0, 1.0);
-    pan_n += pushdown * wheels_n;
-    wheels_n -= pushdown * wheels_n;
+    const double room_n = std::max(params.pushdown_most_pan_share * down_n - pan_n, 0.0);
+    const double moved_n = std::min(pushdown * wheels_n, pushdown * room_n);
+    pan_n += moved_n;
+    wheels_n -= moved_n;
 
     const double wheel_count = params.wheel_count;
     const double rolling =

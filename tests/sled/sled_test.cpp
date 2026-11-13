@@ -69,6 +69,10 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kPushdownStartNegative);
     EXPECT_EQ(with([](Params& p) { p.pushdown_ramp_m = 0.0; }),
               ParamError::kPushdownRampNotPositive);
+    EXPECT_EQ(with([](Params& p) { p.pushdown_most_pan_share = 0.0; }),
+              ParamError::kPushdownShareOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pushdown_most_pan_share = 1.1; }),
+              ParamError::kPushdownShareOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.pan_friction_coefficient = 0.0; }),
               ParamError::kPanFrictionOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.pan_area_m2 = 0.0; }), ParamError::kPanAreaNotPositive);
@@ -191,6 +195,32 @@ TEST(Sled, PushdownPutsAllWeightOnThePan) {
     EXPECT_NEAR(full.resistance_n, full.pan_friction * weight_n(params) + full.knives_n, 1e-9);
     EXPECT_GT(full.pan_friction, params.pan_friction_coefficient);
     EXPECT_GT(full.resistance_n, 1.5 * at(params, params.pushdown_start_m).resistance_n);
+}
+
+// A push-down set to put half the sled on the pan stops there: fully
+// engaged, the pan carries half the weight and the wheels the rest, so the
+// drag levels out lower than with the wheels lifted off, and the strongest
+// tractors pull on past it. Where the pan already carries more (the box
+// over it), it adds nothing.
+TEST(Sled, APushdownSetToAShareLeavesTheRestOnTheWheels) {
+    Params params = reference_params();
+    params.pushdown_most_pan_share = 0.5;
+    const double full_m = params.pushdown_start_m + params.pushdown_ramp_m;
+    const Loads before = at(params, params.pushdown_start_m);
+    const Loads full = at(params, full_m);
+    EXPECT_EQ(full.pushdown, 1.0);
+    EXPECT_NEAR(full.pan_n, 0.5 * weight_n(params), 1e-9);
+    EXPECT_NEAR(full.wheels_n, 0.5 * weight_n(params), 1e-9);
+    Params all = params;
+    all.pushdown_most_pan_share = 1.0;
+    EXPECT_LT(full.resistance_n, at(all, full_m).resistance_n);
+    EXPECT_GT(full.resistance_n, before.resistance_n);
+    Params low = params;
+    low.pushdown_most_pan_share = 0.01;
+    Params never = params;
+    never.pushdown_start_m = 2.0 * full_m;
+    EXPECT_NEAR(at(low, full_m).pan_n, at(never, full_m).pan_n, 1e-9)
+        << "the pan already carries more";
 }
 
 // The chain's pull at hook height tips the sled onto its pan; pulling up at
