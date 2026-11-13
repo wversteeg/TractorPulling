@@ -92,13 +92,13 @@ var _left_rut := Mark.new()
 var _right_rut := Mark.new()
 var _band := Mark.new()
 var _rear_track_m := 1.6
-var _pan_ahead_m := 1.0
+var _pan_back_m := 1.0
 var _built := false
 
 
 func build(d: Dictionary) -> void:
 	_rear_track_m = d["rear_track_m"]
-	_pan_ahead_m = d["pan_ahead_of_wheels_m"]
+	_pan_back_m = SledView.pan_back_of(d)
 	for rut: Mark in [_left_rut, _right_rut]:
 		rut.width_m = d["rear_tire_width_m"]
 		rut.repeat_m = LUG_PITCH_M
@@ -127,9 +127,8 @@ func show_snapshot(s: Dictionary) -> void:
 		rut.add(pair[1], left)
 	var sled_heading: float = s["sled_heading_rad"]
 	var forward := Vector2(cos(sled_heading), sin(sled_heading))
-	var pan := Vector2(s["sled_x_m"], s["sled_y_m"]) + forward * _pan_ahead_m
 	# The pan smooths what it slides over, from its back edge.
-	_band.add(pan - forward * SledView.PAN_DEPTH_M / 2.0,
+	_band.add(Vector2(s["sled_x_m"], s["sled_y_m"]) + forward * _pan_back_m,
 			Vector2(-sin(sled_heading), cos(sled_heading)))
 
 
