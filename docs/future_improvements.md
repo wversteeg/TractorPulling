@@ -79,6 +79,13 @@ for the big features; they are repeated at the end for completeness.
   the reference tractor (firm loam and ideal clay-sand give the same
   distance). Heavier classes and more along-track variation (see "Later")
   should spread them again; worth checking when milestone 6 adds classes.
+- **The pan is drawn longer than it drags.** The sled shows its pan
+  from just behind the front stop plate back to the middle of the sled,
+  as real ones are, and the track's smoothed band starts at its back edge;
+  the simulation has the pan's contact at one point, 5.5 m ahead of the
+  wheels, where it feels the hard spots. A pan whose load spreads over its
+  length would feel a spot as it slides over it, and the spots would line
+  up with the smoothed band.
 - **The push-down is drawn larger than it is.** The game lifts the sled's
   rear wheels 15 cm with the push-down fully set, so that it shows from
   the tractor; a real sled lifts them a few centimetres.

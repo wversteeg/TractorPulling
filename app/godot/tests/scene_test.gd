@@ -85,6 +85,7 @@ func _check() -> void:
 			and SledView.transport_wanted({"stage": "parked", "chain_hooked": true}) == 0.0,
 			"the transport wheels down only to drive back")
 	_expect(sled_view.transport == 0.0, "pulling: the transport wheels are up")
+	_check_sled_shape(sled_view, dimensions)
 
 	# The chain spans the hitch and the hook: about its length while it pulls.
 	var hitch: Vector3 = tractor.call("hitch_position")
@@ -383,6 +384,49 @@ func _check_class_looks(dimensions: Dictionary) -> void:
 	view.build(dimensions)
 	_expect(view.body_scale() == 1.0, "the farm tractor as drawn: %.2f×" % view.body_scale())
 	view.free()
+
+
+# The sled as real ones are: 12.5 m from its hook to its rear (more only
+# where the weight box starts behind it), within 2.55 m across, its side
+# covers the whole way; the pan from just behind the front stop plate back
+# to the middle of the sled; eight tires on the tandem under the frame,
+# clear of the weight box riding above them, a fender over each side's.
+func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
+	var hook_m: float = dimensions["hook_ahead_of_wheels_m"]
+	var rear_m := SledView.rear_of(dimensions)
+	_expect(hook_m - rear_m >= SledView.LENGTH_M - 0.001 and hook_m - rear_m < SledView.LENGTH_M
+			+ SledView.BOX_SIZE_M.z, "the sled %.2f m long" % (hook_m - rear_m))
+	var widest := 0.0
+	var tires := 0
+	var covers := 0
+	var fenders := 0
+	for child: Node in sled.find_children("*", "MeshInstance3D", true, false):
+		var mesh := child as MeshInstance3D
+		if mesh.name == "Berm":
+			continue
+		var box := mesh.get_aabb()
+		var corners := [mesh.to_global(box.position), mesh.to_global(box.end)]
+		for corner: Vector3 in corners:
+			widest = maxf(widest, absf(sled.to_local(corner).x))
+		if mesh.name.begins_with("SideCover"):
+			covers += 1
+		elif mesh.name.begins_with("WheelFender"):
+			fenders += 1
+	tires = sled.get("_wheel_spin").size()
+	_expect(widest <= SledView.WIDTH_M / 2.0 + 0.001,
+			"the sled within its width, fenders and all: %.2f m" % (2.0 * widest))
+	_expect(covers >= 4 and fenders == 2, "side covers %d, fenders %d" % [covers, fenders])
+	_expect(tires == 8, "eight tires on the tandem: %d" % tires)
+	var pan := sled.find_child("Pan", true, false) as MeshInstance3D
+	var pan_length_m := (pan.mesh as BoxMesh).size.z
+	var middle_m := (hook_m + rear_m) / 2.0
+	_expect(absf(-pan.position.z - pan_length_m / 2.0 - SledView.pan_back_of(dimensions)) < 0.01
+			and SledView.pan_back_of(dimensions) <= middle_m + 0.001 and pan_length_m > 4.0,
+			"the pan %.1f m long, back to the sled's middle" % pan_length_m)
+	# The box rides over the wheels' tops.
+	var box_bottom_m: float = sled.get("_rail_z_m") + SledView.BOX_LIFT_M
+	_expect(box_bottom_m > 2.0 * float(dimensions["sled_wheel_radius_m"]),
+			"the box %.2f m up, over the wheels" % box_bottom_m)
 
 
 # How many people a venue's crowds hold.

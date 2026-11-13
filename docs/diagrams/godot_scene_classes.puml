@@ -86,6 +86,8 @@ package "GDScript (app/godot/scripts)" {
     +camera_mount() : Vector3
     +{static} transport_wanted(snapshot) : float
     +{static} weight_count(box_mass_kg) : int
+    +{static} rear_of(dimensions) : float : 12.5 m from the hook
+    +{static} pan_back_of(dimensions) : float : the sled's middle
   }
   class VenueView {
     +RETURN_LANE_M, PARKING_RIGHT_OF_LANE_M
@@ -544,6 +546,7 @@ CameraRig ..> TractorView : the cab camera, at the driver's eyes
 Flagman ..> People : the official
 SledView ..> People : the operator
 TrackMarks ..> TrackSpace
+TrackMarks ..> SledView : where the pan's back edge is
 SceneTree <|-- SceneTest
 SceneTree <|-- Shots
 SceneTest ..> Pull : autoplay, checks the views\nagainst the snapshot
