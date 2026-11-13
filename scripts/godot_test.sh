@@ -29,12 +29,15 @@ cd "${root}"
 # app/godot/tests/run_test.gd. Their values live here only: Godot gets them
 # as user arguments. The timings (neutral until 0.5 s, the launch at 3 s)
 # are tp_pull's kPullSelectGear_s and kPullRevUpEnd_s.
-readonly gear=6
+# 4th: a dumped clutch in a taller gear bogs the farm tractor down to a
+# stall, the chain pressing its rear tires down; in 4th the easy run pulls
+# the full 100 m.
+readonly gear=4
 readonly stick=0.032        # both runs' steering control, just past the layouts' dead zone
 # The pro run's right brake, with a dumped clutch. It pulls the tractor
-# onto the chalk line at 25.9 s on purpose, so the run also ends in a
+# onto the chalk line at 38.1 s on purpose, so the run also ends in a
 # disqualification: "pro result: out_of_bounds 0.0 m" is the expected end.
-readonly brake_right=0.05
+readonly brake_right=0.1
 readonly tractor=data/tractors/farm_stock_light.toml
 readonly sled=data/sleds/light_class.toml
 readonly track=data/tracks/ideal_clay_sand.toml
