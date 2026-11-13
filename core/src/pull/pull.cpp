@@ -173,6 +173,7 @@ Output step(State& state, const Model& model, const vehicle::Input& input, doubl
         vehicle::step(state.tractor, model.tractor(), input, tractor_ground, drawbar, dt_s);
 
     out.sled = sled::loads(sled, state.sled, hook, sled_ground);
+    sled::tilt(state.sled, out.sled, dt_s);
     switch (state.sled_mode) {
         case SledMode::kOnTheChain: {
             const sled::Prediction prediction =

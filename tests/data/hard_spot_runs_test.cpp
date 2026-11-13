@@ -44,6 +44,8 @@ struct Sample {
     double pulled_m = 0.0;
     double pan_drag_n = 0.0;
     double slip_ratio = 0.0;
+    /// The share of the pan's length off the track at its front.
+    double pan_front_lift = 0.0;
 };
 
 // The Sport 2.5 t tractor pulling its class's sled on `track`, its driver
@@ -76,7 +78,8 @@ std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_of
         samples.push_back(
             {.pulled_m = state.pull.sled.position_m - model->sled_start_m(),
              .pan_drag_n = step.sled.pan_friction * step.sled.pan_n + step.sled.knives_n,
-             .slip_ratio = step.tractor.slip_ratio});
+             .slip_ratio = step.tractor.slip_ratio,
+             .pan_front_lift = step.sled.pan_front_lift});
     }
     return samples;
 }
@@ -93,6 +96,8 @@ constexpr double kFrom_m = 15.0;
 // raises the pan's drag over its ramp.
 constexpr double kUntil_m = 58.0;
 constexpr double kWindow_m = 1.0;
+// A pan lifted by less than this share of its length lies flat.
+constexpr double kFlat = 0.001;
 
 Jumps jumps(const std::vector<Sample>& samples) {
     Jumps out;
@@ -106,7 +111,11 @@ Jumps jumps(const std::vector<Sample>& samples) {
             continue;
         }
         const Sample& before = samples[back];
-        if (before.pan_drag_n > 0.0) {
+        // While the chain holds the pan's front up it ploughs less, and its
+        // drag rises as the front comes down (the box coming forward): the
+        // spots show where the pan lies flat.
+        const bool flat = before.pan_front_lift < kFlat && now.pan_front_lift < kFlat;
+        if (flat && before.pan_drag_n > 0.0) {
             out.drag_rise = std::max(out.drag_rise, now.pan_drag_n / before.pan_drag_n - 1.0);
         }
         out.slip_rise = std::max(out.slip_rise, now.slip_ratio - before.slip_ratio);

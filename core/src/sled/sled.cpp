@@ -412,7 +412,8 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
         std::min(rolling_of(still.wheels_n) * still.wheels_n, std::max(hook.forward_n, 0.0));
     const Split shared = split(params, box_m, hook.up_n, pushdown, tow_n);
     const double rolling = rolling_of(shared.wheels_n);
-    const double lift = front_lift(params, hook, tow_n, shared.pan_n, pushdown);
+    const double target = front_lift(params, hook, tow_n, shared.pan_n, pushdown);
+    const double lift = std::clamp(state.pan_front_lift, 0.0, 1.0);
 
     // On a hard spot the pan and the knives drag harder; a pan whose front
     // is up ploughs only with the share of it still down.
@@ -427,6 +428,7 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
         .pivot_n = shared.pivot_n,
         .cylinders_n = shared.cylinders_n,
         .pan_front_lift = lift,
+        .pan_front_lift_target = target,
         .box_ahead_of_wheels_m = box_m,
         .pushdown = pushdown,
         .pan_friction = friction,
@@ -562,6 +564,11 @@ bool drive_back(State& state, const Params& params, double start_x_m, double sta
     state.lateral_position_m = start_y_m + (state.lateral_position_m - start_y_m) * kept;
     state.heading_rad *= kept;
     return false;
+}
+
+void tilt(State& state, const Loads& loads, double dt_s) noexcept {
+    state.pan_front_lift +=
+        (loads.pan_front_lift_target - state.pan_front_lift) * dt_s / (kPanTiltTime_s + dt_s);
 }
 
 void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept {

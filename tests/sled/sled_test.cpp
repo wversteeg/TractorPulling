@@ -324,28 +324,54 @@ TEST(Sled, TheChainLiftsThePansFrontUntilTheBoxComesForward) {
     Params params = reference_params();
     params.pushdown_start_m = 1.0e6;
     const Loads lifted = at(params, 10.0, {.up_n = kUp_n});
-    EXPECT_GT(lifted.pan_front_lift, 0.3);
-    EXPECT_LE(lifted.pan_front_lift, 1.0);
-    EXPECT_EQ(at(params, 10.0).pan_front_lift, 0.0) << "no pull, flat";
+    EXPECT_GT(lifted.pan_front_lift_target, 0.3);
+    EXPECT_LE(lifted.pan_front_lift_target, 1.0);
+    EXPECT_EQ(at(params, 10.0).pan_front_lift_target, 0.0) << "no pull, flat";
     const double ploughing_mu =
         params.pan_friction_coefficient *
         (1.0 + params.pan_plough_coefficient * lifted.pan_n / params.pan_area_m2 /
                    reference_ground().pan.cone_index_pa);
-    EXPECT_LT(lifted.pan_friction, ploughing_mu) << "a lifted front ploughs less";
-    EXPECT_GT(lifted.pan_friction, params.pan_friction_coefficient);
+    // Flat for now: the front rises over kPanTiltTime_s; risen, it
+    // ploughs less.
+    EXPECT_NEAR(lifted.pan_friction, ploughing_mu, 1e-9);
+    const Loads risen = loads(
+        params,
+        State{
+            .position_m = 10.0, .distance_m = 10.0, .pan_front_lift = lifted.pan_front_lift_target},
+        {.up_n = kUp_n}, reference_ground());
+    EXPECT_LT(risen.pan_friction, ploughing_mu) << "a lifted front ploughs less";
+    EXPECT_GT(risen.pan_friction, params.pan_friction_coefficient);
 
     const Loads forward = at(params, params.box_travel_distance_m, {.up_n = kUp_n});
-    EXPECT_LT(forward.pan_front_lift, lifted.pan_front_lift);
+    EXPECT_LT(forward.pan_front_lift_target, lifted.pan_front_lift_target);
     EXPECT_GT(forward.pan_n, lifted.pan_n);
     const Loads pressed = at(params, 10.0, {.forward_n = 10.0 * kUp_n, .up_n = kUp_n});
-    EXPECT_LT(pressed.pan_front_lift, lifted.pan_front_lift);
+    EXPECT_LT(pressed.pan_front_lift_target, lifted.pan_front_lift_target);
 
     // The push-down engaged holds the pan level, the box still back.
     Params held = reference_params();
     held.box_travel_distance_m = 1.0e6;
     const double full_m = held.pushdown_start_m + held.pushdown_ramp_m;
-    EXPECT_EQ(at(held, full_m, {.up_n = kUp_n}).pan_front_lift, 0.0);
-    EXPECT_GT(at(held, held.pushdown_start_m - 1.0, {.up_n = kUp_n}).pan_front_lift, 0.0);
+    EXPECT_EQ(at(held, full_m, {.up_n = kUp_n}).pan_front_lift_target, 0.0);
+    EXPECT_GT(at(held, held.pushdown_start_m - 1.0, {.up_n = kUp_n}).pan_front_lift_target, 0.0);
+}
+
+// The pan's front follows the lift the forces ask for over about
+// kPanTiltTime_s: not at every jolt of the chain, and never past it.
+TEST(Sled, ThePansFrontRisesOverItsTiltTime) {
+    State state;
+    Loads asked;
+    asked.pan_front_lift_target = 0.6;
+    double after_tilt_time = 0.0;
+    for (int i = 0; i < 2000; ++i) {
+        tilt(state, asked, kDt_s);
+        EXPECT_LE(state.pan_front_lift, asked.pan_front_lift_target);
+        if (i + 1 == static_cast<int>(kPanTiltTime_s / kDt_s)) {
+            after_tilt_time = state.pan_front_lift;
+        }
+    }
+    EXPECT_NEAR(after_tilt_time / asked.pan_front_lift_target, 1.0 - std::exp(-1.0), 0.01);
+    EXPECT_NEAR(state.pan_front_lift, asked.pan_front_lift_target, 1e-3);
 }
 
 // Each pull-off step drags harder everywhere along the track, and several
