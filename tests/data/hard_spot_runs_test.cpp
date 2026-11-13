@@ -87,7 +87,7 @@ struct Jumps {
 };
 
 constexpr double kFrom_m = 15.0;
-// Short of the push-down, which starts at 58 m on the class's sled.
+// Short of the push-down, which starts at 60 m on the class's sled.
 constexpr double kUntil_m = 55.0;
 constexpr double kWindow_m = 1.0;
 

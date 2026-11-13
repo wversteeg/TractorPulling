@@ -45,11 +45,11 @@ struct FrontLoads {
     run::Result result;
 };
 
-// The middle ends before the push-down (from 65 m on the Sport 2.5 t's
+// The middle ends before the push-down (from 60 m on the Sport 2.5 t's
 // sled); the end is well into it.
 constexpr double kLaunchUntil_m = 10.0;
 constexpr double kMiddleFrom_m = 35.0;
-constexpr double kMiddleUntil_m = 62.0;
+constexpr double kMiddleUntil_m = 58.0;
 constexpr double kEndFrom_m = 90.0;
 
 // A pull on `track_file` with `tractor_file` tuned to `ballast_position`
