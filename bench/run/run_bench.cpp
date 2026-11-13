@@ -42,6 +42,7 @@ void BM_GameStep(benchmark::State& state) {
     tp::sled::Params steady_sled = tp::sled::with_conditions(sled.value(), track.value().sled);
     steady_sled.pushdown_start_m = kOutOfReach_m;
     steady_sled.box_travel_distance_m = kOutOfReach_m;
+    steady_sled.box_gearbox = {};  // no gears: the box may take any travel
     const auto model = tp::pull::Model::create(
         {.tractor = tractor.value(), .sled = steady_sled, .track = track.value().ground});
     if (!model) {
