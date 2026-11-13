@@ -113,7 +113,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.traction.mobility_rate <= 0.0 || params.traction.slip_rate <= 0.0) {
         return ParamError::kTractionRateNotPositive;
     }
-    if (params.traction.load_sensitivity < 0.0 ||
+    // At 1 or more the pull µ W / (1 + k (W / W_ref - 1)) stops growing
+    // (or falls) with load: a tire pressed harder must still pull harder.
+    if (params.traction.load_sensitivity < 0.0 || params.traction.load_sensitivity >= 1.0 ||
         (params.traction.load_sensitivity > 0.0 && params.traction.reference_load_n <= 0.0)) {
         return ParamError::kLoadSensitivityInvalid;
     }

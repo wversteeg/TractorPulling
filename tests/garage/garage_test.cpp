@@ -141,6 +141,24 @@ TEST(Garage, FreeWeightMovesTheCentreOfGravity) {
     EXPECT_DOUBLE_EQ(fixed.ballast.mass_kg, 100.0);
     EXPECT_LT(fixed.cg_ahead_of_rear_axle_m, built.cg_ahead_of_rear_axle_m);
     EXPECT_EQ(chassis::validate(fixed), std::nullopt);
+    // About the rear axle, a point mass's inertia is m x^2: moving the fixed
+    // weights from where they were built to the rearmost place changes the
+    // tractor's by exactly theirs (pitch and yaw alike).
+    const chassis::Ballast& b = built.ballast;
+    const double from_m = b.rear_ahead_of_rear_axle_m +
+                          b.position * (b.front_ahead_of_rear_axle_m - b.rear_ahead_of_rear_axle_m);
+    const double to_m = b.rear_ahead_of_rear_axle_m;
+    const double fixed_kg = b.mass_kg - 100.0;
+    const auto about_axle = [&](double about_cg, const chassis::Params& p) {
+        return about_cg + p.mass_kg * p.cg_ahead_of_rear_axle_m * p.cg_ahead_of_rear_axle_m;
+    };
+    const double moved = fixed_kg * (to_m * to_m - from_m * from_m);
+    EXPECT_NEAR(
+        about_axle(fixed.pitch_inertia_kg_m2, fixed) - about_axle(built.pitch_inertia_kg_m2, built),
+        moved, 1e-9 * built.pitch_inertia_kg_m2);
+    EXPECT_NEAR(
+        about_axle(fixed.yaw_inertia_kg_m2, fixed) - about_axle(built.yaw_inertia_kg_m2, built),
+        moved, 1e-9 * built.yaw_inertia_kg_m2);
     // Moving the free weights still works, over a smaller range.
     const double reach_m = chassis::with_ballast_at(built, 1.0).cg_ahead_of_rear_axle_m -
                            chassis::with_ballast_at(built, 0.0).cg_ahead_of_rear_axle_m;

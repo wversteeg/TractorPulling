@@ -93,6 +93,11 @@ TEST(TireParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.traction.load_sensitivity = -0.1; }),
               ParamError::kLoadSensitivityInvalid);
     EXPECT_EQ(with([](Params& p) {
+                  p.traction.load_sensitivity = 1.0;
+                  p.traction.reference_load_n = 10000.0;
+              }),
+              ParamError::kLoadSensitivityInvalid);
+    EXPECT_EQ(with([](Params& p) {
                   p.traction.load_sensitivity = 0.3;
                   p.traction.reference_load_n = 0.0;
               }),

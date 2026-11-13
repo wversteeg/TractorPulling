@@ -32,7 +32,8 @@ struct TractionCurve {
     /// - 1)), as a pressed tire's lugs and the soil under them give. On
     /// strong ground, where the mobility number holds grip at its limit,
     /// this is what keeps a tire pressed down hard (a chain pulling down
-    /// at the hitch) from gripping without bound. 0 for none.
+    /// at the hitch) from gripping without bound. 0 for none; below 1, so
+    /// that pressing a tire harder still adds pull, if less and less.
     double load_sensitivity = 0.0;
     /// One tire's load where it grips as its limit says [N].
     double reference_load_n = 0.0;
