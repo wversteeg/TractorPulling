@@ -10,9 +10,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <filesystem>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -140,21 +142,88 @@ TEST(HardSpotRuns, ThePansDragJumpsAtHardSpots) {
 }
 
 // Where the tires lose grip at a weak spot the wheels slip more for a
-// moment; the drag stays even. The shipped tracks have few and mild weak
-// spots, so this one has them closer and deeper, to show them clearly.
+// moment; the drag stays even. The shipped tracks have their weak spots
+// 15 m apart, so this one has them closer and deeper, to show them clearly
+// (deep enough to show through the coupled differential, which shares a
+// spot under one side between both).
 TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
     Track weak = even(only_hard_spots());
     weak.ground.weak_spots = track::WeakSpots{.every_m = 10.0,
                                               .length_m = 2.0,
                                               .min_width_m = 12.0,
                                               .max_width_m = 12.0,
-                                              .grip_loss = 0.3,
+                                              .grip_loss = 0.5,
                                               .seed = 3};
     const Jumps with = jumps(pull(weak));
     const Jumps without = jumps(pull(even(weak)));
     EXPECT_LT(with.drag_rise, 0.05) << "the sled drags as before";
     EXPECT_GT(with.slip_rise, 2.0 * without.slip_rise)
         << with.slip_rise << " vs " << without.slip_rise;
+}
+
+// How far a pull goes off its line: the most the tractor turned [rad] and
+// moved across the lane from where it started [m].
+struct Drift {
+    double heading_rad = 0.0;
+    double across_m = 0.0;
+};
+
+// The Sport 4.5 t, fully built, in 7th on its class's sled on `track_file`,
+// driven straight (no steering), its differential coupled as built or
+// opened.
+Drift drift(const std::string& track_file, bool open_differential) {
+    vehicle::Params built = loaded(load_tractor(data("tractors/sport_4500.toml")));
+    if (open_differential) {
+        built.differential.coupling_nm_s_per_rad = 0.0;
+    }
+    const sled::Params sled = loaded(load_sled(data("sleds/sport_4500.toml")));
+    const Track track = loaded(load_track(data("tracks/" + track_file)));
+    const session::Setup setup = run_setup(built, sled, track, 0);
+    const std::optional<pull::Model> model =
+        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    if (!model) {
+        throw std::runtime_error("the pull was refused");
+    }
+    const driver::Plan plan{.gear = 7,
+                            .select_gear_s = 0.5,
+                            .launch_s = 3.0,
+                            .clutch_slip_in_s = 3.0,
+                            .launch_hold_share = 0.8,
+                            .launch_hold_max_s = 8.0};
+    run::State state = run::start(*model);
+    const double start_y_m = state.pull.tractor.chassis.lateral_position_m;
+    driver::State driver;
+    Drift out;
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        run::step(state, *model, setup.rules,
+                  driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
+        const chassis::State& body = state.pull.tractor.chassis;
+        out.heading_rad = std::max(out.heading_rad, std::abs(body.heading_rad));
+        out.across_m = std::max(out.across_m, std::abs(body.lateral_position_m - start_y_m));
+    }
+    return out;
+}
+
+// A weak spot under one side's wheels turns the tractor a little towards
+// it: the coupled differential passes the spinning side's torque to the
+// side that grips, which pulls harder. Driven straight on the loose sandy
+// clay and the covered heavy clay, the Sport 4.5 t turns and goes off its
+// line by tenths of a metre (more than twice as far as through an open
+// differential, which goes on all but straight), well within the lane.
+TEST(HardSpotRuns, AWeakSpotUnderOneSideTurnsTheTractor) {
+    constexpr double kTurned_rad = 0.005;
+    constexpr double kOffLine_m = 0.1;
+    constexpr double kWithinTheLane_m = 1.0;
+    for (const char* track : {"sandy_clay.toml", "covered_heavy_clay.toml"}) {
+        const Drift coupled = drift(track, false);
+        const Drift open = drift(track, true);
+        EXPECT_GT(coupled.heading_rad, kTurned_rad) << track;
+        EXPECT_GT(coupled.across_m, kOffLine_m) << track;
+        EXPECT_GT(coupled.across_m, 2.0 * open.across_m)
+            << track << ": " << coupled.across_m << " m, open " << open.across_m << " m";
+        EXPECT_LT(coupled.across_m, kWithinTheLane_m) << track;
+    }
 }
 
 // The crew that knows the track puts the sled where the spots cost least:

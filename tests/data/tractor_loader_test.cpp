@@ -284,6 +284,24 @@ TEST(TractorLoader, ReadsTheProtection) {
 
 // An adjustable pulling hitch names its lowest hole; without one the hitch
 // is fixed.
+// The differential is open unless the tractor couples it; the shipped
+// pulling tractors do. A negative coupling is refused.
+TEST(TractorLoader, ReadsTheDifferential) {
+    const auto open = parse_tractor(kTractor, "tractor.toml", kDataDir);
+    ASSERT_TRUE(open.ok()) << open.error().message;
+    EXPECT_EQ(open.value().differential.coupling_nm_s_per_rad, 0.0);
+    for (const char* file : {"farm_stock_light.toml", "sport_2500.toml", "sport_4500.toml"}) {
+        const auto shipped = load_tractor(kDataDir / "tractors" / file);
+        ASSERT_TRUE(shipped.ok()) << shipped.error().message;
+        EXPECT_GT(shipped.value().differential.coupling_nm_s_per_rad, 0.0) << file;
+    }
+    EXPECT_NE(error_of(with("max_torque_nm = 8000.0",
+                            "max_torque_nm = 8000.0\n\n[tractor.differential]\n"
+                            "coupling_nm_s_per_rad = -1.0"))
+                  .find("tractor.differential.coupling_nm_s_per_rad: must be a finite number"),
+              std::string::npos);
+}
+
 TEST(TractorLoader, ReadsTheHitchsHoles) {
     const auto fixed = parse_tractor(kTractor, "tractor.toml", kDataDir);
     ASSERT_TRUE(fixed.ok()) << fixed.error().message;

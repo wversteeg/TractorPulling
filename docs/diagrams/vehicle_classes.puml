@@ -23,6 +23,7 @@ package "tp::vehicle" {
     +front_tire : tire::Size
     +steering : Steering
     +brakes : Brakes
+    +differential : Differential
     +chassis : chassis::Params
     +pto_efficiency : double
   }
@@ -32,6 +33,9 @@ package "tp::vehicle" {
   }
   class Brakes <<struct>> {
     +max_torque_nm : double
+  }
+  class Differential <<struct>> {
+    +coupling_nm_s_per_rad : double (0 open, more passes torque to the side that grips)
   }
   class Model {
     -params_ : Params
@@ -115,6 +119,7 @@ package "tp::vehicle" {
   Model *-- Params
   Params *-- Steering
   Params *-- Brakes
+  Params *-- Differential
   Output *-- RearWheels
   VehicleFns ..> Model
   VehicleFns ..> State
