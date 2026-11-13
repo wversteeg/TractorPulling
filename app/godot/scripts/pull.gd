@@ -764,8 +764,10 @@ func _offer_restart() -> void:
 	if _choice_made or not run.may_restart():
 		return
 	if autoplay or driver.is_valid():
-		# Their pull counts; the chain, held on for a choice, comes off.
-		run.decline_restart()
+		# Their pull counts. In a whole turn the chain stays on while the
+		# restart is open: they decline it, so it comes off as they back off.
+		if _whole_turn:
+			run.decline_restart()
 		return
 	_choice_made = true
 	_choosing = true
