@@ -200,6 +200,7 @@ func _check() -> void:
 			"the camera follows the tractor")
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
 	_check_pulling_look(dimensions)
+	_check_class_looks(dimensions)
 
 
 # The rev counter's ticks at or past the engine's high idle.
@@ -319,6 +320,69 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 			"the front weights ahead of the bumper (%.2f m, bumper to %.2f m)" % [
 			-weights.z, bumper_front_m])
 	pulling.free()
+
+
+# Each class looks its own: every class of the career has a scheme, no two
+# alike; the farm tractor sits in a closed cab; the rivals keep the class's
+# trim in paints unlike the player's and each other's; and a tractor given
+# another class's look is built again as that class's.
+func _check_class_looks(dimensions: Dictionary) -> void:
+	var career := TractorPullEvent.new()
+	_expect(career.load_career(_pull.get("career_path")).is_empty(), "the career loads")
+	var schemes := TractorLook.schemes()
+	var paints: Array[Color] = []
+	for rung: String in career.get_career().get("rungs", PackedStringArray()):
+		var class_label := rung.get_slice(" · ", 0)
+		_expect(schemes.has(class_label), "a look for the %s class" % class_label)
+		var look: TractorLook = TractorLook.for_class(class_label, "cab")
+		if not paints.has(look.paint):
+			paints.append(look.paint)
+		var rivals: Array[Color] = []
+		for i in VenueView.RIVAL_BAYS:
+			var rival := look.rival(i)
+			_expect(rival.trim == look.trim and rival.rim == look.rim,
+					"%s's rivals in its trim" % class_label)
+			_expect(TractorLook.distance(rival.paint, look.paint) >= TractorLook.TOO_CLOSE,
+					"%s's rival %d unlike the player: %s" % [class_label, i, rival.paint])
+			_expect(not rivals.has(rival.paint), "%s's rivals each their own paint" % class_label)
+			rivals.append(rival.paint)
+	_expect(paints.size() == schemes.size(), "every class its own paint: %s" % [paints])
+
+	var farm: TractorView = _pull.get("tractor_view")
+	var glass := farm.find_children("CabGlass*", "", true, false).size()
+	_expect(glass == 4, "the farm tractor's cab glazed all round: %d panes" % glass)
+	for part: String in ["CabRoof", "Beacon", "Mirror"]:
+		_expect(farm.find_child(part, true, false) != null, "the farm cab's %s" % part)
+
+	# One view, built as one class and then another.
+	var view := TractorView.new()
+	root.add_child(view)
+	view.look = TractorLook.for_class("Standard 3.5 t", "cab")
+	view.build(dimensions)
+	var ticks := view.rev_red_ticks
+	var pulling := dimensions.duplicate()
+	pulling["protection"] = "roll_bar"
+	view.look = TractorLook.for_class("Sport 4.5 t", "roll_bar")
+	view.build(pulling)
+	_expect(view.pulling_look() and view.find_child("Hood", true, false) == null
+			and view.find_child("CabRoof", true, false) == null,
+			"built again as a pulling tractor, nothing of the farm one left")
+	_expect(view.rev_red_ticks == ticks, "the dashboard drawn once: %d ticks" % view.rev_red_ticks)
+	var body := view.get_child(0)
+	view.build(pulling)
+	_expect(view.get_child(0) == body, "the same look and sizes: not built again")
+	# A heavier class's longer tractor: its bonnet, frame and stack bigger
+	# in proportion; the shortest as drawn, the farm tractor as it is.
+	for case: Array in [[TractorView.BODY_WHEELBASE_M, 1.0], [2.75, 1.25], [1.8, 1.0],
+			[4.0, TractorView.BODY_MOST_SCALE]]:
+		pulling["wheelbase_m"] = case[0]
+		view.build(pulling)
+		_expect(is_equal_approx(view.body_scale(), case[1]),
+				"a %.2f m wheelbase drawn %.2f×: %.2f" % [case[0], case[1], view.body_scale()])
+	view.look = TractorLook.for_class("Standard 3.5 t", "cab")
+	view.build(dimensions)
+	_expect(view.body_scale() == 1.0, "the farm tractor as drawn: %.2f×" % view.body_scale())
+	view.free()
 
 
 # How many people a venue's crowds hold.

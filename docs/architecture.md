@@ -291,6 +291,11 @@ Who pulls next, and the standings, are the event's answer.
 `DriveControls` is the easy layout on a touch screen: a steering slider, a
 hand throttle and gear buttons, each following its own finger so both
 thumbs drive at once; the keyboard and a gamepad work it in development.
+`TractorLook` paints each class's tractors its own way (the class comes
+from the career, or from the tractor's cab or roll bar on a scripted run):
+the player's in the class's scheme, the rivals in the class's trim and their
+own paints; `TractorView` builds the tractor again when the look or the
+sizes change, as after a move up.
 `TrackSpace` turns the track's coordinates into Godot's. No physics or rules
 live here.
 
