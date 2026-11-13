@@ -33,6 +33,7 @@ void BM_PullStep(benchmark::State& state) {
     tp::sled::Params steady_sled = sled.value();
     steady_sled.pushdown_start_m = kOutOfReach_m;
     steady_sled.box_travel_distance_m = kOutOfReach_m;
+    steady_sled.box_gearbox = {};  // no gears: the box may take any travel
     const auto model = tp::pull::Model::create(
         {.tractor = tractor.value(),
          .sled = steady_sled,
