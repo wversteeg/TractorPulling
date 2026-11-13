@@ -26,7 +26,9 @@ pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone in
 # The chain pulls the pan, the pan tows the frame through the pivot.
 [sled.pan]
 mass_kg = 2500.0                     # of frame_mass_kg
-length_m = 6.0                       # along the track
+length_m = 6.0                       # along the track, over which it tilts; pan_area_m2 is
+                                     # a tuned bearing area for the soil's pressure, not the
+                                     # whole 6 m x 2 m plate
 pivot_height_m = 0.4                 # over the track
 
 # Dual tandem axles: eight wide flotation tires, pumped hard for the

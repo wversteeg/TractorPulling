@@ -158,8 +158,8 @@ struct Params {
     double pan_length_m = 0.0;
     /// The pivot's height over the track, where the pan tows the frame [m].
     double pivot_height_m = 0.0;
-    /// The push-down's cylinders, between the frame and the pan's back,
-    /// behind the pivot [m].
+    /// The push-down's cylinders, between the frame and the pan's back:
+    /// on the pan, behind the pivot [m].
     double cylinders_ahead_of_wheels_m = 0.0;
     double hook_ahead_of_wheels_m = 0.0;
     double hook_height_m = 0.0;
@@ -216,9 +216,11 @@ enum class ParamError : std::uint8_t {
     kBoxOverMax,
     kPanNotAheadOfWheels,
     /// The pan is not part of the frame's mass (0 to frame_mass_kg), its
-    /// length is not positive, the pivot is below the track, or the
-    /// cylinders are not between the wheels and the pivot.
+    /// length is not positive or reaches back past the wheels, or the
+    /// pivot is below the track.
     kPanInvalid,
+    /// The push-down's cylinders are not on the pan behind the pivot.
+    kCylindersInvalid,
     kFrameCgOutsideSled,
     kBoxOutsideSled,
     /// The box starts so far behind the wheels that the sled's centre of

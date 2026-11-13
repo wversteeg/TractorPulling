@@ -12,12 +12,12 @@ pan_friction_coefficient = 0.46      # steel sliding on a firm track
 pan_area_m2 = 1.8                    # the pan's contact with the track
 pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
 
-# The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
 [sled.pan]
 mass_kg = 800.0
 length_m = 3.0
 pivot_height_m = 0.3
 
+# The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
 [sled.wheels]
 count = 2
 radius_m = 0.55

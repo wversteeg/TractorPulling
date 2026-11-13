@@ -69,8 +69,17 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kPanInvalid);
     EXPECT_EQ(with([](Params& p) { p.pan_length_m = 0.0; }), ParamError::kPanInvalid);
     EXPECT_EQ(with([](Params& p) { p.pivot_height_m = -0.1; }), ParamError::kPanInvalid);
+    EXPECT_EQ(with([](Params& p) { p.pan_length_m = 2.0 * p.pan_ahead_of_wheels_m; }),
+              ParamError::kPanInvalid)
+        << "reaching back past the wheels";
     EXPECT_EQ(with([](Params& p) { p.cylinders_ahead_of_wheels_m = p.pan_ahead_of_wheels_m; }),
-              ParamError::kPanInvalid);
+              ParamError::kCylindersInvalid);
+    EXPECT_EQ(with([](Params& p) {
+                  p.cylinders_ahead_of_wheels_m =
+                      p.pan_ahead_of_wheels_m - p.pan_length_m / 2.0 - 0.1;
+              }),
+              ParamError::kCylindersInvalid)
+        << "behind the pan";
     EXPECT_EQ(with([](Params& p) { p.pan_ahead_of_wheels_m = 0.0; }),
               ParamError::kPanNotAheadOfWheels);
     EXPECT_EQ(with([](Params& p) { p.frame_cg_ahead_of_wheels_m = 3.5; }),
