@@ -48,6 +48,19 @@ const FENDER_SIZE_M := Vector3(0.8, 0.95, 0.3)
 # this wide past the stop plate and this thick [m].
 const FOLDING_FENDER_M := 0.8
 const FOLDING_FENDER_THICK_M := 0.15
+# Unfolded, they stand swept back this far from straight out [rad]; they
+# are not rigid: the pull's jolts swing them a little on their hinges, a
+# damped spring about that angle. Its natural frequency [rad/s] and
+# damping ratio, how far a change of the sled's speed throws them
+# [rad per m/s], a slight shake with the sled's speed [rad per m/s, at
+# this many shakes per metre travelled], and the most they swing [rad].
+const FOLDING_FENDER_ANGLE_RAD := PI / 4.0
+const FLAP_OMEGA_RAD_S := 9.0
+const FLAP_DAMPING := 0.25
+const FLAP_KICK_RAD_PER_M_S := 0.25
+const FLAP_SHAKE_RAD_PER_M_S := 0.02
+const FLAP_SHAKES_PER_M := 3.0
+const FLAP_MOST_RAD := 0.15
 # The steel frame round each fender: its bars' thickness [m].
 const FENDER_FRAME_M := 0.06
 # The rubber stop plate across the front, over the fenders: this tall over
@@ -177,6 +190,13 @@ var _wheel_angle := 0.0
 # The berm: loose soil heaped in front of the pan's lip.
 var _berm := MeshInstance3D.new()
 var _berm_ahead_m := 1.0
+# The folding fenders' hinges, and their swing off the set angle [rad] and
+# its rate [rad/s]; the sled's speed and travel last frame [m/s, m].
+var _flaps: Array[Node3D] = []
+var _flap_rad := 0.0
+var _flap_rate_rad_s := 0.0
+var _last_speed_m_s := 0.0
+var _travel_m := 0.0
 # The chain pulls on the hook: at least the tension that takes up the slack
 # (the run's take_up_tension_n) [N].
 var lamp_tension_n := 1000.0
@@ -398,19 +418,26 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 			hook_height_m + 0.1 + STOP_PLATE_HEIGHT_M / 2.0 - FENDER_SIZE_M.y / 2.0)
 	add_child(plate)
 	# The folding rubber fenders out past the stop plate's ends, unfolded
-	# for the pull: wider than the sled's road width, folded in to travel.
+	# for the pull, swept back: wider than the sled's road width, folded in
+	# to travel. Each on a hinge at the plate's end (_show_flaps turns it).
 	var plate_half_m := FENDER_SIDE_M + FENDER_SIZE_M.x / 2.0 + STOP_PLATE_PAST_M
 	for side: float in [-1.0, 1.0]:
+		var pivot := Node3D.new()
+		pivot.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * plate_half_m,
+				hook_height_m + 0.1)
+		pivot.set_meta("side", side)
+		add_child(pivot)
+		_flaps.append(pivot)
 		var flap := Art.instance(Art.rounded_box(Vector3(FOLDING_FENDER_M, FENDER_SIZE_M.y,
 				FOLDING_FENDER_THICK_M), ROUND_SMALL_M, Vector3.AXIS_Z), Art.material(RUBBER, 0.95))
 		flap.name = "FoldingFender%d" % (0 if side > 0.0 else 1)
-		flap.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0,
-				side * (plate_half_m + FOLDING_FENDER_M / 2.0), hook_height_m + 0.1)
-		add_child(flap)
+		flap.position = TrackSpace.point(0.0, side * FOLDING_FENDER_M / 2.0, 0.0)
+		pivot.add_child(flap)
 		var hinge := _painted(Vector3(0.08, FENDER_SIZE_M.y, FENDER_SIZE_M.z), PAINT_DARK)
 		hinge.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0,
 				side * (plate_half_m - 0.04), hook_height_m + 0.1)
 		add_child(hinge)
+	_show_flaps()
 	return beam_m - 0.1
 
 
@@ -733,8 +760,43 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 		_transport_angle -= float(s["sled_speed_m_s"]) / TRANSPORT_RADIUS_M * delta
 		for spin in _transport_spin:
 			spin.rotation.x = wrapf(_transport_angle, -PI, PI)
+	_swing_flaps(float(s["sled_speed_m_s"]), delta)
 	_show_berm(s["berm_m3"])
 	_show_lamp(lamp_colour(s, lamp_tension_n))
+
+
+# The folding fenders' swing: a change of the sled's speed throws them
+# (they lag behind as the sled jerks forward), the spring brings them
+# back; a slight shake while the sled moves.
+func _swing_flaps(speed_m_s: float, delta: float) -> void:
+	if delta <= 0.0:
+		return
+	var accel_m_s2 := (speed_m_s - _last_speed_m_s) / delta
+	_last_speed_m_s = speed_m_s
+	_travel_m += speed_m_s * delta
+	var spring := -FLAP_OMEGA_RAD_S * FLAP_OMEGA_RAD_S * _flap_rad \
+			- 2.0 * FLAP_DAMPING * FLAP_OMEGA_RAD_S * _flap_rate_rad_s
+	var kick := FLAP_KICK_RAD_PER_M_S * FLAP_OMEGA_RAD_S * accel_m_s2
+	_flap_rate_rad_s += (spring + kick) * delta
+	_flap_rad = clampf(_flap_rad + _flap_rate_rad_s * delta, -FLAP_MOST_RAD, FLAP_MOST_RAD)
+	_show_flaps()
+
+
+func _show_flaps() -> void:
+	var shake := FLAP_SHAKE_RAD_PER_M_S * minf(absf(_last_speed_m_s), 2.0) \
+			* sin(TAU * FLAP_SHAKES_PER_M * _travel_m)
+	for pivot in _flaps:
+		var side := float(pivot.get_meta("side"))
+		# Swept back (+z is behind) about the hinge: the angle and its
+		# swing, mirrored side to side.
+		pivot.rotation.y = side * clampf(FOLDING_FENDER_ANGLE_RAD + _flap_rad + shake,
+				FOLDING_FENDER_ANGLE_RAD - FLAP_MOST_RAD, FOLDING_FENDER_ANGLE_RAD + FLAP_MOST_RAD)
+
+
+# The folding fenders' angle swept back from straight out [rad].
+func flap_angle() -> float:
+	return 0.0 if _flaps.is_empty() \
+			else float(_flaps[0].get_meta("side")) * _flaps[0].rotation.y
 
 
 # The lamp: green once the chain pulls on the hook with at least

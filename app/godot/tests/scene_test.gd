@@ -497,11 +497,33 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	_expect(through == 0, "the transport wheels turn clear of the body: %d points in it" % through)
 	# The folding fenders unfolded past the sled's width (they fold in to
 	# travel; the width check above leaves them out).
-	var flap := sled.find_child("FoldingFender0", true, false) as MeshInstance3D
-	var flap_out_m := maxf(absf(sled.to_local(flap.to_global(flap.get_aabb().end)).x),
-			absf(sled.to_local(flap.to_global(flap.get_aabb().position)).x))
-	_expect(flap_out_m > SledView.WIDTH_M / 2.0 + 0.7,
-			"the folding fenders out to %.2f m either side" % flap_out_m)
+	# They stand swept back at 45° (their outer ends behind their hinges),
+	# and swing a little, within bounds, as the sled jerks.
+	for key: String in ["_flap_rad", "_flap_rate_rad_s", "_last_speed_m_s"]:
+		sled.set(key, 0.0)
+	sled.call("_show_flaps")
+	var flaps_ok := 0
+	for i in 2:
+		var flap := sled.find_child("FoldingFender%d" % i, true, false) as MeshInstance3D
+		var tip := sled.to_local(flap.to_global(Vector3(0.0, 0.0, 0.0)))
+		var hinge := sled.to_local((flap.get_parent() as Node3D).global_position)
+		var out_m := absf(tip.x) - absf(hinge.x)
+		var back_m := tip.z - hinge.z
+		if absf(tip.x) > SledView.WIDTH_M / 2.0 and out_m > 0.0 \
+				and absf(back_m - out_m) < 0.02:
+			flaps_ok += 1
+	_expect(flaps_ok == 2, "the folding fenders out past the width, swept back at 45°: %d"
+			% flaps_ok)
+	var swung := 0.0
+	for i in 30:
+		sled.call("_swing_flaps", 1.5 if i < 3 else 0.0, 1.0 / 60.0)
+		swung = maxf(swung, absf(sled.flap_angle() - SledView.FOLDING_FENDER_ANGLE_RAD))
+	_expect(swung > 0.02 and swung <= SledView.FLAP_MOST_RAD + 0.001,
+			"a jolt swings the folding fenders %.3f rad" % swung)
+	for i in 600:
+		sled.call("_swing_flaps", 0.0, 1.0 / 60.0)
+	_expect(absf(sled.flap_angle() - SledView.FOLDING_FENDER_ANGLE_RAD) < 0.005,
+			"the folding fenders settle back to 45°")
 	# The slabs stand in from the box's back (+z, down the track being -z).
 	var slabs: MultiMesh = (sled.get("_box_weights") as MultiMeshInstance3D).multimesh
 	_expect(slabs.get_instance_transform(0).origin.z > slabs.get_instance_transform(1).origin.z
