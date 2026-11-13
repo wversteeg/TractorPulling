@@ -13,6 +13,11 @@ pan_area_m2 = 1.8                    # the pan's contact with the track
 pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
 
 # The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
+[sled.pan]
+mass_kg = 800.0
+length_m = 3.0
+pivot_height_m = 0.3
+
 [sled.wheels]
 count = 2
 radius_m = 0.55
@@ -53,6 +58,7 @@ travel_distance_m = 100.0            # sled travel to move it from start to end
 # Engages at a set distance on the track, chosen per event from the test
 # pull and the track's state (for example 60 or 80 m).
 [sled.pushdown]
+cylinders_ahead_of_wheels_m = 1.5
 start_m = 60.0
 ramp_m = 30.0                        # travel until the wheels are fully off
 

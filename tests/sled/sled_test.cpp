@@ -31,6 +31,14 @@ Loads at(const Params& params, double distance_m, const HookForce& hook = {},
     return loads(params, State{.position_m = distance_m, .distance_m = distance_m}, hook, ground);
 }
 
+// The reference sled with its pivot on the track: the frame's tow tips
+// nothing, so the weights alone share the load by their levers.
+Params pivot_on_the_track() {
+    Params params = reference_params();
+    params.pivot_height_m = 0.0;
+    return params;
+}
+
 Ground softer(Ground ground) {
     ground.pan.cone_index_pa *= 0.25;
     ground.wheels.cone_index_pa *= 0.25;
@@ -56,6 +64,13 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kWheelLossesOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.wheel_rolling_losses = kMaxWheelRollingLosses + 0.01; }),
               ParamError::kWheelLossesOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pan_mass_kg = -1.0; }), ParamError::kPanInvalid);
+    EXPECT_EQ(with([](Params& p) { p.pan_mass_kg = p.frame_mass_kg + 1.0; }),
+              ParamError::kPanInvalid);
+    EXPECT_EQ(with([](Params& p) { p.pan_length_m = 0.0; }), ParamError::kPanInvalid);
+    EXPECT_EQ(with([](Params& p) { p.pivot_height_m = -0.1; }), ParamError::kPanInvalid);
+    EXPECT_EQ(with([](Params& p) { p.cylinders_ahead_of_wheels_m = p.pan_ahead_of_wheels_m; }),
+              ParamError::kPanInvalid);
     EXPECT_EQ(with([](Params& p) { p.pan_ahead_of_wheels_m = 0.0; }),
               ParamError::kPanNotAheadOfWheels);
     EXPECT_EQ(with([](Params& p) { p.frame_cg_ahead_of_wheels_m = 3.5; }),
@@ -107,7 +122,7 @@ TEST(SledParams, RejectsNonsense) {
 // up, so the pan carries less than the frame alone would put on it, and
 // the sled starts more easily.
 TEST(Sled, StartsWithMostWeightOnTheWheels) {
-    const Params params = reference_params();
+    const Params params = pivot_on_the_track();
     ASSERT_LT(params.box_start_ahead_of_wheels_m, 0.0);
     const Loads start = at(params, 0.0);
     const double frame_n = params.frame_mass_kg * kStandardGravity_m_s2;
@@ -124,7 +139,7 @@ TEST(Sled, StartsWithMostWeightOnTheWheels) {
 // sled's centre of gravity right over the wheels they carry all of its
 // weight. Further back it would tip onto its tail, which is refused.
 TEST(Sled, ABoxFarBehindTheWheelsLiftsThePan) {
-    Params params = reference_params();
+    Params params = pivot_on_the_track();
     params.box_start_ahead_of_wheels_m =
         -params.frame_mass_kg * params.frame_cg_ahead_of_wheels_m / params.box_mass_kg;
     ASSERT_FALSE(validate(params).has_value());
@@ -223,16 +238,16 @@ TEST(Sled, APushdownSetToAShareLeavesTheRestOnTheWheels) {
         << "the pan already carries more";
 }
 
-// The chain's pull at hook height tips the sled onto its pan; the hook is
-// on the pan, so pulling up at it lifts the pan itself, one for one, and
-// leaves the wheels' load as it was.
+// The hook is on the pan, which tows the frame through the pivot: the
+// chain's pull along the track moves no load between the pan and the
+// wheels, and pulling up at the hook lifts the pan itself, one for one,
+// leaving the wheels' load as it was.
 TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
     const Params params = reference_params();
     const Loads free = at(params, 10.0);
     constexpr double kPull_n = 10000.0;
     const Loads pulled = at(params, 10.0, {.forward_n = kPull_n});
-    EXPECT_NEAR(pulled.pan_n - free.pan_n,
-                kPull_n * params.hook_height_m / params.pan_ahead_of_wheels_m, 1e-9);
+    EXPECT_NEAR(pulled.pan_n, free.pan_n, 1e-9);
     EXPECT_NEAR(pulled.pan_n + pulled.wheels_n, weight_n(params), 1e-9);
 
     constexpr double kUp_n = 2000.0;
@@ -243,6 +258,81 @@ TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
 
     const Loads pressed = at(params, 10.0, {.up_n = -kUp_n});
     EXPECT_GT(pressed.resistance_n, free.resistance_n);
+}
+
+// With the pivot on the track, the frame and the box share their weight
+// between the wheels and the pan by their levers, as one rigid sled would;
+// the pan's own weight is the pan's. Raised, the pivot tows the frame from
+// over the track, tipping it onto the pan by the wheels' rolling at that
+// height: a little more on the pan, as much less on the wheels.
+TEST(Sled, TheFrameStandsOnTheWheelsAndThePivot) {
+    Params low = reference_params();
+    low.pivot_height_m = 0.0;
+    const double distance_m = 10.0;
+    const Loads flat = at(low, distance_m);
+    const double box_m = flat.box_ahead_of_wheels_m;
+    const double lever_n =
+        (low.frame_mass_kg * low.frame_cg_ahead_of_wheels_m + low.box_mass_kg * box_m) *
+        kStandardGravity_m_s2 / low.pan_ahead_of_wheels_m;
+    EXPECT_NEAR(flat.pan_n, lever_n, 1e-9);
+    EXPECT_NEAR(flat.pivot_n, flat.pan_n - low.pan_mass_kg * kStandardGravity_m_s2, 1e-9);
+
+    const Loads raised = at(reference_params(), distance_m);
+    EXPECT_GT(raised.pan_n, flat.pan_n);
+    EXPECT_NEAR(raised.pan_n + raised.wheels_n, weight_n(low), 1e-9);
+}
+
+// The push-down's cylinders, behind the pivot, lift the frame off the
+// wheels: they push harder than the load they move, the lever's ratio,
+// and the pivot carries less by the rest.
+TEST(Sled, ThePushdownsCylindersLiftTheFrame) {
+    const Params params = pivot_on_the_track();
+    Params never = params;
+    never.pushdown_start_m = 1.0e6;
+    const double full_m = params.pushdown_start_m + params.pushdown_ramp_m;
+    const Loads off = at(never, full_m);
+    const Loads on = at(params, full_m);
+    EXPECT_EQ(off.cylinders_n, 0.0);
+    const double moved_n = on.pan_n - off.pan_n;
+    EXPECT_GT(moved_n, 0.0);
+    const double ratio = params.cylinders_ahead_of_wheels_m / params.pan_ahead_of_wheels_m;
+    EXPECT_NEAR(on.cylinders_n, moved_n / (1.0 - ratio), 1e-6);
+    EXPECT_NEAR(off.pivot_n - on.pivot_n, on.cylinders_n * ratio, 1e-6);
+    EXPECT_NEAR(on.wheels_n, off.wheels_n - moved_n, 1e-6);
+}
+
+// The chain pulling up at the hook, ahead of the pivot, lifts the pan's
+// front while the box is back and the pan light; then it ploughs less.
+// The box come forward over the pivot puts the front down again, and so
+// does the push-down. Pulling along the track at the hook's height
+// presses the front down.
+TEST(Sled, TheChainLiftsThePansFrontUntilTheBoxComesForward) {
+    constexpr double kUp_n = 4000.0;
+    Params params = reference_params();
+    params.pushdown_start_m = 1.0e6;
+    const Loads lifted = at(params, 10.0, {.up_n = kUp_n});
+    EXPECT_GT(lifted.pan_front_lift, 0.3);
+    EXPECT_LE(lifted.pan_front_lift, 1.0);
+    EXPECT_EQ(at(params, 10.0).pan_front_lift, 0.0) << "no pull, flat";
+    const double ploughing_mu =
+        params.pan_friction_coefficient *
+        (1.0 + params.pan_plough_coefficient * lifted.pan_n / params.pan_area_m2 /
+                   reference_ground().pan.cone_index_pa);
+    EXPECT_LT(lifted.pan_friction, ploughing_mu) << "a lifted front ploughs less";
+    EXPECT_GT(lifted.pan_friction, params.pan_friction_coefficient);
+
+    const Loads forward = at(params, params.box_travel_distance_m, {.up_n = kUp_n});
+    EXPECT_LT(forward.pan_front_lift, lifted.pan_front_lift);
+    EXPECT_GT(forward.pan_n, lifted.pan_n);
+    const Loads pressed = at(params, 10.0, {.forward_n = 10.0 * kUp_n, .up_n = kUp_n});
+    EXPECT_LT(pressed.pan_front_lift, lifted.pan_front_lift);
+
+    // The push-down engaged holds the pan level, the box still back.
+    Params held = reference_params();
+    held.box_travel_distance_m = 1.0e6;
+    const double full_m = held.pushdown_start_m + held.pushdown_ramp_m;
+    EXPECT_EQ(at(held, full_m, {.up_n = kUp_n}).pan_front_lift, 0.0);
+    EXPECT_GT(at(held, held.pushdown_start_m - 1.0, {.up_n = kUp_n}).pan_front_lift, 0.0);
 }
 
 // Each pull-off step drags harder everywhere along the track, and several
@@ -500,7 +590,7 @@ TEST(Sled, WheelsRollAsTowedTires) {
 // A sled's hard-pumped tires lose less in their carcass than a tractor's
 // soft ones: their own losses, on top of sinking in.
 TEST(Sled, TheWheelsOwnLossesAddToTheirRolling) {
-    const Params soft = reference_params();
+    const Params soft = pivot_on_the_track();
     Params hard = soft;
     hard.wheel_rolling_losses = soft.wheel_rolling_losses / 2.0;
     const Loads soft_loads = at(soft, 0.0);
