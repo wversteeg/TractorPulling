@@ -58,7 +58,7 @@ depth_m = 1.0
 max_mass_kg = 11000.0
 start_ahead_of_wheels_m = -0.65
 end_ahead_of_wheels_m = 5.5
-travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop as the push-down is fully set
+travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop while the push-down comes on
 
 # Engages at a set distance on the track, chosen per class and per event
 # from the test pull and the track's state, and presses the pan down over
