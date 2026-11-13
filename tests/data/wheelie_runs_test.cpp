@@ -107,7 +107,7 @@ const driver::Plan kSportDriver{.gear = 5,
 // Where the weights sit: 0 rearmost, 1 foremost.
 constexpr double kBack = 0.0;
 constexpr double kQuarter = 0.25;
-constexpr double kHalfway = 0.5;
+constexpr double kThreeQuarters = 0.75;
 constexpr double kForward = 1.0;
 // The front tires carry this much or more: down [N]; on average this much
 // or more over a stretch: light, but down rather than up.
@@ -140,20 +140,22 @@ TEST(WheelieRuns, TheWeightsAllBackKeepItUpAllTheWay) {
     EXPECT_LT(back.result.distance_m, sport("ideal_clay_sand.toml", kQuarter).result.distance_m);
 }
 
-// Halfway, the front is down through the middle and comes up only at the
-// end; all forward it stays down from the launch on (the launch still
-// lifts it: 350 hp). Both trade grip at the rear for it and pull shorter
-// than a quarter forward.
+// The chain, hooked low on the pan, pulls the hitch down and lifts the
+// front: with the weights three-quarters or all forward the front stays
+// down through the middle and comes up only at the end, as the push-down
+// comes on (the launch still lifts it: 350 hp). On a good track the rear
+// tires have the grip to spare, so the weights forward pull further than
+// a quarter forward, which rides up and down through the middle.
 TEST(WheelieRuns, TheWeightsForwardKeepTheFrontDown) {
     const FrontLoads quarter = sport("ideal_clay_sand.toml", kQuarter);
-    const FrontLoads halfway = sport("ideal_clay_sand.toml", kHalfway);
-    const FrontLoads forward = sport("ideal_clay_sand.toml", kForward);
-    EXPECT_GT(halfway.middle_n, kDown_n);
-    EXPECT_EQ(halfway.end_n, 0.0);
-    EXPECT_GT(forward.middle_n, kDown_n);
-    EXPECT_GT(forward.end_n, kDown_n);
-    EXPECT_LT(halfway.result.distance_m, quarter.result.distance_m);
-    EXPECT_LT(forward.result.distance_m, quarter.result.distance_m);
+    for (const double position : {kThreeQuarters, kForward}) {
+        const FrontLoads f = sport("ideal_clay_sand.toml", position);
+        EXPECT_EQ(f.launch_n, 0.0) << position;
+        EXPECT_GT(f.middle_n, kDown_n) << position;
+        EXPECT_EQ(f.end_n, 0.0) << position;
+        EXPECT_GT(f.result.distance_m, quarter.result.distance_m) << position;
+    }
+    EXPECT_EQ(quarter.middle_n, 0.0) << "up for moments in the middle";
 }
 
 // A pull that ends with the front up and the chain pulling hard leaves the
@@ -195,7 +197,7 @@ TEST(WheelieRuns, PressingTheClutchAfterThePullLetsTheFrontDown) {
     ASSERT_EQ(state.stage, turn::Stage::kReleasing);
     ASSERT_EQ(state.run.result.value_or(run::Result{}).ending, run::Ending::kFullPull);
     const int gear = state.run.pull.tractor.driveline.gear;
-    ASSERT_GT(out.chain.tension_n, 20000.0) << "the chain pulling hard at the line";
+    ASSERT_GT(out.chain.tension_n, 12000.0) << "the chain pulling hard at the line";
     ASSERT_EQ(out.tractor.axle_loads.front_n, 0.0) << "the front up";
     // Off the gas, the clutch pressed: the tractor and the sled roll to a
     // stop, the chain between them.

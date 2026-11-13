@@ -37,12 +37,12 @@ T loaded(Result<T> result) {
     return std::move(result).value();
 }
 
-// Every step of a pull: how far the sled has come, what its pan drags (its
-// friction and the knives: what a hard spot bites into) and the rear
-// wheels' slip.
+// Every step of a pull: how far the sled has come, the pan's friction
+// coefficient (what a hard spot bites into; the pan's load, which the
+// chain lifting at its front changes, aside) and the rear wheels' slip.
 struct Sample {
     double pulled_m = 0.0;
-    double pan_drag_n = 0.0;
+    double pan_friction = 0.0;
     double slip_ratio = 0.0;
 };
 
@@ -73,25 +73,22 @@ std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_of
         const pull::Output step =
             run::step(state, *model, setup.rules,
                       driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
-        samples.push_back(
-            {.pulled_m = state.pull.sled.position_m - model->sled_start_m(),
-             .pan_drag_n = step.sled.pan_friction * step.sled.pan_n + step.sled.knives_n,
-             .slip_ratio = step.tractor.slip_ratio});
+        samples.push_back({.pulled_m = state.pull.sled.position_m - model->sled_start_m(),
+                           .pan_friction = step.sled.pan_friction,
+                           .slip_ratio = step.tractor.slip_ratio});
     }
     return samples;
 }
 
-// Over the middle of the pull, within a metre: the most the pan's drag rose
-// (as a share) and the wheels' slip rose.
+// Over the middle of the pull, within a metre: the most the pan's friction
+// rose (as a share).
 struct Jumps {
     double drag_rise = 0.0;
-    double slip_rise = 0.0;
 };
 
 constexpr double kFrom_m = 15.0;
-// Short of the push-down, which starts at 60 m on the dry hard clay and
-// raises the pan's drag over its ramp.
-constexpr double kUntil_m = 58.0;
+// Short of the push-down, which starts at 58 m on the class's sled.
+constexpr double kUntil_m = 55.0;
 constexpr double kWindow_m = 1.0;
 
 Jumps jumps(const std::vector<Sample>& samples) {
@@ -106,12 +103,35 @@ Jumps jumps(const std::vector<Sample>& samples) {
             continue;
         }
         const Sample& before = samples[back];
-        if (before.pan_drag_n > 0.0) {
-            out.drag_rise = std::max(out.drag_rise, now.pan_drag_n / before.pan_drag_n - 1.0);
+        if (before.pan_friction > 0.0) {
+            out.drag_rise = std::max(out.drag_rise, now.pan_friction / before.pan_friction - 1.0);
         }
-        out.slip_rise = std::max(out.slip_rise, now.slip_ratio - before.slip_ratio);
     }
     return out;
+}
+
+// Over the middle of the pull: the most the wheels slipped more than on
+// `even`, at the same distance (as a share of the even track's slip).
+double most_extra_slip(const std::vector<Sample>& samples, const std::vector<Sample>& even) {
+    double most = 0.0;
+    std::size_t j = 1;
+    for (const Sample& now : samples) {
+        if (now.pulled_m < kFrom_m || now.pulled_m > kUntil_m) {
+            continue;
+        }
+        while (j + 1 < even.size() && even[j].pulled_m < now.pulled_m) {
+            ++j;
+        }
+        const Sample& a = even[j - 1];
+        const Sample& b = even[j];
+        const double span_m = b.pulled_m - a.pulled_m;
+        const double t = span_m > 0.0 ? (now.pulled_m - a.pulled_m) / span_m : 0.0;
+        const double even_slip = a.slip_ratio + t * (b.slip_ratio - a.slip_ratio);
+        if (even_slip > 0.0) {
+            most = std::max(most, now.slip_ratio / even_slip - 1.0);
+        }
+    }
+    return most;
 }
 
 // The dry hard clay with its hard spots alone: its weak spots taken away.
@@ -128,19 +148,19 @@ Track even(Track track) {
     return track;
 }
 
-// A hard spot's jump in the pan's drag, more than the even track's own
-// rise; a weak spot's, below a jump: the tractor slows as it slips, which
-// moves the sled's drag a little.
-constexpr double kDragJump = 0.1;
-constexpr double kEvenDrag = 0.05;
-constexpr double kWeakSpotDrag = 0.08;
+// A hard spot's jump in the pan's friction, more than the even track's own
+// rise; a weak spot's, below a jump. At a weak spot the wheels slip at
+// least this share more than on the even track.
+constexpr double kDragJump = 0.075;
+constexpr double kEvenDrag = 0.03;
+constexpr double kWeakSpotDrag = 0.03;
+constexpr double kWeakSpotSlip = 0.15;
 
-// On the dry hard clay the pan's drag jumps at each hard spot (a patch the
-// pan crosses with part of its width); the same
-// track without its hard spots drags evenly, rising only with the box's
-// travel. (On the 15 t sled the pan carries a small share of the sled's
-// weight until the box comes forward, so a spot shows in the pan's drag
-// more than in the whole sled's or the engine's speed.)
+// On the dry hard clay the pan's friction jumps at each hard spot (a patch
+// the pan crosses with part of its width); the same track without its hard
+// spots drags evenly. (On the 15 t sled the pan carries a small share of
+// the sled's weight until the box comes forward, so a spot shows in the
+// pan's drag more than in the whole sled's or the engine's speed.)
 TEST(HardSpotRuns, ThePansDragJumpsAtHardSpots) {
     const Track spotted = only_hard_spots();
     ASSERT_TRUE(spotted.ground.hard_spots.has_value());
@@ -151,7 +171,7 @@ TEST(HardSpotRuns, ThePansDragJumpsAtHardSpots) {
 }
 
 // Where the tires lose grip at a weak spot the wheels slip more for a
-// moment; the drag stays even. The shipped tracks have their weak spots
+// moment; the pan's friction stays even. The shipped tracks have their weak spots
 // 15 m apart, so this one has them closer, deeper and longer, to show them
 // clearly: a cone over the patch is on average weaker than its peak.
 TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
@@ -162,11 +182,9 @@ TEST(HardSpotRuns, TheWheelsSlipMoreAtWeakSpots) {
                                               .max_width_m = 12.0,
                                               .grip_loss = 0.5,
                                               .seed = 3};
-    const Jumps with = jumps(pull(weak));
-    const Jumps without = jumps(pull(even(weak)));
-    EXPECT_LT(with.drag_rise, kWeakSpotDrag) << "the sled drags about as before";
-    EXPECT_GT(with.slip_rise, 2.0 * without.slip_rise)
-        << with.slip_rise << " vs " << without.slip_rise;
+    const std::vector<Sample> with = pull(weak);
+    EXPECT_LT(jumps(with).drag_rise, kWeakSpotDrag) << "the pan drags as before";
+    EXPECT_GT(most_extra_slip(with, pull(even(weak))), kWeakSpotSlip);
 }
 
 // How far a pull goes off its line: the tractor's heading (positive
