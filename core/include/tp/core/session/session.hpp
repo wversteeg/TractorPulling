@@ -225,6 +225,9 @@ public:
     /// The pull again from the start line (turn::restart), the controls'
     /// assist as at the start; nothing unless may_restart().
     void restart() noexcept;
+    /// The pull counts as it is (turn::decline_restart): no restart, the
+    /// chain off once slack.
+    void decline_restart() noexcept { turn::decline_restart(turn_); }
     /// The turn is over: the pull ended (at the line), or the tractor
     /// stands in the parking again.
     [[nodiscard]] bool over() const noexcept { return turn_.stage == turn::Stage::kParked; }

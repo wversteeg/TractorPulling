@@ -531,6 +531,31 @@ TEST(Turn, TheChainComesOffOnceSlack) {
     EXPECT_EQ(state.run.pull.sled_mode, pull::SledMode::kDrivingBack);
 }
 
+// A pull that ended short of the restart line keeps the chain on while
+// the driver may still pull again, however slack: a sled coasting up to a
+// tractor that stopped first (a stall) slackens the chain at once, and the
+// choice must not come off with it. Declined, the chain comes off.
+TEST(Turn, TheChainStaysOnWhileTheRestartIsOpen) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    state.stage = Stage::kReleasing;
+    state.run.pull.hooked = true;
+    state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = 12.0};
+    place_hitch(model, state.run.pull, model.sled().chain.length_m - 2.0 * kReleaseSlack_m, 0.0);
+    for (int i = 0; i < 1000; ++i) {
+        step(state, model, kRules, kParking, {.clutch_pedal = 1.0}, kDt_s);
+    }
+    EXPECT_EQ(state.stage, Stage::kReleasing);
+    EXPECT_TRUE(state.run.pull.hooked);
+    EXPECT_TRUE(may_restart(state));
+
+    decline_restart(state);
+    EXPECT_FALSE(may_restart(state));
+    step(state, model, kRules, kParking, {.clutch_pedal = 1.0}, kDt_s);
+    EXPECT_EQ(state.stage, Stage::kToTheParking);
+    EXPECT_FALSE(state.run.pull.hooked);
+}
+
 // Back in the parking, standing: the turn is over.
 TEST(Turn, OverOnceParked) {
     const pull::Model model = reference_model();

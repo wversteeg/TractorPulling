@@ -86,6 +86,8 @@ package "tp::session" {
     +previous() / current() : const Snapshot&
     +alpha() : double
     +result() : const optional<run::Result>&
+    +may_restart() : bool
+    +restart() / decline_restart()
     +over() : bool
     +hash() : uint64
   }

@@ -31,6 +31,8 @@ package "tp::turn" {
     +from_the_parking : bool
     +ready_steps : uint64
     +sled_back : bool
+    +restarts : uint8
+    +restart_declined : bool
   }
   class HitchToHook <<struct>> {
     +distance_m : double
@@ -49,6 +51,9 @@ package "tp::turn" {
     +chain_slack_m(const pull::Model&, const pull::State&) : double
     +hooks_on(const pull::Model&, const pull::State&) : bool
     +pull_rules_apply(const State&) : bool
+    +may_restart(const State&) : bool (the chain held on while true)
+    +restart(State&, const pull::Model&)
+    +decline_restart(State&)
     +step(State&, const pull::Model&, const run::Rules&,\n      const Parking&, vehicle::Input, dt_s) : pull::Output
     +hash_append(Fnv1a&, const State&)
     --

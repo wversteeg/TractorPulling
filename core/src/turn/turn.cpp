@@ -179,8 +179,9 @@ void release(State& state, const pull::Model& model) noexcept {
         pull.sled_mode = pull::SledMode::kHeld;
     }
     // Off only once the sled stands too: one still rolling can run up on
-    // the tractor and slacken the chain by itself.
-    if (pull.sled_mode == pull::SledMode::kHeld && stands(pull) &&
+    // the tractor and slacken the chain by itself. Nor while the driver
+    // may still choose to pull again: the chain stays on for it.
+    if (pull.sled_mode == pull::SledMode::kHeld && stands(pull) && !may_restart(state) &&
         chain_span_m(model, pull) <= model.sled().chain.length_m - kReleaseSlack_m) {
         pull.hooked = false;
         pull.sled_mode = pull::SledMode::kDrivingBack;
@@ -223,7 +224,7 @@ bool may_restart(const State& state) noexcept {
     const std::optional<run::Result>& result = state.run.result;
     const bool just_stopped =
         state.from_the_parking ? state.stage == Stage::kReleasing : state.stage == Stage::kParked;
-    if (!result || !just_stopped || state.restarts >= kMaxRestarts) {
+    if (!result || !just_stopped || state.restarts >= kMaxRestarts || state.restart_declined) {
         return false;
     }
     // A sled nudged less than the stop counts from stands until the time is
@@ -239,6 +240,10 @@ bool may_restart(const State& state) noexcept {
         return result->out_of_bounds_at_m < kRestartBefore_m;
     }
     return stopped && result->distance_m < kRestartBefore_m;
+}
+
+void decline_restart(State& state) noexcept {
+    state.restart_declined = true;
 }
 
 void restart(State& state, const pull::Model& model) noexcept {
