@@ -118,6 +118,10 @@ struct Params {
     double hook_ahead_of_wheels_m = 0.0;
     double hook_height_m = 0.0;
     double box_mass_kg = 0.0;
+    /// What the weight box holds at most: the sled operator sets the
+    /// class's weight within it, and may change it between qualifying and
+    /// the pull-off [kg].
+    double box_max_mass_kg = 0.0;
     double box_start_ahead_of_wheels_m = 0.0;
     double box_end_ahead_of_wheels_m = 0.0;
     /// Sled travel over which the box moves from start to end [m].
@@ -140,6 +144,10 @@ struct Params {
     /// Side grip of one rear wheel.
     tire::Cornering wheel_cornering;
     int wheel_count = 2;
+    /// One rear wheel's own rolling losses per unit of load, on top of its
+    /// sinking in (1/Bn): hard-pumped sled tires lose less than a
+    /// tractor's soft ones (tire::towed_rolling_resistance).
+    double wheel_rolling_losses = 0.0;
     Chain chain;
     /// One pull-off step, about 5 m of pull on this class's sled; a pull-off
     /// may take several.
@@ -152,6 +160,8 @@ enum class ParamError : std::uint8_t {
     kFrameMassNotPositive,
     kYawInertiaNotPositive,
     kBoxMassNegative,
+    /// The box holds more than its maximum.
+    kBoxOverMax,
     kPanNotAheadOfWheels,
     kFrameCgOutsideSled,
     kBoxOutsideSled,
@@ -170,6 +180,7 @@ enum class ParamError : std::uint8_t {
     kWheel,
     kWheelCornering,
     kWheelCountOutOfRange,
+    kWheelLossesOutOfRange,
     kChainInvalid,
     /// The pull-off step would not make the sled heavier.
     kPullOffStepNotHeavier,
@@ -177,6 +188,9 @@ enum class ParamError : std::uint8_t {
 };
 
 inline constexpr int kMaxWheels = 8;
+/// A tire losing more than this share of its load rolling, on hard ground,
+/// is a data error.
+inline constexpr double kMaxWheelRollingLosses = 0.2;
 
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
@@ -261,7 +275,8 @@ struct Loads {
 
 [[nodiscard]] double total_mass_kg(const Params& params) noexcept;
 
-/// The sled after `adjustment`, applied `times` over. Box mass, knife count
+/// The sled after `adjustment`, applied `times` over. Box mass (up to its
+/// maximum), knife count
 /// and depth and the push-down stay within what validate() accepts; a box
 /// made heavier behind the wheels starts no further back than the sled
 /// balances on them.

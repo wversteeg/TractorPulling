@@ -148,25 +148,27 @@ cmake --preset release && cmake --build --preset release
 # or a full pull (then pull-offs on a heavier sled); prints each result.
 # --downshift S shifts a gear down under load (the powershift step) once the
 # engine falls below S of its rated speed, as the scripted pullers do;
+# --launch-hold S holds the clutch back while the engine is below S of its
+# rated speed, as they launch (a tall gear needs it on the 15 t sled);
 # --start-y M puts the sled M metres left of the lane's middle (negative
 # right), as the team may before a pull
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] [--dump] \
-    [--steer-deg 1] [--downshift 0.9] [--start-y -2] [--hash] -o run.csv
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 5] [--dump] \
+    [--steer-deg 1] [--downshift 0.9] [--launch-hold 0.8] [--start-y -2] [--hash] -o run.csv
 
 # The same run with the easy control layout: the clutch assist works the
 # clutch; --stick holds the steering control (-1 right to 1 left). Or with
 # --pro data/controls/pro.toml: the pro layout's steering dead zone and rate
 # (--stick then holds the pro steering control)
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 6] \
+    data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 5] \
     --easy data/controls/easy.toml [--stick 0.05] -o run.csv
 
 # The same tractor, sled and driving on several tracks: one line per track.
 # --ballast B (0 rearmost, 1 foremost) and --pressure BAR (rear tires) tune
 # the tractor first, in pull and run too (vehicle::Tuning)
 ./build/release/tools/tp_pull compare-tracks data/tractors/farm_stock_light.toml \
-    data/sleds/light_class.toml data/tracks/*.toml [--gear 6] [--dump] \
+    data/sleds/light_class.toml data/tracks/*.toml [--gear 5] [--dump] \
     [--ballast 0.3] [--pressure 0.7]
 
 # A class at an event: a seeded field, test pulls and the sled operator,

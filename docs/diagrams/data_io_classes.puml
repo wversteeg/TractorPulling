@@ -34,6 +34,7 @@ package "tp::data" {
     +load_tire(path, read) / parse_tire(text, source) : Result<tire::Params>
     +load_class_rules(path, read) / parse_class_rules(text, source) : Result<rules::ClassRules>
     +load_sled(path, read) / parse_sled(text, source) : Result<sled::Params>
+      a class's sled file may name a base sled (sled.base): its values over the base's
     +load_track(path, read) / parse_track(text, source) : Result<Track>
     --
     each: read fields, convert to SI, build Params,

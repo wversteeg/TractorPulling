@@ -476,10 +476,17 @@ func _check_cameras(cameras: CameraRig, tractor: TractorView, sled: SledView) ->
 			"turned, the close camera behind the tractor along its heading")
 	# On the dog-tail: the tractor turned and the sled off to one side; the
 	# camera still sees the sled's box, the hook and the whole tractor, its
-	# roof (where the driver's eyes are) too.
+	# roof (where the driver's eyes are) too. The box is checked halfway
+	# along its rails: at the start it stands under the operator's cab,
+	# below the camera, and comes into view as it rides forward.
 	var aside := TrackSpace.point(0.0, -1.5, 0.0)
 	var box: Node3D = sled.get("_box")
+	var box_was := box.position
+	var dims: Dictionary = _pull.get("run").get_dimensions()
+	box.position = TrackSpace.point(float(dims["pan_ahead_of_wheels_m"]) / 2.0, 0.0, 0.0) \
+			+ Vector3.UP * box_was.y
 	var box_top := box.global_position + aside + Vector3.UP * SledView.BOX_SIZE_M.y / 2.0
+	box.position = box_was
 	cameras.follow(target, 0.0, false, heading_rad, mount + aside)
 	_expect(close.is_position_in_frustum(box_top)
 			and close.is_position_in_frustum(sled.hook_position() + aside)

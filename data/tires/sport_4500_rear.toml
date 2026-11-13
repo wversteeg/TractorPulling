@@ -19,7 +19,7 @@ wheel_inertia_kg_m2 = 60.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-limit = 1.12                       # μ on very strong ground at full bite: a cut puller tire
+limit = 1.4                        # μ on very strong ground at full bite: a cut puller tire
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 6.0                    # grip builds slowly with slip: a puller tire bites spinning hard
 

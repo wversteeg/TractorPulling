@@ -50,6 +50,12 @@ TEST(SledParams, RejectsNonsense) {
     EXPECT_EQ(with([](Params& p) { p.frame_mass_kg = std::nan(""); }), ParamError::kNotFinite);
     EXPECT_EQ(with([](Params& p) { p.frame_mass_kg = 0.0; }), ParamError::kFrameMassNotPositive);
     EXPECT_EQ(with([](Params& p) { p.box_mass_kg = -1.0; }), ParamError::kBoxMassNegative);
+    EXPECT_EQ(with([](Params& p) { p.box_mass_kg = p.box_max_mass_kg + 1.0; }),
+              ParamError::kBoxOverMax);
+    EXPECT_EQ(with([](Params& p) { p.wheel_rolling_losses = -0.01; }),
+              ParamError::kWheelLossesOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.wheel_rolling_losses = kMaxWheelRollingLosses + 0.01; }),
+              ParamError::kWheelLossesOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.pan_ahead_of_wheels_m = 0.0; }),
               ParamError::kPanNotAheadOfWheels);
     EXPECT_EQ(with([](Params& p) { p.frame_cg_ahead_of_wheels_m = 3.5; }),
@@ -252,6 +258,8 @@ TEST(Sled, AdjustmentsStayValid) {
     EXPECT_GT(adjusted(sled, heavier_by, 100).box_start_ahead_of_wheels_m,
               sled.box_start_ahead_of_wheels_m);
     EXPECT_EQ(adjusted(sled, heavier_by, 100).knives.count, kMaxKnives);
+    // The operator loads the box no fuller than it holds.
+    EXPECT_EQ(adjusted(sled, heavier_by, 100).box_mass_kg, sled.box_max_mass_kg);
     EXPECT_EQ(adjusted(sled, heavier_by, 100).pushdown_start_m, 0.0);
 }
 
@@ -404,6 +412,19 @@ TEST(Sled, WheelsRollAsTowedTires) {
         1e-9);
     EXPECT_GT(rolling, 0.04);
     EXPECT_LT(rolling, 0.15);
+}
+
+// A sled's hard-pumped tires lose less in their carcass than a tractor's
+// soft ones: their own losses, on top of sinking in.
+TEST(Sled, TheWheelsOwnLossesAddToTheirRolling) {
+    const Params soft = reference_params();
+    Params hard = soft;
+    hard.wheel_rolling_losses = soft.wheel_rolling_losses / 2.0;
+    const Loads soft_loads = at(soft, 0.0);
+    const Loads hard_loads = at(hard, 0.0);
+    EXPECT_NEAR(soft_loads.resistance_n - hard_loads.resistance_n,
+                (soft.wheel_rolling_losses - hard.wheel_rolling_losses) * soft_loads.wheels_n,
+                1e-6);
 }
 
 TEST(Sled, ResistanceHoldsAtRestWithoutPullingBack) {

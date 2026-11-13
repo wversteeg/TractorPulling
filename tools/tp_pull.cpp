@@ -8,7 +8,7 @@
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
 //               [--ballast B] [--pressure BAR] [--hitch M] [--downshift S]
-//               [--start-y M] [-o <out.csv>]
+//               [--launch-hold S] [--start-y M] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
 //                          [--hitch M]
@@ -36,6 +36,8 @@
 // zone and rate, as the game's pro layout steers: --steer-deg is then the
 // angle the steering control asks for, before the dead zone (a small angle
 // steers straight), and --stick holds the control itself instead.
+// --launch-hold S lets the clutch in as the events' drivers do: eased back
+// while the engine is below S of its rated speed, for up to 8 s.
 //
 // --start-y puts the sled (and the tractor in line with it) M metres to the
 // left of the lane's middle at the start (negative to the right), as far as
@@ -199,6 +201,8 @@ constexpr double kTrackLength_m = 100.0;
 constexpr double kPullSelectGear_s = 0.5;
 constexpr double kPullRevUpEnd_s = 3.0;
 constexpr double kPullSlipIn_s = 3.0;
+// The longest a --launch-hold launch is held, as the events' drivers do.
+constexpr double kPullLaunchHoldMax_s = 8.0;
 constexpr double kPullMaxDuration_s = 30.0;
 
 struct PullOptions {
@@ -230,6 +234,9 @@ struct PullOptions {
     /// clutch in) once the sled pulls the engine below this share of its
     /// rated speed, after the launch; as the scripted pullers do.
     std::optional<double> downshift_share;
+    /// --launch-hold: the clutch eased back while the engine is below this
+    /// share of its rated speed, as the events' drivers launch.
+    std::optional<double> launch_hold_share;
     /// run: where the sled starts across the lane, to the left of the
     /// middle [m].
     double start_y_m = 0.0;
@@ -482,11 +489,26 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
     bool downshifted = false;
     bool reported_shift = false;
     int gear = options.gear;
+    // --launch-hold: the pedals as the events' scripted drivers work them.
+    const tp::driver::Plan plan{.gear = options.gear,
+                                .select_gear_s = kPullSelectGear_s,
+                                .launch_s = kPullRevUpEnd_s,
+                                .clutch_slip_in_s = kPullSlipIn_s,
+                                .launch_hold_share = options.launch_hold_share.value_or(0.0),
+                                .launch_hold_max_s = kPullLaunchHoldMax_s};
+    tp::driver::State driver;
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
         const tp::vehicle::State& tractor =
             tp::session::Inspector::run_state(*session).pull.tractor;
+        if (options.launch_hold_share && !options.easy) {
+            const tp::vehicle::Input held =
+                tp::driver::input(plan, driver, t_s, tractor, setup.tractor);
+            controls.throttle = held.throttle;
+            controls.clutch_pedal = held.clutch_pedal;
+            controls.gear = held.gear;
+        }
         if (options.downshift_share && !downshifted &&
             tp::session::Inspector::last_input(*session).clutch_pedal == 0.0) {
             gear = tp::driver::under_load_gear(*options.downshift_share, watching, gear, tractor,
@@ -947,6 +969,14 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         pull.hitch_height_m = height_m;
         return Parsed::kOk;
     }
+    if (arg == "--launch-hold") {
+        const auto share = parse_number<double>(value);
+        if (!share || *share <= 0.0 || *share >= 1.0) {
+            return Parsed::kInvalid;
+        }
+        pull.launch_hold_share = share;
+        return Parsed::kOk;
+    }
     if (arg == "--start-y") {
         const auto y_m = parse_number<double>(value);
         pull.start_y_m = y_m.value_or(0.0);
@@ -1031,7 +1061,7 @@ int usage() {
                  "                   [--dump] [--steer-deg A] [--brake-left P] [--brake-right P]\n"
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
                  "                   [--hash] [--ballast B] [--pressure BAR] [--hitch M]\n"
-                 "                   [--downshift S]\n"
+                 "                   [--downshift S] [--launch-hold S] [--start-y M]\n"
                  "                   [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump] [--ballast B]\n"
@@ -1106,6 +1136,11 @@ int run_command(const Options& options) {
     }
     if (options.easy_path && options.pro_path) {
         std::cerr << "--easy and --pro are two layouts: pick one\n";
+        return EXIT_FAILURE;
+    }
+    if (options.pull.launch_hold_share && (options.pull.dump || options.easy_path)) {
+        std::cerr << "--launch-hold works the clutch as the events' drivers do: not with "
+                     "--dump or --easy\n";
         return EXIT_FAILURE;
     }
     PullOptions pull = options.pull;

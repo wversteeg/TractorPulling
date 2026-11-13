@@ -111,9 +111,9 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.game.pullers, 15);
     ASSERT_EQ(definition.game.rival_names.size(), 14U);
     EXPECT_EQ(definition.game.rival_names.front(), "Henk");
-    EXPECT_EQ(definition.reference.driver.gear, 6);
-    EXPECT_EQ(definition.variation.lowest_gear, 5);
-    EXPECT_EQ(definition.variation.highest_gear, 7);
+    EXPECT_EQ(definition.reference.driver.gear, 5);
+    EXPECT_EQ(definition.variation.lowest_gear, 4);
+    EXPECT_EQ(definition.variation.highest_gear, 5);
     EXPECT_EQ(definition.variation.track_reading.low, 0.5);
     EXPECT_EQ(definition.pull_to_pull.grip_share, 0.01);
     EXPECT_EQ(definition.pull_to_pull.clutch_slip_in_s, 0.3);
@@ -137,7 +137,7 @@ TEST(EventLoader, LoadsTheShippedEvent) {
 TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("pullers = 15", "pullers = 40")).find("event.pullers: must be 1 to 32"),
               std::string::npos);
-    EXPECT_NE(error_of(with("gears = [5, 7]", "gears = [5, 12]"))
+    EXPECT_NE(error_of(with("gears = [4, 5]", "gears = [4, 12]"))
                   .find("event.field.gears: must be [lowest, highest] within the gearbox"),
               std::string::npos);
     EXPECT_NE(error_of(with("mass_kg = [3200.0, 3550.0]", "mass_kg = [3200.0]"))
@@ -179,8 +179,7 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("downshift_share = 0.9", "downshift_share = 1.2")).find("event.driver"),
               std::string::npos);
     EXPECT_NE(
-        error_of(with("downshift_share = 0.9", "downshift_share = 0.9\nlaunch_hold_share = 1.0"))
-            .find("event.driver"),
+        error_of(with("launch_hold_share = 0.8", "launch_hold_share = 1.0")).find("event.driver"),
         std::string::npos);
     EXPECT_NE(error_of(with("pullers = 15\nrival_names", "pullers = 1\nrival_names"))
                   .find("event.game.pullers"),
@@ -198,19 +197,18 @@ TEST(EventLoader, RejectsNonsense) {
               std::string::npos);
 }
 
-// The launch hold is optional: the club event's driver lets the clutch in
-// on time; an event may ask for a driver who holds it while the revs are low.
+// The launch hold is optional: the club event's driver holds the clutch
+// while the revs are low (on the 15 t sled a farm engine stalls otherwise);
+// left out, the driver lets the clutch in on time.
 TEST(EventLoader, TheLaunchHoldIsOptional) {
-    const auto plain = load_event(kEvent);
-    ASSERT_TRUE(plain.ok()) << plain.error().message;
-    EXPECT_EQ(plain.value().reference.driver.launch_hold_share, 0.0);
-    const auto held =
-        parse_event(with("downshift_share = 0.9",
-                         "downshift_share = 0.9\nlaunch_hold_share = 0.8\nlaunch_hold_max_s = 6.0"),
-                    "event.toml", kEvent.parent_path());
+    const auto held = load_event(kEvent);
     ASSERT_TRUE(held.ok()) << held.error().message;
     EXPECT_EQ(held.value().reference.driver.launch_hold_share, 0.8);
-    EXPECT_EQ(held.value().reference.driver.launch_hold_max_s, 6.0);
+    EXPECT_EQ(held.value().reference.driver.launch_hold_max_s, 8.0);
+    const auto plain = parse_event(with("launch_hold_share = 0.8\nlaunch_hold_max_s = 8.0\n", ""),
+                                   "event.toml", kEvent.parent_path());
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().reference.driver.launch_hold_share, 0.0);
 }
 
 // The shipped club event looks like a real one: a couple of full pulls at
@@ -239,7 +237,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 20);
-    EXPECT_EQ(first.hash, 0x388c38f063a96442ULL);
+    EXPECT_EQ(first.hash, 0x59b2797a0e85e0a9ULL);
 }
 
 }  // namespace

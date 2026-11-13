@@ -4,7 +4,8 @@
 
 namespace tp::sled::testing {
 
-// Mirrors data/sleds/light_class.toml.
+// A light transfer sled (the light class's before the 15 t sled), the
+// core's test bench; tests/data/sled_loader_test.cpp has it as a sled file.
 inline Params reference_params() {
     return Params{
         .frame_mass_kg = 3200.0,
@@ -14,6 +15,7 @@ inline Params reference_params() {
         .hook_ahead_of_wheels_m = 4.0,
         .hook_height_m = 0.45,
         .box_mass_kg = 1500.0,
+        .box_max_mass_kg = 11000.0,
         .box_start_ahead_of_wheels_m = -0.5,
         .box_end_ahead_of_wheels_m = 3.0,
         .box_travel_distance_m = 88.0,
@@ -33,6 +35,7 @@ inline Params reference_params() {
                             .mobility_rate = 0.1,
                             .relaxation_length_m = 0.55},
         .wheel_count = 2,
+        .wheel_rolling_losses = 0.04,
         .chain = {.length_m = 1.15, .stiffness_n_per_m = 2.0e6, .damping_n_s_per_m = 80000.0},
         .pull_off_step = {.box_mass_kg = 0.0,
                           .knives = 1,
