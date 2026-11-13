@@ -9,7 +9,7 @@ lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared 
 # How the track was prepared, a scale on its soil's grip (1 is the
 # reference): looser sandy topsoil grips least: the grip runs out first,
 # so the weights go all back, for the most load on the rear tires.
-grip = 0.92
+grip = 0.8
 
 [track.soil]
 clay_fraction = 0.3
