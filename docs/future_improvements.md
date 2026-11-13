@@ -59,18 +59,25 @@ for the big features; they are repeated at the end for completeness.
   set per class and per track in the data; the scripted sled operator
   does not change it from the test pull, nor between pull-offs, as a real
   operator may (an earlier gear makes the sled harder sooner).
-- **The hook's height.** The sled's hook is taken 0.45 m over the
-  track; on the NTTO's sleds the chain hooks on low on the pan's front, 5
-  to 10 cm up. There the chain runs about 20° down from the tractor's
-  hitch: a third of the pull lifts the pan's front at the start, and as
-  much pulls the tractor's hitch down, which grips its rear tires far
-  harder. Every class and track needs retuning for it (the next step).
-- **The pan's tilt, drawn.** The pan's front lift (Loads::pan_front_lift,
-  in the session's snapshot) is not drawn yet: the sled's look is being
-  reworked separately.
-- **The pan's pitch.** The pan and the frame stand quasi-statically: the
-  pan's front lifts by where the ground's pressure under it moves, not by
-  its own pitching motion; the frame does not pitch on its wheels.
+- **The pan's front lifting.** The pan lies flat: with these classes'
+  tractors a real sled's pan stays down. Stronger classes (and trucks, their
+  hitch at 1 m) lift its front at the start; a model of it (a rigid plate
+  on soil, the chain's upward pull ahead of the pivot against the pan's
+  load, ploughing less while up) was tried and left out until they come.
+- **Tire load sensitivity everywhere.** Only the Sport classes' puller
+  tires grip less per unit of load above their reference load (the chain,
+  hooked low, pressing them down); the light class's tire, whose tractor
+  stalls before it spins on most tracks, keeps the plain Brixius curve.
+  The reference load is a fixed number per tire, not the tractor's own
+  share at rest after its tuning.
+- **Free weight's name.** The garage part that frees the weights is still
+  `garage::Part::kBallastMass`, its key `ballast_kg`: renaming it
+  (`kFreeWeight`, `free_weight_kg`) touches every garage file, the setup
+  screen and the career saves, which keep parts by name.
+- **The pan held up, simply.** Until the push-down engages, the cylinders
+  hold a fixed share of the pan's load on the wheels (`pan_held_share`)
+  and drop it as the push-down ramps in: the pan's back does not rise or
+  fall as a body, and its drag is not tied to how high it is held.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.

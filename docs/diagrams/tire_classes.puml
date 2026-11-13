@@ -23,6 +23,8 @@ package "tp::tire" {
     +limit : double
     +mobility_rate : double
     +slip_rate : double
+    +load_sensitivity : double (0 none)
+    +reference_load_n : double
   }
   class Cornering <<struct>> {
     +stiffness_per_rad : double
@@ -75,6 +77,7 @@ package "tp::tire" {
     +towed_rolling_resistance(const Size&, load_n, const Surface&, own_losses) : double
     +thrown_soil_m3_s(const Size&, load_n, slip_ratio, wheel_m_s, const Surface&) : double
     +full_bite(const Params&, load_n, const Surface&) : double
+    +load_factor(const TractionCurve&, load_n) : double
     +footing(const Params&, load_n, const Surface&) : Footing
     +traction / driven_rolling_resistance / thrown_soil_m3_s / side_grip\n      on a Footing: the same results, worked out once per step
     +side_grip(const Size&, const Cornering&, load_n, const Surface&) : SideGrip

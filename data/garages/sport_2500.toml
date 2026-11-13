@@ -12,7 +12,9 @@
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
 #   cut 24.5" puller tires (cut tires allowed from Sport on); the tire's
 #   size stays as tires/sport_rear.toml has it.
-# - ballast_kg: weights up to the class's 2500 kg with the driver.
+# - ballast_kg: the free weight. The tractor is at the class's 2500 kg
+#   with the driver, its weights fixed at the back; each level frees more
+#   of them to move forward before a pull, up to all of them.
 # - hitch_height_m: the drawbar, up to the class's 0.5 m.
 # - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
 #   class's 2700 rpm.
@@ -57,15 +59,15 @@ levels = [
 
 [[garage.upgrades]]
 part = "ballast_kg"
-name = "Ballast weights"
+name = "Free weight"
 levels = [
-    { value = 0.0, cost_eur = 0, label = "No weights" },
-    { value = 50.0, cost_eur = 700, label = "50 kg of weights" },
-    { value = 100.0, cost_eur = 950, label = "100 kg of weights" },
-    { value = 150.0, cost_eur = 1200, label = "150 kg of weights" },
-    { value = 200.0, cost_eur = 1450, label = "200 kg of weights" },
-    { value = 250.0, cost_eur = 1700, label = "250 kg of weights" },
-    { value = 300.0, cost_eur = 1950, label = "300 kg, the class's 2500 kg" },
+    { value = 0.0, cost_eur = 0, label = "All weights fixed at the back" },
+    { value = 50.0, cost_eur = 700, label = "50 kg free to move" },
+    { value = 100.0, cost_eur = 950, label = "100 kg free to move" },
+    { value = 150.0, cost_eur = 1200, label = "150 kg free to move" },
+    { value = 200.0, cost_eur = 1450, label = "200 kg free to move" },
+    { value = 250.0, cost_eur = 1700, label = "250 kg free to move" },
+    { value = 300.0, cost_eur = 1950, label = "All 300 kg free to move" },
 ]
 
 [[garage.upgrades]]

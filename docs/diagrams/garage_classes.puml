@@ -10,7 +10,7 @@ package "other components" {
   class "event::Standing" as EventStanding
   class "engine::with_torque_scale()" as TorqueScale
   class "engine::with_rated_speed()" as RatedSpeed
-  class "chassis::with_ballast_mass()" as BallastMass
+  class "chassis::with_free_weight()" as BallastMass
 }
 
 package "tp::garage" {

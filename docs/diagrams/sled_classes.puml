@@ -26,6 +26,7 @@ package "tp::sled" {
     +box_gearbox : BoxGearbox
     +pushdown_start_m, pushdown_ramp_m : double
     +pushdown_most_pan_share : double (the most of the sled it puts on the pan)
+    +pan_held_share : double (of the pan's load held on the wheels until the push-down)
     +pan_friction_coefficient : double
     +pan_area_m2 : double
     +pan_plough_coefficient : double
@@ -95,7 +96,6 @@ package "tp::sled" {
   class Loads <<struct>> {
     +pan_n, wheels_n : double
     +pivot_n, cylinders_n : double
-    +pan_front_lift : double (0 flat to 1 on its back edge)
     +box_ahead_of_wheels_m : double
     +pushdown : double
     +pan_friction : double

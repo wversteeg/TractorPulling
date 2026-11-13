@@ -97,8 +97,12 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto error = validate(params.cornering)) {
         return error;
     }
-    const std::array scalars = {params.traction.limit, params.traction.mobility_rate,
-                                params.traction.slip_rate, params.wheel_inertia_kg_m2,
+    const std::array scalars = {params.traction.limit,
+                                params.traction.mobility_rate,
+                                params.traction.slip_rate,
+                                params.traction.load_sensitivity,
+                                params.traction.reference_load_n,
+                                params.wheel_inertia_kg_m2,
                                 params.min_reference_speed_m_s};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
@@ -108,6 +112,12 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.traction.mobility_rate <= 0.0 || params.traction.slip_rate <= 0.0) {
         return ParamError::kTractionRateNotPositive;
+    }
+    // At 1 or more the pull µ W / (1 + k (W / W_ref - 1)) stops growing
+    // (or falls) with load: a tire pressed harder must still pull harder.
+    if (params.traction.load_sensitivity < 0.0 || params.traction.load_sensitivity >= 1.0 ||
+        (params.traction.load_sensitivity > 0.0 && params.traction.reference_load_n <= 0.0)) {
+        return ParamError::kLoadSensitivityInvalid;
     }
     if (params.wheel_inertia_kg_m2 <= 0.0) {
         return ParamError::kInertiaNotPositive;
@@ -240,9 +250,16 @@ double towed_rolling_resistance(const Size& size, double load_n, const soil::Sur
     return 1.0 / mobility_number(size, load_n, surface) + own_losses;
 }
 
+double load_factor(const TractionCurve& curve, double load_n) noexcept {
+    if (curve.load_sensitivity <= 0.0 || load_n <= curve.reference_load_n) {
+        return 1.0;
+    }
+    return 1.0 / (1.0 + curve.load_sensitivity * (load_n / curve.reference_load_n - 1.0));
+}
+
 double full_bite(const Params& params, double load_n, const soil::Surface& surface) noexcept {
     const TractionCurve& curve = params.traction;
-    return surface.grip_factor * curve.limit *
+    return surface.grip_factor * curve.limit * load_factor(curve, load_n) *
            (1.0 - math::exp(-curve.mobility_rate * mobility_number(params.size, load_n, surface)));
 }
 

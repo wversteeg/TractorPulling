@@ -104,17 +104,17 @@ inline constexpr double kPanHalfWidth_m = 1.0;
 /// the pan alone.
 ///
 /// The push-down's cylinders stand between the frame and the pan's back:
-/// pressing, they lift the frame off its wheels onto the pan, and hold the
-/// pan level against the frame.
+/// pressing, they lift the frame off its wheels onto the pan.
 ///
-/// The pan's front lifts where the chain's upward pull at the hook, ahead
-/// of the pan's middle, outweighs what holds it down: the ground's
-/// pressure under the pan, taken as linear along it, moves back until
-/// only its rear part carries it (a rigid plate on soil). A pan whose
-/// front is up does not push soil ahead of its lip: its ploughing drag
-/// falls with the share of it off the ground. As the box comes forward
-/// over the pivot the pan's load grows and its front comes down; with the
-/// push-down engaged it stays down. As the box moves forward, more weight goes onto the pan, which
+/// Simplified: the pan lies flat on the track. The chain's upward pull at
+/// the hook lightens it, but does not tip its front up: with these
+/// classes' tractors a real sled's pan stays down.
+///
+/// Until the push-down engages, the cylinders may hold the pan's back up,
+/// its front on the track, putting a share of its load on the wheels: the
+/// sled starts lighter. As the push-down engages the pan drops.
+///
+/// As the box moves forward, more weight goes onto the pan, which
 /// drags far harder than the wheels roll. At a set distance the push-down
 /// engages: over a short ramp it presses the pan down and takes the weight
 /// off the wheels, until the pan carries its set share of the sled (all of
@@ -153,8 +153,8 @@ struct Params {
     /// The pan with the front on it: part of frame_mass_kg, at its middle
     /// [kg].
     double pan_mass_kg = 0.0;
-    /// The pan's length along the track: over it the ground carries it
-    /// [m].
+    /// The pan's length along the track [m]: it reaches back from the
+    /// pivot by half of it, where the cylinders press.
     double pan_length_m = 0.0;
     /// The pivot's height over the track, where the pan tows the frame [m].
     double pivot_height_m = 0.0;
@@ -183,6 +183,12 @@ struct Params {
     /// engaged: 1 lifts the wheels off; less leaves them that share. The
     /// box over the pan may put more there by itself.
     double pushdown_most_pan_share = 1.0;
+    /// Until the push-down engages the cylinders hold the pan's back up,
+    /// its front on the track: this share of the pan's load stays on the
+    /// wheels, which roll far more easily, and the start is lighter. As the
+    /// push-down engages the pan drops onto the track ("de sleepvoet
+    /// valt"). 0 holds nothing.
+    double pan_held_share = 0.0;
     /// Sliding friction of the steel pan on a firm track.
     double pan_friction_coefficient = 0.0;
     /// The pan's contact with the track [m²].
@@ -237,6 +243,9 @@ enum class ParamError : std::uint8_t {
     kPushdownRampNotPositive,
     /// The push-down's share of the sled on the pan is not in (0, 1].
     kPushdownShareOutOfRange,
+    /// The share of the pan's load held up until the push-down is not in
+    /// [0, 1).
+    kPanHeldShareOutOfRange,
     kPanFrictionOutOfRange,
     kPanAreaNotPositive,
     kPanPloughNegative,
@@ -331,10 +340,6 @@ struct Loads {
     /// [N].
     double pivot_n = 0.0;
     double cylinders_n = 0.0;
-    /// The share of the pan's length off the ground at its front, the
-    /// chain lifting it: 0 flat on the track to 1 standing on its back
-    /// edge.
-    double pan_front_lift = 0.0;
     double box_ahead_of_wheels_m = 0.0;
     /// 0 off to 1 fully engaged.
     double pushdown = 0.0;

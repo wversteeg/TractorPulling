@@ -131,12 +131,12 @@ struct Places {
     int worst = 0;
 };
 
-constexpr Places kNew{.best = 12, .worst = 15};
+constexpr Places kNew{.best = 11, .worst = 15};
 // One level up: the middle of the field, the top four on a good day.
-constexpr Places kOneLevelUp{.best = 4, .worst = 13};
+constexpr Places kOneLevelUp{.best = 3, .worst = 13};
 // The sled operator sets the sled for the field's average, so the field
-// finishes close together: halfway may reach second on a good day.
-constexpr Places kHalfway{.best = 2, .worst = 10};
+// finishes close together: halfway may win on a good day.
+constexpr Places kHalfway{.best = 1, .worst = 10};
 constexpr Places kOnThePodium{.best = 1, .worst = 3};
 // Halfway: every part at its second level of three or four.
 constexpr int kHalfwayLevels = 2;
@@ -274,14 +274,14 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
 // tractor is at the back at belofte and about half its garage wins it;
 // belofte's winner starts in the back half of promo and about three quarters
 // win it; promo's winner is at the back at top, where about 90 % of the
-// garage is in the front half, winning now and then, and only a fully
+// garage is about the front half, winning now and then, and only a fully
 // built tractor is sure of the podium. Belofte's first
 // event is the watered start, where the sled is lightened until the field
 // gets it going and the right gear decides much: a third of the garage,
 // in its best gear, may win there.
 TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) {
     expect_level("sport_4500_belofte.toml",
-                 {{.share = 0.0, .places = {.best = 13, .worst = 15}},
+                 {{.share = 0.0, .places = {.best = 12, .worst = 15}},
                   {.share = 0.3, .places = {.best = 1, .worst = 10}},
                   {.share = 0.45, .places = {.best = 1, .worst = 4}},
                   {.share = 0.55, .places = {.best = 1, .worst = 2}}},
@@ -298,8 +298,8 @@ TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWin
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
     expect_level("sport_4500_top.toml",
-                 {{.share = 0.75, .places = {.best = 8, .worst = 15}},
-                  {.share = 0.9, .places = {.best = 1, .worst = 8}},
+                 {{.share = 0.75, .places = {.best = 7, .worst = 15}},
+                  {.share = 0.9, .places = {.best = 1, .worst = 10}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
