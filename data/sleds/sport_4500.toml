@@ -8,7 +8,7 @@ base = "pulling_sled.toml"
 [sled.weight_box]
 travel_distance_m = 90.0
 mass_kg = 10500.0
-start_ahead_of_wheels_m = -0.68
+start_ahead_of_wheels_m = 0.5
 
 # The push-down from 70 m takes the pan to half the sled (the base's).
 [sled.pushdown]

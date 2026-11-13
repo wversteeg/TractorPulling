@@ -14,7 +14,7 @@
 
 [sled]
 frame_mass_kg = 15000.0
-frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
+frame_cg_ahead_of_wheels_m = 1.75     # cab, engine and hydraulics over the wheels: most of it on them
 frame_yaw_inertia_kg_m2 = 195000.0   # about the frame's own centre of gravity; m L² / 12, L = 12.5 m
 pan_ahead_of_wheels_m = 5.5          # centre of the pan's contact, the pivot over it
 pan_friction_coefficient = 0.46      # steel sliding on a firm track
