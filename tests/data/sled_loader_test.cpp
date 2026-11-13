@@ -23,6 +23,11 @@ pan_friction_coefficient = 0.55
 pan_area_m2 = 2.0
 pan_plough_coefficient = 4.0
 
+[sled.pan]
+mass_kg = 800.0
+length_m = 3.0
+pivot_height_m = 0.3
+
 [sled.wheels]
 count = 4
 radius_m = 0.45
@@ -49,6 +54,7 @@ end_ahead_of_wheels_m = 2.8
 travel_distance_m = 90.0
 
 [sled.pushdown]
+cylinders_ahead_of_wheels_m = 1.5
 start_m = 80.0
 ramp_m = 1.5
 
@@ -98,6 +104,11 @@ pan_friction_coefficient = 0.46      # steel sliding on a firm track
 pan_area_m2 = 1.8                    # the pan's contact with the track
 pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
 
+[sled.pan]
+mass_kg = 800.0
+length_m = 3.0
+pivot_height_m = 0.3
+
 # The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
 [sled.wheels]
 count = 2
@@ -139,6 +150,7 @@ travel_distance_m = 88.0             # sled travel to move it from start to end:
 # Engages at a set distance on the track, chosen per event from the test
 # pull and the track's state (for example 70 or 80 m).
 [sled.pushdown]
+cylinders_ahead_of_wheels_m = 1.5
 start_m = 78.0
 ramp_m = 10.0                        # travel until the wheels are fully off
 
@@ -181,6 +193,10 @@ TEST(SledLoader, TestSledTextMatchesTestReference) {
     EXPECT_EQ(loaded.frame_mass_kg, reference.frame_mass_kg);
     EXPECT_EQ(loaded.frame_cg_ahead_of_wheels_m, reference.frame_cg_ahead_of_wheels_m);
     EXPECT_EQ(loaded.pan_ahead_of_wheels_m, reference.pan_ahead_of_wheels_m);
+    EXPECT_EQ(loaded.pan_mass_kg, reference.pan_mass_kg);
+    EXPECT_EQ(loaded.pan_length_m, reference.pan_length_m);
+    EXPECT_EQ(loaded.pivot_height_m, reference.pivot_height_m);
+    EXPECT_EQ(loaded.cylinders_ahead_of_wheels_m, reference.cylinders_ahead_of_wheels_m);
     EXPECT_EQ(loaded.hook_ahead_of_wheels_m, reference.hook_ahead_of_wheels_m);
     EXPECT_EQ(loaded.hook_height_m, reference.hook_height_m);
     EXPECT_EQ(loaded.box_mass_kg, reference.box_mass_kg);

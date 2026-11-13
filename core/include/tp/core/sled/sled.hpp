@@ -92,11 +92,29 @@ inline constexpr double kPanHalfWidth_m = 1.0;
 /// sled advances. Lengths along the sled are measured forward from the rear
 /// wheels' contact.
 ///
-/// The weights are shared between the wheels and the pan by their levers,
-/// quasi-statically (the sled does not pitch). The hook is on the pan's
-/// front: the chain's pull at the hook height presses the pan down, and
-/// its vertical part lifts or presses the pan itself, one for one, leaving
-/// the wheels' load as it was. As the box moves forward, more weight goes onto the pan, which
+/// The sled is two bodies, quasi-statically (neither pitches): the pan,
+/// with the front and the hook on it, and the frame with the weight box,
+/// which stands on the rear wheels and on a pivot in the pan's middle.
+/// The chain pulls the pan; the pan tows the frame through the pivot. The
+/// frame's weights and the box are shared between the wheels and the
+/// pivot by their levers, and the frame's own drag (its wheels' rolling),
+/// pulled at the pivot's height, tips it a little onto the pan. The
+/// chain's vertical part lifts or presses the pan itself, one for one,
+/// leaving the wheels' load as it was; its pull along the track acts on
+/// the pan alone.
+///
+/// The push-down's cylinders stand between the frame and the pan's back:
+/// pressing, they lift the frame off its wheels onto the pan, and hold the
+/// pan level against the frame.
+///
+/// The pan's front lifts where the chain's upward pull at the hook, ahead
+/// of the pan's middle, outweighs what holds it down: the ground's
+/// pressure under the pan, taken as linear along it, moves back until
+/// only its rear part carries it (a rigid plate on soil). A pan whose
+/// front is up does not push soil ahead of its lip: its ploughing drag
+/// falls with the share of it off the ground. As the box comes forward
+/// over the pivot the pan's load grows and its front comes down; with the
+/// push-down engaged it stays down. As the box moves forward, more weight goes onto the pan, which
 /// drags far harder than the wheels roll. At a set distance the push-down
 /// engages: over a short ramp it presses the pan down and takes the weight
 /// off the wheels, until the pan carries its set share of the sled (all of
@@ -129,8 +147,20 @@ struct Params {
     /// The frame's yaw inertia about its own centre of gravity; the box
     /// adds its own as a point mass [kg·m²].
     double frame_yaw_inertia_kg_m2 = 0.0;
-    /// Centre of the pan's contact with the track [m].
+    /// Centre of the pan's contact with the track, and the pivot over it
+    /// on which the frame stands [m].
     double pan_ahead_of_wheels_m = 0.0;
+    /// The pan with the front on it: part of frame_mass_kg, at its middle
+    /// [kg].
+    double pan_mass_kg = 0.0;
+    /// The pan's length along the track: over it the ground carries it
+    /// [m].
+    double pan_length_m = 0.0;
+    /// The pivot's height over the track, where the pan tows the frame [m].
+    double pivot_height_m = 0.0;
+    /// The push-down's cylinders, between the frame and the pan's back:
+    /// on the pan, behind the pivot [m].
+    double cylinders_ahead_of_wheels_m = 0.0;
     double hook_ahead_of_wheels_m = 0.0;
     double hook_height_m = 0.0;
     double box_mass_kg = 0.0;
@@ -185,6 +215,12 @@ enum class ParamError : std::uint8_t {
     /// The box holds more than its maximum.
     kBoxOverMax,
     kPanNotAheadOfWheels,
+    /// The pan is not part of the frame's mass (0 to frame_mass_kg), its
+    /// length is not positive or reaches back past the wheels, or the
+    /// pivot is below the track.
+    kPanInvalid,
+    /// The push-down's cylinders are not on the pan behind the pivot.
+    kCylindersInvalid,
     kFrameCgOutsideSled,
     kBoxOutsideSled,
     /// The box starts so far behind the wheels that the sled's centre of
@@ -290,6 +326,15 @@ struct Loads {
     /// The track's vertical forces on the pan and the rear wheels [N].
     double pan_n = 0.0;
     double wheels_n = 0.0;
+    /// The frame's weight on the pivot (negative: the pivot holds the frame
+    /// down) and the push-down's cylinders' force between frame and pan
+    /// [N].
+    double pivot_n = 0.0;
+    double cylinders_n = 0.0;
+    /// The share of the pan's length off the ground at its front, the
+    /// chain lifting it: 0 flat on the track to 1 standing on its back
+    /// edge.
+    double pan_front_lift = 0.0;
     double box_ahead_of_wheels_m = 0.0;
     /// 0 off to 1 fully engaged.
     double pushdown = 0.0;

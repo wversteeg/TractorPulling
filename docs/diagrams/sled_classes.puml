@@ -14,8 +14,11 @@ package "tp::sled" {
     +frame_mass_kg : double
     +frame_cg_ahead_of_wheels_m : double
     +frame_yaw_inertia_kg_m2 : double
-    +pan_ahead_of_wheels_m : double
-    +hook_ahead_of_wheels_m, hook_height_m : double
+    +pan_ahead_of_wheels_m : double (the pivot over it)
+    +pan_mass_kg, pan_length_m : double (the pan with the front, hinged)
+    +pivot_height_m : double (where the pan tows the frame)
+    +cylinders_ahead_of_wheels_m : double (the push-down's, behind the pivot)
+    +hook_ahead_of_wheels_m, hook_height_m : double (on the pan's front)
     +box_mass_kg : double
     +box_max_mass_kg : double (what the box holds; adjusted() stays within it)
     +box_start / box_end_ahead_of_wheels_m : double (start may be behind the wheels)
@@ -91,6 +94,8 @@ package "tp::sled" {
   }
   class Loads <<struct>> {
     +pan_n, wheels_n : double
+    +pivot_n, cylinders_n : double
+    +pan_front_lift : double (0 flat to 1 on its back edge)
     +box_ahead_of_wheels_m : double
     +pushdown : double
     +pan_friction : double

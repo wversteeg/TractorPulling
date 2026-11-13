@@ -32,6 +32,13 @@ FieldError describe(sled::ParamError error) {
             return {"sled.weight_box.mass_kg", "must not be negative"};
         case ParamError::kBoxOverMax:
             return {"sled.weight_box.mass_kg", "must not be over max_mass_kg"};
+        case ParamError::kPanInvalid:
+            return {"sled.pan",
+                    "mass_kg 0 to frame_mass_kg, length_m > 0 and the pan ahead of the wheels, "
+                    "pivot_height_m >= 0"};
+        case ParamError::kCylindersInvalid:
+            return {"sled.pushdown.cylinders_ahead_of_wheels_m",
+                    "must be on the pan, behind its pivot"};
         case ParamError::kPanNotAheadOfWheels:
             return {"sled.pan_ahead_of_wheels_m", "must be > 0"};
         case ParamError::kFrameCgOutsideSled:
@@ -107,6 +114,10 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .frame_cg_ahead_of_wheels_m = reader.number("sled.frame_cg_ahead_of_wheels_m"),
         .frame_yaw_inertia_kg_m2 = reader.number("sled.frame_yaw_inertia_kg_m2"),
         .pan_ahead_of_wheels_m = reader.number("sled.pan_ahead_of_wheels_m"),
+        .pan_mass_kg = reader.number("sled.pan.mass_kg"),
+        .pan_length_m = reader.number("sled.pan.length_m"),
+        .pivot_height_m = reader.number("sled.pan.pivot_height_m"),
+        .cylinders_ahead_of_wheels_m = reader.number("sled.pushdown.cylinders_ahead_of_wheels_m"),
         .hook_ahead_of_wheels_m = reader.number("sled.hook.ahead_of_wheels_m"),
         .hook_height_m = reader.number("sled.hook.height_m"),
         .box_mass_kg = reader.number("sled.weight_box.mass_kg"),
