@@ -413,8 +413,8 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 		elif mesh.name.begins_with("WheelFender"):
 			fenders += 1
 	tires = sled.get("_wheel_spin").size()
-	_expect(widest <= SledView.WIDTH_M / 2.0 + SledView.WHEEL_FENDER_OUT_M + 0.06,
-			"the sled within its width (and its fenders): %.2f m" % (2.0 * widest))
+	_expect(widest <= SledView.WIDTH_M / 2.0 + 0.001,
+			"the sled within its width, fenders and all: %.2f m" % (2.0 * widest))
 	_expect(covers >= 4 and fenders == 2, "side covers %d, fenders %d" % [covers, fenders])
 	_expect(tires == 8, "eight tires on the tandem: %d" % tires)
 	var pan := sled.find_child("Pan", true, false) as MeshInstance3D
