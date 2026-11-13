@@ -427,18 +427,12 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	_expect(covers >= 4 and fenders == 2, "side covers %d, fenders %d" % [covers, fenders])
 	_expect(tires == 8, "eight tires on the tandem: %d" % tires)
 	_expect(cover_bottom_m <= SledView.BODY_OVER_PAN_M + 0.001
-			and cover_out_m < SledView.WIDTH_M / 2.0 - 0.01,
+			and cover_out_m < SledView.WIDTH_M / 2.0 - 0.2,
 			"the body clad down to the pan (%.2f m), narrower than it (%.2f m)"
 			% [cover_bottom_m, 2.0 * cover_out_m])
 	var rear_section := sled.find_child("RearSection", true, false) as MeshInstance3D
 	var rear_box := rear_section.get_aabb()
 	var rear_bottom_m := sled.to_local(rear_section.to_global(rear_box.position)).y
-	# Its covers rise round the box at its start, the cab on top.
-	var rear_cover := sled.find_child("RearCover0", true, false) as MeshInstance3D
-	var cover_top_m := sled.to_local(rear_cover.to_global(rear_cover.get_aabb().end)).y
-	var box_top_m: float = sled.get("_rail_z_m") + SledView.BOX_LIFT_M + SledView.BOX_SIZE_M.y
-	_expect(cover_top_m > box_top_m, "the rear covers %.2f m high, over the box's top %.2f m"
-			% [cover_top_m, box_top_m])
 	_expect(absf(rear_bottom_m - SledView.COVER_GROUND_M) < 0.01
 			and rear_box.size.x > SledView.WIDTH_M - 0.01,
 			"the rear section closed down to %.2f m, %.2f m wide" % [rear_bottom_m,
@@ -469,7 +463,7 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 					and absf(at.y - SledView.TRANSPORT_RADIUS_M) < 0.01:
 				down += 1
 			elif wanted == 0.0 and by_the_pan and absf(at.x) + half_w < SledView.WIDTH_M / 2.0 \
-					and absf(at.x) - half_w > SledView.NOSE_WIDTH_M / 2.0 \
+					and absf(at.x) - half_w > SledView.BODY_WIDTH_M / 2.0 \
 					and at.y - SledView.TRANSPORT_RADIUS_M > 0.06:
 				up += 1
 	_expect(down == 2 and up == 2, "the transport wheels beside the pan: %d down outside it, %d up"

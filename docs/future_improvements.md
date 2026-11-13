@@ -90,10 +90,9 @@ for the big features; they are repeated at the end for completeness.
   the cab stands right at the back with the engine between it and the
   weight box. The light and Sport 2.5 t classes start their box 4 and 3 m
   behind the wheels (its weight levers the pan up for the start), where
-  the cab is: the game stands the cab on posts at the edges over it, the
-  rear covers round it, and leaves the engine out of sight. Starting the
-  box ahead of the engine would need those classes' starts retuned (a
-  lighter box, fewer knives).
+  the cab is: the game raises the cab on posts over it and leaves the
+  engine out of sight. Starting the box ahead of the engine would need
+  those classes' starts retuned (a lighter box, fewer knives).
 - **The push-down is drawn larger than it is.** The game lifts the sled's
   rear wheels 15 cm with the push-down fully set, so that it shows from
   the tractor; a real sled lifts them a few centimetres.
