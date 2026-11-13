@@ -1,0 +1,17 @@
+# The pulling sled (pulling_sled.toml) set for the class.
+[sled]
+base = "pulling_sled.toml"
+
+# The box starts a little behind the wheels, as far back as 9.5 t may
+# without the sled sitting on its tail: a new tractor gets it going on
+# the watered start too.
+[sled.weight_box]
+travel_distance_m = 90.0
+mass_kg = 11000.0
+start_ahead_of_wheels_m = -0.68
+
+# The push-down from 70 m takes the pan to half the sled (the base's).
+[sled.pushdown]
+most_pan_share = 0.65
+pan_held_share = 0.5
+start_m = 50.0

@@ -1,0 +1,19 @@
+# The pulling sled (pulling_sled.toml) set for the class.
+[sled]
+base = "pulling_sled.toml"
+
+# At the start the box stands 2 m behind the wheels, where it takes some
+# of the frame's weight off the pan: a new Sport tractor gets the 15 t
+# sled going on a loose or wet track too. Its gearbox one gear earlier
+# than the base's: the box at the front by 85 m, so only a nearly built
+# tractor wins at the top level.
+[sled.weight_box]
+mass_kg = 1800.0
+start_ahead_of_wheels_m = -0.65
+travel_distance_m = 85.0
+
+# The push-down from 65 m takes the pan to 45 % of the sled.
+[sled.pushdown]
+pan_held_share = 0.5
+start_m = 55.0
+most_pan_share = 0.5
