@@ -263,18 +263,10 @@ constexpr double kWheelMinRolling_m_s = 0.5;
 
 // The pan sinks in until the soil carries its pressure and pushes soil
 // ahead of it: the ploughing grows with pressure over strength.
-// `ploughing` is the share of the pan pushing soil ahead of its lip: 1 flat
-// on the track, less with its front up. The ploughing term stands for the
-// soil the lip shoves ahead of it: a lip off the ground shoves none of the
-// share it has lifted, so that share goes. The pressure stays the pan's
-// load over its nominal bearing area: a pan riding on its back part
-// presses harder there, but that part carries no lip, so the higher
-// pressure is not counted as more ploughing.
-double pan_friction(const Params& params, double pan_n, const soil::Surface& surface,
-                    double ploughing) noexcept {
+double pan_friction(const Params& params, double pan_n, const soil::Surface& surface) noexcept {
     const double pressure_pa = pan_n / params.pan_area_m2;
     return params.pan_friction_coefficient *
-           (1.0 + ploughing * params.pan_plough_coefficient * pressure_pa / surface.cone_index_pa);
+           (1.0 + params.pan_plough_coefficient * pressure_pa / surface.cone_index_pa);
 }
 
 // Soil cutting by a narrow blade: the draft is about this share of the
@@ -343,37 +335,6 @@ Split split(const Params& params, double box_m, double up_n, double pushdown,
     return {.pan_n = pan_n, .wheels_n = wheels_n, .pivot_n = pivot_n, .cylinders_n = cylinders_n};
 }
 
-// The share of the pan's length off the ground at its front. Moments about
-// the middle of its contact (under the pivot), nose up: the chain's upward
-// pull at the hook ahead of it and the frame's tow held back at the
-// pivot's height lift the front; the chain's pull along the track at the
-// hook's height presses it. The ground's pressure, linear along the pan,
-// moves its centre back by that over the pan's load; past a sixth of the
-// length behind the middle the front leaves the ground (a rigid plate on
-// soil). The push-down's cylinders are taken as a rigid link in pitch
-// between the frame and the pan as they press: pressing on the pan's back
-// they would, on their own, lift its front (a nose-up moment about the
-// contact), but locked to the long, heavy frame the pan cannot tip, so the
-// lift fades out as the push-down comes on, as on real sleds.
-double front_lift(const Params& params, const HookForce& hook, double tow_n, double pan_n,
-                  double pushdown) noexcept {
-    const double nose_up_nm =
-        hook.up_n * (params.hook_ahead_of_wheels_m - params.pan_ahead_of_wheels_m) -
-        hook.forward_n * params.hook_height_m + tow_n * params.pivot_height_m;
-    double lift = 0.0;
-    if (pan_n <= 0.0) {
-        lift = nose_up_nm > 0.0 ? 1.0 : 0.0;
-    } else {
-        // Under linear pressure the contact is three times the distance
-        // from the pressure's centre to the pan's back edge.
-        constexpr double kLinearPressure = 3.0;
-        const double behind_m = nose_up_nm / pan_n;
-        const double contact_m = kLinearPressure * (params.pan_length_m / 2.0 - behind_m);
-        lift = std::clamp(1.0 - contact_m / params.pan_length_m, 0.0, 1.0);
-    }
-    return lift * (1.0 - pushdown);
-}
-
 }  // namespace
 
 Hook hook(const Params& params, const State& state) noexcept {
@@ -412,13 +373,9 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
         std::min(rolling_of(still.wheels_n) * still.wheels_n, std::max(hook.forward_n, 0.0));
     const Split shared = split(params, box_m, hook.up_n, pushdown, tow_n);
     const double rolling = rolling_of(shared.wheels_n);
-    const double target = front_lift(params, hook, tow_n, shared.pan_n, pushdown);
-    const double lift = std::clamp(state.pan_front_lift, 0.0, 1.0);
 
-    // On a hard spot the pan and the knives drag harder; a pan whose front
-    // is up ploughs only with the share of it still down.
-    const double friction =
-        pan_friction(params, shared.pan_n, ground.pan, 1.0 - lift) * ground.pan.drag_scale;
+    // On a hard spot the pan and the knives drag harder.
+    const double friction = pan_friction(params, shared.pan_n, ground.pan) * ground.pan.drag_scale;
     const double cutting_n =
         shared.pan_n > 0.0 ? knives_n(params.knives, ground.pan) * ground.pan.drag_scale : 0.0;
     const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
@@ -427,8 +384,6 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
         .wheels_n = shared.wheels_n,
         .pivot_n = shared.pivot_n,
         .cylinders_n = shared.cylinders_n,
-        .pan_front_lift = lift,
-        .pan_front_lift_target = target,
         .box_ahead_of_wheels_m = box_m,
         .pushdown = pushdown,
         .pan_friction = friction,
@@ -564,11 +519,6 @@ bool drive_back(State& state, const Params& params, double start_x_m, double sta
     state.lateral_position_m = start_y_m + (state.lateral_position_m - start_y_m) * kept;
     state.heading_rad *= kept;
     return false;
-}
-
-void tilt(State& state, const Loads& loads, double dt_s) noexcept {
-    state.pan_front_lift +=
-        (loads.pan_front_lift_target - state.pan_front_lift) * dt_s / (kPanTiltTime_s + dt_s);
 }
 
 void collect(State& state, const Params& params, double thrown_soil_m3_s, double dt_s) noexcept {

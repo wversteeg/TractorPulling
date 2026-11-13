@@ -104,17 +104,13 @@ inline constexpr double kPanHalfWidth_m = 1.0;
 /// the pan alone.
 ///
 /// The push-down's cylinders stand between the frame and the pan's back:
-/// pressing, they lift the frame off its wheels onto the pan, and hold the
-/// pan level against the frame.
+/// pressing, they lift the frame off its wheels onto the pan.
 ///
-/// The pan's front lifts where the chain's upward pull at the hook, ahead
-/// of the pan's middle, outweighs what holds it down: the ground's
-/// pressure under the pan, taken as linear along it, moves back until
-/// only its rear part carries it (a rigid plate on soil). A pan whose
-/// front is up does not push soil ahead of its lip: its ploughing drag
-/// falls with the share of it off the ground. As the box comes forward
-/// over the pivot the pan's load grows and its front comes down; with the
-/// push-down engaged it stays down. As the box moves forward, more weight goes onto the pan, which
+/// Simplified: the pan lies flat on the track. The chain's upward pull at
+/// the hook lightens it, but does not tip its front up: with these
+/// classes' tractors a real sled's pan stays down.
+///
+/// As the box moves forward, more weight goes onto the pan, which
 /// drags far harder than the wheels roll. At a set distance the push-down
 /// engages: over a short ramp it presses the pan down and takes the weight
 /// off the wheels, until the pan carries its set share of the sled (all of
@@ -153,8 +149,8 @@ struct Params {
     /// The pan with the front on it: part of frame_mass_kg, at its middle
     /// [kg].
     double pan_mass_kg = 0.0;
-    /// The pan's length along the track: over it the ground carries it
-    /// [m].
+    /// The pan's length along the track [m]: it reaches back from the
+    /// pivot by half of it, where the cylinders press.
     double pan_length_m = 0.0;
     /// The pivot's height over the track, where the pan tows the frame [m].
     double pivot_height_m = 0.0;
@@ -294,15 +290,7 @@ struct State {
     double yaw_rate_rad_s = 0.0;
     /// Sideways deflection of each rear wheel's contact patch [m].
     double wheel_side_deflection_m = 0.0;
-    /// The share of the pan's length off the ground at its front: it
-    /// follows Loads::pan_front_lift_target over kPanTiltTime_s (tilt()).
-    double pan_front_lift = 0.0;
 };
-
-/// How quickly the pan's front follows what the forces on it ask: a
-/// 2.5 t plate on soil rises and settles over about this time, not at
-/// every jolt of the chain [s].
-inline constexpr double kPanTiltTime_s = 0.3;
 
 /// What the chain puts on the sled at the hook, in the sled's frame [N].
 struct HookForce {
@@ -339,12 +327,6 @@ struct Loads {
     /// [N].
     double pivot_n = 0.0;
     double cylinders_n = 0.0;
-    /// The share of the pan's length off the ground at its front, the
-    /// chain lifting it: 0 flat on the track to 1 standing on its back
-    /// edge. As it is (State::pan_front_lift, which the drag uses), and
-    /// where the forces on the pan would put it now.
-    double pan_front_lift = 0.0;
-    double pan_front_lift_target = 0.0;
     double box_ahead_of_wheels_m = 0.0;
     /// 0 off to 1 fully engaged.
     double pushdown = 0.0;
@@ -397,10 +379,6 @@ void advance_lateral(State& state, const Params& params, const Loads& loads, dou
 /// Forward speed over the step, then position along the heading.
 void advance(State& state, const Prediction& prediction, double forward_n, double dt_s) noexcept;
 
-/// The pan's front over a step: it follows the lift the loads ask for,
-/// over kPanTiltTime_s (implicit, so it never overshoots).
-void tilt(State& state, const Loads& loads, double dt_s) noexcept;
-
 /// The berm over a step, after advance(): soil the tractor threw back
 /// [m³/s] lands in front of the pan, and the berm spills by the distance
 /// the sled moved. Implicit in the spill, so it never goes negative.
@@ -436,7 +414,6 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.lateral_velocity_m_s);
     hash.add(state.yaw_rate_rad_s);
     hash.add(state.wheel_side_deflection_m);
-    hash.add(state.pan_front_lift);
 }
 
 }  // namespace tp::sled

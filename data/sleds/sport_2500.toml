@@ -9,10 +9,10 @@ base = "pulling_sled.toml"
 # tractor wins at the top level.
 [sled.weight_box]
 mass_kg = 1800.0
-start_ahead_of_wheels_m = -0.65
+start_ahead_of_wheels_m = -2.0
 travel_distance_m = 85.0
 
 # The push-down from 65 m takes the pan to 45 % of the sled.
 [sled.pushdown]
-start_m = 57.0
-most_pan_share = 0.5
+start_m = 65.0
+most_pan_share = 0.45

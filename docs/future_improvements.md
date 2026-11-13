@@ -59,18 +59,11 @@ for the big features; they are repeated at the end for completeness.
   set per class and per track in the data; the scripted sled operator
   does not change it from the test pull, nor between pull-offs, as a real
   operator may (an earlier gear makes the sled harder sooner).
-- **The hook's height.** The sled's hook is taken 0.45 m over the
-  track; on the NTTO's sleds the chain hooks on low on the pan's front, 5
-  to 10 cm up. There the chain runs about 20° down from the tractor's
-  hitch: a third of the pull lifts the pan's front at the start, and as
-  much pulls the tractor's hitch down, which grips its rear tires far
-  harder. Every class and track needs retuning for it (the next step).
-- **The pan's tilt, drawn.** The pan's front lift (Loads::pan_front_lift,
-  in the session's snapshot) is not drawn yet: the sled's look is being
-  reworked separately.
-- **The pan's pitch.** The pan and the frame stand quasi-statically: the
-  pan's front lifts by where the ground's pressure under it moves, not by
-  its own pitching motion; the frame does not pitch on its wheels.
+- **The pan's front lifting.** The pan lies flat: with these classes'
+  tractors a real sled's pan stays down. Stronger classes (and trucks, their
+  hitch at 1 m) lift its front at the start; a model of it (a rigid plate
+  on soil, the chain's upward pull ahead of the pivot against the pan's
+  load, ploughing less while up) was tried and left out until they come.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.

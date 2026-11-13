@@ -9,14 +9,14 @@ base = "pulling_sled.toml"
 # this box and the sled would sit on its tail.)
 [sled.weight_box]
 mass_kg = 1800.0
-start_ahead_of_wheels_m = -0.65
+start_ahead_of_wheels_m = -4.0
 
 # The push-down from 70 m takes the pan to 40 % of the sled: the farm
 # tractors are alike, and a lower top to the drag spreads them by what
 # their engines and tires hold.
 [sled.pushdown]
-start_m = 50.0
-most_pan_share = 0.5
+start_m = 70.0
+most_pan_share = 0.4
 
 [sled.knives]
 count = 1

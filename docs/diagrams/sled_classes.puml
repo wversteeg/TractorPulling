@@ -95,7 +95,6 @@ package "tp::sled" {
   class Loads <<struct>> {
     +pan_n, wheels_n : double
     +pivot_n, cylinders_n : double
-    +pan_front_lift : double (0 flat to 1 on its back edge)
     +box_ahead_of_wheels_m : double
     +pushdown : double
     +pan_friction : double
