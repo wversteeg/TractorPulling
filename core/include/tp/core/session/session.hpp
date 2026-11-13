@@ -148,6 +148,10 @@ struct Snapshot {
     /// The push-down, 0 off to 1 fully set: the sled's rear wheels off the
     /// track, all its weight on the pan, its drag at its most.
     double pushdown = 0.0;
+    /// The share of the pan's length off the track at its front, the chain
+    /// lifting it (sled::Loads::pan_front_lift): 0 flat to 1 on its back
+    /// edge.
+    double pan_front_lift = 0.0;
     /// The loose soil heaped in front of the pan, which it pushes along: the
     /// berm (sled::Berm), as a volume to draw [m³].
     double berm_m3 = 0.0;

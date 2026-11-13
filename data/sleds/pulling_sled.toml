@@ -8,8 +8,9 @@
 # the tandem. From the back: the operator's cab and the engine over the
 # wheels, the weight box on rails running forward from just behind them,
 # the pan (a steel plate) from about half the sled's length to the front,
-# and the hook between rubber fenders at the front, 8.5 m ahead of the
-# wheels; the frame runs 4 m behind them.
+# hinged to the frame on a pivot in its middle, and the hook on the pan's
+# front between rubber fenders, 8.5 m ahead of the wheels; the frame runs
+# 4 m behind them.
 
 [sled]
 frame_mass_kg = 15000.0

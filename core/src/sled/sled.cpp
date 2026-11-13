@@ -382,7 +382,9 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
 
     // The frame's tow is its wheels' rolling, which depends on their load,
     // which the tow's lever changes a little: one pass with no tow, then
-    // one with the tow it gives (the lever is a few percent at most).
+    // one with the tow it gives (the lever is a few percent at most). The
+    // pan tows the frame with no more than the chain pulls it: at rest,
+    // nothing.
     const double wheel_count = params.wheel_count;
     const auto rolling_of = [&](double wheels_n) {
         return wheels_n > 0.0
@@ -391,7 +393,8 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
                    : 0.0;
     };
     const Split still = split(params, box_m, hook.up_n, pushdown, 0.0);
-    const double tow_n = rolling_of(still.wheels_n) * still.wheels_n;
+    const double tow_n =
+        std::min(rolling_of(still.wheels_n) * still.wheels_n, std::max(hook.forward_n, 0.0));
     const Split shared = split(params, box_m, hook.up_n, pushdown, tow_n);
     const double rolling = rolling_of(shared.wheels_n);
     const double lift = front_lift(params, hook, tow_n, shared.pan_n, pushdown);

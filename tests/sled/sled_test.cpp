@@ -241,9 +241,10 @@ TEST(Sled, APushdownSetToAShareLeavesTheRestOnTheWheels) {
 // The hook is on the pan, which tows the frame through the pivot: the
 // chain's pull along the track moves no load between the pan and the
 // wheels, and pulling up at the hook lifts the pan itself, one for one,
-// leaving the wheels' load as it was.
+// leaving the wheels' load as it was. (With the pivot on the track: raised,
+// the frame's tow tips it a little, TheFrameStandsOnTheWheelsAndThePivot.)
 TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
-    const Params params = reference_params();
+    const Params params = pivot_on_the_track();
     const Loads free = at(params, 10.0);
     constexpr double kPull_n = 10000.0;
     const Loads pulled = at(params, 10.0, {.forward_n = kPull_n});
@@ -277,9 +278,12 @@ TEST(Sled, TheFrameStandsOnTheWheelsAndThePivot) {
     EXPECT_NEAR(flat.pan_n, lever_n, 1e-9);
     EXPECT_NEAR(flat.pivot_n, flat.pan_n - low.pan_mass_kg * kStandardGravity_m_s2, 1e-9);
 
-    const Loads raised = at(reference_params(), distance_m);
-    EXPECT_GT(raised.pan_n, flat.pan_n);
+    constexpr HookForce kPulled{.forward_n = 10000.0};
+    const Loads raised = at(reference_params(), distance_m, kPulled);
+    EXPECT_GT(raised.pan_n, at(low, distance_m, kPulled).pan_n);
     EXPECT_NEAR(raised.pan_n + raised.wheels_n, weight_n(low), 1e-9);
+    // Unpulled it tows nothing.
+    EXPECT_NEAR(at(reference_params(), distance_m).pan_n, flat.pan_n, 1e-9);
 }
 
 // The push-down's cylinders, behind the pivot, lift the frame off the
