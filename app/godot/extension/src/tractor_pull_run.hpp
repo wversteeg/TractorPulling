@@ -103,6 +103,10 @@ public:
     /// line.
     [[nodiscard]] bool may_restart() const;
     void restart();
+    /// The pull counts as it is: no restart, the chain off once the
+    /// tractor backs off (session::Session::decline_restart). Until the
+    /// player chooses, the chain stays on.
+    void decline_restart();
     /// {ending, distance_m, time_s, top_speed_m_s, full_pull,
     /// out_of_bounds_at_m} once finished, else {}. full_pull: the sled got
     /// past the full-pull line, not out of bounds (at an event the run goes

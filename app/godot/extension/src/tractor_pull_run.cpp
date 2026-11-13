@@ -372,6 +372,12 @@ void TractorPullRun::restart() {
     }
 }
 
+void TractorPullRun::decline_restart() {
+    if (session_) {
+        session_->decline_restart();
+    }
+}
+
 godot::Dictionary TractorPullRun::get_result() const {
     godot::Dictionary out;
     if (!session_) {
@@ -435,6 +441,7 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
     ClassDB::bind_method(D_METHOD("may_restart"), &TractorPullRun::may_restart);
     ClassDB::bind_method(D_METHOD("restart"), &TractorPullRun::restart);
+    ClassDB::bind_method(D_METHOD("decline_restart"), &TractorPullRun::decline_restart);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
 }
 

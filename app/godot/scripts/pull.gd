@@ -291,8 +291,11 @@ func _ready() -> void:
 		_end_choice())
 	restart_screen.move_back_requested.connect(func() -> void:
 		_moved_back = true
+		run.decline_restart()
 		_end_choice())
-	restart_screen.finish_requested.connect(_end_choice)
+	restart_screen.finish_requested.connect(func() -> void:
+		run.decline_restart()
+		_end_choice())
 	result_screen.again_requested.connect(_start_practice)
 	result_screen.menu_requested.connect(show_start)
 	result_screen.continue_requested.connect(func() -> void: _set_screen(Screen.EVENT))
@@ -758,7 +761,13 @@ func _advance_rivals() -> void:
 # A pull that stopped short of the restart line: the run waits while the
 # player chooses (not for a scripted driver or autoplay: their pull counts).
 func _offer_restart() -> void:
-	if _choice_made or autoplay or driver.is_valid() or not run.may_restart():
+	if _choice_made or not run.may_restart():
+		return
+	if autoplay or driver.is_valid():
+		# Their pull counts. In a whole turn the chain stays on while the
+		# restart is open: they decline it, so it comes off as they back off.
+		if _whole_turn:
+			run.decline_restart()
 		return
 	_choice_made = true
 	_choosing = true

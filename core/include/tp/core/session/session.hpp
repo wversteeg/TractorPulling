@@ -225,8 +225,13 @@ public:
     /// The pull again from the start line (turn::restart), the controls'
     /// assist as at the start; nothing unless may_restart().
     void restart() noexcept;
+    /// The pull counts as it is (turn::decline_restart): no restart, the
+    /// chain off once slack.
+    void decline_restart() noexcept { turn::decline_restart(turn_); }
     /// The turn is over: the pull ended (at the line), or the tractor
-    /// stands in the parking again.
+    /// stands in the parking again. In a whole turn a pull that stopped
+    /// short holds the chain on until restart() or decline_restart(): a
+    /// front end that never chooses never gets back to the parking.
     [[nodiscard]] bool over() const noexcept { return turn_.stage == turn::Stage::kParked; }
     /// The replay hash: the run's state and the layout's (the clutch
     /// assist's and the steering's, controls::AssistState). It leaves

@@ -33,6 +33,8 @@ package "tp::godot_binding" {
     +get_layout() : String
     +is_finished() : bool
     +is_over() : bool
+    +may_restart() : bool
+    +restart() / decline_restart()
     +get_result() : Dictionary
     +get_state_hash() : String
     ..C++ only..
