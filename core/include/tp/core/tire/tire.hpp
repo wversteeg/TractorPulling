@@ -27,7 +27,20 @@ struct TractionCurve {
     double mobility_rate = 0.0;
     /// How quickly grip builds with slip.
     double slip_rate = 0.0;
+    /// Above its reference load a tire grips less per unit of load: its
+    /// traction coefficient falls by 1 / (1 + load_sensitivity (W / W_ref
+    /// - 1)), as a pressed tire's lugs and the soil under them give. On
+    /// strong ground, where the mobility number holds grip at its limit,
+    /// this is what keeps a tire pressed down hard (a chain pulling down
+    /// at the hitch) from gripping without bound. 0 for none.
+    double load_sensitivity = 0.0;
+    /// One tire's load where it grips as its limit says [N].
+    double reference_load_n = 0.0;
 };
+
+/// The share of a tire's traction coefficient it keeps under `load_n`
+/// (TractionCurve::load_sensitivity): 1 up to its reference load.
+[[nodiscard]] double load_factor(const TractionCurve& curve, double load_n) noexcept;
 
 /// A tire's side grip on soil. Like traction, it follows the mobility
 /// number: soft ground gives a tire less side grip, and lets it build more
@@ -97,7 +110,8 @@ struct Pressure {
 /// with g the surface's grip factor and f its spin fall-off, which Brixius
 /// leaves out: past the peak, a spinning tire smears or digs and loses
 /// grip, which makes wheelspin run away once it starts. Load sensitivity
-/// follows from Bn. Braking (s < 0) mirrors traction.
+/// follows from Bn, and above the tire's reference load from its
+/// load_sensitivity (TractionCurve). Braking (s < 0) mirrors traction.
 struct Params {
     Size size;
     TractionCurve traction;
@@ -117,6 +131,9 @@ enum class ParamError : std::uint8_t {
     kDeflectionOutOfRange,
     kTractionLimitOutOfRange,
     kTractionRateNotPositive,
+    /// The load sensitivity negative, or set without a positive reference
+    /// load.
+    kLoadSensitivityInvalid,
     kInertiaNotPositive,
     kMinReferenceSpeedNotPositive,
     kCorneringNotPositive,

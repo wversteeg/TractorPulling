@@ -90,6 +90,13 @@ TEST(TireParams, RejectsNonsense) {
     EXPECT_EQ(
         with([](Params& p) { p.traction.slip_rate = std::numeric_limits<double>::infinity(); }),
         ParamError::kNotFinite);
+    EXPECT_EQ(with([](Params& p) { p.traction.load_sensitivity = -0.1; }),
+              ParamError::kLoadSensitivityInvalid);
+    EXPECT_EQ(with([](Params& p) {
+                  p.traction.load_sensitivity = 0.3;
+                  p.traction.reference_load_n = 0.0;
+              }),
+              ParamError::kLoadSensitivityInvalid);
     EXPECT_EQ(with([](Params& p) { p.wheel_inertia_kg_m2 = 0.0; }),
               ParamError::kInertiaNotPositive);
     EXPECT_EQ(with([](Params& p) { p.min_reference_speed_m_s = 0.0; }),
@@ -97,6 +104,29 @@ TEST(TireParams, RejectsNonsense) {
 }
 
 // Brixius' mobility number, by hand: CI b d / W (1 + 5 δ/h) / (1 + 3 b/d).
+// Above its reference load a tire grips less per unit of load, so pressing
+// it down harder still adds grip, but less and less: up to the reference
+// load (and with no sensitivity) the coefficient is as the curve says.
+TEST(Tire, PressedHarderItGripsLessPerUnitOfLoad) {
+    Params params = reference_params();
+    const soil::Surface surface = reference_surface();
+    const double plain = full_bite(params, 2.0 * kLoad_n, surface);
+    params.traction.load_sensitivity = 0.3;
+    params.traction.reference_load_n = kLoad_n;
+    EXPECT_EQ(load_factor(params.traction, 0.5 * kLoad_n), 1.0);
+    EXPECT_EQ(load_factor(params.traction, kLoad_n), 1.0);
+    EXPECT_NEAR(load_factor(params.traction, 2.0 * kLoad_n), 1.0 / 1.3, 1e-12);
+    EXPECT_NEAR(full_bite(params, 2.0 * kLoad_n, surface), plain / 1.3, 1e-12);
+    double last_n = 0.0;
+    for (const double share : {1.0, 1.5, 2.0, 3.0, 4.0}) {
+        const double grip_n = full_bite(params, share * kLoad_n, surface) * share * kLoad_n;
+        EXPECT_GT(grip_n, last_n) << "more load, still more grip";
+        last_n = grip_n;
+    }
+    EXPECT_LT(load_factor(params.traction, 3.0 * kLoad_n),
+              load_factor(params.traction, 2.0 * kLoad_n));
+}
+
 TEST(Tire, MobilityNumberFollowsBrixius) {
     const Size size = reference_params().size;
     const soil::Surface surface = reference_surface();
