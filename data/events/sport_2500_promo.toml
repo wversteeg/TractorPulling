@@ -15,7 +15,7 @@ seed = 2026
 # clutch up over 3 s from 3 s; a gear down under load once the sled pulls
 # the engine below 90 % of its rated speed (0 would never shift).
 [event.driver]
-gear = 7
+gear = 4
 select_gear_s = 0.5
 launch_s = 3.0
 clutch_slip_in_s = 3.0
@@ -38,11 +38,11 @@ launch_hold_max_s = 8.0
 [event.field]
 torque_scale = [0.44, 0.76]
 mass_kg = [2215.0, 2380.0]
-traction_limit = [1.038, 1.111]
+traction_limit = [1.298, 1.389]
 hitch_height_m = [0.405, 0.46]
 load_downshift_gears = [0, 1]
 rated_rpm = [2215.0, 2380.0]
-gears = [3, 8]
+gears = [3, 4]
 clutch_slip_in_s = [2.0, 4.0]
 track_reading = [0.5, 0.85]
 downshift_share = [0.82, 0.95]         # of the rated speed, as the driver above

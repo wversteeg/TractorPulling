@@ -93,10 +93,31 @@ if(TARGET tp_pull AND NOT CMAKE_CROSSCOMPILING)
     add_test(NAME TpPull.RunShiftsDownUnderLoad
         COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
             "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
-            --gear 6 --downshift 0.9 -o "${CMAKE_CURRENT_BINARY_DIR}/downshift_run.csv")
+            --gear 5 --downshift 0.9 -o "${CMAKE_CURRENT_BINARY_DIR}/downshift_run.csv")
     # PASS_REGULAR_EXPRESSION ignores the exit code: a refused shift or a
     # failed run after the message fails it by its own words.
     set_tests_properties(TpPull.RunShiftsDownUnderLoad PROPERTIES
-        PASS_REGULAR_EXPRESSION "shifted down under load to gear 5 at 8[0-9][.][0-9] m"
+        PASS_REGULAR_EXPRESSION "shifted down under load to gear 4 at 9[0-9][.][0-9] m"
         FAIL_REGULAR_EXPRESSION "refused|cannot select|usage:|inconsistent")
+    # --launch-hold launches as the events' drivers do: 5th gets the farm
+    # tractor going on the 15 t sled. Not with --dump.
+    add_test(NAME TpPull.RunLaunchHeld
+        COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
+            "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
+            --gear 5 --launch-hold 0.8 -o "${CMAKE_CURRENT_BINARY_DIR}/launch_hold_run.csv")
+    set_tests_properties(TpPull.RunLaunchHeld PROPERTIES
+        PASS_REGULAR_EXPRESSION "run: 9[0-9][.][0-9]+ m"
+        FAIL_REGULAR_EXPRESSION "usage:|inconsistent")
+    add_test(NAME TpPull.LaunchHoldIsNotForADump
+        COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
+            "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
+            --gear 5 --launch-hold 0.8 --dump)
+    set_tests_properties(TpPull.LaunchHoldIsNotForADump PROPERTIES
+        PASS_REGULAR_EXPRESSION "not with --dump or --easy")
+    add_test(NAME TpPull.LaunchHoldIsNotForTheEasyLayout
+        COMMAND tp_pull run "${TP_DATA_DIR}/tractors/farm_stock_light.toml"
+            "${TP_DATA_DIR}/sleds/light_class.toml" "${TP_DATA_DIR}/tracks/ideal_clay_sand.toml"
+            --gear 5 --launch-hold 0.8 --easy "${TP_DATA_DIR}/controls/easy.toml")
+    set_tests_properties(TpPull.LaunchHoldIsNotForTheEasyLayout PROPERTIES
+        PASS_REGULAR_EXPRESSION "not with --dump or --easy")
 endif()

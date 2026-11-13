@@ -132,11 +132,11 @@ In the game (`data/classes/ntto_sport_2500.toml`,
 rpm unloaded, and no PTO power limit (the core checks only mass, power,
 speed and hitch, so the engine's build limits above are not checked yet).
 The tractor is smaller than the standard class's (2.2 m wheelbase, 0.78 m
-rear tires) and pulls under a roll bar instead of a cab. Its engine is an
-estimate from the rules: 4 l, a 55 mm turbo inlet and no intercooler let
-in about 0.19 kg/s of air, about 175 kW of fuel burnt at a smoky
-air-fuel ratio, so **about 220 hp** fully built (152 kW at 2450 rpm on
-the virtual dyno), from a stock farm engine's 90 hp. Eight gears with a
+rear tires) and pulls under a roll bar instead of a cab. The rules set no
+power; its engine is set from videos of the class's top tractors (a full
+pull in about 20 s from moving off on an ordinary track, the front up on
+the launch and again at the end): **about 350 hp** (1050 N·m) fully
+built, from a stock farm engine's 145 hp. Eight gears with a
 powershift; it pulls in tall, close gears (see "How the Sport classes
 pull").
 
@@ -174,9 +174,9 @@ In the game (`data/classes/ntto_sport_4500.toml`,
 `data/tractors/sport_4500.toml`): 4500 kg, the hitch at most 0.5 m, 2700
 rpm unloaded, no PTO power limit. A big six-cylinder tractor (2.75 m
 wheelbase, 30.5L-32 puller tires at the class's widest) under a roll bar.
-Its engine is an estimate from the rules: 7 l, intercooled, its 68 mm
-turbo inlet holding it to about 0.45 kg/s of air, so **about 520 hp**
-fully built, from a stock farm engine's 180 hp. Eight gears with a
+Its engine is set from videos of the class's top tractors (about 115 m
+in a pull-off in about 15 s): **about 780 hp** (2410 N·m) fully built,
+from a stock farm engine's 270 hp. Eight gears with a
 powershift, pulled as Sport 2.5 t. All three levels, belofte, promo and
 top.
 
@@ -204,8 +204,8 @@ grip on most tracks, a Sport 4.5 t does not (`TrackSetup.*`):
   sled's pull on the rear tires but lifts the front, and with it the
   steering, sooner.
 - **The turbo**: the stock tractor comes with a small, quick turbo
-  (`engines/sport_4500_fast_turbo.toml`, about 440 hp fully built); the
-  68 mm turbo (`engines/sport_4500.toml`, the rivals' too, about 510 hp)
+  (`engines/sport_4500_fast_turbo.toml`, about 660 hp fully built); the
+  68 mm turbo (`engines/sport_4500.toml`, the rivals' too, about 780 hp)
   is the upgrade, further on every track
   (`TurboChoice.TheSixtyEightMillimetreTurboIsTheUpgrade`). It is a
   garage choice (owned side by side, one fitted), the garage the
@@ -228,7 +228,7 @@ powershift pulls a slightly too tall gear through. The game gets there
 with three things:
 
 - **Puller tires** (`data/tires/sport_*rear.toml`) grip harder than farm
-  tires, about 1.2 times, but only spinning: grip builds slowly with slip
+  tires, about 1.5 times, but only spinning: grip builds slowly with slip
   (a third of a farm tire's rate). They spin at the launch, so the engine
   keeps its revs, and bite late in the pull.
 - **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels

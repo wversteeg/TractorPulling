@@ -2,15 +2,12 @@
 # a six-cylinder turbo diesel of at most 7.0 l with two valves a cylinder,
 # one turbo, its air inlet at most 68 mm, an intercooler (allowed with the
 # restrictor), 2700 rpm unloaded.
-# The rules set no power: this is an estimate from them. 7.0 l at 2700 rpm
-# breathes about 0.16 m³/s; at about 3.5 bar absolute, intercooled, that
-# would be about 0.5 kg of air a second, which a 68 mm inlet holds to about
-# 0.45 kg/s. Burnt rich (air to fuel about 20) that is about 22 g of fuel a
-# second, about 390 kW at 40 % efficiency. The curve below is the fully
-# built engine, about 520 hp (390 kW) at 2500 rpm: 75 hp a litre, for
-# pulls of seconds. The garage (garages/sport_4500.toml) starts it at
-# about 35 % of this torque, a stock 7 l farm engine's 180 hp, and builds
-# it up.
+# The rules set no power. The curve below is the fully built engine, about
+# 780 hp (585 kW) at 2500 rpm, set from videos of the class's top tractors
+# (about 115 m in a pull-off in about 15 s on an ordinary track): 110 hp a
+# litre, run rich on boost for pulls of seconds. The garage
+# (garages/sport_4500.toml) starts it at about 35 % of this torque, a stock
+# 7 l farm engine's 270 hp, and builds it up.
 # Speeds are in rpm and converted to rad/s on load.
 
 [engine]
@@ -33,8 +30,8 @@ boost_onset_rpm = 1100
 full_boost_rpm = 1800
 full_boost_bar = 2.5          # above the atmosphere (about 3.5 bar absolute), for the boost gauge
 
-# Full-load torque at full boost: peak 1605 N·m at 2000 rpm, about 390 kW
-# (520 hp) from 2400 rpm; past the rated speed the engine's own fall-off.
+# Full-load torque at full boost: peak 2410 N·m at 2000 rpm, about 585 kW
+# (780 hp) from 2400 rpm; past the rated speed the engine's own fall-off.
 [engine.torque_curve]
 rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3000]
-torque_nm = [735,  880, 1080, 1320, 1495, 1590, 1605, 1580, 1530, 1460, 1350, 1225]
+torque_nm = [1100, 1320, 1620, 1980, 2240, 2385, 2410, 2370, 2295, 2190, 2025, 1840]

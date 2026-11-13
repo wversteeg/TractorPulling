@@ -232,7 +232,12 @@ double thrown_soil_m3_s(const Size& size, const Footing& footing, double load_n,
 
 double towed_rolling_resistance(const Size& size, double load_n,
                                 const soil::Surface& surface) noexcept {
-    return 1.0 / mobility_number(size, load_n, surface) + kTireLosses;
+    return towed_rolling_resistance(size, load_n, surface, kTireLosses);
+}
+
+double towed_rolling_resistance(const Size& size, double load_n, const soil::Surface& surface,
+                                double own_losses) noexcept {
+    return 1.0 / mobility_number(size, load_n, surface) + own_losses;
 }
 
 double full_bite(const Params& params, double load_n, const soil::Surface& surface) noexcept {

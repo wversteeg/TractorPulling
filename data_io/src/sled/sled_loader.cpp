@@ -2,7 +2,10 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "../common/toml_reader.hpp"
 #include "../tire/tire_fields.hpp"
@@ -27,6 +30,8 @@ FieldError describe(sled::ParamError error) {
             return {"sled.frame_yaw_inertia_kg_m2", "must be > 0"};
         case ParamError::kBoxMassNegative:
             return {"sled.weight_box.mass_kg", "must not be negative"};
+        case ParamError::kBoxOverMax:
+            return {"sled.weight_box.mass_kg", "must not be over max_mass_kg"};
         case ParamError::kPanNotAheadOfWheels:
             return {"sled.pan_ahead_of_wheels_m", "must be > 0"};
         case ParamError::kFrameCgOutsideSled:
@@ -65,6 +70,8 @@ FieldError describe(sled::ParamError error) {
                 "(0, 2]"};
         case ParamError::kWheelCountOutOfRange:
             return {"sled.wheels.count", "must be 1 to 8"};
+        case ParamError::kWheelLossesOutOfRange:
+            return {"sled.wheels.rolling_losses", "must be 0 to 0.2"};
         case ParamError::kChainInvalid:
             return {"sled.chain", "length and stiffness must be > 0, damping >= 0"};
         case ParamError::kFendersInvalid:
@@ -92,6 +99,7 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .hook_ahead_of_wheels_m = reader.number("sled.hook.ahead_of_wheels_m"),
         .hook_height_m = reader.number("sled.hook.height_m"),
         .box_mass_kg = reader.number("sled.weight_box.mass_kg"),
+        .box_max_mass_kg = reader.number("sled.weight_box.max_mass_kg"),
         .box_start_ahead_of_wheels_m = reader.number("sled.weight_box.start_ahead_of_wheels_m"),
         .box_end_ahead_of_wheels_m = reader.number("sled.weight_box.end_ahead_of_wheels_m"),
         .box_travel_distance_m = reader.number("sled.weight_box.travel_distance_m"),
@@ -109,6 +117,7 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         .wheel = detail::read_tire_size(reader, kWheels),
         .wheel_cornering = detail::read_cornering(reader, "sled.wheels.cornering"),
         .wheel_count = 0,  // checked below
+        .wheel_rolling_losses = reader.number("sled.wheels.rolling_losses"),
         .chain =
             {
                 .length_m = reader.number("sled.chain.length_m"),
@@ -157,14 +166,89 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
     return params;
 }
 
+constexpr std::string_view kBase = "sled.base";
+
+// Copies every value of `over` into `into`, table by table: what `over`
+// sets wins, what it leaves out keeps `into`'s value. A work list rather
+// than recursion: the tables nest only a few deep, but no call depth is
+// left to the file.
+void overlay(toml::table& into, const toml::table& over) {
+    std::vector<std::pair<toml::table*, const toml::table*>> work{{&into, &over}};
+    while (!work.empty()) {
+        const auto [to, from] = work.back();
+        work.pop_back();
+        for (const auto& [key, node] : *from) {
+            const toml::table* from_table = node.as_table();
+            toml::table* to_table = (*to)[key].as_table();
+            if (from_table != nullptr && to_table != nullptr) {
+                work.emplace_back(to_table, from_table);
+            } else {
+                to->insert_or_assign(key, node);
+            }
+        }
+    }
+}
+
+// A sled file that names no base, read as it is.
+Result<sled::Params> read_without_base(const toml::table& root, std::string_view source) {
+    if (root.at_path(kBase)) {
+        return detail::make_error(source, kBase, "needs the file it names: load the file instead");
+    }
+    return read_sled(root, source);
+}
+
+// A class's sled: the sled every class pulls (`sled.base`, a file next to
+// this one), with this file's values over it, usually the weight box and
+// the push-down.
+Result<sled::Params> read_with_base(const toml::table& root, std::string_view source,
+                                    const ReadFile& read) {
+    const toml::node_view<const toml::node> base_node = root.at_path(kBase);
+    if (!base_node) {
+        return read_sled(root, source);
+    }
+    const std::optional<std::string> base_name = base_node.value<std::string>();
+    if (!base_name) {
+        return detail::make_error(source, kBase, "must be a file name");
+    }
+    const std::string base_path = resolve(directory_of(source), *base_name);
+    const std::optional<std::string> base_text = read(base_path);
+    if (!base_text) {
+        return detail::make_error(source, kBase, "cannot open " + base_path);
+    }
+    toml::parse_result parsed = toml::parse(*base_text, base_path);
+    if (!parsed) {
+        return LoadError{detail::describe(parsed.error(), base_path)};
+    }
+    toml::table merged = std::move(parsed).table();
+    if (merged.at_path(kBase)) {
+        return detail::make_error(base_path, kBase, "a base sled names no base of its own");
+    }
+    overlay(merged, root);
+    if (toml::table* sled = merged["sled"].as_table()) {
+        sled->erase("base");
+    }
+    // The value may be this file's or the base's: the message names both.
+    Result<sled::Params> out = read_sled(merged, source);
+    if (!out) {
+        return LoadError{out.error().message + " (this sled laid over the base sled " + base_path +
+                         ")"};
+    }
+    return out;
+}
+
 }  // namespace
 
 Result<sled::Params> parse_sled(std::string_view toml_text, std::string_view source_name) {
-    return detail::parse_with<sled::Params>(toml_text, source_name, &read_sled);
+    return detail::parse_with<sled::Params>(toml_text, source_name, &read_without_base);
 }
 
 Result<sled::Params> load_sled(std::string_view path, const ReadFile& read) {
-    return detail::load_file_with<sled::Params>(path, read, &read_sled);
+    const std::string name{path};
+    const std::optional<std::string> text = read(name);
+    if (!text) {
+        return LoadError{name + ": cannot open file"};
+    }
+    return detail::parse_then(*text, name, &read_with_base, read);
 }
 
 Result<sled::Params> load_sled(const std::filesystem::path& path) {

@@ -17,9 +17,14 @@ namespace tp::field {
 namespace {
 
 // The shipped light-class tractor, driven as the reference driver drives:
-// fifth gear, the clutch slipped in over 3 s.
-const driver::Plan kDriver{
-    .gear = 5, .select_gear_s = 0.5, .launch_s = 3.0, .clutch_slip_in_s = 3.0};
+// fifth gear, the clutch slipped in over 3 s and held back while the
+// engine is below 80 % of its rated speed.
+const driver::Plan kDriver{.gear = 5,
+                           .select_gear_s = 0.5,
+                           .launch_s = 3.0,
+                           .clutch_slip_in_s = 3.0,
+                           .launch_hold_share = 0.8,
+                           .launch_hold_max_s = 8.0};
 
 std::filesystem::path data(const std::string& file) {
     return std::filesystem::path{TP_DATA_DIR} / file;

@@ -46,6 +46,9 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     if (params.box_mass_kg < 0.0) {
         return ParamError::kBoxMassNegative;
     }
+    if (params.box_mass_kg > params.box_max_mass_kg) {
+        return ParamError::kBoxOverMax;
+    }
     const double pan_m = params.pan_ahead_of_wheels_m;
     if (pan_m <= 0.0) {
         return ParamError::kPanNotAheadOfWheels;
@@ -90,6 +93,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.hook_ahead_of_wheels_m,
                                 params.hook_height_m,
                                 params.box_mass_kg,
+                                params.box_max_mass_kg,
                                 params.box_start_ahead_of_wheels_m,
                                 params.box_end_ahead_of_wheels_m,
                                 params.box_travel_distance_m,
@@ -98,6 +102,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pan_friction_coefficient,
                                 params.pan_area_m2,
                                 params.pan_plough_coefficient,
+                                params.wheel_rolling_losses,
                                 params.chain.length_m,
                                 params.chain.stiffness_n_per_m,
                                 params.chain.damping_n_s_per_m,
@@ -147,6 +152,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.wheel_count < 1 || params.wheel_count > kMaxWheels) {
         return ParamError::kWheelCountOutOfRange;
     }
+    if (!within(params.wheel_rolling_losses, 0.0, kMaxWheelRollingLosses)) {
+        return ParamError::kWheelLossesOutOfRange;
+    }
     if (params.chain.length_m <= 0.0 || params.chain.stiffness_n_per_m <= 0.0 ||
         params.chain.damping_n_s_per_m < 0.0) {
         return ParamError::kChainInvalid;
@@ -176,7 +184,10 @@ Params with_conditions(const Params& params, const Conditions& conditions) noexc
 Params adjusted(const Params& params, const Adjustment& adjustment, int times) noexcept {
     const double n = times;
     Params out = params;
-    out.box_mass_kg = std::max(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0);
+    // max then min, not clamp: safe even on a sled whose maximum is
+    // negative (validate() refuses one, but this need not have seen it).
+    out.box_mass_kg = std::min(std::max(params.box_mass_kg + n * adjustment.box_mass_kg, 0.0),
+                               params.box_max_mass_kg);
     out.knives.count = std::clamp(params.knives.count + times * adjustment.knives, 0, kMaxKnives);
     out.knives.depth_m =
         std::clamp(params.knives.depth_m + n * adjustment.knife_depth_m, 0.0, kMaxKnifeDepth_m);
@@ -281,9 +292,10 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
     wheels_n -= pushdown * wheels_n;
 
     const double wheel_count = params.wheel_count;
-    const double rolling = wheels_n > 0.0 ? tire::towed_rolling_resistance(
-                                                params.wheel, wheels_n / wheel_count, ground.wheels)
-                                          : 0.0;
+    const double rolling =
+        wheels_n > 0.0 ? tire::towed_rolling_resistance(params.wheel, wheels_n / wheel_count,
+                                                        ground.wheels, params.wheel_rolling_losses)
+                       : 0.0;
     // On a hard spot the pan and the knives drag harder.
     const double friction = pan_friction(params, pan_n, ground.pan) * ground.pan.drag_scale;
     const double cutting_n =

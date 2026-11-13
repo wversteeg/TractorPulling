@@ -208,6 +208,12 @@ struct Footing {
 [[nodiscard]] double towed_rolling_resistance(const Size& size, double load_n,
                                               const soil::Surface& surface) noexcept;
 
+/// As above, with the tire's own losses given: a sled's tires, pumped hard
+/// for its weight, lose less in their carcass than a tractor's soft ones.
+[[nodiscard]] double towed_rolling_resistance(const Size& size, double load_n,
+                                              const soil::Surface& surface,
+                                              double own_losses) noexcept;
+
 /// Traction coefficient at full bite on this ground: what the tire could
 /// pull per unit of load at the best slip, before spin fall-off [-].
 [[nodiscard]] double full_bite(const Params& params, double load_n,

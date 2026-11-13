@@ -17,6 +17,7 @@ package "tp::sled" {
     +pan_ahead_of_wheels_m : double
     +hook_ahead_of_wheels_m, hook_height_m : double
     +box_mass_kg : double
+    +box_max_mass_kg : double (what the box holds; adjusted() stays within it)
     +box_start / box_end_ahead_of_wheels_m : double (start may be behind the wheels)
     +box_travel_distance_m : double
     +pushdown_start_m, pushdown_ramp_m : double
@@ -28,6 +29,7 @@ package "tp::sled" {
     +wheel : tire::Size
     +wheel_cornering : tire::Cornering
     +wheel_count : int
+    +wheel_rolling_losses : double (the tires' own, on top of 1/Bn)
     +chain : Chain
     +pull_off_step : Adjustment
   }

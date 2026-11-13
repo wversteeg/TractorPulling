@@ -2,7 +2,7 @@
 # 1605 N·m peak (engines/sport_4500.toml), about 1.5 times it.
 
 [clutch]
-static_torque_capacity_nm = 2400.0
+static_torque_capacity_nm = 3600.0
 kinetic_ratio = 0.8                 # sliding friction / static friction
 
 [clutch.engagement]

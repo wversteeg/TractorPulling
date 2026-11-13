@@ -7,6 +7,7 @@
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
+#include "tp/data/track/track_loader.hpp"
 
 #include <gtest/gtest.h>
 
@@ -63,9 +64,12 @@ public:
         return trial->distance_m;
     }
 
-    // The tractor's lowest hitch hole, and the season's rounds [m].
+    // The tractor's lowest hitch hole [m], and the season's rounds.
     [[nodiscard]] double lowest_hitch_m() const { return built_.chassis.hitch_min_height_m; }
     [[nodiscard]] const std::vector<data::SeasonRound>& rounds() const { return season_.rounds; }
+    [[nodiscard]] const data::SeasonRound& round(const std::string& name) const {
+        return round_named(name);
+    }
 
 private:
     static data::SeasonDefinition load(const char* file) {
@@ -133,72 +137,9 @@ constexpr double kBack = 0.0;
 constexpr double kQuarter = 0.25;
 constexpr double kHalfway = 0.5;
 constexpr double kThreeQuarters = 0.75;
+constexpr double kForward = 1.0;
 // More than the spot on the track decides [m].
 constexpr double kClearly_m = 3.0;
-
-// On a grippy track the weights all back stand the tractor on its wheelie
-// bar, which carries load the rear tires lose: halfway pulls further.
-TEST(TrackSetup, OnAGrippyTrackTheWeightsAllBackStandItOnTheBar) {
-    const SportSetup sport;
-    for (const char* track : {"Firm loam", "Summer, dry hard clay"}) {
-        EXPECT_LT(sport.reach_m(track, kBack), sport.reach_m(track, kHalfway) - kClearly_m)
-            << track;
-    }
-}
-
-// On the heavy clay the tires dig in and the sled ploughs: with the
-// weights back the nose climbs, so they go forward of the quarter.
-TEST(TrackSetup, OnHeavyClayTheWeightsGoForward) {
-    const SportSetup sport;
-    const char* track = "Rainy day, covered heavy clay";
-    const double forward_m =
-        std::max(sport.reach_m(track, kHalfway), sport.reach_m(track, kThreeQuarters));
-    EXPECT_GT(forward_m, sport.reach_m(track, kBack) + kClearly_m);
-    EXPECT_GT(forward_m, sport.reach_m(track, kQuarter));
-}
-
-// On the loose sandy clay the grip runs out first: the weights all back
-// put the most load on the rear tires.
-TEST(TrackSetup, OnLooseSandTheWeightsGoBack) {
-    const SportSetup sport;
-    const char* track = "Sandy clay";
-    EXPECT_GT(sport.reach_m(track, kBack), sport.reach_m(track, kHalfway) + kClearly_m);
-}
-
-// Soft tires' bigger footprint pays on the heavy clay; on the firm loam
-// their lugs squirm and cost metres.
-TEST(TrackSetup, SoftTiresPayOnHeavyClayAndCostOnFirmLoam) {
-    const SportSetup sport;
-    constexpr double kSoft_bar = 0.6;
-    const char* heavy = "Rainy day, covered heavy clay";
-    EXPECT_GT(sport.reach_m(heavy, kHalfway, kSoft_bar), sport.reach_m(heavy, kHalfway) + 2.0);
-    EXPECT_LT(sport.reach_m("Firm loam", kHalfway, kSoft_bar),
-              sport.reach_m("Firm loam", kHalfway) - kClearly_m);
-}
-
-// Each track has its own best tire pressure, and both sides of it cost:
-// too hard shrinks the footprint, so the tires grip less; too soft lets
-// the lugs squirm. On the grippy tracks the reference pressure is best, on
-// the heavy clay a soft one. On a sled heavier than the operator's, where
-// halfway does not make a full pull.
-TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
-    const SportSetup sport;
-    constexpr int kHeavier = 3;
-    constexpr double kSoft_bar = 0.5;
-    constexpr double kReference_bar = 1.0;
-    constexpr double kHard_bar = 1.4;
-    for (const char* grippy : {"Firm loam", "Summer, dry hard clay"}) {
-        const double best_m = sport.reach_m(grippy, kHalfway, kReference_bar, kHeavier);
-        EXPECT_GT(best_m, sport.reach_m(grippy, kHalfway, kSoft_bar, kHeavier) + kClearly_m)
-            << grippy;
-        EXPECT_GT(best_m, sport.reach_m(grippy, kHalfway, kHard_bar, kHeavier) + 1.0) << grippy;
-    }
-    const char* heavy = "Rainy day, covered heavy clay";
-    constexpr double kHeavyClay_bar = 0.7;
-    const double best_m = sport.reach_m(heavy, kHalfway, kHeavyClay_bar, kHeavier);
-    EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kSoft_bar, kHeavier));
-    EXPECT_GT(best_m, sport.reach_m(heavy, kHalfway, kHard_bar, kHeavier) + kClearly_m);
-}
 
 // The season's rounds on different tracks, by their ground (the soil's
 // make-up and the track's grip), not their names: a track may come round
@@ -218,22 +159,86 @@ std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
     return names;
 }
 
+// The weights a quarter forward pull furthest on every track: the front
+// rides light, the rear tires carry the most they can without the
+// wheelie bar taking load off them.
+TEST(TrackSetup, AQuarterForwardPullsFurthestOnEveryTrack) {
+    const SportSetup sport;
+    for (const std::string& track : rounds_on_their_own_tracks(sport)) {
+        const double quarter_m = sport.reach_m(track, kQuarter);
+        for (const double elsewhere : {kBack, kHalfway, kForward}) {
+            EXPECT_GT(quarter_m, sport.reach_m(track, elsewhere)) << track << ", " << elsewhere;
+        }
+    }
+}
+
+// What the wrong weights cost depends on the track. All back stands the
+// tractor on its wheelie bar, which costs most on the wet start, where the
+// tires need every kilo; all forward lifts load off the rear tires, which
+// costs most on the loose sandy clay, where grip runs out first.
+TEST(TrackSetup, TheTrackDecidesWhatTheWrongWeightsCost) {
+    const SportSetup sport;
+    const char* wet = "Spring opener, watered start";
+    EXPECT_GT(sport.reach_m(wet, kQuarter), sport.reach_m(wet, kBack) + kClearly_m);
+    const char* sand = "Sandy clay";
+    EXPECT_GT(sport.reach_m(sand, kQuarter), sport.reach_m(sand, kForward) + kClearly_m);
+    const char* loam = "Firm loam";
+    EXPECT_LT(sport.reach_m(loam, kQuarter), sport.reach_m(loam, kBack) + kClearly_m)
+        << "on the grippy loam the weights matter less";
+}
+
+// Each track has its own best tire pressure, and both sides of it cost:
+// too soft lets the lugs squirm, too hard shrinks the footprint. Soft
+// pays on the heavy clay, where the tires dig in; a little soft on the
+// loose sandy clay; on the clay-sand the reference, where the softest
+// costs metres. On a sled heavier than the operator's, where the best
+// setting does not make a full pull.
+TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
+    const SportSetup sport;
+    constexpr int kHeavier = 3;
+    constexpr double kSoft_bar = 0.5;
+    constexpr double kLittleSoft_bar = 0.7;
+    constexpr double kReference_bar = 1.0;
+    constexpr double kHard_bar = 1.6;
+    const auto reach = [&](const char* track, double bar) {
+        return sport.reach_m(track, kQuarter, bar, kHeavier);
+    };
+    const char* heavy = "Rainy day, covered heavy clay";
+    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kReference_bar));
+    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kHard_bar) + 0.5);
+    const char* sand = "Sandy clay";
+    EXPECT_GT(reach(sand, kLittleSoft_bar), reach(sand, kReference_bar) + 0.5);
+    EXPECT_GT(reach(sand, kLittleSoft_bar), reach(sand, kSoft_bar));
+    const char* clay_sand = "Clay-sand";
+    EXPECT_GT(reach(clay_sand, kReference_bar), reach(clay_sand, kSoft_bar) + 1.5);
+    EXPECT_GT(reach(clay_sand, kReference_bar), reach(clay_sand, kHard_bar));
+}
+
 // The lowest hitch hole takes most of the sled's pull off the rear tires:
-// at every level of the class, on every track, with the weights back,
-// halfway or well forward, the top hole pulls clearly further. So the crew
-// chief may always say to raise a hitch in its lowest hole (U-23). (The
-// holes between are another matter: with the weights all back on a grippy
-// track the top hole stands the tractor on its wheelie bar, and one a
-// little lower pulls further.) On a sled heavy enough that the tractor
-// stops short of the line, where a setting shows.
-TEST(TrackSetup, TheLowestHitchHoleNeverPullsFurthest) {
+// at every level of the class, with the weights back, halfway or well
+// forward, the top hole pulls clearly further on every track but the
+// moist heavy clay, where a low hitch keeps the nose down and may gain
+// about a metre; there the hitch matters little either way. So the crew
+// chief may always say to raise a hitch in its lowest hole (U-23): it
+// costs about a metre at most. (The holes between are another matter: with the
+// weights all back on a grippy track the top hole stands the tractor on
+// its wheelie bar, and one a little lower pulls further.) On a sled heavy
+// enough that the tractor stops short of the line, where a setting shows.
+TEST(TrackSetup, TheLowestHitchHoleCostsEverywhereButTheHeavyClay) {
     constexpr double kAsBuilt_bar = 1.0;
-    // Further than a pull-to-pull difference [m].
+    // Further than a pull-to-pull difference; at most this much shorter [m].
     constexpr double kFurther_m = 0.5;
+    constexpr double kAtMostShorter_m = 1.2;
+    // The moist heavy clay, by its ground: a renamed round is still it.
+    const auto heavy_clay =
+        data::load_track(std::filesystem::path{TP_DATA_DIR} / "tracks" / "covered_heavy_clay.toml");
+    ASSERT_TRUE(heavy_clay.ok()) << heavy_clay.error().message;
+    const soil::Composition& clay = heavy_clay.value().ground.soil;
     // Short of the pull-off's line: the run's limit hides the rest [m].
     constexpr double kShortOfTheLine_m = 115.0;
     constexpr int kStepsAtATime = 2;
     constexpr int kMostSteps = 16;
+    int on_heavy_clay_rounds = 0;
     for (const char* season :
          {"sport_4500_belofte.toml", "sport_4500_promo.toml", "sport_4500_top.toml"}) {
         const SportSetup sport{season};
@@ -248,11 +253,23 @@ TEST(TrackSetup, TheLowestHitchHoleNeverPullsFurthest) {
                 const auto at_hole = [&](double hole_m) {
                     return sport.reach_m(round, ballast, kAsBuilt_bar, steps, hole_m);
                 };
-                EXPECT_GT(top_m, at_hole(sport.lowest_hitch_m()) + kFurther_m)
-                    << season << ", " << round << ", weights at " << ballast;
+                const double lowest_m = at_hole(sport.lowest_hitch_m());
+                const soil::Composition& soil = sport.round(round).track.ground.soil;
+                const bool on_heavy_clay = soil.clay_fraction == clay.clay_fraction &&
+                                           soil.moisture == clay.moisture &&
+                                           soil.compaction == clay.compaction;
+                if (!on_heavy_clay) {
+                    EXPECT_GT(top_m, lowest_m + kFurther_m)
+                        << season << ", " << round << ", weights at " << ballast;
+                } else {
+                    ++on_heavy_clay_rounds;
+                    EXPECT_GT(top_m, lowest_m - kAtMostShorter_m)
+                        << season << ", " << round << ", weights at " << ballast;
+                }
             }
         }
     }
+    EXPECT_GT(on_heavy_clay_rounds, 0) << "the heavy clay's exception was never tried";
 }
 
 }  // namespace

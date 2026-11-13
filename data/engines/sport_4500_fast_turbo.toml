@@ -6,7 +6,7 @@
 # holds the boost when the sled drags the engine down, and it is sized for
 # the middle of the range, where it gives more than the 68 mm turbo; but
 # its compressor chokes at high revs, so it gives less on top: about
-# 440 hp (330 kW) fully built, against the 68 mm turbo's 510 hp. Game
+# 660 hp (495 kW) fully built, against the 68 mm turbo's 780 hp. Game
 # choice: the figures are an estimate.
 # Speeds are in rpm and converted to rad/s on load.
 [engine]
@@ -34,4 +34,4 @@ full_boost_bar = 2.2          # above the atmosphere, for the boost gauge
 # at 2400 rpm before the losses (the 68 mm turbo's 385 kW).
 [engine.torque_curve]
 rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3000]
-torque_nm = [875, 1050, 1260, 1455, 1590, 1630, 1580, 1475, 1360, 1220, 1095, 970]
+torque_nm = [1310, 1575, 1890, 2180, 2385, 2445, 2370, 2210, 2040, 1830, 1640, 1455]
