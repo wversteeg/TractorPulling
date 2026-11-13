@@ -256,8 +256,9 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 # (on a 100 m track), a box trailer and pop-up tents behind it, at a club
 # or big event a generator, a big screen and more tents too. The screen
 # follows the tractor during the run and shows the standings after it. At
-# sunset a few floodlights stand along the track; in the evening many more,
-# past the 120 m mark too and over the parking.
+# sunset a few floodlights stand along the track and by the berm; in the
+# evening many more, past the 120 m mark, by the berm, over the parking and
+# a lamp post behind each rival's bay.
 func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	var length_m := float(dimensions["track_length_m"])
 	for size: String in ["small", "club", "big"]:
@@ -289,7 +290,7 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	for mast in venue.floodlight_masts():
 		on_parking += 1 if mast.x < -5.0 and mast.y < -float(dimensions["lane_width_m"]) / 2.0 \
 				- VenueView.PARKING_FROM_LANE_M.y else 0
-	_expect(at_sunset > 0 and on_parking == 0,
+	_expect(at_sunset > 0 and on_parking == 0 and venue.rival_lights().is_empty(),
 			"a few floodlights at sunset, none over the parking: %s" % [venue.floodlight_masts()])
 	venue.set_look({"size": "club", "time": "evening"})
 	venue.build(dimensions)
@@ -304,6 +305,19 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 				- VenueView.PARKING_FROM_LANE_M.y else 0
 	_expect(past_120 and at_parking == VenueView.PARKING_LIGHTS_X_M.size(),
 			"evening lights past 120 m and over the parking: %s" % [venue.floodlight_masts()])
+	var pile := venue.track_end().pile_at_m()
+	var at_berm := 0
+	for mast in venue.floodlight_masts():
+		at_berm += 1 if mast.x > pile.x and mast.x < pile.y else 0
+	_expect(at_berm == 2, "a floodlight either side of the berm: %s" % [venue.floodlight_masts()])
+	var posts := venue.rival_lights()
+	var rivals := venue.rival_bays()
+	var by_each := posts.size() == rivals.size()
+	for i in mini(posts.size(), rivals.size()):
+		by_each = by_each and is_equal_approx(posts[i].x, rivals[i].x) \
+				and posts[i].y < -(float(dimensions["lane_width_m"]) / 2.0 + rivals[i].y)
+	_expect(by_each and rivals.size() == VenueView.RIVAL_BAYS,
+			"a lamp post behind each rival's bay: %s, bays %s" % [posts, rivals])
 
 
 # A tractor behind a roll bar (the Sport classes) is drawn as a pulling

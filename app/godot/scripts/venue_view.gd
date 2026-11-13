@@ -164,12 +164,16 @@ const FLOODLIGHTS := {
 }
 const FLOODLIGHT_HEIGHT_M := 14.0
 const FLOODLIGHT := Color(1.0, 0.93, 0.8)
-# One more pair of masts this far past the track's end (over the run-off,
-# by the pile), and over the parking at these distances behind the start
-# line, beyond its far edge [m].
+# One more pair of masts this far past the track's end (over the run-off),
+# another beside the pile's crest (TrackEnd), and over the parking at these
+# distances behind the start line, beyond its far edge [m].
 const END_LIGHTS_PAST_M := 25.0
 const PARKING_LIGHTS_X_M: Array[float] = [-10.0, -24.0, -38.0]
 const PARKING_LIGHTS_OUT_M := 2.0
+# A lower lamp post beside each rival's bay, this far inside the parking's
+# far edge (behind the parked tractor), this high [m].
+const RIVAL_LIGHT_IN_M := 1.0
+const RIVAL_LIGHT_HEIGHT_M := 7.0
 # The fields stay this far clear past the track's end: the pile and the
 # trailers behind it [m].
 const END_CLEAR_M := 40.0
@@ -262,6 +266,7 @@ var _track_end: TrackEnd = null
 # Where the floodlight masts stand (x down the track, y to the left) [m].
 var _masts: Array[Vector2] = []
 var _parking_masts: Array[Vector2] = []
+var _rival_lights: Array[Vector2] = []
 
 
 func build(d: Dictionary) -> void:
@@ -309,6 +314,7 @@ func build(d: Dictionary) -> void:
 		add_child(_parking)
 		_add_parking(_parking, lane_m)
 		_parking_masts.clear()
+		_rival_lights.clear()
 		var lights: Dictionary = FLOODLIGHTS.get(_look["time"], {})
 		if lights.get("parking", false):
 			_add_parking_lights(_parking, lane_m, lights)
@@ -391,6 +397,15 @@ func bays() -> Array[Vector3]:
 	var out: Array[Vector3] = []
 	for x_m: float in layout["xs"]:
 		out.append(Vector3(x_m, layout["right"], layout["heading"]))
+	return out
+
+
+# The rivals' bays (bays() after the player's) [m, m, rad].
+func rival_bays() -> Array[Vector3]:
+	var all := bays()
+	var out: Array[Vector3] = []
+	for i in RIVAL_BAYS:
+		out.append(all[1 + i])
 	return out
 
 
@@ -876,8 +891,9 @@ static func _fade(from: Color, to: Color) -> Gradient:
 	return ramp
 
 
-# Floodlight masts down both sides, `lights` (FLOODLIGHTS) apart, and a
-# pair past the track's end over the run-off and the pile.
+# Floodlight masts down both sides, `lights` (FLOODLIGHTS) apart, a pair
+# past the track's end over the run-off, and a pair either side of the pile
+# lighting the berm.
 func _add_floodlights(length_m: float, lane_m: float, lights: Dictionary) -> void:
 	var xs: Array[float] = []
 	var x_m := -10.0
@@ -891,9 +907,16 @@ func _add_floodlights(length_m: float, lane_m: float, lights: Dictionary) -> voi
 			_add_mast(self, Vector2(along_m, side * out_m),
 					Vector2(along_m + 6.0, -side * 1.0), side * 0.3, lights)
 			_masts.append(Vector2(along_m, side * out_m))
+	var crest_m := length_m + TrackEnd.PILE_FROM_M + TrackEnd.PILE_LENGTH_M / 2.0
+	for side: float in [-1.0, 1.0]:
+		var out_m := lane_m / 2.0 + FENCE_OUT_M + 1.0 + past_lane_m(side)
+		_add_mast(self, Vector2(crest_m, side * out_m), Vector2(crest_m, 0.0), side * 0.3,
+				lights)
+		_masts.append(Vector2(crest_m, side * out_m))
 
 
-# Masts beyond the parking's far edge, lighting the bays.
+# Masts beyond the parking's far edge, lighting the bays, and a lower lamp
+# post behind each rival's bay, aimed at the tractor parked in it.
 func _add_parking_lights(parent: Node3D, lane_m: float, lights: Dictionary) -> void:
 	var out_m := lane_m / 2.0 + PARKING_FROM_LANE_M.y + PARKING_LIGHTS_OUT_M
 	for x_m: float in PARKING_LIGHTS_X_M:
@@ -901,19 +924,28 @@ func _add_parking_lights(parent: Node3D, lane_m: float, lights: Dictionary) -> v
 				+ PARKING_FROM_LANE_M.y) / 2.0))
 		_add_mast(parent, Vector2(x_m, -out_m), middle, -0.3, lights)
 		_parking_masts.append(Vector2(x_m, -out_m))
+	var heading: float = parking_layout()["heading"]
+	var ahead := Vector2(cos(heading), sin(heading))
+	var post_out_m := lane_m / 2.0 + PARKING_FROM_LANE_M.y - RIVAL_LIGHT_IN_M
+	for bay in rival_bays():
+		var rear := Vector2(bay.x, -(lane_m / 2.0 + bay.y))
+		var tractor := rear + ahead * (BAY_SIZE_M.x / 2.0 - BAY_BEHIND_REAR_AXLE_M)
+		_add_mast(parent, Vector2(bay.x, -post_out_m), tractor, -0.3, lights,
+				RIVAL_LIGHT_HEIGHT_M)
+		_rival_lights.append(Vector2(bay.x, -post_out_m))
 
 
 # A floodlight mast at `at` (down the track, to the left) with its lamp
 # head `inward` metres towards the track, glowing, and a spotlight aimed at
 # `aim` on the ground (no shadows, for a phone), as bright and far as
-# `lights` (FLOODLIGHTS) says.
+# `lights` (FLOODLIGHTS) says, its lamp `height_m` up [m].
 func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float,
-		lights: Dictionary) -> void:
-	var mast := Art.cylinder(0.15, FLOODLIGHT_HEIGHT_M, STEEL, 8, 0.4, 0.6)
-	mast.position = TrackSpace.point(at.x, at.y, FLOODLIGHT_HEIGHT_M / 2.0)
+		lights: Dictionary, height_m := FLOODLIGHT_HEIGHT_M) -> void:
+	var mast := Art.cylinder(0.15, height_m, STEEL, 8, 0.4, 0.6)
+	mast.position = TrackSpace.point(at.x, at.y, height_m / 2.0)
 	parent.add_child(_quiet(mast))
 	var head := Art.box(Vector3(1.6, 0.6, 0.4), Color(0.15, 0.15, 0.16))
-	head.position = TrackSpace.point(at.x, at.y - inward, FLOODLIGHT_HEIGHT_M)
+	head.position = TrackSpace.point(at.x, at.y - inward, height_m)
 	parent.add_child(_quiet(head))
 	var face := MeshInstance3D.new()
 	var plate := BoxMesh.new()
@@ -925,7 +957,7 @@ func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float,
 	lit.emission = FLOODLIGHT
 	lit.emission_energy_multiplier = 4.0
 	face.material_override = lit
-	face.position = TrackSpace.point(at.x, at.y - 1.8 * inward, FLOODLIGHT_HEIGHT_M)
+	face.position = TrackSpace.point(at.x, at.y - 1.8 * inward, height_m)
 	parent.add_child(_quiet(face))
 	var spot := SpotLight3D.new()
 	spot.light_color = FLOODLIGHT
@@ -933,16 +965,23 @@ func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float,
 	spot.spot_range = float(lights["range_m"])
 	spot.spot_angle = 50.0
 	spot.shadow_enabled = false
-	spot.position = TrackSpace.point(at.x, at.y - 2.0 * inward, FLOODLIGHT_HEIGHT_M)
+	spot.position = TrackSpace.point(at.x, at.y - 2.0 * inward, height_m)
 	parent.add_child(spot)
 	spot.look_at(TrackSpace.point(aim.x, aim.y, 0.0), Vector3.UP)
 
 
 # Where the floodlight masts stand, along the track and over the parking
 # (x down the track, y to the left) [m]: none in the day, a few along the
-# track at sunset, many in the evening and over the parking too.
+# track at sunset, many in the evening and over the parking too, with a
+# lamp post behind each rival's bay (rival_lights()).
 func floodlight_masts() -> Array[Vector2]:
-	return _masts + _parking_masts
+	return _masts + _parking_masts + _rival_lights
+
+
+# The lamp posts behind the rivals' bays, one each, in the evening
+# (x down the track, y to the left) [m].
+func rival_lights() -> Array[Vector2]:
+	return _rival_lights
 
 
 # The track's end: the pile and the trailers (TrackEnd); null before the
