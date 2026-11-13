@@ -243,7 +243,11 @@ bool may_restart(const State& state) noexcept {
 }
 
 void decline_restart(State& state) noexcept {
-    state.restart_declined = true;
+    // Only a restart on offer can be declined: an early call must not take
+    // a later one away.
+    if (may_restart(state)) {
+        state.restart_declined = true;
+    }
 }
 
 void restart(State& state, const pull::Model& model) noexcept {

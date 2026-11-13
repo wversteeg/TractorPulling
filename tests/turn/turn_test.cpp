@@ -538,6 +538,9 @@ TEST(Turn, TheChainComesOffOnceSlack) {
 TEST(Turn, TheChainStaysOnWhileTheRestartIsOpen) {
     const pull::Model model = reference_model();
     State state = from_the_parking(model, kParking);
+    // Declined before it was on offer (in the pull): nothing.
+    decline_restart(state);
+    EXPECT_FALSE(state.restart_declined);
     state.stage = Stage::kReleasing;
     state.run.pull.hooked = true;
     state.run.result = run::Result{.ending = run::Ending::kStalled, .distance_m = 12.0};
@@ -551,6 +554,7 @@ TEST(Turn, TheChainStaysOnWhileTheRestartIsOpen) {
 
     decline_restart(state);
     EXPECT_FALSE(may_restart(state));
+    EXPECT_TRUE(state.restart_declined);
     step(state, model, kRules, kParking, {.clutch_pedal = 1.0}, kDt_s);
     EXPECT_EQ(state.stage, Stage::kToTheParking);
     EXPECT_FALSE(state.run.pull.hooked);
@@ -656,10 +660,18 @@ struct Played {
     std::optional<run::Result> result;
     session::Snapshot end;
     bool hooked_while_pulling_off = false;
+    /// The chain stayed on while the driver stood over the restart choice.
+    bool held_for_the_choice = false;
     std::uint64_t hash = 0;
 };
 
-Played play_a_whole_turn() {
+// The steps the driver stands over the restart choice before declining it.
+constexpr int kChoosingSteps = 2000;
+
+// The whole turn; with `lift_off_s`, the driver lifts off and brakes that
+// long into the pull, stopping short of the restart line, stands over the
+// choice for kChoosingSteps and declines it.
+Played play_a_whole_turn(std::optional<double> lift_off_s = std::nullopt) {
     const session::Setup setup{.tractor = vehicle::testing::reference_params(),
                                .sled = sled::testing::reference_params(),
                                .ground = track::testing::reference_params(),
@@ -689,6 +701,8 @@ Played play_a_whole_turn() {
     // Home: round to the right and back along the lane's right.
     std::vector<Point> home;
     bool released = false;
+    int pulling_steps = 0;
+    int choosing_steps = 0;
 
     for (int step = 0; step < 600000 && !(session.over() && now.sled_back); ++step) {
         if (played.stages.empty() || played.stages.back() != now.stage) {
@@ -724,8 +738,23 @@ Played play_a_whole_turn() {
             case Stage::kPulling:
                 pull_clutch = std::max(pull_clutch - 0.5 * kDt_s, 0.0);
                 controls = {.throttle = 1.0, .clutch_pedal = pull_clutch, .gear = 6};
+                if (lift_off_s && ++pulling_steps * kDt_s >= *lift_off_s) {
+                    controls = driver.stop(6);
+                }
                 break;
             case Stage::kReleasing:
+                if (session.may_restart()) {
+                    // Standing over the choice: the chain stays on.
+                    controls = driver.stop(driveline::kNeutral);
+                    if (choosing_steps == 0) {
+                        played.held_for_the_choice = true;
+                    }
+                    played.held_for_the_choice = played.held_for_the_choice && now.chain_hooked;
+                    if (++choosing_steps >= kChoosingSteps) {
+                        session.decline_restart();
+                    }
+                    break;
+                }
                 // Stand, then reverse a little; it comes off by itself.
                 if (now.gear != driveline::kReverse) {
                     controls =
@@ -806,6 +835,22 @@ TEST(Turn, AWholeTurnFromTheParkingAndBack) {
         kParkedWithin_m);
     // The pull's clock ran from the flag to the sled's stop only.
     EXPECT_EQ(played.end.time_s, result.time_s);
+}
+
+// A whole turn that stops short of the restart line: the chain stays on
+// while the driver stands over the choice; declined, it comes off as they
+// back away, and the turn ends in the parking with the short pull counted.
+TEST(Turn, ADeclinedRestartEndsTheTurnInTheParking) {
+    constexpr double kLiftOff_s = 4.0;
+    const Played played = play_a_whole_turn(kLiftOff_s);
+    if (!played.result) {
+        FAIL() << "the pull did not end";
+    }
+    EXPECT_LT(played.result->distance_m, kRestartBefore_m);
+    EXPECT_TRUE(played.held_for_the_choice);
+    EXPECT_EQ(played.stages.back(), Stage::kParked);
+    EXPECT_FALSE(played.end.chain_hooked);
+    EXPECT_TRUE(played.end.sled_back);
 }
 
 TEST(Turn, AWholeTurnIsDeterministic) {

@@ -198,7 +198,9 @@ inline constexpr std::uint8_t kMaxRestarts = 1;
 [[nodiscard]] bool may_restart(const State& state) noexcept;
 
 /// The driver lets the pull count as it is: no restart, and from the
-/// parking the chain comes off once slack, as after any pull.
+/// parking the chain comes off once slack, as after any pull. Only when
+/// may_restart(): otherwise nothing, so an early call cannot take a later
+/// restart away.
 void decline_restart(State& state) noexcept;
 
 /// The pull again from the start line, the track as the last pull left it:
