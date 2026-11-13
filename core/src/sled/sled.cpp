@@ -35,6 +35,26 @@ bool makes_heavier(const Adjustment& step, const Knives& knives) noexcept {
     return none_lighter && some_heavier && (step.knives == 0 || knives.width_m > 0.0);
 }
 
+// The box's travel must be one of the gearbox's settings (a sled without
+// one takes any): first_m + k step_m for a gear k, to rounding.
+std::optional<ParamError> gearbox_error(const BoxGearbox& gearbox, double travel_m) noexcept {
+    if (gearbox.gears == 0) {
+        return std::nullopt;
+    }
+    if (!std::isfinite(gearbox.first_m) || !std::isfinite(gearbox.step_m) ||
+        gearbox.first_m <= 0.0 || gearbox.step_m <= 0.0 || gearbox.gears < 0 ||
+        gearbox.gears > kMaxBoxGears) {
+        return ParamError::kBoxGearboxInvalid;
+    }
+    constexpr double kGearTolerance_m = 1e-9;
+    for (int gear = 0; gear < gearbox.gears; ++gear) {
+        if (std::abs(travel_m - (gearbox.first_m + gear * gearbox.step_m)) <= kGearTolerance_m) {
+            return std::nullopt;
+        }
+    }
+    return ParamError::kBoxTravelNotAGear;
+}
+
 // The masses and where the parts sit along the sled.
 std::optional<ParamError> layout_error(const Params& params) noexcept {
     if (params.frame_mass_kg <= 0.0) {
@@ -76,6 +96,9 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     }
     if (params.box_travel_distance_m <= 0.0) {
         return ParamError::kBoxTravelNotPositive;
+    }
+    if (const auto error = gearbox_error(params.box_gearbox, params.box_travel_distance_m)) {
+        return error;
     }
     if (params.hook_ahead_of_wheels_m <= 0.0 || params.hook_height_m <= 0.0) {
         return ParamError::kHookInvalid;
@@ -182,6 +205,8 @@ double total_mass_kg(const Params& params) noexcept {
 Params with_conditions(const Params& params, const Conditions& conditions) noexcept {
     Params out = params;
     out.pushdown_start_m = conditions.pushdown_start_m.value_or(params.pushdown_start_m);
+    out.box_travel_distance_m =
+        conditions.box_travel_distance_m.value_or(params.box_travel_distance_m);
     return out;
 }
 
@@ -278,14 +303,16 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
     const double box_n = params.box_mass_kg * kStandardGravity_m_s2;
 
     // Moments about the rear wheels' contact: the weights press the pan down
-    // by their levers; the chain's pull at hook height tips the sled forward
-    // onto the pan, and its upward part takes load off the front. Friction
-    // and rolling resistance act at the track, with no lever about it.
+    // by their levers, and the chain's pull at hook height tips the sled
+    // forward onto the pan. The hook is on the pan's front, so the chain's
+    // upward part lifts the pan itself, one for one: the wheels keep their
+    // load. Friction and rolling resistance act at the track, with no lever
+    // about it.
     const double down_n = std::max(frame_n + box_n - hook.up_n, 0.0);
-    const double pan_lever_n =
-        (frame_n * params.frame_cg_ahead_of_wheels_m + box_n * box_m -
-         hook.up_n * params.hook_ahead_of_wheels_m + hook.forward_n * params.hook_height_m) /
-        params.pan_ahead_of_wheels_m;
+    const double pan_lever_n = (frame_n * params.frame_cg_ahead_of_wheels_m + box_n * box_m +
+                                hook.forward_n * params.hook_height_m) /
+                                   params.pan_ahead_of_wheels_m -
+                               hook.up_n;
     double pan_n = std::clamp(pan_lever_n, 0.0, down_n);
     double wheels_n = down_n - pan_n;
 

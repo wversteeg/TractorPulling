@@ -223,8 +223,9 @@ TEST(Sled, APushdownSetToAShareLeavesTheRestOnTheWheels) {
         << "the pan already carries more";
 }
 
-// The chain's pull at hook height tips the sled onto its pan; pulling up at
-// the hook takes load off the pan (and off the track).
+// The chain's pull at hook height tips the sled onto its pan; the hook is
+// on the pan, so pulling up at it lifts the pan itself, one for one, and
+// leaves the wheels' load as it was.
 TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
     const Params params = reference_params();
     const Loads free = at(params, 10.0);
@@ -236,8 +237,8 @@ TEST(Sled, ChainForceShiftsLoadOntoOrOffThePan) {
 
     constexpr double kUp_n = 2000.0;
     const Loads lifted = at(params, 10.0, {.up_n = kUp_n});
-    EXPECT_NEAR(free.pan_n - lifted.pan_n,
-                kUp_n * params.hook_ahead_of_wheels_m / params.pan_ahead_of_wheels_m, 1e-9);
+    EXPECT_NEAR(free.pan_n - lifted.pan_n, kUp_n, 1e-9);
+    EXPECT_NEAR(lifted.wheels_n, free.wheels_n, 1e-9);
     EXPECT_NEAR(lifted.pan_n + lifted.wheels_n, weight_n(params) - kUp_n, 1e-9);
 
     const Loads pressed = at(params, 10.0, {.up_n = -kUp_n});
@@ -390,11 +391,63 @@ TEST(Sled, BermAddsToTheResistance) {
 // The day's track sets the push-down; the rest of the class's sled stays.
 TEST(Sled, ConditionsSetThePushdown) {
     const Params sled = reference_params();
-    const Params wet = with_conditions(sled, {.pushdown_start_m = 75.0});
+    const Params wet =
+        with_conditions(sled, {.pushdown_start_m = 75.0, .box_travel_distance_m = {}});
     EXPECT_EQ(wet.pushdown_start_m, 75.0);
     EXPECT_EQ(wet.box_mass_kg, sled.box_mass_kg);
+    EXPECT_EQ(wet.box_travel_distance_m, sled.box_travel_distance_m);
     EXPECT_EQ(validate(wet), std::nullopt);
     EXPECT_EQ(with_conditions(sled, {}).pushdown_start_m, sled.pushdown_start_m);
+}
+
+// A sled with a gearbox: its box reaches its end by one of the gears'
+// travels (75, 80, 85 or 90 m), as the day's track may choose.
+Params geared() {
+    Params params = reference_params();
+    params.box_gearbox = {.first_m = 75.0, .step_m = 5.0, .gears = 4};
+    params.box_travel_distance_m = 90.0;
+    return params;
+}
+
+TEST(Sled, TheBoxTravelsByOneOfItsGears) {
+    EXPECT_EQ(validate(geared()), std::nullopt);
+    for (const double travel_m : {75.0, 80.0, 85.0}) {
+        Params params = geared();
+        params.box_travel_distance_m = travel_m;
+        EXPECT_EQ(validate(params), std::nullopt) << travel_m;
+    }
+    for (const double travel_m : {70.0, 88.0, 95.0}) {
+        Params params = geared();
+        params.box_travel_distance_m = travel_m;
+        EXPECT_EQ(validate(params), ParamError::kBoxTravelNotAGear) << travel_m;
+    }
+    for (const BoxGearbox gearbox :
+         {BoxGearbox{.first_m = 0.0, .step_m = 5.0, .gears = 4},
+          BoxGearbox{.first_m = 75.0, .step_m = 0.0, .gears = 4},
+          BoxGearbox{.first_m = 75.0, .step_m = 5.0, .gears = -1},
+          BoxGearbox{.first_m = 75.0, .step_m = 5.0, .gears = kMaxBoxGears + 1}}) {
+        Params params = geared();
+        params.box_gearbox = gearbox;
+        EXPECT_EQ(validate(params), ParamError::kBoxGearboxInvalid);
+    }
+    // No gearbox: any travel.
+    Params free = geared();
+    free.box_gearbox = {};
+    free.box_travel_distance_m = 88.0;
+    EXPECT_EQ(validate(free), std::nullopt);
+}
+
+// The track's gear: the box reaches its end earlier, so the sled drags
+// harder sooner; the same distance on a later gear drags less.
+TEST(Sled, AnEarlierGearPutsTheBoxForwardSooner) {
+    const Params late = geared();
+    const Params early =
+        with_conditions(late, {.pushdown_start_m = {}, .box_travel_distance_m = 75.0});
+    EXPECT_EQ(validate(early), std::nullopt);
+    EXPECT_EQ(early.box_travel_distance_m, 75.0);
+    EXPECT_DOUBLE_EQ(at(early, 75.0).box_ahead_of_wheels_m, early.box_end_ahead_of_wheels_m);
+    EXPECT_LT(at(late, 75.0).box_ahead_of_wheels_m, early.box_end_ahead_of_wheels_m);
+    EXPECT_GT(at(early, 60.0).resistance_n, at(late, 60.0).resistance_n);
 }
 
 // On softer ground the pan ploughs deeper and the wheels sink in: the same

@@ -192,6 +192,8 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
         .sled =
             {
                 .pushdown_start_m = reader.optional_number("track.pushdown.start_m"),
+                .box_travel_distance_m =
+                    reader.optional_number("track.weight_box.travel_distance_m"),
             },
         .setup_tip = reader.optional_text("track.setup_tip"),
     };
@@ -212,6 +214,10 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
     }
     if (!valid_distance(track.sled.pushdown_start_m)) {
         return detail::make_error(source, "track.pushdown.start_m", "must be >= 0");
+    }
+    // Whether it is one of the sled's gears is checked with the sled.
+    if (track.sled.box_travel_distance_m && !(*track.sled.box_travel_distance_m > 0.0)) {
+        return detail::make_error(source, "track.weight_box.travel_distance_m", "must be > 0");
     }
     return track;
 }

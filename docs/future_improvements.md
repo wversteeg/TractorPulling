@@ -55,6 +55,15 @@ for the big features; they are repeated at the end for completeness.
 
 ## Sled
 
+- **The operator's gear choice.** The weight box's gear (75 to 90 m) is
+  set per class and per track in the data; the scripted sled operator
+  does not change it from the test pull, nor between pull-offs, as a real
+  operator may (an earlier gear makes the sled harder sooner).
+- **The pan as its own body.** The hook is on the pan, so the chain's
+  upward pull lifts the pan one for one; the pan and the frame still
+  share the weights as one rigid sled, quasi-statically. A pan hinged to
+  the frame, with the push-down's rams between them, would let the pan's
+  front rise under the chain and its load follow.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.

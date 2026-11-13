@@ -276,6 +276,41 @@ TEST(SledLoader, ReadsAndChecksTheFenders) {
         << refused.error().message;
 }
 
+// The weight box's gearbox is optional; with one, the box's travel must
+// be one of its gears.
+TEST(SledLoader, ReadsAndChecksTheGearbox) {
+    const std::string geared = std::string{kValidSled} +
+                               "\n[sled.weight_box.gearbox]\nfirst_m = 75.0\nstep_m = 5.0\n"
+                               "gears = 4\n";
+    const auto result = parse_sled(geared, "sled.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().box_gearbox.first_m, 75.0);
+    EXPECT_DOUBLE_EQ(result.value().box_gearbox.step_m, 5.0);
+    EXPECT_EQ(result.value().box_gearbox.gears, 4);
+    EXPECT_EQ(parse_sled(kValidSled, "sled.toml").value().box_gearbox.gears, 0) << "none";
+
+    struct Case {
+        std::string_view from;
+        std::string_view to;
+        std::string_view expected;
+    };
+    for (const Case& c :
+         {Case{"travel_distance_m = 90.0", "travel_distance_m = 88.0",
+               "sled.weight_box.travel_distance_m: must be one of the gearbox's"},
+          Case{"gears = 4", "gears = 0", "sled.weight_box.gearbox.gears: must be 1 to 16"},
+          Case{"step_m = 5.0", "step_m = 0.0",
+               "sled.weight_box.gearbox: first_m and step_m must be > 0"},
+          Case{"first_m = 75.0\n", "",
+               "sled.weight_box.gearbox.first_m: missing or not a number"}}) {
+        std::string text = geared;
+        text.replace(text.find(c.from), c.from.size(), c.to);
+        const auto refused = parse_sled(text, "sled.toml");
+        ASSERT_FALSE(refused.ok()) << c.to;
+        EXPECT_NE(refused.error().message.find(c.expected), std::string::npos)
+            << refused.error().message;
+    }
+}
+
 TEST(SledLoader, RejectsNonsenseValues) {
     struct Case {
         std::string_view from;
