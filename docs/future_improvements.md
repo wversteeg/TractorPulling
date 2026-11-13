@@ -398,6 +398,14 @@ for the big features; they are repeated at the end for completeness.
   `docs/performance.md`) is checked by hand with `scripts/android_bench.sh`;
   CI's ARM runner is a server core, so its limits catch regressions rather
   than prove the phone budget. A device farm could check it in CI.
+- **The evening's frame time on a phone.** An evening event lights the
+  venue with about 24 unshadowed spotlights (`VenueView.FLOODLIGHTS`), each
+  a per-pixel cost in the Mobile renderer's forward pass. Not yet measured
+  on a mid-range phone; if it is too slow, fewer masts or a shorter range
+  are the knobs. The long grass plane and crowd MultiMeshes get at most 8
+  lights each (the renderer's limit per mesh); split into 20 m pieces they
+  looked no different in the Forward Mobile screenshots, so they stay whole
+  and save the draw calls (the clay is split, where it showed).
 - **The C++ runtime for the Godot extension.** The Android presets link
   libc++ statically, which suits standalone test binaries. A GDExtension
   shares a process with Godot, which may want `c++_shared`; decide with the
