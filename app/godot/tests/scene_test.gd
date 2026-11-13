@@ -497,7 +497,8 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	_expect(through == 0, "the transport wheels turn clear of the body: %d points in it" % through)
 	# The folding fenders unfolded past the sled's width (they fold in to
 	# travel; the width check above leaves them out).
-	# They stand swept back at 45° (their outer ends behind their hinges),
+	# They stand angled forward at 45° (their outer ends ahead of their
+	# hinges, towards the tractor),
 	# and swing a little, within bounds, as the sled jerks.
 	for key: String in ["_flap_rad", "_flap_rate_rad_s", "_last_speed_m_s"]:
 		sled.set(key, 0.0)
@@ -508,11 +509,11 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 		var tip := sled.to_local(flap.to_global(Vector3(0.0, 0.0, 0.0)))
 		var hinge := sled.to_local((flap.get_parent() as Node3D).global_position)
 		var out_m := absf(tip.x) - absf(hinge.x)
-		var back_m := tip.z - hinge.z
+		var ahead_m := hinge.z - tip.z
 		if absf(tip.x) > SledView.WIDTH_M / 2.0 and out_m > 0.0 \
-				and absf(back_m - out_m) < 0.02:
+				and absf(ahead_m - out_m) < 0.02:
 			flaps_ok += 1
-	_expect(flaps_ok == 2, "the folding fenders out past the width, swept back at 45°: %d"
+	_expect(flaps_ok == 2, "the folding fenders out past the width, forward at 45°: %d"
 			% flaps_ok)
 	var swung := 0.0
 	for i in 30:
