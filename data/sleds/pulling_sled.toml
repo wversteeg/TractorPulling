@@ -50,7 +50,7 @@ relaxation_length_m = 0.75           # about the wheel's radius
 
 [sled.hook]
 ahead_of_wheels_m = 8.5              # on the drawbar at the front, fenders either side
-height_m = 0.45                      # 0.40 to 0.50 m here; the NTTO's sleds hook on lower (future_improvements)
+height_m = 0.08                      # low on the pan's front, a few centimetres over the track
 
 # Rubber fenders either side of the drawbar: a tractor backing up stops
 # with its rear tires against them (their faces 0.1 m behind the hook),

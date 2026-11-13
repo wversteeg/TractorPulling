@@ -15,8 +15,8 @@ start_ahead_of_wheels_m = -4.0
 # tractors are alike, and a lower top to the drag spreads them by what
 # their engines and tires hold.
 [sled.pushdown]
-start_m = 70.0
-most_pan_share = 0.4
+start_m = 50.0
+most_pan_share = 0.5
 
 [sled.knives]
 count = 1
