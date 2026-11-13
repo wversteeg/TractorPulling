@@ -66,8 +66,9 @@ TEST(Garage, TheReferenceCatalogueFitsTheClass) {
     EXPECT_EQ(validate(reference_catalogue(), kTractor, kClass), std::nullopt);
 }
 
-// A new career starts on the first level of everything: a lighter, weaker
-// tractor on worse tires, a lower drawbar and no powershift step.
+// A new career starts on the first level of everything: a weaker tractor
+// at the class's mass with most of its weights fixed at the back, on worse
+// tires, a lower drawbar and no powershift step.
 TEST(Garage, ANewCareerStartsOnAnOlderTractor) {
     const Catalogue catalogue = reference_catalogue();
     const Career career = new_career(catalogue);
@@ -75,8 +76,9 @@ TEST(Garage, ANewCareerStartsOnAnOlderTractor) {
     const std::optional<vehicle::Params> start = equipped(kTractor, catalogue, career);
     ASSERT_TRUE(start.has_value());
     const vehicle::Params& t = start.value_or(kTractor);
-    EXPECT_NEAR(t.chassis.mass_kg, kTractor.chassis.mass_kg - 300.0, 1e-9);
-    EXPECT_EQ(t.chassis.ballast.mass_kg, 100.0);
+    EXPECT_EQ(t.chassis.mass_kg, kTractor.chassis.mass_kg);
+    EXPECT_EQ(t.chassis.ballast.mass_kg, 100.0) << "free to move";
+    EXPECT_LT(t.chassis.cg_ahead_of_rear_axle_m, kTractor.chassis.cg_ahead_of_rear_axle_m);
     EXPECT_EQ(t.rear_tire.traction.limit, 0.86);
     EXPECT_EQ(t.chassis.hitch_height_m, 0.40);
     EXPECT_EQ(t.driveline.load_downshift_gears, 0);
@@ -128,25 +130,33 @@ TEST(Garage, BuysTheNextLevelWithTheMoney) {
     EXPECT_EQ(career.money_eur, 10000 - 300 - 500);
 }
 
-// The weights move the centre of gravity towards where they sit and add
-// their inertia; taking them off again gives the tractor back.
-TEST(Garage, BallastMassMovesTheCentreOfGravity) {
+// Fixed weights sit at the back: freeing fewer of the tractor's weights
+// moves its centre of gravity back, the whole mass the same; freeing all
+// of them gives the tractor back, bit for bit.
+TEST(Garage, FreeWeightMovesTheCentreOfGravity) {
     const chassis::Params& built = kTractor.chassis;
-    const chassis::Params lighter = chassis::with_ballast_mass(built, 100.0);
-    EXPECT_NEAR(lighter.mass_kg, built.mass_kg - 300.0, 1e-9);
-    // Halfway, the weights sit ahead of the centre of gravity.
-    EXPECT_LT(lighter.cg_ahead_of_rear_axle_m, built.cg_ahead_of_rear_axle_m);
-    EXPECT_LT(lighter.pitch_inertia_kg_m2, built.pitch_inertia_kg_m2);
-    const chassis::Params back = chassis::with_ballast_mass(lighter, 400.0);
-    EXPECT_NEAR(back.mass_kg, built.mass_kg, 1e-9);
-    EXPECT_NEAR(back.cg_ahead_of_rear_axle_m, built.cg_ahead_of_rear_axle_m, 1e-12);
-    EXPECT_NEAR(back.pitch_inertia_kg_m2, built.pitch_inertia_kg_m2, 1e-9);
-    EXPECT_NEAR(back.yaw_inertia_kg_m2, built.yaw_inertia_kg_m2, 1e-9);
-    // Unchanged, bit for bit, for its own mass or nonsense.
-    EXPECT_EQ(chassis::with_ballast_mass(built, 400.0).cg_ahead_of_rear_axle_m,
+    ASSERT_GT(built.ballast.mass_kg, 100.0);
+    const chassis::Params fixed = chassis::with_free_weight(built, 100.0);
+    EXPECT_EQ(fixed.mass_kg, built.mass_kg);
+    EXPECT_DOUBLE_EQ(fixed.ballast.mass_kg, 100.0);
+    EXPECT_LT(fixed.cg_ahead_of_rear_axle_m, built.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(chassis::validate(fixed), std::nullopt);
+    // Moving the free weights still works, over a smaller range.
+    const double reach_m = chassis::with_ballast_at(built, 1.0).cg_ahead_of_rear_axle_m -
+                           chassis::with_ballast_at(built, 0.0).cg_ahead_of_rear_axle_m;
+    const double fixed_reach_m = chassis::with_ballast_at(fixed, 1.0).cg_ahead_of_rear_axle_m -
+                                 chassis::with_ballast_at(fixed, 0.0).cg_ahead_of_rear_axle_m;
+    EXPECT_NEAR(fixed_reach_m, reach_m * 100.0 / built.ballast.mass_kg, 1e-9);
+    // Unchanged, bit for bit, with all its weights free or nonsense.
+    const double all_kg = built.ballast.mass_kg;
+    EXPECT_EQ(chassis::with_free_weight(built, all_kg).cg_ahead_of_rear_axle_m,
               built.cg_ahead_of_rear_axle_m);
-    EXPECT_EQ(chassis::with_ballast_mass(built, -1.0).mass_kg, built.mass_kg);
-    EXPECT_EQ(chassis::with_ballast_mass(built, std::nan("")).mass_kg, built.mass_kg);
+    EXPECT_EQ(chassis::with_free_weight(built, all_kg + 1.0).cg_ahead_of_rear_axle_m,
+              built.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(chassis::with_free_weight(built, -1.0).cg_ahead_of_rear_axle_m,
+              built.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(chassis::with_free_weight(built, std::nan("")).cg_ahead_of_rear_axle_m,
+              built.cg_ahead_of_rear_axle_m);
 }
 
 TEST(Garage, RefusesNonsense) {
@@ -168,9 +178,10 @@ TEST(Garage, RefusesNonsense) {
               ParamError::kFirstLevelNotFree);
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[2].part = Part::kEngineTorque; }),
               ParamError::kPartTwice);
-    // Past the class: heavier, more power, a higher hitch.
+    // More free weight than the tractor has weights.
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[2].levels[3].value = 450.0; }),
-              ParamError::kOutsideTheClass);
+              ParamError::kValueInvalid);
+    // Past the class: more power, a higher hitch.
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[0].levels[3].value = 1.05; }),
               ParamError::kOutsideTheClass);
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[3].levels[2].value = 0.55; }),

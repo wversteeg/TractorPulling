@@ -20,8 +20,9 @@
 # - rear_traction: the rear tires' traction limit. Any rubber tire of any
 #   size (within 100 cm wide a side); no steel lugs, no cut or regrooved
 #   tread.
-# - ballast_kg: the weights the puller moves before a pull, up to the
-#   class's 3500 kg with the driver.
+# - ballast_kg: the free weight. The tractor is at the class's 3500 kg
+#   with the driver, its weights fixed at the back; each level frees more
+#   of them to move forward before a pull, up to all of them.
 # - hitch_height_m: the drawbar's height, at most 0.5 m and never above the
 #   rear axle's centre. Higher lifts the nose sooner: the wheelie bar the
 #   class requires catches it.
@@ -60,12 +61,12 @@ levels = [
 
 [[garage.upgrades]]
 part = "ballast_kg"
-name = "Weights"
+name = "Free weight"
 levels = [
-    { value = 100.0, cost_eur = 0, label = "100 kg of weights" },
-    { value = 200.0, cost_eur = 400, label = "200 kg of weights" },
-    { value = 300.0, cost_eur = 400, label = "300 kg of weights" },
-    { value = 400.0, cost_eur = 500, label = "400 kg, the class's 3500 kg" },
+    { value = 100.0, cost_eur = 0, label = "100 kg free to move" },
+    { value = 200.0, cost_eur = 400, label = "200 kg free to move" },
+    { value = 300.0, cost_eur = 400, label = "300 kg free to move" },
+    { value = 400.0, cost_eur = 500, label = "All 400 kg free to move" },
 ]
 
 [[garage.upgrades]]

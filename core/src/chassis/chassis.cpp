@@ -259,26 +259,27 @@ Params with_ballast_at(const Params& params, double position) noexcept {
     return out;
 }
 
-Params with_ballast_mass(const Params& params, double mass_kg) noexcept {
+Params with_free_weight(const Params& params, double free_kg) noexcept {
     const Ballast& ballast = params.ballast;
-    if (!std::isfinite(mass_kg) || mass_kg < 0.0 || mass_kg == ballast.mass_kg) {
+    if (!std::isfinite(free_kg) || free_kg < 0.0 || free_kg >= ballast.mass_kg) {
         return params;
     }
-    const double added_kg = mass_kg - ballast.mass_kg;
-    const double at_m = ballast_x_m(ballast, ballast.position);
+    // The fixed weights go from where the ballast sits to its rearmost
+    // place: about the old centre of gravity only their term changes, then
+    // the parallel axis theorem moves the sum to the new one.
+    const double fixed_kg = ballast.mass_kg - free_kg;
+    const double from_m = ballast_x_m(ballast, ballast.position);
+    const double to_m = ballast_x_m(ballast, 0.0);
     const double cg_m = params.cg_ahead_of_rear_axle_m;
-    const double total_kg = params.mass_kg + added_kg;
-    const double new_cg_m = (params.mass_kg * cg_m + added_kg * at_m) / total_kg;
-    // The added weights about the new centre of gravity, and the rest moved
-    // to it (parallel axes); taking weights off is the same with a minus.
-    const double moved = params.mass_kg * (cg_m - new_cg_m) * (cg_m - new_cg_m) +
-                         added_kg * (at_m - new_cg_m) * (at_m - new_cg_m);
+    const double new_cg_m = cg_m + fixed_kg * (to_m - from_m) / params.mass_kg;
+    const double about_old_cg =
+        fixed_kg * ((to_m - cg_m) * (to_m - cg_m) - (from_m - cg_m) * (from_m - cg_m));
+    const double shift = params.mass_kg * (new_cg_m - cg_m) * (new_cg_m - cg_m);
     Params out = params;
-    out.mass_kg = total_kg;
     out.cg_ahead_of_rear_axle_m = new_cg_m;
-    out.pitch_inertia_kg_m2 = params.pitch_inertia_kg_m2 + moved;
-    out.yaw_inertia_kg_m2 = params.yaw_inertia_kg_m2 + moved;
-    out.ballast.mass_kg = mass_kg;
+    out.pitch_inertia_kg_m2 = params.pitch_inertia_kg_m2 + about_old_cg - shift;
+    out.yaw_inertia_kg_m2 = params.yaw_inertia_kg_m2 + about_old_cg - shift;
+    out.ballast.mass_kg = free_kg;
     return out;
 }
 

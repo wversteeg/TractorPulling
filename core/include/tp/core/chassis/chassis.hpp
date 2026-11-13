@@ -167,14 +167,14 @@ enum class ParamError : std::uint8_t {
 /// gives `params` unchanged, bit for bit.
 [[nodiscard]] Params with_ballast_at(const Params& params, double position) noexcept;
 
-/// The tractor with `mass_kg` of ballast instead of what it has, where its
-/// ballast sits now: the whole mass changes by the difference, the centre
-/// of gravity moves towards the weights (or away), and the pitch and yaw
-/// inertias follow (parallel axes; the weights as a point at the centre of
-/// gravity's height). The ballast it has gives `params` unchanged, bit for
-/// bit; so does a mass that is not finite or below 0. validate() judges
-/// the result (e.g. ballast heavier than the tractor).
-[[nodiscard]] Params with_ballast_mass(const Params& params, double mass_kg) noexcept;
+/// The tractor with only `free_kg` of its weights free to move: the rest
+/// is fixed at their rearmost place (Ballast::rear_ahead_of_rear_axle_m),
+/// the whole mass the same. The centre of gravity moves back with the fixed
+/// weights and the pitch and yaw inertias follow (parallel axes; the
+/// weights as a point at the centre of gravity's height). All its weights
+/// free gives `params` unchanged, bit for bit; so does a mass that is not
+/// finite, below 0, or more than the weights it has.
+[[nodiscard]] Params with_free_weight(const Params& params, double free_kg) noexcept;
 
 /// The share of the tractor's weight on the rear axle at rest, 0 to 1:
 /// from the centre of gravity alone, as a setup screen shows it (the front

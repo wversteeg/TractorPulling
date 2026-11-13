@@ -33,10 +33,11 @@ std::optional<vehicle::Params> with_part(const vehicle::Params& tractor, Part pa
             out.rear_tire.traction.limit = value;
             break;
         case Part::kBallastMass:
-            if (value < 0.0) {
+            // The tractor's weights, free to move up to all of them.
+            if (value < 0.0 || value > tractor.chassis.ballast.mass_kg) {
                 return std::nullopt;
             }
-            out.chassis = chassis::with_ballast_mass(tractor.chassis, value);
+            out.chassis = chassis::with_free_weight(tractor.chassis, value);
             break;
         case Part::kHitchHeight:
             out.chassis.hitch_height_m = value;

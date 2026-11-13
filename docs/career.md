@@ -67,7 +67,9 @@ move across** where they fit and the new class allows them:
 - **Engine parts**: the turbo, fuel pump, intercooler, while the new
   class's limits allow them (a 4.8" turbo is legal in Supersport, not in
   Sport's 68 mm inlet).
-- **Weights**: ballast bought, as far as the new class's weight needs it.
+- **Free weight**: a tractor is at its class's weight, its weights fixed at
+  the back; the garage frees them, level by level, to be moved forward
+  before a pull (`chassis::with_free_weight`).
 
 What cannot move is what makes the class: the engine block and its
 displacement, the base tractor's chassis. The garage then shows each part
