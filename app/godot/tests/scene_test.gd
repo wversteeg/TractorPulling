@@ -408,7 +408,7 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	var cover_out_m := 0.0
 	for child: Node in sled.find_children("*", "MeshInstance3D", true, false):
 		var mesh := child as MeshInstance3D
-		if mesh.name == "Berm":
+		if mesh.name == "Berm" or mesh.name.begins_with("FoldingFender"):
 			continue
 		var box := mesh.get_aabb()
 		var corners := [mesh.to_global(box.position), mesh.to_global(box.end)]
@@ -433,6 +433,14 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	var rear_section := sled.find_child("RearSection", true, false) as MeshInstance3D
 	var rear_box := rear_section.get_aabb()
 	var rear_bottom_m := sled.to_local(rear_section.to_global(rear_box.position)).y
+	# Its covers rise round the box at its start, the cab on top; the box
+	# wider than the body it slides on.
+	var rear_cover := sled.find_child("RearCover0", true, false) as MeshInstance3D
+	var cover_top_m := sled.to_local(rear_cover.to_global(rear_cover.get_aabb().end)).y
+	var box_top_m: float = sled.get("_rail_z_m") + SledView.BOX_LIFT_M + SledView.BOX_SIZE_M.y
+	_expect(cover_top_m > box_top_m and SledView.BOX_SIZE_M.x > SledView.BODY_WIDTH_M + 0.4,
+			"the rear covers %.2f m high, over the box's top %.2f m; the box wider than the body"
+			% [cover_top_m, box_top_m])
 	_expect(absf(rear_bottom_m - SledView.COVER_GROUND_M) < 0.01
 			and rear_box.size.x > SledView.WIDTH_M - 0.01,
 			"the rear section closed down to %.2f m, %.2f m wide" % [rear_bottom_m,
@@ -462,12 +470,38 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 			if wanted == 1.0 and by_the_pan and absf(at.x) - half_w > SledView.WIDTH_M / 2.0 \
 					and absf(at.y - SledView.TRANSPORT_RADIUS_M) < 0.01:
 				down += 1
-			elif wanted == 0.0 and by_the_pan and absf(at.x) + half_w < SledView.WIDTH_M / 2.0 \
-					and absf(at.x) - half_w > SledView.BODY_WIDTH_M / 2.0 \
-					and at.y - SledView.TRANSPORT_RADIUS_M > 0.06:
+			elif wanted == 0.0 and by_the_pan \
+					and absf(at.x) + SledView.TRANSPORT_RADIUS_M < SledView.WIDTH_M / 2.0 \
+					and absf(at.y - 0.06 - half_w) < 0.01:
 				up += 1
 	_expect(down == 2 and up == 2, "the transport wheels beside the pan: %d down outside it, %d up"
-			% [down, up] + " on it")
+			% [down, up] + " flat on it")
+	# Turning up or down, no point round either tire passes into the body
+	# where it is clad over the wheels.
+	var through := 0
+	var tire_r := SledView.TRANSPORT_RADIUS_M
+	for share: float in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+		sled.transport = share
+		sled.call("_show_transport")
+		for spin: Node3D in sled.get("_transport_spin"):
+			for k in 24:
+				var angle := TAU * k / 24.0
+				for across: float in [-half_w, half_w]:
+					var at := sled.to_local(spin.to_global(Vector3(across, tire_r * cos(angle),
+							tire_r * sin(angle))))
+					if absf(at.x) < SledView.BODY_WIDTH_M / 2.0 \
+							and at.y > SledView.BODY_OVER_WHEELS_M:
+						through += 1
+	sled.transport = 0.0
+	sled.call("_show_transport")
+	_expect(through == 0, "the transport wheels turn clear of the body: %d points in it" % through)
+	# The folding fenders unfolded past the sled's width (they fold in to
+	# travel; the width check above leaves them out).
+	var flap := sled.find_child("FoldingFender0", true, false) as MeshInstance3D
+	var flap_out_m := maxf(absf(sled.to_local(flap.to_global(flap.get_aabb().end)).x),
+			absf(sled.to_local(flap.to_global(flap.get_aabb().position)).x))
+	_expect(flap_out_m > SledView.WIDTH_M / 2.0 + 0.7,
+			"the folding fenders out to %.2f m either side" % flap_out_m)
 	# The slabs stand in from the box's back (+z, down the track being -z).
 	var slabs: MultiMesh = (sled.get("_box_weights") as MultiMeshInstance3D).multimesh
 	_expect(slabs.get_instance_transform(0).origin.z > slabs.get_instance_transform(1).origin.z
