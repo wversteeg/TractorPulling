@@ -435,6 +435,47 @@ TEST(Track, RejectsNonsenseWeakSpots) {
 // A spot lies somewhere across the lane, at least partly in it, any point
 // of the lane as likely to be in one: at full strength over the middle
 // half of its width, fading to nothing at its edges, and nothing beside it.
+// Spots are patches: with a shortest length each lies its own length
+// between it and the longest, and their strength fades evenly from the
+// middle to the ellipse's edge, along as across.
+TEST(Track, SpotsArePatchesOfTheirOwnLength) {
+    Params params = reference_params();
+    params.weak_spots = WeakSpots{.every_m = 6.0,
+                                  .length_m = 3.0,
+                                  .min_length_m = 1.0,
+                                  .min_width_m = 1.0,
+                                  .max_width_m = 3.0,
+                                  .grip_loss = 0.2,
+                                  .seed = 9};
+    const Model model = model_of(params);
+    const double even = model_of(reference_params()).surface_at(10.0).grip_factor;
+    double shortest_m = 1e9;
+    double longest_m = 0.0;
+    for (const Spot& spot : model.weak_spots()) {
+        shortest_m = std::min(shortest_m, spot.length_m);
+        longest_m = std::max(longest_m, spot.length_m);
+        const double middle_m = spot.start_m + spot.length_m / 2.0;
+        // Halfway to the edge diagonally: half the peak.
+        EXPECT_NEAR(model
+                        .surface_at(middle_m + spot.length_m / 4.0 * std::sqrt(0.5),
+                                    spot.centre_y_m + spot.width_m / 4.0 * std::sqrt(0.5))
+                        .grip_factor,
+                    even * (1.0 - spot.peak / 2.0), 1e-12);
+        // Past the edge at a corner of its bounding box: none.
+        EXPECT_EQ(
+            model.surface_at(middle_m + spot.length_m * 0.4, spot.centre_y_m + spot.width_m * 0.4)
+                .grip_factor,
+            even);
+    }
+    EXPECT_GE(shortest_m, 1.0);
+    EXPECT_LE(longest_m, 3.0);
+    EXPECT_GT(longest_m - shortest_m, 1.0) << "lengths vary";
+    params.weak_spots->min_length_m = 3.5;
+    EXPECT_EQ(validate(params), ParamError::kWeakSpots) << "the shortest longer than the longest";
+    params.weak_spots->min_length_m = 0.2;
+    EXPECT_EQ(validate(params), ParamError::kWeakSpots) << "shorter than kMinSpotLength_m";
+}
+
 TEST(Track, SpotsLieAcrossTheLane) {
     Params params = reference_params();
     params.weak_spots = WeakSpots{.every_m = 6.0,
@@ -456,8 +497,12 @@ TEST(Track, SpotsLieAcrossTheLane) {
         const double middle_m = spot.start_m + spot.length_m / 2.0;
         const double y_m = spot.centre_y_m;
         EXPECT_DOUBLE_EQ(model.surface_at(middle_m, y_m).grip_factor, even * (1.0 - spot.peak));
-        EXPECT_DOUBLE_EQ(model.surface_at(middle_m, y_m + 0.7).grip_factor,
-                         even * (1.0 - spot.peak));
+        // A cone over the ellipse: 0.7 m out of a 1.5 m half width, and as
+        // far along a third of the half length.
+        EXPECT_NEAR(model.surface_at(middle_m, y_m + 0.7).grip_factor,
+                    even * (1.0 - spot.peak * (1.0 - 0.7 / 1.5)), 1e-12);
+        EXPECT_NEAR(model.surface_at(middle_m + spot.length_m / 6.0, y_m).grip_factor,
+                    even * (1.0 - spot.peak * (1.0 - 1.0 / 3.0)), 1e-12);
         const double fading = model.surface_at(middle_m, y_m + 1.2).grip_factor;
         EXPECT_GT(fading, even * (1.0 - spot.peak));
         EXPECT_LT(fading, even);

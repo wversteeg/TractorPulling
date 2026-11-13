@@ -15,15 +15,18 @@ namespace tp::track {
 /// (track preparation never makes the ground even), so its resistance comes
 /// in jumps rather than rising smoothly. Laid out once from `seed`, the
 /// same on every platform (an event lays its own: reseeded()): on average
-/// one every `every_m` along the track, each `length_m` long and from
-/// `min_width_m` to `max_width_m` wide (a patch or a seam across most of
+/// one every `every_m` along the track, each from `min_length_m` to
+/// `length_m` long (all `length_m` without a shortest) and from
+/// `min_width_m` to `max_width_m` wide (a patch, or a seam across most of
 /// the lane), somewhere across the lane (any line down the lane as likely
 /// to cross one; a spot may reach past a chalk line), rising to and
 /// falling from a peak of up to `extra` above the soil's own drag (60 to
 /// 100 % of it).
 struct HardSpots {
     double every_m = 0.0;
+    /// The longest; the shortest is `min_length_m`, 0 for all this long.
     double length_m = 0.0;
+    double min_length_m = 0.0;
     double min_width_m = 0.0;
     double max_width_m = 0.0;
     double extra = 0.0;
@@ -36,7 +39,9 @@ struct HardSpots {
 /// grip falls by up to `grip_loss` (60 to 100 % of it) at a spot's middle.
 struct WeakSpots {
     double every_m = 0.0;
+    /// The longest; the shortest is `min_length_m`, 0 for all this long.
     double length_m = 0.0;
+    double min_length_m = 0.0;
     double min_width_m = 0.0;
     double max_width_m = 0.0;
     double grip_loss = 0.0;
@@ -55,10 +60,9 @@ inline constexpr double kMaxWeakSpotGripLoss = 0.5;
 
 /// One hard or weak spot as laid: from `start_m` along the track (from the
 /// start line) for `length_m`, centred `centre_y_m` across it (y positive
-/// to the left, 0 the lane's middle) and `width_m` wide. Along the track it
-/// rises to `peak` at its middle and falls again (a triangle); across, it
-/// is at its full strength over the middle half of its width and fades to
-/// nothing at its edges.
+/// to the left, 0 the lane's middle) and `width_m` wide: a patch, an
+/// ellipse that long and that wide, at `peak` in its middle and fading
+/// evenly to nothing at its edge (a cone).
 struct Spot {
     double start_m = 0.0;
     double length_m = 0.0;
@@ -111,7 +115,8 @@ enum class ParamError : std::uint8_t {
     /// kMaxGripScale].
     kGripScale,
     /// Hard spots closer together than kMinSpotSpacing_m, shorter or
-    /// longer than the length limits, narrower than kMinSpotWidth_m or
+    /// longer than the length limits (or the shortest longer than the
+    /// longest), narrower than kMinSpotWidth_m or
     /// wider than spots_across_m, their extra outside [0,
     /// kMaxHardSpotExtra], or a seed of 0.
     kHardSpots,
@@ -192,6 +197,7 @@ private:
         struct Pattern {
             double every_m = 0.0;
             double length_m = 0.0;
+            double min_length_m = 0.0;
             double min_width_m = 0.0;
             double max_width_m = 0.0;
             double across_m = 0.0;

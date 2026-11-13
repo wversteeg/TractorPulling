@@ -2,7 +2,7 @@
 # (TractorPullEvent.get_crew_report()): the start line at the bottom, the
 # full-pull line at the top, the chalk lines at the sides, the driver's left
 # on the left. Each spot the crew reports is drawn where they think it is,
-# blurred by how sure they are: hard spots (where the sled drags harder) in
+# as a patch (an ellipse), blurred by how sure they are: hard spots (where the sled drags harder) in
 # dry clay's tan, weak spots (where the tires grip less) in a wet blue, the
 # stronger the darker. Over them the line the player has chosen: the rear
 # tires' tracks and the sled's pan between them, and a notch where the crew
@@ -22,8 +22,13 @@ const SUGGESTION := Color(0.42, 0.77, 0.42)
 # lines [px].
 const MARGIN := 8.0
 # A spot is drawn at least this big, however short, and its blur at most
-# this strong [px, share].
+# this strong [px, share]. The map shows the whole track's length but only
+# the lane's width, so a metre along is far shorter than one across: a
+# spot is drawn at least this share as long as it is wide, so a patch
+# reads as a patch, not a line across the lane.
 const MIN_SPOT := 4.0
+const MIN_ASPECT := 0.6
+const ELLIPSE_POINTS := 20
 const BLUR_ALPHA := 0.2
 # A spot at this strength or more is drawn at full colour.
 const FULL_STRENGTH := 0.3
@@ -99,8 +104,19 @@ func _draw_spot(spot: Dictionary) -> void:
 	# The blur: as far as the crew may be off.
 	var blur := _rect(at, y, half_length + float(report.get("along_error_m", 0.0)),
 			half_width + float(report.get("across_error_m", 0.0)))
-	draw_rect(blur, Color(colour, BLUR_ALPHA * strength))
-	draw_rect(_rect(at, y, half_length, half_width), Color(colour, strength))
+	_draw_ellipse(blur, Color(colour, BLUR_ALPHA * strength))
+	_draw_ellipse(_rect(at, y, half_length, half_width), Color(colour, strength))
+
+
+# An ellipse filling `box`, at least MIN_ASPECT as tall as it is wide.
+func _draw_ellipse(box: Rect2, colour: Color) -> void:
+	var radii := Vector2(box.size.x, maxf(box.size.y, box.size.x * MIN_ASPECT)) / 2.0
+	var centre := box.get_center()
+	var points := PackedVector2Array()
+	for i in ELLIPSE_POINTS:
+		var angle := TAU * i / ELLIPSE_POINTS
+		points.append(centre + Vector2(cos(angle) * radii.x, sin(angle) * radii.y))
+	draw_colored_polygon(points, colour)
 
 
 # A spot's rectangle, at least MIN_SPOT on each side.
