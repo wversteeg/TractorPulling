@@ -15,5 +15,5 @@ travel_distance_m = 85.0
 # The push-down from 65 m takes the pan to 45 % of the sled.
 [sled.pushdown]
 pan_held_share = 0.5
-start_m = 55.0
+start_m = 58.0
 most_pan_share = 0.5
