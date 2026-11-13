@@ -195,14 +195,15 @@ grip on most tracks, a Sport 4.5 t does not (`TrackSetup.*`):
 - **The heavy clay**: the tires dig in and bite, the sled ploughs, and the
   engine is pulled down to a stall before the tires spin out. With the
   weights back the nose climbs: they go forward, and soft tires pay.
-- **The loose sandy clay**: the grip runs out first, so the weights go
-  all back for the most load on the rear tires.
+- **The loose sandy clay**: the grip runs out first, so the weights stay
+  a quarter forward, the most load on the rear tires the front allows.
 - **The hitch, set per pull**: a pulling hitch with holes from 0.40 m
   (the tractor's `hitch_min_height_m`) to the top hole the garage's
   drawbar gives, at most the class's 0.50 m, set on the setup screen
-  beside the weights and the tire pressure. Higher puts more of the
-  sled's pull on the rear tires but lifts the front, and with it the
-  steering, sooner.
+  beside the weights and the tire pressure (in every class; with the farm
+  drawbar alone it has one hole, until a higher one is bought). Higher
+  puts more of the sled's pull on the rear tires but lifts the front, and
+  with it the steering, sooner.
 - **The turbo**: the stock tractor comes with a small, quick turbo
   (`engines/sport_4500_fast_turbo.toml`, about 660 hp fully built); the
   68 mm turbo (`engines/sport_4500.toml`, the rivals' too, about 780 hp)

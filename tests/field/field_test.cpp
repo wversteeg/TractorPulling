@@ -214,6 +214,32 @@ TEST(Field, DrawbarAndPowershiftVary) {
     EXPECT_EQ(counts, (std::set<int>{0, 1}));
 }
 
+// A tractor whose hitch is set per pull from 0.40 m up: a rival drawing a
+// drawbar lower than that has it as its only hole, and may compete.
+TEST(Field, ADrawbarBelowTheLowestHoleIsTheOnlyHole) {
+    Puller base = reference();
+    base.tractor.chassis.hitch_min_height_m = 0.40;
+    Variation v = kVariation;
+    v.hitch_height_m = {.low = 0.36, .high = 0.45};
+    const auto field = generate(base, v, ntto_standard_3500(), event::kMaxPullers, 5);
+    if (!field) {
+        FAIL() << "the field was refused";
+    }
+    const Field& drawn = *field;
+    bool below = false;
+    for (int i = 0; i < drawn.count; ++i) {
+        const chassis::Params& c = drawn.pullers[static_cast<std::size_t>(i)].tractor.chassis;
+        EXPECT_LE(c.hitch_min_height_m, c.hitch_height_m) << i;
+        below = below || c.hitch_height_m < 0.40;
+        if (c.hitch_height_m < 0.40) {
+            EXPECT_EQ(c.hitch_min_height_m, c.hitch_height_m) << i;
+        } else {
+            EXPECT_EQ(c.hitch_min_height_m, 0.40) << i;
+        }
+    }
+    EXPECT_TRUE(below) << "some drawbars drawn below the lowest hole";
+}
+
 // Given, each puller draws a governor, held to the class's unloaded engine
 // speed; left out, every one has the reference's.
 TEST(Field, GovernorsVary) {
