@@ -138,6 +138,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pushdown_start_m,
                                 params.pushdown_ramp_m,
                                 params.pushdown_most_pan_share,
+                                params.pan_held_share,
                                 params.pan_friction_coefficient,
                                 params.pan_area_m2,
                                 params.pan_plough_coefficient,
@@ -167,6 +168,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (!(params.pushdown_most_pan_share > 0.0) || params.pushdown_most_pan_share > 1.0) {
         return ParamError::kPushdownShareOutOfRange;
+    }
+    if (!(params.pan_held_share >= 0.0 && params.pan_held_share < 1.0)) {
+        return ParamError::kPanHeldShareOutOfRange;
     }
     if (params.pan_friction_coefficient <= 0.0 ||
         params.pan_friction_coefficient > kMaxPanFrictionCoefficient) {
@@ -328,10 +332,15 @@ Split split(const Params& params, double box_m, double up_n, double pushdown,
     // lose (1 - cylinders / pivot) of their force, the pivot the rest.
     const double room_n = std::max(params.pushdown_most_pan_share * down_n - pan_n, 0.0);
     const double moved_n = std::min(pushdown * wheels_n, pushdown * room_n);
-    const double cylinders_n = moved_n / (1.0 - params.cylinders_ahead_of_wheels_m / pivot_m);
+    // Until the push-down engages they hold the pan's back up instead,
+    // pulling the other way: a share of the pan's load back on the wheels,
+    // dropped onto the pan as the push-down comes on.
+    const double held_n = params.pan_held_share * (1.0 - pushdown) * pan_n;
+    const double lever = 1.0 - params.cylinders_ahead_of_wheels_m / pivot_m;
+    const double cylinders_n = (moved_n - held_n) / lever;
     pivot_n -= cylinders_n * params.cylinders_ahead_of_wheels_m / pivot_m;
-    pan_n += moved_n;
-    wheels_n -= moved_n;
+    pan_n += moved_n - held_n;
+    wheels_n -= moved_n - held_n;
     return {.pan_n = pan_n, .wheels_n = wheels_n, .pivot_n = pivot_n, .cylinders_n = cylinders_n};
 }
 

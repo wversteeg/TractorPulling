@@ -64,6 +64,9 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kWheelLossesOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.wheel_rolling_losses = kMaxWheelRollingLosses + 0.01; }),
               ParamError::kWheelLossesOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pan_held_share = -0.1; }),
+              ParamError::kPanHeldShareOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pan_held_share = 1.0; }), ParamError::kPanHeldShareOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.pan_mass_kg = -1.0; }), ParamError::kPanInvalid);
     EXPECT_EQ(with([](Params& p) { p.pan_mass_kg = p.frame_mass_kg + 1.0; }),
               ParamError::kPanInvalid);
@@ -312,6 +315,27 @@ TEST(Sled, ThePushdownsCylindersLiftTheFrame) {
     EXPECT_NEAR(on.cylinders_n, moved_n / (1.0 - ratio), 1e-6);
     EXPECT_NEAR(off.pivot_n - on.pivot_n, on.cylinders_n * ratio, 1e-6);
     EXPECT_NEAR(on.wheels_n, off.wheels_n - moved_n, 1e-6);
+}
+
+// Until the push-down the cylinders may hold the pan's back up: that share
+// of the pan's load goes onto the wheels, which roll far more easily, so
+// the sled drags less; as the push-down engages the pan drops, and fully
+// engaged it holds nothing back.
+TEST(Sled, AHeldPanStartsLighterAndDropsAtThePushdown) {
+    const Params flat = pivot_on_the_track();
+    Params held = flat;
+    held.pan_held_share = 0.4;
+    ASSERT_EQ(validate(held), std::nullopt);
+    const Loads down = at(flat, 10.0);
+    const Loads up = at(held, 10.0);
+    EXPECT_NEAR(up.pan_n, 0.6 * down.pan_n, 1e-6);
+    EXPECT_NEAR(up.pan_n + up.wheels_n, down.pan_n + down.wheels_n, 1e-6);
+    EXPECT_LT(up.cylinders_n, 0.0) << "holding the pan up";
+    EXPECT_LT(up.resistance_n, down.resistance_n);
+    const double half_m = held.pushdown_start_m + held.pushdown_ramp_m / 2.0;
+    EXPECT_GT(at(held, half_m).pan_n, up.pan_n) << "dropping";
+    const double full_m = held.pushdown_start_m + held.pushdown_ramp_m;
+    EXPECT_NEAR(at(held, full_m).pan_n, at(flat, full_m).pan_n, 1e-6) << "dropped";
 }
 
 // Each pull-off step drags harder everywhere along the track, and several

@@ -110,6 +110,10 @@ inline constexpr double kPanHalfWidth_m = 1.0;
 /// the hook lightens it, but does not tip its front up: with these
 /// classes' tractors a real sled's pan stays down.
 ///
+/// Until the push-down engages, the cylinders may hold the pan's back up,
+/// its front on the track, putting a share of its load on the wheels: the
+/// sled starts lighter. As the push-down engages the pan drops.
+///
 /// As the box moves forward, more weight goes onto the pan, which
 /// drags far harder than the wheels roll. At a set distance the push-down
 /// engages: over a short ramp it presses the pan down and takes the weight
@@ -179,6 +183,12 @@ struct Params {
     /// engaged: 1 lifts the wheels off; less leaves them that share. The
     /// box over the pan may put more there by itself.
     double pushdown_most_pan_share = 1.0;
+    /// Until the push-down engages the cylinders hold the pan's back up,
+    /// its front on the track: this share of the pan's load stays on the
+    /// wheels, which roll far more easily, and the start is lighter. As the
+    /// push-down engages the pan drops onto the track ("de sleepvoet
+    /// valt"). 0 holds nothing.
+    double pan_held_share = 0.0;
     /// Sliding friction of the steel pan on a firm track.
     double pan_friction_coefficient = 0.0;
     /// The pan's contact with the track [m²].
@@ -233,6 +243,9 @@ enum class ParamError : std::uint8_t {
     kPushdownRampNotPositive,
     /// The push-down's share of the sled on the pan is not in (0, 1].
     kPushdownShareOutOfRange,
+    /// The share of the pan's load held up until the push-down is not in
+    /// [0, 1).
+    kPanHeldShareOutOfRange,
     kPanFrictionOutOfRange,
     kPanAreaNotPositive,
     kPanPloughNegative,
