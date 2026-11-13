@@ -68,8 +68,8 @@ const FENDER_FRAME_M := 0.06
 # sled's width [m].
 const STOP_PLATE_HEIGHT_M := 1.2
 const STOP_PLATE_PAST_M := 0.0
-# The flag post up front on the left: its height over the body, how far in
-# from the body's side, and its flag [m].
+# The flag post on the front, on the left: its height over the fender,
+# how far in from the fender's outer end, and its flag [m].
 const FLAG_POST_M := 2.2
 const FLAG_POST_IN_M := 0.12
 const FLAG_SIZE_M := Vector2(0.45, 0.3)
@@ -125,9 +125,11 @@ const DECK_OVER_RAILS_M := 0.1
 const WHEEL_FENDER_CLEAR_M := 0.12
 const WHEEL_FENDER_PANELS := 6
 const COVER_STRIPE := Color(0.08, 0.08, 0.09)
-# The pan: its front edge this far behind the stop plate; it reaches back
-# to the middle of the sled [m].
-const PAN_BEHIND_PLATE_M := 0.45
+# The pan: its front edge this far behind the fenders' faces, under them;
+# it reaches back to the middle of the sled [m]. The body ends this far
+# behind the front's stop plate [m].
+const PAN_BEHIND_FACE_M := 0.05
+const FRONT_GAP_M := 0.7
 # Where the close camera sees from: over the cab's front edge, this high
 # over its roof, as a TV camera on the sled [m].
 const CAMERA_MOUNT_UP_M := 0.35
@@ -148,7 +150,7 @@ const LUGS := 18
 # two seconds).
 const TRANSPORT_RADIUS_M := 0.4
 const TRANSPORT_WIDTH_M := 0.24
-const TRANSPORT_BEHIND_PAN_FRONT_M := 0.75
+const TRANSPORT_BEHIND_NOSE_M := 0.55
 const TRANSPORT_CLEAR_OF_PAN_M := 0.03
 const TRANSPORT_ARM_M := 0.05
 const BODY_OVER_WHEELS_M := 0.9
@@ -221,38 +223,33 @@ func build(d: Dictionary) -> void:
 	_rear_m = rear_of(d)
 	lamp_tension_n = d["take_up_tension_n"]
 	var plate_m := _add_fenders(hook_ahead_m, hook_height_m, d["fender_behind_hook_m"])
-	var nose_m := plate_m - 0.15
-	var pan_front_m := plate_m - PAN_BEHIND_PLATE_M
+	# The body ends this far behind the stop plate, free of the front: the
+	# operator stands there to take the chain off. The pan runs forward
+	# under the front, its lip under the fenders.
+	var nose_m := plate_m - 0.04 - FRONT_GAP_M
+	var pan_front_m := hook_ahead_m - float(d["fender_behind_hook_m"]) - PAN_BEHIND_FACE_M
 	var pan_back_m := pan_back_of(d)
 
-	# Two rails inside the body from the rear to the nose, and the drawbar
-	# out of the nose down to the hook.
-	var rail_to_m := nose_m - 0.4
+	# Two rails on the body from the rear to the nose.
+	var rail_to_m := nose_m - 0.1
 	for side: float in [-1.0, 1.0]:
 		var rail := _rounded(Vector3(0.16, 0.24, rail_to_m - _rear_m), PAINT_DARK, ROUND_SMALL_M,
 				Vector3.AXIS_Z)
 		rail.position = TrackSpace.point((_rear_m + rail_to_m) / 2.0, side * RAIL_GAP_M / 2.0,
 				rail_z_m)
 		add_child(rail)
-		var neck_from := TrackSpace.point(rail_to_m, side * RAIL_GAP_M / 2.0, rail_z_m)
-		var neck_to := TrackSpace.point(hook_ahead_m - 0.1, side * 0.15, hook_height_m)
-		var neck := _rounded(Vector3(0.14, 0.18, neck_from.distance_to(neck_to)), PAINT_DARK,
-				ROUND_SMALL_M, Vector3.AXIS_Z)
-		neck.position = (neck_from + neck_to) / 2.0
-		neck.basis = Basis.looking_at(neck_to - neck_from, Vector3.UP)
-		add_child(neck)
 	var hook_plate := Art.box(Vector3(0.4, 0.2, 0.2), DARK, 0.4, 0.6)
 	hook_plate.position = TrackSpace.point(hook_ahead_m - 0.1, 0.0, hook_height_m)
-	add_child(hook_plate)
+	_pan.add_child(hook_plate)
 	var ring := Art.instance(_ring(0.09, 0.025), Art.material(DARK, 0.3, 0.8))
 	ring.position = TrackSpace.point(hook_ahead_m, 0.0, hook_height_m)
-	add_child(ring)
+	_pan.add_child(ring)
 	_hook.position = TrackSpace.point(hook_ahead_m, 0.0, hook_height_m)
-	add_child(_hook)
+	_pan.add_child(_hook)
 
 	# The pan: a long steel plate as wide as the sled on the track from
-	# just behind the stop plate back to the middle of the sled, its
-	# leading edge turned up. (The simulation has its contact's middle at
+	# under the front fenders back to the middle of the sled, its leading
+	# edge turned up. (The simulation has its contact's middle at
 	# pan_ahead_of_wheels_m; the plate drawn is the real one's length.)
 	add_child(_pan)
 	var pan := Art.box(Vector3(WIDTH_M, 0.06, pan_front_m - pan_back_m), STEEL, 0.7)
@@ -263,7 +260,8 @@ func build(d: Dictionary) -> void:
 	lip.position = TrackSpace.point(pan_front_m + 0.12, 0.0, 0.12)
 	lip.rotation.x = 0.7
 	_pan.add_child(lip)
-	_add_transport_wheels(pan_front_m - TRANSPORT_BEHIND_PAN_FRONT_M)
+	var wheels_at_m := nose_m - TRANSPORT_BEHIND_NOSE_M
+	_add_transport_wheels(wheels_at_m)
 
 	# The tandem axle at the back, dual wheels at each end of each axle:
 	# eight tires, together as wide as the sled, their hubs included.
@@ -279,10 +277,9 @@ func build(d: Dictionary) -> void:
 		for side: float in [-1.0, 1.0]:
 			_add_wheel(axle_m, side * inner_m, tire_m)
 			_add_wheel(axle_m, side * outer_m, tire_m)
-	_add_body(rail_z_m, nose_m, pan_back_m,
-			pan_front_m - TRANSPORT_BEHIND_PAN_FRONT_M - TRANSPORT_RADIUS_M - 0.1)
+	_add_body(rail_z_m, nose_m, pan_back_m, wheels_at_m - TRANSPORT_RADIUS_M - 0.1)
 	_add_rear_section(rail_z_m)
-	_add_flag_post(pan_front_m, rail_z_m)
+	_add_flag_post(plate_m, hook_height_m)
 
 	# The berm, built at a unit size; show_snapshot scales it to the soil.
 	_berm_ahead_m = pan_front_m + 0.25
@@ -376,21 +373,26 @@ func weights_shown() -> int:
 	return -1 if _box_weights == null else _box_weights.multimesh.visible_instance_count
 
 
-# A cross beam behind the hook, and on each end a rubber fender facing the
-# tractor, at its rear tires' height.
+# The front, on the pan (the chain pulls the pan, and lifts its front):
+# a cross beam behind the hook on legs from the pan, on each end a rubber
+# fender facing the tractor at its rear tires' height, the hook on a bar
+# from the beam.
 # Where the stop plate stands along the sled [m].
 func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: float) -> float:
 	var face_m := hook_ahead_m - behind_hook_m
 	var beam_m := face_m - FENDER_SIZE_M.z - 0.06
 	var beam := _painted(Vector3(2.0 * FENDER_SIDE_M + FENDER_SIZE_M.x, 0.12, 0.12), PAINT_DARK)
 	beam.position = TrackSpace.point(beam_m, 0.0, hook_height_m)
-	add_child(beam)
+	_pan.add_child(beam)
+	var drawbar := _painted(Vector3(0.14, 0.14, hook_ahead_m - 0.2 - beam_m), PAINT_DARK)
+	drawbar.position = TrackSpace.point((hook_ahead_m - 0.2 + beam_m) / 2.0, 0.0, hook_height_m)
+	_pan.add_child(drawbar)
 	for side: float in [-1.0, 1.0]:
 		var fender := Art.instance(Art.rounded_box(FENDER_SIZE_M, ROUND_SMALL_M, Vector3.AXIS_Z),
 				Art.material(RUBBER, 0.95))
 		fender.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * FENDER_SIDE_M,
 				hook_height_m + 0.1)
-		add_child(fender)
+		_pan.add_child(fender)
 		# Its steel frame: a bar along each side and across the top, the
 		# rubber standing proud of it.
 		var frame_depth_m := FENDER_SIZE_M.z * 0.6
@@ -400,15 +402,15 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 					PAINT_DARK)
 			bar.position = TrackSpace.point(frame_x_m, side * FENDER_SIDE_M
 					+ edge * (FENDER_SIZE_M.x - FENDER_FRAME_M) / 2.0, hook_height_m + 0.1)
-			add_child(bar)
+			_pan.add_child(bar)
 		var top := _painted(Vector3(FENDER_SIZE_M.x, FENDER_FRAME_M, frame_depth_m), PAINT_DARK)
 		top.position = TrackSpace.point(frame_x_m, side * FENDER_SIDE_M,
 				hook_height_m + 0.1 + (FENDER_SIZE_M.y + FENDER_FRAME_M) / 2.0)
-		add_child(top)
+		_pan.add_child(top)
 		var leg_m := hook_height_m + 0.1 - FENDER_SIZE_M.y / 2.0
 		var leg := Art.box(Vector3(0.1, leg_m, 0.1), STEEL, 0.5, 0.5)
 		leg.position = TrackSpace.point(beam_m, side * FENDER_SIDE_M, leg_m / 2.0)
-		add_child(leg)
+		_pan.add_child(leg)
 	# The wide rubber plate behind the fenders: what the tractor's tires see
 	# coming back to the sled.
 	var plate := Art.instance(Art.rounded_box(Vector3(2.0 * (FENDER_SIDE_M + FENDER_SIZE_M.x / 2.0
@@ -416,7 +418,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 			Art.material(RUBBER, 0.95))
 	plate.position = TrackSpace.point(beam_m - 0.1, 0.0,
 			hook_height_m + 0.1 + STOP_PLATE_HEIGHT_M / 2.0 - FENDER_SIZE_M.y / 2.0)
-	add_child(plate)
+	_pan.add_child(plate)
 	# The folding rubber fenders out past the stop plate's ends, unfolded
 	# for the pull, swept back: wider than the sled's road width, folded in
 	# to travel. Each on a hinge at the plate's end (_show_flaps turns it).
@@ -426,7 +428,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 		pivot.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * plate_half_m,
 				hook_height_m + 0.1)
 		pivot.set_meta("side", side)
-		add_child(pivot)
+		_pan.add_child(pivot)
 		_flaps.append(pivot)
 		var flap := Art.instance(Art.rounded_box(Vector3(FOLDING_FENDER_M, FENDER_SIZE_M.y,
 				FOLDING_FENDER_THICK_M), ROUND_SMALL_M, Vector3.AXIS_Z), Art.material(RUBBER, 0.95))
@@ -436,7 +438,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 		var hinge := _painted(Vector3(0.08, FENDER_SIZE_M.y, FENDER_SIZE_M.z), PAINT_DARK)
 		hinge.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0,
 				side * (plate_half_m - 0.04), hook_height_m + 0.1)
-		add_child(hinge)
+		_pan.add_child(hinge)
 	_show_flaps()
 	return beam_m - 0.1
 
@@ -547,18 +549,19 @@ static func _cab_floor_z(rail_z_m: float) -> float:
 	return rail_z_m + BOX_LIFT_M + BOX_SIZE_M.y + COVER_OVER_BOX_M
 
 
-# The flag post up front on the left: an orange post from the body with a
-# red flag at its top, as real sleds carry.
-func _add_flag_post(pan_ahead_m: float, rail_z_m: float) -> void:
-	var at_m := pan_ahead_m
-	var from_z_m := rail_z_m + BOX_LIFT_M - BODY_UNDER_BOX_M
-	var out_m := BODY_WIDTH_M / 2.0 - FLAG_POST_IN_M
+# The flag post on the front, on the left: an orange post up from the
+# fender's top with a red flag at its top, as real sleds carry; it rises
+# and falls with the pan.
+func _add_flag_post(plate_m: float, hook_height_m: float) -> void:
+	var at_m := plate_m + 0.1
+	var from_z_m := hook_height_m + 0.1 + FENDER_SIZE_M.y / 2.0
+	var out_m := FENDER_SIDE_M + FENDER_SIZE_M.x / 2.0 - FLAG_POST_IN_M
 	var post := _painted(Vector3(0.09, FLAG_POST_M, 0.09), PAINT)
 	post.position = TrackSpace.point(at_m, out_m, from_z_m + FLAG_POST_M / 2.0)
-	add_child(post)
+	_pan.add_child(post)
 	var arm := _painted(Vector3(0.09, 0.09, 0.4), PAINT)
 	arm.position = TrackSpace.point(at_m + 0.2, out_m, from_z_m + FLAG_POST_M)
-	add_child(arm)
+	_pan.add_child(arm)
 	var cloth := QuadMesh.new()
 	cloth.size = FLAG_SIZE_M
 	var flag_material := Art.material(FLAG, 0.8)
@@ -566,9 +569,9 @@ func _add_flag_post(pan_ahead_m: float, rail_z_m: float) -> void:
 	flag.material_override = flag_material.duplicate()
 	(flag.material_override as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
 	flag.rotation.y = PI / 2.0
-	flag.position = TrackSpace.point(at_m + 0.2, out_m + FLAG_SIZE_M.x / 2.0,
+	flag.position = TrackSpace.point(at_m + 0.2, out_m - FLAG_SIZE_M.x / 2.0,
 			from_z_m + FLAG_POST_M - FLAG_SIZE_M.y / 2.0)
-	add_child(flag)
+	_pan.add_child(flag)
 
 
 func _add_wheel(x_m: float, side_m: float, width_m: float) -> void:

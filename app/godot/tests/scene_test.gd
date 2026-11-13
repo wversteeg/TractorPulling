@@ -389,7 +389,7 @@ func _check_class_looks(dimensions: Dictionary) -> void:
 
 # The sled as real ones are: 12.5 m from its hook to its rear (more only
 # where the weight box starts behind it), within 2.55 m across; the pan
-# as wide as the sled from just behind the front stop plate back to the
+# as wide as the sled from under the front (which stands on it) back to the
 # middle of the sled, the narrower body clad down to it; the rear section
 # closed down to about 30 cm over the track; the transport wheels beside
 # the pan, swung up within the width; eight tires on the tandem under the

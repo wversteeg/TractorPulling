@@ -80,7 +80,7 @@ for the big features; they are repeated at the end for completeness.
   distance). Heavier classes and more along-track variation (see "Later")
   should spread them again; worth checking when milestone 6 adds classes.
 - **The pan is drawn longer than it drags.** The sled shows its pan
-  from just behind the front stop plate back to the middle of the sled,
+  from under the front back to the middle of the sled,
   as real ones are, and the track's smoothed band starts at its back edge;
   the simulation has the pan's contact at one point, 5.5 m ahead of the
   wheels, where it feels the hard spots. A pan whose load spreads over its
