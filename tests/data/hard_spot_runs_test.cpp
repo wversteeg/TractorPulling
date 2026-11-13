@@ -229,8 +229,8 @@ TEST(HardSpotRuns, AWeakSpotUnderOneSideTurnsTheTractor) {
     track.ground.weak_spots = track::WeakSpots{.every_m = 15.0,
                                                .length_m = 3.0,
                                                .min_length_m = 2.0,
-                                               .min_width_m = 1.0,
-                                               .max_width_m = 2.0,
+                                               .min_width_m = 0.8,
+                                               .max_width_m = 1.2,
                                                .grip_loss = 0.2,
                                                .seed = 5};
     const std::optional<track::Model> laid = track::Model::create(track.ground);
@@ -238,28 +238,31 @@ TEST(HardSpotRuns, AWeakSpotUnderOneSideTurnsTheTractor) {
         FAIL() << "the track was refused";
     }
     // Past the launch, near enough the middle that both tires stay in the
-    // lane, narrower than the rear track so one side misses it.
+    // lane.
     constexpr double kPastTheLaunch_m = 15.0;
     constexpr double kNearTheMiddle_m = 3.0;
-    const double half_track_m =
-        loaded(load_tractor(data("tractors/sport_4500.toml"))).chassis.rear_track_m / 2.0;
+    const vehicle::Params tractor = loaded(load_tractor(data("tractors/sport_4500.toml")));
+    const double track_m = tractor.chassis.rear_track_m;
+    // Narrower than the rear track less a tire's width: the right tire's
+    // contact patch misses it altogether.
+    const double narrower_than_m = track_m - tractor.rear_tire.size.section_width_m;
     std::optional<double> start_y_m;
     for (const track::Spot& spot : laid.value().weak_spots()) {
         if (spot.start_m > kPastTheLaunch_m && std::abs(spot.centre_y_m) < kNearTheMiddle_m &&
-            spot.width_m / 2.0 < 2.0 * half_track_m - spot.width_m / 2.0) {
-            start_y_m = spot.centre_y_m - half_track_m;
+            spot.width_m < narrower_than_m) {
+            start_y_m = spot.centre_y_m - track_m / 2.0;
             break;
         }
     }
     if (!start_y_m) {
         FAIL() << "no narrow spot near the middle";
     }
-    const double start_m = start_y_m.value();
+    const double offset_y_m = start_y_m.value();
     constexpr double kTurned_rad = 0.005;
     constexpr double kOffLine_m = 0.1;
     constexpr double kWithinTheLane_m = 1.0;
-    const Drift coupled = drift(track, start_m, false);
-    const Drift open = drift(track, start_m, true);
+    const Drift coupled = drift(track, offset_y_m, false);
+    const Drift open = drift(track, offset_y_m, true);
     EXPECT_GT(coupled.heading_rad, kTurned_rad) << "towards the spot, to the left";
     EXPECT_GT(coupled.across_m, kOffLine_m);
     EXPECT_GT(coupled.across_m, 2.0 * open.across_m)
