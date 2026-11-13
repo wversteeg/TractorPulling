@@ -70,6 +70,10 @@ for the big features; they are repeated at the end for completeness.
   stalls before it spins on most tracks, keeps the plain Brixius curve.
   The reference load is a fixed number per tire, not the tractor's own
   share at rest after its tuning.
+- **Free weight's name.** The garage part that frees the weights is still
+  `garage::Part::kBallastMass`, its key `ballast_kg`: renaming it
+  (`kFreeWeight`, `free_weight_kg`) touches every garage file, the setup
+  screen and the career saves, which keep parts by name.
 - **The pan held up, simply.** Until the push-down engages, the cylinders
   hold a fixed share of the pan's load on the wheels (`pan_held_share`)
   and drop it as the push-down ramps in: the pan's back does not rise or
