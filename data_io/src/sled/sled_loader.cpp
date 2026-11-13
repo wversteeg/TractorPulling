@@ -34,8 +34,11 @@ FieldError describe(sled::ParamError error) {
             return {"sled.weight_box.mass_kg", "must not be over max_mass_kg"};
         case ParamError::kPanInvalid:
             return {"sled.pan",
-                    "mass_kg 0 to frame_mass_kg, length_m > 0, pivot_height_m >= 0, "
-                    "cylinders_ahead_of_wheels_m between the wheels and the pan"};
+                    "mass_kg 0 to frame_mass_kg, length_m > 0 and the pan ahead of the wheels, "
+                    "pivot_height_m >= 0"};
+        case ParamError::kCylindersInvalid:
+            return {"sled.pushdown.cylinders_ahead_of_wheels_m",
+                    "must be on the pan, behind its pivot"};
         case ParamError::kPanNotAheadOfWheels:
             return {"sled.pan_ahead_of_wheels_m", "must be > 0"};
         case ParamError::kFrameCgOutsideSled:

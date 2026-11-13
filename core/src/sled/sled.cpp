@@ -73,10 +73,16 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     if (pan_m <= 0.0) {
         return ParamError::kPanNotAheadOfWheels;
     }
+    // The pan reaches back no further than the wheels; the cylinders press
+    // on it behind the pivot.
+    const double pan_back_m = pan_m - params.pan_length_m / 2.0;
     if (!within(params.pan_mass_kg, 0.0, params.frame_mass_kg) || params.pan_length_m <= 0.0 ||
-        params.pivot_height_m < 0.0 || params.cylinders_ahead_of_wheels_m <= 0.0 ||
-        params.cylinders_ahead_of_wheels_m >= pan_m) {
+        pan_back_m <= 0.0 || params.pivot_height_m < 0.0) {
         return ParamError::kPanInvalid;
+    }
+    if (params.cylinders_ahead_of_wheels_m < pan_back_m ||
+        params.cylinders_ahead_of_wheels_m >= pan_m) {
+        return ParamError::kCylindersInvalid;
     }
     if (!within(params.frame_cg_ahead_of_wheels_m, 0.0, pan_m)) {
         return ParamError::kFrameCgOutsideSled;
@@ -258,7 +264,12 @@ constexpr double kWheelMinRolling_m_s = 0.5;
 // The pan sinks in until the soil carries its pressure and pushes soil
 // ahead of it: the ploughing grows with pressure over strength.
 // `ploughing` is the share of the pan pushing soil ahead of its lip: 1 flat
-// on the track, less with its front up.
+// on the track, less with its front up. The ploughing term stands for the
+// soil the lip shoves ahead of it: a lip off the ground shoves none of the
+// share it has lifted, so that share goes. The pressure stays the pan's
+// load over its nominal bearing area: a pan riding on its back part
+// presses harder there, but that part carries no lip, so the higher
+// pressure is not counted as more ploughing.
 double pan_friction(const Params& params, double pan_n, const soil::Surface& surface,
                     double ploughing) noexcept {
     const double pressure_pa = pan_n / params.pan_area_m2;
@@ -339,7 +350,11 @@ Split split(const Params& params, double box_m, double up_n, double pushdown,
 // hook's height presses it. The ground's pressure, linear along the pan,
 // moves its centre back by that over the pan's load; past a sixth of the
 // length behind the middle the front leaves the ground (a rigid plate on
-// soil). The push-down's cylinders hold the pan level as they press.
+// soil). The push-down's cylinders are taken as a rigid link in pitch
+// between the frame and the pan as they press: pressing on the pan's back
+// they would, on their own, lift its front (a nose-up moment about the
+// contact), but locked to the long, heavy frame the pan cannot tip, so the
+// lift fades out as the push-down comes on, as on real sleds.
 double front_lift(const Params& params, const HookForce& hook, double tow_n, double pan_n,
                   double pushdown) noexcept {
     const double nose_up_nm =
