@@ -19,11 +19,6 @@ min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 limit = 0.93                       # μ on very strong ground at full bite
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 18.0                   # how fast grip builds with slip
-# Pressed harder than its share of the tractor at rest (the chain pulling
-# down at the hitch, the weights back), the tire grips less per unit of
-# load (tp::tire::TractionCurve::load_sensitivity).
-load_sensitivity = 0.3
-reference_load_n = 10300.0            # one tire's load at rest
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
