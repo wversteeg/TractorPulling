@@ -529,7 +529,10 @@ godot::Dictionary TractorPullEvent::get_tuning() const {
     out["pressure_bar"] = tuning_.rear_tire_pressure_bar;
     out["min_bar"] = pressure.min_bar;
     out["max_bar"] = pressure.max_bar;
-    out["hitch"] = tractor.chassis.hitch_min_height_m > 0.0;
+    // Adjustable once a drawbar above the lowest hole is bought: with the
+    // farm drawbar alone there is one hole.
+    out["hitch"] = tractor.chassis.hitch_min_height_m > 0.0 &&
+                   tractor.chassis.hitch_height_m > tractor.chassis.hitch_min_height_m;
     out["hitch_m"] = set.chassis.hitch_height_m;
     out["min_hitch_m"] = tractor.chassis.hitch_min_height_m;
     out["max_hitch_m"] = tractor.chassis.hitch_height_m;

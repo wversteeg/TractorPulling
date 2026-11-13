@@ -86,7 +86,9 @@ struct Jumps {
 };
 
 constexpr double kFrom_m = 15.0;
-constexpr double kUntil_m = 80.0;
+// Short of the push-down, which starts at 60 m on the dry hard clay and
+// raises the pan's drag over its ramp.
+constexpr double kUntil_m = 58.0;
 constexpr double kWindow_m = 1.0;
 
 Jumps jumps(const std::vector<Sample>& samples) {

@@ -298,7 +298,7 @@ TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWin
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
     expect_level("sport_4500_top.toml",
-                 {{.share = 0.75, .places = {.best = 9, .worst = 15}},
+                 {{.share = 0.75, .places = {.best = 8, .worst = 15}},
                   {.share = 0.9, .places = {.best = 1, .worst = 8}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);

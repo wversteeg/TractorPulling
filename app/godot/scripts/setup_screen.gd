@@ -31,6 +31,9 @@ const BACKGROUND := Color(0.06, 0.07, 0.09, 0.985)
 const SLIDER_HEIGHT := 58.0
 # The pressure moves in steps of this much [bar].
 const PRESSURE_STEP_BAR := 0.05
+# The crew chief says to raise a hitch in its lowest hole only with the
+# weights at least this far forward (0 rearmost, 1 foremost).
+const HITCH_TIP_FROM_BALLAST := 0.5
 # The hitch's holes are this far apart [m].
 const HITCH_STEP_M := 0.02
 # The sled is placed to this much across the lane [m].
@@ -189,7 +192,8 @@ func show_values(tuning: Dictionary) -> void:
 	_hitch.text = "%.2f m" % float(tuning.get("hitch_m", 0.0)) \
 			if tuning.get("hitch", false) else "Fixed hitch"
 	var hitch_low: bool = tuning.get("hitch", false) and float(tuning.get("hitch_m", 0.0)) \
-			< float(tuning.get("min_hitch_m", 0.0)) + HITCH_STEP_M / 2.0
+			< float(tuning.get("min_hitch_m", 0.0)) + HITCH_STEP_M / 2.0 \
+			and float(tuning.get("ballast_position", 0.0)) >= HITCH_TIP_FROM_BALLAST
 	if hitch_low != _hitch_low:
 		_hitch_low = hitch_low
 		_show_tip()
@@ -272,9 +276,12 @@ func _show_track(track: Dictionary, track_name: String) -> void:
 
 # The crew chief's word before the pull: the track's tip, the gear that
 # went furthest in the crew's trials with the tractor as it was brought,
-# and, with the hitch in its lowest hole, to raise it: the lowest hole
-# takes the sled's pull off the rear tires, and on a heavy sled they spin
-# out. (The holes above it depend on the weights and the track: no tip.)
+# and, with the hitch in its lowest hole and the weights at least halfway,
+# to raise it: the lowest hole takes the sled's pull off the rear tires,
+# and on a heavy sled they spin out. With the weights further back a low
+# hole keeps the nose down and may pay, and the holes above the lowest
+# depend on the weights and the track: no tip. A hitch with one hole (the
+# farm drawbar, before a higher one is bought) has nothing to raise.
 func _show_tip() -> void:
 	var words: Array[String] = []
 	if not _track_tip.is_empty():

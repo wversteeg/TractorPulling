@@ -307,14 +307,16 @@ func _play() -> void:
 	await _frames(2)
 	_expect(start.visible and not garage.visible, "back from the garage")
 
-	# The setup screen first: the tractor as built, then the weights slid to
-	# the rear and the tires softened, which the season keeps. "Back"
-	# returns to the start screen.
+	# The setup screen first: the tractor as built (its hitch set per pull
+	# from its lowest hole, 0.40 m, to its own drawbar's 0.50 m, in the top
+	# hole), then the weights slid to the rear and the tires softened, which
+	# the season keeps. "Back" returns to the start screen.
 	_tap(start.practice_button)
 	await _frames(2)
 	var built := event.get_tuning()
 	_expect(setup.visible and setup.ballast_slider.visible and setup.pressure_slider.visible
-			and not setup.hitch_slider.visible and is_equal_approx(float(built["ballast_position"]), 0.5)
+			and setup.hitch_slider.visible and is_equal_approx(float(built["hitch_m"]), 0.5)
+			and is_equal_approx(float(built["ballast_position"]), 0.5)
 			and is_equal_approx(float(built["pressure_bar"]), 1.0), "set up as built: %s" % built)
 	_slide_to_start(setup.ballast_slider)
 	_slide_to_start(setup.pressure_slider)
@@ -484,24 +486,37 @@ func _check_hitch_slider(setup: SetupScreen) -> void:
 
 
 # The crew chief names the gear the crew's trials liked and, with the hitch
-# in its lowest hole, says to raise it; one hole up, the warning goes. Shown
-# for a tractor with a hitch to set, then the pit board put back as it was.
+# in its lowest hole and the weights halfway, says to raise it; one hole
+# up, the weights all back, or a hitch with one hole (nothing bought to
+# raise it), the warning goes. Shown for a tractor with a hitch to set,
+# then the pit board put back as it was.
 # The event's own report names a gear of the class's, once the trials are
 # done.
 func _check_crew_tip(setup: SetupScreen, event: TractorPullEvent) -> void:
-	var tuning := {"hitch": true, "hitch_m": 0.40, "min_hitch_m": 0.40, "max_hitch_m": 0.50}
+	var tuning := {"hitch": true, "hitch_m": 0.40, "min_hitch_m": 0.40, "max_hitch_m": 0.50,
+			"ballast": true, "ballast_position": 0.5}
 	setup.show_setup("test", tuning, true, false, {"tip": "A fair track."}, "Test",
 			{"gear": 5})
 	var low := setup.tip_text()
 	tuning["hitch_m"] = 0.42
 	setup.show_values(tuning)
 	var up := setup.tip_text()
+	tuning["hitch_m"] = 0.40
+	tuning["ballast_position"] = 0.0
+	setup.show_values(tuning)
+	var back := setup.tip_text()
+	tuning["ballast_position"] = 0.5
+	tuning["hitch"] = false
+	tuning["max_hitch_m"] = 0.40
+	setup.show_values(tuning)
+	var one_hole := setup.tip_text()
 	var crew := event.get_crew_report()
 	setup.show_setup("put back", event.get_tuning(), false, false, {}, "", crew)
 	_expect(low.contains("5th gear") and low.contains("Raise the hitch")
 			and low.contains("fair track") and up.contains("5th gear")
-			and not up.contains("Raise the hitch"),
-			"the crew chief's tip: %s | %s" % [low, up])
+			and not up.contains("Raise the hitch") and not back.contains("Raise the hitch")
+			and not one_hole.contains("Raise the hitch"),
+			"the crew chief's tip: %s | %s | %s | %s" % [low, up, back, one_hole])
 	var gear := int(crew.get("gear", -1))
 	_expect(gear == 0 or (gear >= 1 and gear <= 8), "the crew's gear: %d" % gear)
 

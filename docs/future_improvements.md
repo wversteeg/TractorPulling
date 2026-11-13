@@ -611,20 +611,12 @@ for the big features; they are repeated at the end for completeness.
 
 ## The 15 t sled
 
-- **The push-down is a wall.** With the whole 15 t sled on the pan once
-  the push-down is fully on, every tractor stops within a few metres of
-  where it engages, so a field finishes closer together than on the light
-  sled the game had before, and the difficulty bands in the middle of the
-  garage are a place or two wider (`RivalDifficulty.*`). A gentler
-  push-down (a longer ramp, or one that takes only part of the wheels'
-  load) would spread the field by power again; tried with a 25 m ramp it
-  spread it by about a third and changed the wheelies, so it is left for
-  a balancing pass.
-- **The weights' best position is the same on every track.** On the 15 t
-  sled a fully built Sport 4.5 t pulls furthest with its weights a
-  quarter forward everywhere; the track decides only what the wrong
-  setting costs. Tracks that want the weights elsewhere (a heavy clay
-  that lifts the nose) would bring back a reason to move them per track.
+- **The operator only makes the sled lighter.** The class's sled is set
+  heavy enough for the field, and the test pulls only take steps off; a
+  test pull by a strong tractor that full-pulls leaves the sled, so on
+  some days half the field full-pulls and the pull-off decides. An operator
+  who also adds a step after a full pull too easy would even those days
+  out.
 - **The spots barely show on the heavy sled.** A hard spot bites the pan,
   which carries a small share of the 15 t until the box comes forward,
   and a weak spot costs grip the push-down then takes anyway: the crew's

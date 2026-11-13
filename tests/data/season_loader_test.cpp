@@ -1,15 +1,18 @@
 #include "tp/data/season/season_loader.hpp"
 
 #include "tp/core/field/play.hpp"
+#include "tp/core/garage/garage.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/math/random.hpp"
 #include "tp/core/season/season.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -181,7 +184,41 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
     EXPECT_LT(awarded, 2 * table_total + 20);
     EXPECT_EQ(standings[0].place, 1);
     EXPECT_GE(standings[0].points, standings[1].points);
-    EXPECT_EQ(hash.value(), 0x93bc3454d52447d5ULL);
+    EXPECT_EQ(hash.value(), 0xf2acc01dbb48fc0eULL);
+}
+
+// In every class the hitch is set per pull once a drawbar above the farm
+// one is bought: a new career's tractor has one hole (its farm drawbar at
+// the tractor's lowest hole), and with every drawbar bought its top hole
+// stands above the lowest (P-17). The game shows the hitch as fixed only
+// with the one hole.
+TEST(ShippedSeason, ABoughtDrawbarMakesTheHitchAdjustableInEveryClass) {
+    for (const char* file :
+         {"standard_3500.toml", "sport_2500_promo.toml", "sport_4500_belofte.toml"}) {
+        const auto season = load_season(kSeasons / file);
+        ASSERT_TRUE(season.ok()) << season.error().message;
+        const garage::Catalogue& catalogue = season.value().garage.catalogue;
+        const vehicle::Params& base = season.value().event.reference.tractor;
+        garage::Career career = garage::new_career(catalogue);
+        const std::optional<vehicle::Params> stock = garage::equipped(base, catalogue, career);
+        if (!stock) {
+            FAIL() << file << ": the stock tractor was refused";
+        }
+        const chassis::Params& farm = stock.value().chassis;
+        EXPECT_EQ(farm.hitch_min_height_m, 0.40) << file;
+        EXPECT_EQ(farm.hitch_height_m, farm.hitch_min_height_m)
+            << file << ": one hole on the farm drawbar";
+        for (std::size_t i = 0; i < catalogue.count; ++i) {
+            career.levels.at(i) = static_cast<int>(catalogue.upgrades.at(i).level_count) - 1;
+        }
+        const std::optional<vehicle::Params> built = garage::equipped(base, catalogue, career);
+        if (!built) {
+            FAIL() << file << ": the built tractor was refused";
+        }
+        const chassis::Params& pulling = built.value().chassis;
+        EXPECT_GT(pulling.hitch_height_m, pulling.hitch_min_height_m)
+            << file << ": holes to choose from";
+    }
 }
 
 }  // namespace

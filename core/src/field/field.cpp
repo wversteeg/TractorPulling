@@ -126,6 +126,10 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     if (variation.hitch_height_m.high > 0.0) {
         puller.tractor.chassis.hitch_height_m =
             std::min(hitch_height_m, class_rules.max_hitch_height_m);
+        // A rival's drawbar lower than the tractor's lowest hole is its
+        // only hole.
+        puller.tractor.chassis.hitch_min_height_m = std::min(
+            puller.tractor.chassis.hitch_min_height_m, puller.tractor.chassis.hitch_height_m);
     }
     if (variation.most_load_downshift_gears >= 0) {
         puller.tractor.driveline.load_downshift_gears = load_downshift_gears;

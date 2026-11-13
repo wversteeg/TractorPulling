@@ -238,6 +238,11 @@ TEST(SledLoader, ParsesValues) {
     EXPECT_EQ(result.value().pull_off_step.knives, 2);
     EXPECT_DOUBLE_EQ(result.value().pull_off_step.knife_depth_m, 0.01);
     EXPECT_DOUBLE_EQ(result.value().pull_off_step.pushdown_earlier_m, 3.0);
+    EXPECT_DOUBLE_EQ(result.value().pushdown_most_pan_share, 1.0) << "the wheels lifted off";
+    const auto shared =
+        parse_sled(with("ramp_m = 1.5", "ramp_m = 1.5\nmost_pan_share = 0.5"), "sled.toml");
+    ASSERT_TRUE(shared.ok()) << shared.error().message;
+    EXPECT_DOUBLE_EQ(shared.value().pushdown_most_pan_share, 0.5);
     EXPECT_DOUBLE_EQ(result.value().pan_area_m2, 2.0);
     EXPECT_DOUBLE_EQ(result.value().pan_plough_coefficient, 4.0);
     EXPECT_DOUBLE_EQ(result.value().wheel.radius_m, 0.45);
@@ -277,7 +282,7 @@ TEST(SledLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 18> cases = {{
+    const std::array<Case, 19> cases = {{
         {"frame_yaw_inertia_kg_m2 = 4500.0", "frame_yaw_inertia_kg_m2 = 0.0",
          "sled.frame_yaw_inertia_kg_m2: must be > 0"},
         {"limit = 0.7", "limit = 3.0", "sled.wheels.cornering: stiffness_per_rad"},
@@ -300,6 +305,8 @@ TEST(SledLoader, RejectsNonsenseValues) {
         {"end_ahead_of_wheels_m = 2.8", "end_ahead_of_wheels_m = 3.5",
          "sled.weight_box: must stay between the wheels and the pan"},
         {"ramp_m = 1.5", "ramp_m = 0.0", "sled.pushdown.ramp_m: must be > 0"},
+        {"ramp_m = 1.5", "ramp_m = 1.5\nmost_pan_share = 1.5",
+         "sled.pushdown.most_pan_share: must be > 0 and at most 1"},
         {"length_m = 1.2", "length_m = 0.0", "sled.chain: length and stiffness must be > 0"},
         {"start_m = 80.0", "", "sled.pushdown.start_m: missing or not a number"},
     }};
