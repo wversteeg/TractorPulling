@@ -31,11 +31,10 @@ for the big features; they are repeated at the end for completeness.
   grip differently.
 - **Weak spots only bite near the grip limit.** In most pulls the engine
   against the sled's drag limits the tractor, not the tires' grip, so a
-  short patch with a few per cent less grip costs next to nothing (the
-  crew's line across the lane gains tenths of a metre on the tracks with
-  hard spots, about nothing on those with weak spots only). They matter in
-  a launch with wheelspin and in the heavier classes; stronger or longer
-  weak spots would make the line count more.
+  weak spot costs the farm tractors little and turns them hardly at all;
+  it matters in a launch with wheelspin and in the heavier classes, whose
+  tires work near their limit (a Sport 4.5 t goes tenths of a metre off
+  line).
 - **The pan's width.** Where the sled meets the spots its pan is taken as
   2 m wide for every sled (sled::kPanHalfWidth_m): the sleds' data give the
   pan's area, not its width.
@@ -130,10 +129,13 @@ for the big features; they are repeated at the end for completeness.
   only lets the tractor hold a heavier drag before it spins.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
   between the left and right rear tires; both sides carry half the rear load.
-- **No differential lock.** The open differential is the only kind. Pulling
-  tractors may lock theirs (rules permitting): both sides would then turn
-  together, the brakes would steer much less, and the side on better
-  ground would pull more.
+- **The differential's coupling is viscous.** The pulling tractors'
+  differentials pass torque in proportion to the sides' speed difference
+  (a viscous limited-slip one). A lock that holds until a set torque and
+  then slips (a clutch-type limited-slip, or a dog lock the driver
+  engages) would hold the sides together better at a weak spot and give
+  way only to a hard brake; the scripted rivals do not steer back (see
+  "Later" in CLAUDE.md), so their drift stays within the lane.
 - **Brakes hold by Newton steps.** A brake that would carry its side
   through rest holds it with the torque found by up to eight steps: Newton
   steps (one more solve per held side), then, once a single held side is
@@ -620,8 +622,8 @@ for the big features; they are repeated at the end for completeness.
 - **The spots barely show on the heavy sled.** A hard spot bites the pan,
   which carries a small share of the 15 t until the box comes forward,
   and a weak spot costs grip the push-down then takes anyway: the crew's
-  line gains tenths of a metre. More impact (a weak spot under one tire
-  turning the tractor) is planned.
+  line gains tenths of a metre. A weak spot under one side now turns the
+  heavier tractors a little (the coupled differential).
 - **The sled's own rolling dominates the start.** Its eight tires roll
   with about 6 % of its weight on a prepared track (1/Bn and their own
   losses), some 13 kN, most of what a farm tractor pulls at the start, so

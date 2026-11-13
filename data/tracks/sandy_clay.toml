@@ -21,13 +21,15 @@ compaction = 0.7
 x_m = [0.0, 20.0, 40.0]
 value = [0.8, 0.8, 0.6]
 
-# Weak spots (track::WeakSpots): looser sand the roller did not firm. A
-# well-prepared track has only a few, and they are mild: the tires slip a
-# little more for a moment.
+# Weak spots (track::WeakSpots): looser sand the roller did not firm.
+# A well-prepared track has only a few, but one costs up to a fifth of
+# the grip: the tires slip more for a moment, and a spot under one side
+# turns a pulling tractor a little towards it.
 [track.weak_spots]
 every_m = 15.0
-length_m = 2.0
+length_m = 3.0       # patches from min_length_m to this long
+min_length_m = 1.0
 min_width_m = 1.0  # across the lane: from a patch under one wheel
-max_width_m = 3.0  # to one under both; each lies somewhere in it
-grip_loss = 0.06   # up to this share of the grip lost at a spot's middle
+max_width_m = 3.0  # to one under both rear sides; each lies somewhere across
+grip_loss = 0.2    # up to this share of the grip lost at a spot's middle
 seed = 71

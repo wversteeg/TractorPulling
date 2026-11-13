@@ -211,6 +211,15 @@ TEST(TrackLoader, ReadsTheWeakSpots) {
     EXPECT_EQ(spots.max_width_m, 3.0);
     EXPECT_EQ(spots.grip_loss, 0.12);
     EXPECT_EQ(spots.seed, 9U);
+    EXPECT_EQ(spots.min_length_m, 0.0) << "all as long without a shortest";
+    std::string patches = spotted;
+    patches.replace(patches.find("length_m = 2.0"), 14, "length_m = 2.0\nmin_length_m = 1.0");
+    const auto varied = parse_track(patches, "t.toml");
+    ASSERT_TRUE(varied.ok()) << varied.error().message;
+    EXPECT_EQ(varied.value().ground.weak_spots.value_or(track::WeakSpots{}).min_length_m, 1.0);
+    std::string too_long = spotted;
+    too_long.replace(too_long.find("length_m = 2.0"), 14, "length_m = 2.0\nmin_length_m = 2.5");
+    EXPECT_FALSE(parse_track(too_long, "t.toml").ok()) << "the shortest past the longest";
     std::string bad = spotted;
     bad.replace(bad.find("grip_loss = 0.12"), 16, "grip_loss = 0.9");
     const auto refused = parse_track(bad, "t.toml");

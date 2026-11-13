@@ -45,10 +45,14 @@ see it; the CSV gains the sideways position and heading:
 # ... ended 25.79 m to the left, heading 86.68°
 ```
 
-Each rear side has its own brake. An open differential drives the two
+Each rear side has its own brake. The differential drives the two
 sides, so braking one side slows it, sends the drive to the other, and
 turns the tractor towards the braked side, as farm tractors steer tight
-turns. Full pedal holds a side's wheels still where the brake can; in a
+turns. The pulling tractors' differentials are coupled (limited-slip,
+`[tractor.differential] coupling_nm_s_per_rad`): they also pass torque
+from a spinning side to the one that grips, so a weak spot under one side
+turns the tractor a little towards it (`HardSpotRuns.AWeakSpotUnderOneSideTurnsTheTractor`);
+a coupling of 0 is an open differential. Full pedal holds a side's wheels still where the brake can; in a
 high gear it takes more torque than the engine gives and stalls it:
 
 ```bash

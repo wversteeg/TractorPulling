@@ -121,6 +121,8 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 3; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.brakes.max_torque_nm = -1.0; }), ParamError::kBrakes);
+    EXPECT_EQ(with([](Params& p) { p.differential.coupling_nm_s_per_rad = -1.0; }),
+              ParamError::kDifferential);
     EXPECT_EQ(with([](Params& p) { p.front_tire.section_width_m = 0.0; }), ParamError::kFrontTire);
     EXPECT_EQ(with([](Params& p) { p.chassis.mass_kg = 0.0; }), ParamError::kChassis);
     EXPECT_EQ(with([](Params& p) { p.chassis.rear_axle_height_m = 0.7; }),
@@ -845,6 +847,62 @@ TEST(VehicleDifferential, OuterWheelsTurnFasterInATurn) {
         (pull.state.chassis.velocity_m_s + 0.5 * track_m * pull.state.chassis.yaw_rate_rad_s) /
             (pull.state.chassis.velocity_m_s - 0.5 * track_m * pull.state.chassis.yaw_rate_rad_s),
         0.01);
+}
+
+// The reference tractor with its differential coupled [N·m·s/rad].
+Pull coupled(double coupling_nm_s_per_rad) {
+    Params params = reference_params();
+    params.differential.coupling_nm_s_per_rad = coupling_nm_s_per_rad;
+    Pull pull;
+    pull.model = Model::create(params).value_or(reference_model());
+    pull.state = initial_state(pull.model);
+    return pull;
+}
+
+constexpr double kCoupling_nm_s_per_rad = 2000.0;
+
+// A weak spot under the left wheels: the open differential gives both sides
+// the same torque, so the tractor goes on all but straight; a coupled one passes
+// the spinning side's torque to the side that grips, which then pulls
+// harder, and the tractor turns towards the weak side (to the left).
+TEST(VehicleDifferential, ACoupledDifferentialTurnsTowardsAWeakSpot) {
+    Pull open = coupled(0.0);
+    open.ground.rear_left.grip_factor *= 0.7;
+    open.run(3, 14000.0, false, 6.0);
+    Pull locked = coupled(kCoupling_nm_s_per_rad);
+    locked.ground.rear_left.grip_factor *= 0.7;
+    locked.run(3, 14000.0, false, 6.0);
+    // (Through the open one the spinning side's own drag turns it a hair.)
+    EXPECT_GT(locked.state.chassis.heading_rad, 0.005);
+    EXPECT_GT(locked.state.chassis.heading_rad, 3.0 * std::abs(open.state.chassis.heading_rad))
+        << locked.state.chassis.heading_rad << " vs " << open.state.chassis.heading_rad;
+    EXPECT_GT(locked.last.rear_right.tire_force_n, locked.last.rear_left.tire_force_n);
+    // The left side still slips more, but less than through the open one.
+    EXPECT_GT(locked.last.rear_left.slip_ratio, locked.last.rear_right.slip_ratio);
+    EXPECT_LT(locked.last.rear_left.slip_ratio - locked.last.rear_right.slip_ratio,
+              open.last.rear_left.slip_ratio - open.last.rear_right.slip_ratio);
+    // On even ground the coupling changes nothing.
+    Pull even_open = coupled(0.0);
+    even_open.run(3, 14000.0, false, 6.0);
+    Pull even_locked = coupled(kCoupling_nm_s_per_rad);
+    even_locked.run(3, 14000.0, false, 6.0);
+    EXPECT_EQ(even_locked.state.chassis.position_m, even_open.state.chassis.position_m);
+    EXPECT_EQ(even_locked.state.chassis.heading_rad, 0.0);
+}
+
+// The coupling gives way: in a turn the outer wheels still turn faster, and
+// one brake still turns the tractor to its side.
+TEST(VehicleDifferential, ACoupledDifferentialStillTurnsAndBrakeSteers) {
+    Pull turning = coupled(kCoupling_nm_s_per_rad);
+    turning.steering_rad = 0.2;
+    turning.run(4, 5000.0, false, 10.0);
+    ASSERT_GT(turning.state.chassis.yaw_rate_rad_s, 0.0);
+    EXPECT_GT(turning.state.differential_rad_s, 0.0);
+    Pull braked = coupled(kCoupling_nm_s_per_rad);
+    braked.brake_right = 0.3;
+    braked.run(4, 5000.0, false, 12.0);
+    EXPECT_LT(braked.state.chassis.heading_rad, -0.02);
+    EXPECT_LT(braked.right_rad_s(), braked.left_rad_s());
 }
 
 TEST(VehicleBrakes, OneBrakeTurnsTheTractorToItsSide) {

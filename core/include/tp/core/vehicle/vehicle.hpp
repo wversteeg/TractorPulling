@@ -34,10 +34,23 @@ struct Brakes {
     double max_torque_nm = 0.0;
 };
 
+/// The differential between the rear sides. An open one gives both sides
+/// the same torque, so a side on a weak spot spins and costs the other side
+/// its grip too, and the tractor goes on straight. A coupled one (a
+/// limited-slip differential, or a lock that gives way) also passes torque
+/// from the faster side to the slower, in proportion to their speeds'
+/// difference: the side that grips pulls harder than the one that spins, so
+/// a weak spot under one side turns the tractor towards it. A hard brake on
+/// one side still turns the sides apart (brake steering).
+struct Differential {
+    /// Torque passed between the sides per rad/s of their speeds'
+    /// difference; 0 for an open differential [N·m·s/rad].
+    double coupling_nm_s_per_rad = 0.0;
+};
+
 /// A whole tractor: the components and how many rear tires share the drive.
-/// The rear tires are split evenly between the left and right side, which an
-/// open differential drives: it gives both sides the same torque and lets
-/// them turn at different speeds.
+/// The rear tires are split evenly between the left and right side, which
+/// the differential drives: it lets them turn at different speeds.
 struct Params {
     engine::Params engine;
     clutch::Params clutch;
@@ -51,6 +64,7 @@ struct Params {
     tire::Size front_tire;
     Steering steering;
     Brakes brakes;
+    Differential differential;
     chassis::Params chassis;
     /// Crankshaft to PTO shaft, in (0, 1]. The PTO is not simulated; class
     /// rules limit power measured there.
@@ -66,6 +80,8 @@ enum class ParamError : std::uint8_t {
     kFrontTire,
     kSteering,
     kBrakes,
+    /// The differential's coupling is negative or not a number.
+    kDifferential,
     kChassis,
     /// The chassis' rear axle height is not the rear tire's radius.
     kRearAxleHeight,
@@ -97,7 +113,7 @@ struct State {
     clutch::State clutch;
     driveline::State driveline;
     chassis::State chassis;
-    /// The open differential: half the right rear wheels' speed minus the
+    /// The differential: half the right rear wheels' speed minus the
     /// left's. The left wheels turn at the axle speed (the driveline's
     /// output) minus this, the right at the axle speed plus it [rad/s].
     double differential_rad_s = 0.0;

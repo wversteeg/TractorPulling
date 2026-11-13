@@ -36,6 +36,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (!std::isfinite(params.brakes.max_torque_nm) || params.brakes.max_torque_nm < 0.0) {
         return ParamError::kBrakes;
     }
+    if (!std::isfinite(params.differential.coupling_nm_s_per_rad) ||
+        params.differential.coupling_nm_s_per_rad < 0.0) {
+        return ParamError::kDifferential;
+    }
     if (chassis::validate(params.chassis)) {
         return ParamError::kChassis;
     }
@@ -99,17 +103,24 @@ Side rear_side(const tire::Params& tire, const tire::Footing& footing, double om
 
 // Everything the rear solve needs that the brakes do not change.
 //
-// The open differential gives both sides the same torque. Its two motions
-// separate: the axle (the sides' mean speed, driven through the gearbox) and
-// the difference d (half the right side's speed minus the left's), which
-// only the sides' unequal traction and brakes drive:
+// The differential gives both sides the same torque from the gearbox, and
+// its coupling passes c (ω_R - ω_L) = 2 c d from the faster side to the
+// slower. Its two motions separate: the axle (the sides' mean speed, driven
+// through the gearbox, which the coupling's torques cancel out of) and the
+// difference d (half the right side's speed minus the left's), which the
+// sides' unequal traction and brakes drive and the coupling damps:
 //
-//   2 I_s d' = -r (F_R - F_L) - (B_R - B_L)
+//   2 I_s d' = -r (F_R - F_L) - (B_R - B_L) - 4 c d
 //
 // with I_s one side's wheel inertia. Each side's traction is a line in its
 // own slip speed change, F = f + k (c ∓ r Δd) for the common change c, so
-// over a step Δd = a0 + a1 c, solved implicitly; the total traction is then
-// again a line in c, which the chain solve takes as one tire.
+// over a step Δd = a0 + a1 c, solved implicitly (the coupling at the step's
+// end, so a stiff one stays stable); the total traction is then again a
+// line in c, which the chain solve takes as one tire.
+// The coupling's torque 2 c d acts on both sides, against each other: on
+// their difference it counts four times.
+constexpr double kCouplingFactor = 4.0;
+
 struct RearProblem {
     coupling::ShaftPrediction engine;
     chassis::Prediction body;
@@ -156,10 +167,12 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
                            p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s, p.direction);
 
     const double slope_difference = p.slope_right - p.slope_left;
+    const double coupling = kCouplingFactor * params.differential.coupling_nm_s_per_rad;
     const double denominator =
-        2.0 * p.side_inertia_kg_m2 / p.dt_s + r * r * (p.slope_left + p.slope_right);
-    const double a0 =
-        (-r * (p.force_right_n - p.force_left_n) - (brake_right_nm - brake_left_nm)) / denominator;
+        2.0 * p.side_inertia_kg_m2 / p.dt_s + r * r * (p.slope_left + p.slope_right) + coupling;
+    const double a0 = (-r * (p.force_right_n - p.force_left_n) - (brake_right_nm - brake_left_nm) -
+                       coupling * state.differential_rad_s) /
+                      denominator;
     const double a1 = -r * slope_difference / denominator;
     const TireLine line{
         .force_n = p.force_left_n + p.force_right_n + r * slope_difference * a0,

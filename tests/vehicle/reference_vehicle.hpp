@@ -13,7 +13,9 @@
 
 namespace tp::vehicle::testing {
 
-// The reference light farm-stock tractor, as data/tractors/farm_stock_light.toml.
+// The reference light farm-stock tractor, as data/tractors/farm_stock_light.toml,
+// but with an open differential (no coupling): the core's tests show the
+// open one, the coupled one has its own (VehicleDifferential.*).
 inline Params reference_params() {
     return Params{
         .engine = engine::testing::reference_params(),
@@ -25,6 +27,7 @@ inline Params reference_params() {
         .steering = {.max_angle_rad = units::deg_to_rad(40.0),
                      .front_tires = tire::testing::front_cornering()},
         .brakes = {.max_torque_nm = 8000.0},
+        .differential = {.coupling_nm_s_per_rad = 0.0},
         .chassis = chassis::testing::reference_params(),
         .pto_efficiency = 0.9,
     };

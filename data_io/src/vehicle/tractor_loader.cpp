@@ -126,6 +126,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .front_tires = detail::read_cornering(reader, "tractor.steering.cornering"),
     };
     const vehicle::Brakes brakes{.max_torque_nm = reader.number("tractor.brakes.max_torque_nm")};
+    // Optional: an open differential without it.
+    const vehicle::Differential differential{
+        .coupling_nm_s_per_rad =
+            reader.optional_number("tractor.differential.coupling_nm_s_per_rad").value_or(0.0)};
     chassis::Params chassis{
         .mass_kg = reader.number("tractor.chassis.mass_kg"),
         .wheelbase_m = reader.number("tractor.chassis.wheelbase_m"),
@@ -201,6 +205,11 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         return detail::make_error(source, "tractor.brakes.max_torque_nm",
                                   "must be a finite number, not negative");
     }
+    if (!std::isfinite(differential.coupling_nm_s_per_rad) ||
+        differential.coupling_nm_s_per_rad < 0.0) {
+        return detail::make_error(source, "tractor.differential.coupling_nm_s_per_rad",
+                                  "must be a finite number, not negative");
+    }
 
     std::optional<LoadError> error;
     const auto engine = component(load_engine(resolve(base, engine_path), read), error);
@@ -229,6 +238,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .front_tire = front_tire,
         .steering = steering,
         .brakes = brakes,
+        .differential = differential,
         .chassis = chassis,
         .pto_efficiency = pto_efficiency,
     };
