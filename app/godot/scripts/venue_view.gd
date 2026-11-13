@@ -163,6 +163,12 @@ const FLOODLIGHTS := {
 	"evening": {"every_m": 20.0, "energy": 7.0, "range_m": 60.0, "parking": true},
 }
 const FLOODLIGHT_HEIGHT_M := 14.0
+# A floodlight's beam: this wide from its middle to its edge, and fading
+# this slowly towards the edge (Godot's spot_angle_attenuation, 1 linear):
+# wide and even enough, aimed at the track, to light the grass beside it
+# and the crowd at the fence too [deg, -].
+const FLOODLIGHT_SPREAD_DEG := 70.0
+const FLOODLIGHT_EDGE_FADE := 0.5
 const FLOODLIGHT := Color(1.0, 0.93, 0.8)
 # One more pair of masts this far past the track's end (over the run-off),
 # another beside the pile's crest (TrackEnd), and over the parking at these
@@ -963,7 +969,8 @@ func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float,
 	spot.light_color = FLOODLIGHT
 	spot.light_energy = float(lights["energy"])
 	spot.spot_range = float(lights["range_m"])
-	spot.spot_angle = 50.0
+	spot.spot_angle = FLOODLIGHT_SPREAD_DEG
+	spot.spot_angle_attenuation = FLOODLIGHT_EDGE_FADE
 	spot.shadow_enabled = false
 	spot.position = TrackSpace.point(at.x, at.y - 2.0 * inward, height_m)
 	parent.add_child(spot)

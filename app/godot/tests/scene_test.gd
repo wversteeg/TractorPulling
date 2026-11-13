@@ -305,6 +305,7 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 				- VenueView.PARKING_FROM_LANE_M.y else 0
 	_expect(past_120 and at_parking == VenueView.PARKING_LIGHTS_X_M.size(),
 			"evening lights past 120 m and over the parking: %s" % [venue.floodlight_masts()])
+	_check_floodlight_reach(venue, dimensions)
 	var pile := venue.track_end().pile_at_m()
 	var at_berm := 0
 	for mast in venue.floodlight_masts():
@@ -318,6 +319,36 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 				and posts[i].y < -(float(dimensions["lane_width_m"]) / 2.0 + rivals[i].y)
 	_expect(by_each and rivals.size() == VenueView.RIVAL_BAYS,
 			"a lamp post behind each rival's bay: %s, bays %s" % [posts, rivals])
+
+
+# Each floodlight along the track lights its own side's crowd at the fence
+# and the grass and fence across the track, not only the clay.
+func _check_floodlight_reach(venue: VenueView, dimensions: Dictionary) -> void:
+	var half_lane_m := float(dimensions["lane_width_m"]) / 2.0
+	var length_m := float(dimensions["track_length_m"])
+	var spots := 0
+	var reach := true
+	for child in venue.get_children():
+		var spot := child as SpotLight3D
+		if spot == null:
+			continue
+		var at := spot.global_position
+		# Back from TrackSpace: x down the track, y to the left.
+		var x_m := -at.z
+		var side := signf(-at.x)
+		if x_m > length_m + VenueView.END_LIGHTS_PAST_M - 1.0:
+			continue
+		spots += 1
+		var fence_m := half_lane_m + VenueView.FENCE_OUT_M
+		var crowd := TrackSpace.point(x_m, side * (fence_m + VenueView.past_lane_m(side) + 1.0), 1.5)
+		var across := TrackSpace.point(x_m, -side * (fence_m + VenueView.past_lane_m(-side)), 0.5)
+		var axis := -spot.global_basis.z
+		for target: Vector3 in [crowd, across]:
+			var to := target - at
+			reach = reach and rad_to_deg(axis.angle_to(to)) <= spot.spot_angle \
+					and to.length() <= spot.spot_range
+	_expect(spots > 0 and reach,
+			"the floodlights light the crowd and the far side too (%d along the track)" % spots)
 
 
 # A tractor behind a roll bar (the Sport classes) is drawn as a pulling
