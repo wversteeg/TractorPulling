@@ -255,8 +255,9 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 # Past the track's end: a pile of dirt across the track from 130 to 140 m
 # (on a 100 m track), a box trailer and pop-up tents behind it, at a club
 # or big event a generator, a big screen and more tents too. The screen
-# follows the tractor during the run and shows the standings after it. In the evening floodlights also
-# stand past the 120 m mark and over the parking.
+# follows the tractor during the run and shows the standings after it. At
+# sunset a few floodlights stand along the track; in the evening many more,
+# past the 120 m mark too and over the parking.
 func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	var length_m := float(dimensions["track_length_m"])
 	for size: String in ["small", "club", "big"]:
@@ -280,9 +281,21 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	_expect(end.screen_mode() == "standings" and end.screen_lines().size() == 2
 			and end.screen_lines()[0].contains("Henk") and end.screen_lines()[0].contains("96.20 m"),
 			"the screen shows the standings after the run: %s" % end.screen_lines())
-	venue.set_look({"size": "club", "time": "evening"})
+	venue.set_look({"size": "club", "time": "sunset"})
 	venue.set_parking_layout(0)
 	venue.build(dimensions)
+	var at_sunset := venue.floodlight_masts().size()
+	var on_parking := 0
+	for mast in venue.floodlight_masts():
+		on_parking += 1 if mast.x < -5.0 and mast.y < -float(dimensions["lane_width_m"]) / 2.0 \
+				- VenueView.PARKING_FROM_LANE_M.y else 0
+	_expect(at_sunset > 0 and on_parking == 0,
+			"a few floodlights at sunset, none over the parking: %s" % [venue.floodlight_masts()])
+	venue.set_look({"size": "club", "time": "evening"})
+	venue.build(dimensions)
+	_expect(venue.floodlight_masts().size() >= 2 * at_sunset,
+			"many more floodlights in the evening than at sunset: %d, %d"
+			% [venue.floodlight_masts().size(), at_sunset])
 	var past_120 := false
 	var at_parking := 0
 	for mast in venue.floodlight_masts():
