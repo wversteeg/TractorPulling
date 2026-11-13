@@ -88,6 +88,7 @@ package "GDScript (app/godot/scripts)" {
     +{static} weight_count(box_mass_kg) : int
     +{static} rear_of(dimensions) : float : 12.5 m from the hook
     +{static} pan_back_of(dimensions) : float : the sled's middle
+    +{static} pan_width() : float : room for the transport wheels beside it
   }
   class VenueView {
     +RETURN_LANE_M, PARKING_RIGHT_OF_LANE_M

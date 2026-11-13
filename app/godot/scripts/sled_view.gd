@@ -1,26 +1,28 @@
 # The sled, built in code from the run's sizes, after a modern transfer
 # sled, 12.5 m long and 2.55 m wide (the most a trailer may be on European
-# roads): two frame rails over the rear wheels to the hook, clad in painted
-# side covers the whole length with a fender over the tandem on each side,
-# the long pan sliding on the track from just behind the front fenders back
-# to the middle of the sled, the weight box (a closed carrier with a flat
-# deck, the weights inside) riding forward along the rails as the sled
-# advances, the hook on a drawbar ahead of the pan behind a wide black
-# rubber stop plate (the tractor's rear tires stop against it: the sled's
-# fenders, sled::Fenders), an orange flag post up front, a tandem axle of
-# dual wheels at the back (eight tires) and over it the operator's glass
-# cab beside the engine's housing, with a lamp on a mast. The push-down shows: as it comes on, the rear wheels are
-# lifted off the track (drawn a little higher than the few centimetres a
-# real sled lifts them, to be seen from the tractor's seat). The lamp is
-# green while the chain pulls on the hook, red once the sled has stopped
-# after the pull (until it drives back), and off otherwise.
+# roads): two frame rails over the rear wheels to the hook, a slim band of
+# side cover along the frame its whole length with a fender over the
+# tandem on each side, the long pan sliding on the track from just behind
+# the front fenders back to the middle of the sled, the weight box (a
+# closed carrier with a flat deck, the weights inside) riding forward
+# along the rails as the sled advances, the hook on a drawbar ahead of the
+# pan behind a wide black rubber stop plate and two big rubber fenders in
+# steel frames (the tractor's rear tires stop against them:
+# sled::Fenders), an orange flag post up front, a tandem axle of dual
+# wheels at the back (eight tires) and over it the operator's glass cab
+# beside the engine's housing, with a lamp on a mast. The push-down shows:
+# as it comes on, the rear wheels are lifted off the track (drawn a little
+# higher than the few centimetres a real sled lifts them, to be seen from
+# the tractor's seat). The lamp is green while the chain pulls on the
+# hook, red once the sled has stopped after the pull (until it drives
+# back), and off otherwise.
 #
-# Two transport wheels stand either side of the pan. Driving back the sled
-# rides on them with the pan lifted off the track: they come down as the
-# weight box runs back at the end of the pull. Before the next pull the
-# operator lifts them again, setting the pan down (the sled preparation,
-# while the tractor comes to the sled). The box holds as many weights as
-# its mass for the pull makes (show_box_mass).
+# Two transport wheels stand either side of the pan, at its front. Driving
+# back the sled rides on them with the pan lifted off the track: they come
+# down as the weight box runs back at the end of the pull. Before the next
+# pull the operator lifts them again, setting the pan down (the sled
+# preparation, while the tractor comes to the sled). The box holds as many
+# weights as its mass for the pull makes (show_box_mass).
 class_name SledView
 extends Node3D
 
@@ -36,13 +38,15 @@ const LAMP_DARK := Color(0.25, 0.25, 0.25)
 # The fenders: either side of the sled's line, where a tractor's rear tires
 # meet them; their size [m]. How far behind the hook their faces are comes
 # with the run's sizes.
-const FENDER_SIDE_M := 0.95
-const FENDER_SIZE_M := Vector3(0.55, 0.6, 0.18)
+const FENDER_SIDE_M := 0.83
+const FENDER_SIZE_M := Vector3(0.8, 0.95, 0.3)
+# The steel frame round each fender: its bars' thickness [m].
+const FENDER_FRAME_M := 0.06
 # The rubber stop plate across the front, over the fenders: this tall over
 # the hook's height and this much wider than the fenders reach, within the
 # sled's width [m].
-const STOP_PLATE_HEIGHT_M := 1.0
-const STOP_PLATE_PAST_M := 0.05
+const STOP_PLATE_HEIGHT_M := 1.2
+const STOP_PLATE_PAST_M := 0.0
 # The flag post up front on the left: its height over the rails, how far
 # out, and its flag [m].
 const FLAG_POST_M := 2.6
@@ -80,11 +84,12 @@ const BERM := Color(0.44, 0.31, 0.19)
 const OPERATOR := Color(0.78, 0.88, 0.15)
 const BERM_FLATNESS := 0.6        # its height, a share of its depth
 const BERM_WIDTH_M := WIDTH_M + 0.2  # across the pan, spilling a little past it
-# The side covers: from this high over the track up to this far over the
-# rails' top, and how far the fender over the tandem stands out from them
-# and clears the tires [m].
-const COVER_BOTTOM_M := 0.4
-const COVER_OVER_RAILS_M := 0.12
+# The side covers: a slim band along the frame, from this far under the
+# rails' top to this far over it, so the pan, the wheels and the frame
+# show beneath; and how far the fender over the tandem stands out from
+# them and clears the tires [m].
+const COVER_UNDER_RAILS_M := 0.4
+const COVER_OVER_RAILS_M := 0.1
 const COVER_THICK_M := 0.04
 const WHEEL_FENDER_OUT_M := 0.14
 # The side covers' outer faces: inside the sled's width by the fenders,
@@ -93,11 +98,15 @@ const COVER_HALF_M := WIDTH_M / 2.0 - WHEEL_FENDER_OUT_M
 const WHEEL_FENDER_CLEAR_M := 0.12
 const WHEEL_FENDER_PANELS := 6
 const COVER_STRIPE := Color(0.08, 0.08, 0.09)
-# The pan: its front edge this far behind the stop plate, leaving room
-# for the small front wheels; it reaches back to the middle of the sled
-# [m]. The front wheels stand this far behind the plate [m].
-const PAN_BEHIND_PLATE_M := 0.95
-const FRONT_WHEELS_BEHIND_PLATE_M := 0.45
+# The pan: its front edge this far behind the stop plate; it reaches back
+# to the middle of the sled [m]. The transport wheels stand beside it, this
+# far behind its front edge and this far clear of its side [m]; it is as
+# wide as leaves them room within the sled's width.
+const PAN_BEHIND_PLATE_M := 0.45
+const TRANSPORT_BEHIND_PAN_FRONT_M := 0.75
+const TRANSPORT_CLEAR_OF_PAN_M := 0.06
+# The pan's frame: a box beam along it, this deep [m].
+const PAN_FRAME_M := 0.25
 # The operator's platform: its front edge behind the wheels [m]. Where the
 # weight box starts behind the wheels, under it, the platform stands raised
 # on stilts with this much room over the box [m], as real sleds' operators
@@ -234,7 +243,7 @@ func build(d: Dictionary) -> void:
 	add_child(_pan)
 	var pan_front_m := plate_m - PAN_BEHIND_PLATE_M
 	var pan_back_m := pan_back_of(d)
-	var pan_width_m := 2.0 * (COVER_HALF_M - COVER_THICK_M) - 0.1
+	var pan_width_m := pan_width()
 	var pan := Art.box(Vector3(pan_width_m, 0.06, pan_front_m - pan_back_m), STEEL, 0.7)
 	pan.name = "Pan"
 	pan.position = TrackSpace.point((pan_front_m + pan_back_m) / 2.0, 0.0, 0.03)
@@ -243,11 +252,19 @@ func build(d: Dictionary) -> void:
 	lip.position = TrackSpace.point(pan_front_m + 0.12, 0.0, 0.12)
 	lip.rotation.x = 0.7
 	_pan.add_child(lip)
-	_add_transport_wheels(plate_m - FRONT_WHEELS_BEHIND_PLATE_M, rail_z_m)
-	for at_m: float in [pan_back_m + 0.3, (pan_back_m + pan_front_m) / 2.0, pan_front_m - 0.3]:
-		for side: float in [-1.0, 1.0]:
-			var hanger := _painted(Vector3(0.1, rail_z_m - 0.05, 0.1), PAINT_DARK)
-			hanger.position = TrackSpace.point(at_m, side * RAIL_GAP_M / 2.0, rail_z_m / 2.0)
+	_add_transport_wheels(pan_front_m - TRANSPORT_BEHIND_PAN_FRONT_M, rail_z_m)
+	# The pan's own frame, a low beam along it under each rail, hung from
+	# the rails at its ends (the frame lifts with the pan).
+	for side: float in [-1.0, 1.0]:
+		var pan_rail := _rounded(Vector3(0.14, PAN_FRAME_M, pan_front_m - pan_back_m - 0.2),
+				PAINT_DARK, ROUND_SMALL_M, Vector3.AXIS_Z)
+		pan_rail.position = TrackSpace.point((pan_front_m + pan_back_m) / 2.0,
+				side * RAIL_GAP_M / 2.0, 0.06 + PAN_FRAME_M / 2.0)
+		_pan.add_child(pan_rail)
+		for at_m: float in [pan_back_m + 0.4, pan_front_m - 0.4]:
+			var hanger := _painted(Vector3(0.12, rail_z_m - 0.06 - PAN_FRAME_M, 0.12), PAINT_DARK)
+			hanger.position = TrackSpace.point(at_m, side * RAIL_GAP_M / 2.0,
+					(rail_z_m + 0.06 + PAN_FRAME_M) / 2.0)
 			add_child(hanger)
 
 	# The tandem axle at the back, dual wheels at each end of each axle:
@@ -286,12 +303,20 @@ func build(d: Dictionary) -> void:
 	_show_lamp(LAMP_DARK)
 
 
-# The small front wheels: a pair in the middle, ahead of the pan and behind
-# the stop plate, on arms down from the rails: the arms slide, so the
-# wheels go up and down with `transport`. Within the sled's width.
+# The pan's width: the sled's, less a transport wheel, its clearance and
+# its hub either side [m].
+static func pan_width() -> float:
+	return WIDTH_M - 2.0 * (TRANSPORT_WIDTH_M + TRANSPORT_CLEAR_OF_PAN_M + Art.RIM_PROUD_M
+			+ Art.HUB_REACH_M + 0.01)
+
+
+# The small front wheels: one either side of the pan near its front, on
+# arms down from brackets off the rails: the arms slide, so the wheels go
+# up and down with `transport`. Within the sled's width.
 func _add_transport_wheels(at_m: float, rail_z_m: float) -> void:
 	for side: float in [-1.0, 1.0]:
-		var across_m := side * (TRANSPORT_WIDTH_M / 2.0 + 0.03)
+		var across_m := side * (pan_width() / 2.0 + TRANSPORT_CLEAR_OF_PAN_M
+				+ TRANSPORT_WIDTH_M / 2.0)
 		var holder := Node3D.new()
 		holder.position = TrackSpace.point(at_m, across_m, 0.0)
 		add_child(holder)
@@ -306,7 +331,7 @@ func _add_transport_wheels(at_m: float, rail_z_m: float) -> void:
 		_transport_wheels.append(holder)
 		_transport_spin.append(spin)
 		# The bracket from the rail the arm slides in.
-		var bracket := _painted(Vector3(RAIL_GAP_M / 2.0 - absf(across_m) + 0.1, 0.16, 0.16),
+		var bracket := _painted(Vector3(absf(across_m) - RAIL_GAP_M / 2.0 + 0.1, 0.16, 0.16),
 				PAINT_DARK)
 		bracket.position = TrackSpace.point(at_m, side * (RAIL_GAP_M / 2.0 + absf(across_m)) / 2.0,
 				rail_z_m)
@@ -363,13 +388,28 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 	beam.position = TrackSpace.point(beam_m, 0.0, hook_height_m)
 	add_child(beam)
 	for side: float in [-1.0, 1.0]:
-		var fender := Art.box(Vector3(FENDER_SIZE_M.x, FENDER_SIZE_M.y, FENDER_SIZE_M.z), RUBBER,
-				0.95)
+		var fender := Art.instance(Art.rounded_box(FENDER_SIZE_M, ROUND_SMALL_M, Vector3.AXIS_Z),
+				Art.material(RUBBER, 0.95))
 		fender.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * FENDER_SIDE_M,
 				hook_height_m + 0.1)
 		add_child(fender)
-		var leg := Art.box(Vector3(0.1, hook_height_m + 0.1, 0.1), STEEL, 0.5, 0.5)
-		leg.position = TrackSpace.point(beam_m, side * FENDER_SIDE_M, (hook_height_m + 0.1) / 2.0)
+		# Its steel frame: a bar along each side and across the top, the
+		# rubber standing proud of it.
+		var frame_depth_m := FENDER_SIZE_M.z * 0.6
+		var frame_x_m := face_m - FENDER_SIZE_M.z + frame_depth_m / 2.0
+		for edge: float in [-1.0, 1.0]:
+			var bar := _painted(Vector3(FENDER_FRAME_M, FENDER_SIZE_M.y, frame_depth_m),
+					PAINT_DARK)
+			bar.position = TrackSpace.point(frame_x_m, side * FENDER_SIDE_M
+					+ edge * (FENDER_SIZE_M.x - FENDER_FRAME_M) / 2.0, hook_height_m + 0.1)
+			add_child(bar)
+		var top := _painted(Vector3(FENDER_SIZE_M.x, FENDER_FRAME_M, frame_depth_m), PAINT_DARK)
+		top.position = TrackSpace.point(frame_x_m, side * FENDER_SIDE_M,
+				hook_height_m + 0.1 + (FENDER_SIZE_M.y + FENDER_FRAME_M) / 2.0)
+		add_child(top)
+		var leg_m := hook_height_m + 0.1 - FENDER_SIZE_M.y / 2.0
+		var leg := Art.box(Vector3(0.1, leg_m, 0.1), STEEL, 0.5, 0.5)
+		leg.position = TrackSpace.point(beam_m, side * FENDER_SIDE_M, leg_m / 2.0)
 		add_child(leg)
 	# The wide rubber plate behind the fenders: what the tractor's tires see
 	# coming back to the sled.
@@ -382,31 +422,33 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 	return beam_m - 0.1
 
 
-# The side covers along the whole sled, from the rear to the stop plate,
-# in the sled's paint with a dark stripe, open under the tandem where a
-# fender stands out over the wheels: its top over the tires and its ends
-# curving down round the front and the rear wheel.
+# The side covers along the whole sled, from the rear to the stop plate: a
+# slim band along the frame in the sled's darker paint with a thin dark
+# stripe, the pan, the wheels and the hangers showing beneath; over the
+# tandem a fender stands out over the wheels, its top over the tires and
+# its ends curving down round the front and the rear wheel.
 func _add_covers(rail_z_m: float, plate_m: float) -> void:
 	var top_z_m := rail_z_m + COVER_OVER_RAILS_M
+	var bottom_z_m := rail_z_m - COVER_UNDER_RAILS_M
 	var arch_half_m := TANDEM_HALF_M + _wheel_height_m + WHEEL_FENDER_CLEAR_M
 	var arch_top_z_m := 2.0 * _wheel_height_m + WHEEL_FENDER_CLEAR_M
 	for side: float in [-1.0, 1.0]:
 		var face_y := side * (COVER_HALF_M - COVER_THICK_M / 2.0)
 		# Behind and ahead of the tandem, down low; over it, above the arch.
-		for part: Vector4 in [Vector4(_rear_m, -arch_half_m, COVER_BOTTOM_M, top_z_m),
-				Vector4(arch_half_m, plate_m - 0.1, COVER_BOTTOM_M, top_z_m),
-				Vector4(-arch_half_m, arch_half_m, arch_top_z_m, top_z_m)]:
+		for part: Vector4 in [Vector4(_rear_m, -arch_half_m, bottom_z_m, top_z_m),
+				Vector4(arch_half_m, plate_m - 0.1, bottom_z_m, top_z_m),
+				Vector4(-arch_half_m, arch_half_m, maxf(arch_top_z_m, bottom_z_m), top_z_m)]:
 			if part.y - part.x <= 0.0 or part.w - part.z <= 0.0:
 				continue
-			var cover := _rounded(Vector3(COVER_THICK_M, part.w - part.z, part.y - part.x), PAINT,
-					0.015, Vector3.AXIS_Z)
+			var cover := _rounded(Vector3(COVER_THICK_M, part.w - part.z, part.y - part.x),
+					PAINT_DARK, 0.015, Vector3.AXIS_Z)
 			cover.name = "SideCover%d" % get_child_count()
 			cover.position = TrackSpace.point((part.x + part.y) / 2.0, face_y,
 					(part.z + part.w) / 2.0)
 			add_child(cover)
-		var stripe := Art.box(Vector3(0.01, 0.12, plate_m - _rear_m - 0.3), COVER_STRIPE, 0.6)
+		var stripe := Art.box(Vector3(0.01, 0.04, plate_m - _rear_m - 0.3), COVER_STRIPE, 0.6)
 		stripe.position = TrackSpace.point((plate_m + _rear_m) / 2.0, side * (COVER_HALF_M + 0.005),
-				top_z_m - 0.2)
+				top_z_m - 0.06)
 		add_child(stripe)
 		_add_wheel_fender(side, arch_top_z_m)
 
