@@ -69,16 +69,18 @@ const ROUND_SMALL_M := 0.05
 # housing ahead of it, hardly seen [m].
 const GLASS := Color(0.55, 0.7, 0.8, 0.35)
 const ENGINE := Color(0.13, 0.13, 0.14)
-const CAB_ACROSS_M := 1.7
+const CAB_ACROSS_M := 2.0
 const CAB_LENGTH_M := 1.4
 const CAB_BEHIND_M := 0.1           # the cab's back inside the sled's rear
 const ENGINE_HEIGHT_M := 0.3
 const ENGINE_ACROSS_M := 1.5
 # The sled reaches back at least this far past a weight box starting far
-# behind the wheels [m]; where the box starts under the cab, the cab
-# stands raised on posts this far over the box's top [m].
+# behind the wheels [m]. The rear section's covers rise round the box to
+# this far over its top, where the cab stands on four posts at the edges,
+# the box free to start beneath it [m].
 const REAR_PAST_BOX_M := 0.1
-const CAB_OVER_BOX_M := 0.1
+const COVER_OVER_BOX_M := 0.05
+const CAB_POST_M := 0.08
 const RUBBER := Color(0.06, 0.06, 0.06)
 # The sled's look: its width and length, the frame's clearance over the
 # rear wheels' tops, and the weight box's size [m].
@@ -90,10 +92,13 @@ const BERM := Color(0.44, 0.31, 0.19)
 const OPERATOR := Color(0.78, 0.88, 0.15)
 const BERM_FLATNESS := 0.6        # its height, a share of its depth
 const BERM_WIDTH_M := WIDTH_M + 0.2  # across the pan, spilling a little past it
-# The body over the pan: narrower than the pan, clad from just over the
-# pan (or this high over the track behind it) up to this far over the
-# weight box's bottom, so the box's upper part and its slabs show [m].
-const BODY_WIDTH_M := 1.7
+# The body: round the weight box, a little narrower than the pan, clad
+# from just over the pan (or this high over the track behind it) up to
+# this far over the box's bottom, so the box's upper part and its slabs
+# show [m]. Ahead of the box's furthest reach it narrows to the nose, the
+# transport wheels folding up beside it [m].
+const BODY_WIDTH_M := 2.48
+const NOSE_WIDTH_M := 1.7
 const COVER_THICK_M := 0.04
 const BODY_OVER_PAN_M := 0.1
 const COVER_GROUND_M := 0.3
@@ -114,19 +119,18 @@ const CAMERA_MOUNT_UP_M := 0.35
 # The box rides this far above the rails [m].
 const BOX_LIFT_M := 0.12
 const RAIL_GAP_M := 1.2
-const BOX_SIZE_M := Vector3(1.4, 0.8, 1.9)
+const BOX_SIZE_M := Vector3(2.36, 0.8, 1.9)
 const BOX_WALL_M := 0.05
 # How far the wheels are drawn lifted with the push-down fully set [m].
 const WHEEL_LIFT_M := 0.15
 const LUGS := 18
-# The transport wheels: their size; this far behind the pan's front edge,
-# and down, this far clear outside the pan; up, standing on the pan beside
+# The transport wheels, beside the nose: their size; down, this far clear
+# outside the pan; up, standing on the pan beside
 # the body, their middle this high [m]. How far down they lift the pan to
 # drive back [m]; and how quickly they go up or down (a share a second:
 # about two seconds).
 const TRANSPORT_RADIUS_M := 0.3
 const TRANSPORT_WIDTH_M := 0.22
-const TRANSPORT_BEHIND_PAN_FRONT_M := 0.75
 const TRANSPORT_CLEAR_OF_PAN_M := 0.03
 const TRANSPORT_UP_M := 0.75
 const TRANSPORT_ARM_M := 0.06
@@ -234,7 +238,10 @@ func build(d: Dictionary) -> void:
 	lip.position = TrackSpace.point(pan_front_m + 0.12, 0.0, 0.12)
 	lip.rotation.x = 0.7
 	_pan.add_child(lip)
-	_add_transport_wheels(pan_front_m - TRANSPORT_BEHIND_PAN_FRONT_M)
+	# The nose: from just ahead of the box's furthest reach forward.
+	var nose_from_m := minf(float(d.get("box_end_ahead_of_wheels_m", d["pan_ahead_of_wheels_m"]))
+			+ BOX_SIZE_M.z / 2.0 + 0.1, nose_m - 2.0 * TRANSPORT_RADIUS_M - 0.2)
+	_add_transport_wheels((nose_from_m + nose_m) / 2.0)
 
 	# The tandem axle at the back, dual wheels at each end of each axle:
 	# eight tires, together as wide as the sled, their hubs included.
@@ -250,7 +257,7 @@ func build(d: Dictionary) -> void:
 		for side: float in [-1.0, 1.0]:
 			_add_wheel(axle_m, side * inner_m, tire_m)
 			_add_wheel(axle_m, side * outer_m, tire_m)
-	_add_body(rail_z_m, nose_m, pan_back_m)
+	_add_body(rail_z_m, nose_from_m, nose_m, pan_back_m)
 	_add_rear_section(rail_z_m)
 	_add_flag_post(pan_front_m, rail_z_m)
 
@@ -274,7 +281,7 @@ func build(d: Dictionary) -> void:
 
 
 # The transport wheels: one either side of the pan near its front, each
-# on an arm hinged off a bracket from the body. Swung down (`transport` 1)
+# on an arm hinged off a bracket from the nose. Swung down (`transport` 1)
 # the wheel stands on the track outside the pan; swung up and over (0) it
 # stands on the pan beside the body, within the sled's width. Its hub
 # faces out when down, so in when up.
@@ -282,15 +289,15 @@ func _add_transport_wheels(at_m: float) -> void:
 	var hub_m := Art.RIM_PROUD_M + Art.HUB_REACH_M
 	var down := Vector2(WIDTH_M / 2.0 + TRANSPORT_CLEAR_OF_PAN_M + TRANSPORT_WIDTH_M / 2.0,
 			TRANSPORT_RADIUS_M)
-	var up := Vector2(BODY_WIDTH_M / 2.0 + 0.02 + hub_m + TRANSPORT_WIDTH_M / 2.0,
+	var up := Vector2(NOSE_WIDTH_M / 2.0 + 0.02 + hub_m + TRANSPORT_WIDTH_M / 2.0,
 			TRANSPORT_UP_M)
 	# The hinge halfway: half a turn about it takes the wheel from one to
 	# the other.
 	var hinge := (down + up) / 2.0
 	var arm := down - hinge
 	for side: float in [-1.0, 1.0]:
-		var bracket := _painted(Vector3(hinge.x - BODY_WIDTH_M / 2.0, 0.12, 0.16), PAINT_DARK)
-		bracket.position = TrackSpace.point(at_m, side * (hinge.x + BODY_WIDTH_M / 2.0) / 2.0,
+		var bracket := _painted(Vector3(hinge.x - NOSE_WIDTH_M / 2.0, 0.12, 0.16), PAINT_DARK)
+		bracket.position = TrackSpace.point(at_m, side * (hinge.x + NOSE_WIDTH_M / 2.0) / 2.0,
 				hinge.y)
 		add_child(bracket)
 		var holder := Node3D.new()
@@ -394,50 +401,56 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 	return beam_m - 0.1
 
 
-# The body from the nose back to the rear section, narrower than the pan,
-# in the sled's paint with a thin dark stripe: its sides clad from just
-# over the pan (behind the pan, from COVER_GROUND_M; over the tandem, from
-# over the tires) up past the box's bottom; a rounded nose and a deck over
-# the front, where the box never comes. Over the tandem on each side a
-# fender out to the sled's width.
-func _add_body(rail_z_m: float, nose_m: float, pan_back_m: float) -> void:
+# The body from the rear section to the nose, a little narrower than the
+# pan, in the sled's paint with a thin dark stripe: its sides clad from
+# just over the pan (behind the pan, from COVER_GROUND_M; over the tandem,
+# from over the tires) up past the box's bottom, a floor inside for the box
+# to run over; ahead of the box's reach it narrows to the nose, decked
+# over. Over the tandem on each side a fender out to the sled's width.
+func _add_body(rail_z_m: float, nose_from_m: float, nose_m: float, pan_back_m: float) -> void:
 	var top_z_m := rail_z_m + BOX_LIFT_M + BODY_OVER_BOX_M
 	var arch_half_m := TANDEM_HALF_M + _wheel_height_m + WHEEL_FENDER_CLEAR_M
 	var arch_top_z_m := 2.0 * _wheel_height_m + WHEEL_FENDER_CLEAR_M
-	var half_m := BODY_WIDTH_M / 2.0
 	for side: float in [-1.0, 1.0]:
-		var face_y := side * (half_m - COVER_THICK_M / 2.0)
-		# Over the pan, behind it, and over the tandem.
-		for part: Vector4 in [Vector4(pan_back_m, nose_m, BODY_OVER_PAN_M, top_z_m),
-				Vector4(arch_half_m, pan_back_m, COVER_GROUND_M, top_z_m),
-				Vector4(-arch_half_m, arch_half_m, arch_top_z_m, top_z_m)]:
-			if part.y - part.x <= 0.0 or part.w - part.z <= 0.0:
+		# Over the pan, behind it, and over the tandem; and the nose's sides
+		# (from, to, bottom, width).
+		for part: Vector4 in [Vector4(pan_back_m, nose_from_m, BODY_OVER_PAN_M, BODY_WIDTH_M),
+				Vector4(arch_half_m, pan_back_m, COVER_GROUND_M, BODY_WIDTH_M),
+				Vector4(-arch_half_m, arch_half_m, arch_top_z_m, BODY_WIDTH_M),
+				Vector4(nose_from_m, nose_m, BODY_OVER_PAN_M, NOSE_WIDTH_M)]:
+			if part.y - part.x <= 0.0:
 				continue
-			var cover := _rounded(Vector3(COVER_THICK_M, part.w - part.z, part.y - part.x), PAINT,
-					0.015, Vector3.AXIS_Z)
+			var cover := _rounded(Vector3(COVER_THICK_M, top_z_m - part.z, part.y - part.x),
+					PAINT, 0.015, Vector3.AXIS_Z)
 			cover.name = "SideCover%d" % get_child_count()
-			cover.position = TrackSpace.point((part.x + part.y) / 2.0, face_y,
-					(part.z + part.w) / 2.0)
+			cover.position = TrackSpace.point((part.x + part.y) / 2.0,
+					side * (part.w - COVER_THICK_M) / 2.0, (part.z + top_z_m) / 2.0)
 			add_child(cover)
-		var stripe := Art.box(Vector3(0.01, 0.05, nose_m + arch_half_m - 0.2), COVER_STRIPE, 0.6)
-		stripe.position = TrackSpace.point((nose_m - arch_half_m) / 2.0,
-				side * (half_m + 0.005), top_z_m - 0.12)
+		# The shoulder where the body narrows to the nose.
+		var shoulder := _painted(Vector3((BODY_WIDTH_M - NOSE_WIDTH_M) / 2.0,
+				top_z_m - BODY_OVER_PAN_M, COVER_THICK_M), PAINT)
+		shoulder.position = TrackSpace.point(nose_from_m, side * (BODY_WIDTH_M + NOSE_WIDTH_M)
+				/ 4.0, (top_z_m + BODY_OVER_PAN_M) / 2.0)
+		add_child(shoulder)
+		var stripe := Art.box(Vector3(0.01, 0.05, nose_from_m + arch_half_m - 0.1), COVER_STRIPE,
+				0.6)
+		stripe.position = TrackSpace.point((nose_from_m - arch_half_m) / 2.0,
+				side * (BODY_WIDTH_M / 2.0 + 0.005), top_z_m - 0.12)
 		add_child(stripe)
 		_add_wheel_fender(side, arch_top_z_m)
-	var nose := _rounded(Vector3(BODY_WIDTH_M, top_z_m - BODY_OVER_PAN_M, 0.12), PAINT,
+	var nose := _rounded(Vector3(NOSE_WIDTH_M, top_z_m - BODY_OVER_PAN_M, 0.12), PAINT,
 			ROUND_M, Vector3.AXIS_Y)
 	nose.position = TrackSpace.point(nose_m - 0.06, 0.0, (top_z_m + BODY_OVER_PAN_M) / 2.0)
 	add_child(nose)
 	# The body's floor between the rails' tops, from the rear section to
 	# the nose, the box running over it.
-	var floor := Art.box(Vector3(BODY_WIDTH_M - 2.0 * COVER_THICK_M, 0.04, nose_m + arch_half_m),
-			STEEL, 0.6, 0.4)
-	floor.position = TrackSpace.point((nose_m - arch_half_m) / 2.0, 0.0, rail_z_m + 0.08)
+	var floor := Art.box(Vector3(BODY_WIDTH_M - 2.0 * COVER_THICK_M, 0.04,
+			nose_from_m + arch_half_m), STEEL, 0.6, 0.4)
+	floor.position = TrackSpace.point((nose_from_m - arch_half_m) / 2.0, 0.0, rail_z_m + 0.08)
 	add_child(floor)
-	# The deck over the nose: from past the box's furthest reach forward.
-	var deck_from_m := nose_m - 1.0
-	var deck := _painted(Vector3(BODY_WIDTH_M, 0.06, nose_m - deck_from_m), PAINT_DARK)
-	deck.position = TrackSpace.point((nose_m + deck_from_m) / 2.0, 0.0, top_z_m - 0.03)
+	# The deck over the nose and the shoulders.
+	var deck := _painted(Vector3(BODY_WIDTH_M, 0.06, nose_m - nose_from_m), PAINT_DARK)
+	deck.position = TrackSpace.point((nose_m + nose_from_m) / 2.0, 0.0, top_z_m - 0.03)
 	add_child(deck)
 
 
@@ -466,8 +479,10 @@ func _add_wheel_fender(side: float, arch_top_z_m: float) -> void:
 
 
 # The rear section behind the tandem: closed all round, as wide as the
-# sled, from COVER_GROUND_M over the track up to its deck, where the
-# engine and the cab stand. A dark stripe along it as along the body.
+# sled, from COVER_GROUND_M over the track up to its deck, and its covers
+# rising at the sides and the back round the weight box where it starts,
+# open ahead for the box to run out; the engine stands on the deck within
+# them, the cab on top. A dark stripe along it as along the body.
 func _add_rear_section(rail_z_m: float) -> void:
 	var front_m := -(TANDEM_HALF_M + _wheel_height_m + WHEEL_FENDER_CLEAR_M)
 	var deck_z_m := rail_z_m + DECK_OVER_RAILS_M
@@ -484,6 +499,24 @@ func _add_rear_section(rail_z_m: float) -> void:
 		stripe.position = TrackSpace.point((front_m + _rear_m) / 2.0, side * (WIDTH_M / 2.0
 				- 0.0025), deck_z_m - 0.15)
 		add_child(stripe)
+	var wall_top_z_m := _cab_floor_z(rail_z_m)
+	for side: float in [-1.0, 1.0]:
+		var wall := _rounded(Vector3(COVER_THICK_M, wall_top_z_m - deck_z_m, front_m - _rear_m),
+				PAINT, 0.015, Vector3.AXIS_Z)
+		wall.name = "RearCover%d" % (0 if side > 0.0 else 1)
+		wall.position = TrackSpace.point((front_m + _rear_m) / 2.0,
+				side * (WIDTH_M - COVER_THICK_M) / 2.0, (deck_z_m + wall_top_z_m) / 2.0)
+		add_child(wall)
+	var back := _rounded(Vector3(WIDTH_M, wall_top_z_m - deck_z_m, COVER_THICK_M), PAINT, 0.015,
+			Vector3.AXIS_Y)
+	back.position = TrackSpace.point(_rear_m + COVER_THICK_M / 2.0, 0.0,
+			(deck_z_m + wall_top_z_m) / 2.0)
+	add_child(back)
+
+
+# The cab's floor over the track: on the rear covers' top, over the box [m].
+static func _cab_floor_z(rail_z_m: float) -> float:
+	return rail_z_m + BOX_LIFT_M + BOX_SIZE_M.y + COVER_OVER_BOX_M
 
 
 # The flag post up front on the left: an orange post from the body with a
@@ -491,7 +524,7 @@ func _add_rear_section(rail_z_m: float) -> void:
 func _add_flag_post(pan_ahead_m: float, rail_z_m: float) -> void:
 	var at_m := pan_ahead_m
 	var from_z_m := rail_z_m + BOX_LIFT_M + BODY_OVER_BOX_M
-	var out_m := BODY_WIDTH_M / 2.0 - FLAG_POST_IN_M
+	var out_m := NOSE_WIDTH_M / 2.0 - FLAG_POST_IN_M
 	var post := _painted(Vector3(0.09, FLAG_POST_M, 0.09), PAINT)
 	post.position = TrackSpace.point(at_m, out_m, from_z_m + FLAG_POST_M / 2.0)
 	add_child(post)
@@ -560,24 +593,23 @@ func _build_box() -> void:
 # frame, the roof in the sled's paint, the operator seated facing the
 # tractor; the engine's low dark housing between the cab and the box's
 # rear at its start; the exhaust stack and the lamp's mast at the cab's
-# back corners. A class whose box starts far behind the wheels (its weight
-# levers the pan up for the start) has it start under the cab: there the
-# cab stands raised on four posts, the box running out beneath it, and
-# the engine sits out of sight below the deck.
+# back corners. The cab stands on four posts at the sled's edges, clear of
+# the box: a class whose box starts far behind the wheels (its weight
+# levers the pan up for the start) has it start beneath the cab, and the
+# engine then sits out of sight.
 func _build_cab(rail_z_m: float, box_rear_m: float) -> void:
 	var cab_back_m := _rear_m + CAB_BEHIND_M
 	var cab_front_m := cab_back_m + CAB_LENGTH_M
 	var cab_x_m := (cab_back_m + cab_front_m) / 2.0
-	var deck_z_m := rail_z_m + DECK_OVER_RAILS_M
-	if box_rear_m < cab_front_m + 0.1:
-		var raised_m := BOX_LIFT_M + BOX_SIZE_M.y + CAB_OVER_BOX_M - DECK_OVER_RAILS_M
-		for x_m: float in [cab_back_m + 0.05, cab_front_m - 0.05]:
-			for side: float in [-1.0, 1.0]:
-				var leg := _painted(Vector3(0.1, raised_m, 0.1), PAINT_DARK)
-				leg.position = TrackSpace.point(x_m, side * (CAB_ACROSS_M / 2.0 - 0.05),
-						deck_z_m + raised_m / 2.0)
-				add_child(leg)
-		deck_z_m += raised_m
+	var deck_z_m := _cab_floor_z(rail_z_m)
+	var post_z_m := rail_z_m + DECK_OVER_RAILS_M
+	for x_m: float in [cab_back_m + CAB_POST_M, cab_front_m - CAB_POST_M]:
+		for side: float in [-1.0, 1.0]:
+			var post := _painted(Vector3(CAB_POST_M, deck_z_m - post_z_m, CAB_POST_M), PAINT_DARK)
+			# Half in the rear cover, clear of the box.
+			post.position = TrackSpace.point(x_m, side * (WIDTH_M / 2.0 - COVER_THICK_M
+					- CAB_POST_M / 2.0 + 0.03), (post_z_m + deck_z_m) / 2.0)
+			add_child(post)
 	var floor := Art.box(Vector3(CAB_ACROSS_M + 0.1, 0.06, CAB_LENGTH_M + 0.1), STEEL, 0.5, 0.5)
 	floor.position = TrackSpace.point(cab_x_m, 0.0, deck_z_m + 0.03)
 	add_child(floor)
@@ -617,15 +649,15 @@ func _build_cab(rail_z_m: float, box_rear_m: float) -> void:
 	add_child(canopy)
 	var engine_from_m := cab_front_m + 0.1
 	var engine_to_m := box_rear_m - 0.1
-	if engine_to_m - engine_from_m > 0.2 and box_rear_m >= cab_front_m + 0.1:
+	if engine_to_m - engine_from_m > 0.2:
 		var engine := Art.instance(Art.rounded_box(Vector3(ENGINE_ACROSS_M, ENGINE_HEIGHT_M,
 				engine_to_m - engine_from_m), ROUND_SMALL_M, Vector3.AXIS_Z),
 				Art.paint(ENGINE, 0.6))
 		engine.position = TrackSpace.point((engine_from_m + engine_to_m) / 2.0, 0.0,
-				deck_z_m + ENGINE_HEIGHT_M / 2.0)
+				post_z_m + ENGINE_HEIGHT_M / 2.0)
 		add_child(engine)
 	var corner_y_m := CAB_ACROSS_M / 2.0 + 0.12
-	var stack_from_m := rail_z_m + DECK_OVER_RAILS_M
+	var stack_from_m := deck_z_m
 	var stack_m := deck_z_m + CANOPY_M + 0.4 - stack_from_m
 	var exhaust := Art.cylinder(0.07, stack_m, Color(0.75, 0.75, 0.78), 10, 0.25, 0.9)
 	exhaust.position = TrackSpace.point(cab_back_m + 0.2, -corner_y_m, stack_from_m + stack_m / 2.0)
