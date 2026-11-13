@@ -432,9 +432,6 @@ TEST(Track, RejectsNonsenseWeakSpots) {
     }
 }
 
-// A spot lies somewhere across the lane, at least partly in it, any point
-// of the lane as likely to be in one: at full strength over the middle
-// half of its width, fading to nothing at its edges, and nothing beside it.
 // Spots are patches: with a shortest length each lies its own length
 // between it and the longest, and their strength fades evenly from the
 // middle to the ellipse's edge, along as across.
@@ -476,6 +473,10 @@ TEST(Track, SpotsArePatchesOfTheirOwnLength) {
     EXPECT_EQ(validate(params), ParamError::kWeakSpots) << "shorter than kMinSpotLength_m";
 }
 
+// A spot lies somewhere across the lane, at least partly in it, any point
+// of the lane as likely to be in one: at its peak in the middle, fading
+// evenly to nothing at its edge (a cone over the ellipse), and nothing
+// beside it.
 TEST(Track, SpotsLieAcrossTheLane) {
     Params params = reference_params();
     params.weak_spots = WeakSpots{.every_m = 6.0,

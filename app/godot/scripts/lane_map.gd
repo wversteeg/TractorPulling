@@ -2,11 +2,11 @@
 # (TractorPullEvent.get_crew_report()): the start line at the bottom, the
 # full-pull line at the top, the chalk lines at the sides, the driver's left
 # on the left. Each spot the crew reports is drawn where they think it is,
-# as a patch (an ellipse), blurred by how sure they are: hard spots (where the sled drags harder) in
-# dry clay's tan, weak spots (where the tires grip less) in a wet blue, the
-# stronger the darker. Over them the line the player has chosen: the rear
-# tires' tracks and the sled's pan between them, and a notch where the crew
-# would start.
+# as a patch (an ellipse), blurred by how sure they are: hard spots (where
+# the sled drags harder) in dry clay's tan, weak spots (where the tires
+# grip less) in a wet blue, the stronger the darker. Over them the line
+# the player has chosen: the rear tires' tracks and the sled's pan between
+# them, and a notch where the crew would start.
 class_name LaneMap
 extends Control
 
