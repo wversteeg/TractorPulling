@@ -32,8 +32,9 @@ enum class Part : std::uint8_t {
     /// The rear tires' traction limit (tire::Traction::limit): worn tires,
     /// new ones, a bigger size.
     kRearTraction,
-    /// The ballast's mass [kg] (chassis::with_ballast_mass): weights bought
-    /// up to the class's mass.
+    /// The free weight [kg] (chassis::with_free_weight): the tractor is at
+    /// its class's mass with its weights fixed at the back; each level
+    /// frees more of them to be moved, up to all of them.
     kBallastMass,
     /// The drawbar's height [m]: higher transfers more weight to the rear
     /// tires, up to the class's limit.

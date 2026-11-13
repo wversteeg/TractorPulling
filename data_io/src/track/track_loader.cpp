@@ -88,14 +88,16 @@ FieldError describe(track::ParamError error) {
             return {"track.hard_spots",
                     "every_m must be at least " + number(track::kMinSpotSpacing_m) +
                         ", length_m in " + range(track::kMinSpotLength_m, track::kMaxSpotLength_m) +
-                        ", min_width_m from " + number(track::kMinSpotWidth_m) +
+                        " (min_length_m, if given, from " + number(track::kMinSpotLength_m) +
+                        " up to it)" + ", min_width_m from " + number(track::kMinSpotWidth_m) +
                         " up to max_width_m, at most the lane's width, and extra in " +
                         range(0.0, track::kMaxHardSpotExtra)};
         case ParamError::kWeakSpots:
             return {"track.weak_spots",
                     "every_m must be at least " + number(track::kMinSpotSpacing_m) +
                         ", length_m in " + range(track::kMinSpotLength_m, track::kMaxSpotLength_m) +
-                        ", min_width_m from " + number(track::kMinSpotWidth_m) +
+                        " (min_length_m, if given, from " + number(track::kMinSpotLength_m) +
+                        " up to it)" + ", min_width_m from " + number(track::kMinSpotWidth_m) +
                         " up to max_width_m, at most the lane's width, and grip_loss in " +
                         range(0.0, track::kMaxWeakSpotGripLoss)};
         case ParamError::kSpotsAcross:
@@ -130,6 +132,7 @@ std::optional<track::HardSpots> hard_spots(detail::Reader& reader) {
     return track::HardSpots{
         .every_m = reader.number("track.hard_spots.every_m"),
         .length_m = reader.number("track.hard_spots.length_m"),
+        .min_length_m = reader.optional_number("track.hard_spots.min_length_m").value_or(0.0),
         .min_width_m = reader.number("track.hard_spots.min_width_m"),
         .max_width_m = reader.number("track.hard_spots.max_width_m"),
         .extra = reader.number("track.hard_spots.extra"),
@@ -145,6 +148,7 @@ std::optional<track::WeakSpots> weak_spots(detail::Reader& reader) {
     return track::WeakSpots{
         .every_m = reader.number("track.weak_spots.every_m"),
         .length_m = reader.number("track.weak_spots.length_m"),
+        .min_length_m = reader.optional_number("track.weak_spots.min_length_m").value_or(0.0),
         .min_width_m = reader.number("track.weak_spots.min_width_m"),
         .max_width_m = reader.number("track.weak_spots.max_width_m"),
         .grip_loss = reader.number("track.weak_spots.grip_loss"),
@@ -188,6 +192,8 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
         .sled =
             {
                 .pushdown_start_m = reader.optional_number("track.pushdown.start_m"),
+                .box_travel_distance_m =
+                    reader.optional_number("track.weight_box.travel_distance_m"),
             },
         .setup_tip = reader.optional_text("track.setup_tip"),
     };
@@ -208,6 +214,10 @@ Result<Track> read_track(const toml::table& root, std::string_view source) {
     }
     if (!valid_distance(track.sled.pushdown_start_m)) {
         return detail::make_error(source, "track.pushdown.start_m", "must be >= 0");
+    }
+    // Whether it is one of the sled's gears is checked with the sled.
+    if (track.sled.box_travel_distance_m && !(*track.sled.box_travel_distance_m > 0.0)) {
+        return detail::make_error(source, "track.weight_box.travel_distance_m", "must be > 0");
     }
     return track;
 }

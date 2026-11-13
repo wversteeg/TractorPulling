@@ -43,6 +43,10 @@ const LAMP_DARK := Color(0.25, 0.25, 0.25)
 # meet them; their size [m]. How far behind the hook their faces are comes
 # with the run's sizes.
 const FENDER_SIDE_M := 0.83
+# The cross beam the fenders hang on, at the tractor's rear tires' height:
+# the chain's hook sits low on the pan's nose (a few centimetres up), the
+# fenders the tires stop against well above it.
+const FENDER_BEAM_Z_M := 0.45
 const FENDER_SIZE_M := Vector3(0.8, 0.95, 0.3)
 # The folding rubber fenders out at the ends, unfolded for the pull: each
 # this wide past the stop plate and this thick [m].
@@ -239,10 +243,11 @@ func build(d: Dictionary) -> void:
 		rail.position = TrackSpace.point((_rear_m + rail_to_m) / 2.0, side * RAIL_GAP_M / 2.0,
 				rail_z_m)
 		add_child(rail)
-	var hook_plate := Art.box(Vector3(0.4, 0.2, 0.2), DARK, 0.4, 0.6)
+	# The hook on the pan's nose, a few centimetres over the track.
+	var hook_plate := Art.box(Vector3(0.4, 0.1, 0.2), DARK, 0.4, 0.6)
 	hook_plate.position = TrackSpace.point(hook_ahead_m - 0.1, 0.0, hook_height_m)
 	_pan.add_child(hook_plate)
-	var ring := Art.instance(_ring(0.09, 0.025), Art.material(DARK, 0.3, 0.8))
+	var ring := Art.instance(_ring(0.06, 0.02), Art.material(DARK, 0.3, 0.8))
 	ring.position = TrackSpace.point(hook_ahead_m, 0.0, hook_height_m)
 	_pan.add_child(ring)
 	_hook.position = TrackSpace.point(hook_ahead_m, 0.0, hook_height_m)
@@ -280,7 +285,7 @@ func build(d: Dictionary) -> void:
 			_add_wheel(axle_m, side * outer_m, tire_m)
 	_add_body(rail_z_m, nose_m, pan_back_m, wheels_at_m - TRANSPORT_RADIUS_M - 0.1)
 	_add_rear_section(rail_z_m)
-	_add_flag_post(plate_m, hook_height_m)
+	_add_flag_post(plate_m)
 
 	# The berm, built at a unit size; show_snapshot scales it to the soil.
 	_berm_ahead_m = pan_front_m + 0.25
@@ -383,16 +388,17 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 	var face_m := hook_ahead_m - behind_hook_m
 	var beam_m := face_m - FENDER_SIZE_M.z - 0.06
 	var beam := _painted(Vector3(2.0 * FENDER_SIDE_M + FENDER_SIZE_M.x, 0.12, 0.12), PAINT_DARK)
-	beam.position = TrackSpace.point(beam_m, 0.0, hook_height_m)
+	beam.position = TrackSpace.point(beam_m, 0.0, FENDER_BEAM_Z_M)
 	_pan.add_child(beam)
-	var drawbar := _painted(Vector3(0.14, 0.14, hook_ahead_m - 0.2 - beam_m), PAINT_DARK)
+	# The hook's tongue, low along the pan's nose to the hook.
+	var drawbar := _painted(Vector3(0.14, 0.1, hook_ahead_m - 0.2 - beam_m), PAINT_DARK)
 	drawbar.position = TrackSpace.point((hook_ahead_m - 0.2 + beam_m) / 2.0, 0.0, hook_height_m)
 	_pan.add_child(drawbar)
 	for side: float in [-1.0, 1.0]:
 		var fender := Art.instance(Art.rounded_box(FENDER_SIZE_M, ROUND_SMALL_M, Vector3.AXIS_Z),
 				Art.material(RUBBER, 0.95))
 		fender.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * FENDER_SIDE_M,
-				hook_height_m + 0.1)
+				FENDER_BEAM_Z_M + 0.1)
 		_pan.add_child(fender)
 		# Its steel frame: a bar along each side and across the top, the
 		# rubber standing proud of it.
@@ -402,13 +408,13 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 			var bar := _painted(Vector3(FENDER_FRAME_M, FENDER_SIZE_M.y, frame_depth_m),
 					PAINT_DARK)
 			bar.position = TrackSpace.point(frame_x_m, side * FENDER_SIDE_M
-					+ edge * (FENDER_SIZE_M.x - FENDER_FRAME_M) / 2.0, hook_height_m + 0.1)
+					+ edge * (FENDER_SIZE_M.x - FENDER_FRAME_M) / 2.0, FENDER_BEAM_Z_M + 0.1)
 			_pan.add_child(bar)
 		var top := _painted(Vector3(FENDER_SIZE_M.x, FENDER_FRAME_M, frame_depth_m), PAINT_DARK)
 		top.position = TrackSpace.point(frame_x_m, side * FENDER_SIDE_M,
-				hook_height_m + 0.1 + (FENDER_SIZE_M.y + FENDER_FRAME_M) / 2.0)
+				FENDER_BEAM_Z_M + 0.1 + (FENDER_SIZE_M.y + FENDER_FRAME_M) / 2.0)
 		_pan.add_child(top)
-		var leg_m := hook_height_m + 0.1 - FENDER_SIZE_M.y / 2.0
+		var leg_m := FENDER_BEAM_Z_M + 0.1 - FENDER_SIZE_M.y / 2.0
 		var leg := Art.box(Vector3(0.1, leg_m, 0.1), STEEL, 0.5, 0.5)
 		leg.position = TrackSpace.point(beam_m, side * FENDER_SIDE_M, leg_m / 2.0)
 		_pan.add_child(leg)
@@ -418,7 +424,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 			+ STOP_PLATE_PAST_M), STOP_PLATE_HEIGHT_M, 0.08), ROUND_M, Vector3.AXIS_Z),
 			Art.material(RUBBER, 0.95))
 	plate.position = TrackSpace.point(beam_m - 0.1, 0.0,
-			hook_height_m + 0.1 + STOP_PLATE_HEIGHT_M / 2.0 - FENDER_SIZE_M.y / 2.0)
+			FENDER_BEAM_Z_M + 0.1 + STOP_PLATE_HEIGHT_M / 2.0 - FENDER_SIZE_M.y / 2.0)
 	_pan.add_child(plate)
 	# The folding rubber fenders out past the stop plate's ends, unfolded
 	# for the pull, angled forward: wider than the sled's road width,
@@ -428,7 +434,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 	for side: float in [-1.0, 1.0]:
 		var pivot := Node3D.new()
 		pivot.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0, side * plate_half_m,
-				hook_height_m + 0.1)
+				FENDER_BEAM_Z_M + 0.1)
 		pivot.set_meta("side", side)
 		_pan.add_child(pivot)
 		_flaps.append(pivot)
@@ -439,7 +445,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 		pivot.add_child(flap)
 		var hinge := _painted(Vector3(0.08, FENDER_SIZE_M.y, FENDER_SIZE_M.z), PAINT_DARK)
 		hinge.position = TrackSpace.point(face_m - FENDER_SIZE_M.z / 2.0,
-				side * (plate_half_m - 0.04), hook_height_m + 0.1)
+				side * (plate_half_m - 0.04), FENDER_BEAM_Z_M + 0.1)
 		_pan.add_child(hinge)
 	_show_flaps()
 	return beam_m - 0.1
@@ -554,9 +560,9 @@ static func _cab_floor_z(rail_z_m: float) -> float:
 # The flag post on the front, on the left: an orange post up from the
 # fender's top with a red flag at its top, as real sleds carry; it rises
 # and falls with the pan.
-func _add_flag_post(plate_m: float, hook_height_m: float) -> void:
+func _add_flag_post(plate_m: float) -> void:
 	var at_m := plate_m + 0.1
-	var from_z_m := hook_height_m + 0.1 + FENDER_SIZE_M.y / 2.0
+	var from_z_m := FENDER_BEAM_Z_M + 0.1 + FENDER_SIZE_M.y / 2.0
 	var out_m := FENDER_SIDE_M + FENDER_SIZE_M.x / 2.0 - FLAG_POST_IN_M
 	var post := _painted(Vector3(0.09, FLAG_POST_M, 0.09), PAINT)
 	post.position = TrackSpace.point(at_m, out_m, from_z_m + FLAG_POST_M / 2.0)

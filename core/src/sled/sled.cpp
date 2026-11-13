@@ -35,6 +35,26 @@ bool makes_heavier(const Adjustment& step, const Knives& knives) noexcept {
     return none_lighter && some_heavier && (step.knives == 0 || knives.width_m > 0.0);
 }
 
+// The box's travel must be one of the gearbox's settings (a sled without
+// one takes any): first_m + k step_m for a gear k, to rounding.
+std::optional<ParamError> gearbox_error(const BoxGearbox& gearbox, double travel_m) noexcept {
+    if (gearbox.gears == 0) {
+        return std::nullopt;
+    }
+    if (!std::isfinite(gearbox.first_m) || !std::isfinite(gearbox.step_m) ||
+        gearbox.first_m <= 0.0 || gearbox.step_m <= 0.0 || gearbox.gears < 0 ||
+        gearbox.gears > kMaxBoxGears) {
+        return ParamError::kBoxGearboxInvalid;
+    }
+    constexpr double kGearTolerance_m = 1e-9;
+    for (int gear = 0; gear < gearbox.gears; ++gear) {
+        if (std::abs(travel_m - (gearbox.first_m + gear * gearbox.step_m)) <= kGearTolerance_m) {
+            return std::nullopt;
+        }
+    }
+    return ParamError::kBoxTravelNotAGear;
+}
+
 // The masses and where the parts sit along the sled.
 std::optional<ParamError> layout_error(const Params& params) noexcept {
     if (params.frame_mass_kg <= 0.0) {
@@ -52,6 +72,17 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     const double pan_m = params.pan_ahead_of_wheels_m;
     if (pan_m <= 0.0) {
         return ParamError::kPanNotAheadOfWheels;
+    }
+    // The pan reaches back no further than the wheels; the cylinders press
+    // on it behind the pivot.
+    const double pan_back_m = pan_m - params.pan_length_m / 2.0;
+    if (!within(params.pan_mass_kg, 0.0, params.frame_mass_kg) || params.pan_length_m <= 0.0 ||
+        pan_back_m <= 0.0 || params.pivot_height_m < 0.0) {
+        return ParamError::kPanInvalid;
+    }
+    if (params.cylinders_ahead_of_wheels_m < pan_back_m ||
+        params.cylinders_ahead_of_wheels_m >= pan_m) {
+        return ParamError::kCylindersInvalid;
     }
     if (!within(params.frame_cg_ahead_of_wheels_m, 0.0, pan_m)) {
         return ParamError::kFrameCgOutsideSled;
@@ -77,8 +108,28 @@ std::optional<ParamError> layout_error(const Params& params) noexcept {
     if (params.box_travel_distance_m <= 0.0) {
         return ParamError::kBoxTravelNotPositive;
     }
+    if (const auto error = gearbox_error(params.box_gearbox, params.box_travel_distance_m)) {
+        return error;
+    }
     if (params.hook_ahead_of_wheels_m <= 0.0 || params.hook_height_m <= 0.0) {
         return ParamError::kHookInvalid;
+    }
+    return std::nullopt;
+}
+
+// The push-down's start, ramp and shares (finite: checked first).
+std::optional<ParamError> pushdown_error(const Params& params) noexcept {
+    if (params.pushdown_start_m < 0.0) {
+        return ParamError::kPushdownStartNegative;
+    }
+    if (params.pushdown_ramp_m <= 0.0) {
+        return ParamError::kPushdownRampNotPositive;
+    }
+    if (params.pushdown_most_pan_share <= 0.0 || params.pushdown_most_pan_share > 1.0) {
+        return ParamError::kPushdownShareOutOfRange;
+    }
+    if (params.pan_held_share < 0.0 || params.pan_held_share >= 1.0) {
+        return ParamError::kPanHeldShareOutOfRange;
     }
     return std::nullopt;
 }
@@ -90,6 +141,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.frame_cg_ahead_of_wheels_m,
                                 params.frame_yaw_inertia_kg_m2,
                                 params.pan_ahead_of_wheels_m,
+                                params.pan_mass_kg,
+                                params.pan_length_m,
+                                params.pivot_height_m,
+                                params.cylinders_ahead_of_wheels_m,
                                 params.hook_ahead_of_wheels_m,
                                 params.hook_height_m,
                                 params.box_mass_kg,
@@ -100,6 +155,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pushdown_start_m,
                                 params.pushdown_ramp_m,
                                 params.pushdown_most_pan_share,
+                                params.pan_held_share,
                                 params.pan_friction_coefficient,
                                 params.pan_area_m2,
                                 params.pan_plough_coefficient,
@@ -121,14 +177,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto error = layout_error(params)) {
         return error;
     }
-    if (params.pushdown_start_m < 0.0) {
-        return ParamError::kPushdownStartNegative;
-    }
-    if (params.pushdown_ramp_m <= 0.0) {
-        return ParamError::kPushdownRampNotPositive;
-    }
-    if (!(params.pushdown_most_pan_share > 0.0) || params.pushdown_most_pan_share > 1.0) {
-        return ParamError::kPushdownShareOutOfRange;
+    if (const auto error = pushdown_error(params)) {
+        return error;
     }
     if (params.pan_friction_coefficient <= 0.0 ||
         params.pan_friction_coefficient > kMaxPanFrictionCoefficient) {
@@ -182,6 +232,8 @@ double total_mass_kg(const Params& params) noexcept {
 Params with_conditions(const Params& params, const Conditions& conditions) noexcept {
     Params out = params;
     out.pushdown_start_m = conditions.pushdown_start_m.value_or(params.pushdown_start_m);
+    out.box_travel_distance_m =
+        conditions.box_travel_distance_m.value_or(params.box_travel_distance_m);
     return out;
 }
 
@@ -256,6 +308,50 @@ double cg_ahead_m(const Params& params, double box_m) noexcept {
            total_mass_kg(params);
 }
 
+// The frame (with the box) on its wheels and the pivot, towing at
+// `tow_n` through the pivot; the pan under the pivot, the chain lifting it
+// by `up_n`; and the push-down's cylinders moving weight off the wheels
+// onto the pan, up to its set share of the sled.
+struct Split {
+    double pan_n = 0.0;
+    double wheels_n = 0.0;
+    double pivot_n = 0.0;
+    double cylinders_n = 0.0;
+};
+
+Split split(const Params& params, double box_m, double up_n, double pushdown,
+            double tow_n) noexcept {
+    using units::kStandardGravity_m_s2;
+    const double frame_n = params.frame_mass_kg * kStandardGravity_m_s2;
+    const double pan_weight_n = params.pan_mass_kg * kStandardGravity_m_s2;
+    const double box_n = params.box_mass_kg * kStandardGravity_m_s2;
+    const double pivot_m = params.pan_ahead_of_wheels_m;
+    // Moments about the rear wheels' contact: the frame without its pan,
+    // the box, and the tow at the pivot's height tipping it forward.
+    const double frame_moment_nm = frame_n * params.frame_cg_ahead_of_wheels_m -
+                                   pan_weight_n * pivot_m + box_n * box_m +
+                                   tow_n * params.pivot_height_m;
+    double pivot_n = frame_moment_nm / pivot_m;
+    const double down_n = std::max(frame_n + box_n - up_n, 0.0);
+    double pan_n = std::clamp(pan_weight_n + pivot_n - up_n, 0.0, down_n);
+    double wheels_n = down_n - pan_n;
+
+    // The cylinders, behind the pivot, lift the frame there: the wheels
+    // lose (1 - cylinders / pivot) of their force, the pivot the rest.
+    const double room_n = std::max(params.pushdown_most_pan_share * down_n - pan_n, 0.0);
+    const double moved_n = std::min(pushdown * wheels_n, pushdown * room_n);
+    // Until the push-down engages they hold the pan's back up instead,
+    // pulling the other way: a share of the pan's load back on the wheels,
+    // dropped onto the pan as the push-down comes on.
+    const double held_n = params.pan_held_share * (1.0 - pushdown) * pan_n;
+    const double lever = 1.0 - params.cylinders_ahead_of_wheels_m / pivot_m;
+    const double cylinders_n = (moved_n - held_n) / lever;
+    pivot_n -= cylinders_n * params.cylinders_ahead_of_wheels_m / pivot_m;
+    pan_n += moved_n - held_n;
+    wheels_n -= moved_n - held_n;
+    return {.pan_n = pan_n, .wheels_n = wheels_n, .pivot_n = pivot_n, .cylinders_n = cylinders_n};
+}
+
 }  // namespace
 
 Hook hook(const Params& params, const State& state) noexcept {
@@ -274,48 +370,43 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
             const Ground& ground) noexcept {
     using units::kStandardGravity_m_s2;
     const double box_m = box_ahead_m(params, state.distance_m);
-    const double frame_n = params.frame_mass_kg * kStandardGravity_m_s2;
-    const double box_n = params.box_mass_kg * kStandardGravity_m_s2;
-
-    // Moments about the rear wheels' contact: the weights press the pan down
-    // by their levers; the chain's pull at hook height tips the sled forward
-    // onto the pan, and its upward part takes load off the front. Friction
-    // and rolling resistance act at the track, with no lever about it.
-    const double down_n = std::max(frame_n + box_n - hook.up_n, 0.0);
-    const double pan_lever_n =
-        (frame_n * params.frame_cg_ahead_of_wheels_m + box_n * box_m -
-         hook.up_n * params.hook_ahead_of_wheels_m + hook.forward_n * params.hook_height_m) /
-        params.pan_ahead_of_wheels_m;
-    double pan_n = std::clamp(pan_lever_n, 0.0, down_n);
-    double wheels_n = down_n - pan_n;
-
-    // The push-down presses the pan down and takes the weight off the
-    // wheels, up to its set share of the sled on the pan.
     const double pushdown =
         std::clamp((state.distance_m - params.pushdown_start_m) / params.pushdown_ramp_m, 0.0, 1.0);
-    const double room_n = std::max(params.pushdown_most_pan_share * down_n - pan_n, 0.0);
-    const double moved_n = std::min(pushdown * wheels_n, pushdown * room_n);
-    pan_n += moved_n;
-    wheels_n -= moved_n;
 
+    // The frame's tow is its wheels' rolling, which depends on their load,
+    // which the tow's lever changes a little: one pass with no tow, then
+    // one with the tow it gives (the lever is a few percent at most). The
+    // pan tows the frame with no more than the chain pulls it: at rest,
+    // nothing.
     const double wheel_count = params.wheel_count;
-    const double rolling =
-        wheels_n > 0.0 ? tire::towed_rolling_resistance(params.wheel, wheels_n / wheel_count,
-                                                        ground.wheels, params.wheel_rolling_losses)
-                       : 0.0;
+    const auto rolling_of = [&](double wheels_n) {
+        return wheels_n > 0.0
+                   ? tire::towed_rolling_resistance(params.wheel, wheels_n / wheel_count,
+                                                    ground.wheels, params.wheel_rolling_losses)
+                   : 0.0;
+    };
+    const Split still = split(params, box_m, hook.up_n, pushdown, 0.0);
+    const double tow_n =
+        std::min(rolling_of(still.wheels_n) * still.wheels_n, std::max(hook.forward_n, 0.0));
+    const Split shared = split(params, box_m, hook.up_n, pushdown, tow_n);
+    const double rolling = rolling_of(shared.wheels_n);
+
     // On a hard spot the pan and the knives drag harder.
-    const double friction = pan_friction(params, pan_n, ground.pan) * ground.pan.drag_scale;
+    const double friction = pan_friction(params, shared.pan_n, ground.pan) * ground.pan.drag_scale;
     const double cutting_n =
-        pan_n > 0.0 ? knives_n(params.knives, ground.pan) * ground.pan.drag_scale : 0.0;
+        shared.pan_n > 0.0 ? knives_n(params.knives, ground.pan) * ground.pan.drag_scale : 0.0;
     const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
-    return {.pan_n = pan_n,
-            .wheels_n = wheels_n,
-            .box_ahead_of_wheels_m = box_m,
-            .pushdown = pushdown,
-            .pan_friction = friction,
-            .knives_n = cutting_n,
-            .berm_n = berm_n,
-            .resistance_n = friction * pan_n + cutting_n + berm_n + rolling * wheels_n};
+    return {
+        .pan_n = shared.pan_n,
+        .wheels_n = shared.wheels_n,
+        .pivot_n = shared.pivot_n,
+        .cylinders_n = shared.cylinders_n,
+        .box_ahead_of_wheels_m = box_m,
+        .pushdown = pushdown,
+        .pan_friction = friction,
+        .knives_n = cutting_n,
+        .berm_n = berm_n,
+        .resistance_n = friction * shared.pan_n + cutting_n + berm_n + rolling * shared.wheels_n};
 }
 
 Prediction predict(const State& state, const Params& params, double resistance_n,

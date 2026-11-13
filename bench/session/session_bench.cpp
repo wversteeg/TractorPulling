@@ -48,6 +48,7 @@ void BM_SessionFrame(benchmark::State& state) {
                              .pro = {}};
     setup.sled.pushdown_start_m = kOutOfReach_m;
     setup.sled.box_travel_distance_m = kOutOfReach_m;
+    setup.sled.box_gearbox = {};  // no gears: the box may take any travel
     setup.rules.track_length_m = kOutOfReach_m;
     setup.rules.full_pull_line_m = kOutOfReach_m;
     setup.rules.max_duration_s = kNeverTimesOut_s;

@@ -20,7 +20,9 @@
 #   turbo fitted.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
 #   cut 30.5" puller tires.
-# - ballast_kg: weights up to the class's 4500 kg with the driver.
+# - ballast_kg: the free weight. The tractor is at the class's 4500 kg
+#   with the driver, its weights fixed at the back; each level frees more
+#   of them to move forward before a pull, up to all of them.
 # - hitch_height_m: the pulling hitch's top hole, up to the class's 0.5 m;
 #   the puller sets it before each pull from its lowest hole, 0.40 m
 #   (tractors/sport_4500.toml), up to the top one.
@@ -78,15 +80,15 @@ levels = [
 
 [[garage.upgrades]]
 part = "ballast_kg"
-name = "Weights and front bracket"
+name = "Free weight"
 levels = [
-    { value = 0.0, cost_eur = 0, label = "No weights" },
-    { value = 80.0, cost_eur = 900, label = "80 kg of weights" },
-    { value = 160.0, cost_eur = 1200, label = "160 kg of weights" },
-    { value = 240.0, cost_eur = 1500, label = "240 kg of weights" },
-    { value = 320.0, cost_eur = 1800, label = "320 kg of weights" },
-    { value = 400.0, cost_eur = 2100, label = "400 kg of weights" },
-    { value = 500.0, cost_eur = 2400, label = "500 kg, the class's 4500 kg" },
+    { value = 0.0, cost_eur = 0, label = "All weights fixed at the back" },
+    { value = 80.0, cost_eur = 900, label = "80 kg free to move" },
+    { value = 160.0, cost_eur = 1200, label = "160 kg free to move" },
+    { value = 240.0, cost_eur = 1500, label = "240 kg free to move" },
+    { value = 320.0, cost_eur = 1800, label = "320 kg free to move" },
+    { value = 400.0, cost_eur = 2100, label = "400 kg free to move" },
+    { value = 500.0, cost_eur = 2400, label = "All 500 kg free to move" },
 ]
 
 [[garage.upgrades]]

@@ -11,7 +11,7 @@
 # the same hashes. Exits non-zero if any check fails.
 #
 #   godot --path app/godot --script res://tests/run_test.gd \
-#       -- --gear=6 --stick=0.032 --brake-right=0.05
+#       -- --gear=4 --stick=0.032 --brake-right=0.1
 extends SceneTree
 
 const TRACTOR := "res://data/tractors/farm_stock_light.toml"
@@ -21,8 +21,9 @@ const EASY := "res://data/controls/easy.toml"
 const PRO := "res://data/controls/pro.toml"
 const SEASON := "res://data/seasons/club_season.toml"
 const LADDER := "res://tests/data/practice_ladder.toml"
-# The garage's starting tractor's rear axle share at rest, weights halfway.
-const REAR_SHARE := 0.616
+# The garage's starting tractor's rear axle share at rest: its weights
+# fixed at the back, the 100 kg free to move halfway.
+const REAR_SHARE := 0.662
 
 const STEP_NS := 1_000_000
 const STEP_S := 0.001
@@ -144,7 +145,8 @@ func _check_parking() -> void:
 	_expect(error.is_empty(), "a turn from the parking: " + error)
 	var start := run.get_snapshot()
 	_expect(start.get("stage", "") == "to_the_sled" and not start.get("chain_hooked", true)
-			and float(start["tractor_x_m"]) == -15.0 and float(start["tractor_y_m"]) == -10.0
+			and is_equal_approx(float(start["tractor_x_m"]), -15.0)
+			and is_equal_approx(float(start["tractor_y_m"]), -10.0)
 			and not run.is_over() and not run.is_finished(),
 			"from the parking, the chain off: %s" % start)
 	run.set_controls(0.4, 1.0, -1, 0.0, 0.0, 0.0)
@@ -388,8 +390,9 @@ func _check_upgrades_cross_garages() -> void:
 
 # The player's tuning: as built at first, each setting held to its range,
 # and a run set up after it is on the tuned tractor. The player starts on
-# the garage's first levels: 100 kg of weights halfway put a little more of
-# the lighter tractor on its rear axle than the reference's 60 %.
+# the garage's first levels: the weights fixed at the back but 100 kg,
+# halfway, put more of the tractor on its rear axle than the reference's
+# 60 %.
 func _check_tuning(event: TractorPullEvent) -> void:
 	var tuning := event.get_tuning()
 	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)

@@ -67,7 +67,9 @@ move across** where they fit and the new class allows them:
 - **Engine parts**: the turbo, fuel pump, intercooler, while the new
   class's limits allow them (a 4.8" turbo is legal in Supersport, not in
   Sport's 68 mm inlet).
-- **Weights**: ballast bought, as far as the new class's weight needs it.
+- **Free weight**: a tractor is at its class's weight, its weights fixed at
+  the back; the garage frees them, level by level, to be moved forward
+  before a pull (`chassis::with_free_weight`).
 
 What cannot move is what makes the class: the engine block and its
 displacement, the base tractor's chassis. The garage then shows each part
@@ -188,15 +190,22 @@ Sport 2.5 t a careful clutch and where the weights go, Sport 4.5 t the
 the track decides: the light standard tractor runs out of engine before
 grip on most tracks, a Sport 4.5 t does not (`TrackSetup.*`):
 
-- **Grippy tracks** (the firm loam, the dry hard clay): with its weights
-  all back the tractor stands on its wheelie bar, nose high, and the bar
-  takes load the rear tires lose; halfway pulls further. Soft tires'
-  squirming lugs cost metres.
+- **Grippy tracks** (the firm loam, the dry hard clay): the chain, hooked
+  low on the sled's pan, pulls the hitch down and the nose up, and the
+  tires have grip to spare: the weights go forward to hold the nose down.
+  With the weights back the tractor stands on its wheelie bar, and the
+  bar takes load the rear tires lose. Soft tires' squirming lugs cost
+  metres, and a hitch a hole or two below the top may pull further.
 - **The heavy clay**: the tires dig in and bite, the sled ploughs, and the
-  engine is pulled down to a stall before the tires spin out. With the
-  weights back the nose climbs: they go forward, and soft tires pay.
+  engine is pulled down to a stall before the tires spin out. The weights
+  go forward, and soft tires pay.
 - **The loose sandy clay**: the grip runs out first, so the weights stay
   a quarter forward, the most load on the rear tires the front allows.
+- **The watered start**: wet only at the start, grippy after it: the
+  weights about halfway, enough on the rear tires to get the sled going,
+  not so much that the grippy rest lifts the nose.
+- **Less grippy tires** want the weights further back than the puller
+  tires on the same track.
 - **The hitch, set per pull**: a pulling hitch with holes from 0.40 m
   (the tractor's `hitch_min_height_m`) to the top hole the garage's
   drawbar gives, at most the class's 0.50 m, set on the setup screen

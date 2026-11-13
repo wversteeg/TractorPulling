@@ -23,6 +23,11 @@ pan_friction_coefficient = 0.55
 pan_area_m2 = 2.0
 pan_plough_coefficient = 4.0
 
+[sled.pan]
+mass_kg = 800.0
+length_m = 3.0
+pivot_height_m = 0.3
+
 [sled.wheels]
 count = 4
 radius_m = 0.45
@@ -49,6 +54,7 @@ end_ahead_of_wheels_m = 2.8
 travel_distance_m = 90.0
 
 [sled.pushdown]
+cylinders_ahead_of_wheels_m = 1.5
 start_m = 80.0
 ramp_m = 1.5
 
@@ -98,6 +104,11 @@ pan_friction_coefficient = 0.46      # steel sliding on a firm track
 pan_area_m2 = 1.8                    # the pan's contact with the track
 pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
 
+[sled.pan]
+mass_kg = 800.0
+length_m = 3.0
+pivot_height_m = 0.3
+
 # The rear wheels (16.9-24 class) roll as towed tires on the track's soil.
 [sled.wheels]
 count = 2
@@ -139,6 +150,7 @@ travel_distance_m = 88.0             # sled travel to move it from start to end:
 # Engages at a set distance on the track, chosen per event from the test
 # pull and the track's state (for example 70 or 80 m).
 [sled.pushdown]
+cylinders_ahead_of_wheels_m = 1.5
 start_m = 78.0
 ramp_m = 10.0                        # travel until the wheels are fully off
 
@@ -181,6 +193,10 @@ TEST(SledLoader, TestSledTextMatchesTestReference) {
     EXPECT_EQ(loaded.frame_mass_kg, reference.frame_mass_kg);
     EXPECT_EQ(loaded.frame_cg_ahead_of_wheels_m, reference.frame_cg_ahead_of_wheels_m);
     EXPECT_EQ(loaded.pan_ahead_of_wheels_m, reference.pan_ahead_of_wheels_m);
+    EXPECT_EQ(loaded.pan_mass_kg, reference.pan_mass_kg);
+    EXPECT_EQ(loaded.pan_length_m, reference.pan_length_m);
+    EXPECT_EQ(loaded.pivot_height_m, reference.pivot_height_m);
+    EXPECT_EQ(loaded.cylinders_ahead_of_wheels_m, reference.cylinders_ahead_of_wheels_m);
     EXPECT_EQ(loaded.hook_ahead_of_wheels_m, reference.hook_ahead_of_wheels_m);
     EXPECT_EQ(loaded.hook_height_m, reference.hook_height_m);
     EXPECT_EQ(loaded.box_mass_kg, reference.box_mass_kg);
@@ -273,6 +289,57 @@ TEST(SledLoader, ReadsAndChecksTheFenders) {
     const auto refused = parse_sled(no_depth, "sled.toml");
     ASSERT_FALSE(refused.ok());
     EXPECT_NE(refused.error().message.find("sled.fenders:"), std::string::npos)
+        << refused.error().message;
+}
+
+// The weight box's gearbox is optional; with one, the box's travel must
+// be one of its gears.
+TEST(SledLoader, ReadsAndChecksTheGearbox) {
+    const std::string geared = std::string{kValidSled} +
+                               "\n[sled.weight_box.gearbox]\nfirst_m = 75.0\nstep_m = 5.0\n"
+                               "gears = 4\n";
+    const auto result = parse_sled(geared, "sled.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().box_gearbox.first_m, 75.0);
+    EXPECT_DOUBLE_EQ(result.value().box_gearbox.step_m, 5.0);
+    EXPECT_EQ(result.value().box_gearbox.gears, 4);
+    EXPECT_EQ(parse_sled(kValidSled, "sled.toml").value().box_gearbox.gears, 0) << "none";
+
+    struct Case {
+        std::string_view from;
+        std::string_view to;
+        std::string_view expected;
+    };
+    for (const Case& c :
+         {Case{"travel_distance_m = 90.0", "travel_distance_m = 88.0",
+               "sled.weight_box.travel_distance_m: must be one of the gearbox's"},
+          Case{"gears = 4", "gears = 0", "sled.weight_box.gearbox.gears: must be 1 to 16"},
+          Case{"step_m = 5.0", "step_m = 0.0",
+               "sled.weight_box.gearbox: first_m and step_m must be > 0"},
+          Case{"first_m = 75.0\n", "",
+               "sled.weight_box.gearbox.first_m: missing or not a number"}}) {
+        std::string text = geared;
+        text.replace(text.find(c.from), c.from.size(), c.to);
+        const auto refused = parse_sled(text, "sled.toml");
+        ASSERT_FALSE(refused.ok()) << c.to;
+        EXPECT_NE(refused.error().message.find(c.expected), std::string::npos)
+            << refused.error().message;
+    }
+}
+
+// The pan held up at its back until the push-down: optional, none by
+// default, and checked.
+TEST(SledLoader, ReadsAndChecksThePanHeldUp) {
+    EXPECT_EQ(parse_sled(kValidSled, "sled.toml").value().pan_held_share, 0.0);
+    std::string held{kValidSled};
+    held.replace(held.find("[sled.pushdown]\n"), 16, "[sled.pushdown]\npan_held_share = 0.4\n");
+    const auto result = parse_sled(held, "sled.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().pan_held_share, 0.4);
+    held.replace(held.find("pan_held_share = 0.4"), 20, "pan_held_share = 1.5");
+    const auto refused = parse_sled(held, "sled.toml");
+    ASSERT_FALSE(refused.ok());
+    EXPECT_NE(refused.error().message.find("sled.pushdown.pan_held_share"), std::string::npos)
         << refused.error().message;
 }
 

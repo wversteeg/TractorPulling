@@ -31,11 +31,10 @@ for the big features; they are repeated at the end for completeness.
   grip differently.
 - **Weak spots only bite near the grip limit.** In most pulls the engine
   against the sled's drag limits the tractor, not the tires' grip, so a
-  short patch with a few per cent less grip costs next to nothing (the
-  crew's line across the lane gains tenths of a metre on the tracks with
-  hard spots, about nothing on those with weak spots only). They matter in
-  a launch with wheelspin and in the heavier classes; stronger or longer
-  weak spots would make the line count more.
+  weak spot costs the farm tractors little and turns them hardly at all;
+  it matters in a launch with wheelspin and in the heavier classes, whose
+  tires work near their limit (a Sport 4.5 t goes tenths of a metre off
+  line).
 - **The pan's width.** Where the sled meets the spots its pan is taken as
   2 m wide for every sled (sled::kPanHalfWidth_m): the sleds' data give the
   pan's area, not its width. The game draws it as wide as the sled, 2.55 m.
@@ -56,6 +55,29 @@ for the big features; they are repeated at the end for completeness.
 
 ## Sled
 
+- **The operator's gear choice.** The weight box's gear (75 to 90 m) is
+  set per class and per track in the data; the scripted sled operator
+  does not change it from the test pull, nor between pull-offs, as a real
+  operator may (an earlier gear makes the sled harder sooner).
+- **The pan's front lifting.** The pan lies flat: with these classes'
+  tractors a real sled's pan stays down. Stronger classes (and trucks, their
+  hitch at 1 m) lift its front at the start; a model of it (a rigid plate
+  on soil, the chain's upward pull ahead of the pivot against the pan's
+  load, ploughing less while up) was tried and left out until they come.
+- **Tire load sensitivity everywhere.** Only the Sport classes' puller
+  tires grip less per unit of load above their reference load (the chain,
+  hooked low, pressing them down); the light class's tire, whose tractor
+  stalls before it spins on most tracks, keeps the plain Brixius curve.
+  The reference load is a fixed number per tire, not the tractor's own
+  share at rest after its tuning.
+- **Free weight's name.** The garage part that frees the weights is still
+  `garage::Part::kBallastMass`, its key `ballast_kg`: renaming it
+  (`kFreeWeight`, `free_weight_kg`) touches every garage file, the setup
+  screen and the career saves, which keep parts by name.
+- **The pan held up, simply.** Until the push-down engages, the cylinders
+  hold a fixed share of the pan's load on the wheels (`pan_held_share`)
+  and drop it as the push-down ramps in: the pan's back does not rise or
+  fall as a body, and its drag is not tied to how high it is held.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.
@@ -138,10 +160,13 @@ for the big features; they are repeated at the end for completeness.
   only lets the tractor hold a heavier drag before it spins.
 - **No roll, so no sideways load transfer.** Side forces do not shift load
   between the left and right rear tires; both sides carry half the rear load.
-- **No differential lock.** The open differential is the only kind. Pulling
-  tractors may lock theirs (rules permitting): both sides would then turn
-  together, the brakes would steer much less, and the side on better
-  ground would pull more.
+- **The differential's coupling is viscous.** The pulling tractors'
+  differentials pass torque in proportion to the sides' speed difference
+  (a viscous limited-slip one). A lock that holds until a set torque and
+  then slips (a clutch-type limited-slip, or a dog lock the driver
+  engages) would hold the sides together better at a weak spot and give
+  way only to a hard brake; the scripted rivals do not steer back (see
+  "Later" in CLAUDE.md), so their drift stays within the lane.
 - **Brakes hold by Newton steps.** A brake that would carry its side
   through rest holds it with the torque found by up to eight steps: Newton
   steps (one more solve per held side), then, once a single held side is
@@ -388,6 +413,14 @@ for the big features; they are repeated at the end for completeness.
   `docs/performance.md`) is checked by hand with `scripts/android_bench.sh`;
   CI's ARM runner is a server core, so its limits catch regressions rather
   than prove the phone budget. A device farm could check it in CI.
+- **The evening's frame time on a phone.** An evening event lights the
+  venue with about 24 unshadowed spotlights (`VenueView.FLOODLIGHTS`), each
+  a per-pixel cost in the Mobile renderer's forward pass. Not yet measured
+  on a mid-range phone; if it is too slow, fewer masts or a shorter range
+  are the knobs. The long grass plane and crowd MultiMeshes get at most 8
+  lights each (the renderer's limit per mesh); split into 20 m pieces they
+  looked no different in the Forward Mobile screenshots, so they stay whole
+  and save the draw calls (the clay is split, where it showed).
 - **The C++ runtime for the Godot extension.** The Android presets link
   libc++ statically, which suits standalone test binaries. A GDExtension
   shares a process with Godot, which may want `c++_shared`; decide with the
@@ -628,8 +661,8 @@ for the big features; they are repeated at the end for completeness.
 - **The spots barely show on the heavy sled.** A hard spot bites the pan,
   which carries a small share of the 15 t until the box comes forward,
   and a weak spot costs grip the push-down then takes anyway: the crew's
-  line gains tenths of a metre. More impact (a weak spot under one tire
-  turning the tractor) is planned.
+  line gains tenths of a metre. A weak spot under one side now turns the
+  heavier tractors a little (the coupled differential).
 - **The sled's own rolling dominates the start.** Its eight tires roll
   with about 6 % of its weight on a prepared track (1/Bn and their own
   losses), some 13 kN, most of what a farm tractor pulls at the start, so

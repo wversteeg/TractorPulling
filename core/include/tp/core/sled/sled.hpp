@@ -54,6 +54,18 @@ struct Berm {
     double friction_coefficient = 0.0;
 };
 
+/// The weight box's gearbox: the sled operator chooses the sled travel by
+/// which the box reaches its end, from first_m in steps of step_m, one of
+/// `gears` settings (a Dutch sled's: 75, 80, 85 or 90 m). No gears: a sled
+/// without a gearbox, whose box may take any travel.
+struct BoxGearbox {
+    double first_m = 0.0;
+    double step_m = 0.0;
+    int gears = 0;
+};
+
+inline constexpr int kMaxBoxGears = 16;
+
 inline constexpr int kMaxKnives = 24;
 /// Knives deeper than this would dig the pan in: a data error [m].
 inline constexpr double kMaxKnifeDepth_m = 0.15;
@@ -80,10 +92,29 @@ inline constexpr double kPanHalfWidth_m = 1.0;
 /// sled advances. Lengths along the sled are measured forward from the rear
 /// wheels' contact.
 ///
-/// The weights are shared between the wheels and the pan by their levers,
-/// quasi-statically (the sled does not pitch). The chain's pull at the hook
-/// height presses the pan down, its vertical part lifts or presses the
-/// front. As the box moves forward, more weight goes onto the pan, which
+/// The sled is two bodies, quasi-statically (neither pitches): the pan,
+/// with the front and the hook on it, and the frame with the weight box,
+/// which stands on the rear wheels and on a pivot in the pan's middle.
+/// The chain pulls the pan; the pan tows the frame through the pivot. The
+/// frame's weights and the box are shared between the wheels and the
+/// pivot by their levers, and the frame's own drag (its wheels' rolling),
+/// pulled at the pivot's height, tips it a little onto the pan. The
+/// chain's vertical part lifts or presses the pan itself, one for one,
+/// leaving the wheels' load as it was; its pull along the track acts on
+/// the pan alone.
+///
+/// The push-down's cylinders stand between the frame and the pan's back:
+/// pressing, they lift the frame off its wheels onto the pan.
+///
+/// Simplified: the pan lies flat on the track. The chain's upward pull at
+/// the hook lightens it, but does not tip its front up: with these
+/// classes' tractors a real sled's pan stays down.
+///
+/// Until the push-down engages, the cylinders may hold the pan's back up,
+/// its front on the track, putting a share of its load on the wheels: the
+/// sled starts lighter. As the push-down engages the pan drops.
+///
+/// As the box moves forward, more weight goes onto the pan, which
 /// drags far harder than the wheels roll. At a set distance the push-down
 /// engages: over a short ramp it presses the pan down and takes the weight
 /// off the wheels, until the pan carries its set share of the sled (all of
@@ -116,8 +147,20 @@ struct Params {
     /// The frame's yaw inertia about its own centre of gravity; the box
     /// adds its own as a point mass [kg·m²].
     double frame_yaw_inertia_kg_m2 = 0.0;
-    /// Centre of the pan's contact with the track [m].
+    /// Centre of the pan's contact with the track, and the pivot over it
+    /// on which the frame stands [m].
     double pan_ahead_of_wheels_m = 0.0;
+    /// The pan with the front on it: part of frame_mass_kg, at its middle
+    /// [kg].
+    double pan_mass_kg = 0.0;
+    /// The pan's length along the track [m]: it reaches back from the
+    /// pivot by half of it, where the cylinders press.
+    double pan_length_m = 0.0;
+    /// The pivot's height over the track, where the pan tows the frame [m].
+    double pivot_height_m = 0.0;
+    /// The push-down's cylinders, between the frame and the pan's back:
+    /// on the pan, behind the pivot [m].
+    double cylinders_ahead_of_wheels_m = 0.0;
     double hook_ahead_of_wheels_m = 0.0;
     double hook_height_m = 0.0;
     double box_mass_kg = 0.0;
@@ -127,8 +170,10 @@ struct Params {
     double box_max_mass_kg = 0.0;
     double box_start_ahead_of_wheels_m = 0.0;
     double box_end_ahead_of_wheels_m = 0.0;
-    /// Sled travel over which the box moves from start to end [m].
+    /// Sled travel over which the box moves from start to end: one of the
+    /// gearbox's settings, where it has one [m].
     double box_travel_distance_m = 0.0;
+    BoxGearbox box_gearbox;
     /// Sled travel at which the push-down starts to engage [m]; set per
     /// event from the test pull and the track's state.
     double pushdown_start_m = 0.0;
@@ -138,6 +183,12 @@ struct Params {
     /// engaged: 1 lifts the wheels off; less leaves them that share. The
     /// box over the pan may put more there by itself.
     double pushdown_most_pan_share = 1.0;
+    /// Until the push-down engages the cylinders hold the pan's back up,
+    /// its front on the track: this share of the pan's load stays on the
+    /// wheels, which roll far more easily, and the start is lighter. As the
+    /// push-down engages the pan drops onto the track ("de sleepvoet
+    /// valt"). 0 holds nothing.
+    double pan_held_share = 0.0;
     /// Sliding friction of the steel pan on a firm track.
     double pan_friction_coefficient = 0.0;
     /// The pan's contact with the track [m²].
@@ -170,17 +221,31 @@ enum class ParamError : std::uint8_t {
     /// The box holds more than its maximum.
     kBoxOverMax,
     kPanNotAheadOfWheels,
+    /// The pan is not part of the frame's mass (0 to frame_mass_kg), its
+    /// length is not positive or reaches back past the wheels, or the
+    /// pivot is below the track.
+    kPanInvalid,
+    /// The push-down's cylinders are not on the pan behind the pivot.
+    kCylindersInvalid,
     kFrameCgOutsideSled,
     kBoxOutsideSled,
     /// The box starts so far behind the wheels that the sled's centre of
     /// gravity is behind them: it would sit on its tail.
     kSledTipsBack,
     kBoxTravelNotPositive,
+    /// The gearbox's first setting or step is not positive, or it has
+    /// more than kMaxBoxGears gears.
+    kBoxGearboxInvalid,
+    /// The box's travel is not one of the gearbox's settings.
+    kBoxTravelNotAGear,
     kHookInvalid,
     kPushdownStartNegative,
     kPushdownRampNotPositive,
     /// The push-down's share of the sled on the pan is not in (0, 1].
     kPushdownShareOutOfRange,
+    /// The share of the pan's load held up until the push-down is not in
+    /// [0, 1).
+    kPanHeldShareOutOfRange,
     kPanFrictionOutOfRange,
     kPanAreaNotPositive,
     kPanPloughNegative,
@@ -204,10 +269,12 @@ inline constexpr double kMaxWheelRollingLosses = 0.2;
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
 /// What the day's track changes about a class's sled: the sled operator
-/// keeps the class's sled but may set the push-down for the track's state.
+/// keeps the class's sled but may set the push-down, and the weight box's
+/// gear (the travel by which it reaches its end), for the track's state.
 /// Unset keeps the sled's value.
 struct Conditions {
     std::optional<double> pushdown_start_m;
+    std::optional<double> box_travel_distance_m;
 };
 
 /// The sled with the day's conditions applied.
@@ -268,6 +335,11 @@ struct Loads {
     /// The track's vertical forces on the pan and the rear wheels [N].
     double pan_n = 0.0;
     double wheels_n = 0.0;
+    /// The frame's weight on the pivot (negative: the pivot holds the frame
+    /// down) and the push-down's cylinders' force between frame and pan
+    /// [N].
+    double pivot_n = 0.0;
+    double cylinders_n = 0.0;
     double box_ahead_of_wheels_m = 0.0;
     /// 0 off to 1 fully engaged.
     double pushdown = 0.0;

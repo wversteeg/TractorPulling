@@ -8,17 +8,28 @@
 # the tandem. From the back: the operator's cab and the engine over the
 # wheels, the weight box on rails running forward from just behind them,
 # the pan (a steel plate) from about half the sled's length to the front,
-# and the hook between rubber fenders at the front, 8.5 m ahead of the
-# wheels; the frame runs 4 m behind them.
+# hinged to the frame on a pivot in its middle, and the hook on the pan's
+# front between rubber fenders, 8.5 m ahead of the wheels; the frame runs
+# 4 m behind them.
 
 [sled]
 frame_mass_kg = 15000.0
 frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
 frame_yaw_inertia_kg_m2 = 195000.0   # about the frame's own centre of gravity; m L² / 12, L = 12.5 m
-pan_ahead_of_wheels_m = 5.5          # centre of the pan's contact
+pan_ahead_of_wheels_m = 5.5          # centre of the pan's contact, the pivot over it
 pan_friction_coefficient = 0.46      # steel sliding on a firm track
 pan_area_m2 = 2.4                    # the pan's contact with the track
 pan_plough_coefficient = 5.0         # extra drag per unit of pressure / cone index
+
+# The pan with the front (the hook, the fenders, the stop plate) on it:
+# a hinged part of the sled, its frame standing on a pivot in its middle.
+# The chain pulls the pan, the pan tows the frame through the pivot.
+[sled.pan]
+mass_kg = 2500.0                     # of frame_mass_kg
+length_m = 6.0                       # along the track, over which it tilts; pan_area_m2 is
+                                     # a tuned bearing area for the soil's pressure, not the
+                                     # whole 6 m x 2 m plate
+pivot_height_m = 0.4                 # over the track
 
 # Dual tandem axles: eight wide flotation tires, pumped hard for the
 # sled's weight, rolling as towed tires on the track's soil.
@@ -41,7 +52,7 @@ relaxation_length_m = 0.75           # about the wheel's radius
 
 [sled.hook]
 ahead_of_wheels_m = 8.5              # on the drawbar at the front, fenders either side
-height_m = 0.45                      # 0.40 to 0.50 m, depending on the sled
+height_m = 0.08                      # low on the pan's front, a few centimetres over the track
 
 # Rubber fenders either side of the drawbar: a tractor backing up stops
 # with its rear tires against them (their faces 0.1 m behind the hook),
@@ -53,12 +64,19 @@ depth_m = 1.0
 
 # The box starts just behind the wheels, where its weight takes some off
 # the pan for the start (no further back than the sled balances with a
-# full box), and rides forward over the pan.
+# full box), and rides forward over the pan. Its gearbox sets the sled
+# travel by which it reaches its end: 75 to 100 m in 5 m steps, chosen per event
+# (a track may set it: track.weight_box.travel_distance_m).
 [sled.weight_box]
 max_mass_kg = 11000.0
 start_ahead_of_wheels_m = -0.65
 end_ahead_of_wheels_m = 5.5
-travel_distance_m = 88.0             # sled travel to move it from start to end: at its stop while the push-down comes on
+travel_distance_m = 90.0             # at its stop while the push-down comes on
+
+[sled.weight_box.gearbox]
+first_m = 75.0
+step_m = 5.0
+gears = 6                            # as the NTTO's Keep Moving Orange
 
 # Engages at a set distance on the track, chosen per class and per event
 # from the test pull and the track's state, and presses the pan down over
@@ -67,6 +85,7 @@ travel_distance_m = 88.0             # sled travel to move it from start to end:
 # tractors pull on past it (a push-down that lifts the wheels off makes a
 # wall every tractor stops at within a metre or so).
 [sled.pushdown]
+cylinders_ahead_of_wheels_m = 2.75   # at the pan's back, between the frame and the pan
 ramp_m = 30.0                        # travel until it is fully engaged
 most_pan_share = 0.5                 # of the sled's weight on the pan, fully engaged
 

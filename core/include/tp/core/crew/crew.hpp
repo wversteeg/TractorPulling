@@ -86,7 +86,8 @@ inline constexpr double kSizeError = 0.4;
 /// Where the crew puts the sled across the lane for `tractor`, at most
 /// `max_offset_m` from the centre line either way: the line that keeps the
 /// reported weak spots from under the rear tires (a weak spot under one
-/// side's wheels takes the grip of both, through the open differential)
+/// side's wheels spins that side and, through a coupled differential, turns
+/// the tractor towards it)
 /// and the hard spots from under the sled's pan, as far as it can, weighed
 /// by their strength and length. Between lines as good, the one nearest the
 /// middle [m, to the left].

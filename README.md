@@ -45,10 +45,14 @@ see it; the CSV gains the sideways position and heading:
 # ... ended 25.79 m to the left, heading 86.68°
 ```
 
-Each rear side has its own brake. An open differential drives the two
+Each rear side has its own brake. The differential drives the two
 sides, so braking one side slows it, sends the drive to the other, and
 turns the tractor towards the braked side, as farm tractors steer tight
-turns. Full pedal holds a side's wheels still where the brake can; in a
+turns. The pulling tractors' differentials are coupled (limited-slip,
+`[tractor.differential] coupling_nm_s_per_rad`): they also pass torque
+from a spinning side to the one that grips, so a weak spot under one side
+turns the tractor a little towards it (`HardSpotRuns.AWeakSpotUnderOneSideTurnsTheTractor`);
+a coupling of 0 is an open differential. Full pedal holds a side's wheels still where the brake can; in a
 high gear it takes more torque than the engine gives and stalls it:
 
 ```bash
@@ -143,12 +147,12 @@ heavy clay its engine gives out first, elsewhere its tires; the sled
 operator evens out the rest with the push-down and the knives on the day.
 On the fast dry clay the operator brings the push-down earlier. For the
 heavier, stronger classes the setup matters more: each track has its own
-best place for a fully built Sport 4.5 t's weights (a quarter forward on
-the watered start, the sandy clay and the clay-sand, halfway or further on
-the firm loam and the dry clay, all forward on the heavy clay), and the
-track decides what the wrong setup costs (all back costs most on the
-watered start, all forward on the loose sandy clay; soft tires pay on the
-heavy clay and cost on the clay-sand and the dry clay; `TrackSetup.*`).
+best place for a fully built Sport 4.5 t's weights (forward on the grippy
+firm loam, dry clay and heavy clay, a quarter on the loose sandy clay, in
+between on the clay-sand and the watered start), and the track decides
+what the wrong setup costs (on the sandy clay all forward and all back
+both cost; soft tires pay on the heavy clay and cost on the firm loam and
+the dry clay; `TrackSetup.*`).
 
 ### The push-down puts part of the sled on the pan
 
@@ -253,15 +257,16 @@ step, not again after the last, and not with the clutch pressed either
 without a powershift pulls in the gear it moves off in, or higher.
 
 It is for the end of a pull, when the sled has the engine pulled down
-towards the stall. On the 15 t sled the light class's farm tractor runs
-out of grip before engine, so a shift gains it nothing; it pays for an
-engine-limited tractor in a tall gear: a fully built Sport 4.5 t in 8th
-on the top level's pull-off sled two steps heavier, whose drag past the
-push-down lies between what 8th holds before the engine stalls and what
-7th's grip holds. One shift to 7th once the engine falls below 90 % of
-its rated speed takes it from 97.15 m, stalled, to 99.19 m, about what
-7th gets without a shift; in 5th and 6th the tires end the pull before the
-engine is pulled down, and the driver never shifts (`LoadDownshiftRuns`).
+towards the stall. It pays for an engine-limited tractor: on the 15 t
+sled the light class's farm tractor in 5th stalls at 91 m on the
+reference track, and shifted to 4th as the engine is pulled down it pulls
+the full 100 m (`TpPull.RunShiftsDownUnderLoad`). A fully built Sport 4.5 t
+in 8th on the top level's sled, whose drag past the push-down lies
+between what 8th holds before the engine stalls and what 7th's grip
+holds: one shift to 7th once the engine falls below 90 % of its rated
+speed takes it from 97.47 m, stalled, to 100.92 m, at least what 7th gets
+without a shift; in 5th the tires end the pull before the engine is
+pulled down, and the driver never shifts (`LoadDownshiftRuns`).
 
 The scripted rivals shift the same way. Once the clutch is fully in, a
 driver waits for the engine to come back from the launch's dip and then

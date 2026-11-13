@@ -38,6 +38,7 @@ soil::Surface blend(const soil::Surface& a, const soil::Surface& b, double t) no
 struct SpotShape {
     double every_m = 0.0;
     double length_m = 0.0;
+    double min_length_m = 0.0;
     double min_width_m = 0.0;
     double max_width_m = 0.0;
     double size = 0.0;
@@ -45,13 +46,17 @@ struct SpotShape {
 };
 
 bool spots_valid(const SpotShape& shape, double max_size, double across_m) noexcept {
-    const std::array values = {shape.every_m, shape.length_m, shape.min_width_m, shape.max_width_m,
-                               shape.size};
+    const std::array values = {shape.every_m,     shape.length_m,    shape.min_length_m,
+                               shape.min_width_m, shape.max_width_m, shape.size};
+    // No shortest (0) lays them all the longest's length.
+    const bool lengths_ok = shape.min_length_m == 0.0 || (shape.min_length_m >= kMinSpotLength_m &&
+                                                          shape.min_length_m <= shape.length_m);
     return std::ranges::all_of(values, [](double v) { return std::isfinite(v); }) &&
            shape.every_m >= kMinSpotSpacing_m && shape.length_m >= kMinSpotLength_m &&
-           shape.length_m <= kMaxSpotLength_m && shape.min_width_m >= kMinSpotWidth_m &&
-           shape.min_width_m <= shape.max_width_m && shape.max_width_m <= across_m &&
-           shape.size >= 0.0 && shape.size <= max_size && shape.seed != 0;
+           shape.length_m <= kMaxSpotLength_m && lengths_ok &&
+           shape.min_width_m >= kMinSpotWidth_m && shape.min_width_m <= shape.max_width_m &&
+           shape.max_width_m <= across_m && shape.size >= 0.0 && shape.size <= max_size &&
+           shape.seed != 0;
 }
 
 // A spot table's seed for an event seeded `seed`: never 0.
@@ -87,9 +92,6 @@ private:
 constexpr double kFirstSpotSpacings = 1.0;
 constexpr double kGapLowShare = 0.5;
 constexpr double kPeakLowShare = 0.6;
-// Across the track a spot is at full strength over this share of its
-// width, in the middle, and fades to nothing at its edges.
-constexpr double kFullAcrossShare = 0.5;
 // Even the closest-packed spots the limits allow fit the table: none is
 // dropped from the first kSpotsUntil_m. This holds while the first spot
 // starts at 0 or later and each next one at least a minimum length and
@@ -121,6 +123,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto& hard = params.hard_spots;
         hard && !spots_valid({.every_m = hard->every_m,
                               .length_m = hard->length_m,
+                              .min_length_m = hard->min_length_m,
                               .min_width_m = hard->min_width_m,
                               .max_width_m = hard->max_width_m,
                               .size = hard->extra,
@@ -131,6 +134,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto& weak = params.weak_spots;
         weak && !spots_valid({.every_m = weak->every_m,
                               .length_m = weak->length_m,
+                              .min_length_m = weak->min_length_m,
                               .min_width_m = weak->min_width_m,
                               .max_width_m = weak->max_width_m,
                               .size = weak->grip_loss,
@@ -192,6 +196,7 @@ Model::Model(const Params& params) noexcept : params_(params) {
     if (const auto& hard = params_.hard_spots) {
         hard_.lay({.every_m = hard->every_m,
                    .length_m = hard->length_m,
+                   .min_length_m = hard->min_length_m,
                    .min_width_m = hard->min_width_m,
                    .max_width_m = hard->max_width_m,
                    .across_m = params_.spots_across_m,
@@ -201,6 +206,7 @@ Model::Model(const Params& params) noexcept : params_(params) {
     if (const auto& weak = params_.weak_spots) {
         weak_.lay({.every_m = weak->every_m,
                    .length_m = weak->length_m,
+                   .min_length_m = weak->min_length_m,
                    .min_width_m = weak->min_width_m,
                    .max_width_m = weak->max_width_m,
                    .across_m = params_.spots_across_m,
@@ -211,15 +217,11 @@ Model::Model(const Params& params) noexcept : params_(params) {
 
 double strength_at(const Spot& spot, double x_m, double y_m) noexcept {
     const double half_length_m = spot.length_m / 2.0;
-    const double along = std::abs(x_m - (spot.start_m + half_length_m)) / half_length_m;
-    const double half_width_m = spot.width_m / 2.0;
-    const double full_m = kFullAcrossShare * half_width_m;
-    const double off_m = std::abs(y_m - spot.centre_y_m);
-    if (along >= 1.0 || off_m >= half_width_m) {
-        return 0.0;
-    }
-    const double across = off_m <= full_m ? 1.0 : (half_width_m - off_m) / (half_width_m - full_m);
-    return spot.peak * (1.0 - along) * across;
+    const double along = (x_m - (spot.start_m + half_length_m)) / half_length_m;
+    const double across = (y_m - spot.centre_y_m) / (spot.width_m / 2.0);
+    // The share of the way from the middle to the ellipse's edge.
+    const double out = std::sqrt(along * along + across * across);
+    return out >= 1.0 ? 0.0 : spot.peak * (1.0 - out);
 }
 
 void Model::SpotLayout::lay(const Pattern& pattern) noexcept {
@@ -233,12 +235,18 @@ void Model::SpotLayout::lay(const Pattern& pattern) noexcept {
         // lie in a spot, its edges too: a spot may reach past the band's
         // edge.
         const double centre_y_m = (pattern.across_m + width_m) * (random.next() - 0.5);
+        // Drawn only where the lengths vary, so a fixed length lays as
+        // before.
+        const double length_m =
+            pattern.min_length_m > 0.0 && pattern.min_length_m < pattern.length_m
+                ? pattern.min_length_m + (pattern.length_m - pattern.min_length_m) * random.next()
+                : pattern.length_m;
         spots_[count_++] = {.start_m = start_m,
-                            .length_m = pattern.length_m,
+                            .length_m = length_m,
                             .centre_y_m = centre_y_m,
                             .width_m = width_m,
                             .peak = peak};
-        start_m += pattern.length_m + pattern.every_m * (kGapLowShare + random.next());
+        start_m += length_m + pattern.every_m * (kGapLowShare + random.next());
     }
 }
 

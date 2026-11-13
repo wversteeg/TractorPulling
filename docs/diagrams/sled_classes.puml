@@ -14,14 +14,19 @@ package "tp::sled" {
     +frame_mass_kg : double
     +frame_cg_ahead_of_wheels_m : double
     +frame_yaw_inertia_kg_m2 : double
-    +pan_ahead_of_wheels_m : double
-    +hook_ahead_of_wheels_m, hook_height_m : double
+    +pan_ahead_of_wheels_m : double (the pivot over it)
+    +pan_mass_kg, pan_length_m : double (the pan with the front, hinged)
+    +pivot_height_m : double (where the pan tows the frame)
+    +cylinders_ahead_of_wheels_m : double (the push-down's, behind the pivot)
+    +hook_ahead_of_wheels_m, hook_height_m : double (on the pan's front)
     +box_mass_kg : double
     +box_max_mass_kg : double (what the box holds; adjusted() stays within it)
     +box_start / box_end_ahead_of_wheels_m : double (start may be behind the wheels)
-    +box_travel_distance_m : double
+    +box_travel_distance_m : double (one of the gearbox's settings)
+    +box_gearbox : BoxGearbox
     +pushdown_start_m, pushdown_ramp_m : double
     +pushdown_most_pan_share : double (the most of the sled it puts on the pan)
+    +pan_held_share : double (of the pan's load held on the wheels until the push-down)
     +pan_friction_coefficient : double
     +pan_area_m2 : double
     +pan_plough_coefficient : double
@@ -33,6 +38,11 @@ package "tp::sled" {
     +wheel_rolling_losses : double (the tires' own, on top of 1/Bn)
     +chain : Chain
     +pull_off_step : Adjustment
+  }
+  class BoxGearbox <<struct>> {
+    +first_m : double
+    +step_m : double
+    +gears : int (0: no gearbox; at most kMaxBoxGears = 16)
   }
   class Knives <<struct>> {
     +count : int
@@ -57,6 +67,7 @@ package "tp::sled" {
   }
   class Conditions <<struct>> {
     +pushdown_start_m : optional<double>
+    +box_travel_distance_m : optional<double> (the day's gear)
   }
   class Ground <<struct>> {
     +pan : soil::Surface
@@ -84,6 +95,7 @@ package "tp::sled" {
   }
   class Loads <<struct>> {
     +pan_n, wheels_n : double
+    +pivot_n, cylinders_n : double
     +box_ahead_of_wheels_m : double
     +pushdown : double
     +pan_friction : double
@@ -114,6 +126,7 @@ package "tp::sled" {
     +hash_append(Fnv1a&, const State&)
   }
   Params *-- Chain
+  Params *-- BoxGearbox
   Params *-- Knives
   Params *-- Berm
   Params *-- Adjustment : pull_off_step

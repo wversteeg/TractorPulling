@@ -68,7 +68,13 @@ void BM_VehicleStepBrakeHeld(benchmark::State& state) {
         state.SkipWithError(params.error().message);
         return;
     }
-    const auto model = tp::vehicle::Model::create(params.value());
+    // With its differential open: there a full pedal holds the braked side
+    // with less than the brake's full torque, the hold this times (through
+    // a coupled one the other side drags it round, and the brake slips at
+    // full torque). The hold's solve is the same either way.
+    tp::vehicle::Params open = params.value();
+    open.differential.coupling_nm_s_per_rad = 0.0;
+    const auto model = tp::vehicle::Model::create(open);
     if (!model) {
         state.SkipWithError("inconsistent tractor");
         return;

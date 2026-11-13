@@ -38,6 +38,12 @@ relaxation_length_m = 0.5         # about the tire's radius
 [tractor.brakes]
 max_torque_nm = 10000.0            # per side, at the wheels
 
+# The differential: a pulling tractor's is coupled (a limited-slip one, or
+# a lock that gives way), passing torque to the side that grips: a weak
+# spot under one side turns the tractor towards it.
+[tractor.differential]
+coupling_nm_s_per_rad = 3000.0
+
 # Body points are measured with the tractor level. The rear axle height is
 # the rear tire's radius.
 [tractor.chassis]

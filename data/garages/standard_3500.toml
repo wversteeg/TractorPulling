@@ -47,15 +47,15 @@ levels = [
 
 [[garage.upgrades]]
 part = "ballast_kg"
-name = "Weights"
+name = "Free weight"
 levels = [
-    { value = 100.0, cost_eur = 0, label = "100 kg of weights" },
-    { value = 150.0, cost_eur = 300, label = "150 kg of weights" },
-    { value = 200.0, cost_eur = 400, label = "200 kg of weights" },
-    { value = 250.0, cost_eur = 500, label = "250 kg of weights" },
-    { value = 300.0, cost_eur = 600, label = "300 kg of weights" },
-    { value = 350.0, cost_eur = 700, label = "350 kg of weights" },
-    { value = 400.0, cost_eur = 800, label = "400 kg, the class's 3500 kg" },
+    { value = 100.0, cost_eur = 0, label = "100 kg free to move" },
+    { value = 150.0, cost_eur = 300, label = "150 kg free to move" },
+    { value = 200.0, cost_eur = 400, label = "200 kg free to move" },
+    { value = 250.0, cost_eur = 500, label = "250 kg free to move" },
+    { value = 300.0, cost_eur = 600, label = "300 kg free to move" },
+    { value = 350.0, cost_eur = 700, label = "350 kg free to move" },
+    { value = 400.0, cost_eur = 800, label = "All 400 kg free to move" },
 ]
 
 [[garage.upgrades]]

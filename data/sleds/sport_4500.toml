@@ -2,13 +2,16 @@
 [sled]
 base = "pulling_sled.toml"
 
-# The box starts a little behind the wheels, as far back as 9 t may
-# without the sled sitting on its tail: a new tractor gets it going on
-# the watered start too.
+# The box starts just behind the wheels and the pan's back half is held
+# up off the track: a new tractor gets the sled going on the watered start
+# too.
 [sled.weight_box]
-mass_kg = 9000.0
-start_ahead_of_wheels_m = -0.8
+travel_distance_m = 90.0
+mass_kg = 11000.0
+start_ahead_of_wheels_m = -0.68
 
-# The push-down from 70 m takes the pan to half the sled (the base's).
+# The pan drops at 55 m and the push-down takes it to 65 % of the sled.
 [sled.pushdown]
-start_m = 70.0
+most_pan_share = 0.65
+pan_held_share = 0.5
+start_m = 55.0

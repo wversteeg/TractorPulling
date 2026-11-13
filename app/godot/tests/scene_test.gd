@@ -256,8 +256,10 @@ func _check_looks(venue: VenueView, dimensions: Dictionary) -> void:
 # Past the track's end: a pile of dirt across the track from 130 to 140 m
 # (on a 100 m track), a box trailer and pop-up tents behind it, at a club
 # or big event a generator, a big screen and more tents too. The screen
-# follows the tractor during the run and shows the standings after it. In the evening floodlights also
-# stand past the 120 m mark and over the parking.
+# follows the tractor during the run and shows the standings after it. At
+# sunset a few floodlights stand along the track and by the berm; in the
+# evening many more, past the 120 m mark, by the berm, over the parking and
+# a lamp post behind each rival's bay.
 func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	var length_m := float(dimensions["track_length_m"])
 	for size: String in ["small", "club", "big"]:
@@ -281,17 +283,97 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	_expect(end.screen_mode() == "standings" and end.screen_lines().size() == 2
 			and end.screen_lines()[0].contains("Henk") and end.screen_lines()[0].contains("96.20 m"),
 			"the screen shows the standings after the run: %s" % end.screen_lines())
-	venue.set_look({"size": "club", "time": "evening"})
+	venue.set_look({"size": "club", "time": "sunset"})
 	venue.set_parking_layout(0)
 	venue.build(dimensions)
+	var sunset_gap_m := _mast_gap_m(venue, length_m)
+	_expect(is_equal_approx(sunset_gap_m, VenueView.FLOODLIGHTS["sunset"]["every_m"])
+			and _parking_mast_count(venue, dimensions) == 0 and venue.rival_lights().is_empty(),
+			"a few floodlights at sunset, %.0f m apart, none over the parking: %s"
+			% [sunset_gap_m, venue.floodlight_masts()])
+	venue.set_look({"size": "club", "time": "evening"})
+	venue.build(dimensions)
+	var evening_gap_m := _mast_gap_m(venue, length_m)
+	_expect(is_equal_approx(evening_gap_m, VenueView.FLOODLIGHTS["evening"]["every_m"])
+			and evening_gap_m < sunset_gap_m,
+			"the evening's floodlights closer together than at sunset: %.0f m, %.0f m"
+			% [evening_gap_m, sunset_gap_m])
 	var past_120 := false
-	var at_parking := 0
 	for mast in venue.floodlight_masts():
 		past_120 = past_120 or mast.x >= length_m + 20.0 + 1.0
-		at_parking += 1 if mast.x < -5.0 and mast.y < -float(dimensions["lane_width_m"]) / 2.0 \
-				- VenueView.PARKING_FROM_LANE_M.y else 0
-	_expect(past_120 and at_parking == VenueView.PARKING_LIGHTS_X_M.size(),
+	_expect(past_120 and _parking_mast_count(venue, dimensions)
+			== VenueView.PARKING_LIGHTS_X_M.size(),
 			"evening lights past 120 m and over the parking: %s" % [venue.floodlight_masts()])
+	_check_floodlight_reach(venue, dimensions)
+	var pile := venue.track_end().pile_at_m()
+	var at_berm := 0
+	for mast in venue.floodlight_masts():
+		at_berm += 1 if mast.x > pile.x and mast.x < pile.y else 0
+	_expect(at_berm == 2, "a floodlight either side of the berm: %s" % [venue.floodlight_masts()])
+	var posts := venue.rival_lights()
+	var rivals := venue.rival_bays()
+	var by_each := posts.size() == rivals.size()
+	for i in mini(posts.size(), rivals.size()):
+		by_each = by_each and is_equal_approx(posts[i].x, rivals[i].x) \
+				and posts[i].y < -(float(dimensions["lane_width_m"]) / 2.0 + rivals[i].y)
+	_expect(by_each and rivals.size() == VenueView.RIVAL_BAYS,
+			"a lamp post behind each rival's bay: %s, bays %s" % [posts, rivals])
+
+
+# The masts along the track's left side stand this far apart (the smallest
+# gap up to 120 m, so not the pair past the end) [m].
+func _mast_gap_m(venue: VenueView, length_m: float) -> float:
+	var xs: Array[float] = []
+	for mast in venue.floodlight_masts():
+		if mast.y > 0.0 and mast.x <= length_m + 20.0:
+			xs.append(mast.x)
+	xs.sort()
+	var gap_m := INF
+	for i in range(1, xs.size()):
+		gap_m = minf(gap_m, xs[i] - xs[i - 1])
+	return gap_m
+
+
+# How many masts stand beyond the parking's far edge, behind the start line.
+func _parking_mast_count(venue: VenueView, dimensions: Dictionary) -> int:
+	var count := 0
+	for mast in venue.floodlight_masts():
+		count += 1 if mast.x < -5.0 and mast.y < -float(dimensions["lane_width_m"]) / 2.0 \
+				- VenueView.PARKING_FROM_LANE_M.y else 0
+	return count
+
+
+# Each floodlight along the track lights its own side's crowd at the fence
+# and the grass and fence across the track, not only the clay. This is the
+# beam's geometry (angle and reach) only: whether a renderer, with its
+# limit of lights per mesh, lights the long crowd and grass meshes is seen
+# in the screenshots (tests/screenshots.gd), not here.
+func _check_floodlight_reach(venue: VenueView, dimensions: Dictionary) -> void:
+	var half_lane_m := float(dimensions["lane_width_m"]) / 2.0
+	var length_m := float(dimensions["track_length_m"])
+	var spots := 0
+	var reach := true
+	for child in venue.get_children():
+		var spot := child as SpotLight3D
+		if spot == null:
+			continue
+		var at := spot.global_position
+		# Back from TrackSpace: x down the track, y to the left.
+		var x_m := -at.z
+		var side := signf(-at.x)
+		if x_m > length_m + VenueView.END_LIGHTS_PAST_M - 1.0:
+			continue
+		spots += 1
+		var fence_m := half_lane_m + VenueView.FENCE_OUT_M
+		var crowd := TrackSpace.point(x_m, side * (fence_m + VenueView.past_lane_m(side) + 1.0), 1.5)
+		var across := TrackSpace.point(x_m, -side * (fence_m + VenueView.past_lane_m(-side)), 0.5)
+		var axis := -spot.global_basis.z
+		for target: Vector3 in [crowd, across]:
+			var to := target - at
+			reach = reach and rad_to_deg(axis.angle_to(to)) <= spot.spot_angle \
+					and to.length() <= spot.spot_range
+	_expect(spots > 0 and reach,
+			"the floodlights light the crowd and the far side too (%d along the track)" % spots)
 
 
 # A tractor behind a roll bar (the Sport classes) is drawn as a pulling

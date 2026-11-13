@@ -107,7 +107,8 @@ package "GDScript (app/godot/scripts)" {
     +{static} past_lane_m(side) : float
     +show_signal(signal) : the gantry's light
     +signal_shown() : String
-    +floodlight_masts() : Array[Vector2], the evening's
+    +floodlight_masts() : Array[Vector2], at sunset and in the evening
+    +rival_lights() : Array[Vector2], a post behind each rival's bay
     +track_end() : TrackEnd
     +show_screen_live(target, delta)
     +show_screen_standings(rows)
