@@ -64,6 +64,16 @@ for the big features; they are repeated at the end for completeness.
   hitch at 1 m) lift its front at the start; a model of it (a rigid plate
   on soil, the chain's upward pull ahead of the pivot against the pan's
   load, ploughing less while up) was tried and left out until they come.
+- **Tire load sensitivity everywhere.** Only the Sport classes' puller
+  tires grip less per unit of load above their reference load (the chain,
+  hooked low, pressing them down); the light class's tire, whose tractor
+  stalls before it spins on most tracks, keeps the plain Brixius curve.
+  The reference load is a fixed number per tire, not the tractor's own
+  share at rest after its tuning.
+- **The pan held up, simply.** Until the push-down engages, the cylinders
+  hold a fixed share of the pan's load on the wheels (`pan_held_share`)
+  and drop it as the push-down ramps in: the pan's back does not rise or
+  fall as a body, and its drag is not tied to how high it is held.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.

@@ -2,13 +2,14 @@
 # reference, and the tires dig in once they spin.
 
 [track]
-setup_tip = "Loose sand: the grip runs out first, so all the weights back."   # for the pit board
+setup_tip = "Loose sand: the grip runs out first, so the weights a quarter forward."   # for the pit board
 length_m = 100.0
 max_duration_s = 120.0
 lane_width_m = 12.0      # between the chalk lines; the NTTO's minimum prepared width
 # How the track was prepared, a scale on its soil's grip (1 is the
 # reference): looser sandy topsoil grips least: the grip runs out first,
-# so the weights go all back, for the most load on the rear tires.
+# so the weights go back, for the most load on the rear tires the front
+# allows; the light farm tractor spins out here.
 grip = 0.7
 
 [track.soil]
