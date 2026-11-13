@@ -9,9 +9,10 @@
 # rubber stop plate (the tractor's rear tires stop against it: the sled's
 # fenders, sled::Fenders), an orange flag post up front, a tandem axle of
 # dual wheels at the back (eight tires) and over it the operator's glass
-# cab beside the engine's housing, with a lamp on a mast. The push-down shows: as it comes on, the rear wheels are
-# lifted off the track (drawn a little higher than the few centimetres a
-# real sled lifts them, to be seen from the tractor's seat). The lamp is
+# cab beside the engine's housing, with a lamp on a mast. The push-down
+# shows: as it comes on, the rear wheels are lifted off the track (drawn a
+# little higher than the few centimetres a real sled lifts them, to be seen
+# from the tractor's seat). The lamp is
 # green while the chain pulls on the hook, red once the sled has stopped
 # after the pull (until it drives back), and off otherwise.
 #
