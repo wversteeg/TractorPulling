@@ -27,7 +27,7 @@ slip_rate = 6.0                    # grip builds slowly with slip: a puller tire
 # down at the hitch, the weights back), the tire grips less per unit of
 # load (tp::tire::TractionCurve::load_sensitivity).
 load_sensitivity = 0.3
-reference_load_n = 8800.0            # one tire's load at rest
+reference_load_n = 8800.0           # where the sensitivity starts: about one tire's share at rest as built
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint

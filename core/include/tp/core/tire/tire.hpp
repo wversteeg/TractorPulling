@@ -35,7 +35,10 @@ struct TractionCurve {
     /// at the hitch) from gripping without bound. 0 for none; below 1, so
     /// that pressing a tire harder still adds pull, if less and less.
     double load_sensitivity = 0.0;
-    /// One tire's load where it grips as its limit says [N].
+    /// The load the sensitivity is measured from: up to it a tire grips as
+    /// its limit says [N]. A tuning constant, about one tire's share of the
+    /// tractor at rest as built; the weights' place and the free weight
+    /// move the real share around it.
     double reference_load_n = 0.0;
 };
 
