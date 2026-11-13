@@ -94,12 +94,6 @@ const RESULT_DELAY_S := 2.0
 # a step, docs/performance.md).
 const RIVALS_SLICE_STEPS := 500
 const RIVALS_BUDGET_US := 6000
-# The rivals' tractors in their bays, painted their own colours (none like
-# the player's red), and their drivers' shirts.
-const RIVAL_PAINTS: Array[Color] = [Color(0.16, 0.42, 0.2), Color(0.16, 0.3, 0.62),
-		Color(0.9, 0.45, 0.1)]
-const RIVAL_SHIRTS: Array[Color] = [Color(0.85, 0.8, 0.2), Color(0.8, 0.8, 0.82),
-		Color(0.2, 0.2, 0.22)]
 # The officials stand on the left of the lane, in from the left chalk line
 # [m]: one this far past the start line; the other down the track, from
 # here up to the full-pull line, this far ahead of the tractor's rear axle.
@@ -545,6 +539,7 @@ func _build(error: String) -> bool:
 	track_marks.build(dimensions)
 	# The tractor moves its weights to the tuning on every pull; the rest of
 	# it, and the sled, are built once.
+	tractor_view.look = class_look(dimensions)
 	tractor_view.build(dimensions)
 	if sled_view.get_child_count() == 0:
 		sled_view.build(dimensions)
@@ -578,6 +573,13 @@ func _build(error: String) -> bool:
 	return true
 
 
+# The look of the class being pulled: the career's class in an event, by
+# the tractor's protection on a scripted run.
+func class_look(dimensions: Dictionary) -> TractorLook:
+	var class_label := "" if autoplay else str(event.get_career().get("class_name", ""))
+	return TractorLook.for_class(class_label, str(dimensions.get("protection", "cab")))
+
+
 # The parking, its rivals and the official, for a whole turn.
 func _build_turn(dimensions: Dictionary) -> void:
 	var lane_m: float = dimensions["lane_width_m"]
@@ -586,15 +588,16 @@ func _build_turn(dimensions: Dictionary) -> void:
 	_chain_m = dimensions["chain_length_m"]
 	var bays := venue_view.bays()
 	# Built for the first whole turn only: a pull from the line has none.
+	# The rivals in the class's trim, each in their own paint: built again
+	# for another class.
 	if parked.is_empty() and turn:
 		for i in VenueView.RIVAL_BAYS:
 			var rival := TractorView.new()
-			rival.paint = RIVAL_PAINTS[i % RIVAL_PAINTS.size()]
-			rival.paint_dark = rival.paint.darkened(0.4)
-			rival.driver_shirt = RIVAL_SHIRTS[i % RIVAL_SHIRTS.size()]
 			add_child(rival)
-			rival.build(dimensions)
 			parked.append(rival)
+	for i in parked.size():
+		parked[i].look = tractor_view.look.rival(i)
+		parked[i].build(dimensions)
 	for i in parked.size():
 		var bay := bays[i + 1]
 		parked[i].position = TrackSpace.point(bay.x, -(lane_m / 2.0 + bay.y), 0.0)
