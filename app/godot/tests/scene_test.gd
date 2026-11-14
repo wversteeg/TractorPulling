@@ -446,8 +446,15 @@ func _check_class_looks(dimensions: Dictionary) -> void:
 	var farm: TractorView = _pull.get("tractor_view")
 	var glass := farm.find_children("CabGlass*", "", true, false).size()
 	_expect(glass == 4, "the farm tractor's cab glazed all round: %d panes" % glass)
-	for part: String in ["CabRoof", "Beacon", "Mirror"]:
+	for part: String in ["CabRoof", "Beacon", "Mirror", "CabBackWall"]:
 		_expect(farm.find_child(part, true, false) != null, "the farm cab's %s" % part)
+	# The back window starts at the fenders' tops, the wall below it.
+	var back: MeshInstance3D = farm.find_child("CabGlassBack", true, false)
+	var wall: MeshInstance3D = farm.find_child("CabBackWall", true, false)
+	_expect(back != null and wall != null
+			and back.get_aabb().position.y + back.position.y
+			>= wall.get_aabb().end.y + wall.position.y - 0.01,
+			"the farm cab's back window above its back wall")
 
 	# One view, built as one class and then another.
 	var view := TractorView.new()
