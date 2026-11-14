@@ -37,7 +37,7 @@ for the big features; they are repeated at the end for completeness.
   line).
 - **The pan's width.** Where the sled meets the spots its pan is taken as
   2 m wide for every sled (sled::kPanHalfWidth_m): the sleds' data give the
-  pan's area, not its width.
+  pan's area, not its width. The game draws it as wide as the sled, 2.55 m.
 - **Scripted pullers do not steer.** The rivals' crews choose where their
   sled starts, and the drivers then pull straight; one that drifts off its
   line does not correct.
@@ -102,12 +102,20 @@ for the big features; they are repeated at the end for completeness.
   distance). Heavier classes and more along-track variation (see "Later")
   should spread them again; worth checking when milestone 6 adds classes.
 - **The pan is drawn longer than it drags.** The sled shows its pan
-  from just behind the front stop plate back to the middle of the sled,
+  from under the front back to the middle of the sled,
   as real ones are, and the track's smoothed band starts at its back edge;
   the simulation has the pan's contact at one point, 5.5 m ahead of the
   wheels, where it feels the hard spots. A pan whose load spreads over its
   length would feel a spot as it slides over it, and the spots would line
   up with the smoothed band.
+- **The box starts under the cab in the lighter classes.** On real sleds
+  the cab stands right at the back with the engine between it and the
+  weight box. The light and Sport 2.5 t classes start their box 4 and 3 m
+  behind the wheels (its weight levers the pan up for the start), where
+  the cab is: the game stands the cab on posts at the edges over it, the
+  rear covers round it, and leaves the engine out of sight. Starting the
+  box ahead of the engine would need those classes' starts retuned (a
+  lighter box, fewer knives).
 - **The push-down is drawn larger than it is.** The game lifts the sled's
   rear wheels 15 cm with the push-down fully set, so that it shows from
   the tractor; a real sled lifts them a few centimetres.

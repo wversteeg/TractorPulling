@@ -68,15 +68,27 @@ func _check() -> void:
 			"the tractor's heading")
 
 	_check_engine_sound()
-	# The box holds a weight for every 250 kg of its mass for the pull, as
-	# many as fit; this pull's box shows its own.
-	_expect(SledView.weight_count(6000.0) == 24 and SledView.weight_count(1500.0) == 6
-			and SledView.weight_count(0.0) == 0 and SledView.weight_count(1.0e5) == 36,
+	# The box holds a slab for every 500 kg of its mass for the pull, the
+	# last a part-slab, as many as fit (11 t); this pull's box shows its own.
+	_expect(SledView.weight_count(6000.0) == 12 and SledView.weight_count(1500.0) == 3
+			and SledView.weight_count(0.0) == 0 and SledView.weight_count(1.0e5) == 22
+			and SledView.weight_count(11000.0) == 22,
 			"the weights follow the box's mass")
 	var sled_view: SledView = _pull.get("sled_view")
 	_expect(sled_view.weights_shown() == SledView.weight_count(float(dimensions["box_mass_kg"])),
 			"this pull's box: %d weights for %.0f kg" % [sled_view.weights_shown(),
 			float(dimensions["box_mass_kg"])])
+	# The last slab a part-slab: every 10 % lighter step the operator takes
+	# out of the light class's 2.2 t box shows, though it leaves four slabs.
+	_expect(SledView.weight_count(2200.0) == 5 and SledView.weight_count(1980.0) == 4
+			and SledView.weight_count(1782.0) == 4, "whole slabs and a part-slab")
+	var shown: Array[float] = []
+	for mass_kg: float in [2200.0, 1980.0, 1782.0]:
+		sled_view.show_box_mass(mass_kg)
+		shown.append(float(sled_view.weights_shown() - 1) + sled_view.last_slab_share())
+	_expect(is_equal_approx(shown[0], 4.4) and is_equal_approx(shown[1], 3.96)
+			and is_equal_approx(shown[2], 3.564), "each lighter step shows: %s" % [shown])
+	sled_view.show_box_mass(float(dimensions["box_mass_kg"]))
 	# The transport wheels: up for the pull, down once the turn is over and
 	# the box runs back; a pull from the line has them up.
 	_expect(SledView.transport_wanted({"stage": "pulling"}) == 0.0
@@ -469,10 +481,13 @@ func _check_class_looks(dimensions: Dictionary) -> void:
 
 
 # The sled as real ones are: 12.5 m from its hook to its rear (more only
-# where the weight box starts behind it), within 2.55 m across, its side
-# covers the whole way; the pan from just behind the front stop plate back
-# to the middle of the sled; eight tires on the tandem under the frame,
-# clear of the weight box riding above them, a fender over each side's.
+# where the weight box starts behind it), within 2.55 m across; the pan
+# as wide as the sled from under the front (which stands on it) back to the
+# middle of the sled, the narrower body clad down to it; the rear section
+# closed down to about 30 cm over the track; the transport wheels beside
+# the pan, swung up within the width; eight tires on the tandem under the
+# frame, clear of the weight box riding above them, a fender over each
+# side's; the box's slabs stood in from its back.
 func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	var hook_m: float = dimensions["hook_ahead_of_wheels_m"]
 	var rear_m := SledView.rear_of(dimensions)
@@ -482,9 +497,11 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 	var tires := 0
 	var covers := 0
 	var fenders := 0
+	var cover_bottom_m := INF
+	var cover_out_m := 0.0
 	for child: Node in sled.find_children("*", "MeshInstance3D", true, false):
 		var mesh := child as MeshInstance3D
-		if mesh.name == "Berm":
+		if mesh.name == "Berm" or mesh.name.begins_with("FoldingFender"):
 			continue
 		var box := mesh.get_aabb()
 		var corners := [mesh.to_global(box.position), mesh.to_global(box.end)]
@@ -492,6 +509,9 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 			widest = maxf(widest, absf(sled.to_local(corner).x))
 		if mesh.name.begins_with("SideCover"):
 			covers += 1
+			for corner: Vector3 in corners:
+				cover_bottom_m = minf(cover_bottom_m, sled.to_local(corner).y)
+				cover_out_m = maxf(cover_out_m, absf(sled.to_local(corner).x))
 		elif mesh.name.begins_with("WheelFender"):
 			fenders += 1
 	tires = sled.get("_wheel_spin").size()
@@ -499,12 +519,109 @@ func _check_sled_shape(sled: SledView, dimensions: Dictionary) -> void:
 			"the sled within its width, fenders and all: %.2f m" % (2.0 * widest))
 	_expect(covers >= 4 and fenders == 2, "side covers %d, fenders %d" % [covers, fenders])
 	_expect(tires == 8, "eight tires on the tandem: %d" % tires)
+	_expect(cover_bottom_m <= SledView.BODY_OVER_PAN_M + 0.001
+			and cover_out_m < SledView.WIDTH_M / 2.0 - 0.2,
+			"the body clad down to the pan (%.2f m), narrower than it (%.2f m)"
+			% [cover_bottom_m, 2.0 * cover_out_m])
+	var rear_section := sled.find_child("RearSection", true, false) as MeshInstance3D
+	var rear_box := rear_section.get_aabb()
+	var rear_bottom_m := sled.to_local(rear_section.to_global(rear_box.position)).y
+	# Its covers rise round the box at its start, the cab on top; the box
+	# wider than the body it slides on.
+	var rear_cover := sled.find_child("RearCover0", true, false) as MeshInstance3D
+	var cover_top_m := sled.to_local(rear_cover.to_global(rear_cover.get_aabb().end)).y
+	var box_top_m: float = sled.get("_rail_z_m") + SledView.BOX_LIFT_M + SledView.BOX_SIZE_M.y
+	_expect(cover_top_m > box_top_m and SledView.BOX_SIZE_M.x > SledView.BODY_WIDTH_M + 0.4,
+			"the rear covers %.2f m high, over the box's top %.2f m; the box wider than the body"
+			% [cover_top_m, box_top_m])
+	_expect(absf(rear_bottom_m - SledView.COVER_GROUND_M) < 0.01
+			and rear_box.size.x > SledView.WIDTH_M - 0.01,
+			"the rear section closed down to %.2f m, %.2f m wide" % [rear_bottom_m,
+			rear_box.size.x])
 	var pan := sled.find_child("Pan", true, false) as MeshInstance3D
 	var pan_length_m := (pan.mesh as BoxMesh).size.z
 	var middle_m := (hook_m + rear_m) / 2.0
 	_expect(absf(-pan.position.z - pan_length_m / 2.0 - SledView.pan_back_of(dimensions)) < 0.01
 			and SledView.pan_back_of(dimensions) <= middle_m + 0.001 and pan_length_m > 4.0,
 			"the pan %.1f m long, back to the sled's middle" % pan_length_m)
+	_expect(absf((pan.mesh as BoxMesh).size.x - SledView.WIDTH_M) < 0.001,
+			"the pan as wide as the sled")
+	# The transport wheels by the pan's front half: swung down, on the
+	# track outside it; swung up, on it beside the body (the width check
+	# above has them up, as for the pull).
+	var pan_front_m := -pan.position.z + pan_length_m / 2.0
+	var half_w := SledView.TRANSPORT_WIDTH_M / 2.0
+	var down := 0
+	var up := 0
+	for wanted: float in [1.0, 0.0]:
+		sled.transport = wanted
+		sled.call("_show_transport")
+		for spin: Node3D in sled.get("_transport_spin"):
+			var at := sled.to_local(spin.global_position)
+			var along_m := -at.z
+			var by_the_pan := along_m < pan_front_m and along_m > pan_front_m - pan_length_m / 2.0
+			if wanted == 1.0 and by_the_pan and absf(at.x) - half_w > SledView.WIDTH_M / 2.0 \
+					and absf(at.y - SledView.TRANSPORT_RADIUS_M) < 0.01:
+				down += 1
+			elif wanted == 0.0 and by_the_pan \
+					and absf(at.x) + SledView.TRANSPORT_RADIUS_M < SledView.WIDTH_M / 2.0 \
+					and absf(at.y - 0.06 - half_w) < 0.01:
+				up += 1
+	_expect(down == 2 and up == 2, "the transport wheels beside the pan: %d down outside it, %d up"
+			% [down, up] + " flat on it")
+	# Turning up or down, no point round either tire passes into the body
+	# where it is clad over the wheels.
+	var through := 0
+	var tire_r := SledView.TRANSPORT_RADIUS_M
+	for share: float in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+		sled.transport = share
+		sled.call("_show_transport")
+		for spin: Node3D in sled.get("_transport_spin"):
+			for k in 24:
+				var angle := TAU * k / 24.0
+				for across: float in [-half_w, half_w]:
+					var at := sled.to_local(spin.to_global(Vector3(across, tire_r * cos(angle),
+							tire_r * sin(angle))))
+					if absf(at.x) < SledView.BODY_WIDTH_M / 2.0 \
+							and at.y > SledView.BODY_OVER_WHEELS_M:
+						through += 1
+	sled.transport = 0.0
+	sled.call("_show_transport")
+	_expect(through == 0, "the transport wheels turn clear of the body: %d points in it" % through)
+	# The folding fenders unfolded past the sled's width (they fold in to
+	# travel; the width check above leaves them out).
+	# They stand angled forward at 45° (their outer ends ahead of their
+	# hinges, towards the tractor),
+	# and swing a little, within bounds, as the sled jerks.
+	for key: String in ["_flap_rad", "_flap_rate_rad_s", "_last_speed_m_s"]:
+		sled.set(key, 0.0)
+	sled.call("_show_flaps")
+	var flaps_ok := 0
+	for i in 2:
+		var flap := sled.find_child("FoldingFender%d" % i, true, false) as MeshInstance3D
+		var tip := sled.to_local(flap.to_global(Vector3(0.0, 0.0, 0.0)))
+		var hinge := sled.to_local((flap.get_parent() as Node3D).global_position)
+		var out_m := absf(tip.x) - absf(hinge.x)
+		var ahead_m := hinge.z - tip.z
+		if absf(tip.x) > SledView.WIDTH_M / 2.0 and out_m > 0.0 \
+				and absf(ahead_m - out_m) < 0.02:
+			flaps_ok += 1
+	_expect(flaps_ok == 2, "the folding fenders out past the width, forward at 45°: %d"
+			% flaps_ok)
+	var swung := 0.0
+	for i in 30:
+		sled.call("_swing_flaps", 1.5 if i < 3 else 0.0, 1.0 / 60.0)
+		swung = maxf(swung, absf(sled.flap_angle() - SledView.FOLDING_FENDER_ANGLE_RAD))
+	_expect(swung > 0.02 and swung <= SledView.FLAP_MOST_RAD + 0.001,
+			"a jolt swings the folding fenders %.3f rad" % swung)
+	for i in 600:
+		sled.call("_swing_flaps", 0.0, 1.0 / 60.0)
+	_expect(absf(sled.flap_angle() - SledView.FOLDING_FENDER_ANGLE_RAD) < 0.005,
+			"the folding fenders settle back to 45°")
+	# The slabs stand in from the box's back (+z, down the track being -z).
+	var slabs: MultiMesh = (sled.get("_box_weights") as MultiMeshInstance3D).multimesh
+	_expect(slabs.get_instance_transform(0).origin.z > slabs.get_instance_transform(1).origin.z
+			and slabs.get_instance_transform(0).origin.z > 0.0, "the first slab at the box's back")
 	# The box rides over the wheels' tops.
 	var box_bottom_m: float = sled.get("_rail_z_m") + SledView.BOX_LIFT_M
 	_expect(box_bottom_m > 2.0 * float(dimensions["sled_wheel_radius_m"]),

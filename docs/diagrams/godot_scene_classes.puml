@@ -82,6 +82,7 @@ package "GDScript (app/godot/scripts)" {
     +start_run(snapshot)
     +show_box_mass(box_mass_kg)
     +weights_shown() : int
+    +flap_angle() : float : the folding fenders, 45° and swinging
     +hook_position() : Vector3
     +camera_mount() : Vector3
     +{static} transport_wanted(snapshot) : float
