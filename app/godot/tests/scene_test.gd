@@ -68,8 +68,8 @@ func _check() -> void:
 			"the tractor's heading")
 
 	_check_engine_sound()
-	# The box holds a slab for every 500 kg of its mass for the pull, as
-	# many as fit (11 t); this pull's box shows its own.
+	# The box holds a slab for every 500 kg of its mass for the pull, the
+	# last a part-slab, as many as fit (11 t); this pull's box shows its own.
 	_expect(SledView.weight_count(6000.0) == 12 and SledView.weight_count(1500.0) == 3
 			and SledView.weight_count(0.0) == 0 and SledView.weight_count(1.0e5) == 22
 			and SledView.weight_count(11000.0) == 22,
@@ -78,6 +78,17 @@ func _check() -> void:
 	_expect(sled_view.weights_shown() == SledView.weight_count(float(dimensions["box_mass_kg"])),
 			"this pull's box: %d weights for %.0f kg" % [sled_view.weights_shown(),
 			float(dimensions["box_mass_kg"])])
+	# The last slab a part-slab: every 10 % lighter step the operator takes
+	# out of the light class's 2.2 t box shows, though it leaves four slabs.
+	_expect(SledView.weight_count(2200.0) == 5 and SledView.weight_count(1980.0) == 4
+			and SledView.weight_count(1782.0) == 4, "whole slabs and a part-slab")
+	var shown: Array[float] = []
+	for mass_kg: float in [2200.0, 1980.0, 1782.0]:
+		sled_view.show_box_mass(mass_kg)
+		shown.append(float(sled_view.weights_shown() - 1) + sled_view.last_slab_share())
+	_expect(is_equal_approx(shown[0], 4.4) and is_equal_approx(shown[1], 3.96)
+			and is_equal_approx(shown[2], 3.564), "each lighter step shows: %s" % [shown])
+	sled_view.show_box_mass(float(dimensions["box_mass_kg"]))
 	# The transport wheels: up for the pull, down once the turn is over and
 	# the box runs back; a pull from the line has them up.
 	_expect(SledView.transport_wanted({"stage": "pulling"}) == 0.0

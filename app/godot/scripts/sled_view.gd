@@ -61,6 +61,9 @@ const FOLDING_FENDER_THICK_M := 0.15
 # they swing [rad].
 const FOLDING_FENDER_ANGLE_RAD := PI / 4.0
 const FLAP_OMEGA_RAD_S := 9.0
+# The longest step the swing takes at once, well inside its stability
+# (2 / FLAP_OMEGA_RAD_S) [s].
+const FLAP_LONGEST_STEP_S := 0.05
 const FLAP_DAMPING := 0.25
 const FLAP_KICK_RAD_PER_M_S := 0.25
 const FLAP_SHAKE_RAD_PER_M_S := 0.02
@@ -81,7 +84,9 @@ const FLAG_SIZE_M := Vector2(0.45, 0.3)
 const FLAG := Color(0.9, 0.08, 0.06)
 # The tandem axle: each axle this far ahead and behind of the wheels' point
 # of contact the simulation has [m].
-const TANDEM_HALF_M := 0.55
+# Between the tandem's front and rear tires, tread to tread [m]: the axles
+# stand a tire's diameter and this apart (_tandem_half_m).
+const TANDEM_TIRE_GAP_M := 0.1
 # The gap between the tires side by side [m].
 const WHEEL_CLEAR_M := 0.05
 # How round the sled's parts are: the edges' radius [m].
@@ -200,6 +205,12 @@ var _berm_ahead_m := 1.0
 # The folding fenders' hinges, and their swing off the set angle [rad] and
 # its rate [rad/s]; the sled's speed and travel last frame [m/s, m].
 var _flaps: Array[Node3D] = []
+# Half the tandem's axle spacing: a tire's radius and half the gap, so the
+# front and rear tires clear each other [m].
+var _tandem_half_m := 0.0
+# Every place a slab can stand, whole, and a whole slab's height [m].
+var _slab_places: Array[Transform3D] = []
+var _slab_height_m := 0.0
 var _flap_rad := 0.0
 var _flap_rate_rad_s := 0.0
 var _last_speed_m_s := 0.0
@@ -221,6 +232,7 @@ func build(d: Dictionary) -> void:
 	var hook_ahead_m: float = d["hook_ahead_of_wheels_m"]
 	var hook_height_m: float = d["hook_height_m"]
 	_wheel_height_m = d["sled_wheel_radius_m"]
+	_tandem_half_m = _wheel_height_m + TANDEM_TIRE_GAP_M / 2.0
 	var wheel_width_m: float = d["sled_wheel_width_m"]
 	# The frame over the wheels' tops, the box riding on it.
 	var rail_z_m := 2.0 * _wheel_height_m + FRAME_OVER_WHEELS_M
@@ -276,7 +288,7 @@ func build(d: Dictionary) -> void:
 	var tire_m := minf(wheel_width_m, (WIDTH_M - 2.0 * hub_m - 3.0 * WHEEL_CLEAR_M) / 4.0)
 	var inner_m := tire_m / 2.0 + WHEEL_CLEAR_M / 2.0
 	var outer_m := inner_m + tire_m + WHEEL_CLEAR_M
-	for axle_m: float in [-TANDEM_HALF_M, TANDEM_HALF_M]:
+	for axle_m: float in [-_tandem_half_m, _tandem_half_m]:
 		var axle := Art.axle_cylinder(0.08, 2.0 * outer_m, DARK, 12)
 		axle.position = TrackSpace.point(axle_m, 0.0, _wheel_height_m)
 		_wheels.add_child(axle)
@@ -363,16 +375,53 @@ static func transport_wanted(s: Dictionary) -> float:
 func start_run(s: Dictionary) -> void:
 	transport = 1.0 if s.get("stage", "pulling") == "to_the_sled" else 0.0
 	_show_transport()
+	# The folding fenders at rest, nothing carried over from the last run.
+	_flap_rad = 0.0
+	_flap_rate_rad_s = 0.0
+	_last_speed_m_s = 0.0
+	_travel_m = 0.0
+	_show_flaps()
 
 
-# The slabs in the box: one for each BLOCK_KG of `box_mass_kg`, rounded,
-# stood in from the box's back towards its front (at most what it holds).
+# The slabs in the box: one for each BLOCK_KG of `box_mass_kg`, stood in
+# from the box's back towards its front (at most what it holds), the last
+# a part-slab as tall as its share of BLOCK_KG: so every lighter or heavier
+# step the operator makes shows, the light classes' 10 % steps too.
 func show_box_mass(box_mass_kg: float) -> void:
-	_box_weights.multimesh.visible_instance_count = weight_count(box_mass_kg)
+	var count := weight_count(box_mass_kg)
+	var multimesh := _box_weights.multimesh
+	multimesh.visible_instance_count = count
+	for i in count:
+		multimesh.set_instance_transform(i, _slab_at(i, 1.0))
+	if count > 0:
+		multimesh.set_instance_transform(count - 1,
+				_slab_at(count - 1, weight_fill(box_mass_kg) - float(count - 1)))
 
 
+# Slabs shown for `box_mass_kg`: whole ones and a part-slab, rounded up.
 static func weight_count(box_mass_kg: float) -> int:
-	return clampi(roundi(maxf(box_mass_kg, 0.0) / BLOCK_KG), 0, BOX_SLABS)
+	return ceili(weight_fill(box_mass_kg))
+
+
+# The box's load in slabs, a part-slab as a fraction (at most BOX_SLABS).
+static func weight_fill(box_mass_kg: float) -> float:
+	return clampf(maxf(box_mass_kg, 0.0) / BLOCK_KG, 0.0, float(BOX_SLABS))
+
+
+# Slab `i`, `share` of its full height, standing on the box's floor.
+func _slab_at(i: int, share: float) -> Transform3D:
+	var full: Transform3D = _slab_places[i]
+	var bottom_m := full.origin.y - _slab_height_m / 2.0
+	return Transform3D(Basis.from_scale(Vector3(1.0, share, 1.0)),
+			Vector3(full.origin.x, bottom_m + share * _slab_height_m / 2.0, full.origin.z))
+
+
+# How tall the last slab shown stands, as a share of a whole one.
+func last_slab_share() -> float:
+	var count := weights_shown()
+	if count <= 0:
+		return 0.0
+	return _box_weights.multimesh.get_instance_transform(count - 1).basis.get_scale().y
 
 
 func weights_shown() -> int:
@@ -458,7 +507,7 @@ func _add_fenders(hook_ahead_m: float, hook_height_m: float, behind_hook_m: floa
 # nose. Over the tandem on each side a fender out to the sled's width.
 func _add_body(rail_z_m: float, nose_m: float, pan_back_m: float, raised_from_m: float) -> void:
 	var top_z_m := rail_z_m + BOX_LIFT_M - BODY_UNDER_BOX_M
-	var arch_half_m := TANDEM_HALF_M + _wheel_height_m + WHEEL_FENDER_CLEAR_M
+	var arch_half_m := _tandem_half_m + _wheel_height_m + WHEEL_FENDER_CLEAR_M
 	var arch_top_z_m := 2.0 * _wheel_height_m + WHEEL_FENDER_CLEAR_M
 	var half_m := BODY_WIDTH_M / 2.0
 	for side: float in [-1.0, 1.0]:
@@ -499,12 +548,12 @@ func _add_wheel_fender(side: float, arch_top_z_m: float) -> void:
 	var across_m := WIDTH_M / 2.0 - BODY_WIDTH_M / 2.0 + COVER_THICK_M
 	var y_m := side * (WIDTH_M / 2.0 - across_m / 2.0)
 	var radius_m := _wheel_height_m + WHEEL_FENDER_CLEAR_M
-	var top := _painted(Vector3(across_m, 0.06, 2.0 * TANDEM_HALF_M), PAINT_DARK)
+	var top := _painted(Vector3(across_m, 0.06, 2.0 * _tandem_half_m), PAINT_DARK)
 	top.name = "WheelFender%d" % (0 if side > 0.0 else 1)
 	top.position = TrackSpace.point(0.0, y_m, arch_top_z_m)
 	add_child(top)
 	for end: float in [-1.0, 1.0]:
-		var centre_m := end * TANDEM_HALF_M
+		var centre_m := end * _tandem_half_m
 		for i in WHEEL_FENDER_PANELS:
 			# From the top (a quarter turn) down to the axle's height.
 			var angle := lerpf(PI / 2.0, 0.0, (float(i) + 0.5) / WHEEL_FENDER_PANELS)
@@ -522,7 +571,7 @@ func _add_wheel_fender(side: float, arch_top_z_m: float) -> void:
 # open ahead for the box to run out; the engine stands on the deck within
 # them, the cab on top. A dark stripe along it as along the body.
 func _add_rear_section(rail_z_m: float) -> void:
-	var front_m := -(TANDEM_HALF_M + _wheel_height_m + WHEEL_FENDER_CLEAR_M)
+	var front_m := -(_tandem_half_m + _wheel_height_m + WHEEL_FENDER_CLEAR_M)
 	var deck_z_m := rail_z_m + DECK_OVER_RAILS_M
 	var rear := _rounded(Vector3(WIDTH_M, deck_z_m - COVER_GROUND_M, front_m - _rear_m), PAINT,
 			ROUND_M, Vector3.AXIS_Y)
@@ -618,11 +667,13 @@ func _build_box() -> void:
 	var slabs: Array[Transform3D] = []
 	var slab := BoxMesh.new()
 	var slab_height_m := size.y - 0.15
+	_slab_height_m = slab_height_m
 	slab.size = Vector3(size.x - 2.0 * BOX_WALL_M - 0.04, slab_height_m, SLAB_THICK_M)
 	for i in BOX_SLABS:
 		var z_m := size.z / 2.0 - BOX_WALL_M - SLAB_GAP_M - (i + 0.5) * (SLAB_THICK_M + SLAB_GAP_M)
 		slabs.append(Transform3D(Basis(), Vector3(0.0, -size.y / 2.0 + 0.08 + slab_height_m / 2.0,
 				z_m)))
+	_slab_places = slabs
 	_box_weights = Art.many(slab, slabs, Art.material(WEIGHT, 0.6, 0.4))
 	_box.add_child(_box_weights)
 	add_child(_box)
@@ -779,9 +830,12 @@ func show_snapshot(s: Dictionary, delta: float = 0.0) -> void:
 # The folding fenders' swing: a change of the sled's speed throws them
 # (they lag behind as the sled jerks forward), the spring brings them
 # back; a slight shake while the sled moves.
-func _swing_flaps(speed_m_s: float, delta: float) -> void:
-	if delta <= 0.0:
+func _swing_flaps(speed_m_s: float, frame_s: float) -> void:
+	if frame_s <= 0.0:
 		return
+	# A long frame (loading, the app resumed) is taken as a short one: the
+	# explicit step is stable only below 2 / FLAP_OMEGA_RAD_S.
+	var delta := minf(frame_s, FLAP_LONGEST_STEP_S)
 	var accel_m_s2 := (speed_m_s - _last_speed_m_s) / delta
 	_last_speed_m_s = speed_m_s
 	_travel_m += speed_m_s * delta
@@ -790,7 +844,11 @@ func _swing_flaps(speed_m_s: float, delta: float) -> void:
 	# The sled pulled forward, they lag: swung back off their angle.
 	var kick := -FLAP_KICK_RAD_PER_M_S * FLAP_OMEGA_RAD_S * accel_m_s2
 	_flap_rate_rad_s += (spring + kick) * delta
-	_flap_rad = clampf(_flap_rad + _flap_rate_rad_s * delta, -FLAP_MOST_RAD, FLAP_MOST_RAD)
+	_flap_rad += _flap_rate_rad_s * delta
+	if absf(_flap_rad) > FLAP_MOST_RAD:
+		# Against its stop: it stays there until the spring pulls it back.
+		_flap_rad = clampf(_flap_rad, -FLAP_MOST_RAD, FLAP_MOST_RAD)
+		_flap_rate_rad_s = 0.0
 	_show_flaps()
 
 
