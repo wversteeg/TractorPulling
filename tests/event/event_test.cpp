@@ -581,7 +581,7 @@ TEST(Event, PullOffsRepeatUntilOneIsStrongest) {
 }
 
 // A second pull-off follows pulls of at least 120 m, so its sled is made
-// heavier for 20 m or more past the main line: as many steps as the
+// heavier by twice the first's steps, and at least as many as the
 // operator changes at once.
 TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
     Event event = make(5);
@@ -597,6 +597,33 @@ TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
         return p.puller == 4 ? 99.0 : 97.0;
     });
     EXPECT_EQ(knives_in_round[2] - knives_in_round[1], kRules.max_steps_per_change);
+}
+
+// Full pulls stopped at the line (as a run stops them), or within a step of
+// it, show no margin: the
+// first pull-off is as many steps heavier as the operator changes at once,
+// a second twice that, and a third heavier still, as far as the sled goes.
+TEST(Event, FullPullsStoppedAtTheLineMakeThePullOffsFarHeavier) {
+    Event event = make(5);
+    std::array<int, 4> knives_in_round{};
+    knives_in_round[0] = knives(event);
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
+        if (p.kind != PullKind::kPullOff) {
+            // One at the line, one a little past it: no margin either.
+            constexpr std::array<double, 5> kMain = {95.0, 95.0, 95.0, 100.0, 101.0};
+            return kMain.at(static_cast<std::size_t>(p.puller));
+        }
+        knives_in_round[static_cast<std::size_t>(p.pull_off_round)] = knives(event);
+        if (p.pull_off_round < 3) {
+            return p.puller >= 3 ? 120.0 : 96.0;
+        }
+        return p.puller == 4 ? 99.0 : 97.0;
+    });
+    EXPECT_EQ(pulls.back().pull_off_round, 3);
+    const int steps = kRules.max_steps_per_change;
+    EXPECT_EQ(knives_in_round[1] - knives_in_round[0], steps) << "the most at once";
+    EXPECT_EQ(knives_in_round[2] - knives_in_round[1], 2 * steps) << "twice that";
+    EXPECT_GT(knives_in_round[3], knives_in_round[2]) << "heavier still, up to the sled's most";
 }
 
 // In a pull-off only the pull-off line (120 m) is a full pull: two pullers
