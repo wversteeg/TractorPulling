@@ -599,7 +599,8 @@ TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
     EXPECT_EQ(knives_in_round[2] - knives_in_round[1], kRules.max_steps_per_change);
 }
 
-// Full pulls stopped at the line (as a run stops them) show no margin: the
+// Full pulls stopped at the line (as a run stops them), or within a step of
+// it, show no margin: the
 // first pull-off is as many steps heavier as the operator changes at once,
 // a second twice that, and a third heavier still, as far as the sled goes.
 TEST(Event, FullPullsStoppedAtTheLineMakeThePullOffsFarHeavier) {
@@ -608,7 +609,8 @@ TEST(Event, FullPullsStoppedAtTheLineMakeThePullOffsFarHeavier) {
     knives_in_round[0] = knives(event);
     const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
         if (p.kind != PullKind::kPullOff) {
-            return p.puller >= 3 ? 100.0 : 95.0;
+            // One at the line, one a little past it: no margin either.
+            return p.puller == 3 ? 100.0 : p.puller == 4 ? 101.0 : 95.0;
         }
         knives_in_round[static_cast<std::size_t>(p.pull_off_round)] = knives(event);
         if (p.pull_off_round < 3) {
