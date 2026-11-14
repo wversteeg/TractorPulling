@@ -22,7 +22,8 @@ const IRON := Color(0.22, 0.22, 0.24)
 const FRAME := Color(0.06, 0.06, 0.06)
 const CHROME := Color(0.8, 0.8, 0.82)
 const WEIGHT := Color(0.9, 0.72, 0.1)
-const GLASS := Color(0.75, 0.85, 0.95, 0.35)
+# Nearly clear and colourless: the cab and the driver show through it.
+const GLASS := Color(0.92, 0.94, 0.94, 0.15)
 const LAMP := Color(1.0, 0.95, 0.75)
 const SMOKE := Color(0.16, 0.16, 0.16, 0.8)
 const DIRT := Color(0.45, 0.31, 0.19)
@@ -70,6 +71,9 @@ const CAB_FLOOR_M := 0.35         # above the rear axle
 const CAB_POST_M := 0.07
 const CAB_ROOF_THICK_M := 0.12
 const CAB_ROOF_OVERHANG_M := 0.08
+# The back window's sill, above the rear axle: level with the fenders'
+# tops, a dark panel below it down to the floor [m].
+const CAB_BACK_SILL_M := 0.9
 const BEACON := Color(1.0, 0.55, 0.05)
 const BEACON_RADIUS_M := 0.07
 const WORK_LAMP_M := Vector3(0.12, 0.08, 0.06)
@@ -508,7 +512,8 @@ func _add_cab_frame(half_width_m: float) -> void:
 	var glass := _glass()
 	var panes: Array[Array] = [
 		["Front", Vector3(2.0 * half_width_m, height_m, 0.02), Vector3(front_m, 0.0, middle_z_m)],
-		["Back", Vector3(2.0 * half_width_m, height_m, 0.02), Vector3(back_m, 0.0, middle_z_m)],
+		["Back", Vector3(2.0 * half_width_m, CAB_ROOF_M - CAB_BACK_SILL_M, 0.02), Vector3(back_m,
+				0.0, (CAB_BACK_SILL_M + CAB_ROOF_M) / 2.0)],
 		["Left", Vector3(0.02, height_m, 2.0 * CAB_HALF_DEPTH_M), Vector3(middle_m, half_width_m,
 				middle_z_m)],
 		["Right", Vector3(0.02, height_m, 2.0 * CAB_HALF_DEPTH_M), Vector3(middle_m,
@@ -521,6 +526,15 @@ func _add_cab_frame(half_width_m: float) -> void:
 		window.position = TrackSpace.point(at.x, at.y, at.z)
 		window.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_body.add_child(window)
+	# The back wall below the window, and the sill across its top.
+	var wall_height_m := CAB_BACK_SILL_M - CAB_FLOOR_M
+	var wall := Art.box(Vector3(2.0 * half_width_m, wall_height_m, 0.03), FRAME, 0.6)
+	wall.name = "CabBackWall"
+	wall.position = TrackSpace.point(back_m, 0.0, CAB_FLOOR_M + wall_height_m / 2.0)
+	_body.add_child(wall)
+	var back_sill := Art.box(Vector3(2.0 * half_width_m, CAB_POST_M, CAB_POST_M), FRAME, 0.4)
+	back_sill.position = TrackSpace.point(back_m, 0.0, CAB_BACK_SILL_M)
+	_body.add_child(back_sill)
 	var roof_size := Vector3(2.0 * (half_width_m + CAB_ROOF_OVERHANG_M), CAB_ROOF_THICK_M,
 			2.0 * (CAB_HALF_DEPTH_M + CAB_ROOF_OVERHANG_M))
 	var roof := Art.instance(Art.rounded_box(roof_size, 0.05, Vector3.AXIS_Z),
@@ -558,7 +572,7 @@ func _add_cab_frame(half_width_m: float) -> void:
 	_body.add_child(handle)
 
 
-# Clear, tinted glass that casts no shadow of its own.
+# Clear glass that casts no shadow of its own.
 static func _glass() -> StandardMaterial3D:
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = GLASS
