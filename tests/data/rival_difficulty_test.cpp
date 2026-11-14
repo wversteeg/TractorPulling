@@ -132,8 +132,9 @@ struct Places {
 };
 
 constexpr Places kNew{.best = 11, .worst = 15};
-// One level up: the middle of the field, the top four on a good day.
-constexpr Places kOneLevelUp{.best = 3, .worst = 13};
+// One level up: the middle of the field, the top four on a good day, even
+// second on the best.
+constexpr Places kOneLevelUp{.best = 2, .worst = 13};
 // The sled operator sets the sled for the field's average, so the field
 // finishes close together: halfway may win on a good day.
 constexpr Places kHalfway{.best = 1, .worst = 10};

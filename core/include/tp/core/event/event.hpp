@@ -275,6 +275,8 @@ private:
     /// Pulls done so far.
     int completed_ = 0;
     int pull_off_round_ = 0;
+    /// Steps the last pull-off round's sled was made heavier by.
+    int pull_off_steps_ = 0;
     std::optional<int> pending_decision_;
     double step_estimate_m_ = 0.0;
     /// Steps of the last change, heavier positive, and the test pull before

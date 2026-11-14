@@ -507,9 +507,22 @@ void Event::start_pull_off() noexcept {
         head_ = 0;
         return;
     }
-    // Heavy enough that the strongest pull so far stops at the main
-    // round's line, short of the pull-off line; one step at least.
-    const int steps = best_full_m >= line_m_ ? steps_for(best_full_m - line_m_) : 1;
+    // The first pull-off: heavy enough that the strongest full pull stops
+    // at the main round's line, short of the pull-off line; one step with
+    // no full pull. A full pull stopped at the line (as the run stops it)
+    // shows no margin: the operator then changes the sled the most they do
+    // at once. A further pull-off: those left all reached the pull-off
+    // line, where their distance is cut off too: twice the last round's
+    // steps and the most at once at least, so that a third round is rare.
+    int steps = 1;
+    if (pull_off_round_ > 0) {
+        steps = std::max(2 * pull_off_steps_, rules_.max_steps_per_change);
+    } else if (best_full_m > line_m_) {
+        steps = steps_for(best_full_m - line_m_);
+    } else if (best_full_m == line_m_) {
+        steps = rules_.max_steps_per_change;
+    }
+    pull_off_steps_ = steps;
     sled_ = sled::heavier(sled_, steps);
     ++pull_off_round_;
     queue_size_ = 0;
