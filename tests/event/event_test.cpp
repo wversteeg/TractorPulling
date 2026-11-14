@@ -610,7 +610,8 @@ TEST(Event, FullPullsStoppedAtTheLineMakeThePullOffsFarHeavier) {
     const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
         if (p.kind != PullKind::kPullOff) {
             // One at the line, one a little past it: no margin either.
-            return p.puller == 3 ? 100.0 : p.puller == 4 ? 101.0 : 95.0;
+            constexpr std::array<double, 5> kMain = {95.0, 95.0, 95.0, 100.0, 101.0};
+            return kMain.at(static_cast<std::size_t>(p.puller));
         }
         knives_in_round[static_cast<std::size_t>(p.pull_off_round)] = knives(event);
         if (p.pull_off_round < 3) {
