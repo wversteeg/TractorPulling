@@ -78,8 +78,8 @@ levels = [
     { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
     { value = 0.42, cost_eur = 700, label = "Drawbar raised, 0.42 m" },
     { value = 0.44, cost_eur = 950, label = "Drawbar raised, 0.44 m" },
-    { value = 0.46, cost_eur = 1200, label = "Pulling hitch, 0.46 m" },
-    { value = 0.48, cost_eur = 1450, label = "Pulling hitch, 0.48 m" },
+    { value = 0.46, cost_eur = 1250, label = "Pulling hitch, 0.46 m" },
+    { value = 0.48, cost_eur = 1550, label = "Pulling hitch, 0.48 m" },
     { value = 0.50, cost_eur = 1950, label = "Pulling hitch, 0.50 m" },
 ]
 
