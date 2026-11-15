@@ -402,19 +402,25 @@ TEST(LiveSeason, GuestsPullAtEveryEvent) {
 
     // The first event: the tools' event with the guests, line for line.
     const Venue venue = data::venue(e.sled, d.rounds[0].track);
-    std::optional<Field> field = generate(e.reference, e.variation, e.class_rules, kPullers, kSeed);
+    const std::optional<Field> generated =
+        generate(e.reference, e.variation, e.class_rules, kPullers, kSeed);
     const std::optional<Field> pool = guest_pool(e.reference, guests, e.class_rules, kSeed);
-    ASSERT_TRUE(field.has_value() && pool.has_value());
-    field->pullers[static_cast<std::size_t>(LiveSeason::kPlayer)] = e.reference;
+    if (!generated.has_value() || !pool.has_value()) {
+        FAIL() << "the field or the guests were refused";
+    }
+    Field field = *generated;
+    field.pullers[static_cast<std::size_t>(LiveSeason::kPlayer)] = e.reference;
     const std::array<int, kMaxGuests> chosen = guests_at(kSeed, 0, guests);
-    const Field today = with_guests(*field, *pool, std::span{chosen.data(), 2});
+    const Field today = with_guests(field, *pool, std::span{chosen.data(), 2});
     ASSERT_EQ(today.count, kPullers + 2);
     const std::uint64_t seed = event_seed(kSeed, 0);
     const auto order = event::running_order(today.count, seed);
     const std::optional<PlayedEvent> scripted =
         play_event(e.rules, venue, today, e.variation, e.pull_to_pull,
                    std::span{order.data(), static_cast<std::size_t>(today.count)}, seed + 1, 2);
-    ASSERT_TRUE(scripted.has_value());
+    if (!scripted.has_value()) {
+        FAIL() << "play_event refused the event";
+    }
     const auto played = std::make_unique<PlayedEvent>(*scripted);
     ASSERT_TRUE(season->start_event(venue));
     LiveEvent* event = season->event();

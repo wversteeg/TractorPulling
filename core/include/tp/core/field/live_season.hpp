@@ -149,9 +149,9 @@ public:
     }
 
 private:
-    // Starts the next event with `field`: the season's, or with the player's
-    // tractor of the day.
-    bool start_with(const Venue& venue, const Field& field) noexcept;
+    // Starts the next event with `competitors`: the season's field, or with
+    // the player's tractor of the day; the event's guests join them.
+    bool start_with(const Venue& venue, const Field& competitors) noexcept;
 
     LiveSeason(const event::Rules& rules, const Variation& variation,
                const PullToPull& pull_to_pull, const Field& field, const Guests& guests,
