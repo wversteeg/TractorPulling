@@ -34,7 +34,8 @@ SeasonSave example() {
     save.events = {
         {{.puller = 2, .place = 1},
          {.puller = 0, .place = 2},
-         {.puller = 1, .place = 3, .disqualified = true}},
+         {.puller = 1, .place = 3, .disqualified = true},
+         {.puller = 3, .place = 4, .guest = true}},
         {{.puller = 0, .place = 1}, {.puller = 1, .place = 1}, {.puller = 2, .place = 3}}};
     return save;
 }
@@ -79,6 +80,7 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
             EXPECT_EQ(back.events[e][i].place, save.events[e][i].place) << e << ' ' << i;
             EXPECT_EQ(back.events[e][i].disqualified, save.events[e][i].disqualified)
                 << e << ' ' << i;
+            EXPECT_EQ(back.events[e][i].guest, save.events[e][i].guest) << e << ' ' << i;
         }
     }
 }

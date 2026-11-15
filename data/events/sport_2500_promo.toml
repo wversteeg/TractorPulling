@@ -26,17 +26,21 @@ downshift_share = 0.9
 launch_hold_share = 0.8
 launch_hold_max_s = 8.0
 
-# The field: Sport tractors from barely built to a little over half the
-# class's garage (garages/sport_2500.toml), driven by pullers new to the
-# class. A new Sport tractor finishes near the back; a bit over half the
-# garage wins.
+# The field: Sport tractors from barely built to about half the class's
+# garage (garages/sport_2500.toml), driven by pullers new to the class. A
+# new Sport tractor finishes near the back; a quarter of the garage is
+# about the middle, a third in the top five, and a bit under half wins (an
+# introduction to the Sport classes: play-testers spent a season and a
+# half at the back of fifteen when the strongest rivals were a little
+# stronger). Their strength spread keeps the field spread out on the sled
+# (tests/data/field_spread_test.cpp): narrower, the field bunches up.
 # Each driver picks a gear between `gears` for the day's track, the best
 # one as often as their track_reading says (tests/data/
 # rival_difficulty_test.cpp checks where the player's tractor finishes).
 # The Sport classes pull in tall, close gears (3rd to 8th, drivelines/
 # sport_*.toml) and still have a powershift (Supersport and up do not).
 [event.field]
-torque_scale = [0.44, 0.76]
+torque_scale = [0.44, 0.74]
 mass_kg = [2215.0, 2380.0]
 traction_limit = [1.298, 1.389]
 hitch_height_m = [0.405, 0.46]
@@ -76,8 +80,22 @@ max_steps_per_change = 4         # at most this many steps at once
 strong_full_pull_from = 0.8
 trouble_share = 0.6
 
-# The event in the game: the player and fourteen scripted rivals, drawn from the
-# field as above.
+# The event in the game: the player and eleven scripted rivals, drawn from
+# the field as above, the season's competition; and at every event two
+# guests (bijschrijvers) from a pool of six, who pull at a few of the
+# season's events but are not in the competition: they take places at the
+# event (and its prize money), never championship points, and a guest who
+# would have made the pull-off among the competitors pulls off too
+# (event::Event).
 [event.game]
-pullers = 15
-rival_names = ["Jan", "Sanne", "Kees", "Lotte", "Gert", "Ria", "Teun", "Fenna", "Bas", "Hennie", "Mirjam", "Joop", "Geert", "Lies"]
+pullers = 12
+rival_names = ["Jan", "Sanne", "Kees", "Lotte", "Gert", "Ria", "Teun", "Fenna", "Bas", "Hennie", "Mirjam"]
+guests = 2
+guest_names = ["Rik", "Daphne", "Harm", "Yvonne", "Frits", "Nienke"]
+
+# The guests are drawn as the field is, but for their strength: from the
+# field's weakest to a little above its best, so a guest may win the event
+# or finish last.
+[event.guests]
+torque_scale = [0.44, 0.78]
+traction_limit = [1.298, 1.40]

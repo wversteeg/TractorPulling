@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <utility>
 
 namespace tp::event {
 
@@ -114,19 +115,21 @@ std::optional<ParamError> validate(const Rules& rules) noexcept {
 }
 
 std::optional<Event> Event::create(const Rules& rules, const sled::Params& class_sled,
-                                   std::span<const int> running_order) noexcept {
-    if (validate(rules) || sled::validate(class_sled) || !running_order_valid(running_order)) {
+                                   std::span<const int> running_order, int guests) noexcept {
+    if (validate(rules) || sled::validate(class_sled) || !running_order_valid(running_order) ||
+        guests < 0 || std::cmp_greater_equal(guests, running_order.size())) {
         return std::nullopt;
     }
-    return Event{rules, class_sled, running_order};
+    return Event{rules, class_sled, running_order, guests};
 }
 
-Event::Event(const Rules& rules, const sled::Params& class_sled,
-             std::span<const int> running_order) noexcept
+Event::Event(const Rules& rules, const sled::Params& class_sled, std::span<const int> running_order,
+             int guests) noexcept
     : rules_(rules),
       sled_(class_sled),
       line_m_(rules.full_pull_m),
-      count_(static_cast<int>(running_order.size())) {
+      count_(static_cast<int>(running_order.size())),
+      guests_(guests) {
     for (std::size_t i = 0; i < running_order.size(); ++i) {
         order_[i] = running_order[i];
         queue_[i] = {.puller = running_order[i],
@@ -462,7 +465,7 @@ void Event::decide(bool keep) noexcept {
 std::optional<int> Event::best_short_of_the_line(
     const std::array<bool, kMaxPullers>& in) const noexcept {
     std::optional<int> best;
-    for (int i = 0; i < count_; ++i) {
+    for (int i = 0; i < count_ - guests_; ++i) {
         const Entry& e = entries_[static_cast<std::size_t>(i)];
         const bool qualifies = !in[static_cast<std::size_t>(i)] && e.pulled && !e.disqualified &&
                                e.reached_m >= line_m_ - rules_.qualifying_below_line_m;
@@ -474,16 +477,54 @@ std::optional<int> Event::best_short_of_the_line(
     return best;
 }
 
+int Event::guests_in_the_pull_off(std::array<bool, kMaxPullers>& in) const noexcept {
+    // The competitors in, and the weakest run among them that is not a full
+    // pull (a full pull is in whatever the places).
+    int competitors = 0;
+    std::optional<double> last_in_m;
+    for (int i = 0; i < count_ - guests_; ++i) {
+        const Entry& e = entries_[static_cast<std::size_t>(i)];
+        if (!in[static_cast<std::size_t>(i)]) {
+            continue;
+        }
+        ++competitors;
+        if (e.reached_m < line_m_) {
+            last_in_m = last_in_m ? std::min(*last_in_m, e.reached_m) : e.reached_m;
+        }
+    }
+    int joined = 0;
+    for (int i = count_ - guests_; i < count_; ++i) {
+        const Entry& e = entries_[static_cast<std::size_t>(i)];
+        if (!e.pulled || e.disqualified) {
+            continue;
+        }
+        // Among the competitors alone: a full pull is in; so is a
+        // qualifying run while places were left, or one further than the
+        // last run that filled them.
+        const bool qualifying = e.reached_m >= line_m_ - rules_.qualifying_below_line_m;
+        const bool places_left = competitors < rules_.pull_off_places;
+        if (e.reached_m >= line_m_ ||
+            (qualifying && (places_left || (last_in_m && e.reached_m > *last_in_m)))) {
+            in[static_cast<std::size_t>(i)] = true;
+            ++joined;
+        }
+    }
+    return joined;
+}
+
 void Event::start_pull_off() noexcept {
     // Who pulls in the next pull-off round, in running order: after the
-    // main round every full pull, filled up to the places with the best
-    // runs from `qualifying_below_line_m` short of the line on; after a
-    // pull-off, those who reached the pull-off line.
+    // main round every competitor's full pull, filled up to the places with
+    // the best competitors' runs from `qualifying_below_line_m` short of
+    // the line on, and the guests who would have made it among them; after
+    // a pull-off, those who reached the pull-off line.
     std::array<bool, kMaxPullers> in{};
     int qualifiers = 0;
     double best_full_m = -1.0;
     const double line_m = pull_off_round_ == 0 ? line_m_ : rules_.pull_off_full_pull_m;
-    for (int i = 0; i < count_; ++i) {
+    // A guest's main-round full pull is weighed with the guests below.
+    const int candidates = pull_off_round_ == 0 ? count_ - guests_ : count_;
+    for (int i = 0; i < candidates; ++i) {
         const Entry& e = entries_[static_cast<std::size_t>(i)];
         const bool candidate =
             pull_off_round_ == 0 ? e.pulled : e.pull_off_rounds == pull_off_round_;
@@ -501,6 +542,15 @@ void Event::start_pull_off() noexcept {
         }
         in[static_cast<std::size_t>(*best)] = true;
         ++qualifiers;
+    }
+    if (pull_off_round_ == 0) {
+        qualifiers += guests_in_the_pull_off(in);
+        for (int i = count_ - guests_; i < count_; ++i) {
+            const Entry& e = entries_[static_cast<std::size_t>(i)];
+            if (in[static_cast<std::size_t>(i)] && e.reached_m >= line_m_) {
+                best_full_m = std::max(best_full_m, e.reached_m);
+            }
+        }
     }
     if (qualifiers < 2 || pull_off_round_ >= kMaxPullOffRounds) {
         queue_size_ = 0;
@@ -559,6 +609,7 @@ std::span<const Standing> Event::standings() noexcept {
                     .distance_m = official(e.reached_m),
                     .full_pull = e.reached_m >= line_m_,
                     .disqualified = e.disqualified,
+                    .guest = guest(i),
                     .pull_off_rounds = e.pull_off_rounds,
                     .pull_off_distances_m = {}};
         for (int r = 0; r < e.pull_off_rounds; ++r) {

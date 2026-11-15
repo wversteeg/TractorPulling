@@ -20,10 +20,49 @@ namespace tp::field {
 /// pulls. The tools' season and the game's draw the same.
 [[nodiscard]] std::uint64_t event_seed(std::uint64_t season_seed, int number) noexcept;
 
+/// Most guests at one event.
+inline constexpr int kMaxGuests = 8;
+
+/// Guest pullers (bijschrijvers): tractors that pull at some of a season's
+/// events but are not in its competition (event::Event::create). A pool of
+/// `pool` of them is drawn for the season, each the class's reference
+/// varied within `variation` as the field is; each event `per_event` of
+/// them pull, drawn afresh. None by default.
+struct Guests {
+    Variation variation;
+    int pool = 0;
+    int per_event = 0;
+};
+
+/// Whether `guests` fit a field of `competitors`: a pool of 0 to
+/// event::kMaxPullers, 0 to kMaxGuests of them (and no more than the pool)
+/// at each event, and room for them beside the competitors.
+[[nodiscard]] bool guests_valid(const Guests& guests, int competitors) noexcept;
+
+/// The season's pool of guests, drawn for `season_seed` (a stream of its
+/// own, apart from the field's); an empty field for a pool of 0. Nothing
+/// if generate() refuses it.
+[[nodiscard]] std::optional<Field> guest_pool(const Puller& reference, const Guests& guests,
+                                              const rules::ClassRules& class_rules,
+                                              std::uint64_t season_seed) noexcept;
+
+/// Which of the pool pull at the season's event `number`: per_event
+/// different pool indices, the same for the same seed on every platform.
+[[nodiscard]] std::array<int, kMaxGuests> guests_at(std::uint64_t season_seed, int number,
+                                                    const Guests& guests) noexcept;
+
+/// The field at an event: the competitors, then the pool's guests `chosen`.
+[[nodiscard]] Field with_guests(const Field& competitors, const Field& pool,
+                                std::span<const int> chosen) noexcept;
+
 /// A season as the game plays it: a field drawn for the season, in which
 /// the player is puller kPlayer with the class's reference tractor and
 /// driver, the events in turn as LiveEvents (each with its own draws, as
 /// the tools' season has them), and the championship.
+///
+/// Each event the season's guests (Guests) pull too, after the field's
+/// pullers (their indices follow the field's): they take places in the
+/// event's standings, and the championship passes them over.
 ///
 /// A season can be saved between events and picked up again: each scored
 /// event's standings stay (event_standings()), and add_pulled_event() scores
@@ -39,11 +78,13 @@ public:
     static constexpr int kPlayer = 0;
 
     /// `pullers` pullers (the player and at least one rival) for `events`
-    /// events; nothing if the field, the points or the rules are refused.
+    /// events, and `guests` at each; nothing if the field, the guests, the
+    /// points or the rules are refused.
     [[nodiscard]] static std::optional<LiveSeason> create(
         const event::Rules& rules, const Puller& reference, const Variation& variation,
         const rules::ClassRules& class_rules, const PullToPull& pull_to_pull,
-        const season::Points& points, int pullers, int events, std::uint64_t seed) noexcept;
+        const season::Points& points, int pullers, int events, std::uint64_t seed,
+        const Guests& guests = {}) noexcept;
 
     /// Starts the next event, at `venue`: false once the season is over, while
     /// an event is unscored, or if the event is refused.
@@ -69,7 +110,8 @@ public:
     /// events, and in an event until their first pull, not after it.
     [[nodiscard]] bool player_may_change_tractor() const noexcept;
     /// Scores the next event as pulled earlier, from its standings (a saved
-    /// season's: each puller once, places 1 to the field's size), without
+    /// season's: each of the field's pullers once and each of the event's
+    /// guests once, marked as guests, places 1 to their number), without
     /// pulling it. Only the places and
     /// disqualifications count, as in score_event(). False while an event is
     /// unscored, once the season is over, or for standings that are not the
@@ -88,7 +130,14 @@ public:
     [[nodiscard]] int events_started() const noexcept { return started_; }
     [[nodiscard]] bool over() const noexcept { return events_scored() >= events_; }
 
+    /// The competitors: the player and the rivals, without the guests.
     [[nodiscard]] int puller_count() const noexcept { return field_.count; }
+    [[nodiscard]] const Guests& guests() const noexcept { return guests_; }
+    /// The pool's guests pulling at event `number` (guests_at()): the
+    /// event's puller puller_count() + i is the pool's guest [i].
+    [[nodiscard]] std::array<int, kMaxGuests> guests_at_event(int number) const noexcept {
+        return guests_at(seed_, number, guests_);
+    }
     [[nodiscard]] const Puller& player() const noexcept {
         return field_.pullers[static_cast<std::size_t>(kPlayer)];
     }
@@ -105,13 +154,16 @@ private:
     bool start_with(const Venue& venue, const Field& field) noexcept;
 
     LiveSeason(const event::Rules& rules, const Variation& variation,
-               const PullToPull& pull_to_pull, const Field& field,
-               const season::Championship& championship, int events, std::uint64_t seed) noexcept;
+               const PullToPull& pull_to_pull, const Field& field, const Guests& guests,
+               const Field& guest_pool, const season::Championship& championship, int events,
+               std::uint64_t seed) noexcept;
 
     event::Rules rules_;
     Variation variation_;
     PullToPull pull_to_pull_;
     Field field_;
+    Guests guests_;
+    Field guest_pool_;
     season::Championship championship_;
     int events_ = 0;
     std::uint64_t seed_ = 0;
@@ -120,6 +172,8 @@ private:
     bool scored_ = true;
     /// Each scored event's standings, for event_standings().
     std::array<std::array<event::Standing, event::kMaxPullers>, season::kMaxEvents> results_{};
+    /// The lines in each scored event's standings: the field and its guests.
+    std::array<int, season::kMaxEvents> result_sizes_{};
     std::optional<LiveEvent> event_;
 };
 

@@ -120,6 +120,12 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     const std::vector<double> gears = reader.numbers("event.field.gears");
     const std::int64_t game_pullers = reader.integer("event.game.pullers");
     std::vector<std::string> rival_names = reader.texts("event.game.rival_names");
+    // Optional: an event without guests.
+    const std::int64_t guests =
+        reader.has("event.game.guests") ? reader.integer("event.game.guests") : 0;
+    std::vector<std::string> guest_names = reader.has("event.game.guest_names")
+                                               ? reader.texts("event.game.guest_names")
+                                               : std::vector<std::string>{};
     const event::Rules rules{
         .full_pull_m = reader.number("event.rules.full_pull_m"),
         .extended_full_pull_m = reader.number("event.rules.extended_full_pull_m"),
@@ -197,6 +203,23 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         variation.fewest_load_downshift_gears = static_cast<int>(counts[0]);
         variation.most_load_downshift_gears = static_cast<int>(counts[1]);
     }
+    // The guests: the field's variation but for what [event.guests] sets.
+    field::Variation guest_variation = variation;
+    for (const auto& [key, target] :
+         {std::pair{"event.guests.torque_scale", &field::Variation::torque_scale},
+          std::pair{"event.guests.mass_kg", &field::Variation::mass_kg},
+          std::pair{"event.guests.traction_limit", &field::Variation::traction_limit},
+          std::pair{"event.guests.track_reading", &field::Variation::track_reading},
+          std::pair{"event.guests.hitch_height_m", &field::Variation::hitch_height_m}}) {
+        if (reader.has(key)) {
+            guest_variation.*target = range(reader, key);
+        }
+    }
+    if (reader.has("event.guests.rated_rpm")) {
+        const field::Range rpm = range(reader, "event.guests.rated_rpm");
+        guest_variation.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
+                                             .high = units::rpm_to_rad_s(rpm.high)};
+    }
     if (const std::optional<LoadError>& late = reader.error()) {
         return *late;
     }
@@ -218,6 +241,20 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     if (std::cmp_not_equal(rival_names.size(), game_pullers - 1) || !named) {
         return detail::make_error(source, "event.game.rival_names",
                                   "one name, not empty, for every puller but the player");
+    }
+    const bool guests_named =
+        std::ranges::none_of(guest_names, [](const std::string& name) { return name.empty(); });
+    if (!guests_named) {
+        return detail::make_error(source, "event.game.guest_names", "must not be empty");
+    }
+    const field::Guests season_guests{.variation = guest_variation,
+                                      .pool = static_cast<int>(guest_names.size()),
+                                      .per_event = static_cast<int>(guests)};
+    if (guests < 0 || std::cmp_greater(guests, guest_names.size()) ||
+        !field::guests_valid(season_guests, static_cast<int>(game_pullers))) {
+        return detail::make_error(source, "event.game.guests",
+                                  "must be 0 to 8, no more than guest_names, and with the "
+                                  "pullers at most 32");
     }
 
     std::optional<LoadError> error;
@@ -241,17 +278,27 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         const FieldError described = describe(*field_error);
         return detail::make_error(source, described.field, described.reason);
     }
-    return EventDefinition{
-        .class_rules = *class_rules,
-        .rules = rules,
-        .reference = reference,
-        .variation = variation,
-        .pull_to_pull = pull_to_pull,
-        .pullers = count,
-        .seed = static_cast<std::uint64_t>(seed),
-        .sled = *sled,
-        .track = *track,
-        .game = {.pullers = static_cast<int>(game_pullers), .rival_names = std::move(rival_names)}};
+    if (season_guests.pool > 0) {
+        if (const auto guest_error =
+                field::validate(reference, guest_variation, *class_rules, season_guests.pool)) {
+            const FieldError described = describe(*guest_error);
+            return detail::make_error(source, "event.guests", described.reason);
+        }
+    }
+    return EventDefinition{.class_rules = *class_rules,
+                           .rules = rules,
+                           .reference = reference,
+                           .variation = variation,
+                           .pull_to_pull = pull_to_pull,
+                           .pullers = count,
+                           .seed = static_cast<std::uint64_t>(seed),
+                           .sled = *sled,
+                           .track = *track,
+                           .game = {.pullers = static_cast<int>(game_pullers),
+                                    .rival_names = std::move(rival_names),
+                                    .guests = static_cast<int>(guests),
+                                    .guest_names = std::move(guest_names),
+                                    .guest_variation = guest_variation}};
 }
 
 }  // namespace

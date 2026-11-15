@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -368,6 +369,97 @@ TEST(LiveSeason, RefusesABadSeason) {
     EXPECT_FALSE(LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules,
                                     e.pull_to_pull, d.points, kPullers, season::kMaxEvents + 1,
                                     kSeed));
+}
+
+// The season's guests: two of the pool at every event, after the
+// competitors, drawn the same for the same seed; marked in the standings,
+// passed over by the championship, kept by a save; and each event is the
+// tools' event with them (play_event on the field with the guests).
+TEST(LiveSeason, GuestsPullAtEveryEvent) {
+    const data::SeasonDefinition d = club_season();
+    const data::EventDefinition& e = d.event;
+    Guests guests = e.game.season_guests();
+    guests.variation.lowest_gear = e.variation.lowest_gear;
+    ASSERT_EQ(guests.per_event, 2);
+    const auto create = [&] {
+        std::optional<LiveSeason> season =
+            LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull,
+                               d.points, kPullers, kEvents, kSeed, guests);
+        if (!season.has_value()) {
+            throw std::runtime_error("the season was refused");
+        }
+        return std::make_unique<LiveSeason>(*season);
+    };
+    const std::unique_ptr<LiveSeason> season = create();
+    EXPECT_EQ(season->puller_count(), kPullers) << "the competitors";
+    for (int n = 0; n < kEvents; ++n) {
+        const std::array<int, kMaxGuests> chosen = season->guests_at_event(n);
+        EXPECT_NE(chosen[0], chosen[1]) << n;
+        EXPECT_GE(chosen[0], 0);
+        EXPECT_LT(chosen[1], guests.pool);
+        EXPECT_EQ(chosen, guests_at(kSeed, n, guests)) << "drawn from the seed alone";
+    }
+
+    // The first event: the tools' event with the guests, line for line.
+    const Venue venue = data::venue(e.sled, d.rounds[0].track);
+    std::optional<Field> field = generate(e.reference, e.variation, e.class_rules, kPullers, kSeed);
+    const std::optional<Field> pool = guest_pool(e.reference, guests, e.class_rules, kSeed);
+    ASSERT_TRUE(field.has_value() && pool.has_value());
+    field->pullers[static_cast<std::size_t>(LiveSeason::kPlayer)] = e.reference;
+    const std::array<int, kMaxGuests> chosen = guests_at(kSeed, 0, guests);
+    const Field today = with_guests(*field, *pool, std::span{chosen.data(), 2});
+    ASSERT_EQ(today.count, kPullers + 2);
+    const std::uint64_t seed = event_seed(kSeed, 0);
+    const auto order = event::running_order(today.count, seed);
+    const std::optional<PlayedEvent> scripted =
+        play_event(e.rules, venue, today, e.variation, e.pull_to_pull,
+                   std::span{order.data(), static_cast<std::size_t>(today.count)}, seed + 1, 2);
+    ASSERT_TRUE(scripted.has_value());
+    const auto played = std::make_unique<PlayedEvent>(*scripted);
+    ASSERT_TRUE(season->start_event(venue));
+    LiveEvent* event = season->event();
+    ASSERT_NE(event, nullptr);
+    EXPECT_EQ(event->puller_count(), kPullers + 2);
+    EXPECT_FALSE(event->guest(kPullers - 1));
+    EXPECT_TRUE(event->guest(kPullers));
+    EXPECT_TRUE(event->guest(kPullers + 1));
+    replay(*event, *played);
+    ASSERT_EQ(event->turn(), LiveEvent::Turn::kFinished);
+    ASSERT_EQ(event->log().size(), played->log_size);
+    for (std::size_t i = 0; i < played->log_size; ++i) {
+        EXPECT_EQ(played->log[i].pull.puller, event->log()[i].pull.puller) << i;
+        EXPECT_EQ(played->log[i].reached_m, event->log()[i].reached_m) << i;
+    }
+    ASSERT_TRUE(season->score_event());
+    const std::span<const event::Standing> first = season->event_standings(0);
+    ASSERT_EQ(first.size(), static_cast<std::size_t>(kPullers + 2));
+    for (const event::Standing& s : first) {
+        EXPECT_EQ(s.guest, s.puller >= kPullers) << s.puller;
+    }
+    EXPECT_EQ(season->standings().size(), static_cast<std::size_t>(kPullers))
+        << "the championship is the competitors'";
+
+    // Picked up again from the standings, guests and all; without the
+    // guests' marks they are not the event's.
+    const std::unique_ptr<LiveSeason> resumed = create();
+    std::vector<event::Standing> unmarked(first.begin(), first.end());
+    for (event::Standing& s : unmarked) {
+        s.guest = false;
+    }
+    EXPECT_FALSE(resumed->add_pulled_event(unmarked));
+    EXPECT_FALSE(resumed->add_pulled_event(first.first(static_cast<std::size_t>(kPullers))))
+        << "the guests missing";
+    ASSERT_TRUE(resumed->add_pulled_event(first));
+    for (std::size_t i = 0; i < static_cast<std::size_t>(kPullers); ++i) {
+        EXPECT_EQ(resumed->standings()[i].puller, season->standings()[i].puller) << i;
+        EXPECT_EQ(resumed->standings()[i].points, season->standings()[i].points) << i;
+    }
+
+    // A pool too small for the guests at each event is refused.
+    Guests too_many = guests;
+    too_many.per_event = guests.pool + 1;
+    EXPECT_FALSE(LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules,
+                                    e.pull_to_pull, d.points, kPullers, kEvents, kSeed, too_many));
 }
 
 }  // namespace
