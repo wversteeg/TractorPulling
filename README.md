@@ -198,8 +198,8 @@ The puller sets two things on the tractor before a pull
   on firm ground; harder than 1.0 bar only shrinks the footprint. This
   light tractor runs out of engine before grip, so a pressure changes its
   pull by tenths of a metre; a Sport 4.5 t gains on soft tires on the
-  heavy clay and loses metres on the clay-sand
-  (`TrackSetup.EachTrackHasItsOwnBestTirePressure`):
+  heavy clay, more than on the firm tracks
+  (`TrackSetup.SoftTiresPayOnTheHeavyClay`):
 
 ```bash
 for bar in 0.7 1.0 1.6; do

@@ -13,15 +13,13 @@ seed = 2026
 
 # The reference driver: neutral, the gear in at 0.5 s, rev up, then the
 # clutch up over 3 s from 3 s; a gear down under load once the sled pulls
-# the engine below 87 % of its rated speed (0 would never shift): with a
-# pulling governor's 2650 rpm, about 2300 rpm, where the other classes'
-# drivers shift at 90 % of a lower rated speed.
+# the engine below 90 % of its rated speed (0 would never shift).
 [event.driver]
 gear = 7
 select_gear_s = 0.5
 launch_s = 3.0
 clutch_slip_in_s = 3.0
-downshift_share = 0.87
+downshift_share = 0.9
 # A tall gear's launch: the clutch comes up over clutch_slip_in_s, eased
 # back while the engine is below 80 % of its rated speed so the revs and
 # the boost hold, for up to 8 s in all.
