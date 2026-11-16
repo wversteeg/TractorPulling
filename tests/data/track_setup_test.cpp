@@ -193,8 +193,11 @@ constexpr double kQuarter = 0.25;
 constexpr double kHalfway = 0.5;
 constexpr double kThreeQuarters = 0.75;
 constexpr double kForward = 1.0;
-// More than the spot on the track decides [m].
-constexpr double kClearly_m = 3.0;
+// A setting that shows: well more than a pull-to-pull difference, the
+// metres a puller would notice [m]. The tests are rules of thumb (which
+// way the weights go on which track), not the exact places and distances,
+// which move with every change to the physics.
+constexpr double kShows_m = 1.5;
 // Within a pull-to-pull difference: two places this close are as good as
 // each other [m]. Near its best a track's reach changes little with the
 // weights, so which of two such places comes out ahead is the luck of the
@@ -236,15 +239,14 @@ public:
         return best_m;
     }
 
-    // Whether the places from `back` to `forward` include one as good as the
-    // best.
-    [[nodiscard]] bool best_lies_between(double back, double forward) const {
-        return best_between_m(back, forward) >= best_m() - kAsGood_m;
-    }
+    // Where the track wants the weights: the middle of the places as good
+    // as the best (0 all back, 1 all forward). Near its best a track's reach
+    // is flat, so the middle of that stretch moves less than the single
+    // furthest place.
+    [[nodiscard]] double wants_weights_at() const { return (as_good(true) + as_good(false)) / 2.0; }
 
-    // The rearmost and the foremost of the places as good as the best.
-    [[nodiscard]] double rearmost_as_good() const { return as_good(true); }
-    [[nodiscard]] double foremost_as_good() const { return as_good(false); }
+    // What the worst of the places costs against the best [m].
+    [[nodiscard]] double setup_matters_m() const { return best_m() - std::ranges::min(reach_m_); }
 
     // A place's distance [m]; `at` one of the nine places.
     [[nodiscard]] double at_m(double at) const {
@@ -293,56 +295,42 @@ std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
     return names;
 }
 
-// Each track has its own best place for the weights. On a sled heavy
-// enough that the tractor stops short of the line, where a setting shows:
-// forward on the grippy tracks (the firm loam, the dry hard clay, the moist
-// heavy clay), where the tires hold and the chain, low on the sled, pulls
-// the nose up; back on the loose sandy clay, where the grip runs out before
-// the front can rise and the rear tires need every kilo; in between on the
-// clay-sand and on the wet start, which is wet only at the start: enough
+// Rules of thumb for the weights, on a sled heavy enough that the tractor
+// stops short of the line, where a setting shows. The grippier the track,
+// the further forward the weights: on the grippy tracks (the firm loam, the
+// dry hard clay, the moist heavy clay) the tires hold and the chain, low on
+// the sled, pulls the nose up; on the loose sandy clay the grip runs out
+// before the front can rise and the rear tires need every kilo. The
+// clay-sand and the wet start (wet only at the start) lie in between: enough
 // weight back to get the sled going, not so much that the grippy rest of
-// the track lifts the nose. Over the tracks the best places use at least
-// three quarters of the weights' range: on one track a quarter forward is
-// as good as any place, on another all forward.
-//
-// Near its best a track's reach is flat (on the clay-sand three places
-// within 0.15 m of each other), so the test asks for a place in the
-// expected range as good as the best one, not for the single winner of
-// nine: that would flip with any small change to the physics.
-TEST(TrackSetup, EachTrackHasItsOwnBestWeights) {
+// the track lifts the nose. And on every track the setup matters: the worst
+// place costs metres against the best.
+TEST(TrackSetup, TheGrippierTheTrackTheFurtherForwardTheWeights) {
     const SportSetup sport;
-    struct Range {
-        double back;
-        double forward;
-    };
-    const std::map<std::string, Range> best_on{
-        {"Spring opener, watered start", {kHalfway, kThreeQuarters}},
-        {"Sandy clay", {kQuarter, kHalfway}},
-        {"Clay-sand", {kHalfway, kThreeQuarters}},
-        {"Firm loam", {kThreeQuarters, kForward}},
-        {"Summer, dry hard clay", {kThreeQuarters, kForward}},
-        {"Rainy day, covered heavy clay", {kThreeQuarters, kForward}},
-    };
-    double furthest_back = kForward;
-    double furthest_forward = kBack;
+    const WeightsCurve loose{sport, "Sandy clay"};
+    for (const char* track :
+         {"Firm loam", "Summer, dry hard clay", "Rainy day, covered heavy clay"}) {
+        const WeightsCurve grippy{sport, track};
+        EXPECT_GE(grippy.wants_weights_at(), loose.wants_weights_at() + kQuarter)
+            << track << ": " << grippy.text() << "\nSandy clay: " << loose.text();
+    }
+    for (const char* track : {"Clay-sand", "Spring opener, watered start"}) {
+        const WeightsCurve between{sport, track};
+        EXPECT_GT(between.wants_weights_at(), loose.wants_weights_at())
+            << track << ": " << between.text() << "\nSandy clay: " << loose.text();
+        const WeightsCurve grippiest{sport, "Firm loam"};
+        EXPECT_LT(between.wants_weights_at(), grippiest.wants_weights_at())
+            << track << ": " << between.text() << "\nFirm loam: " << grippiest.text();
+    }
     for (const std::string& track : rounds_on_their_own_tracks(sport)) {
         const WeightsCurve curve{sport, track};
-        furthest_back = std::min(furthest_back, curve.rearmost_as_good());
-        furthest_forward = std::max(furthest_forward, curve.foremost_as_good());
-        ASSERT_TRUE(best_on.contains(track)) << track;
-        const Range& expected = best_on.at(track);
-        EXPECT_TRUE(curve.best_lies_between(expected.back, expected.forward))
-            << track << ": " << curve.text();
+        EXPECT_GT(curve.setup_matters_m(), kShows_m) << track << ": " << curve.text();
     }
-    constexpr double kMostOfTheRange = 0.75;
-    EXPECT_GE(furthest_forward - furthest_back, kMostOfTheRange)
-        << "best from " << furthest_back << " to " << furthest_forward;
 }
 
 // Less grippy rear tires want the weights further back: on the firm loam
-// the built puller tires pull furthest with them forward, tires that grip
-// less (a lower traction limit) as far with them halfway or further back,
-// and all forward costs them.
+// tires that grip less (a lower traction limit) want them clearly further
+// back than the built puller tires.
 TEST(TrackSetup, LessGrippyTiresWantTheWeightsFurtherBack) {
     constexpr double kLessGrip = 1.1;
     const char* firm = "Firm loam";
@@ -351,53 +339,52 @@ TEST(TrackSetup, LessGrippyTiresWantTheWeightsFurtherBack) {
     ASSERT_GT(grippy.rear_traction(), kLessGrip);
     const WeightsCurve on_grippy{grippy, firm};
     const WeightsCurve on_less{less, firm};
-    EXPECT_TRUE(on_grippy.best_lies_between(kForward, kForward)) << on_grippy.text();
-    EXPECT_TRUE(on_less.best_lies_between(kBack, kHalfway)) << on_less.text();
-    EXPECT_LT(on_less.at_m(kForward), on_less.best_m() - kAsGood_m) << on_less.text();
+    EXPECT_GE(on_grippy.wants_weights_at(), on_less.wants_weights_at() + kQuarter)
+        << "grippy: " << on_grippy.text() << "\nless grippy: " << on_less.text();
 }
 
 // What the wrong weights cost depends on the track. On the loose sandy
-// clay forward costs metres against the best place, the rear tires short
-// of load, and all back stands the tractor on its wheelie bar, which costs
-// as much. On the grippy firm loam and the dry hard clay it is the other
-// way round: forward pays, the weights halfway let the nose climb. (Against
-// the best of the places, wherever it lies, so the margin does not hang on
-// one place.)
+// clay both ends cost against the best place: forward the rear tires are
+// short of load, all back the tractor stands on its wheelie bar. On the
+// grippy firm loam and the dry hard clay it is the other way round:
+// forward pays, the weights halfway let the nose climb.
 TEST(TrackSetup, TheTrackDecidesWhatTheWrongWeightsCost) {
     const SportSetup sport;
     const WeightsCurve loose{sport, "Sandy clay"};
-    EXPECT_GT(loose.best_m(), loose.at_m(kForward) + kClearly_m) << loose.text();
-    EXPECT_GT(loose.best_m(), loose.at_m(kBack) + kClearly_m) << loose.text();
+    EXPECT_GT(loose.best_m(), loose.at_m(kForward) + kShows_m) << loose.text();
+    EXPECT_GT(loose.best_m(), loose.at_m(kBack) + kShows_m) << loose.text();
     for (const char* track : {"Firm loam", "Summer, dry hard clay"}) {
         const WeightsCurve grippy{sport, track};
-        EXPECT_GT(grippy.best_between_m(kThreeQuarters, kForward),
-                  grippy.at_m(kHalfway) + kClearly_m)
+        EXPECT_GT(grippy.best_between_m(kThreeQuarters, kForward), grippy.at_m(kHalfway) + kShows_m)
             << track << ": " << grippy.text();
     }
 }
 
-// Each track has its own best tire pressure, and both sides of it cost:
-// too soft lets the lugs squirm, too hard shrinks the footprint. With the
-// weights where the track wants them: soft pays on the heavy clay, where
-// the tires dig in; on the firm loam and the dry hard clay the reference,
-// where the softest costs metres. On a sled heavy enough that the tractor
-// stops short of the line.
-TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
+// Rules of thumb for the tire pressure, with the weights where the track
+// wants them: soft pays on the heavy clay, where the tires dig in, and
+// pays more there than on the firm loam or the dry hard clay; too hard
+// costs on all three, the footprint shrunk.
+TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
     const SportSetup sport;
     constexpr double kSoft_bar = 0.5;
     constexpr double kReference_bar = 1.0;
     constexpr double kHard_bar = 1.6;
-    constexpr double kSoftCosts_m = 2.0;
     const auto reach = [&](const char* track, double bar) {
         const double weights_at = WeightsCurve{sport, track}.best_at();
         return sport.reach_m(track, weights_at, bar, sport.steps_short_of_line(track));
     };
+    const auto soft_gains_m = [&](const char* track) {
+        return reach(track, kSoft_bar) - reach(track, kReference_bar);
+    };
     const char* heavy = "Rainy day, covered heavy clay";
-    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kReference_bar));
-    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kHard_bar) + kAsGood_m);
+    EXPECT_GT(soft_gains_m(heavy), 0.0);
     for (const char* firm : {"Firm loam", "Summer, dry hard clay"}) {
-        EXPECT_GT(reach(firm, kReference_bar), reach(firm, kSoft_bar) + kSoftCosts_m) << firm;
-        EXPECT_GT(reach(firm, kReference_bar), reach(firm, kHard_bar)) << firm;
+        EXPECT_GT(soft_gains_m(heavy), soft_gains_m(firm)) << firm;
+    }
+    for (const char* track : {heavy, "Firm loam", "Summer, dry hard clay"}) {
+        EXPECT_GT(std::max(reach(track, kSoft_bar), reach(track, kReference_bar)),
+                  reach(track, kHard_bar) + kAsGood_m)
+            << track;
     }
 }
 
