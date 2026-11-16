@@ -97,6 +97,9 @@ const BAY_SIZE_M := Vector2(5.0, 4.0)
 # A bay starts this far behind the tractor's rear axle: room for the rear
 # tires [m].
 const BAY_BEHIND_REAR_AXLE_M := 1.0
+# The grass texture repeats this often, on the field and on the parking
+# grass that carries it on [m].
+const GRASS_TILE_M := 12.0
 # The parking's ground: behind the start line from here to the run-up's
 # end, out from the lane's right-hand chalk line between these [m].
 const PARKING_FRONT_X_M := -3.0
@@ -105,9 +108,6 @@ const PARKING_FROM_LANE_M := Vector2(1.0, 15.0)
 # field's grass over it, so each is lit by the parking's own lights: a
 # renderer lights each mesh with only its nearest few lights (8 on a phone),
 # and the field's one big plane picks the track's [m].
-# The grass texture repeats every GRASS_TILE_M, on the field and on the
-# parking grass that carries it on.
-const GRASS_TILE_M := 12.0
 const PARKING_PIECE_M := 7.5
 # The grass pieces lie this far over the field, clear of it [m].
 const PARKING_GRASS_LIFT_M := 0.01
