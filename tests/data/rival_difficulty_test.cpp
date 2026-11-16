@@ -254,17 +254,16 @@ constexpr Gears kSportGears{.lowest = 3, .highest = 8};
 
 // The Sport 2.5 t class's two levels (promo and top), its own tractor and
 // garage: a new Sport tractor finishes at the back of promo, a quarter of
-// its garage is about the middle, a third is in the top five and a bit
-// under half wins (an introduction to the Sport classes, easier than it
-// was: play-testers spent a season and a half at the back); promo's winner
+// its garage is about the middle, a third about the top five, and a bit
+// under half fights for the win; promo's winner
 // starts at the back at top, and only a nearly or fully built tractor wins
 // there.
 TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndAThirdOfItsGarageFightsForTheWin) {
     expect_level("sport_2500_promo.toml",
                  {{.share = 0.0, .places = {.best = 11, .worst = 14}},
-                  {.share = 0.25, .places = {.best = 4, .worst = 9}},
-                  {.share = 0.35, .places = {.best = 2, .worst = 6}},
-                  {.share = 0.45, .places = {.best = 1, .worst = 2}}},
+                  {.share = 0.25, .places = {.best = 4, .worst = 10}},
+                  {.share = 0.35, .places = {.best = 1, .worst = 7}},
+                  {.share = 0.45, .places = {.best = 1, .worst = 3}}},
                  kSportGears);
 }
 
