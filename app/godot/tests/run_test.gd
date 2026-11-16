@@ -178,13 +178,13 @@ func _check_event() -> void:
 	_expect(error.is_empty(), "the season: " + error)
 	var season := event.get_season()
 	var names: PackedStringArray = season.get("names", PackedStringArray())
-	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 15
+	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 12
 			and names[0] == "You" and names[1] == "Henk", "the season: %s" % season)
 	error = event.start_event()
 	_expect(error.is_empty(), "the first event: " + error)
 	var info := event.get_event()
 	_expect(info.get("name", "") == "Spring opener, watered start" and info.get("index", -1) == 0
-			and info.get("pullers", 0) == 15 and info.get("full_pull_m", 0.0) == 100.0
+			and info.get("pullers", 0) == 14 and info.get("full_pull_m", 0.0) == 100.0
 			and info.get("standard_full_pull_m", 0.0) == 100.0,
 			"the event: %s" % info)
 
@@ -236,6 +236,7 @@ func _check_event() -> void:
 		_expect(run.setup_event_pull(event, EASY).contains("no pull"),
 				"no pull of the player's due")
 	_expect(not event.score_event(), "an unfinished event is not scored")
+	_check_guests(event)
 
 
 # A save the season no longer takes (here another season's) still gives
@@ -458,3 +459,19 @@ func _play(layout: String, controls: String, gear: int, stick: float,
 	var result := run.get_result()
 	print(layout, " result: ", result.ending, " ", result.distance_m, " m")
 	print(layout, " state hash ", run.get_state_hash())
+
+
+# The event's guests: after the twelve competitors, named from the
+# season's pool, marked in the standings once they have pulled and
+# scoring no points.
+func _check_guests(event: TractorPullEvent) -> void:
+	var standings := event.get_standings()
+	var guests := 0
+	for line: Dictionary in standings:
+		if line.get("guest", false):
+			guests += 1
+			_expect(int(line["puller"]) >= 12 and int(line["points"]) == 0
+					and not String(line["name"]).begins_with("#"),
+					"a guest, named, without points: %s" % line)
+	_expect(guests <= 2, "two guests at most: %d" % guests)
+

@@ -7,6 +7,11 @@
 # grip less) in a wet blue, the stronger the darker. Over them the line
 # the player has chosen: the rear tires' tracks and the sled's pan between
 # them, and a notch where the crew would start.
+#
+# On the pit board it stands upright, small; the track screen draws it
+# `lengthwise`, big: the start line on the left, the full-pull line on the
+# right and the driver's left at the top, as the driver looks down the
+# lane, with `marks` every MARK_EVERY_M along it.
 class_name LaneMap
 extends Control
 
@@ -33,8 +38,18 @@ const BLUR_ALPHA := 0.2
 # A spot at this strength or more is drawn at full colour.
 const FULL_STRENGTH := 0.3
 const NOTCH := 8.0
+# The distance marks: a faint line across the lane every this far, named
+# at the lane's right-hand chalk line [m].
+const MARK_EVERY_M := 10.0
+const MARK := Color(0.93, 0.93, 0.88, 0.18)
+const MARK_TEXT := Color(0.93, 0.93, 0.88, 0.7)
+const MARK_FONT_SIZE := 14
 
 var report: Dictionary = {}
+# Drawn along the control (the start on the left), not up it.
+var lengthwise := false
+# Distance marks along the lane.
+var marks := false
 # Where the player starts the sled, to the left of the middle [m].
 var start_y_m := 0.0
 
@@ -66,9 +81,22 @@ func _length_m() -> float:
 
 # Where `y_m` across the lane (positive left) and `x_m` along it are drawn.
 func _point(x_m: float, y_m: float) -> Vector2:
-	var across := (size.x - 2.0 * MARGIN) / _lane_m()
+	var across := _across_px_per_m()
+	if lengthwise:
+		var ahead := (size.x - 2.0 * MARGIN) / _length_m()
+		return Vector2(MARGIN + x_m * ahead, size.y / 2.0 - y_m * across)
 	var along := (size.y - 2.0 * MARGIN) / _length_m()
 	return Vector2(size.x / 2.0 - y_m * across, size.y - MARGIN - x_m * along)
+
+
+# A metre across the lane, drawn [px].
+func _across_px_per_m() -> float:
+	return ((size.y if lengthwise else size.x) - 2.0 * MARGIN) / _lane_m()
+
+
+# Down the lane, from the start towards the full-pull line, on screen.
+func _ahead() -> Vector2:
+	return Vector2.RIGHT if lengthwise else Vector2.UP
 
 
 func _draw() -> void:
@@ -78,6 +106,8 @@ func _draw() -> void:
 	for i in range(-5, 6):
 		var y := half * i / 5.5
 		draw_line(_point(0.0, y), _point(_length_m(), y), SOIL_DARK, 2.0)
+	if marks:
+		_draw_marks()
 	for spot: Dictionary in report.get("spots", []):
 		_draw_spot(spot)
 	for side: float in [-1.0, 1.0]:
@@ -88,8 +118,24 @@ func _draw() -> void:
 		return
 	_draw_line_chosen()
 	var suggested := _point(0.0, float(report.get("suggested_y_m", 0.0)))
-	draw_colored_polygon(PackedVector2Array([suggested + Vector2(0.0, -NOTCH),
-			suggested + Vector2(-NOTCH, 0.0), suggested + Vector2(NOTCH, 0.0)]), SUGGESTION)
+	var ahead := _ahead()
+	var side := Vector2(ahead.y, -ahead.x)
+	draw_colored_polygon(PackedVector2Array([suggested + ahead * NOTCH,
+			suggested + side * NOTCH, suggested - side * NOTCH]), SUGGESTION)
+
+
+# A faint line across the lane every MARK_EVERY_M, its distance beside the
+# right-hand chalk line.
+func _draw_marks() -> void:
+	var half := _lane_m() / 2.0
+	var font := get_theme_default_font()
+	var x_m := MARK_EVERY_M
+	while x_m < _length_m() - MARK_EVERY_M / 4.0:
+		draw_line(_point(x_m, half), _point(x_m, -half), MARK, 1.0)
+		var at := _point(x_m, -half) + (Vector2(4.0, -6.0) if lengthwise else Vector2(-34.0, -4.0))
+		draw_string(font, at, "%d m" % roundi(x_m), HORIZONTAL_ALIGNMENT_LEFT, -1,
+				MARK_FONT_SIZE, MARK_TEXT)
+		x_m += MARK_EVERY_M
 
 
 func _draw_spot(spot: Dictionary) -> void:
@@ -108,9 +154,11 @@ func _draw_spot(spot: Dictionary) -> void:
 	_draw_ellipse(_rect(at, y, half_length, half_width), Color(colour, strength))
 
 
-# An ellipse filling `box`, at least MIN_ASPECT as tall as it is wide.
+# An ellipse filling `box`, at least MIN_ASPECT as long along the lane as
+# it is wide.
 func _draw_ellipse(box: Rect2, colour: Color) -> void:
-	var radii := Vector2(box.size.x, maxf(box.size.y, box.size.x * MIN_ASPECT)) / 2.0
+	var radii := Vector2(maxf(box.size.x, box.size.y * MIN_ASPECT), box.size.y) / 2.0 \
+			if lengthwise else Vector2(box.size.x, maxf(box.size.y, box.size.x * MIN_ASPECT)) / 2.0
 	var centre := box.get_center()
 	var points := PackedVector2Array()
 	for i in ELLIPSE_POINTS:
@@ -136,8 +184,7 @@ func _draw_line_chosen() -> void:
 	draw_rect(Rect2(_point(length, start_y_m + pan), Vector2.ZERO).expand(
 			_point(0.0, start_y_m - pan)), PAN)
 	var half_track := float(report.get("rear_track_m", 1.8)) / 2.0
-	var tire_px := maxf(float(report.get("rear_tire_width_m", 0.5)) * (size.x - 2.0 * MARGIN)
-			/ _lane_m(), 2.0)
+	var tire_px := maxf(float(report.get("rear_tire_width_m", 0.5)) * _across_px_per_m(), 2.0)
 	for side: float in [-1.0, 1.0]:
 		var y := start_y_m + side * half_track
 		draw_line(_point(0.0, y), _point(length, y), TIRE, tire_px)

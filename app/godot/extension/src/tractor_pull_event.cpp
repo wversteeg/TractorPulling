@@ -10,6 +10,7 @@
 #include "tp/data/session/run_setup.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -107,6 +108,8 @@ const char* slot_name(garage::Slot slot) {
 constexpr double kWattsPerKw = 1000.0;
 // Points of a dyno curve, idle to high idle.
 constexpr int kDynoPoints = 41;
+// The track screen's profile: the ground every this far along [m].
+constexpr double kProfileStep_m = 2.5;
 
 // The engine's dyno curve at full throttle: (rpm, kW) from idle to high
 // idle, none below 0.
@@ -434,9 +437,10 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
     }
     const data::SeasonDefinition& d = loaded.value();
     const data::EventDefinition& e = d.event;
-    std::optional<field::LiveSeason> season = field::LiveSeason::create(
-        e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull, d.points, e.game.pullers,
-        static_cast<int>(d.rounds.size()), static_cast<std::uint64_t>(seed));
+    std::optional<field::LiveSeason> season =
+        field::LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull,
+                                  d.points, e.game.pullers, static_cast<int>(d.rounds.size()),
+                                  static_cast<std::uint64_t>(seed), e.game.season_guests());
     if (!season) {
         return "the season's field, points or rules are inconsistent";
     }
@@ -606,14 +610,38 @@ godot::Dictionary TractorPullEvent::get_event() const {
     const data::SeasonRound& round = definition_->rounds.at(static_cast<std::size_t>(index));
     out["size"] = to_godot(std::string{data::name_of(round.size)});
     out["time"] = to_godot(std::string{data::name_of(round.time_of_day)});
-    // The track at the start line, for the pit board.
+    // The track at the start line, and along it to the full-pull line, for
+    // the pit board and its track screen: the ground as prepared, not the
+    // hard and weak spots, which only the crew's report tells.
     const data::Track& track = round.track;
     godot::Dictionary ground;
     if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
-        const soil::Surface start = model->surface_at(0.0);
+        const soil::Surface start = model->surface_without_spots(0.0);
         ground["grip"] = start.grip_factor;
         ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
+        godot::Array profile;
+        // Every step, and the full-pull line itself (a 110 m line, or one
+        // between two steps).
+        const double until_m = event.full_pull_m();
+        const int steps = static_cast<int>(std::ceil(until_m / kProfileStep_m));
+        for (int i = 0; i <= steps; ++i) {
+            const double at_m = std::min(static_cast<double>(i) * kProfileStep_m, until_m);
+            // A step a rounding past the line would repeat it.
+            if (i > 0 && at_m <= static_cast<double>(i - 1) * kProfileStep_m) {
+                break;
+            }
+            const soil::Surface here = model->surface_without_spots(at_m);
+            godot::Dictionary point;
+            point["at_m"] = at_m;
+            point["grip"] = here.grip_factor;
+            point["cone_index_kpa"] = units::pa_to_kpa(here.cone_index_pa);
+            point["moisture"] = track::composition_at(track.ground, at_m).moisture;
+            profile.push_back(point);
+        }
+        ground["profile"] = profile;
     }
+    ground["clay_fraction"] = track.ground.soil.clay_fraction;
+    ground["moisture"] = track::composition_at(track.ground, 0.0).moisture;
     ground["tip"] = to_godot(track.setup_tip);
     out["track"] = ground;
     return out;
@@ -627,10 +655,23 @@ std::int64_t TractorPullEvent::advance(std::int64_t max_steps) {
 }
 
 godot::String TractorPullEvent::name_of(int puller) const {
-    if (puller < 0 || static_cast<std::size_t>(puller) >= names_.size()) {
-        return godot::vformat("#%d", puller + 1);
+    if (puller >= 0 && static_cast<std::size_t>(puller) < names_.size()) {
+        return to_godot(names_[static_cast<std::size_t>(puller)]);
     }
-    return to_godot(names_[static_cast<std::size_t>(puller)]);
+    // A guest at the event being pulled: after the competitors, the
+    // pool's guests drawn for it.
+    if (season_ && definition_ && season_->events_started() > 0) {
+        const int i = puller - season_->puller_count();
+        const std::vector<std::string>& pool = definition_->event.game.guest_names;
+        if (i >= 0 && i < season_->guests().per_event) {
+            const int guest = season_->guests_at_event(season_->events_started() - 1)
+                                  .at(static_cast<std::size_t>(i));
+            if (guest >= 0 && static_cast<std::size_t>(guest) < pool.size()) {
+                return to_godot(pool[static_cast<std::size_t>(guest)]);
+            }
+        }
+    }
+    return godot::vformat("#%d", puller + 1);
 }
 
 double TractorPullEvent::first_line_m() const {
@@ -698,6 +739,7 @@ godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e, double line_
     }
     out["puller"] = e.pull.puller;
     out["name"] = name_of(e.pull.puller);
+    out["guest"] = season_->event()->guest(e.pull.puller);
     out["kind"] = kind_name(e.pull.kind);
     out["pull_off_round"] = e.pull.pull_off_round;
     out["reached_m"] = e.reached_m;
@@ -745,9 +787,16 @@ godot::Array TractorPullEvent::get_standings() const {
     if (!season_ || season_->event() == nullptr) {
         return out;
     }
-    for (const event::Standing& s : season_->event()->standings()) {
+    const std::span<const event::Standing> standings = season_->event()->standings();
+    // What each place scores in the championship once the event is over:
+    // by place among the competitors, nothing for a guest.
+    const std::array<int, event::kMaxPullers> points =
+        season::event_points(season_->points(), standings);
+    for (std::size_t i = 0; i < standings.size(); ++i) {
+        const event::Standing& s = standings[i];
         godot::Dictionary line;
         line["place"] = s.place;
+        line["guest"] = s.guest;
         line["puller"] = s.puller;
         line["name"] = name_of(s.puller);
         line["distance_m"] = s.distance_m;
@@ -760,8 +809,7 @@ godot::Array TractorPullEvent::get_standings() const {
             rounds.push_back(s.pull_off_distances_m.at(static_cast<std::size_t>(r)));
         }
         line["pull_off_distances_m"] = rounds;
-        // What the place scores in the championship once the event is over.
-        line["points"] = season::points_scored(season_->points(), s);
+        line["points"] = points.at(i);
         out.push_back(line);
     }
     return out;

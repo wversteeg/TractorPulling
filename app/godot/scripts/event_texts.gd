@@ -56,16 +56,23 @@ static func log_row(entry: Dictionary) -> PackedStringArray:
 		var keeps: bool = entry["keep"]
 		return PackedStringArray([entry["name"], "decides",
 				"keeps the test pull" if keeps else "pulls again", ""])
+	var who := who_text(entry)
 	var kind: String = entry["kind"]
 	var what := pull_name(kind, entry["pull_off_round"]).to_lower()
 	if int(entry.get("moved_back", 0)) > 0:
-		return PackedStringArray([entry["name"], what, "stopped short", verdict(entry)])
-	return PackedStringArray([entry["name"], what, reach(entry), verdict(entry)])
+		return PackedStringArray([who, what, "stopped short", verdict(entry)])
+	return PackedStringArray([who, what, reach(entry), verdict(entry)])
+
+
+# Who pulled: the name, and "(guest)" after a guest's, who pulls at this
+# event only, not in the competition.
+static func who_text(line: Dictionary) -> String:
+	return "%s (guest)" % line["name"] if line.get("guest", false) else String(line["name"])
 
 
 # A row of the event's standings: place, who, the result that counts (the
 # main round's, then each pull-off's) and the points the place scores in
-# the championship.
+# the championship ("guest" for a guest, outside it).
 static func standing_row(line: Dictionary) -> PackedStringArray:
 	var result: String
 	if line["disqualified"]:
@@ -78,8 +85,8 @@ static func standing_row(line: Dictionary) -> PackedStringArray:
 	for i in rounds.size():
 		result += ", pull-off %s%.2f m" % ["" if rounds.size() == 1 else "%d: " % (i + 1),
 				rounds[i]]
-	return PackedStringArray(["%d." % int(line["place"]), line["name"], result,
-			points_text(int(line.get("points", 0)))])
+	return PackedStringArray(["%d." % int(line["place"]), who_text(line), result,
+			"guest" if line.get("guest", false) else points_text(int(line.get("points", 0)))])
 
 
 # "1st", "2nd", "3rd", "11th", "22nd".
@@ -103,9 +110,10 @@ static func points_text(points: int) -> String:
 
 # The rows of the event's log (one per entry, as log_row()) to show in
 # bold: each puller's pull that counts in the main round (their last pull,
-# or the test pull they kept), the best `places` of them (the pull-off's
-# places, TractorPullEvent.get_event()); and the best pull of the pull-off
-# round under way, the one to beat.
+# or the test pull they kept), the competitors' best `places` of them (the
+# pull-off's places, TractorPullEvent.get_event()) and a guest's further
+# than the last of those, who would pull off too; and the best pull of the
+# pull-off round under way, the one to beat.
 static func leading_rows(log: Array, places: int) -> PackedInt32Array:
 	var counting := {}
 	var pull_off_round := 0
@@ -126,7 +134,12 @@ static func leading_rows(log: Array, places: int) -> PackedInt32Array:
 	var rows: Array = counting.values()
 	rows.sort_custom(func(a: int, b: int) -> bool:
 		return _distance(log[a]) > _distance(log[b]))
-	var out := PackedInt32Array(rows.slice(0, places))
+	var competitors := rows.filter(func(i: int) -> bool: return not log[i].get("guest", false))
+	var out := PackedInt32Array(competitors.slice(0, places))
+	var last := -INF if out.size() < places else _distance(log[out[out.size() - 1]])
+	for i: int in rows:
+		if log[i].get("guest", false) and _distance(log[i]) > last:
+			out.append(i)
 	if best_pull_off >= 0:
 		out.append(best_pull_off)
 	return out

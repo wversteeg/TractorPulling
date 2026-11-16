@@ -394,12 +394,17 @@ package "GDScript (app/godot/scripts)" {
     +ballast_slider, pressure_slider, hitch_slider : TouchSlider
     +start_slider : TouchSlider, full left .. full right
     +pull_button, back_button : TouchButton
+    +lane_button : TouchButton, invisible, over the lane
+    +track_screen : TrackScreen
     +show_setup(title, tuning, pro, tilt, track, track_name, crew)
+    +open_track()
+    +close_track()
     +show_values(tuning)
     +start_y_m() : float
     +tip_text() : String : the crew chief: track, gear, hitch
     +release_sliders()
     +release_buttons()
+    +{static} make_panel(), make_label(), make_button()
     ..signals..
     tuning_changed(ballast_position, pressure_bar, hitch_m),
     start_changed(y_m),
@@ -411,8 +416,23 @@ package "GDScript (app/godot/scripts)" {
     the crew's own start marked
     +report : Dictionary (get_crew_report())
     +start_y_m : float
+    +lengthwise : bool, the start on the left
+    +marks : bool, a line every 10 m
     +show_report(crew)
     +show_start(y_m)
+  }
+  class TrackScreen {
+    the track, big: the lane lengthwise, the start,
+    the ground along the track, the crew's spots
+    +lane : LaneMap
+    +start_slider : TouchSlider, upright: full right .. full left
+    +done_button : TouchButton
+    +show_track(track, track_name, crew, start)
+    +show_start(y_m)
+    +release_buttons()
+    +release_sliders()
+    ..signals..
+    done_requested
   }
   class ResultScreen {
     +again_button, menu_button : TouchButton
@@ -467,6 +487,7 @@ package "GDScript (app/godot/scripts)" {
     +primary : bool
     +icon : String
     +readout : bool
+    +invisible : bool, a tap area over a picture
     +disabled : bool
     +is_held() : bool
     +release()
@@ -556,6 +577,9 @@ Pull *-- ResultScreen
 Pull *-- SetupScreen : before every pull
 SetupScreen *-- "4" TouchSlider : weights,\ntire pressure, hitch, start
 SetupScreen *-- LaneMap : the lane
+SetupScreen *-- TrackScreen : the track, big,\nopened by tapping the lane
+TrackScreen *-- LaneMap : the lane, lengthwise
+TrackScreen *-- TouchSlider : the start
 SetupScreen *-- TractorSketch : the setup shown
 Pull *-- BoardScreen : the event, its results,\nthe season's standings
 Pull ..> EventTexts

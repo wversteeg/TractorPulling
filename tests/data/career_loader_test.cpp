@@ -106,8 +106,9 @@ TEST(CareerLoader, EveryPlaceOfTheShippedCareerPaysForUpgrades) {
         const auto season = load_season(rung.season, read_from_disk);
         ASSERT_TRUE(season.ok()) << rung.season;
         const SeasonDefinition& d = season.value();
-        ASSERT_EQ(d.prize_money_eur.size(), static_cast<std::size_t>(d.event.game.pullers))
-            << rung.season << ": a prize for every place";
+        ASSERT_EQ(d.prize_money_eur.size(),
+                  static_cast<std::size_t>(d.event.game.pullers + d.event.game.guests))
+            << rung.season << ": a prize for every place, the guests' too";
         std::int64_t cheapest_eur = std::numeric_limits<std::int64_t>::max();
         const garage::Catalogue& catalogue = d.garage.catalogue;
         for (std::size_t i = 0; i < catalogue.count; ++i) {

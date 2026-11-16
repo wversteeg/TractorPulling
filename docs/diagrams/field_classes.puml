@@ -102,7 +102,7 @@ package "tp::field" {
     +gear_for_the_day(const GearTrial& best, const GearTrial& lowest) : GearTrial
     +guess_gear(const Puller&, best, lowest, highest, SplitMix64&) : int
     +on_this_pull(const Puller&, const sled::Params&, const PullToPull&,\n      SplitMix64&) : ThisPull
-    +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed) : optional<PlayedEvent>
+    +play_event(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, seed, guests = 0) : optional<PlayedEvent>
     +on_the_day(const Venue&, seed) : Venue (the event's own spots)
     +trial_pull_rules(const event::Rules&, const Venue&, full_pull_m) : run::Rules
     +pull_rules(const event::Rules&, const Venue&, full_pull_m, event::PullKind) : run::Rules
@@ -111,6 +111,10 @@ package "tp::field" {
     +crew_line(const crew::Report&, const Puller&, const run::Rules&) : double
     +kPullStream : uint64
     +event_seed(season_seed, number) : uint64
+    +guests_valid(const Guests&, competitors) : bool
+    +guest_pool(reference, const Guests&, class_rules, season_seed) : optional<Field>
+    +guests_at(season_seed, number, const Guests&) : array<int, 8>
+    +with_guests(const Field& competitors, const Field& pool, span<const int> chosen) : Field
     +log_hash(span<const LogEntry>) : uint64
   }
   enum "LiveEvent::Turn" as Turn {
@@ -121,7 +125,8 @@ package "tp::field" {
     kFailed
   }
   class LiveEvent {
-    +{static} create(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, player, seed) : optional<LiveEvent>
+    +{static} create(rules, const Venue&, const Field&, variation, pull_to_pull,\n      running_order, player, seed, guests = 0) : optional<LiveEvent>
+    +guest(puller) : bool
     +turn() : Turn
     +advance(max_steps) : int64
     +pending_pull() : optional<event::Pull>
@@ -146,7 +151,9 @@ package "tp::field" {
   }
   class LiveSeason {
     +{static} kPlayer = 0
-    +{static} create(rules, reference, variation, class_rules, pull_to_pull,\n      points, pullers, events, seed) : optional<LiveSeason>
+    +{static} create(rules, reference, variation, class_rules, pull_to_pull,\n      points, pullers, events, seed, const Guests& = {}) : optional<LiveSeason>
+    +guests() : const Guests&
+    +guests_at_event(number) : array<int, 8>, the pool's
     +start_event(const Venue&) : bool
     +start_event(const Venue&, player_tractor) : bool\n(the operator's trials see the player's own tractor)
     +event() : LiveEvent*
@@ -164,12 +171,23 @@ package "tp::field" {
     +standings() : span<const season::Standing>
     --
     -field_ : Field (the player the reference)
+    -guests_ : Guests
+    -guest_pool_ : Field
     -championship_ : season::Championship
     -results_ : each scored event's standings
     -event_ : optional<LiveEvent>
   }
   LiveSeason *-- LiveEvent
-  LiveSeason ..> FieldFns : generate, event_seed
+  class Guests <<struct>> {
+    +variation : Variation
+    +pool : int
+    +per_event : int
+    --
+    guest pullers (bijschrijvers): a season's pool,
+    a few at each event, not in the competition
+  }
+  LiveSeason *-- Guests
+  LiveSeason ..> FieldFns : generate, event_seed,\nguest_pool, guests_at, with_guests
   LiveEvent ..> Turn
   LiveEvent *-- Field
   LiveEvent *-- LogEntry
