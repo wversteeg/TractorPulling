@@ -137,6 +137,7 @@ package "tp::data" {
     +name_career(const garage::Career&, const GarageDefinition&, SavedCareer&)
     +career_from_names(const SavedCareer&, const GarageDefinition&) : garage::Career
     +carry_career(const garage::Career&, from, to) : garage::Career
+    +switch_class(career, from, from_class, parked, to, to_class)\n : ClassTractors{career, parked}, each class its own tractor
     --
     upgrades and choices by name: saves, moving up a class
   }

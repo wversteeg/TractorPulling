@@ -282,7 +282,8 @@ std::int64_t model_price_eur(const Catalogue& catalogue, std::size_t model,
     }
     const std::int64_t cost_eur = dealer.model_cost_eur[model];
     const auto models = std::span{dealer.model_cost_eur.data(), dealer.model_count};
-    const bool cheapest = std::ranges::all_of(models, [&](std::int64_t c) { return c >= cost_eur; });
+    const bool cheapest =
+        std::ranges::all_of(models, [&](std::int64_t c) { return c >= cost_eur; });
     return cheapest ? std::min(cost_eur, std::max<std::int64_t>(money_eur, 0)) : cost_eur;
 }
 

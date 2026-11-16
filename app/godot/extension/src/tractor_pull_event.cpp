@@ -10,7 +10,6 @@
 #include "tp/data/session/run_setup.hpp"
 
 #include <algorithm>
-#include <utility>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +17,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "godot_files.hpp"
@@ -277,8 +277,7 @@ godot::Dictionary TractorPullEvent::get_career() const {
         }
         const auto [bought, all] =
             garage != nullptr
-                ? stages(garage->catalogue,
-                         tractor.value_or(garage::new_career(garage->catalogue)))
+                ? stages(garage->catalogue, tractor.value_or(garage::new_career(garage->catalogue)))
                 : std::pair{0, 0};
         line["stages"] = all;
         line["stages_bought"] = bought;
@@ -391,8 +390,8 @@ godot::String TractorPullEvent::choose_season(std::int64_t rung, std::int64_t se
         return "not during a season";
     }
     const career::Progress kept = progress_;
-    if (!career::choose_rung(progress_,
-                             static_cast<int>(std::clamp<std::int64_t>(rung, -1, career::kMaxRungs)))) {
+    if (!career::choose_rung(
+            progress_, static_cast<int>(std::clamp<std::int64_t>(rung, -1, career::kMaxRungs)))) {
         return "that class and level are not open";
     }
     godot::String error = new_season(seed);
@@ -447,37 +446,11 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
         career_ = garage::new_career(d.garage.catalogue);
     } else if (bought_from && !career_class_.empty() && !to_class.empty() &&
                career_class_ != to_class) {
-        // Another class: its own tractor. The one left is kept by name, and
-        // the one the player had in the new class comes back with the
-        // wallet's money; in a class they have not pulled in, the career
-        // carries in by name as before (the money, and any part of the same
-        // name).
-        data::SavedCareer left;
-        data::name_career(*career_, *bought_from, left);
-        std::erase_if(other_tractors_, [&](const data::SavedTractor& t) {
-            return t.class_name == career_class_ || t.class_name.empty();
-        });
-        const std::int64_t money_eur = career_->money_eur;
-        // A class's tractor is bought from its own dealer (garage::buy_model).
-        career_ = data::carry_career(*career_, *bought_from, d.garage);
-        career_->model = garage::kNoModel;
-        career_->paint = 0;
-        for (const data::SavedTractor& kept : other_tractors_) {
-            if (kept.class_name == to_class) {
-                data::SavedCareer back = left;
-                back.upgrades = kept.upgrades;
-                back.choices = kept.choices;
-                back.look = kept.look;
-                career_ = data::career_from_names(back, d.garage);
-            }
-        }
-        other_tractors_.push_back({.class_name = career_class_,
-                                   .upgrades = left.upgrades,
-                                   .choices = left.choices,
-                                   .look = left.look});
-        career_->money_eur = money_eur;
-        std::erase_if(other_tractors_,
-                      [&](const data::SavedTractor& t) { return t.class_name == to_class; });
+        // Another class: its own tractor (data::switch_class).
+        data::ClassTractors moved = data::switch_class(
+            *career_, *bought_from, career_class_, std::move(other_tractors_), d.garage, to_class);
+        career_ = moved.career;
+        other_tractors_ = std::move(moved.parked);
     } else if (bought_from) {
         // By name, as a save is read: what the new garage does not offer is
         // left behind, and what it offers that was not bought starts at 0.
@@ -1301,8 +1274,7 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_dealer"), &TractorPullEvent::get_dealer);
     ClassDB::bind_method(D_METHOD("get_tractor_dimensions"),
                          &TractorPullEvent::get_tractor_dimensions);
-    ClassDB::bind_method(D_METHOD("buy_tractor", "model", "paint"),
-                         &TractorPullEvent::buy_tractor);
+    ClassDB::bind_method(D_METHOD("buy_tractor", "model", "paint"), &TractorPullEvent::buy_tractor);
     ClassDB::bind_method(D_METHOD("repaint", "paint"), &TractorPullEvent::repaint);
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);

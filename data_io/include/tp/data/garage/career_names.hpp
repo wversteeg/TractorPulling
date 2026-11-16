@@ -4,6 +4,9 @@
 #include "tp/data/garage/garage_loader.hpp"
 #include "tp/data/season/season_save.hpp"
 
+#include <string>
+#include <vector>
+
 namespace tp::data {
 
 /// The career's upgrade levels, choices, model and paint by the garage's
@@ -28,5 +31,24 @@ void name_career(const garage::Career& career, const GarageDefinition& garage, S
 /// too, if the dealer sells one by that name).
 [[nodiscard]] garage::Career carry_career(const garage::Career& career,
                                           const GarageDefinition& from, const GarageDefinition& to);
+
+/// The player's tractor in a class and the ones parked in the others.
+struct ClassTractors {
+    garage::Career career;
+    std::vector<SavedTractor> parked;
+};
+
+/// The player moving from class `from_class` (`career`, bought in garage
+/// `from`, with the tractors `parked` in other classes) to class `to_class`
+/// (garage `to`): each class has its own tractor. The one left is parked
+/// by name; the one parked in the new class comes back as it was left; in
+/// a class not pulled in yet the career carries in by name
+/// (carry_career), its tractor not bought yet (the class's dealer sells
+/// it: garage::needs_tractor). The money is one wallet: it goes along as it
+/// is.
+[[nodiscard]] ClassTractors switch_class(const garage::Career& career, const GarageDefinition& from,
+                                         const std::string& from_class,
+                                         std::vector<SavedTractor> parked,
+                                         const GarageDefinition& to, const std::string& to_class);
 
 }  // namespace tp::data

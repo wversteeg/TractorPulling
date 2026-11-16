@@ -320,8 +320,7 @@ TEST(GarageLoader, RefusesNonsenseAtTheDealer) {
     EXPECT_NE(error("name = \"Oldtimer\"", "name = \"Veldmeester\"").find("listed twice"),
               std::string::npos);
     EXPECT_NE(error("about = \"A classic.\"", "").find("every model needs"), std::string::npos);
-    EXPECT_NE(error("rims = \"#e8dcb4\"", "rims = \"cream\"").find("#rrggbb"),
-              std::string::npos);
+    EXPECT_NE(error("rims = \"#e8dcb4\"", "rims = \"cream\"").find("#rrggbb"), std::string::npos);
     EXPECT_NE(error("paint = \"#b3241c\"", "paint = \"#b3241\"").find("#rrggbb"),
               std::string::npos);
     EXPECT_NE(error("[[garage.dealer.paints]]", "[[garage.dealer.nothing]]").find("paints"),
@@ -347,14 +346,13 @@ TEST(GarageLoader, ShippedDealersSellFiveModels) {
         }
         EXPECT_GE(dealer.paint_count, 8U) << name;
         EXPECT_GT(dealer.paint_cost_eur, 0) << name;
-        EXPECT_LE(dealer.paint_cost_eur * kPaintShareOfCheapest, dealer.model_cost_eur[0])
-            << name;
+        EXPECT_LE(dealer.paint_cost_eur * kPaintShareOfCheapest, dealer.model_cost_eur[0]) << name;
     }
     // The career's first class: the cheapest leaves the € 1,000 the garage
     // was balanced for (docs/career.md).
     constexpr std::int64_t kGarageMoney_eur = 1000;
-    const auto standard = load_garage(std::string{TP_DATA_DIR} + "/garages/standard_3500.toml",
-                                      read_from_disk);
+    const auto standard =
+        load_garage(std::string{TP_DATA_DIR} + "/garages/standard_3500.toml", read_from_disk);
     ASSERT_TRUE(standard.ok()) << standard.error().message;
     const garage::Catalogue& first = standard.value().catalogue;
     EXPECT_EQ(first.start_money_eur - first.dealer.model_cost_eur[0], kGarageMoney_eur);

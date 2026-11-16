@@ -440,9 +440,9 @@ std::optional<LoadError> read_dealer(const toml::table& root, std::string_view s
     out.catalogue.dealer.paint_cost_eur = *paint_cost;
     const toml::array* models = list_at(root, "garage.dealer.models", garage::kMaxModels);
     if (models == nullptr) {
-        return detail::make_error(source, "garage.dealer.models",
-                                  "must list 1 to " + std::to_string(garage::kMaxModels) +
-                                      " models");
+        return detail::make_error(
+            source, "garage.dealer.models",
+            "must list 1 to " + std::to_string(garage::kMaxModels) + " models");
     }
     for (const toml::node& model : *models) {
         if (std::optional<LoadError> error = read_model(model, source, out)) {
@@ -451,9 +451,9 @@ std::optional<LoadError> read_dealer(const toml::table& root, std::string_view s
     }
     const toml::array* paints = list_at(root, "garage.dealer.paints", garage::kMaxPaints);
     if (paints == nullptr) {
-        return detail::make_error(source, "garage.dealer.paints",
-                                  "must list 1 to " + std::to_string(garage::kMaxPaints) +
-                                      " paints");
+        return detail::make_error(
+            source, "garage.dealer.paints",
+            "must list 1 to " + std::to_string(garage::kMaxPaints) + " paints");
     }
     for (const toml::node& paint : *paints) {
         if (std::optional<LoadError> error = read_paint(paint, source, out)) {

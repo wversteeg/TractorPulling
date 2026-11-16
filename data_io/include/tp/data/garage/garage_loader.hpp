@@ -60,8 +60,8 @@ struct GarageDefinition {
 /// that file's own message). Its dealer (`[garage.dealer]`, optional) must
 /// list 1 to garage::kMaxModels models, each with a name, style, cost_eur
 /// and about, and 1 to garage::kMaxPaints paints, each with a name and
-/// three "#rrggbb" colours; no name twice, no negative cost. Whether the levels fit a tractor and its class
-/// is garage::validate's (the season loader checks).
+/// three "#rrggbb" colours; no name twice, no negative cost. Whether the levels fit a tractor and
+/// its class is garage::validate's (the season loader checks).
 [[nodiscard]] Result<GarageDefinition> parse_garage(std::string_view toml_text,
                                                     std::string_view source_name,
                                                     std::string_view base_directory,

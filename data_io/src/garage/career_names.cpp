@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tp::data {
@@ -30,11 +31,11 @@ void name_career(const garage::Career& career, const GarageDefinition& garage, S
     }
     const auto model = static_cast<std::size_t>(career.model);
     const auto paint = static_cast<std::size_t>(career.paint);
-    out.look = SavedLook{
-        .model = career.model != garage::kNoModel && model < garage.model_texts.size()
-                     ? garage.model_texts[model].name
-                     : "",
-        .paint = paint < garage.paint_texts.size() ? garage.paint_texts[paint].name : ""};
+    out.look =
+        SavedLook{.model = career.model != garage::kNoModel && model < garage.model_texts.size()
+                               ? garage.model_texts[model].name
+                               : "",
+                  .paint = paint < garage.paint_texts.size() ? garage.paint_texts[paint].name : ""};
 }
 
 namespace {
@@ -114,6 +115,37 @@ garage::Career carry_career(const garage::Career& career, const GarageDefinition
     named.money_eur = career.money_eur;
     name_career(career, from, named);
     return career_from_names(named, to);
+}
+
+ClassTractors switch_class(const garage::Career& career, const GarageDefinition& from,
+                           const std::string& from_class, std::vector<SavedTractor> parked,
+                           const GarageDefinition& to, const std::string& to_class) {
+    SavedCareer left;
+    name_career(career, from, left);
+    std::erase_if(parked, [&](const SavedTractor& t) {
+        return t.class_name == from_class || t.class_name.empty();
+    });
+    ClassTractors out{.career = carry_career(career, from, to), .parked = {}};
+    // A class's tractor is bought from its own dealer (garage::buy_model).
+    out.career.model = garage::kNoModel;
+    out.career.paint = 0;
+    for (const SavedTractor& kept : parked) {
+        if (kept.class_name == to_class) {
+            SavedCareer back = left;
+            back.upgrades = kept.upgrades;
+            back.choices = kept.choices;
+            back.look = kept.look;
+            out.career = career_from_names(back, to);
+        }
+    }
+    out.career.money_eur = career.money_eur;
+    std::erase_if(parked, [&](const SavedTractor& t) { return t.class_name == to_class; });
+    parked.push_back({.class_name = from_class,
+                      .upgrades = left.upgrades,
+                      .choices = left.choices,
+                      .look = left.look});
+    out.parked = std::move(parked);
+    return out;
 }
 
 }  // namespace tp::data
