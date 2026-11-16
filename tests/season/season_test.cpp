@@ -150,5 +150,41 @@ TEST(Championship, RejectsStrangersAndAFullSeason) {
     EXPECT_EQ(championship.standings()[0].points, 20 * kMaxEvents);
 }
 
+// Guests (event::Standing::guest) take places at the event but are not in
+// the competition: the points go by place among the competitors, so a
+// guest who wins leaves the best competitor the winner's 20 points and
+// the event's win, and the championship passes the guests over (their
+// pullers lie outside its field).
+TEST(Season, GuestsTakePlacesButNoPoints) {
+    const Points points = club_points();
+    std::vector<event::Standing> standings = result({{3, 1}, {0, 2}, {4, 3}, {1, 4}, {2, 5}});
+    standings[0].guest = true;  // puller 3 won
+    standings[2].guest = true;  // puller 4 came third
+    EXPECT_EQ(competition_place(standings, standings[1]), 1);
+    EXPECT_EQ(competition_place(standings, standings[3]), 2);
+    EXPECT_EQ(competition_place(standings, standings[4]), 3);
+    EXPECT_EQ(competition_place(standings, standings[0]), 0);
+    const std::array<int, event::kMaxPullers> scored = event_points(points, standings);
+    EXPECT_EQ(scored[0], 0) << "a guest scores nothing";
+    EXPECT_EQ(scored[1], 20);
+    EXPECT_EQ(scored[2], 0);
+    EXPECT_EQ(scored[3], 17);
+    EXPECT_EQ(scored[4], 15);
+    EXPECT_EQ(points_scored(points, standings[0]), 0);
+
+    Championship championship = make(3);
+    ASSERT_TRUE(championship.add(standings));
+    const auto table = championship.standings();
+    ASSERT_EQ(table.size(), 3U);
+    EXPECT_EQ(table[0].puller, 0);
+    EXPECT_EQ(table[0].points, 20);
+    EXPECT_EQ(table[0].wins, 1) << "the best competitor won the competition";
+    EXPECT_EQ(table[1].points, 17);
+    EXPECT_EQ(table[2].points, 15);
+    // A guest's line is never a stranger, but a competitor's still must be.
+    std::vector<event::Standing> stranger = result({{7, 1}});
+    EXPECT_FALSE(championship.add(stranger));
+}
+
 }  // namespace
 }  // namespace tp::season

@@ -24,10 +24,10 @@
 namespace tp::field {
 namespace {
 
-// The game's event (fifteen pullers) at the season's first round, as
-// shipped; a few seeds, each a different field.
+// The game's event (twelve competitors and two guests) at the season's
+// first round, as shipped; a few seeds, each a different field. Places
+// count the guests: a place is what the event pays by.
 constexpr std::array<std::uint64_t, 3> kSeeds{1, 2, 3};
-constexpr int kGamePullers = 15;
 constexpr std::int64_t kSlice = 1'000'000;
 
 data::SeasonDefinition season_named(const char* file) {
@@ -53,9 +53,9 @@ struct Gears {
 int place(const data::SeasonDefinition& d, const garage::Career& career, std::uint64_t seed,
           Gears gears = {}) {
     const data::EventDefinition& e = d.event;
-    const std::optional<LiveSeason> created =
-        LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull,
-                           d.points, kGamePullers, static_cast<int>(d.rounds.size()), seed);
+    const std::optional<LiveSeason> created = LiveSeason::create(
+        e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull, d.points, e.game.pullers,
+        static_cast<int>(d.rounds.size()), seed, e.game.season_guests());
     if (!created) {
         throw std::runtime_error("the season was refused");
     }
@@ -131,7 +131,7 @@ struct Places {
     int worst = 0;
 };
 
-constexpr Places kNew{.best = 11, .worst = 15};
+constexpr Places kNew{.best = 10, .worst = 14};
 // One level up: the middle of the field, the top four on a good day, even
 // second on the best.
 constexpr Places kOneLevelUp{.best = 2, .worst = 13};
@@ -253,26 +253,30 @@ TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWin
 constexpr Gears kSportGears{.lowest = 3, .highest = 8};
 
 // The Sport 2.5 t class's two levels (promo and top), its own tractor and
-// garage: a new Sport tractor finishes at the back of promo and about half
-// its garage fights for the win; promo's winner starts at the back at top,
-// and only a nearly or fully built tractor wins there.
-TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndHalfItsGarageWinsIt) {
+// garage: a new Sport tractor finishes at the back of promo, a quarter of
+// its garage is about the middle, a third about the top five, and a bit
+// under half fights for the win; promo's winner
+// starts at the back at top, and only a nearly or fully built tractor wins
+// there.
+TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndAThirdOfItsGarageFightsForTheWin) {
     expect_level("sport_2500_promo.toml",
-                 {{.share = 0.0, .places = {.best = 10, .worst = 15}},
+                 {{.share = 0.0, .places = {.best = 11, .worst = 14}},
+                  {.share = 0.25, .places = {.best = 4, .worst = 10}},
+                  {.share = 0.35, .places = {.best = 1, .worst = 7}},
                   {.share = 0.45, .places = {.best = 1, .worst = 3}}},
                  kSportGears);
 }
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
     expect_level("sport_2500_top.toml",
-                 {{.share = 0.45, .places = {.best = 12, .worst = 15}},
-                  {.share = 0.8, .places = {.best = 2, .worst = 10}},
+                 {{.share = 0.45, .places = {.best = 12, .worst = 14}},
+                  {.share = 0.8, .places = {.best = 1, .worst = 10}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
 
 // The Sport 4.5 t class's three levels, its own tractor and garage: a new
-// tractor is at the back at belofte and about half its garage wins it;
+// tractor is in the back half at belofte and about half its garage wins it;
 // belofte's winner starts in the back half of promo and about three quarters
 // win it; promo's winner is at the back at top, where about 90 % of the
 // garage is about the front half, winning now and then, and only a fully
@@ -280,9 +284,9 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
 // event is the watered start, where the sled is lightened until the field
 // gets it going and the right gear decides much: a third of the garage,
 // in its best gear, may win there.
-TEST(RivalDifficulty, ANewSport45TractorIsLastAtBelofteAndAbout45PercentWinsIt) {
+TEST(RivalDifficulty, ANewSport45TractorIsAtTheBackOfBelofteAndAbout45PercentWinsIt) {
     expect_level("sport_4500_belofte.toml",
-                 {{.share = 0.0, .places = {.best = 12, .worst = 15}},
+                 {{.share = 0.0, .places = {.best = 9, .worst = 14}},
                   {.share = 0.3, .places = {.best = 1, .worst = 10}},
                   {.share = 0.45, .places = {.best = 1, .worst = 4}},
                   {.share = 0.55, .places = {.best = 1, .worst = 2}}},

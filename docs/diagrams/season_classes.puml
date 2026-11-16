@@ -32,6 +32,8 @@ package "tp::season" {
     +validate(const Points&) : optional<ParamError>
     +points_for(const Points&, place) : int
     +points_scored(const Points&, const event::Standing&) : int
+    +competition_place(span<const event::Standing>, const event::Standing&) : int
+    +event_points(const Points&, span<const event::Standing>) : array<int, 32>\n(by place among the competitors; a guest none)
   }
   Championship *-- Points
   Championship ..> Standing

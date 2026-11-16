@@ -61,14 +61,15 @@ Venue on_the_day(const Venue& venue, std::uint64_t seed) noexcept {
 std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& track_venue,
                                       const Field& field, const Variation& variation,
                                       const PullToPull& pull_to_pull,
-                                      std::span<const int> running_order,
-                                      std::uint64_t seed) noexcept {
+                                      std::span<const int> running_order, std::uint64_t seed,
+                                      int guests) noexcept {
     // The track's hard and weak spots, where they lie today.
     const Venue venue = on_the_day(track_venue, seed);
     if (running_order.size() != static_cast<std::size_t>(field.count)) {
         return std::nullopt;
     }
-    std::optional<event::Event> event = event::Event::create(rules, venue.sled, running_order);
+    std::optional<event::Event> event =
+        event::Event::create(rules, venue.sled, running_order, guests);
     if (!event) {
         return std::nullopt;
     }

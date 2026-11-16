@@ -17,16 +17,16 @@ std::optional<LiveEvent> LiveEvent::create(const event::Rules& rules, const Venu
                                            const Field& field, const Variation& variation,
                                            const PullToPull& pull_to_pull,
                                            std::span<const int> running_order, int player,
-                                           std::uint64_t seed) noexcept {
+                                           std::uint64_t seed, int guests) noexcept {
     // The track's spots where they lie today, as play_event lays them.
     const Venue venue = on_the_day(track_venue, seed);
     if (running_order.size() != static_cast<std::size_t>(field.count) || player < 0 ||
-        player >= field.count ||
+        player >= field.count - guests ||
         run::validate(field::trial_pull_rules(rules, venue, rules.full_pull_m))) {
         return std::nullopt;
     }
     const std::optional<event::Event> event =
-        event::Event::create(rules, venue.sled, running_order);
+        event::Event::create(rules, venue.sled, running_order, guests);
     if (!event) {
         return std::nullopt;
     }

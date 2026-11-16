@@ -2,6 +2,7 @@
 
 #include "tp/core/event/event.hpp"
 #include "tp/core/field/field.hpp"
+#include "tp/core/field/live_season.hpp"
 #include "tp/core/rules/class_rules.hpp"
 #include "tp/core/sled/sled.hpp"
 #include "tp/data/files.hpp"
@@ -16,13 +17,26 @@
 
 namespace tp::data {
 
-/// The event as the game plays it: the player and scripted rivals.
+/// The event as the game plays it: the player and scripted rivals, and
+/// guests at each event (field::Guests), not in the competition.
 struct GameField {
     /// Pullers, the player among them.
     int pullers = 0;
     /// The rivals' names, one for each puller but the player, in the
     /// field's order with the player left out.
     std::vector<std::string> rival_names;
+    /// Guests at each event (0 for none), drawn from a pool of one for each
+    /// of `guest_names`, each the reference varied within `guest_variation`
+    /// (the field's, but for what [event.guests] sets).
+    int guests = 0;
+    std::vector<std::string> guest_names;
+    field::Variation guest_variation;
+
+    [[nodiscard]] field::Guests season_guests() const {
+        return {.variation = guest_variation,
+                .pool = static_cast<int>(guest_names.size()),
+                .per_event = guests};
+    }
 };
 
 /// Everything an event file describes (see data/events/): the class and

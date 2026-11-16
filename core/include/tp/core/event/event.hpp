@@ -127,6 +127,11 @@ struct Standing {
     /// A tractor tire touched a chalk line in the counting pull: 0 m,
     /// behind every pull that counts.
     bool disqualified = false;
+    /// A guest puller (Event::create): pulls in the event and takes a place
+    /// in its standings, but is not in the competition (season::
+    /// event_points gives a guest no points, and the competitors' points
+    /// skip the places guests take).
+    bool guest = false;
     /// Pull-off rounds pulled.
     int pull_off_rounds = 0;
     /// The official distance in each pull-off round pulled, the first first.
@@ -149,13 +154,24 @@ struct Standing {
 /// hands record() where it stopped, or record_disqualified() when a tractor
 /// tire touched a chalk line. When a test puller's decision is due,
 /// next() waits for decide(). Plain data; no allocation.
+///
+/// The last `guests` pullers of the field are guests: tractors pulling at
+/// this event only, not in the competition. They pull as everyone does and
+/// take their places in the standings. The pull-off is the competitors'
+/// (every full pull, filled up to Rules::pull_off_places with the best runs
+/// from qualifying_below_line_m short of the line on, counting competitors
+/// only), and a guest pulls off too where they would have made it among the
+/// competitors alone: a full pull, or a qualifying run further than the
+/// last competitor in.
 class Event {
 public:
     /// `running_order` lists the field's pullers (0 to count - 1), each
-    /// once, in the order they pull.
+    /// once, in the order they pull; the last `guests` of them (0 to fewer
+    /// than all) are guests.
     [[nodiscard]] static std::optional<Event> create(const Rules& rules,
                                                      const sled::Params& class_sled,
-                                                     std::span<const int> running_order) noexcept;
+                                                     std::span<const int> running_order,
+                                                     int guests = 0) noexcept;
 
     /// How far `puller` is expected to pull the class's sled as the event
     /// starts (their gear trials) [m]: the operator weighs their test pulls
@@ -208,6 +224,10 @@ public:
     [[nodiscard]] bool finished() const noexcept;
 
     [[nodiscard]] int puller_count() const noexcept { return count_; }
+    /// Whether `puller` is a guest, not in the competition.
+    [[nodiscard]] bool guest(int puller) const noexcept {
+        return puller >= count_ - guests_ && puller < count_;
+    }
     /// The pulls pulled so far, test pulls and re-pulls included.
     [[nodiscard]] int pulls_done() const noexcept { return completed_; }
     /// The standings so far, best first.
@@ -232,8 +252,8 @@ private:
 
     static constexpr std::size_t kMaxQueue = std::size_t{3} * kMaxPullers;
 
-    Event(const Rules& rules, const sled::Params& class_sled,
-          std::span<const int> running_order) noexcept;
+    Event(const Rules& rules, const sled::Params& class_sled, std::span<const int> running_order,
+          int guests) noexcept;
 
     void insert(std::size_t position, const Pull& pull) noexcept;
     void schedule_repull(int puller) noexcept;
@@ -248,10 +268,16 @@ private:
     /// After a pull or a decision: a decision now due, or the next round.
     void advance() noexcept;
     void start_pull_off() noexcept;
-    /// The best main-round pull not `in` the pull-off yet, from
+    /// The best competitor's main-round pull not `in` the pull-off yet, from
     /// `qualifying_below_line_m` short of the line on; nothing if none.
     [[nodiscard]] std::optional<int> best_short_of_the_line(
         const std::array<bool, kMaxPullers>& in) const noexcept;
+    /// After the main round: the guests who would have made the pull-off
+    /// among the competitors alone join it `in`; returns how many.
+    int guests_in_the_pull_off(std::array<bool, kMaxPullers>& in) const noexcept;
+    /// Who pulls in the next pull-off round, marked `in`, and the furthest
+    /// full pull among them (-1 for none); returns how many.
+    int pull_off_field(std::array<bool, kMaxPullers>& in, double& best_full_m) const noexcept;
     [[nodiscard]] double official(double reached_m) const noexcept;
     /// A pull-off's distance, capped at the pull-off line.
     [[nodiscard]] double official_pull_off(double reached_m) const noexcept;
@@ -267,6 +293,8 @@ private:
     sled::Params sled_;
     double line_m_ = 0.0;
     int count_ = 0;
+    /// The last guests_ pullers are guests.
+    int guests_ = 0;
     std::array<int, kMaxPullers> order_{};
     std::array<Entry, kMaxPullers> entries_{};
     std::array<Pull, kMaxQueue> queue_{};

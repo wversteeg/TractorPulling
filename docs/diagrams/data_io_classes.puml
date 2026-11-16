@@ -62,9 +62,13 @@ package "tp::data" {
   class GameField <<struct>> {
     +pullers : int
     +rival_names : vector<string>
+    +guests : int, at each event
+    +guest_names : vector<string>, the pool
+    +guest_variation : field::Variation
+    +season_guests() : field::Guests
     --
-    the event in the game: the player
-    and the named scripted rivals
+    the event in the game: the player,
+    the named scripted rivals and guests
   }
   EventDefinition *-- GameField
   class "event_loader" as EventLoader <<free functions>> {
