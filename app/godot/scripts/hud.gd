@@ -8,8 +8,9 @@
 # once it is up (green: all the weight on the rear tires, though the front
 # wheels do not steer) how high the nose is, in degrees and as a share of
 # the way up to the wheelie bar; standing on the bar (red) it has gone too
-# far: the bar carries what the rear tires should. Left of the bars a boost gauge: the turbo's
-# pressure in bar, its full boost marked (shown when the engine gives one).
+# far: the bar carries what the rear tires should. Left of the bars a
+# boost gauge: the turbo's pressure in bar, its full boost marked (shown
+# when the engine gives one).
 # In the pro layout also how far the clutch
 # is in. In a whole turn, a short line along the top in the middle says
 # what to do next (it
@@ -107,6 +108,9 @@ const FRONT_BAR_COLOUR := Color(0.95, 0.3, 0.2)
 # The nose stands on the wheelie bar within this of the pitch at which the
 # bar touches down (the bar's tip gives a little) [rad].
 const ON_THE_BAR_WITHIN_RAD := 0.01
+# Where the front is: its tires carry (DOWN), in the air (UP), standing on
+# the wheelie bar (BAR).
+enum Front { DOWN, UP, BAR }
 # The front bar ends a little past the load at rest: a dip of the nose
 # (a hard shift) loads the front more.
 const FRONT_HEADROOM := 1.5
@@ -431,22 +435,22 @@ func _draw() -> void:
 	draw_rect(front, BACK_COLOUR)
 	var state := front_state()
 	var front_share := nose_share()
-	if state == "down":
+	if state == Front.DOWN:
 		front_share = clampf(_front_n / (_front_rest_n * FRONT_HEADROOM), 0.0, 1.0)
 	draw_rect(Rect2(front.position, Vector2(BAR_WIDTH * front_share, BAR_HEIGHT)),
 			_front_colour())
-	if state == "down":
+	if state == Front.DOWN:
 		_mark(front, 1.0 / FRONT_HEADROOM, Color.WHITE)
-	elif state == "bar":
+	elif state == Front.BAR:
 		draw_rect(front, FRONT_BAR_COLOUR, false, 3.0)
 
 
-# Where the front is: "down" (its tires carry), "up" (in the air) or "bar"
-# (standing on the wheelie bar).
-func front_state() -> String:
-	if _front_n > 0.0:
-		return "down"
-	return "bar" if _pitch_rad >= _bar_pitch_rad - ON_THE_BAR_WITHIN_RAD else "up"
+# Where the front is. Down until the nose has risen: a front just unloaded,
+# still level, is not up yet.
+func front_state() -> Front:
+	if _front_n > 0.0 or _pitch_rad <= 0.0:
+		return Front.DOWN
+	return Front.BAR if _pitch_rad >= _bar_pitch_rad - ON_THE_BAR_WITHIN_RAD else Front.UP
 
 
 # How high the nose is, 0 level to 1 on the wheelie bar.
@@ -457,9 +461,9 @@ func nose_share() -> float:
 # The front in words: what its tires carry, or how high the nose is.
 func front_text() -> String:
 	match front_state():
-		"down":
+		Front.DOWN:
 			return "front %3.0f %%" % (_front_n / _front_rest_n * 100.0)
-		"up":
+		Front.UP:
 			return "nose up %2.0f° · %3.0f %%" % [rad_to_deg(maxf(_pitch_rad, 0.0)),
 					nose_share() * 100.0]
 	return "ON THE BAR %2.0f°" % rad_to_deg(_pitch_rad)
@@ -467,9 +471,9 @@ func front_text() -> String:
 
 func _front_colour() -> Color:
 	match front_state():
-		"down":
+		Front.DOWN:
 			return FRONT_DOWN_COLOUR
-		"up":
+		Front.UP:
 			return FRONT_UP_COLOUR
 	return FRONT_BAR_COLOUR
 
