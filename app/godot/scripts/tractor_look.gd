@@ -1,8 +1,9 @@
 # How a class's tractors are painted, so the classes look apart at a
 # glance: the Standard class's farm tractor in red with a white cab roof,
 # the Sport 2.5 t in blue with a white top, the Sport 4.5 t in black and
-# gold, the Supersport 3.6 t in white with red trim and rims. The player's tractor wears its class's scheme; the rivals keep the
-# class's trim (the top, the rims) in their own paint and numbers.
+# gold, the Supersport 3.6 t in white with red trim and rims. The
+# player's tractor wears its class's scheme; the rivals keep the class's
+# trim (the top, the rims) in their own paint and numbers.
 # The shapes (a cab or a roll bar) come from the tractor's data, not from
 # here.
 class_name TractorLook

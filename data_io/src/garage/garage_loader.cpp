@@ -295,10 +295,12 @@ std::optional<LoadError> read_suits(const toml::table& table, std::size_t c, std
         other == out.choice_texts.begin() + static_cast<std::ptrdiff_t>(c)) {
         return bad("no other choice '" + choice_name + "'");
     }
-    const auto alternative = label ? std::ranges::find(other->alternative_labels, *label)
-                                   : other->alternative_labels.end();
+    if (!label) {
+        return bad("'" + choice_name + "' must be one of its alternatives' labels (a string)");
+    }
+    const auto alternative = std::ranges::find(other->alternative_labels, *label);
     if (alternative == other->alternative_labels.end()) {
-        return bad("'" + choice_name + "' has no alternative '" + label.value_or("") + "'");
+        return bad("'" + choice_name + "' has no alternative '" + *label + "'");
     }
     garage::Alternative& made = out.catalogue.choices[c].alternatives[a];
     made.suits_choice = static_cast<int>(other - out.choice_texts.begin());

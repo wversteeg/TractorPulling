@@ -5,10 +5,10 @@
 # 30.5L-32). Its lugs push into the track: grip builds quickly with slip,
 # and spun fast they dig in and smear, so it pulls best spinning little,
 # on the short final drive (drivelines/supersport_3600_short.toml). Fully
-# built it pulls a little short of the puller tire on a good track (the
-# clay-sand) and further short where the tires spin; in some conditions
-# it may still win (a part-built tractor on the watered start). The limit
-# is the fully built tire's; the garage sets it.
+# built it pulls short of the puller tire on a firm track, and further
+# than the puller tire on the tall final drive on the watered start
+# (tests/data/tire_choice_test.cpp). The limit is the fully built tire's;
+# the garage sets it.
 [tire]
 radius_m = 0.98                    # rolling radius
 section_width_m = 0.71

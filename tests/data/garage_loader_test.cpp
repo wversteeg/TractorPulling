@@ -213,6 +213,30 @@ TEST(GarageLoader, ReadsWhatAFinalDriveSuits) {
     EXPECT_EQ(g.catalogue.choices[0].alternatives[1].suits_choice, garage::kNoChoice);
 }
 
+// What an alternative suits is named by its label: a value that is not a
+// string says so, rather than naming an empty alternative.
+TEST(GarageLoader, RefusesASuitThatIsNotALabel) {
+    const std::string garage_path =
+        (std::filesystem::path{TP_DATA_DIR} / "garages" / "supersport_3600.toml").generic_string();
+    const ReadFile read = [&](const std::string& path) -> std::optional<std::string> {
+        std::optional<std::string> text = read_from_disk(path);
+        if (text && path == garage_path) {
+            const std::string from = R"("Rear tires" = "Puller tires")";
+            const auto pos = text->find(from);
+            EXPECT_NE(pos, std::string::npos) << "test bug: the suit not found";
+            if (pos != std::string::npos) {
+                text->replace(pos, from.size(), R"("Rear tires" = 1)");
+            }
+        }
+        return text;
+    };
+    const auto result = load_garage(garage_path, read);
+    ASSERT_FALSE(result.ok());
+    EXPECT_NE(result.error().message.find("must be one of its alternatives' labels (a string)"),
+              std::string::npos)
+        << result.error().message;
+}
+
 TEST(GarageLoader, RefusesNonsenseInChoices) {
     EXPECT_EQ(choice_error_of("", ""), "");
     EXPECT_NE(choice_error_of("slot = \"engine\"", "slot = \"turbo\"").find("unknown slot"),

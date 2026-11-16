@@ -343,10 +343,13 @@ side by side, each fitted between events (K-6), each best somewhere:
   tall lugs regrooved: grip at little slip, smearing when spun fast) or
   **puller tires** (30.5L-32, € 5,000: many low bars that bite harder the
   faster they spin, and a higher limit). Each has its own grip upgrade.
-  Fully built, the puller tires pull further on every shipped track, a
-  few metres on the clay-sand and the most on the soft and watered ones;
-  in some conditions the farm tires still win (a part-built tractor on
-  the watered start). Their bigger round lifts the axle and the
+  Fully built, each on the final drive that suits it, the puller tires
+  pull clearly further on a firm track (the firm loam, the clay-sand) and
+  the farm tires on the watered start, slick at the launch, where their
+  lugs grip at little slip
+  (`TireChoice.PullerTiresWinOnAFirmTrackAndFarmTiresOnAWetStart`). (There
+  the puller tires on the short final drive go further still: the crew's
+  advice is the rule of thumb, not the best for every track.) Their bigger round lifts the axle and the
   tractor's centre of gravity (`vehicle::with_rear_tire`).
 - **The final drive**: the stock **short** one
   (`drivelines/supersport_3600_short.toml`, 30:1) or the **tall** one
