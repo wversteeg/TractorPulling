@@ -14,6 +14,9 @@ namespace tp::data {
 struct UpgradeText {
     std::string name;
     std::vector<std::string> level_labels;
+    /// Names the upgrade had before (`formerly` in the file): a save that
+    /// knows it by one of them still finds it (career_from_names).
+    std::vector<std::string> former_names;
 };
 
 /// How the game names a choice and each of its alternatives.

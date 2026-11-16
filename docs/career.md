@@ -164,8 +164,12 @@ ETPC FS 2026, Level 2 (current), and NTTO 2018 ch. 15 (the NTTO's own):
 - The hood and grille where the maker put them, the sheet metal of stock
   length in its stock place (ETPC 1.3.2, Sport and Supersport).
 - Tires: rubber, no duals, **at most 30.5" (800 mm) wide on a 32" rim, or
-  up to 710 mm wide on a 42" rim**; cut tires and puller tires allowed
-  (ETPC 1.2.5).
+  up to 710 mm wide on a 42" rim**. The ETPC allows cut tires and puller
+  tires from Sport on (ETPC FS 2026 1.2.5, Level 2 and 3; Level 1 Farm
+  neither, 1.4.1). Dutch rulebooks allow cut tires in the sport classes
+  but not puller tires (the NTTO's own text and local rulebooks: no
+  "pullerbanden"). **The game follows the NTTO**: the Sport classes pull on
+  farm tires cut for pulling, and puller tires come from Supersport on.
 - An approved roll-over protection: a factory ROP, a safety cab, an ETPC
   ROP or ETPC roll bar (ETPC 2.5.2). **A cab is no longer needed.**
 - Wheelie bars mandatory.
@@ -173,7 +177,7 @@ ETPC FS 2026, Level 2 (current), and NTTO 2018 ch. 15 (the NTTO's own):
 In the game (`data/classes/ntto_sport_4500.toml`,
 `data/tractors/sport_4500.toml`): 4500 kg, the hitch at most 0.5 m, 2700
 rpm unloaded, no PTO power limit. A big six-cylinder tractor (2.75 m
-wheelbase, 30.5L-32 puller tires at the class's widest) under a roll bar.
+wheelbase, 30.5L-32 cut farm tires at the class's widest) under a roll bar.
 Its engine is set from videos of the class's top tractors (about 115 m
 in a pull-off in about 15 s): **about 780 hp** (2410 N·m) fully built,
 from a stock farm engine's 270 hp. Eight gears with a
@@ -228,10 +232,22 @@ way, depending on the gear and the track: too tall a gear bogs the engine
 powershift pulls a slightly too tall gear through. The game gets there
 with three things:
 
-- **Puller tires** (`data/tires/sport_*rear.toml`) grip harder than farm
-  tires, about 1.5 times, but only spinning: grip builds slowly with slip
-  (a third of a farm tire's rate). They spin at the launch, so the engine
-  keeps its revs, and bite late in the pull.
+- **Cut farm tires** (`data/tires/sport_*rear.toml`) grip harder than
+  uncut ones, about 1.5 times, and build their grip with more slip (under
+  half an uncut tire's rate), so they still spin up at the launch and the
+  engine keeps its revs; spun fast their tall lugs dig in and smear, and a
+  tenth of the grip goes (`fast_spin_grip`). (Until the tire model knew how
+  fast a tread spins, these were puller tires, which the NTTO's Sport
+  classes do not allow.)
+- **Puller tires and farm tires differ in how they spin**
+  (`tire::TractionCurve`): a farm tire's few tall lugs each push against
+  a block of soil, so it grips at little slip, and spun fast it digs in and
+  smears (grip falls to `fast_spin_grip`); a puller tire's many low, sharp
+  bars each cut a thin slice of fresh track and throw it out, so it bites
+  harder the faster its tread sweeps (from `slow_spin_grip` up to full
+  grip as the slip speed passes `spin_speed_m_s`) and wants gearing tall
+  enough to spin it up. Every tire has the response but the Sport classes'
+  and the standard class's are farm tires; Supersport brings the choice.
 - **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels
   turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count.
   1st to 5th are about 40 % apart (4th about 20 km/h), so 3rd and 4th

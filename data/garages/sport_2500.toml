@@ -10,8 +10,10 @@
 #   4 l farm engine's 145 hp, through the pump, injectors, a bigger turbo
 #   behind the class's 55 mm inlet, the manifold, head and cam.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
-#   cut 24.5" puller tires (cut tires allowed from Sport on); the tire's
-#   size stays as tires/sport_rear.toml has it.
+#   24.5" farm tires hand cut for pulling (the NTTO's Sport classes allow
+#   cut tires, not puller tires: those come from Supersport on;
+#   docs/career.md); the tire's size stays as tires/sport_rear.toml has
+#   it.
 # - ballast_kg: weights up to the class's 2500 kg with the driver.
 # - hitch_height_m: the drawbar, up to the class's 0.5 m.
 # - rated_rpm: the governor: full fuel up to this speed, cut off at the
@@ -45,16 +47,17 @@ levels = [
 
 [[garage.upgrades]]
 part = "rear_traction"
-name = "Puller tires"
+name = "Cut farm tires"
+formerly = ["Puller tires"]   # a save from before keeps its level
 levels = [
     { value = 1.29, cost_eur = 0, label = "Worn farm tires" },
     { value = 1.32, cost_eur = 700, label = "Farm tires, good tread" },
     { value = 1.35, cost_eur = 950, label = "New farm tires" },
     { value = 1.38, cost_eur = 1200, label = "Wide farm tires" },
-    { value = 1.41, cost_eur = 1450, label = "Puller tires" },
-    { value = 1.425, cost_eur = 1700, label = "Puller tires, cut" },
-    { value = 1.44, cost_eur = 1950, label = "Wide puller tires, cut" },
-    { value = 1.455, cost_eur = 2200, label = "24.5\" puller tires, hand cut" },
+    { value = 1.41, cost_eur = 1450, label = "Farm tires, cut" },
+    { value = 1.425, cost_eur = 1700, label = "Farm tires, cut deeper" },
+    { value = 1.44, cost_eur = 1950, label = "Wide farm tires, cut" },
+    { value = 1.455, cost_eur = 2200, label = "24.5\" farm tires, hand cut" },
 ]
 
 [[garage.upgrades]]

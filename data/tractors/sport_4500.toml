@@ -1,7 +1,7 @@
 # The Sport 4.5 t class's tractor (docs/career.md): a big six-cylinder farm
 # tractor built for pulling, no cab but a roll bar, its engine, clutch and
 # gears uprated (engines/, clutches/, drivelines/sport_4500.toml) and
-# puller tires at the class's widest (tires/sport_4500_rear.toml). Within
+# cut farm tires at the class's widest (tires/sport_4500_rear.toml). Within
 # the class: 4500 kg with the driver, a wheelbase under 2.9 m, nothing more
 # than 4.0 m ahead of the rear axle, the hitch at most 0.5 m high and at
 # least 0.45 m behind the axle. The garage (garages/sport_4500.toml) builds

@@ -83,6 +83,30 @@ levels = [{ value = 0.5, cost_eur = 0, label = "a" }, { value = 0.6, cost_eur = 
     EXPECT_EQ(carried.fitted[0], 2);
 }
 
+// An upgrade renamed (the Sport classes' "Puller tires", now cut farm
+// tires) lists its former names: a save that knows it by one of them keeps
+// its level, and names it by the new name from then on.
+TEST(CareerNames, FindsAnUpgradeByAFormerName) {
+    const GarageDefinition g = garage_of(R"(
+[[garage.upgrades]]
+part = "rear_traction"
+name = "Cut farm tires"
+formerly = ["Puller tires", "Tires"]
+levels = [{ value = 1.0, cost_eur = 0, label = "a" }, { value = 1.1, cost_eur = 1, label = "b" }]
+)",
+                                         kTwoTurbos);
+    ASSERT_EQ(g.texts.size(), 1U);
+    EXPECT_EQ(g.texts[0].former_names, (std::vector<std::string>{"Puller tires", "Tires"}));
+    SavedCareer saved;
+    saved.upgrades.push_back({.name = "Puller tires", .level = 1});
+    const garage::Career career = career_from_names(saved, g);
+    EXPECT_EQ(career.levels[0], 1);
+    SavedCareer named;
+    name_career(career, g, named);
+    ASSERT_EQ(named.upgrades.size(), 1U);
+    EXPECT_EQ(named.upgrades[0].name, "Cut farm tires");
+}
+
 // A save that fits an alternative it does not own, or one there is not,
 // has the first fitted; an unknown choice is left behind.
 TEST(CareerNames, FitsOnlyWhatIsOwned) {

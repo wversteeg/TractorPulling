@@ -120,7 +120,7 @@ package "tp::data" {
   }
   class GarageDefinition <<struct>> {
     +catalogue : garage::Catalogue
-    +texts : vector<UpgradeText{name, level_labels}>
+    +texts : vector<UpgradeText{name, level_labels, former_names}>
     +choice_texts : vector<ChoiceText{name, alternative_labels}>
   }
   class "garage_loader" as GarageLoader <<free functions>> {
