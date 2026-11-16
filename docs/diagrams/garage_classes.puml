@@ -11,6 +11,7 @@ package "other components" {
   class "engine::with_torque_scale()" as TorqueScale
   class "engine::with_rated_speed()" as RatedSpeed
   class "chassis::with_free_weight()" as BallastMass
+  class "vehicle::with_rear_tire()" as RearTire
 }
 
 package "tp::garage" {
@@ -43,6 +44,12 @@ package "tp::garage" {
     +rear_tire : optional<tire::Params>
     +driveline : optional<driveline::Params>
     +cost_eur : int64
+    +suits_choice : int
+    +suits_alternative : int
+  }
+  class Advice <<struct>> {
+    +choice : size_t
+    +alternative : size_t
   }
   class Choice <<struct>> {
     +slot : Slot
@@ -84,6 +91,7 @@ package "tp::garage" {
     +owns(const Career&, choice, alternative) : bool
     +fitted(const Catalogue&, const Career&, choice) : size_t
     +counts(const Catalogue&, const Career&, upgrade) : bool
+    +advice(const Catalogue&, const Career&) : optional<Advice>
     +prize_eur(span<const int64> by_place, const event::Standing&) : int64
     +needs_tractor(const Catalogue&, const Career&) : bool
     +model_price_eur(const Catalogue&, model, money_eur) : int64
@@ -98,6 +106,8 @@ package "tp::garage" {
   Upgrade *-- Level
   Upgrade --> Part
   Upgrade ..> Alternative : belongs to one (or none)
+  Alternative ..> Alternative : suits one of another choice
+  GarageFns ..> Advice
   GarageFns ..> Catalogue
   GarageFns ..> Career
 }
@@ -107,6 +117,7 @@ GarageFns ..> EventStanding : pays by place
 GarageFns ..> TorqueScale
 GarageFns ..> RatedSpeed
 GarageFns ..> BallastMass
+GarageFns ..> RearTire : fits rear tires of another size
 note bottom of Catalogue
   level 0 of every upgrade is the tractor the player starts with;
   each level sets its part's value outright, so parts never interact

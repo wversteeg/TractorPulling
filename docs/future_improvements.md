@@ -314,6 +314,18 @@ for the big features; they are repeated at the end for completeness.
 - **Rivals don't tune.** The scripted pullers pull as built; a driver who
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
+- **Rivals keep one set of tires.** The Supersport 3.6 t rivals all pull
+  the 7 l engine on puller tires and the tall final drive; only the player
+  chooses. Real teams mostly own one set too, but a field with some
+  tractors on farm tires (the short final drive), or crews fitting what
+  suits the day's track, would show the choice among the rivals as well.
+- **Pull distances run short of real ones.** The NTTO's pull-offs reach
+  about 105 to 122 m (Supersport 4.5 t; the Supersport 3.6 t videos
+  about 115 m), the game's about 10 to 20 m less in every class from
+  Sport up: the sled operator sets the sled for the field's average, and
+  a pull-off's heavier sled stops the tractors sooner. Tuning the sleds,
+  the operator's target and the pull-off step against real results would
+  bring them closer.
 
 - **Rivals don't upgrade.** The field is drawn once a season and stays as
   it is; the player climbs through it by upgrading. Rivals buying parts

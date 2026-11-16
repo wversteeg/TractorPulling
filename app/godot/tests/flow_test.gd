@@ -632,6 +632,19 @@ func _check_garage_choice(event: TractorPullEvent, garage: GarageScreen) -> void
 	_expect(int(event.get_garage()["money_eur"]) == 100
 			and int(event.get_garage()["choices"][0]["fitted"]) == 1, "and the spare one")
 	_expect(event.buy_alternative(0, 1) == "owned already", "nothing more to buy")
+	# The crew chief's advice: none where no alternative suits another
+	# (the practice garage); for a final drive that suits the fitted tires,
+	# its line, and to buy it first when it is not owned.
+	_expect(event.get_garage().get("advice", {}).is_empty()
+			and GarageScreen.crew_advice(event.get_garage()) == "", "no advice for the pumps")
+	var advice := {"choice": 2, "alternative": 1, "label": "Tall final drive",
+			"for": "Puller tires", "owned": false}
+	_expect(GarageScreen.crew_advice({"advice": advice})
+			== "Crew chief: with the puller tires, fit the tall final drive (buy it first).",
+			"the crew chief's advice: %s" % GarageScreen.crew_advice({"advice": advice}))
+	advice["owned"] = true
+	_expect(GarageScreen.crew_advice({"advice": advice})
+			== "Crew chief: with the puller tires, fit the tall final drive.", "advice, owned")
 
 
 # A title opened the level above (a save that says so: a season won, and

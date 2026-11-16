@@ -162,8 +162,8 @@ tandems), its weight box holding up to 11 t. Each class's sled file names
 it as its base and sets the box's weight, where the push-down starts and
 how much of the sled it puts on the pan (the light class 1.8 t in the box
 with one knife, the push-down from 70 m taking the pan to 40 % of the
-sled; Sport 2.5 t 2.2 t, from 65 m to 45 %; Sport 4.5 t 9 t, from 70 m to
-half). Its own rolling is most of what a tractor pulls at the start; the
+sled; Sport 2.5 t 2.2 t, from 65 m to 45 %; Sport 4.5 t 9 t and
+Supersport 3.6 t 10 t, from 70 m to half). Its own rolling is most of what a tractor pulls at the start; the
 box starts behind the wheels (4 m on the light class's sled, at the
 frame's tail), which takes weight off the pan, so a new tractor on its
 farm drawbar and worn tires gets it going. The weight box rides forward
@@ -386,8 +386,9 @@ a pin on each part, its ring filling as the part is built up and a €
 badge when its next level is affordable. A part's screen lines up all its
 levels (bought ones checked, the next with its price and Buy; the tires
 drawn as their tread), the engine's with a dyno chart of what the next
-level adds; a choice (Sport 4.5 t's turbo) puts its alternatives side by
-side.
+level adds; a choice (Sport 4.5 t's turbo; Supersport 3.6 t's engine,
+rear tires and final drive) puts its alternatives side by side, and the
+crew chief says which final drive the fitted tires want.
 
 ### The rivals
 
@@ -441,7 +442,8 @@ offers "Move up" before the next season's first pull too. The money and
 every upgrade carry up, by the upgrade's name. For testing a class, the
 settings' "Start" picks the rung a new career starts on.
 
-The tractor path holds the standard class, Sport 2.5 t and Sport 4.5 t.
+The tractor path holds the standard class, Sport 2.5 t, Sport 4.5 t and
+Supersport 3.6 t.
 A new class is a new tractor: Sport's (`data/tractors/sport_2500.toml`) is smaller, pulls
 under a roll bar instead of a cab, in tall close gears with a powershift
 (see docs/career.md, "How the Sport classes pull"), and its engine
@@ -451,9 +453,14 @@ money carries over). A new Sport tractor starts at the back of promo and
 wins it with about half its garage; only a fully built one wins at top.
 Sport 4.5 t's tractor (`data/tractors/sport_4500.toml`) is a big
 six-cylinder of about 780 hp fully built, pulled at belofte, promo and top
-(`data/garages/sport_4500.toml`, € 73,000). Supersport 3.4, 3.6 and 4.5 t, Pro Stock, Limited Super
-Stock and Super Stock follow, a class at a time, each with its NTTO and
-ETPC rules.
+(`data/garages/sport_4500.toml`, € 73,000). Supersport 3.6 t's
+(`data/tractors/supersport_3600.toml`) is the class of choices: a 7.0 l
+engine at 2700 rpm or a 6.06 l one at 3200 rpm, modified farm tires or
+puller tires, and a short or tall final drive to suit them (either engine about
+1000 hp fully built), pulled at all three levels after building boost on
+the launch ("optoeren"; `data/garages/supersport_3600.toml`, € 98,200).
+Supersport 3.4 and 4.5 t, Pro Stock, Limited Super Stock and Super Stock
+follow, a class at a time, each with its NTTO and ETPC rules.
 
 ### Playing a run from a game
 

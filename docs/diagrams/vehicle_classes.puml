@@ -113,6 +113,7 @@ package "tp::vehicle" {
     +travel_direction(const State&, bool drive_out, double drawbar_pull_n) : double
     +step(State&, const Model&, const Input&, const Ground&,\n      const chassis::Drawbar&, dt_s) : Output
     +even(const soil::Surface&) : Ground
+    +with_rear_tire(const Params&, const tire::Params&) : optional<Params>
     +solve_chain(engine, driveline Response, TireLine,\n      chassis Prediction, clutch State&, clutch Params, capacity) : ChainSolution
     +hash_append(Fnv1a&, const State&)
   }
