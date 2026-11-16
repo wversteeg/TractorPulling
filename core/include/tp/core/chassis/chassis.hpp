@@ -176,6 +176,13 @@ enum class ParamError : std::uint8_t {
 /// finite, below 0, or more than the weights it has.
 [[nodiscard]] Params with_free_weight(const Params& params, double free_kg) noexcept;
 
+/// The pitch at which the wheelie bar's tip touches the ground [rad]: how
+/// far the nose may come up before it stands on the bar. Within
+/// kMaxWheelieBarContactPitch_rad for valid params (found by bisection, the
+/// same bits on every platform); for a game showing how high the nose is,
+/// not for the step.
+[[nodiscard]] double wheelie_bar_contact_pitch_rad(const Params& params) noexcept;
+
 /// The share of the tractor's weight on the rear axle at rest, 0 to 1:
 /// from the centre of gravity alone, as a setup screen shows it (the front
 /// tires' spring and the hitch do not enter).
