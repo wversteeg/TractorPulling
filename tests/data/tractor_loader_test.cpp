@@ -327,6 +327,10 @@ TEST(TractorLoader, ReadsTheBallast) {
     EXPECT_EQ(ballast.rear_ahead_of_rear_axle_m, reference.rear_ahead_of_rear_axle_m);
     EXPECT_EQ(ballast.front_ahead_of_rear_axle_m, reference.front_ahead_of_rear_axle_m);
     EXPECT_EQ(ballast.position, reference.position);
+    EXPECT_EQ(ballast.fixed_position, 0.0) << "fixed at the back unless the file says";
+    const auto sport = load_tractor(std::string{TP_DATA_DIR} + "/tractors/sport_2500.toml");
+    ASSERT_TRUE(sport.ok()) << sport.error().message;
+    EXPECT_EQ(sport.value().chassis.ballast.fixed_position, 1.0) << "the Sport 2.5 t's in front";
 }
 
 // A tractor without the table has no weights to move.
@@ -342,6 +346,7 @@ TEST(TractorLoader, RejectsANonsenseBallast) {
     for (const auto& [from, to] : {
              std::pair{"mass_kg = 400.0", "mass_kg = 4000.0"},
              std::pair{"position = 0.5", "position = 1.5"},
+             std::pair{"position = 0.5", "position = 0.5\nfixed_position = -0.1"},
              std::pair{"front_ahead_of_rear_axle_m = 3.1", "front_ahead_of_rear_axle_m = -1.0"},
              // Far enough forward to take the centre of gravity past the front axle.
              std::pair{"front_ahead_of_rear_axle_m = 3.1", "front_ahead_of_rear_axle_m = 9.0"},

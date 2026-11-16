@@ -89,6 +89,9 @@ public:
     /// clutch_full_grip_pedal and clutch_bite_pedal
     /// (clutch::engagement_range). {} before setup().
     [[nodiscard]] godot::Dictionary get_dimensions() const;
+    /// get_dimensions()'s keys that are the tractor's alone, for `tractor`
+    /// (TractorPullEvent::get_tractor_dimensions()).
+    [[nodiscard]] static godot::Dictionary tractor_dimensions(const vehicle::Params& tractor);
 
     /// "easy" or "pro", the layout the run is played in; "" before setup().
     [[nodiscard]] godot::String get_layout() const;
@@ -103,6 +106,10 @@ public:
     /// line.
     [[nodiscard]] bool may_restart() const;
     void restart();
+    /// The pull counts as it is: no restart, the chain off once the
+    /// tractor backs off (session::Session::decline_restart). Until the
+    /// player chooses, the chain stays on.
+    void decline_restart();
     /// {ending, distance_m, time_s, top_speed_m_s, full_pull,
     /// out_of_bounds_at_m} once finished, else {}. full_pull: the sled got
     /// past the full-pull line, not out of bounds (at an event the run goes

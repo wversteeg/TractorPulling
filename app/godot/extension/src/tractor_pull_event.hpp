@@ -10,6 +10,7 @@
 #include "tp/data/season/season_save.hpp"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -58,7 +59,12 @@ public:
     /// the rung above's class and level ("" at the top) and whether it is
     /// another class, whether move_up() would move the player now, the
     /// seasons finished on the player's rung, the ladder's minimum there,
-    /// and whether one was won. {} without a career.
+    /// and whether one was won; also {money_eur, may_choose, choices}: the
+    /// wallet, whether choose_season() may change the rung now, and for
+    /// every rung {rung, class_name, level_name, open, current, stages,
+    /// stages_bought, tractor} (stages_bought of the class's garage's stages
+    /// on the player's tractor in that class; tractor "" if they have none
+    /// there yet). {} without a career.
     [[nodiscard]] godot::Dictionary get_career() const;
     /// A new career: the first rung, the garage's start money and nothing
     /// bought, and its season drawn for `seed`. "" or what is wrong; the
@@ -79,6 +85,13 @@ public:
     /// carry over, by the upgrades' names. Only between seasons: with the
     /// season over, or before the player's first pull in it. "" or why not.
     godot::String move_up(std::int64_t seed);
+    /// Starts the next season on rung `rung`, any one open (career::
+    /// choose_rung): a lower class or level again, or the highest opened.
+    /// Each class has its own tractor: the one the player leaves is kept,
+    /// and the one they had in `rung`'s class comes back (a class they have
+    /// not pulled in, a new tractor); the money is one wallet. Only between
+    /// seasons, as move_up(). "" or why not.
+    godot::String choose_season(std::int64_t rung, std::int64_t seed);
     /// Loads a season (res:// paths work) and draws its field for `seed`, a
     /// new season. The player's career (money and upgrades) carries over
     /// from the season before; the first season starts one (the garage's
@@ -200,6 +213,27 @@ public:
     /// Fits an alternative owned, for nothing; "" or why not ("not bought
     /// yet", "not during an event", "no such part").
     godot::String fit_alternative(std::int64_t choice, std::int64_t alternative);
+    /// The class's tractor dealer: {money_eur, needs_tractor, can_buy,
+    /// model, paint, paint_cost_eur, models, paints}; `model` and `paint`
+    /// the tractor's (model -1 before it is bought), each model {name,
+    /// style, about, cost_eur, price_eur} (`price_eur` what it costs now:
+    /// the cheapest no dearer than the money there is), each paint {name,
+    /// paint, trim, rims} ("#rrggbb"). `needs_tractor`: a season in the
+    /// class waits for the tractor to be bought. {} before a season; no
+    /// models for a class without a dealer.
+    [[nodiscard]] godot::Dictionary get_dealer() const;
+    /// The player's tractor as built and tuned, as TractorPullRun's
+    /// get_dimensions() gives the tractor's keys, to draw it off the track
+    /// (the dealer's turntable). {} before a season.
+    [[nodiscard]] godot::Dictionary get_tractor_dimensions() const;
+    /// Buys the class's tractor as model `model` in paint `paint`; "" or why
+    /// not ("owned already", "not enough money", "not during an event", "no
+    /// such model").
+    godot::String buy_tractor(std::int64_t model, std::int64_t paint);
+    /// Paints the tractor in paint `paint`, for the dealer's paint cost; ""
+    /// or why not ("not bought yet", "painted so already", "not enough
+    /// money", "not during an event", "no such paint").
+    godot::String repaint(std::int64_t paint);
     /// For testing: adds `amount_eur` to the player's money (a negative
     /// amount takes it away, to no less than 0); false without a career.
     bool add_money(std::int64_t amount_eur);
@@ -279,6 +313,11 @@ private:
     /// Whether the season is the career's and the player has not pulled in
     /// it yet, or it is over: a class may change.
     [[nodiscard]] bool between_seasons() const;
+    /// The class of the player's rung in the loaded career; "" without one.
+    [[nodiscard]] std::string rung_class() const;
+    /// The garage of rung `rung`'s class, loaded once; nothing if its season
+    /// does not load.
+    [[nodiscard]] const data::GarageDefinition* class_garage(int rung) const;
 
     std::optional<data::CareerDefinition> career_definition_;
     career::Progress progress_;
@@ -291,6 +330,13 @@ private:
     double start_y_m_ = 0.0;
     /// Kept from season to season; set by the first start_season().
     std::optional<garage::Career> career_;
+    /// The class career_'s tractor is for ("" outside a career), and the
+    /// player's tractors in the other classes, kept by name for when they
+    /// go back (data::SavedTractor).
+    std::string career_class_;
+    std::vector<data::SavedTractor> other_tractors_;
+    /// Each class's garage, by class, as class_garage() loads them.
+    mutable std::map<std::string, data::GarageDefinition> garages_;
     // Large plain data: on the heap.
     std::unique_ptr<field::LiveSeason> season_;
 };

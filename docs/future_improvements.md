@@ -37,7 +37,7 @@ for the big features; they are repeated at the end for completeness.
   line).
 - **The pan's width.** Where the sled meets the spots its pan is taken as
   2 m wide for every sled (sled::kPanHalfWidth_m): the sleds' data give the
-  pan's area, not its width.
+  pan's area, not its width. The game draws it as wide as the sled, 2.55 m.
 - **Scripted pullers do not steer.** The rivals' crews choose where their
   sled starts, and the drivers then pull straight; one that drifts off its
   line does not correct.
@@ -59,18 +59,25 @@ for the big features; they are repeated at the end for completeness.
   set per class and per track in the data; the scripted sled operator
   does not change it from the test pull, nor between pull-offs, as a real
   operator may (an earlier gear makes the sled harder sooner).
-- **The hook's height.** The sled's hook is taken 0.45 m over the
-  track; on the NTTO's sleds the chain hooks on low on the pan's front, 5
-  to 10 cm up. There the chain runs about 20° down from the tractor's
-  hitch: a third of the pull lifts the pan's front at the start, and as
-  much pulls the tractor's hitch down, which grips its rear tires far
-  harder. Every class and track needs retuning for it (the next step).
-- **The pan's tilt, drawn.** The pan's front lift (Loads::pan_front_lift,
-  in the session's snapshot) is not drawn yet: the sled's look is being
-  reworked separately.
-- **The pan's pitch.** The pan and the frame stand quasi-statically: the
-  pan's front lifts by where the ground's pressure under it moves, not by
-  its own pitching motion; the frame does not pitch on its wheels.
+- **The pan's front lifting.** The pan lies flat: with these classes'
+  tractors a real sled's pan stays down. Stronger classes (and trucks, their
+  hitch at 1 m) lift its front at the start; a model of it (a rigid plate
+  on soil, the chain's upward pull ahead of the pivot against the pan's
+  load, ploughing less while up) was tried and left out until they come.
+- **Tire load sensitivity everywhere.** Only the Sport classes' puller
+  tires grip less per unit of load above their reference load (the chain,
+  hooked low, pressing them down); the light class's tire, whose tractor
+  stalls before it spins on most tracks, keeps the plain Brixius curve.
+  The reference load is a fixed number per tire, not the tractor's own
+  share at rest after its tuning.
+- **Free weight's name.** The garage part that frees the weights is still
+  `garage::Part::kBallastMass`, its key `ballast_kg`: renaming it
+  (`kFreeWeight`, `free_weight_kg`) touches every garage file, the setup
+  screen and the career saves, which keep parts by name.
+- **The pan held up, simply.** Until the push-down engages, the cylinders
+  hold a fixed share of the pan's load on the wheels (`pan_held_share`)
+  and drop it as the push-down ramps in: the pan's back does not rise or
+  fall as a body, and its drag is not tied to how high it is held.
 - **Knife penetration.** Knives cut at their set depth up to a soil
   strength of 2 MPa and shallower beyond it; how deep a knife actually
   reaches could follow from the load on the pan and the blade's shape.
@@ -95,12 +102,20 @@ for the big features; they are repeated at the end for completeness.
   distance). Heavier classes and more along-track variation (see "Later")
   should spread them again; worth checking when milestone 6 adds classes.
 - **The pan is drawn longer than it drags.** The sled shows its pan
-  from just behind the front stop plate back to the middle of the sled,
+  from under the front back to the middle of the sled,
   as real ones are, and the track's smoothed band starts at its back edge;
   the simulation has the pan's contact at one point, 5.5 m ahead of the
   wheels, where it feels the hard spots. A pan whose load spreads over its
   length would feel a spot as it slides over it, and the spots would line
   up with the smoothed band.
+- **The box starts under the cab in the lighter classes.** On real sleds
+  the cab stands right at the back with the engine between it and the
+  weight box. The light and Sport 2.5 t classes start their box 4 and 3 m
+  behind the wheels (its weight levers the pan up for the start), where
+  the cab is: the game stands the cab on posts at the edges over it, the
+  rear covers round it, and leaves the engine out of sight. Starting the
+  box ahead of the engine would need those classes' starts retuned (a
+  lighter box, fewer knives).
 - **The push-down is drawn larger than it is.** The game lifts the sled's
   rear wheels 15 cm with the push-down fully set, so that it shows from
   the tractor; a real sled lifts them a few centimetres.
@@ -398,6 +413,14 @@ for the big features; they are repeated at the end for completeness.
   `docs/performance.md`) is checked by hand with `scripts/android_bench.sh`;
   CI's ARM runner is a server core, so its limits catch regressions rather
   than prove the phone budget. A device farm could check it in CI.
+- **The evening's frame time on a phone.** An evening event lights the
+  venue with about 24 unshadowed spotlights (`VenueView.FLOODLIGHTS`), each
+  a per-pixel cost in the Mobile renderer's forward pass. Not yet measured
+  on a mid-range phone; if it is too slow, fewer masts or a shorter range
+  are the knobs. The long grass plane and crowd MultiMeshes get at most 8
+  lights each (the renderer's limit per mesh); split into 20 m pieces they
+  looked no different in the Forward Mobile screenshots, so they stay whole
+  and save the draw calls (the clay is split, where it showed).
 - **The C++ runtime for the Godot extension.** The Android presets link
   libc++ statically, which suits standalone test binaries. A GDExtension
   shares a process with Godot, which may want `c++_shared`; decide with the
@@ -549,6 +572,13 @@ for the big features; they are repeated at the end for completeness.
 
 ## Garage and career
 
+- **The dealer's models only look different.** Each class's five models
+  pull the same: a model could bring its own engine, weight distribution or
+  wheelbase within the class's rules (a low model's lower centre of
+  gravity, a tall one's bigger tires), so the choice matters on the track.
+  Selling a class's tractor back, or trading it in for another model, is
+  not in the game either.
+
 - **The parts are values, not parts.** An upgrade sets one value (a torque
   scale, a traction limit, a ballast mass, a drawbar height, a downshift
   step); a new tire does not change the tire's size, rolling radius or
@@ -575,8 +605,8 @@ for the big features; they are repeated at the end for completeness.
   The Sport engines' 350 and 780 hp are set from videos of top tractors
   (their pace and wheelies), not measured on a dyno.
 - **Cut-tire grip is an estimate.** The Sport classes' cut farm tires'
-  grip (1.5 times an uncut farm tire's, building at under half its rate
-  with slip, a tenth lost spun fast) is set with the engines from the
+  grip (1.5 times an uncut farm tire's, building at a third of its rate
+  with slip, none lost spun fast) is set with the engines from the
   videos and so that a too tall gear bogs and a too low one spins out,
   not from measurements; so is how much grip a tire gains or loses with
   how fast its tread spins (`tire::TractionCurve`), from pullers'

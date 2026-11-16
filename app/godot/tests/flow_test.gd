@@ -154,6 +154,15 @@ func _slide_to_start(slider: TouchSlider) -> void:
 	_touch(TAP_FINGER, Vector2(rect.position.x - 20.0, rect.get_center().y), false)
 
 
+# Drags a vertical slider past its bottom end.
+func _slide_to_bottom(slider: TouchSlider) -> void:
+	var rect := slider.get_global_rect()
+	var below := Vector2(rect.get_center().x, rect.end.y + 20.0)
+	_touch(TAP_FINGER, rect.get_center(), true)
+	_drag(TAP_FINGER, below)
+	_touch(TAP_FINGER, below, false)
+
+
 func _frames(count: int) -> void:
 	for i in count:
 		await process_frame
@@ -237,6 +246,26 @@ func _play() -> void:
 	var bold := EventTexts.leading_rows(log, 4)
 	bold.sort()
 	_expect(bold == PackedInt32Array([1, 3, 6, 7, 9]), "the bold rows: %s" % bold)
+	# A guest: marked by name, no points, and in bold only past the
+	# competitors' last pull-off place.
+	var guest := EventTexts.standing_row({"place": 1, "name": "Rik", "guest": true,
+			"disqualified": false, "full_pull": false, "distance_m": 96.0, "points": 0})
+	_expect(guest[1] == "Rik (guest)" and guest[3] == "guest", "a guest's row: %s" % guest)
+	var with_guests := [
+		{"puller": 0, "kind": "test", "reached_m": 95.0, "disqualified": false},
+		{"puller": 1, "kind": "competition", "reached_m": 94.0, "disqualified": false},
+		{"puller": 5, "kind": "competition", "reached_m": 99.0, "disqualified": false,
+				"guest": true},
+		{"puller": 2, "kind": "competition", "reached_m": 93.0, "disqualified": false},
+		{"puller": 6, "kind": "competition", "reached_m": 91.0, "disqualified": false,
+				"guest": true},
+		{"puller": 3, "kind": "competition", "reached_m": 92.0, "disqualified": false},
+		{"puller": 4, "kind": "competition", "reached_m": 80.0, "disqualified": false},
+	]
+	var bold_guests := EventTexts.leading_rows(with_guests, 4)
+	bold_guests.sort()
+	_expect(bold_guests == PackedInt32Array([0, 1, 2, 3, 5]),
+			"the competitors' four and the guest past them: %s" % bold_guests)
 
 	# The start screen: the season's first event, started behind it.
 	var info := event.get_event()
@@ -341,6 +370,7 @@ func _play() -> void:
 	_expect(is_equal_approx(left, clampf(snappedf(max_y, SetupScreen.START_STEP_M), -max_y, max_y)),
 			"the sled at full left: %f of %f" % [left, max_y])
 	await _shot("1b_setup")
+	await _check_track_screen(setup, event)
 	setup.start_slider.value = 0.0
 	await _frames(2)
 	_expect(float(event.get_crew_report().get("start_y_m", 1.0)) == 0.0, "the sled back in the middle")
@@ -463,6 +493,56 @@ func _play() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
+# Tapping the pit board's lane opens the track screen over it, the pit
+# board's buttons hidden under it: the lane lengthwise with the crew's
+# report, the ground along the track from the start to the full-pull line
+# (as prepared: the same grip as the track card's at the start), the
+# spots listed, and the start slider where the pit board's is, which moves
+# the sled's start (its bottom end full right); "Done" goes back.
+func _check_track_screen(setup: SetupScreen, event: TractorPullEvent) -> void:
+	var track := setup.track_screen
+	var before := float(event.get_crew_report().get("start_y_m", 0.0))
+	_tap(setup.lane_button)
+	await _frames(2)
+	_expect(track.visible and not setup.pull_button.is_visible_in_tree()
+			and not setup.lane_button.is_visible_in_tree(), "the track screen over the pit board")
+	var ground: Dictionary = event.get_event().get("track", {})
+	var profile: Array = ground.get("profile", [])
+	var full_m := float(event.get_crew_report().get("full_pull_m", 0.0))
+	_expect(profile.size() >= 2 and float(profile[0]["at_m"]) == 0.0
+			and float(profile[profile.size() - 1]["at_m"]) == full_m
+			and float(profile[0]["grip"]) == float(ground.get("grip", -1.0)),
+			"the ground along the track: %d points to %f" % [profile.size(), full_m])
+	_expect(track.lane.lengthwise and track.lane.marks
+			and track.lane.report.get("spots", []).size()
+			== event.get_crew_report().get("spots", []).size(), "the crew's lane, lengthwise")
+	_expect(is_equal_approx(track.start_slider.value, setup.start_slider.value)
+			and is_equal_approx(setup.start_y_m(), before)
+			and track.start_slider.end_value > track.start_slider.start_value,
+			"the start where the pit board has it, full left at the top")
+	# The ground in words: each stretch apart, by its most different point.
+	var ground_along := []
+	for i in 41:
+		var at_m := 2.5 * i
+		var soft := at_m >= 20.0 and at_m <= 30.0
+		var firm := at_m >= 80.0
+		ground_along.append({"at_m": at_m, "grip": 1.2,
+				"cone_index_kpa": 1200.0 if soft else (4000.0 if firm else 2500.0)})
+	var words: String = TrackScreen._along_words(ground_along)
+	_expect(words == "A patch from about 20 to 30 m: softer; from about 80 m on: firmer.",
+			"the ground's stretches in words: %s" % words)
+	await _shot("1c_track")
+	_slide_to_bottom(track.start_slider)
+	await _frames(2)
+	var right := float(event.get_crew_report().get("start_y_m", 0.0))
+	_expect(right < 0.0 and is_equal_approx(setup.start_y_m(), right),
+			"the track screen's start moves the sled: %f" % right)
+	_tap(track.done_button)
+	await _frames(2)
+	_expect(not track.visible and setup.visible and setup.pull_button.is_visible_in_tree(),
+			"back to the pit board")
+
+
 # The hitch's slider sends 0 for the top hole, so that a drawbar bought
 # later raises it, and a lower hole as its height (2 cm holes). Checked
 # within one frame, then put back: the practice tractor's hitch is fixed.
@@ -555,10 +635,14 @@ func _check_garage_choice(event: TractorPullEvent, garage: GarageScreen) -> void
 
 
 # A title opened the level above (a save that says so: a season won, and
-# the app closed on the season's board): launched again, the new season's
-# start screen offers to move up, which starts the level above's season
-# with the money and upgrades carried up. Then the settings' "Start" (for
-# testing a class) starts a new career a class up.
+# the app closed on the season's board): launched again, the career screen
+# offers every class and level, the level above picked (the highest open)
+# and the class above locked, with no going back (no season to go back
+# to); starting there gives the level above's season with the money and
+# upgrades carried up. Then the settings' "Start" (for testing a class)
+# starts a new career a class up, and the career screen takes the player
+# down a class and back up again: each class keeps its own tractor, the
+# money one wallet.
 func _check_move_up() -> void:
 	var saved := FileAccess.get_file_as_string(SAVE_PATH)
 	_expect(saved.contains("class = \"Practice\"") and saved.contains("unlocked_level = \"Belofte\""),
@@ -569,11 +653,15 @@ func _check_move_up() -> void:
 	var pull := await _launch(LADDER)
 	var start: StartScreen = pull.get("start_screen")
 	var event: TractorPullEvent = pull.get("event")
-	var garage := event.get_garage()
-	_expect(start.visible and start.move_up_button.visible and start.event_button.visible,
-			"the level above to move up to")
-	await _shot("8_move_up")
-	_tap(start.move_up_button)
+	# No season yet behind the career screen: the career's money.
+	var money := int(event.get_career().get("money_eur", -1))
+	var careers: CareerScreen = pull.get("career_screen")
+	_expect(careers.visible and not start.visible and careers.picked_rung() == 1
+			and not careers.back_button.visible and careers.level_buttons.size() == 3
+			and not careers.level_buttons[1].disabled and careers.level_buttons[2].disabled,
+			"the career screen, the level above picked, the class above locked")
+	await _shot("8_career")
+	_tap(careers.start_button)
 	await _frames(2)
 	var career := event.get_career()
 	_expect(career.get("rung", -1) == 1 and career.get("level_name", "") == "Promo"
@@ -581,8 +669,8 @@ func _check_move_up() -> void:
 	_expect(start.visible and not start.move_up_button.visible
 			and int(event.get_season().get("scored", -1)) == 0
 			and int(event.get_event().get("index", -1)) == 0, "the level above's first event")
-	_expect(event.get_garage()["money_eur"] == garage["money_eur"]
-			and event.get_garage()["upgrades"] == garage["upgrades"], "the career carried up")
+	_expect(money > 0 and int(event.get_garage().get("money_eur", -1)) == money,
+			"the career carried up: %s" % event.get_garage())
 	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("level = \"Promo\""),
 			"saved on the level above")
 
@@ -604,6 +692,49 @@ func _check_move_up() -> void:
 	_expect(career.get("rung", -1) == 2 and career.get("class_name", "") == "Practice, a class up"
 			and int(event.get_garage().get("money_eur", -1)) == START_MONEY_EUR,
 			"a new career a class up: %s" % career)
+	await _check_class_round_trip(pull)
+
+
+# A part bought a class up; the career screen (from a new season) to the
+# class below, which has a new tractor of its own, the same money; a part
+# bought there; then back up, where the tractor is as it was left, and the
+# save keeps the other class's tractor.
+func _check_class_round_trip(pull: Node) -> void:
+	var event: TractorPullEvent = pull.get("event")
+	var careers: CareerScreen = pull.get("career_screen")
+	_expect(event.buy_upgrade(0).is_empty(), "a part bought a class up")
+	var up := event.get_garage()
+	pull.call("_choose_season")
+	await _frames(2)
+	_expect(careers.visible and careers.picked_rung() == 2 and careers.back_button.visible,
+			"the career screen, the highest open picked")
+	_tap(careers.level_buttons[0])
+	await _frames(1)
+	_expect(careers.picked_rung() == 0, "the class below picked")
+	_tap(careers.start_button)
+	await _frames(2)
+	var career := event.get_career()
+	var down := event.get_garage()
+	_expect(career.get("class_name", "") == "Practice" and int(career.get("rung", -1)) == 0
+			and int(career.get("unlocked", -1)) == 2, "down a class, the class above open: %s"
+			% career)
+	_expect(int(down["money_eur"]) == int(up["money_eur"]), "one wallet: %s" % down)
+	var bought := 0
+	for part: Dictionary in down["upgrades"]:
+		bought += int(part["level"])
+	_expect(bought == 0, "the class below's own tractor, new: %s" % down)
+	var choices: Array = career.get("choices", [])
+	_expect(choices.size() == 3 and String(choices[2]["tractor"]) == "yours"
+			and int(choices[2]["stages_bought"]) == 1, "the class above's tractor kept: %s"
+			% [choices])
+	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("[[career.tractors]]"),
+			"the save keeps the other class's tractor")
+	pull.call("_choose_season")
+	await _frames(2)
+	_tap(careers.start_button)
+	await _frames(2)
+	_expect(event.get_career().get("rung", -1) == 2 and event.get_garage()["upgrades"]
+			== up["upgrades"], "back up, the tractor as it was left: %s" % event.get_garage())
 
 
 # The pull scene again, as at the next launch, on the same save; with

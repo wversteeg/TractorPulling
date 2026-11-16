@@ -1135,7 +1135,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0xc937b7dfd035f951ULL);
+    EXPECT_EQ(pull_hash(), 0x25cd850a07defeb0ULL);
 }
 
 }  // namespace

@@ -20,6 +20,8 @@ signal buy_requested(index: int)
 # Alternative `alternative` of choice `choice`: to buy (and fit) or to fit.
 signal choice_requested(choice: int, alternative: int)
 signal done
+# The paint shop (DealerScreen), from the workshop.
+signal paint_shop_requested
 
 enum View { WORKSHOP, UPGRADE, CHOICE }
 
@@ -62,6 +64,9 @@ var view := View.WORKSHOP
 var view_index := 0
 
 var done_button: TouchButton
+# Shown in the workshop when the class's dealer paints (has_paint_shop).
+var paint_shop_button: TouchButton
+var has_paint_shop := false
 var back_button: TouchButton
 var buy_button: TouchButton
 # The workshop's pins, in the garage's order.
@@ -173,6 +178,7 @@ func _show_view() -> void:
 	_choice.visible = view == View.CHOICE
 	back_button.visible = view != View.WORKSHOP
 	done_button.visible = view == View.WORKSHOP
+	paint_shop_button.visible = view == View.WORKSHOP and has_paint_shop
 	_title.position.x = 28.0 if view == View.WORKSHOP else 128.0
 	match view:
 		View.WORKSHOP:
@@ -237,6 +243,10 @@ func _build_workshop() -> void:
 	var hint := _label(side, Rect2(16, 182, 194, 60), 13, GarageArt.DIM)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.text = "Tap a part to see its levels. € on a part: its next level is affordable."
+	paint_shop_button = _button(_workshop, "Paint shop", Rect2(1030, 346, 222, 64), 24)
+	paint_shop_button.rounded = true
+	paint_shop_button.icon = "paint"
+	paint_shop_button.tapped.connect(func() -> void: paint_shop_requested.emit())
 
 
 func _build_part() -> void:

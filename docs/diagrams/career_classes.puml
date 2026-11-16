@@ -31,6 +31,7 @@ package "tp::career" {
     +finish_season(Progress&, const Ladder&, span<const season::Standing>, player) : bool
     +may_move_up(const Progress&) : bool
     +move_up(Progress&) : bool
+    +choose_rung(Progress&, rung) : bool, any open rung
   }
   CareerFns ..> Ladder
   CareerFns ..> Progress

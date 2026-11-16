@@ -8,10 +8,10 @@
 #
 # A farm tire's few tall lugs each push against a block of soil. Cut, they
 # bite harder than an uncut tire's and build their grip with a little more
-# slip (slip_rate under half the uncut tire's), so the tire still spins up
-# at the launch; spun fast, the lugs dig in and smear, and some grip goes
-# (fast_spin_grip). The limit is the fully built tire's; the garage sets
-# it.
+# slip (slip_rate a third of the uncut tire's), so the tire still spins up
+# at the launch; cut lower and sharper, they do not dig in and smear when
+# spun fast as uncut lugs do. The limit is the fully built tire's; the
+# garage sets it.
 [tire]
 radius_m = 0.78                    # rolling radius
 section_width_m = 0.62
@@ -23,12 +23,15 @@ min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 [tire.traction]
 limit = 1.4                        # μ on very strong ground at full bite: a hand cut farm tire on a prepared track
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
-slip_rate = 8.0                    # cut lugs: grip builds with more slip than an uncut farm tire's
-# Spun fast, the tall lugs dig in and smear: grip falls to fast_spin_grip
-# of itself as the tread's slip speed passes spin_speed_m_s
-# (tp::tire::TractionCurve).
-fast_spin_grip = 0.9
-spin_speed_m_s = 4.0
+slip_rate = 6.0                    # cut lugs: grip builds with more slip than an uncut farm tire's
+# Cut lower and sharper, the lugs no longer dig in and smear when spun
+# fast as an uncut farm tire's do (pulling_rear.toml): no fast_spin_grip
+# (tp::tire::TractionCurve), so grip keeps up however fast it spins.
+# Pressed harder than its share of the tractor at rest (the chain pulling
+# down at the hitch, the weights back), the tire grips less per unit of
+# load (tp::tire::TractionCurve::load_sensitivity).
+load_sensitivity = 0.3
+reference_load_n = 8800.0           # where the sensitivity starts: about one tire's share at rest as built
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint

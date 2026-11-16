@@ -100,6 +100,18 @@ TEST(TireParams, RejectsNonsense) {
     EXPECT_EQ(
         with([](Params& p) { p.traction.slip_rate = std::numeric_limits<double>::infinity(); }),
         ParamError::kNotFinite);
+    EXPECT_EQ(with([](Params& p) { p.traction.load_sensitivity = -0.1; }),
+              ParamError::kLoadSensitivityInvalid);
+    EXPECT_EQ(with([](Params& p) {
+                  p.traction.load_sensitivity = 1.0;
+                  p.traction.reference_load_n = 10000.0;
+              }),
+              ParamError::kLoadSensitivityInvalid);
+    EXPECT_EQ(with([](Params& p) {
+                  p.traction.load_sensitivity = 0.3;
+                  p.traction.reference_load_n = 0.0;
+              }),
+              ParamError::kLoadSensitivityInvalid);
     EXPECT_EQ(with([](Params& p) { p.wheel_inertia_kg_m2 = 0.0; }),
               ParamError::kInertiaNotPositive);
     EXPECT_EQ(with([](Params& p) { p.min_reference_speed_m_s = 0.0; }),
@@ -115,6 +127,29 @@ TEST(TireParams, RejectsNonsense) {
 }
 
 // Brixius' mobility number, by hand: CI b d / W (1 + 5 δ/h) / (1 + 3 b/d).
+// Above its reference load a tire grips less per unit of load, so pressing
+// it down harder still adds grip, but less and less: up to the reference
+// load (and with no sensitivity) the coefficient is as the curve says.
+TEST(Tire, PressedHarderItGripsLessPerUnitOfLoad) {
+    Params params = reference_params();
+    const soil::Surface surface = reference_surface();
+    const double plain = full_bite(params, 2.0 * kLoad_n, surface);
+    params.traction.load_sensitivity = 0.3;
+    params.traction.reference_load_n = kLoad_n;
+    EXPECT_EQ(load_factor(params.traction, 0.5 * kLoad_n), 1.0);
+    EXPECT_EQ(load_factor(params.traction, kLoad_n), 1.0);
+    EXPECT_NEAR(load_factor(params.traction, 2.0 * kLoad_n), 1.0 / 1.3, 1e-12);
+    EXPECT_NEAR(full_bite(params, 2.0 * kLoad_n, surface), plain / 1.3, 1e-12);
+    double last_n = 0.0;
+    for (const double share : {1.0, 1.5, 2.0, 3.0, 4.0}) {
+        const double grip_n = full_bite(params, share * kLoad_n, surface) * share * kLoad_n;
+        EXPECT_GT(grip_n, last_n) << "more load, still more grip";
+        last_n = grip_n;
+    }
+    EXPECT_LT(load_factor(params.traction, 3.0 * kLoad_n),
+              load_factor(params.traction, 2.0 * kLoad_n));
+}
+
 TEST(Tire, MobilityNumberFollowsBrixius) {
     const Size size = reference_params().size;
     const soil::Surface surface = reference_surface();
@@ -387,6 +422,49 @@ TEST(TireSpin, APullerTireBitesSpinningFastAFarmTireSmears) {
                 1e-3 * force(plain, kVeryFast_m_s));
     EXPECT_NEAR(force(farm(), kVeryFast_m_s), 0.8 * force(plain, kVeryFast_m_s),
                 1e-3 * force(plain, kVeryFast_m_s));
+}
+
+// The tread's grip share (k(v)) holds across the tire as along it: the
+// same share of its grip is in use as without the response, and its side
+// grip is k(v) of the unspun tire's. A farm tire spun fast smears both
+// ways (less side grip, never more), and a puller tire turning slowly
+// grips less both ways.
+TEST(TireSpin, SideGripSharesTheSpinResponse) {
+    const soil::Surface surface = reference_surface();
+    const auto at = [&](const Params& p, double ground_m_s) {
+        return traction(p, wheel_speed_for(0.5, ground_m_s), ground_m_s, kLoad_n, surface);
+    };
+    const auto side_limit_n = [&](const Params& p, double ground_m_s) {
+        return with_traction(side_grip(p.size, p.cornering, kLoad_n, surface), at(p, ground_m_s),
+                             kLoad_n)
+            .limit_n;
+    };
+    for (const double ground_m_s : {0.5, 4.0, 20.0}) {
+        const double unspun_n = side_limit_n(unspun(), ground_m_s);
+        for (const Params& p : {farm(), puller()}) {
+            const Traction t = at(p, ground_m_s);
+            EXPECT_NEAR(std::abs(t.force_n) / (t.full_bite * kLoad_n),
+                        std::abs(at(unspun(), ground_m_s).force_n) /
+                            (full_bite(p, kLoad_n, surface) * kLoad_n),
+                        1e-12)
+                << "the same share of its grip in use as without the response";
+            EXPECT_NEAR(side_limit_n(p, ground_m_s), t.grip_share * unspun_n, 1e-9 * unspun_n);
+            EXPECT_LE(side_limit_n(p, ground_m_s), unspun_n * (1.0 + 1e-12));
+        }
+    }
+    // Spun fast the farm tire has clearly less side grip; a puller tire has
+    // its least turning slowly.
+    EXPECT_LT(side_limit_n(farm(), 20.0), 0.9 * side_limit_n(unspun(), 20.0));
+    EXPECT_LT(
+        side_limit_n(puller(), 0.5),
+        side_limit_n(puller(), 20.0) * side_limit_n(unspun(), 0.5) / side_limit_n(unspun(), 20.0));
+    // Without the response the share is 1 and the side grip as before.
+    EXPECT_EQ(at(unspun(), 4.0).grip_share, 1.0);
+    const Traction plain = at(unspun(), 4.0);
+    EXPECT_EQ(side_limit_n(unspun(), 4.0),
+              with_traction(side_grip(unspun().size, unspun().cornering, kLoad_n, surface),
+                            plain.force_n, plain.full_bite * kLoad_n, plain.slip_ratio)
+                  .limit_n);
 }
 
 // The implicit solve's slope includes the spin response: a small drop in

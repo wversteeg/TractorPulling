@@ -261,7 +261,6 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["sled_speed_m_s"] = s.sled_speed_m_s;
     out["box_ahead_of_wheels_m"] = s.box_ahead_of_wheels_m;
     out["pushdown"] = s.pushdown;
-    out["pan_front_lift"] = s.pan_front_lift;
     out["berm_m3"] = s.berm_m3;
     out["chain_tension_n"] = s.chain_tension_n;
     out["stage"] = stage_name(s.stage);
@@ -276,12 +275,8 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     return out;
 }
 
-godot::Dictionary TractorPullRun::get_dimensions() const {
+godot::Dictionary TractorPullRun::tractor_dimensions(const vehicle::Params& tractor) {
     godot::Dictionary out;
-    if (!setup_) {
-        return out;
-    }
-    const vehicle::Params& tractor = setup_->tractor;
     const chassis::Params& chassis = tractor.chassis;
     out["wheelbase_m"] = chassis.wheelbase_m;
     out["rear_axle_height_m"] = chassis.rear_axle_height_m;
@@ -296,6 +291,9 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["protection"] = chassis.protection == chassis::Protection::kRollBar ? "roll_bar" : "cab";
     out["wheelie_bar_behind_rear_axle_m"] = chassis.wheelie_bar.behind_rear_axle_m;
     out["wheelie_bar_tip_height_m"] = chassis.wheelie_bar.tip_height_m;
+    // How far the nose may come up before it stands on the bar: the HUD
+    // shows how high it is against it.
+    out["wheelie_bar_contact_pitch_rad"] = chassis::wheelie_bar_contact_pitch_rad(chassis);
     // The weights as the puller set them, for drawing: how much, and where
     // between their rearmost and foremost places (0 to 1).
     out["ballast_mass_kg"] = chassis.ballast.mass_kg;
@@ -304,6 +302,24 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["front_axle_rest_load_n"] = chassis::axle_loads_at_rest(chassis).front_n;
     out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
     out["has_reverse"] = tractor.driveline.reverse_ratio > 0.0;
+    const engine::Params& engine = tractor.engine;
+    out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
+    out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
+    out["full_boost_bar"] = units::pa_to_bar(engine.full_boost_pressure_pa);
+    out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
+    out["idle_omega_rad_s"] = engine.idle_omega_rad_s;
+    out["engine_cylinders"] = engine.cylinders;
+    const clutch::EngagementRange clutch = clutch::engagement_range(tractor.clutch);
+    out["clutch_full_grip_pedal"] = clutch.full_grip_pedal;
+    out["clutch_bite_pedal"] = clutch.bite_pedal;
+    return out;
+}
+
+godot::Dictionary TractorPullRun::get_dimensions() const {
+    if (!setup_) {
+        return {};
+    }
+    godot::Dictionary out = tractor_dimensions(setup_->tractor);
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;
     out["sled_wheel_width_m"] = sled.wheel.section_width_m;
@@ -335,16 +351,6 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["fender_behind_hook_m"] = setup_->sled.fenders.behind_hook_m;
     out["take_up_tension_n"] = turn::kTakeUpTension_n;
     out["restart_before_m"] = turn::kRestartBefore_m;
-    const engine::Params& engine = tractor.engine;
-    out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
-    out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
-    out["full_boost_bar"] = units::pa_to_bar(engine.full_boost_pressure_pa);
-    out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
-    out["idle_omega_rad_s"] = engine.idle_omega_rad_s;
-    out["engine_cylinders"] = engine.cylinders;
-    const clutch::EngagementRange clutch = clutch::engagement_range(tractor.clutch);
-    out["clutch_full_grip_pedal"] = clutch.full_grip_pedal;
-    out["clutch_bite_pedal"] = clutch.bite_pedal;
     return out;
 }
 
@@ -370,6 +376,12 @@ bool TractorPullRun::may_restart() const {
 void TractorPullRun::restart() {
     if (session_) {
         session_->restart();
+    }
+}
+
+void TractorPullRun::decline_restart() {
+    if (session_) {
+        session_->decline_restart();
     }
 }
 
@@ -436,6 +448,7 @@ void TractorPullRun::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_result"), &TractorPullRun::get_result);
     ClassDB::bind_method(D_METHOD("may_restart"), &TractorPullRun::may_restart);
     ClassDB::bind_method(D_METHOD("restart"), &TractorPullRun::restart);
+    ClassDB::bind_method(D_METHOD("decline_restart"), &TractorPullRun::decline_restart);
     ClassDB::bind_method(D_METHOD("get_state_hash"), &TractorPullRun::get_state_hash);
 }
 

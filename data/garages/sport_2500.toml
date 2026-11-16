@@ -14,8 +14,12 @@
 #   cut tires, not puller tires: those come from Supersport on;
 #   docs/career.md); the tire's size stays as tires/sport_rear.toml has
 #   it.
-# - ballast_kg: weights up to the class's 2500 kg with the driver.
-# - hitch_height_m: the drawbar, up to the class's 0.5 m.
+# - ballast_kg: the free weight. The tractor is at the class's 2500 kg
+#   with the driver, its weights bolted to the front bracket (the tractor
+#   file's fixed_position); each level frees more of them to move before
+#   a pull (back, for a slippery track), up to all of them.
+# - hitch_height_m: the drawbar, up to the class's 0.5 m, a hole (2 cm)
+#   at a time, so each level adds a hole to set it in below.
 # - rated_rpm: the governor: full fuel up to this speed, cut off at the
 #   class's 2700 rpm (the engine's high idle), the droop between them
 #   shortening as it is turned up, so that under load the engine runs up
@@ -62,15 +66,15 @@ levels = [
 
 [[garage.upgrades]]
 part = "ballast_kg"
-name = "Ballast weights"
+name = "Free weight"
 levels = [
-    { value = 0.0, cost_eur = 0, label = "No weights" },
-    { value = 50.0, cost_eur = 700, label = "50 kg of weights" },
-    { value = 100.0, cost_eur = 950, label = "100 kg of weights" },
-    { value = 150.0, cost_eur = 1200, label = "150 kg of weights" },
-    { value = 200.0, cost_eur = 1450, label = "200 kg of weights" },
-    { value = 250.0, cost_eur = 1700, label = "250 kg of weights" },
-    { value = 300.0, cost_eur = 1950, label = "300 kg, the class's 2500 kg" },
+    { value = 0.0, cost_eur = 0, label = "All weights fixed at the front" },
+    { value = 50.0, cost_eur = 700, label = "50 kg free to move" },
+    { value = 100.0, cost_eur = 950, label = "100 kg free to move" },
+    { value = 150.0, cost_eur = 1200, label = "150 kg free to move" },
+    { value = 200.0, cost_eur = 1450, label = "200 kg free to move" },
+    { value = 250.0, cost_eur = 1700, label = "250 kg free to move" },
+    { value = 300.0, cost_eur = 1950, label = "All 300 kg free to move" },
 ]
 
 [[garage.upgrades]]
@@ -78,11 +82,10 @@ part = "hitch_height_m"
 name = "Pulling hitch"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
-    { value = 0.41, cost_eur = 700, label = "Drawbar raised, 0.41 m" },
-    { value = 0.42, cost_eur = 950, label = "Drawbar raised, 0.42 m" },
-    { value = 0.43, cost_eur = 1200, label = "Drawbar raised, 0.43 m" },
-    { value = 0.45, cost_eur = 1450, label = "Pulling hitch, 0.45 m" },
-    { value = 0.47, cost_eur = 1700, label = "Pulling hitch, 0.47 m" },
+    { value = 0.42, cost_eur = 700, label = "Drawbar raised, 0.42 m" },
+    { value = 0.44, cost_eur = 950, label = "Drawbar raised, 0.44 m" },
+    { value = 0.46, cost_eur = 1250, label = "Pulling hitch, 0.46 m" },
+    { value = 0.48, cost_eur = 1550, label = "Pulling hitch, 0.48 m" },
     { value = 0.50, cost_eur = 1950, label = "Pulling hitch, 0.50 m" },
 ]
 
@@ -105,3 +108,90 @@ levels = [
     { value = 1.0, cost_eur = 2400, label = "One gear down under load" },
     { value = 2.0, cost_eur = 1400, label = "Two gears down under load" },
 ]
+
+# The dealer: a new class is a new tractor, bought when the class opens, as
+# one of these models (the game draws each its own way; all pull alike).
+# Priced at about a fifth of a winning season's prize money; the cheapest is
+# never dearer than the money there is. Painting it later costs
+# paint_cost_eur.
+[garage.dealer]
+paint_cost_eur = 500
+
+[[garage.dealer.models]]
+name = "Sprint Classic"
+style = "pull_classic"
+cost_eur = 4000
+about = "The pulling tractor as it should be: a round bonnet, chrome and a roll bar."
+
+[[garage.dealer.models]]
+name = "Sprint Low"
+style = "pull_low"
+cost_eur = 4600
+about = "Built low: a low bonnet, a short roll bar and one tall stack."
+
+[[garage.dealer.models]]
+name = "Sprint High"
+style = "pull_high"
+cost_eur = 5200
+about = "A tall square bonnet, twin stacks and wide fenders."
+
+[[garage.dealer.models]]
+name = "Sprint Cage"
+style = "pull_cage"
+cost_eur = 5800
+about = "A safety cage with a roof and lamps over a round bonnet."
+
+[[garage.dealer.models]]
+name = "Sprint Farm"
+style = "pull_farm"
+cost_eur = 6500
+about = "A farm tractor's square hood on a pulling frame: the farmer's choice."
+
+# The colours, the same at every dealer: the first comes with the tractor.
+[[garage.dealer.paints]]
+name = "Field red"
+paint = "#b3241c"
+trim = "#f2f0e8"
+rims = "#e8dcb4"
+
+[[garage.dealer.paints]]
+name = "Forest green"
+paint = "#1f5e2e"
+trim = "#f2d230"
+rims = "#f2d230"
+
+[[garage.dealer.paints]]
+name = "Lake blue"
+paint = "#1d4f9c"
+trim = "#f2f0e8"
+rims = "#d8d8dc"
+
+[[garage.dealer.paints]]
+name = "Harvest orange"
+paint = "#e3741c"
+trim = "#20201f"
+rims = "#20201f"
+
+[[garage.dealer.paints]]
+name = "Steel grey"
+paint = "#9aa0a6"
+trim = "#1c1c1e"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Night black"
+paint = "#121214"
+trim = "#e0aa2a"
+rims = "#e0aa2a"
+
+[[garage.dealer.paints]]
+name = "Snow white"
+paint = "#f0efe9"
+trim = "#b3241c"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Royal purple"
+paint = "#5c1a6e"
+trim = "#f2f0e8"
+rims = "#d8d8dc"

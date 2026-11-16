@@ -27,11 +27,24 @@ struct TractionCurve {
     double mobility_rate = 0.0;
     /// How quickly grip builds with slip.
     double slip_rate = 0.0;
+    /// Above its reference load a tire grips less per unit of load: its
+    /// traction coefficient falls by 1 / (1 + load_sensitivity (W / W_ref
+    /// - 1)), as a pressed tire's lugs and the soil under them give. On
+    /// strong ground, where the mobility number holds grip at its limit,
+    /// this is what keeps a tire pressed down hard (a chain pulling down
+    /// at the hitch) from gripping without bound. 0 for none; below 1, so
+    /// that pressing a tire harder still adds pull, if less and less.
+    double load_sensitivity = 0.0;
+    /// The load the sensitivity is measured from: up to it a tire grips as
+    /// its limit says [N]. A tuning constant, about one tire's share of the
+    /// tractor at rest as built; the weights' place and the free weight
+    /// move the real share around it.
+    double reference_load_n = 0.0;
     /// How the grip depends on how fast the tread sweeps through the soil:
     /// its slip speed v, the wheel's surface speed less the ground speed
     /// (see Params). The grip is scaled by a share that moves from
-    /// slow_spin_grip at v = 0 to fast_spin_grip as v passes
-    /// spin_speed_m_s,
+    /// slow_spin_grip at v = 0 to fast_spin_grip over about spin_speed_m_s
+    /// (63 % of the way there),
     ///
     ///   k(v) = slow + (fast - slow) (1 - e^(-|v| / spin_speed_m_s))
     ///
@@ -44,9 +57,13 @@ struct TractionCurve {
     /// 1 (the default): grip does not depend on it.
     double slow_spin_grip = 1.0;
     double fast_spin_grip = 1.0;
-    /// The slip speed over which the share moves most of its way [m/s].
+    /// The slip speed over which the share moves 63 % of its way [m/s].
     double spin_speed_m_s = 1.0;
 };
+
+/// The share of a tire's traction coefficient it keeps under `load_n`
+/// (TractionCurve::load_sensitivity): 1 up to its reference load.
+[[nodiscard]] double load_factor(const TractionCurve& curve, double load_n) noexcept;
 
 /// A tire's side grip on soil. Like traction, it follows the mobility
 /// number: soft ground gives a tire less side grip, and lets it build more
@@ -117,8 +134,9 @@ struct Pressure {
 /// leaves out: past the peak, a spinning tire smears or digs and loses
 /// grip, which makes wheelspin run away once it starts. k(v) is the tread's
 /// own response to how fast it spins (TractionCurve), which Brixius leaves
-/// out too. Load sensitivity follows from Bn. Braking (s < 0) mirrors
-/// traction.
+/// out too. Load sensitivity follows from Bn, and above the tire's
+/// reference load from its load_sensitivity (TractionCurve). Braking
+/// (s < 0) mirrors traction.
 struct Params {
     Size size;
     TractionCurve traction;
@@ -138,6 +156,9 @@ enum class ParamError : std::uint8_t {
     kDeflectionOutOfRange,
     kTractionLimitOutOfRange,
     kTractionRateNotPositive,
+    /// The load sensitivity negative, or set without a positive reference
+    /// load.
+    kLoadSensitivityInvalid,
     /// slow_spin_grip or fast_spin_grip outside (0, 1], or spin_speed_m_s
     /// not above 0.
     kSpinGripOutOfRange,
@@ -180,8 +201,15 @@ struct Traction {
     double force_n = 0.0;
     double force_per_slip_speed = 0.0;  // [N per m/s]
     double slip_ratio = 0.0;
-    /// full_bite() for this load and ground, which traction works from.
+    /// full_bite() for this load and ground, which traction works from,
+    /// scaled by the tread's response to how fast it spins (k(v),
+    /// TractionCurve, grip_share).
     double full_bite = 0.0;
+    /// k(v): the share of its grip the tread has at this slip speed, for
+    /// traction and side force alike (with_traction): a smearing tire spun
+    /// fast, or a puller tire turning slowly, has less of both. 1 for a
+    /// tire without the response.
+    double grip_share = 1.0;
 };
 
 [[nodiscard]] Traction traction(const Params& params, double wheel_surface_speed_m_s,
@@ -262,6 +290,12 @@ struct SideGrip {
 /// side grip falls with slip and is gone at full spin.
 [[nodiscard]] SideGrip with_traction(SideGrip grip, double traction_n, double full_bite_n,
                                      double slip_ratio) noexcept;
+
+/// As above for `traction` under `load_n`, its grip share (k(v),
+/// Traction::grip_share) scaling the side grip too: the tread that grips
+/// less along the tire spinning fast (or slowly) grips less across it.
+[[nodiscard]] SideGrip with_traction(SideGrip grip, const Traction& traction,
+                                     double load_n) noexcept;
 
 /// The side force from a lateral patch deflection, positive to the tire's
 /// left [N].

@@ -64,6 +64,9 @@ TEST(SledParams, RejectsNonsense) {
               ParamError::kWheelLossesOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.wheel_rolling_losses = kMaxWheelRollingLosses + 0.01; }),
               ParamError::kWheelLossesOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pan_held_share = -0.1; }),
+              ParamError::kPanHeldShareOutOfRange);
+    EXPECT_EQ(with([](Params& p) { p.pan_held_share = 1.0; }), ParamError::kPanHeldShareOutOfRange);
     EXPECT_EQ(with([](Params& p) { p.pan_mass_kg = -1.0; }), ParamError::kPanInvalid);
     EXPECT_EQ(with([](Params& p) { p.pan_mass_kg = p.frame_mass_kg + 1.0; }),
               ParamError::kPanInvalid);
@@ -314,38 +317,25 @@ TEST(Sled, ThePushdownsCylindersLiftTheFrame) {
     EXPECT_NEAR(on.wheels_n, off.wheels_n - moved_n, 1e-6);
 }
 
-// The chain pulling up at the hook, ahead of the pivot, lifts the pan's
-// front while the box is back and the pan light; then it ploughs less.
-// The box come forward over the pivot puts the front down again, and so
-// does the push-down. Pulling along the track at the hook's height
-// presses the front down.
-TEST(Sled, TheChainLiftsThePansFrontUntilTheBoxComesForward) {
-    constexpr double kUp_n = 4000.0;
-    Params params = reference_params();
-    params.pushdown_start_m = 1.0e6;
-    const Loads lifted = at(params, 10.0, {.up_n = kUp_n});
-    EXPECT_GT(lifted.pan_front_lift, 0.3);
-    EXPECT_LE(lifted.pan_front_lift, 1.0);
-    EXPECT_EQ(at(params, 10.0).pan_front_lift, 0.0) << "no pull, flat";
-    const double ploughing_mu =
-        params.pan_friction_coefficient *
-        (1.0 + params.pan_plough_coefficient * lifted.pan_n / params.pan_area_m2 /
-                   reference_ground().pan.cone_index_pa);
-    EXPECT_LT(lifted.pan_friction, ploughing_mu) << "a lifted front ploughs less";
-    EXPECT_GT(lifted.pan_friction, params.pan_friction_coefficient);
-
-    const Loads forward = at(params, params.box_travel_distance_m, {.up_n = kUp_n});
-    EXPECT_LT(forward.pan_front_lift, lifted.pan_front_lift);
-    EXPECT_GT(forward.pan_n, lifted.pan_n);
-    const Loads pressed = at(params, 10.0, {.forward_n = 10.0 * kUp_n, .up_n = kUp_n});
-    EXPECT_LT(pressed.pan_front_lift, lifted.pan_front_lift);
-
-    // The push-down engaged holds the pan level, the box still back.
-    Params held = reference_params();
-    held.box_travel_distance_m = 1.0e6;
+// Until the push-down the cylinders may hold the pan's back up: that share
+// of the pan's load goes onto the wheels, which roll far more easily, so
+// the sled drags less; as the push-down engages the pan drops, and fully
+// engaged it holds nothing back.
+TEST(Sled, AHeldPanStartsLighterAndDropsAtThePushdown) {
+    const Params flat = pivot_on_the_track();
+    Params held = flat;
+    held.pan_held_share = 0.4;
+    ASSERT_EQ(validate(held), std::nullopt);
+    const Loads down = at(flat, 10.0);
+    const Loads up = at(held, 10.0);
+    EXPECT_NEAR(up.pan_n, 0.6 * down.pan_n, 1e-6);
+    EXPECT_NEAR(up.pan_n + up.wheels_n, down.pan_n + down.wheels_n, 1e-6);
+    EXPECT_LT(up.cylinders_n, 0.0) << "holding the pan up";
+    EXPECT_LT(up.resistance_n, down.resistance_n);
+    const double half_m = held.pushdown_start_m + held.pushdown_ramp_m / 2.0;
+    EXPECT_GT(at(held, half_m).pan_n, up.pan_n) << "dropping";
     const double full_m = held.pushdown_start_m + held.pushdown_ramp_m;
-    EXPECT_EQ(at(held, full_m, {.up_n = kUp_n}).pan_front_lift, 0.0);
-    EXPECT_GT(at(held, held.pushdown_start_m - 1.0, {.up_n = kUp_n}).pan_front_lift, 0.0);
+    EXPECT_NEAR(at(held, full_m).pan_n, at(flat, full_m).pan_n, 1e-6) << "dropped";
 }
 
 // Each pull-off step drags harder everywhere along the track, and several

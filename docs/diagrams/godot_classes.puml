@@ -33,6 +33,8 @@ package "tp::godot_binding" {
     +get_layout() : String
     +is_finished() : bool
     +is_over() : bool
+    +may_restart() : bool
+    +restart() / decline_restart()
     +get_result() : Dictionary
     +get_state_hash() : String
     ..C++ only..
@@ -55,6 +57,7 @@ package "tp::godot_binding" {
     +new_season(seed) : String
     +resume_career(save) : String
     +move_up(seed) : String
+    +choose_season(rung, seed) : String, any open rung;\n each class its own tractor, one wallet
     +start_season(season_path, seed) : String
     +start_career(season_path, seed) : String
     +get_save() : String
@@ -78,6 +81,10 @@ package "tp::godot_binding" {
     +buy_upgrade(index) : String
     +buy_alternative(choice, alternative) : String
     +fit_alternative(choice, alternative) : String
+    +get_dealer() : Dictionary, the class's models,\n paints and the tractor bought
+    +get_tractor_dimensions() : Dictionary
+    +buy_tractor(model, paint) : String
+    +repaint(paint) : String
     +add_money(amount_eur) : bool, for testing
     +get_tuning() : Dictionary
     +set_tuning(ballast_position, pressure_bar, hitch_m = 0)
