@@ -1,0 +1,97 @@
+# The Supersport class at 3.6 t, at belofte (beloftenniveau), its lowest
+# level in the career (docs/career.md; the NTTO pulls it at top, promo and
+# belofte). The class's rules, tractor, sled and driver; the competition
+# rules as the standard class's.
+
+[event]
+class = "../classes/ntto_supersport_3600.toml"
+tractor = "../tractors/supersport_3600.toml"   # the reference the field varies
+sled = "../sleds/supersport_3600.toml"
+track = "../tracks/ideal_clay_sand.toml"
+pullers = 15
+seed = 2026
+
+# The reference driver: neutral, the gear in at 0.5 s, rev up, then the
+# clutch up over 3 s from 3 s, in one gear the whole pull.
+[event.driver]
+gear = 4
+select_gear_s = 0.5
+launch_s = 3.0
+clutch_slip_in_s = 3.0
+downshift_share = 0.0                  # no powershift in Supersport: one gear the whole pull
+# "Optoeren": the clutch comes up over clutch_slip_in_s, eased back while
+# the engine is below 80 % of its rated speed, so the engine works on a
+# slipping clutch at high revs and the turbo builds its boost before the
+# clutch is fully in; up to 8 s in all. Without it a tall pulling gear
+# stalls the engine (the big turbo gives little at first).
+launch_hold_share = 0.8
+launch_hold_max_s = 8.0
+
+# The field: Supersport 3.6 t tractors from barely built to a little over half
+# the class's garage (garages/supersport_3600.toml), driven by pullers new to
+# the class. A new tractor finishes around last; about 45 % of the garage
+# wins.
+# Each driver picks a gear between `gears` for the day's track, the best
+# one as often as their track_reading says (tests/data/
+# rival_difficulty_test.cpp checks where the player's tractor finishes).
+# Supersport pulls in the gearbox's pulling gears, 3rd to 6th
+# (drivelines/supersport_3600_*.toml), and has no powershift.
+[event.field]
+torque_scale = [0.42, 0.58]
+mass_kg = [3320.0, 3520.0]
+traction_limit = [1.36, 1.41]
+hitch_height_m = [0.41, 0.46]
+rated_rpm = [2230.0, 2455.0]
+gears = [2, 5]                         # 2nd for a weak tractor on a soft track
+clutch_slip_in_s = [2.0, 4.0]
+track_reading = [0.4, 0.8]
+downshift_share = [0.0, 0.0]           # no powershift
+pull_to_pull_grip_share = 0.01         # +- 1 % grip
+pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s
+pull_to_pull_pan_drag_share = 0.06     # +- 6 % drag: the spot the sled\'s pan ploughs
+
+# The NTTO's competition rules and the sled operator's rule of thumb.
+[event.rules]
+full_pull_m = 100.0
+extended_full_pull_m = 110.0     # when a test pull stops between the two
+max_distance_m = 130.0           # a pull past the line stops here at the latest
+pull_off_full_pull_m = 120.0     # the full-pull line in a pull-off
+pull_off_places = 4              # full pulls, filled up with the best...
+qualifying_below_line_m = 20.0   # ...from 20 m short of the line on (80 m, or 90 m at 110 m)
+decide_after_pulls = 2           # the test puller decides after the 3rd pull
+repull_after_pulls = 5           # and re-pulls after the 6th
+sled_target_m = 90.0             # what the field's average should reach: the best come close to a full pull
+step_m = 8.0                     # rule of thumb: a sled step is worth about 8 m (learnt better on the day)
+max_steps_per_change = 4         # at most this many steps at once
+# The operator weighs a test pull by who pulled it (each tractor's gear
+# trials say how far it should get): the sled goes lighter when the
+# field's average would stop short of sled_target_m (the test pull plus how
+# much further the average gets), so a weak tractor's 80 m may be fine. The
+# average, not the strongest: a tractor far stronger than the rest (the
+# player's, built up) leaves the sled as the class needs it. A full
+# pull by one of the strongest fifth leaves the sled; a pull short of 60 %
+# of what the tractor should do is trouble with the tractor, and the next
+# puller tests. After a change, the next test changes the sled only if it
+# misses by more than a step.
+strong_full_pull_from = 0.8
+trouble_share = 0.6
+
+# The event in the game: the player and eleven scripted rivals, drawn from
+# the field as above, the season's competition; and at every event two
+# guests (bijschrijvers) from a pool of six, who pull at a few of the
+# season's events but are not in the competition: they take places at the
+# event (and its prize money), never championship points, and a guest who
+# would have made the pull-off among the competitors pulls off too
+# (event::Event).
+[event.game]
+pullers = 12
+rival_names = ["Henk", "Ineke", "Wim", "Marieke", "Dirk", "Anouk", "Piet", "Joke", "Ruud", "Jos", "Ilse"]
+guests = 2
+guest_names = ["Evert", "Hilde", "Martijn", "Truus", "Sjaak", "Wendy"]
+
+# The guests are drawn as the field is, but for their strength: from the
+# field's weakest to a little above its best, so a guest may win the event
+# or finish last.
+[event.guests]
+torque_scale = [0.42, 0.72]
+traction_limit = [1.372, 1.441]

@@ -16,7 +16,7 @@ min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
 limit = 1.5                        # μ on very strong ground at full bite: a cut puller tire
-mobility_rate = 0.06               # how fast grip reaches the limit with Bn
+mobility_rate = 0.08               # how fast grip reaches the limit with Bn
 slip_rate = 8.0                    # grip builds with slip: a puller tire bites spinning
 # Its many low, sharp bars bite harder the faster they sweep through the
 # soil: turning slowly it has slow_spin_grip of its grip, and full grip

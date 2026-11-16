@@ -72,7 +72,7 @@ name = "Seven-litre build"
 choice = "Engine"
 alternative = "7.0 l six, 2700 rpm"
 levels = [
-    { value = 0.35, cost_eur = 0, label = "Stock 7 l" },
+    { value = 0.40, cost_eur = 0, label = "Stock 7 l" },
     { value = 0.42, cost_eur = 1300, label = "Pump turned up" },
     { value = 0.49, cost_eur = 1600, label = "Bigger injectors" },
     { value = 0.56, cost_eur = 1900, label = "Bigger turbo" },
@@ -131,11 +131,11 @@ name = "Farm tire grip"
 choice = "Rear tires"
 alternative = "Modified farm tires"
 levels = [
-    { value = 1.22, cost_eur = 0, label = "Worn farm tires" },
-    { value = 1.26, cost_eur = 1100, label = "Farm tires, good tread" },
-    { value = 1.30, cost_eur = 1400, label = "New 710/70R42 tires" },
-    { value = 1.34, cost_eur = 1700, label = "Regrooved" },
-    { value = 1.37, cost_eur = 2000, label = "Regrooved, lugs sharpened" },
+    { value = 1.27, cost_eur = 0, label = "Worn farm tires" },
+    { value = 1.30, cost_eur = 1100, label = "Farm tires, good tread" },
+    { value = 1.33, cost_eur = 1400, label = "New 710/70R42 tires" },
+    { value = 1.35, cost_eur = 1700, label = "Regrooved" },
+    { value = 1.38, cost_eur = 2000, label = "Regrooved, lugs sharpened" },
     { value = 1.40, cost_eur = 2300, label = "Hand regrooved by a specialist" },
 ]
 
