@@ -14,9 +14,14 @@ wheel_inertia_kg_m2 = 60.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-limit = 1.45                       # μ on very strong ground at full bite: a cut puller tire
-mobility_rate = 0.1                # how fast grip reaches the limit with Bn
-slip_rate = 6.0                    # grip builds slowly with slip: a puller tire bites spinning hard
+limit = 1.5                        # μ on very strong ground at full bite: a cut puller tire
+mobility_rate = 0.06               # how fast grip reaches the limit with Bn
+slip_rate = 8.0                    # grip builds with slip: a puller tire bites spinning
+# Its many low, sharp bars bite harder the faster they sweep through the
+# soil: turning slowly it has slow_spin_grip of its grip, and full grip as
+# the tread's slip speed passes spin_speed_m_s (tp::tire::TractionCurve).
+slow_spin_grip = 0.75
+spin_speed_m_s = 4.0
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
