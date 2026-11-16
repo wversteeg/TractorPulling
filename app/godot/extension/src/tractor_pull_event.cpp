@@ -502,7 +502,8 @@ godot::String TractorPullEvent::get_save() const {
                                  .unlocked_class = {},
                                  .unlocked_level = {},
                                  .seasons_on_level = 0,
-                                 .title_on_level = false};
+                                 .title_on_level = false,
+                                 .other_tractors = {}};
         if (career_definition_) {
             const std::vector<data::CareerRung>& rungs = career_definition_->rungs;
             const data::CareerRung& here = rungs.at(static_cast<std::size_t>(progress_.rung));
