@@ -57,6 +57,7 @@ package "tp::godot_binding" {
     +new_season(seed) : String
     +resume_career(save) : String
     +move_up(seed) : String
+    +choose_season(rung, seed) : String, any open rung;\n each class its own tractor, one wallet
     +start_season(season_path, seed) : String
     +start_career(season_path, seed) : String
     +get_save() : String

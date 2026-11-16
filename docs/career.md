@@ -425,6 +425,12 @@ tractor:
   about two seasons.
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
+- **The player picks where to pull each season.** When a new season
+  starts with more than one class or level open, a career screen lists
+  them all (the highest open picked); the player may go back to a lower
+  level or class, a Standard 3.5 t season after unlocking Sport 4.5 t
+  too. Each class keeps its own tractor, as it was left, and the money is
+  one wallet.
 - The NTTO's standard class has no levels (nor has the game's) and Pro
   Stock has groups II and I: the game uses the Farmstock levels for the
   other classes alike, except **Sport 2.5 t, only promo and top**: it is the introduction to

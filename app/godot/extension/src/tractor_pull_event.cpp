@@ -18,6 +18,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "godot_files.hpp"
@@ -168,6 +169,45 @@ std::string TractorPullEvent::class_season() const {
     return career_definition_->rungs.at(static_cast<std::size_t>(progress_.rung)).season;
 }
 
+std::string TractorPullEvent::rung_class() const {
+    if (!career_definition_) {
+        return {};
+    }
+    return career_definition_->rungs.at(static_cast<std::size_t>(progress_.rung)).class_name;
+}
+
+const data::GarageDefinition* TractorPullEvent::class_garage(int rung) const {
+    if (!career_definition_ || rung < 0 ||
+        static_cast<std::size_t>(rung) >= career_definition_->rungs.size()) {
+        return nullptr;
+    }
+    const data::CareerRung& r = career_definition_->rungs[static_cast<std::size_t>(rung)];
+    if (const auto found = garages_.find(r.class_name); found != garages_.end()) {
+        return &found->second;
+    }
+    auto loaded = data::load_season(r.season, read_godot_file);
+    if (!loaded) {
+        return nullptr;
+    }
+    return &garages_.emplace(r.class_name, std::move(loaded).value().garage).first->second;
+}
+
+namespace {
+
+// The stages of `catalogue` bought in `career`, and all it has.
+std::pair<int, int> stages(const garage::Catalogue& catalogue, const garage::Career& career) {
+    int bought = 0;
+    int all = 0;
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        const int top = static_cast<int>(catalogue.upgrades.at(i).level_count) - 1;
+        all += top;
+        bought += std::clamp(career.levels.at(i), 0, top);
+    }
+    return {bought, all};
+}
+
+}  // namespace
+
 bool TractorPullEvent::between_seasons() const {
     if (!season_) {
         return true;
@@ -203,6 +243,50 @@ godot::Dictionary TractorPullEvent::get_career() const {
     out["min_seasons"] = career_definition_->ladder.min_seasons;
     out["title"] = progress_.title;
     out["promotion_place"] = career_definition_->ladder.promotion_place;
+    out["money_eur"] = career_ ? career_->money_eur : 0;
+    out["may_choose"] = between_seasons();
+    // Every rung: open or not, and the player's tractor in its class.
+    godot::Array choices;
+    for (std::size_t i = 0; i < rungs.size(); ++i) {
+        godot::Dictionary line;
+        const data::CareerRung& r = rungs[i];
+        line["rung"] = static_cast<int>(i);
+        line["class_name"] = to_godot(r.class_name);
+        line["level_name"] = to_godot(r.level_name);
+        line["open"] = static_cast<int>(i) <= progress_.unlocked;
+        line["current"] = static_cast<int>(i) == progress_.rung;
+        std::optional<garage::Career> tractor;
+        const data::GarageDefinition* garage = class_garage(static_cast<int>(i));
+        if (career_ && r.class_name == career_class_ && definition_) {
+            garage = &definition_->garage;
+            tractor = career_;
+        } else if (garage != nullptr) {
+            for (const data::SavedTractor& kept : other_tractors_) {
+                if (kept.class_name == r.class_name) {
+                    const data::SavedCareer named{.money_eur = 0,
+                                                  .upgrades = kept.upgrades,
+                                                  .choices = kept.choices,
+                                                  .class_name = {},
+                                                  .level_name = {},
+                                                  .unlocked_class = {},
+                                                  .unlocked_level = {},
+                                                  .seasons_on_level = 0,
+                                                  .title_on_level = false,
+                                                  .other_tractors = {}};
+                    tractor = data::career_from_names(named, *garage);
+                }
+            }
+        }
+        const auto [bought, all] =
+            garage != nullptr
+                ? stages(garage->catalogue, tractor.value_or(garage::new_career(garage->catalogue)))
+                : std::pair{0, 0};
+        line["stages"] = all;
+        line["stages_bought"] = bought;
+        line["tractor"] = tractor.has_value() ? "yours" : "";
+        choices.push_back(line);
+    }
+    out["choices"] = choices;
     return out;
 }
 
@@ -300,13 +384,38 @@ godot::String TractorPullEvent::move_up(std::int64_t seed) {
     return error;
 }
 
+godot::String TractorPullEvent::choose_season(std::int64_t rung, std::int64_t seed) {
+    if (!career_definition_) {
+        return "no career";
+    }
+    if (!between_seasons()) {
+        return "not during a season";
+    }
+    const career::Progress kept = progress_;
+    if (!career::choose_rung(
+            progress_, static_cast<int>(std::clamp<std::int64_t>(rung, -1, career::kMaxRungs)))) {
+        return "that class and level are not open";
+    }
+    godot::String error = new_season(seed);
+    if (!error.is_empty()) {
+        progress_ = kept;
+    }
+    return error;
+}
+
 godot::String TractorPullEvent::start_career(const godot::String& season_path, std::int64_t seed) {
     // The career so far stays if the season cannot be started.
     const std::optional<garage::Career> kept = career_;
+    const std::string kept_class = career_class_;
+    std::vector<data::SavedTractor> kept_tractors = other_tractors_;
     career_.reset();
+    career_class_.clear();
+    other_tractors_.clear();
     godot::String error = start_season(season_path, seed);
     if (!error.is_empty()) {
         career_ = kept;
+        career_class_ = kept_class;
+        other_tractors_ = std::move(kept_tractors);
     }
     return error;
 }
@@ -335,13 +444,22 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
         return "the season's field, points or rules are inconsistent";
     }
     season_ = std::make_unique<field::LiveSeason>(*season);
+    const std::string to_class = rung_class();
     if (!career_) {
         career_ = garage::new_career(d.garage.catalogue);
+    } else if (bought_from && !career_class_.empty() && !to_class.empty() &&
+               career_class_ != to_class) {
+        // Another class: its own tractor (data::switch_class).
+        data::ClassTractors moved = data::switch_class(
+            *career_, *bought_from, career_class_, std::move(other_tractors_), d.garage, to_class);
+        career_ = moved.career;
+        other_tractors_ = std::move(moved.parked);
     } else if (bought_from) {
         // By name, as a save is read: what the new garage does not offer is
         // left behind, and what it offers that was not bought starts at 0.
         career_ = data::carry_career(*career_, *bought_from, d.garage);
     }
+    career_class_ = to_class;
     definition_ = std::move(loaded).value();
     tuning_ = vehicle::as_built(player_tractor());
     names_.emplace_back(kPlayerName);
@@ -367,7 +485,8 @@ godot::String TractorPullEvent::get_save() const {
                                  .unlocked_class = {},
                                  .unlocked_level = {},
                                  .seasons_on_level = 0,
-                                 .title_on_level = false};
+                                 .title_on_level = false,
+                                 .other_tractors = {}};
         if (career_definition_) {
             const std::vector<data::CareerRung>& rungs = career_definition_->rungs;
             const data::CareerRung& here = rungs.at(static_cast<std::size_t>(progress_.rung));
@@ -379,6 +498,7 @@ godot::String TractorPullEvent::get_save() const {
             career.seasons_on_level = progress_.seasons;
             career.title_on_level = progress_.title;
         }
+        career.other_tractors = other_tractors_;
         data::name_career(*career_, definition_->garage, career);
         save.career = career;
     }
@@ -409,6 +529,8 @@ godot::String TractorPullEvent::resume_season(const godot::String& season_path,
         // By name: what the garage no longer offers is dropped
         // (data::career_from_names).
         career_ = data::career_from_names(*saved.career, definition_->garage);
+        other_tractors_ = saved.career->other_tractors;
+        career_class_ = rung_class();
     }
     if (saved.season != to_std(season_path)) {
         season_.reset();
@@ -1067,6 +1189,8 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("new_season", "seed"), &TractorPullEvent::new_season);
     ClassDB::bind_method(D_METHOD("resume_career", "save"), &TractorPullEvent::resume_career);
     ClassDB::bind_method(D_METHOD("move_up", "seed"), &TractorPullEvent::move_up);
+    ClassDB::bind_method(D_METHOD("choose_season", "rung", "seed"),
+                         &TractorPullEvent::choose_season);
     ClassDB::bind_method(D_METHOD("start_career", "season_path", "seed"),
                          &TractorPullEvent::start_career);
     ClassDB::bind_method(D_METHOD("get_save"), &TractorPullEvent::get_save);

@@ -16,9 +16,10 @@ namespace tp::data {
 /// the garage) as a career that has not begun, version 2 (before the
 /// career's classes) as a career on its first rung, version 3 (before the
 /// levels) at the first level of its classes, version 4 (before the
-/// garage's choices) with every choice at its first alternative. Any other
-/// is refused.
-inline constexpr std::int64_t kSeasonSaveVersion = 5;
+/// garage's choices) with every choice at its first alternative, version 5
+/// (before each class kept its own tractor) with no other class's tractor.
+/// Any other is refused.
+inline constexpr std::int64_t kSeasonSaveVersion = 6;
 
 /// An upgrade's level, by the garage's name for it (data::UpgradeText), so
 /// that a save outlives a garage file whose order changes.
@@ -34,6 +35,15 @@ struct SavedChoice {
     std::string name;
     std::string fitted;
     std::vector<std::string> owned;
+};
+
+/// A tractor the player has in another class than the one they pull in
+/// now, kept for when they go back to it: its upgrades and choices, by
+/// name (as SavedCareer's).
+struct SavedTractor {
+    std::string class_name;
+    std::vector<SavedUpgrade> upgrades;
+    std::vector<SavedChoice> choices;
 };
 
 /// The player's career: their money, what they have bought, and how far up
@@ -57,6 +67,9 @@ struct SavedCareer {
     /// (career::Progress); none in a save from before version 4.
     int seasons_on_level = 0;
     bool title_on_level = false;
+    /// The player's tractors in the other classes they have pulled in (each
+    /// class its own tractor, the money one wallet); none before version 6.
+    std::vector<SavedTractor> other_tractors;
 };
 
 /// A season saved between events, to pick up on the next launch: which

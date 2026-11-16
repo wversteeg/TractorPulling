@@ -252,6 +252,17 @@ package "GDScript (app/godot/scripts)" {
     +add_button(row, text, icon) : TouchButton
     +release_buttons()
   }
+  class CareerScreen {
+    before a new season with more than one level
+    open: every class's levels, the tractor there
+    +level_buttons : Array[TouchButton], by rung
+    +start_button, back_button : TouchButton
+    +show_career(career, pick, can_go_back)
+    +pick_rung(rung)
+    +picked_rung() : int
+    ..signals..
+    start_requested(rung), back_requested
+  }
   class StartScreen {
     +practice_button, garage_button, event_button : TouchButton
     +continue_button, new_season_button, new_career_button : TouchButton
@@ -517,6 +528,7 @@ Pull *-- HapticsScreen : from the settings
 MenuPanel <|-- HapticsScreen
 HapticsScreen ..> Haptics : its kinds
 Pull *-- StartScreen
+Pull *-- CareerScreen : a new season, the class\nand level picked
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen
 GarageScreen *-- TractorSketch : the workshop
