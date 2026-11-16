@@ -177,6 +177,27 @@ TEST(Garage, FreeWeightMovesTheCentreOfGravity) {
               built.cg_ahead_of_rear_axle_m);
 }
 
+// A tractor whose fixed weights are bolted to the front bracket
+// (Ballast::fixed_position 1) gets its centre of gravity forward instead,
+// by the same weights moved as far the other way; halfway, in between.
+TEST(Garage, FixedWeightsMayBeBoltedToTheFront) {
+    chassis::Params built = kTractor.chassis;
+    const double back_m = chassis::with_free_weight(built, 100.0).cg_ahead_of_rear_axle_m;
+    built.ballast.fixed_position = 1.0;
+    const chassis::Params front = chassis::with_free_weight(built, 100.0);
+    EXPECT_GT(front.cg_ahead_of_rear_axle_m, built.cg_ahead_of_rear_axle_m);
+    EXPECT_EQ(chassis::validate(front), std::nullopt);
+    const chassis::Ballast& b = built.ballast;
+    const double fixed_kg = b.mass_kg - 100.0;
+    const double span_m = b.front_ahead_of_rear_axle_m - b.rear_ahead_of_rear_axle_m;
+    EXPECT_NEAR(front.cg_ahead_of_rear_axle_m - back_m, fixed_kg * span_m / built.mass_kg, 1e-12);
+    built.ballast.fixed_position = 0.5;
+    EXPECT_NEAR(chassis::with_free_weight(built, 100.0).cg_ahead_of_rear_axle_m,
+                (front.cg_ahead_of_rear_axle_m + back_m) / 2.0, 1e-12);
+    built.ballast.fixed_position = 1.5;
+    EXPECT_NE(chassis::validate(built), std::nullopt) << "past the front bracket";
+}
+
 TEST(Garage, RefusesNonsense) {
     const auto error_with = [](auto change) {
         Catalogue c = reference_catalogue();

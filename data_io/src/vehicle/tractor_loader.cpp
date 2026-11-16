@@ -36,7 +36,10 @@ chassis::Ballast read_ballast(detail::Reader& reader) {
                 reader.number("tractor.chassis.ballast.rear_ahead_of_rear_axle_m"),
             .front_ahead_of_rear_axle_m =
                 reader.number("tractor.chassis.ballast.front_ahead_of_rear_axle_m"),
-            .position = reader.number("tractor.chassis.ballast.position")};
+            .position = reader.number("tractor.chassis.ballast.position"),
+            // Optional: weights not free to move are fixed at the back.
+            .fixed_position =
+                reader.optional_number("tractor.chassis.ballast.fixed_position").value_or(0.0)};
 }
 
 FieldError describe(chassis::ParamError error) {
@@ -89,8 +92,9 @@ FieldError describe(chassis::ParamError error) {
                     "must be in [0, 1)"};
         case ParamError::kBallastOutOfRange:
             return {"tractor.chassis.ballast",
-                    "need mass_kg in [0, the tractor's mass), rear before front, position in "
-                    "[0, 1], and the centre of gravity between the axles at either end"};
+                    "need mass_kg in [0, the tractor's mass), rear before front, position and "
+                    "fixed_position in [0, 1], and the centre of gravity between the axles at "
+                    "either end"};
     }
     return {"tractor.chassis", "invalid"};
 }

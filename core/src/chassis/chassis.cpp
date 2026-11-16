@@ -112,7 +112,8 @@ bool ballast_valid(const Params& params) noexcept {
     }
     if (ballast.mass_kg < 0.0 || ballast.mass_kg >= params.mass_kg ||
         ballast.rear_ahead_of_rear_axle_m >= ballast.front_ahead_of_rear_axle_m ||
-        ballast.position < 0.0 || ballast.position > 1.0) {
+        ballast.position < 0.0 || ballast.position > 1.0 || ballast.fixed_position < 0.0 ||
+        ballast.fixed_position > 1.0) {
         return false;
     }
     // The centre of gravity is linear in the weights' position: the ends
@@ -161,7 +162,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.ballast.mass_kg,
                                 params.ballast.rear_ahead_of_rear_axle_m,
                                 params.ballast.front_ahead_of_rear_axle_m,
-                                params.ballast.position};
+                                params.ballast.position,
+                                params.ballast.fixed_position};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -264,12 +266,12 @@ Params with_free_weight(const Params& params, double free_kg) noexcept {
     if (!std::isfinite(free_kg) || free_kg < 0.0 || free_kg >= ballast.mass_kg) {
         return params;
     }
-    // The fixed weights go from where the ballast sits to its rearmost
-    // place: about the old centre of gravity only their term changes, then
+    // The fixed weights go from where the ballast sits to where they are
+    // bolted: about the old centre of gravity only their term changes, then
     // the parallel axis theorem moves the sum to the new one.
     const double fixed_kg = ballast.mass_kg - free_kg;
     const double from_m = ballast_x_m(ballast, ballast.position);
-    const double to_m = ballast_x_m(ballast, 0.0);
+    const double to_m = ballast_x_m(ballast, ballast.fixed_position);
     const double cg_m = params.cg_ahead_of_rear_axle_m;
     const double new_cg_m = cg_m + fixed_kg * (to_m - from_m) / params.mass_kg;
     const double about_old_cg =
