@@ -713,7 +713,9 @@ TEST(Event, AGuestFurtherThanTheFourthCompetitorPullsOff) {
     const std::vector<int> order = in_order(9);
     std::optional<Event> created =
         Event::create(kRules, sled::testing::reference_params(), order, 2);
-    ASSERT_TRUE(created.has_value());
+    if (!created.has_value()) {
+        FAIL() << "the event with guests was refused";
+    }
     Event event = *created;
     EXPECT_FALSE(event.guest(6));
     EXPECT_TRUE(event.guest(7));
@@ -740,7 +742,9 @@ TEST(Event, GuestsTakePlacesButNotCompetitorsPullOffPlaces) {
     const std::vector<int> order = in_order(9);
     std::optional<Event> created =
         Event::create(kRules, sled::testing::reference_params(), order, 2);
-    ASSERT_TRUE(created.has_value());
+    if (!created.has_value()) {
+        FAIL() << "the event with guests was refused";
+    }
     Event event = *created;
     const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
         if (p.kind == PullKind::kPullOff) {

@@ -275,6 +275,9 @@ private:
     /// After the main round: the guests who would have made the pull-off
     /// among the competitors alone join it `in`; returns how many.
     int guests_in_the_pull_off(std::array<bool, kMaxPullers>& in) const noexcept;
+    /// Who pulls in the next pull-off round, marked `in`, and the furthest
+    /// full pull among them (-1 for none); returns how many.
+    int pull_off_field(std::array<bool, kMaxPullers>& in, double& best_full_m) const noexcept;
     [[nodiscard]] double official(double reached_m) const noexcept;
     /// A pull-off's distance, capped at the pull-off line.
     [[nodiscard]] double official_pull_off(double reached_m) const noexcept;

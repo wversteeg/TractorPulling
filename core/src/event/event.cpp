@@ -512,15 +512,13 @@ int Event::guests_in_the_pull_off(std::array<bool, kMaxPullers>& in) const noexc
     return joined;
 }
 
-void Event::start_pull_off() noexcept {
-    // Who pulls in the next pull-off round, in running order: after the
-    // main round every competitor's full pull, filled up to the places with
-    // the best competitors' runs from `qualifying_below_line_m` short of
-    // the line on, and the guests who would have made it among them; after
-    // a pull-off, those who reached the pull-off line.
-    std::array<bool, kMaxPullers> in{};
+int Event::pull_off_field(std::array<bool, kMaxPullers>& in, double& best_full_m) const noexcept {
+    // After the main round every competitor's full pull, filled up to the
+    // places with the best competitors' runs from `qualifying_below_line_m`
+    // short of the line on, and the guests who would have made it among
+    // them; after a pull-off, those who reached the pull-off line.
     int qualifiers = 0;
-    double best_full_m = -1.0;
+    best_full_m = -1.0;
     const double line_m = pull_off_round_ == 0 ? line_m_ : rules_.pull_off_full_pull_m;
     // A guest's main-round full pull is weighed with the guests below.
     const int candidates = pull_off_round_ == 0 ? count_ - guests_ : count_;
@@ -552,6 +550,14 @@ void Event::start_pull_off() noexcept {
             }
         }
     }
+    return qualifiers;
+}
+
+void Event::start_pull_off() noexcept {
+    // Who pulls in the next pull-off round, in running order.
+    std::array<bool, kMaxPullers> in{};
+    double best_full_m = -1.0;
+    const int qualifiers = pull_off_field(in, best_full_m);
     if (qualifiers < 2 || pull_off_round_ >= kMaxPullOffRounds) {
         queue_size_ = 0;
         head_ = 0;
