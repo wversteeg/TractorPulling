@@ -41,6 +41,8 @@ FieldError describe(engine::ParamError error) {
             return {"engine.idle_rpm", "must be below rated_rpm"};
         case ParamError::kRatedNotBelowHighIdle:
             return {"engine.rated_rpm", "must be below high_idle_rpm"};
+        case ParamError::kMaxHighIdleBelowHighIdle:
+            return {"engine.max_high_idle_rpm", "must not be below high_idle_rpm"};
         case ParamError::kFrictionNegative:
             return {"engine.friction", "must not be negative"};
         case ParamError::kNaTorqueFractionOutOfRange:
@@ -56,7 +58,8 @@ FieldError describe(engine::ParamError error) {
         case ParamError::kTorqueCurveNegative:
             return {"engine.torque_curve.torque_nm", "must not be negative"};
         case ParamError::kTorqueCurveDoesNotCoverRange:
-            return {"engine.torque_curve.rpm", "must span idle_rpm to high_idle_rpm"};
+            return {"engine.torque_curve.rpm",
+                    "must span idle_rpm to high_idle_rpm and max_high_idle_rpm"};
     }
     return {"engine", "invalid"};
 }
@@ -70,6 +73,9 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
     const double idle_rpm = reader.number("engine.idle_rpm");
     const double rated_rpm = reader.number("engine.rated_rpm");
     const double high_idle_rpm = reader.number("engine.high_idle_rpm");
+    // Optional: without it the governor's cut-off has no stop.
+    const double max_high_idle_rpm =
+        reader.optional_number("engine.max_high_idle_rpm").value_or(0.0);
     const double stall_rpm = reader.number("engine.stall_rpm");
     const double friction_nm = reader.number("engine.friction.constant_nm");
     const double viscous_nm_per_krpm = reader.number("engine.friction.viscous_nm_per_1000_rpm");
@@ -102,6 +108,7 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
         .idle_omega_rad_s = rpm_to_rad_s(idle_rpm),
         .rated_omega_rad_s = rpm_to_rad_s(rated_rpm),
         .high_idle_omega_rad_s = rpm_to_rad_s(high_idle_rpm),
+        .max_high_idle_omega_rad_s = rpm_to_rad_s(max_high_idle_rpm),
         .stall_omega_rad_s = rpm_to_rad_s(stall_rpm),
         .friction_torque_nm = friction_nm,
         .viscous_friction_nm_s_rad = viscous_nm_per_krpm / rpm_to_rad_s(kRpmPerKiloRpm),

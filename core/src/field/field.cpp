@@ -55,20 +55,21 @@ std::optional<vehicle::Params> with_torque_scale(const vehicle::Params& tractor,
     return out;
 }
 
-// `engine` with its governor at `rated_omega_rad_s`, held to the class's
-// unloaded engine speed; nothing if the engine cannot take it (below idle,
-// or a high idle past the torque curve).
+// `engine` with its governor at `rated_omega_rad_s`, the cut-off's stop at
+// most the class's unloaded engine speed (engine::with_rated_speed); nothing
+// if the engine cannot take it (not above idle, not below the stop, or a
+// cut-off past the torque curve).
 std::optional<engine::Params> with_governor(const engine::Params& engine, double rated_omega_rad_s,
                                             const rules::ClassRules& class_rules) noexcept {
-    const double droop_rad_s = engine.high_idle_omega_rad_s - engine.rated_omega_rad_s;
-    std::optional<engine::Params> out = engine::with_rated_speed(
-        engine, std::min(rated_omega_rad_s, class_rules.max_engine_speed_rad_s - droop_rad_s));
-    if (out) {
-        // (limit - droop) + droop may land a rounding step above the limit.
-        out->high_idle_omega_rad_s =
-            std::min(out->high_idle_omega_rad_s, class_rules.max_engine_speed_rad_s);
-    }
-    return out;
+    engine::Params stopped = engine;
+    const double stop_rad_s =
+        engine.max_high_idle_omega_rad_s > 0.0
+            ? std::min(engine.max_high_idle_omega_rad_s, class_rules.max_engine_speed_rad_s)
+            : class_rules.max_engine_speed_rad_s;
+    // An engine whose own high idle is past the class's limit is for the
+    // class check to refuse, not for its stop.
+    stopped.max_high_idle_omega_rad_s = std::max(stop_rad_s, engine.high_idle_omega_rad_s);
+    return engine::with_rated_speed(stopped, rated_omega_rad_s);
 }
 
 // The reference with one draw of every varied value, within the class.

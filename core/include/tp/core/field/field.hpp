@@ -55,9 +55,9 @@ struct Variation {
     /// each count as often. Both -1 keep the reference's.
     int fewest_load_downshift_gears = -1;
     int most_load_downshift_gears = -1;
-    /// The governor's rated speed [rad/s] (engine::with_rated_speed). Above
-    /// 0, held to the class's unloaded engine speed; {0, 0} keeps the
-    /// reference's.
+    /// The governor's rated speed [rad/s] (engine::with_rated_speed), the
+    /// cut-off's stop held to the class's unloaded engine speed: near it
+    /// the droop shortens. {0, 0} keeps the reference's.
     Range rated_omega_rad_s;
 };
 
@@ -84,8 +84,9 @@ enum class ParamError : std::uint8_t {
     kCountOutOfRange,
     /// The reference tractor, driver or class rules themselves.
     kReference,
-    /// A governor the reference engine cannot take: below its idle, or a
-    /// high idle past its torque curve.
+    /// A governor the reference engine cannot take: not above its idle, not
+    /// below the cut-off's stop (held to the class's unloaded engine
+    /// speed), or a cut-off past its torque curve.
     kGovernorOutOfRange,
 };
 

@@ -74,8 +74,18 @@ TEST(EngineParams, RejectsNonsense) {
               ParamError::kTurboTimeConstantNotPositive);
     EXPECT_EQ(with([](Params& p) { p.boost_onset_omega_rad_s = p.full_boost_omega_rad_s; }),
               ParamError::kBoostRangeInvalid);
-    EXPECT_EQ(with([](Params& p) { p.high_idle_omega_rad_s = rpm_to_rad_s(3000.0); }),
+    EXPECT_EQ(with([](Params& p) {
+                  p.high_idle_omega_rad_s = rpm_to_rad_s(3000.0);
+                  p.max_high_idle_omega_rad_s = 0.0;
+              }),
               ParamError::kTorqueCurveDoesNotCoverRange);
+    EXPECT_EQ(with([](Params& p) { p.max_high_idle_omega_rad_s = rpm_to_rad_s(3000.0); }),
+              ParamError::kTorqueCurveDoesNotCoverRange)
+        << "the cut-off's stop past the torque curve";
+    EXPECT_EQ(with([](Params& p) { p.max_high_idle_omega_rad_s = rpm_to_rad_s(2300.0); }),
+              ParamError::kMaxHighIdleBelowHighIdle);
+    EXPECT_EQ(with([](Params& p) { p.max_high_idle_omega_rad_s = 0.0; }), std::nullopt)
+        << "no stop";
 }
 
 TEST(EngineParams, RejectsNegativeTorque) {
@@ -390,9 +400,47 @@ TEST(Engine, AGovernorSetHigherHoldsAHigherSpeed) {
     EXPECT_GT(max_net_power_w(p), 0.9 * max_net_power_w(stock));
 }
 
+// Turned up past where its cut-off reaches the stop (the class's 2700 rpm),
+// the cut-off stays there and the droop shortens: a pulling governor. Under
+// a load the engine then runs on full fuel to just below the limit, and
+// the moment the load eases (the tires spinning up) it runs into it.
+TEST(Engine, APullingGovernorRunsUpToItsStop) {
+    const Params stock = reference_params();
+    const std::optional<Params> pulling = with_rated_speed(stock, rpm_to_rad_s(2650.0));
+    ASSERT_TRUE(pulling.has_value());
+    const Params& p = pulling.value_or(stock);
+    EXPECT_EQ(p.rated_omega_rad_s, rpm_to_rad_s(2650.0));
+    EXPECT_EQ(p.high_idle_omega_rad_s, stock.max_high_idle_omega_rad_s);
+    EXPECT_EQ(p.max_high_idle_omega_rad_s, stock.max_high_idle_omega_rad_s);
+
+    // Full fuel to the rated speed, none at the cut-off.
+    EXPECT_GT(full_throttle_net_torque_nm(p, rpm_to_rad_s(2640.0)),
+              0.95 * (p.full_load_torque_nm.evaluate(rpm_to_rad_s(2640.0)) - p.friction_torque_nm -
+                      p.viscous_friction_nm_s_rad * rpm_to_rad_s(2640.0)));
+    EXPECT_LT(full_throttle_net_torque_nm(p, p.high_idle_omega_rad_s), 0.0);
+
+    // A load the farm governor holds well below the limit, the pulling one
+    // within 60 rpm of it, and never past it.
+    constexpr double kLoad_nm = 150.0;
+    State farm = initial_state(stock);
+    State pulling_state = initial_state(p);
+    run(farm, stock, {.throttle = 1.0}, 3.0);
+    run(pulling_state, p, {.throttle = 1.0}, 3.0);
+    run(farm, stock, {.throttle = 1.0, .load_torque_nm = kLoad_nm}, 10.0);
+    const RunStats loaded =
+        run(pulling_state, p, {.throttle = 1.0, .load_torque_nm = kLoad_nm}, 10.0);
+    EXPECT_LT(farm.omega_rad_s, rpm_to_rad_s(2450.0));
+    EXPECT_GT(pulling_state.omega_rad_s, rpm_to_rad_s(2640.0));
+    EXPECT_LE(loaded.max_omega_rad_s, p.high_idle_omega_rad_s);
+
+    // At or past the stop there is no governor.
+    EXPECT_FALSE(with_rated_speed(stock, stock.max_high_idle_omega_rad_s).has_value());
+}
+
 // Beyond what the torque curve covers, or not above idle, it is no engine.
 TEST(Engine, AGovernorNeedsTheTorqueCurve) {
-    const Params stock = reference_params();
+    Params stock = reference_params();
+    stock.max_high_idle_omega_rad_s = 0.0;
     EXPECT_FALSE(with_rated_speed(stock, stock.full_load_torque_nm.max_x()).has_value());
     EXPECT_FALSE(with_rated_speed(stock, stock.idle_omega_rad_s).has_value());
     EXPECT_FALSE(with_rated_speed(stock, std::numeric_limits<double>::quiet_NaN()).has_value());

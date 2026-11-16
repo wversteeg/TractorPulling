@@ -121,7 +121,7 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.variation.hitch_height_m.low, 0.38);
     EXPECT_EQ(definition.variation.hitch_height_m.high, 0.5);
     EXPECT_DOUBLE_EQ(definition.variation.rated_omega_rad_s.low, units::rpm_to_rad_s(2200.0));
-    EXPECT_DOUBLE_EQ(definition.variation.rated_omega_rad_s.high, units::rpm_to_rad_s(2500.0));
+    EXPECT_DOUBLE_EQ(definition.variation.rated_omega_rad_s.high, units::rpm_to_rad_s(2650.0));
     EXPECT_EQ(definition.variation.fewest_load_downshift_gears, 0);
     EXPECT_EQ(definition.variation.most_load_downshift_gears, 1);
     EXPECT_EQ(definition.track.rules.track_length_m, 100.0);
@@ -167,13 +167,13 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(error_of(with("hitch_height_m = [0.38, 0.50]", "hitch_height_m = [0.5, 0.38]"))
                   .find("event.field: every range"),
               std::string::npos);
-    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2500.0]", "rated_rpm = [2500.0, 2200.0]"))
+    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2650.0]", "rated_rpm = [2500.0, 2200.0]"))
                   .find("event.field: every range"),
               std::string::npos);
-    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2500.0]", "rated_rpm = [0.0, 2500.0]"))
+    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2650.0]", "rated_rpm = [0.0, 2500.0]"))
                   .find("rated_rpm above 0"),
               std::string::npos);
-    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2500.0]", "rated_rpm = [500.0, 600.0]"))
+    EXPECT_NE(error_of(with("rated_rpm = [2200.0, 2650.0]", "rated_rpm = [500.0, 600.0]"))
                   .find("event.field.rated_rpm: the reference engine cannot take it"),
               std::string::npos);
     EXPECT_NE(error_of(with("downshift_share = 0.9", "downshift_share = 1.2")).find("event.driver"),
@@ -237,7 +237,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 20);
-    EXPECT_EQ(first.hash, 0x66f9ec3a3edd306bULL);
+    EXPECT_EQ(first.hash, 0x68b258da4bb3102aULL);
 }
 
 }  // namespace

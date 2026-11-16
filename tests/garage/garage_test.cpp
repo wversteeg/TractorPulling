@@ -176,10 +176,15 @@ TEST(Garage, RefusesNonsense) {
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[3].levels[2].value = 0.55; }),
               ParamError::kOutsideTheClass);
     EXPECT_EQ(error_with([](Catalogue& c) {
-                  c.upgrades[5].levels[2].value = units::rpm_to_rad_s(2550.0);
+                  c.upgrades[5].levels[2].value = units::rpm_to_rad_s(2650.0);
               }),
-              ParamError::kOutsideTheClass)
-        << "2750 rpm unloaded";
+              std::nullopt)
+        << "a pulling governor: the cut-off held at its stop, the class's 2700 rpm";
+    EXPECT_EQ(error_with([](Catalogue& c) {
+                  c.upgrades[5].levels[2].value = units::rpm_to_rad_s(2700.0);
+              }),
+              ParamError::kValueInvalid)
+        << "full fuel to the cut-off";
     // Not a tractor at all.
     EXPECT_EQ(error_with([](Catalogue& c) { c.upgrades[4].levels[2].value = 1.5; }),
               ParamError::kValueInvalid);

@@ -30,8 +30,14 @@ struct Params {
     double idle_omega_rad_s = 0.0;
     /// Speed at which the engine delivers full fuel at full throttle [rad/s].
     double rated_omega_rad_s = 0.0;
-    /// Governed no-load speed at full throttle [rad/s].
+    /// Governed no-load speed at full throttle [rad/s]: the governor's
+    /// cut-off, no fuel from here up.
     double high_idle_omega_rad_s = 0.0;
+    /// The highest the governor's cut-off can be set [rad/s]
+    /// (with_rated_speed): the class's unloaded engine speed, which a
+    /// puller sets it to. 0: no such stop, the cut-off moves with the rated
+    /// speed.
+    double max_high_idle_omega_rad_s = 0.0;
     /// Below this speed the engine stalls [rad/s].
     double stall_omega_rad_s = 0.0;
     /// Constant part of friction and pumping losses [N·m].
@@ -65,6 +71,8 @@ enum class ParamError : std::uint8_t {
     kStallNotBelowIdle,
     kIdleNotBelowRated,
     kRatedNotBelowHighIdle,
+    /// A stop for the cut-off below the high idle.
+    kMaxHighIdleBelowHighIdle,
     kFrictionNegative,
     kNaTorqueFractionOutOfRange,
     kTurboTimeConstantNotPositive,
@@ -85,10 +93,14 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] std::optional<Params> with_torque_scale(const Params& params, double scale) noexcept;
 
 /// The engine with its governor set to `rated_omega_rad_s`: full fuel at
-/// full throttle up to that speed, and the high idle moved with it, the
-/// droop kept (as a governor spring set higher would). The torque curve
-/// stays: it must already reach the new high idle. Nothing if the result is
-/// not a valid engine.
+/// full throttle up to that speed, and the cut-off (the high idle) moved
+/// with it, the droop kept (as a governor spring set higher would), up to
+/// the cut-off's stop (max_high_idle_omega_rad_s). Past that the cut-off
+/// stays at its stop and the droop shortens: a pulling governor, full fuel
+/// to just below the class's limit, so that under load the engine runs up
+/// against it (the "regelaar" the commentator hears it hit). The torque
+/// curve stays. Nothing if the result is not a valid engine (the rated
+/// speed not below the stop, or not above idle).
 [[nodiscard]] std::optional<Params> with_rated_speed(const Params& params,
                                                      double rated_omega_rad_s) noexcept;
 

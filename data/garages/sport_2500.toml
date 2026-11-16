@@ -14,8 +14,10 @@
 #   size stays as tires/sport_rear.toml has it.
 # - ballast_kg: weights up to the class's 2500 kg with the driver.
 # - hitch_height_m: the drawbar, up to the class's 0.5 m.
-# - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
-#   class's 2700 rpm.
+# - rated_rpm: the governor: full fuel up to this speed, cut off at the
+#   class's 2700 rpm (the engine's high idle), the droop between them
+#   shortening as it is turned up, so that under load the engine runs up
+#   against the limit.
 # - load_downshift_gears: a powershift step that shifts down under load,
 #   one gear or two (the Sport classes still allow it; Supersport and up
 #   do not).
@@ -85,11 +87,11 @@ levels = [
 part = "rated_rpm"
 name = "Rev limit"
 levels = [
-    { value = 2200.0, cost_eur = 0, label = "Stock, 2200 rpm" },
-    { value = 2275.0, cost_eur = 1000, label = "Turned up, 2275 rpm" },
-    { value = 2350.0, cost_eur = 1400, label = "Turned up, 2350 rpm" },
-    { value = 2425.0, cost_eur = 1900, label = "Turned up, 2425 rpm" },
-    { value = 2500.0, cost_eur = 2400, label = "2500 rpm, 2700 unloaded" },
+    { value = 2200.0, cost_eur = 0, label = "Stock, full fuel to 2200 rpm" },
+    { value = 2310.0, cost_eur = 1000, label = "Turned up, 2310 rpm" },
+    { value = 2420.0, cost_eur = 1400, label = "Turned up, 2420 rpm" },
+    { value = 2530.0, cost_eur = 1900, label = "Turned up, 2530 rpm" },
+    { value = 2650.0, cost_eur = 2400, label = "Pulling governor, 2650 rpm, cut at 2700" },
 ]
 
 [[garage.upgrades]]

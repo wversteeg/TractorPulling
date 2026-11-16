@@ -37,6 +37,7 @@ inline Params reference_params() {
         .idle_omega_rad_s = rpm_to_rad_s(800.0),
         .rated_omega_rad_s = rpm_to_rad_s(2200.0),
         .high_idle_omega_rad_s = rpm_to_rad_s(2400.0),
+        .max_high_idle_omega_rad_s = rpm_to_rad_s(2700.0),
         .stall_omega_rad_s = rpm_to_rad_s(450.0),
         .friction_torque_nm = 15.0,
         .viscous_friction_nm_s_rad = 8.4 / rpm_to_rad_s(1000.0),

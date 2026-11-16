@@ -26,6 +26,10 @@ std::optional<Params> with_rated_speed(const Params& params, double rated_omega_
     Params out = params;
     out.high_idle_omega_rad_s =
         rated_omega_rad_s + (params.high_idle_omega_rad_s - params.rated_omega_rad_s);
+    if (params.max_high_idle_omega_rad_s > 0.0) {
+        out.high_idle_omega_rad_s =
+            std::min(out.high_idle_omega_rad_s, params.max_high_idle_omega_rad_s);
+    }
     out.rated_omega_rad_s = rated_omega_rad_s;
     if (validate(out)) {
         return std::nullopt;
@@ -39,6 +43,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.idle_omega_rad_s,
         params.rated_omega_rad_s,
         params.high_idle_omega_rad_s,
+        params.max_high_idle_omega_rad_s,
         params.stall_omega_rad_s,
         params.friction_torque_nm,
         params.viscous_friction_nm_s_rad,
@@ -66,6 +71,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.rated_omega_rad_s >= params.high_idle_omega_rad_s) {
         return ParamError::kRatedNotBelowHighIdle;
     }
+    if (params.max_high_idle_omega_rad_s != 0.0 &&
+        params.max_high_idle_omega_rad_s < params.high_idle_omega_rad_s) {
+        return ParamError::kMaxHighIdleBelowHighIdle;
+    }
     if (params.friction_torque_nm < 0.0 || params.viscous_friction_nm_s_rad < 0.0) {
         return ParamError::kFrictionNegative;
     }
@@ -90,7 +99,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         return ParamError::kTorqueCurveNegative;
     }
     if (params.full_load_torque_nm.min_x() > params.idle_omega_rad_s ||
-        params.full_load_torque_nm.max_x() < params.high_idle_omega_rad_s) {
+        params.full_load_torque_nm.max_x() <
+            std::max(params.high_idle_omega_rad_s, params.max_high_idle_omega_rad_s)) {
         return ParamError::kTorqueCurveDoesNotCoverRange;
     }
     return std::nullopt;

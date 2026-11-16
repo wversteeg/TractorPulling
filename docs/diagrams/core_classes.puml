@@ -63,6 +63,7 @@ skinparam classAttributeIconSize 0
       +full_load_torque_nm : Curve
       +inertia_kg_m2
       +idle / rated / high_idle_omega_rad_s
+      +max_high_idle_omega_rad_s : the cut-off's stop
       +stall_omega_rad_s
       +friction_torque_nm
       +viscous_friction_nm_s_rad

@@ -185,9 +185,9 @@ std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
 
 // Each track has its own best place for the weights. On a sled heavy
 // enough that the tractor stops short of the line, where a setting shows:
-// a quarter forward on the wet start, the loose sandy clay and the
-// clay-sand, where the rear tires need the load but the front must stay
-// light; further forward on the grippy firm loam and the dry hard clay,
+// a quarter forward on the wet start and the clay-sand, and a quarter or
+// halfway on the loose sandy clay, where the rear tires need the load but
+// the front must stay light; further forward on the grippy firm loam and the dry hard clay,
 // where the tires hold and the front would stand up; all forward on the
 // moist heavy clay, where the tires dig in and bite and the nose wants to
 // climb. (With the push-down putting half the sled at most on the pan,
@@ -196,7 +196,7 @@ TEST(TrackSetup, EachTrackHasItsOwnBestWeights) {
     const SportSetup sport;
     const std::map<std::string, std::vector<double>> best_on{
         {"Spring opener, watered start", {kQuarter}},
-        {"Sandy clay", {kQuarter}},
+        {"Sandy clay", {kQuarter, kHalfway}},
         {"Clay-sand", {kQuarter}},
         {"Firm loam", {kHalfway, kThreeQuarters}},
         {"Summer, dry hard clay", {kHalfway, kThreeQuarters}},

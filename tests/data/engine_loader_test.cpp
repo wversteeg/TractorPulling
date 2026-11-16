@@ -92,11 +92,19 @@ TEST(EngineLoader, ConvertsToSiUnits) {
     EXPECT_DOUBLE_EQ(params.idle_omega_rad_s, rpm_to_rad_s(800.0));
     EXPECT_DOUBLE_EQ(params.rated_omega_rad_s, rpm_to_rad_s(2200.0));
     EXPECT_DOUBLE_EQ(params.high_idle_omega_rad_s, rpm_to_rad_s(2400.0));
+    EXPECT_EQ(params.max_high_idle_omega_rad_s, 0.0) << "left out: no stop";
     EXPECT_DOUBLE_EQ(params.stall_omega_rad_s, rpm_to_rad_s(450.0));
     EXPECT_DOUBLE_EQ(params.viscous_friction_nm_s_rad, 10.0 / rpm_to_rad_s(1000.0));
     EXPECT_DOUBLE_EQ(params.boost_onset_omega_rad_s, rpm_to_rad_s(1000.0));
     EXPECT_DOUBLE_EQ(params.full_load_torque_nm.min_x(), rpm_to_rad_s(700.0));
     EXPECT_DOUBLE_EQ(params.full_load_torque_nm.evaluate(rpm_to_rad_s(1400.0)), 430.0);
+}
+
+TEST(EngineLoader, ReadsTheCutOffsStop) {
+    const auto result = parse_engine(
+        with("stall_rpm = 450", "stall_rpm = 450\nmax_high_idle_rpm = 2500"), "test.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().max_high_idle_omega_rad_s, rpm_to_rad_s(2500.0));
 }
 
 TEST(EngineLoader, ReportsMissingFile) {
@@ -127,7 +135,11 @@ TEST(EngineLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 14> cases = {{
+    const std::array<Case, 16> cases = {{
+        {"stall_rpm = 450", "stall_rpm = 450\nmax_high_idle_rpm = 2300",
+         "engine.max_high_idle_rpm: must not be below high_idle_rpm"},
+        {"stall_rpm = 450", "stall_rpm = 450\nmax_high_idle_rpm = 2600",
+         "engine.torque_curve.rpm: must span idle_rpm to high_idle_rpm and max_high_idle_rpm"},
         {"stall_rpm = 450", "stall_rpm = 450\ncylinders = -2",
          "engine.cylinders: must be a whole number from 0 to 16"},
         {"stall_rpm = 450", "stall_rpm = 450\ncylinders = 4.5", "engine.cylinders"},
