@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <filesystem>
@@ -18,10 +19,13 @@ namespace {
 // Sport 4.5 t's turbos (garages/sport_4500.toml): the small, quick turbo
 // the stock tractor comes with and the 68 mm one, each on the fully built
 // tractor as built, in its best gear, against the class's sled on each of
-// the season's tracks. The 68 mm turbo is the upgrade: it pulls at least
-// as far everywhere, and clearly further on most tracks (on the grippiest
-// both make a full pull). (The season visits some tracks twice; each visit
-// counts.)
+// the season's tracks. The 68 mm turbo is the upgrade, and it makes a
+// significant difference: over the season it pulls on average well further,
+// clearly further on most tracks (on the grippiest both make a full pull),
+// and the small one is never clearly further. A rule of thumb, not track by
+// track: on a loose track, where the tires spin before either engine runs
+// out, the two may come within a metre either way. (The season visits some
+// tracks twice; each visit counts.)
 TEST(TurboChoice, TheSixtyEightMillimetreTurboIsTheUpgrade) {
     const auto loaded =
         data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" / "sport_4500_top.toml");
@@ -39,6 +43,12 @@ TEST(TurboChoice, TheSixtyEightMillimetreTurboIsTheUpgrade) {
     full.owned[0] = 0b10;
     // A clear win: more than the spot on the track decides [m].
     constexpr double kClearly_m = 1.0;
+    // A significant difference: what the 68 mm turbo gains on average over
+    // the visits where a difference can show [m], a place or more in a close
+    // field.
+    constexpr double kSignificant_m = 2.0;
+    double gained_m = 0.0;
+    int showing = 0;
     int small_wins = 0;
     int large_wins = 0;
     int visits = 0;
@@ -61,13 +71,20 @@ TEST(TurboChoice, TheSixtyEightMillimetreTurboIsTheUpgrade) {
             distance_m[turbo] = trial.has_value() ? trial->distance_m : 0.0;
         }
         ++visits;
-        small_wins += distance_m[0] > distance_m[1] ? 1 : 0;
+        // Both at the run's limit, the track shows no difference.
+        if (std::ranges::min(distance_m) < rules.track_length_m) {
+            gained_m += distance_m[1] - distance_m[0];
+            ++showing;
+        }
+        small_wins += distance_m[0] > distance_m[1] + kClearly_m ? 1 : 0;
         large_wins += distance_m[1] > distance_m[0] + kClearly_m ? 1 : 0;
         distances += round.name + ": small " + std::to_string(distance_m[0]) + " m, 68 mm " +
                      std::to_string(distance_m[1]) + " m\n";
     }
     EXPECT_EQ(small_wins, 0) << distances;
     EXPECT_GT(2 * large_wins, visits) << distances;
+    ASSERT_GT(showing, 0);
+    EXPECT_GT(gained_m / showing, kSignificant_m) << distances;
 }
 
 }  // namespace

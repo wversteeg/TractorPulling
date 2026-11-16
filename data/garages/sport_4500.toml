@@ -9,9 +9,10 @@
 # - Turbo (a garage choice): the stock tractor comes with a small, quick
 #   turbo (engines/sport_4500_fast_turbo.toml, about 660 hp fully built),
 #   full boost from 1300 rpm; the 68 mm turbo (engines/sport_4500.toml,
-#   about 780 hp) is the upgrade, further on every track. Bought, either is
-#   fitted for nothing between events. The class's setup lesson is the
-#   weights, tire pressure and hitch for the track (docs/career.md).
+#   about 780 hp) is the upgrade, clearly further on most tracks.
+#   Bought, either is fitted for nothing between events. The class's setup
+#   lesson is the weights, tire pressure and hitch for the track
+#   (docs/career.md).
 # - engine_torque: the engine's full-load torque as a share of the fully
 #   built engine's, whichever turbo is on: from a stock 7 l farm engine
 #   (about 230 hp on the small turbo, 270 hp on the 68 mm one), through the
