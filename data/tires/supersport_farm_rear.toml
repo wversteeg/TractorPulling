@@ -1,11 +1,12 @@
-# The Supersport 3.6 t tractor's other rear tire: a farm tire modified
-# for pulling, a 710/70R42 radial (710 mm on a 42" rim, within the class's
-# 710 mm on 42"; docs/career.md) cut and regrooved. Bigger round than the
-# puller tire (sport: 30.5L-32) and a farm tire's stiffer lugs: grip
-# builds quickly with slip, to a lower limit. It pulls best barely
-# spinning, so it wants a lower final drive than the puller tire
-# (garages/supersport_3600.toml), and it holds on a track where the
-# puller tire digs itself in. The limit is the fully built tire's; the
+# The Supersport 3.6 t tractor's first rear tire: a farm tire modified
+# for pulling, a 710/70R42 radial (710 mm on a 42" rim, within the
+# class's 710 mm on 42"; docs/career.md), regrooved but its big lugs kept
+# tall. Bigger round than the puller tire (supersport_puller_rear.toml, a
+# 30.5L-32). Its lugs push into the track: grip builds quickly with slip,
+# and spun fast they dig in and smear, so it pulls best spinning little,
+# on the short final drive (drivelines/supersport_3600_short.toml). Tall
+# lugs that reach firm soil hold on a soft, wet track where the puller
+# tire's shallow bars cannot. The limit is the fully built tire's; the
 # garage sets it.
 [tire]
 radius_m = 0.98                    # rolling radius
@@ -19,11 +20,16 @@ min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 limit = 1.4                        # μ on very strong ground at full bite: a cut farm tire
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 8.0                    # cut lugs: grip builds with more slip than an uncut farm tire's
-# Spun fast, the tall lugs dig in and smear: grip falls to fast_spin_grip
-# of itself as the tread's slip speed passes spin_speed_m_s
-# (tp::tire::TractionCurve).
+# Spun fast, the tall lugs dig in and smear: grip falls towards
+# fast_spin_grip of itself over a tread slip speed of about spin_speed_m_s
+# (tp::tire::TractionCurve), along with the side grip it shares.
 fast_spin_grip = 0.85
 spin_speed_m_s = 3.0
+# Pressed harder than its share of the tractor at rest (the chain pulling
+# down at the hitch, the weights back), the tire grips less per unit of
+# load (tp::tire::TractionCurve::load_sensitivity).
+load_sensitivity = 0.3
+reference_load_n = 12700.0          # where the sensitivity starts: about one tire's share at rest as built
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint

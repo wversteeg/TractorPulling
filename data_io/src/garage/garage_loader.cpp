@@ -269,6 +269,43 @@ std::optional<LoadError> read_choice(const toml::node& node, std::string_view so
     return std::nullopt;
 }
 
+// What alternative `a` of choice `c` is made for, if it says
+// (`suits = { "<choice>" = "<alternative>" }`), into `out`'s catalogue.
+std::optional<LoadError> read_suits(const toml::table& table, std::size_t c, std::size_t a,
+                                    std::string_view source, GarageDefinition& out) {
+    const toml::node* node = table.get("suits");
+    if (node == nullptr) {
+        return std::nullopt;
+    }
+    const ChoiceText& self = out.choice_texts[c];
+    const toml::table* suits = node->as_table();
+    const auto bad = [&](const std::string& why) {
+        return detail::make_error(source, "garage.choices.alternatives.suits",
+                                  self.name + ", " + self.alternative_labels[a] + ": " + why);
+    };
+    if (suits == nullptr || suits->size() != 1) {
+        return bad("must name one choice and its alternative");
+    }
+    const auto entry = suits->cbegin();
+    const std::string choice_name{entry->first.str()};
+    const std::optional<std::string> label = entry->second.value<std::string>();
+    const auto other = std::ranges::find_if(
+        out.choice_texts, [&](const ChoiceText& t) { return t.name == choice_name; });
+    if (other == out.choice_texts.end() ||
+        other == out.choice_texts.begin() + static_cast<std::ptrdiff_t>(c)) {
+        return bad("no other choice '" + choice_name + "'");
+    }
+    const auto alternative = label ? std::ranges::find(other->alternative_labels, *label)
+                                   : other->alternative_labels.end();
+    if (alternative == other->alternative_labels.end()) {
+        return bad("'" + choice_name + "' has no alternative '" + label.value_or("") + "'");
+    }
+    garage::Alternative& made = out.catalogue.choices[c].alternatives[a];
+    made.suits_choice = static_cast<int>(other - out.choice_texts.begin());
+    made.suits_alternative = static_cast<int>(alternative - other->alternative_labels.begin());
+    return std::nullopt;
+}
+
 // The choices, if the garage has any, into `out`.
 std::optional<LoadError> read_choices(const toml::table& root, std::string_view source,
                                       std::string_view base, const ReadFile& read,
@@ -286,6 +323,17 @@ std::optional<LoadError> read_choices(const toml::table& root, std::string_view 
     for (const toml::node& choice : *choices) {
         if (std::optional<LoadError> error = read_choice(choice, source, base, read, out)) {
             return error;
+        }
+    }
+    // What each alternative is made for, once every choice is known.
+    for (std::size_t c = 0; c < choices->size(); ++c) {
+        const toml::array* alternatives =
+            (*choices)[c].as_table()->at_path("alternatives").as_array();
+        for (std::size_t a = 0; a < alternatives->size(); ++a) {
+            if (std::optional<LoadError> error =
+                    read_suits(*(*alternatives)[a].as_table(), c, a, source, out)) {
+                return error;
+            }
         }
     }
     return std::nullopt;

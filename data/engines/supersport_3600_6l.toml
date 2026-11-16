@@ -15,8 +15,8 @@
 [engine]
 inertia_kg_m2 = 1.5      # a lighter crankshaft and flywheel
 idle_rpm = 900
-rated_rpm = 2900         # full fuel to here as it comes; the garage sets it
-high_idle_rpm = 3100     # the governor's cut-off as it comes
+rated_rpm = 2600         # full fuel to here as it comes; the garage sets it
+high_idle_rpm = 2800     # the governor's cut-off as it comes
 max_high_idle_rpm = 3200 # the class's unloaded limit for the 6063 cm³ engine
 stall_rpm = 500
 cylinders = 6            # a six: for the engine's sound only
