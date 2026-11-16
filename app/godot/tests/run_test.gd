@@ -284,7 +284,7 @@ func _check_career() -> void:
 	_expect(event.buy_upgrade(0).is_empty(), "a part bought")
 	var garage := event.get_garage()
 	var save := event.get_save()
-	_expect(save.contains("version = 6") and save.contains("class = \"Practice\"")
+	_expect(save.contains("version = 7") and save.contains("class = \"Practice\"")
 			and save.contains("level = \"Belofte\"") and save.contains("unlocked = \"Practice\"")
 			and save.contains("unlocked_level = \"Belofte\""),
 			"the save names the class and level: %s" % save)
