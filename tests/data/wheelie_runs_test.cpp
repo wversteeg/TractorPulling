@@ -341,11 +341,13 @@ TEST(WheelieRuns, ASportTractorWithLittleWeightFreeDoesNotHopOnTheLoam) {
         career.levels.at(i) =
             std::min(kStages, static_cast<int>(g.catalogue.upgrades.at(i).level_count) - 1);
     }
-    const std::optional<vehicle::Params> promo = garage::equipped(reference, g.catalogue, career);
-    ASSERT_TRUE(promo.has_value());
-    ASSERT_LT(promo->chassis.ballast.mass_kg, reference.chassis.ballast.mass_kg);
+    const std::optional<vehicle::Params> equipped =
+        garage::equipped(reference, g.catalogue, career);
+    ASSERT_TRUE(equipped.has_value());
+    const vehicle::Params promo = equipped.value_or(reference);
+    ASSERT_LT(promo.chassis.ballast.mass_kg, reference.chassis.ballast.mass_kg);
     constexpr int kGear = 4;
-    const Ride front = ride(*promo, "firm_loam.toml", kGear);
+    const Ride front = ride(promo, "firm_loam.toml", kGear);
     EXPECT_LE(front.lifts, 2) << "the launch and the end";
     EXPECT_LT(front.up_s, 3.0);
 
@@ -353,7 +355,7 @@ TEST(WheelieRuns, ASportTractorWithLittleWeightFreeDoesNotHopOnTheLoam) {
     old_reference.chassis.ballast.fixed_position = 0.0;
     const std::optional<vehicle::Params> old = garage::equipped(old_reference, g.catalogue, career);
     ASSERT_TRUE(old.has_value());
-    const Ride back = ride(*old, "firm_loam.toml", kGear);
+    const Ride back = ride(old.value_or(old_reference), "firm_loam.toml", kGear);
     EXPECT_GE(back.lifts, 4) << "fixed at the back it hopped";
     EXPECT_GT(back.up_s, 2.0 * front.up_s);
     EXPECT_GT(front.result.distance_m, back.result.distance_m);
