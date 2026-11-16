@@ -82,13 +82,16 @@ std::optional<event::Standing> read_standing(const toml::node& node) {
     const std::optional<std::int64_t> puller = line->at_path("puller").value<std::int64_t>();
     const std::optional<std::int64_t> place = line->at_path("place").value<std::int64_t>();
     const std::optional<bool> disqualified = line->at_path("disqualified").value<bool>();
+    // Optional: a save from before the guests has none.
+    const bool guest = line->at_path("guest").value<bool>().value_or(false);
     if (!puller || !place || !disqualified || *puller < 0 || *place < 1 ||
         *puller >= event::kMaxPullers || *place > event::kMaxPullers) {
         return std::nullopt;
     }
     return event::Standing{.puller = static_cast<int>(*puller),
                            .place = static_cast<int>(*place),
-                           .disqualified = *disqualified};
+                           .disqualified = *disqualified,
+                           .guest = guest};
 }
 
 constexpr std::int64_t kBeforeTheGarage = 1;
@@ -317,7 +320,8 @@ std::string write_season_save(const SeasonSave& save) {
         for (const event::Standing& s : standings) {
             out += "    { puller = " + std::to_string(s.puller) +
                    ", place = " + std::to_string(s.place) +
-                   ", disqualified = " + (s.disqualified ? "true" : "false") + " },\n";
+                   ", disqualified = " + (s.disqualified ? "true" : "false") +
+                   (s.guest ? ", guest = true" : "") + " },\n";
         }
         out += "]\n";
     }
