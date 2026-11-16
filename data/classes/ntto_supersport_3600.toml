@@ -1,0 +1,13 @@
+# The Supersport class at 3.6 t (ETPC Farmstock Rulebook 2026, Level 3;
+# docs/career.md). The class limits the engine's build, not its power: at
+# most 6 cylinders with 4 valves a cylinder, either 7000 cm³ at 2700 rpm or
+# 6063 cm³ at 3200 rpm unloaded; one turbo, an intercooler and water
+# injection; diesel, no four-wheel drive, no powershift. The simulation does
+# not model displacement yet, so the engine speed here is the higher limit,
+# and each of the class's engines carries its own (engines/
+# supersport_3600_*.toml, max_high_idle_rpm): the 7 l stops at 2700 rpm.
+
+[class]
+max_mass_kg = 3600.0          # tractor as weighed, driver included
+max_engine_speed_rpm = 3200.0 # unloaded: the 6063 cm³ engine's (7000 cm³: 2700)
+max_hitch_height_m = 0.5      # and never above the rear axle centre

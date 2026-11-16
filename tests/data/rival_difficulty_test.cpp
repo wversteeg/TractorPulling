@@ -179,37 +179,51 @@ garage::Career share_up(const garage::Catalogue& catalogue, double share) {
     return career;
 }
 
-// `career` with the alternative of its one choice (if it has one) that
-// takes the tractor furthest on the season's first track, in its best
-// gear: the player fits the turbo for the day.
+// `career` with the owned alternatives of its choices (a turbo; an engine,
+// tires and a final drive) that take the tractor furthest on the season's
+// first track, in its best gear: the player fits them for the day. Every
+// combination is tried; there are few.
 garage::Career fitted_for_the_day(const data::SeasonDefinition& d, garage::Career career,
                                   Gears gears) {
     const data::EventDefinition& e = d.event;
     const garage::Catalogue& catalogue = d.garage.catalogue;
-    if (catalogue.choice_count != 1) {
+    if (catalogue.choice_count == 0) {
         return career;
     }
     const Venue venue = data::venue(e.sled, d.rounds.front().track);
     const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
     double furthest_m = -1.0;
-    int best = 0;
-    for (std::size_t a = 0; a < catalogue.choices[0].alternative_count; ++a) {
-        if (!garage::owns(career, 0, a)) {
-            continue;
+    garage::Career best = career;
+    garage::Career trying = career;
+    trying.fitted.fill(0);
+    for (bool more = true; more;) {
+        bool owned = true;
+        for (std::size_t c = 0; c < catalogue.choice_count; ++c) {
+            owned = owned && garage::owns(career, c, static_cast<std::size_t>(trying.fitted.at(c)));
         }
-        career.fitted[0] = static_cast<int>(a);
-        Puller puller = e.reference;
-        puller.tractor =
-            garage::equipped(e.reference.tractor, catalogue, career).value_or(e.reference.tractor);
-        const std::optional<GearTrial> trial =
-            best_gear_trial(puller, venue.sled, venue.track, gears.lowest, gears.highest, rules);
-        if (trial && trial->distance_m > furthest_m) {
-            furthest_m = trial->distance_m;
-            best = static_cast<int>(a);
+        if (owned) {
+            Puller puller = e.reference;
+            puller.tractor = garage::equipped(e.reference.tractor, catalogue, trying)
+                                 .value_or(e.reference.tractor);
+            const std::optional<GearTrial> trial = best_gear_trial(
+                puller, venue.sled, venue.track, gears.lowest, gears.highest, rules);
+            if (trial && trial->distance_m > furthest_m) {
+                furthest_m = trial->distance_m;
+                best = trying;
+            }
+        }
+        // The next combination, the first choice counting fastest.
+        more = false;
+        for (std::size_t c = 0; c < catalogue.choice_count && !more; ++c) {
+            if (static_cast<std::size_t>(++trying.fitted.at(c)) <
+                catalogue.choices.at(c).alternative_count) {
+                more = true;
+            } else {
+                trying.fitted.at(c) = 0;
+            }
         }
     }
-    career.fitted[0] = best;
-    return career;
+    return best;
 }
 
 // Each career level's field, in share of the class garage's stages bought
@@ -309,6 +323,42 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
                  kSportGears);
 }
 
+// The Supersport 3.6 t class's three levels, its own tractor and garage,
+// the player fitting the engine, tires and final drive that pull furthest
+// on the season's first track (once they own the alternatives, from half
+// the garage; on the watered start that is the farm tires on the short
+// final drive, which beat the rivals' puller tires there by a few metres):
+// a new tractor is at the back of belofte, half the garage in the front
+// half and 70 % wins it; at promo half the garage is in the middle and
+// three quarters wins; at top 60 % is at the back, three quarters in the
+// front half, and a nearly or fully built tractor wins. A weak tractor may
+// pull in 2nd at belofte (drivelines/supersport_3600_*.toml).
+constexpr Gears kSupersportGears{.lowest = 3, .highest = 6};
+
+TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercentWinsIt) {
+    expect_level("supersport_3600_belofte.toml",
+                 {{.share = 0.0, .places = {.best = 9, .worst = 14}},
+                  {.share = 0.5, .places = {.best = 1, .worst = 7}},
+                  {.share = 0.7, .places = {.best = 1, .worst = 2}}},
+                 Gears{.lowest = 2, .highest = 6});
+}
+
+TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersWinsIt) {
+    expect_level("supersport_3600_promo.toml",
+                 {{.share = 0.5, .places = {.best = 3, .worst = 12}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 3}}},
+                 kSupersportGears);
+}
+
+TEST(RivalDifficulty, OnlyANearlyFullyBuiltSupersportTractorWinsAtTop) {
+    expect_level("supersport_3600_top.toml",
+                 {{.share = 0.6, .places = {.best = 9, .worst = 15}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 8}},
+                  {.share = 0.9, .places = {.best = 1, .worst = 2}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 2}}},
+                 kSupersportGears);
+}
+
 // A new tractor is at the back, but it pulls: on every track of its class's
 // first season, in its best gear, it gets the 15 t sled well going. (On
 // its farm drawbar and worn tires a new standard tractor once could not
@@ -316,7 +366,7 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
 TEST(RivalDifficulty, ANewTractorGetsTheSledGoingOnEveryTrack) {
     constexpr double kWellGoing_m = 40.0;
     for (const char* file : {"standard_3500.toml", "club_season.toml", "sport_2500_promo.toml",
-                             "sport_4500_belofte.toml"}) {
+                             "sport_4500_belofte.toml", "supersport_3600_belofte.toml"}) {
         const data::SeasonDefinition d = season_named(file);
         const data::EventDefinition& e = d.event;
         const std::optional<vehicle::Params> fresh = garage::equipped(

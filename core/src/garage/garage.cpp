@@ -78,7 +78,12 @@ std::optional<vehicle::Params> with_alternative(const vehicle::Params& tractor, 
             if (!alternative.rear_tire) {
                 return std::nullopt;
             }
-            out.rear_tire = *alternative.rear_tire;
+            if (const std::optional<vehicle::Params> on_them =
+                    vehicle::with_rear_tire(tractor, *alternative.rear_tire)) {
+                out = *on_them;
+            } else {
+                return std::nullopt;
+            }
             break;
         case Slot::kDriveline:
             if (!alternative.driveline) {
@@ -149,6 +154,33 @@ std::optional<ParamError> upgrade_error(const Catalogue& catalogue, std::size_t 
         return ParamError::kPartTwice;
     }
     return std::nullopt;
+}
+
+// Whether every alternative made for another choice's alternative names
+// one there is, in another choice.
+bool suits_valid(const Catalogue& catalogue) noexcept {
+    for (std::size_t c = 0; c < catalogue.choice_count; ++c) {
+        const Choice& choice = catalogue.choices[c];
+        for (std::size_t a = 0; a < choice.alternative_count && a < kMaxAlternatives; ++a) {
+            const Alternative& alternative = choice.alternatives[a];
+            if (alternative.suits_choice == kNoChoice) {
+                continue;
+            }
+            if (alternative.suits_choice < 0 ||
+                static_cast<std::size_t>(alternative.suits_choice) >= catalogue.choice_count ||
+                static_cast<std::size_t>(alternative.suits_choice) == c) {
+                return false;
+            }
+            const Choice& other =
+                catalogue.choices[static_cast<std::size_t>(alternative.suits_choice)];
+            if (alternative.suits_alternative < 0 ||
+                static_cast<std::size_t>(alternative.suits_alternative) >=
+                    other.alternative_count) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 // What is wrong with choice `choice`'s alternatives, apart from the tractor
@@ -243,6 +275,9 @@ std::optional<ParamError> validate(const Catalogue& catalogue, const vehicle::Pa
         if (const std::optional<ParamError> error = choice_error(choice)) {
             return error;
         }
+    }
+    if (!suits_valid(catalogue)) {
+        return ParamError::kNoSuchAlternative;
     }
     for (std::size_t i = 0; i < catalogue.count; ++i) {
         if (const std::optional<ParamError> error = upgrade_error(catalogue, i)) {
@@ -362,6 +397,34 @@ std::optional<vehicle::Params> equipped(const vehicle::Params& tractor, const Ca
         return std::nullopt;
     }
     return out;
+}
+
+namespace {
+
+// Whether alternative `a` of a choice suits what `career` has fitted.
+bool suits(const Catalogue& catalogue, const Career& career, const Alternative& a) noexcept {
+    return a.suits_choice == kNoChoice ||
+           fitted(catalogue, career, static_cast<std::size_t>(a.suits_choice)) ==
+               static_cast<std::size_t>(a.suits_alternative);
+}
+
+}  // namespace
+
+std::optional<Advice> advice(const Catalogue& catalogue, const Career& career) noexcept {
+    for (std::size_t c = 0; c < catalogue.choice_count && c < kMaxChoices; ++c) {
+        const Choice& choice = catalogue.choices[c];
+        const std::size_t now = fitted(catalogue, career, c);
+        if (suits(catalogue, career, choice.alternatives[now])) {
+            continue;
+        }
+        for (std::size_t a = 0; a < choice.alternative_count && a < kMaxAlternatives; ++a) {
+            if (a != now && choice.alternatives[a].suits_choice != kNoChoice &&
+                suits(catalogue, career, choice.alternatives[a])) {
+                return Advice{.choice = c, .alternative = a};
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 bool fully_upgraded(const Catalogue& catalogue, const Career& career) noexcept {

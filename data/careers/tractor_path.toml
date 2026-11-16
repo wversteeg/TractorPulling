@@ -12,9 +12,10 @@
 # the player is asked whether to move up or stay, and what is opened
 # stays open. Money and upgrades carry over, by the upgrade's name.
 #
-# Standard 3.5 t, Sport 2.5 t and Sport 4.5 t so far. Supersport 3.4, 3.6
-# and 4.5 t, Pro Stock, Limited Super Stock and Super Stock follow, a class
-# at a time, each with its NTTO and ETPC rules.
+# Standard 3.5 t, Sport 2.5 t, Sport 4.5 t and Supersport 3.6 t so far.
+# Supersport 3.4 and 4.5 t, Pro Stock, Limited Super Stock and Super Stock
+# follow, a class at a time, each with its NTTO and ETPC rules (3.4 t to be
+# slotted in before 3.6 t).
 
 [career]
 name = "Tractor path"
@@ -38,4 +39,12 @@ levels = [
     { name = "Belofte", season = "../seasons/sport_4500_belofte.toml" },
     { name = "Promo", season = "../seasons/sport_4500_promo.toml" },
     { name = "Top", season = "../seasons/sport_4500_top.toml" },
+]
+
+[[career.classes]]
+name = "Supersport 3.6 t"
+levels = [
+    { name = "Belofte", season = "../seasons/supersport_3600_belofte.toml" },
+    { name = "Promo", season = "../seasons/supersport_3600_promo.toml" },
+    { name = "Top", season = "../seasons/supersport_3600_top.toml" },
 ]

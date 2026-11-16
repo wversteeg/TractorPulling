@@ -79,8 +79,8 @@ struct Upgrade {
 enum class Slot : std::uint8_t {
     /// engine::Params: another engine, or the same one with another turbo.
     kEngine,
-    /// tire::Params, the rear tires: of the tractor's radius (the rear axle's
-    /// height is the tire's), with another grip or size of section.
+    /// tire::Params, the rear tires: another grip, size of section or
+    /// radius; the tractor rides on them (vehicle::with_rear_tire).
     kRearTire,
     /// driveline::Params: another gearbox or final drive.
     kDriveline,
@@ -95,6 +95,10 @@ struct Alternative {
     /// Nothing for the first alternative, the one the tractor comes with
     /// [EUR].
     std::int64_t cost_eur = 0;
+    /// The alternative of another choice this one is made for (a final
+    /// drive for the tires it gears up for: suited()); kNoChoice: any.
+    int suits_choice = kNoChoice;
+    int suits_alternative = 0;
 };
 
 /// A part the player chooses rather than builds up: alternatives that are
@@ -171,7 +175,8 @@ enum class ParamError : std::uint8_t {
     kPartTwice,
     /// A choice without alternatives, or more than kMaxAlternatives.
     kNoAlternatives,
-    /// An upgrade belongs to a choice or alternative there is not.
+    /// An upgrade belongs to a choice or alternative there is not, or an
+    /// alternative is made for one there is not (or for its own choice).
     kNoSuchAlternative,
     /// A level gives a tractor that is not valid (e.g. a gear count the
     /// gearbox does not have, a scale that breaks the torque curve).
@@ -208,6 +213,22 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] std::optional<vehicle::Params> equipped(const vehicle::Params& tractor,
                                                       const Catalogue& catalogue,
                                                       const Career& career) noexcept;
+
+/// What the crew chief advises fitting: alternative `alternative` of
+/// choice `choice`, made for what is fitted where the one fitted now is
+/// not.
+struct Advice {
+    std::size_t choice = 0;
+    std::size_t alternative = 0;
+};
+
+/// The first choice whose fitted alternative is made for another choice's
+/// alternative that is not fitted (Alternative::suits_choice), with the
+/// alternative of it made for what is fitted there (owned or not: the crew
+/// says what suits, the player buys it); nothing when everything fitted
+/// suits, or no alternative suits.
+[[nodiscard]] std::optional<Advice> advice(const Catalogue& catalogue,
+                                           const Career& career) noexcept;
 
 /// Whether every upgrade is at its highest level and every alternative is
 /// owned.

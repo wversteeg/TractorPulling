@@ -1028,12 +1028,38 @@ godot::Dictionary TractorPullEvent::get_garage() const {
             alternative["label"] = to_godot(text.alternative_labels.at(a));
             alternative["cost_eur"] = choice.alternatives.at(a).cost_eur;
             alternative["owned"] = garage::owns(*career_, c, a);
+            // What it is made for (a final drive's tires): "Puller tires",
+            // or "" for any.
+            const garage::Alternative& made = choice.alternatives.at(a);
+            alternative["suits"] =
+                made.suits_choice == garage::kNoChoice
+                    ? godot::String{}
+                    : to_godot(garage.choice_texts.at(static_cast<std::size_t>(made.suits_choice))
+                                   .alternative_labels.at(
+                                       static_cast<std::size_t>(made.suits_alternative)));
             alternatives.push_back(alternative);
         }
         line["alternatives"] = alternatives;
         choices.push_back(line);
     }
     out["choices"] = choices;
+    // The crew chief's advice: the alternative that suits what is fitted
+    // (garage::advice), e.g. the final drive for the tires; {} when all
+    // suits.
+    godot::Dictionary advice;
+    if (const std::optional<garage::Advice> a = garage::advice(garage.catalogue, *career_)) {
+        const data::ChoiceText& text = garage.choice_texts.at(a->choice);
+        const garage::Alternative& suited =
+            garage.catalogue.choices.at(a->choice).alternatives.at(a->alternative);
+        advice["choice"] = static_cast<std::int64_t>(a->choice);
+        advice["alternative"] = static_cast<std::int64_t>(a->alternative);
+        advice["label"] = to_godot(text.alternative_labels.at(a->alternative));
+        advice["for"] = to_godot(
+            garage.choice_texts.at(static_cast<std::size_t>(suited.suits_choice))
+                .alternative_labels.at(static_cast<std::size_t>(suited.suits_alternative)));
+        advice["owned"] = garage::owns(*career_, a->choice, a->alternative);
+    }
+    out["advice"] = advice;
     out["power_hp"] = units::w_to_metric_hp(engine::max_net_power_w(player_tractor().engine));
     return out;
 }

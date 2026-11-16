@@ -1,0 +1,88 @@
+# The Supersport 3.6 t class's tractor (docs/career.md): a big
+# six-cylinder farm tractor built for pulling, a safety frame and roll
+# cage, no powershift (Supersport pulls in one gear, on wheelspin). Within
+# the class: 3600 kg with the driver, a wheelbase under 2.9 m, nothing more
+# than 4.0 m ahead of the rear axle, the hitch at most 0.5 m high and at
+# least 0.45 m behind the axle. The garage (garages/supersport_3600.toml)
+# builds it from a stock tractor and chooses its engine, rear tires and
+# final drive.
+#
+# The parts here are the rivals' and tp_pull's: the 7 l engine, puller
+# tires and the final drive that suits them. The player's stock tractor
+# comes with the farm tires and their final drive instead.
+
+[tractor]
+engine = "../engines/supersport_3600_7l.toml"
+clutch = "../clutches/supersport_3600.toml"
+driveline = "../drivelines/supersport_3600_tall.toml"
+rear_tire = "../tires/supersport_puller_rear.toml"
+rear_tire_count = 2
+pto_efficiency = 0.9              # crankshaft to PTO
+
+# One of the two unpowered front tires (11.00-16 class).
+[tractor.front_tire]
+radius_m = 0.5
+section_width_m = 0.28
+section_height_m = 0.25
+deflection_m = 0.025
+
+[tractor.steering]
+max_angle_deg = 40.0
+
+[tractor.steering.cornering]
+stiffness_per_rad = 5.0
+limit = 0.7
+mobility_rate = 0.1
+relaxation_length_m = 0.5         # about the tire's radius
+
+[tractor.brakes]
+max_torque_nm = 10000.0            # per side, at the wheels
+
+# The differential: a pulling tractor's is coupled (a limited-slip one, or
+# a lock that gives way), passing torque to the side that grips: a weak
+# spot under one side turns the tractor towards it.
+[tractor.differential]
+coupling_nm_s_per_rad = 3000.0
+
+# Body points are measured with the tractor level. The rear axle height is
+# the rear tire's radius.
+[tractor.chassis]
+mass_kg = 3600.0                  # with the driver and all 400 kg of weights
+wheelbase_m = 2.75                # the class allows 2.9 m
+cg_ahead_of_rear_axle_m = 0.78    # 72 % of the weight on the rear axle at rest, the weights halfway
+cg_height_m = 1.05
+pitch_inertia_kg_m2 = 2920.0      # about the centre of gravity; m k², k ≈ 0.9 m
+yaw_inertia_kg_m2 = 6900.0        # about the centre of gravity; m (l² + w²) / 12, 4.2 m by 2.3 m
+rear_track_m = 2.0
+front_track_m = 1.75
+hitch_height_m = 0.5              # the class's limit, not above the rear axle
+hitch_behind_rear_axle_m = 0.45   # the class's shortest drawbar
+hitch_min_height_m = 0.40         # a pulling hitch with holes from 0.40 m up to hitch_height_m
+protection = "roll_bar"           # no cab: a roll cage (drawn as the roll bar for now)
+
+# Weights the puller moves before a pull: from a weight carrier behind the
+# rear axle to the front bracket, 3.6 m ahead of it (the class allows
+# 4.0 m). Light at the front, as the Sport 2.5 t tractor
+# (tractors/sport_2500.toml): 82 % on the rear axle with the weights at the
+# back, 64 % with them at the front.
+[tractor.chassis.ballast]
+mass_kg = 400.0
+rear_ahead_of_rear_axle_m = -0.85  # by the hitch, at the rear tires' edge (ETPC FS 2026 1.2.2: none beyond the rear tires)
+front_ahead_of_rear_axle_m = 3.6
+position = 0.5
+
+[tractor.chassis.front_tires]
+stiffness_n_per_m = 500000.0
+damping_n_s_per_m = 8000.0        # about 15 % of critical in pitch
+
+# Mandatory (ETPC FS 2026, 1.2.4, Level 2 and 3): at least half a tire
+# diameter behind the rear axle, its pad at most 250 mm off the ground and
+# at least 15000 mm² (a skid, not a wheel). Close behind the rear tire
+# and its pad at the height limit, as pullers set it: the tip touches
+# down at about 15° nose-up, and the pad slides.
+[tractor.chassis.wheelie_bar]
+behind_rear_axle_m = 1.05
+tip_height_m = 0.25
+stiffness_n_per_m = 3.6e6         # 2.0e6 × (1.4 / 1.05)², as stiff in pitch as at 1.4 m
+damping_n_s_per_m = 71000.0
+rolling_resistance_coefficient = 0.35  # a steel pad sliding on the track

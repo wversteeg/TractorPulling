@@ -195,6 +195,48 @@ TEST(GarageLoader, ReadsChoicesAndTheUpgradesBelongingToThem) {
     EXPECT_EQ(g.catalogue.upgrades[2].choice, garage::kNoChoice);
 }
 
+// The shipped Supersport garage: each final drive says which tires it is
+// made for, by the choices' names.
+TEST(GarageLoader, ReadsWhatAFinalDriveSuits) {
+    const auto result = load_garage(
+        (std::filesystem::path{TP_DATA_DIR} / "garages" / "supersport_3600.toml").generic_string(),
+        read_from_disk);
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const GarageDefinition& g = result.value();
+    ASSERT_EQ(g.catalogue.choice_count, 3U);
+    EXPECT_EQ(g.choice_texts[1].name, "Rear tires");
+    const garage::Choice& drive = g.catalogue.choices[2];
+    EXPECT_EQ(drive.alternatives[0].suits_choice, 1);
+    EXPECT_EQ(drive.alternatives[0].suits_alternative, 0) << "short: the farm tires";
+    EXPECT_EQ(drive.alternatives[1].suits_choice, 1);
+    EXPECT_EQ(drive.alternatives[1].suits_alternative, 1) << "tall: the puller tires";
+    EXPECT_EQ(g.catalogue.choices[0].alternatives[1].suits_choice, garage::kNoChoice);
+}
+
+// What an alternative suits is named by its label: a value that is not a
+// string says so, rather than naming an empty alternative.
+TEST(GarageLoader, RefusesASuitThatIsNotALabel) {
+    const std::string garage_path =
+        (std::filesystem::path{TP_DATA_DIR} / "garages" / "supersport_3600.toml").generic_string();
+    const ReadFile read = [&](const std::string& path) -> std::optional<std::string> {
+        std::optional<std::string> text = read_from_disk(path);
+        if (text && path == garage_path) {
+            const std::string from = R"("Rear tires" = "Puller tires")";
+            const auto pos = text->find(from);
+            EXPECT_NE(pos, std::string::npos) << "test bug: the suit not found";
+            if (pos != std::string::npos) {
+                text->replace(pos, from.size(), R"("Rear tires" = 1)");
+            }
+        }
+        return text;
+    };
+    const auto result = load_garage(garage_path, read);
+    ASSERT_FALSE(result.ok());
+    EXPECT_NE(result.error().message.find("must be one of its alternatives' labels (a string)"),
+              std::string::npos)
+        << result.error().message;
+}
+
 TEST(GarageLoader, RefusesNonsenseInChoices) {
     EXPECT_EQ(choice_error_of("", ""), "");
     EXPECT_NE(choice_error_of("slot = \"engine\"", "slot = \"turbo\"").find("unknown slot"),
@@ -231,6 +273,15 @@ TEST(GarageLoader, RefusesNonsenseInChoices) {
     EXPECT_NE(
         choice_error_of("choice = \"Turbo\"\nalternative = \"Big turbo\"\n", "").find("twice"),
         std::string::npos);
+    EXPECT_NE(choice_error_of("label = \"Big turbo\" }",
+                              "label = \"Big turbo\", suits = { \"Turbo\" = \"Small turbo\" } }")
+                  .find("no other choice 'Turbo'"),
+              std::string::npos)
+        << "made for its own choice";
+    EXPECT_NE(choice_error_of("label = \"Big turbo\" }",
+                              "label = \"Big turbo\", suits = { \"Tires\" = \"Wide\" } }")
+                  .find("garage.choices.alternatives.suits"),
+              std::string::npos);
     EXPECT_NE(choice_error_of("name = \"Weights\"", "name = \"Big build\"")
                   .find("'Big build' is listed twice"),
               std::string::npos);

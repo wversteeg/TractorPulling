@@ -242,5 +242,81 @@ TEST(GarageChoice, TiresAndDrivelineSwap) {
     EXPECT_EQ(t.value_or(kTractor).driveline.final_drive_ratio, taller.final_drive_ratio);
 }
 
+// A tire of another size fits too: the tractor rides on it.
+TEST(GarageChoice, ABiggerTireRaisesTheAxle) {
+    Catalogue c;
+    tire::Params bigger = kTractor.rear_tire;
+    bigger.size.radius_m += 0.1;
+    c.choices[0].slot = Slot::kRearTire;
+    c.choices[0].alternatives[0] = tire_alternative(kTractor.rear_tire, 0);
+    c.choices[0].alternatives[1] = tire_alternative(bigger, 100);
+    c.choices[0].alternative_count = 2;
+    c.choice_count = 1;
+    EXPECT_EQ(validate(c, kTractor, kClass), std::nullopt);
+    Career career = new_career(c);
+    career.money_eur = 100;
+    ASSERT_EQ(buy_alternative(career, c, 0, 1), std::nullopt);
+    const std::optional<vehicle::Params> t = equipped(kTractor, c, career);
+    ASSERT_TRUE(t.has_value());
+    EXPECT_EQ(t.value_or(kTractor).chassis.rear_axle_height_m, bigger.size.radius_m);
+}
+
+// Two tires and a final drive for each: the crew says which final drive
+// suits the tires fitted, owned or not, and nothing once it is fitted.
+Catalogue tires_and_drives() {
+    Catalogue c;
+    tire::Params puller = kTractor.rear_tire;
+    puller.traction.limit += 0.05;
+    driveline::Params tall = kTractor.driveline;
+    tall.final_drive_ratio *= 0.8;
+    c.choices[0].slot = Slot::kRearTire;
+    c.choices[0].alternatives[0] = tire_alternative(kTractor.rear_tire, 0);
+    c.choices[0].alternatives[1] = tire_alternative(puller, 100);
+    c.choices[0].alternative_count = 2;
+    c.choices[1].slot = Slot::kDriveline;
+    c.choices[1].alternatives[0] = driveline_alternative(kTractor.driveline, 0);
+    c.choices[1].alternatives[0].suits_choice = 0;
+    c.choices[1].alternatives[0].suits_alternative = 0;
+    c.choices[1].alternatives[1] = driveline_alternative(tall, 100);
+    c.choices[1].alternatives[1].suits_choice = 0;
+    c.choices[1].alternatives[1].suits_alternative = 1;
+    c.choices[1].alternative_count = 2;
+    c.choice_count = 2;
+    return c;
+}
+
+TEST(GarageChoice, TheCrewSaysWhichFinalDriveSuitsTheTires) {
+    const Catalogue c = tires_and_drives();
+    EXPECT_EQ(validate(c, kTractor, kClass), std::nullopt);
+    Career career = new_career(c);
+    EXPECT_FALSE(advice(c, career).has_value()) << "the stock tires and their drive";
+    career.money_eur = 200;
+    ASSERT_EQ(buy_alternative(career, c, 0, 1), std::nullopt);
+    const std::optional<Advice> a = advice(c, career);
+    ASSERT_TRUE(a.has_value()) << "puller tires on the short drive";
+    EXPECT_EQ(a.value_or(Advice{}).choice, 1U);
+    EXPECT_EQ(a.value_or(Advice{}).alternative, 1U) << "the tall drive, not yet owned";
+    ASSERT_EQ(buy_alternative(career, c, 1, 1), std::nullopt);
+    EXPECT_FALSE(advice(c, career).has_value());
+    ASSERT_EQ(fit(career, c, 0, 0), std::nullopt);
+    const std::optional<Advice> back = advice(c, career);
+    ASSERT_TRUE(back.has_value()) << "the farm tires back on the tall drive";
+    EXPECT_EQ(back.value_or(Advice{}).alternative, 0U);
+}
+
+// A drive made for an alternative there is not, or for its own choice, is
+// refused.
+TEST(GarageChoice, RefusesASuitThereIsNot) {
+    Catalogue c = tires_and_drives();
+    c.choices[1].alternatives[1].suits_alternative = 2;
+    EXPECT_EQ(validate(c, kTractor, kClass), ParamError::kNoSuchAlternative);
+    c = tires_and_drives();
+    c.choices[1].alternatives[1].suits_choice = 1;
+    EXPECT_EQ(validate(c, kTractor, kClass), ParamError::kNoSuchAlternative);
+    c = tires_and_drives();
+    c.choices[1].alternatives[1].suits_choice = 3;
+    EXPECT_EQ(validate(c, kTractor, kClass), ParamError::kNoSuchAlternative);
+}
+
 }  // namespace
 }  // namespace tp::garage

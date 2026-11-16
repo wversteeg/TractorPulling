@@ -1,0 +1,82 @@
+# The Supersport class at 3.6 t, at belofte (beloftenniveau), its lowest
+# level in the career (careers/tractor_path.toml): ten events, each on its
+# own track. The pullers stay the same all season.
+
+[season]
+event = "../events/supersport_3600_belofte.toml"   # the class and this level's field
+seed = 3601                           # the field and every event's draws
+points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
+# Prize money per place at every event [EUR]; the class's garage costs
+# € 98,200 for both engines and both tires (garages/supersport_3600.toml).
+# Belofte pays the back of the field more than the levels above (a new
+# tractor starts there), each level's winner about 30 % more than the one
+# below: a player who buys as they earn needs about three seasons at
+# belofte and two at promo and at top.
+# Every place pays, the last at least half the garage's cheapest upgrade
+# (one every two events), so a tractor at the back can still be built up;
+# a disqualified pull earns nothing.
+prize_money_eur = [2590, 2150, 1860, 1650, 1510, 1360, 1260, 1180, 1110, 1040, 950, 880, 790, 620]
+garage = "../garages/supersport_3600.toml"   # one tractor for the class's levels
+
+[[season.events]]
+name = "Spring opener, watered start"
+# How big each event is ("small", "club" or "big": the crowd, the stands
+# and the show at a full pull) and when it is pulled ("day", "sunset" or
+# "evening", under floodlights): only how the game dresses the venue.
+size = "club"
+time = "day"
+track = "../tracks/watered_start.toml"
+
+[[season.events]]
+name = "Firm loam"
+size = "small"
+time = "day"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Rainy day, covered heavy clay"
+size = "small"
+time = "day"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Sandy clay"
+size = "club"
+time = "sunset"
+track = "../tracks/sandy_clay.toml"
+
+[[season.events]]
+name = "Summer, dry hard clay"
+size = "big"
+time = "evening"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Clay-sand"
+size = "small"
+time = "sunset"
+track = "../tracks/ideal_clay_sand.toml"
+
+[[season.events]]
+name = "Dry hard clay again"
+size = "club"
+time = "day"
+track = "../tracks/dry_hard_clay.toml"
+
+[[season.events]]
+name = "Firm loam, late summer"
+size = "big"
+time = "sunset"
+track = "../tracks/firm_loam.toml"
+
+[[season.events]]
+name = "Autumn, covered heavy clay"
+size = "club"
+time = "evening"
+track = "../tracks/covered_heavy_clay.toml"
+
+[[season.events]]
+name = "Final, clay-sand"
+size = "big"
+time = "evening"
+track = "../tracks/ideal_clay_sand.toml"

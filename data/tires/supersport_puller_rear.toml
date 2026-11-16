@@ -1,0 +1,53 @@
+# The Supersport 3.6 t tractor's puller tire: a tire made for pulling,
+# 30.5L-32 (775 mm on a 32" rim, the class's widest; docs/career.md),
+# allowed from Supersport on (NTTO; the ETPC from Sport). Many low, sharp
+# V-bars across its full width, each cutting a thin slice of fresh track
+# and throwing it out: grip builds slowly with slip to a high limit, and it
+# bites harder the faster it spins, so it wants the tall final drive
+# (drivelines/supersport_3600_tall.toml). The limit is the fully built
+# tire's; the garage sets it.
+[tire]
+radius_m = 0.88                    # rolling radius
+section_width_m = 0.78
+section_height_m = 0.48
+deflection_m = 0.06                # sidewall deflection at working load
+wheel_inertia_kg_m2 = 60.0         # wheel, rim and tire about the axle
+min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
+
+[tire.traction]
+limit = 1.5                        # μ on very strong ground at full bite: a cut puller tire
+mobility_rate = 0.08               # how fast grip reaches the limit with Bn
+slip_rate = 8.0                    # grip builds with slip: a puller tire bites spinning
+# Its many low, sharp bars bite harder the faster they sweep through the
+# soil: turning slowly it has slow_spin_grip of its grip, and full grip
+# over a tread slip speed of about spin_speed_m_s (tp::tire::TractionCurve),
+# the side grip with it. The shallow bars need firm ground: on soft soil
+# its grip falls further (mobility_rate below a farm tire's).
+slow_spin_grip = 0.75
+spin_speed_m_s = 4.0
+# Pressed harder than its share of the tractor at rest (the chain pulling
+# down at the hitch, the weights back), the tire grips less per unit of
+# load (tp::tire::TractionCurve::load_sensitivity).
+load_sensitivity = 0.3
+reference_load_n = 12700.0          # where the sensitivity starts: about one tire's share at rest as built
+
+# The inflation pressure the puller sets before a pull (see
+# tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
+# that grips better on soft ground, but lets the lugs squirm, which costs
+# grip on firm ground; harder than the reference only shrinks the
+# footprint. deflection_m above is at the reference pressure.
+[tire.pressure]
+reference_bar = 1.0
+min_bar = 0.5
+max_bar = 1.6
+lug_squirm = 0.5                   # traction limit lost per unit of extra deflection / section height
+
+# Side grip (see tp::tire::Cornering). Starting values to tune: a big lugged
+# tire builds side force a little more slowly than the front tires and
+# holds a bit more of its load sideways. Traction uses up side grip, and a
+# spinning tire has almost none.
+[tire.cornering]
+stiffness_per_rad = 4.0            # side force per unit of load per rad of slip angle
+limit = 0.8                        # side force per unit of load at most
+mobility_rate = 0.1                # as for traction: soft ground grips less
+relaxation_length_m = 0.88         # about the tire's radius

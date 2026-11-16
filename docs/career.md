@@ -63,7 +63,8 @@ engines or weights. The prices are a part of the money a class's player
 has: the Standard 3.5 t's models cost € 1,500 to 2,500, with € 2,500 to
 start, so the cheapest leaves the € 1,000 the garage was balanced for (a
 dearer one, less: the first upgrades come a little later); the Sport
-2.5 t's € 4,000 to 6,500 and the Sport 4.5 t's € 6,500 to 9,800, a fifth
+2.5 t's € 4,000 to 6,500, the Sport 4.5 t's € 6,500 to 9,800 and the
+Supersport 3.6 t's € 8,500 to 12,300, a fifth
 to a third of what a winning season at the level below pays, so a player
 who moves up with a fully built tractor and some money left buys one
 outright, and one who spent everything still gets the cheapest
@@ -279,8 +280,8 @@ with three things:
   grip over a slip speed of about `spin_speed_m_s`) and wants gearing tall
   enough to spin it up; the side grip follows the same share. The
   standard class's farm tire smears a little (5 %); the Sport classes'
-  cut ones do not; Supersport brings the puller tire, so no shipped tire
-  uses `slow_spin_grip` yet.
+  cut ones do not; the puller tire comes in Supersport 3.6 t, and with it
+  the tall final drive it wants.
 - **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels
   turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count.
   1st to 5th are about 40 % apart (4th about 20 km/h), so 3rd and 4th
@@ -317,6 +318,74 @@ ETPC FS 2026, Level 3:
 - Engine (ETPC 3.2.1): at most **6 cylinders**, **7000 cm³ at 2700 rpm**
   or **6063 cm³ at 3200 rpm**, 4 valves a cylinder.
 - Everything else as Supersport 3.4 t.
+
+In the game (`data/classes/ntto_supersport_3600.toml`,
+`data/tractors/supersport_3600.toml`): 3600 kg, the hitch at most 0.5 m,
+3200 rpm unloaded (the class's faster engine's limit; the 7 l engine's
+own governor cuts at 2700), no PTO power limit. The class comes after
+Sport 4.5 t in the career (Supersport 3.4 t is not in the game yet), at
+all three levels. Fully built, both engines give about **1000 hp**. The
+NTTO's top tractors pull about 105 to 115 m with much wheelspin, the front
+low (videos of 2026 pull-offs; "the distance to beat 114.89 m").
+
+#### Engines, tires and gearing (game choice)
+
+Supersport 3.6 t is the class of **choices**: three parts the garage sells
+side by side, each fitted between events (K-6), each best somewhere:
+
+- **The engine**: the stock **7.0 l six at 2700 rpm**
+  (`engines/supersport_3600_7l.toml`: torque low down, a heavy flywheel)
+  or the **6.06 l six at 3200 rpm** (`engines/supersport_3600_6l.toml`,
+  € 6,000: less torque, more revs, a lighter flywheel). Each has its own
+  build (eleven and eight stages) and governor upgrade; a build counts
+  only while its engine is fitted.
+- **The rear tires**: the stock **modified farm tires** (710/70R42, its
+  tall lugs regrooved: grip at little slip, smearing when spun fast) or
+  **puller tires** (30.5L-32, € 5,000: many low bars that bite harder the
+  faster they spin, and a higher limit). Each has its own grip upgrade.
+  Fully built, each on the final drive the crew pairs it with, the
+  puller tires pull clearly further on a firm track (the firm loam, the
+  clay-sand) and the farm tires on the watered start, slick at the
+  launch, where their lugs grip at little slip
+  (`TireChoice.PullerTiresWinOnAFirmTrackAndFarmTiresOnAWetStart`). The
+  tires alone are another matter: there the puller tires on the short
+  final drive go further still, so the crew's pairing is a rule of thumb,
+  and the puller tires are the upgrade; the farm tires may win, not must.
+  A tire of another size moves the axle and the tractor's centre of
+  gravity with it (`vehicle::with_rear_tire`).
+- **The final drive**: the stock **short** one
+  (`drivelines/supersport_3600_short.toml`, 30:1) or the **tall** one
+  (`_tall.toml`, 23:1, € 3,000). Each says which tires it suits
+  (`suits` in the garage file): the short one keeps the farm tire
+  turning slowly, gripping without smearing; the tall one lets the
+  puller tire spin up to its bite. The crew chief says which final drive
+  the fitted tires want, and to buy it first if it is not owned yet
+  (`garage::advice`, on the garage screen); the player still chooses.
+- **A pulling gearbox**: two gears to manoeuvre and four close pulling
+  gears (3rd to 6th, about 13 % apart); no powershift, one gear the whole
+  pull.
+
+#### How a Supersport pulls (game)
+
+- **"Optoeren"**, building boost before the launch: the engine is held at
+  high revs on a slipping clutch while the big turbo comes up, the
+  clutch let in over about 3 s but eased back while the engine is below
+  80 % of its rated speed, for up to 8 s; the wheels do not spin yet. It
+  is the Sport classes' held launch (see "How the Sport classes pull"),
+  and it matters more here: in a tall pulling gear without it the engine
+  stalls before the sled moves, with it the same gear pulls a full pull.
+  The easy clutch assist does it for the player.
+- **The nose** (videos of good pulls): up once on the launch, touching
+  down softly now and then, light through the middle and down at the
+  end. With the weights forward and the hitch in its top hole the
+  tractor does that, and pulls furthest; the weights back keep it on the
+  wheelie bar all the way, and the hitch in its lowest hole holds the
+  front down hard: neither gives the rear tires their most grip, and
+  both pull clearly shorter
+  (`WheelieRuns.ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown`).
+
+The sled's box is 10,000 kg. The rivals keep one build each: the 7 l
+engine on puller tires and the tall final drive.
 
 ### 6. Supersport 4.5 t
 
@@ -482,6 +551,12 @@ tractor:
   limits at top, about 90 % of its garage reaches the podium there and
   only a fully built tractor is sure to win; its governor comes in six
   small stages, since each 75 rpm is worth a metre or more there.
+- Supersport 3.6 t has all three. A new tractor is at the back of
+  belofte and about 70 % of its garage wins it; half the garage is mid
+  promo and three quarters wins it; at top 60 % is at the back and a
+  nearly or fully built tractor wins. Its garage costs about € 98,200
+  for both engines and both tires, so its prize money is a quarter
+  higher than Sport 4.5 t's.
 
 ## Upgrades (game choice)
 

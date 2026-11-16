@@ -1,6 +1,7 @@
 #include "tp/core/driver/driver.hpp"
 #include "tp/core/garage/garage.hpp"
 #include "tp/core/run/run.hpp"
+#include "tp/core/sled/sled.hpp"
 #include "tp/core/time/fixed_step_clock.hpp"
 #include "tp/core/turn/turn.hpp"
 #include "tp/core/vehicle/tuning.hpp"
@@ -359,6 +360,105 @@ TEST(WheelieRuns, ASportTractorWithLittleWeightFreeDoesNotHopOnTheLoam) {
     EXPECT_GE(back.lifts, 4) << "fixed at the back it hopped";
     EXPECT_GT(back.up_s, 2.0 * front.up_s);
     EXPECT_GT(front.result.distance_m, back.result.distance_m);
+}
+
+// How a Supersport 3.6 t pull carries its nose: how often the front comes
+// off the ground and back down, how far it is up, its load through the
+// middle, and whether it is down at the end.
+struct Nose {
+    int lifts = 0;
+    int touchdowns = 0;
+    double up_m = 0.0;
+    double middle_mean_n = 0.0;
+    bool down_at_the_end = false;
+    double distance_m = 0.0;
+};
+
+// The class's tractor as built (tractors/supersport_3600.toml: the 7 l,
+// puller tires, the tall final drive) on the clay-sand in 5th, its weights
+// at `ballast_position` and the hitch at `hitch_m`, on a sled six steps
+// heavier than the class's so that it stops short of the line, as at the
+// end of a pull-off; the launch held while the turbo comes up
+// ("optoeren").
+Nose supersport_nose(double ballast_position, double hitch_m) {
+    const vehicle::Params built = loaded(load_tractor(data("tractors/supersport_3600.toml")));
+    vehicle::Tuning tuning = vehicle::as_built(built);
+    tuning.ballast_position = ballast_position;
+    tuning.hitch_height_m = hitch_m;
+    constexpr int kHeavier = 6;
+    const sled::Params sled =
+        sled::heavier(loaded(load_sled(data("sleds/supersport_3600.toml"))), kHeavier);
+    const Track track = loaded(load_track(data("tracks/ideal_clay_sand.toml")));
+    const session::Setup setup = run_setup(vehicle::tuned(built, tuning), sled, track, 0);
+    const std::optional<pull::Model> model =
+        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    if (!model) {
+        throw std::runtime_error("the pull was refused");
+    }
+    const driver::Plan plan{.gear = 5,
+                            .select_gear_s = 0.5,
+                            .launch_s = 3.0,
+                            .clutch_slip_in_s = 3.0,
+                            .launch_hold_share = 0.8,
+                            .launch_hold_max_s = 8.0};
+    run::State state = run::start(*model);
+    driver::State driver;
+    Nose out;
+    bool up = false;
+    double last_m = 0.0;
+    double middle_sum_n = 0.0;
+    int middle_steps = 0;
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        const pull::Output step =
+            run::step(state, *model, setup.rules,
+                      driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
+        const double pulled_m = state.pull.sled.position_m - model->sled_start_m();
+        const double front_n = step.tractor.axle_loads.front_n;
+        const bool now_up = front_n <= 0.0;
+        out.lifts += now_up && !up ? 1 : 0;
+        out.touchdowns += !now_up && up ? 1 : 0;
+        out.up_m += now_up ? std::max(pulled_m - last_m, 0.0) : 0.0;
+        if (pulled_m >= kMiddleFrom_m && pulled_m < kMiddleUntil_m) {
+            middle_sum_n += front_n;
+            ++middle_steps;
+        }
+        up = now_up;
+        last_m = pulled_m;
+    }
+    out.down_at_the_end = !up;
+    out.middle_mean_n = middle_steps > 0 ? middle_sum_n / middle_steps : 0.0;
+    out.distance_m = state.result.value_or(run::Result{}).distance_m;
+    return out;
+}
+
+// A good Supersport 3.6 t pull (videos of NTTO pulls): the nose comes up on
+// the launch, rides light and touches down softly now and then, and is
+// down at the end. With the weights all forward and the hitch in its top
+// hole the tractor does that, and pulls furthest. The weights back keep the
+// nose up all the way, on the wheelie bar, which takes load the rear tires
+// lose; the hitch in its lowest hole holds the front down hard, and a
+// front held down does not give the rear tires the most grip either: both
+// pull clearly shorter.
+TEST(WheelieRuns, ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown) {
+    constexpr double kTopHole_m = 0.50;
+    constexpr double kLowestHole_m = 0.40;
+    const Nose good = supersport_nose(1.0, kTopHole_m);
+    EXPECT_GE(good.lifts, 1) << "up on the launch";
+    EXPECT_GE(good.touchdowns, 3) << "down softly now and then";
+    EXPECT_LT(good.up_m, 0.5 * good.distance_m) << "not up all the way";
+    EXPECT_GT(good.middle_mean_n, 0.0);
+    EXPECT_LT(good.middle_mean_n, kDown_n * 3.0) << "light through the middle";
+    EXPECT_TRUE(good.down_at_the_end);
+
+    const Nose back = supersport_nose(0.0, kTopHole_m);
+    EXPECT_GT(back.up_m, 0.9 * back.distance_m) << "up all the way, on the bar";
+    const Nose held_down = supersport_nose(1.0, kLowestHole_m);
+    EXPECT_LT(held_down.up_m, 1.0) << "the front held down";
+    EXPECT_GT(held_down.middle_mean_n, 2.0 * good.middle_mean_n);
+    constexpr double kClearly_m = 5.0;
+    EXPECT_GT(good.distance_m, back.distance_m + kClearly_m);
+    EXPECT_GT(good.distance_m, held_down.distance_m + kClearly_m);
 }
 
 }  // namespace

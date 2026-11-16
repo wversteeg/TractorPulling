@@ -92,6 +92,13 @@ enum class ParamError : std::uint8_t {
 /// says what is wrong with it.
 [[nodiscard]] std::optional<ParamError> validate(const Params& params) noexcept;
 
+/// `params` on the rear tires `rear_tire`: the tractor rides on them, its
+/// rear axle at their radius and its centre of gravity raised or lowered
+/// with it; the rest of the body stays where it is. Nothing if the result
+/// is not a valid tractor.
+[[nodiscard]] std::optional<Params> with_rear_tire(const Params& params,
+                                                   const tire::Params& rear_tire) noexcept;
+
 /// Validated parameters plus what is derived from them once, at setup.
 class Model {
 public:
