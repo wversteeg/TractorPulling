@@ -50,6 +50,27 @@ Every Farmstock class the NTTO pulls in 2026 above the standard class, in
 order of the engine each allows, then the Grand National classes that
 still pull a farm tractor.
 
+**Each class's tractor is bought from its dealer (game choice).** A new
+career starts at the Standard 3.5 t dealer, and a class the player has not
+pulled in yet at its own: the season waits for the tractor. (The parts
+carried into the class by name, as every move up does, come along on the
+new tractor: the dealer sells the tractor, not its parts.) The dealer
+sells five models of the class's tractor and eight colours
+(`[garage.dealer]` in each class's garage file); for now the models only
+look different (`TractorModels` in the game), each pulling the same, so the
+choice is the player's taste: a later version may give them their own
+engines or weights. The prices are a part of the money a class's player
+has: the Standard 3.5 t's models cost € 1,500 to 2,500, with € 2,500 to
+start, so the cheapest leaves the € 1,000 the garage was balanced for (a
+dearer one, less: the first upgrades come a little later); the Sport
+2.5 t's € 4,000 to 6,500 and the Sport 4.5 t's € 6,500 to 9,800, a fifth
+to a third of what a winning season at the level below pays, so a player
+who moves up with a fully built tractor and some money left buys one
+outright, and one who spent everything still gets the cheapest
+(`garage::model_price_eur`: never dearer than the money there is). The
+garage's paint shop paints the tractor another colour between events
+(€ 300, 500 and 700). The rivals drive the dealer's other models.
+
 **Every class has its own tractor (game choice).** The weight goes up and
 down along the way (3.5, 2.5, 4.5, 3.4, 3.6, 4.5, then 3.5 t), and each
 class allows a different engine, so no one tractor climbs the whole
@@ -67,7 +88,9 @@ move across** where they fit and the new class allows them:
 - **Engine parts**: the turbo, fuel pump, intercooler, while the new
   class's limits allow them (a 4.8" turbo is legal in Supersport, not in
   Sport's 68 mm inlet).
-- **Weights**: ballast bought, as far as the new class's weight needs it.
+- **Free weight**: a tractor is at its class's weight, its weights fixed at
+  the back; the garage frees them, level by level, to be moved forward
+  before a pull (`chassis::with_free_weight`).
 
 What cannot move is what makes the class: the engine block and its
 displacement, the base tractor's chassis. The garage then shows each part
@@ -192,15 +215,22 @@ Sport 2.5 t a careful clutch and where the weights go, Sport 4.5 t the
 the track decides: the light standard tractor runs out of engine before
 grip on most tracks, a Sport 4.5 t does not (`TrackSetup.*`):
 
-- **Grippy tracks** (the firm loam, the dry hard clay): with its weights
-  all back the tractor stands on its wheelie bar, nose high, and the bar
-  takes load the rear tires lose; halfway pulls further. Soft tires'
-  squirming lugs cost metres.
+- **Grippy tracks** (the firm loam, the dry hard clay): the chain, hooked
+  low on the sled's pan, pulls the hitch down and the nose up, and the
+  tires have grip to spare: the weights go forward to hold the nose down.
+  With the weights back the tractor stands on its wheelie bar, and the
+  bar takes load the rear tires lose. Soft tires' squirming lugs cost
+  metres, and a hitch a hole or two below the top may pull further.
 - **The heavy clay**: the tires dig in and bite, the sled ploughs, and the
-  engine is pulled down to a stall before the tires spin out. With the
-  weights back the nose climbs: they go forward, and soft tires pay.
+  engine is pulled down to a stall before the tires spin out. The weights
+  go forward, and soft tires pay.
 - **The loose sandy clay**: the grip runs out first, so the weights stay
   a quarter forward, the most load on the rear tires the front allows.
+- **The watered start**: wet only at the start, grippy after it: the
+  weights about halfway, enough on the rear tires to get the sled going,
+  not so much that the grippy rest lifts the nose.
+- **Less grippy tires** want the weights further back than the puller
+  tires on the same track.
 - **The hitch, set per pull**: a pulling hitch with holes from 0.40 m
   (the tractor's `hitch_min_height_m`) to the top hole the garage's
   drawbar gives, at most the class's 0.50 m, set on the setup screen
@@ -391,6 +421,17 @@ A class is pulled at up to three levels, **belofte**, **promo** and
 **top**, each a season with its own field of rivals, on the class's one
 tractor:
 
+- **Twelve in the competition, two guests.** Each level's competition is
+  the player and eleven named rivals, the same all season. At every event
+  two guests (bijschrijvers) pull too, two of a pool of six drawn afresh
+  per event, so each pulls a few events a season. A guest may be anyone
+  from the field's weakest to a little above its best (at a class's top
+  level up to a fully built tractor), so a guest may win or finish last.
+  Guests take their place and its prize money at the event, but no
+  points: the points go by place among the competitors, so a guest who
+  wins leaves the best competitor the 20 points. A guest who would have
+  made the pull-off among the competitors alone (a full pull, or further
+  than the fourth competitor) pulls off too, a fifth.
 - A new tractor (every part at its first stage) finishes **around last**
   at the class's first level; a **fully upgraded** one **wins at the
   class's last level**
@@ -404,7 +445,7 @@ tractor:
 - The money is set so that the rule rarely has to hold anyone back: each
   part's stages dearer as they go, each level paying about 30 % more than
   the one below. Every place pays, so a new tractor at the back still
-  climbs: in the standard class, the career's start, the 15th earns the
+  climbs: in the standard class, the career's start, the last (14th) earns the
   garage's cheapest upgrade every event, in the Sport classes one every
   two events. Within a class each level pays every place at least about
   10 % more than the level below, so moving up never cuts a back-marker's
@@ -421,6 +462,12 @@ tractor:
   about two seasons.
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
+- **The player picks where to pull each season.** When a new season
+  starts with more than one class or level open, a career screen lists
+  them all (the highest open picked); the player may go back to a lower
+  level or class, a Standard 3.5 t season after unlocking Sport 4.5 t
+  too. Each class keeps its own tractor, as it was left, and the money is
+  one wallet.
 - The NTTO's standard class has no levels (nor has the game's) and Pro
   Stock has groups II and I: the game uses the Farmstock levels for the
   other classes alike, except **Sport 2.5 t, only promo and top**: it is the introduction to

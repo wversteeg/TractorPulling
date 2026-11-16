@@ -35,6 +35,9 @@ TireFieldError describe(tire::ParamError error) {
             return {"traction.limit", "must be in (0, 2]"};
         case ParamError::kTractionRateNotPositive:
             return {"traction", "mobility_rate and slip_rate must be > 0"};
+        case ParamError::kLoadSensitivityInvalid:
+            return {"traction.load_sensitivity",
+                    "must be >= 0 and below 1, with reference_load_n > 0 when set"};
         case ParamError::kSpinGripOutOfRange:
             return {"traction",
                     "slow_spin_grip and fast_spin_grip must be in (0, 1], spin_speed_m_s > 0"};

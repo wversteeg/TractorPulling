@@ -327,6 +327,22 @@ TEST(SledLoader, ReadsAndChecksTheGearbox) {
     }
 }
 
+// The pan held up at its back until the push-down: optional, none by
+// default, and checked.
+TEST(SledLoader, ReadsAndChecksThePanHeldUp) {
+    EXPECT_EQ(parse_sled(kValidSled, "sled.toml").value().pan_held_share, 0.0);
+    std::string held{kValidSled};
+    held.replace(held.find("[sled.pushdown]\n"), 16, "[sled.pushdown]\npan_held_share = 0.4\n");
+    const auto result = parse_sled(held, "sled.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    EXPECT_DOUBLE_EQ(result.value().pan_held_share, 0.4);
+    held.replace(held.find("pan_held_share = 0.4"), 20, "pan_held_share = 1.5");
+    const auto refused = parse_sled(held, "sled.toml");
+    ASSERT_FALSE(refused.ok());
+    EXPECT_NE(refused.error().message.find("sled.pushdown.pan_held_share"), std::string::npos)
+        << refused.error().message;
+}
+
 TEST(SledLoader, RejectsNonsenseValues) {
     struct Case {
         std::string_view from;

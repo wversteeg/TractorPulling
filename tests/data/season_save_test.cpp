@@ -18,23 +18,34 @@ SeasonSave example() {
     save.seed = UINT64_MAX - 1;
     save.tuning = {
         .ballast_position = 0.35, .rear_tire_pressure_bar = 0.75, .hitch_height_m = 0.47};
-    save.career = SavedCareer{.money_eur = 1234,
-                              .upgrades = {{.name = "Injection pump", .level = 2},
-                                           {.name = R"(The "big" tires)", .level = 0}},
-                              .choices = {{.name = "Turbo",
-                                           .fitted = "68 mm turbo",
-                                           .owned = {"68 mm turbo", R"(A "huge" one)"}},
-                                          {.name = "Gearbox", .fitted = "Stock", .owned = {}}},
-                              .class_name = "Sport",
-                              .level_name = "Promo",
-                              .unlocked_class = R"(Super "stock")",
-                              .unlocked_level = "Belofte",
-                              .seasons_on_level = 2,
-                              .title_on_level = true};
+    save.career = SavedCareer{
+        .money_eur = 1234,
+        .upgrades = {{.name = "Injection pump", .level = 2},
+                     {.name = R"(The "big" tires)", .level = 0}},
+        .choices = {{.name = "Turbo",
+                     .fitted = "68 mm turbo",
+                     .owned = {"68 mm turbo", R"(A "huge" one)"}},
+                    {.name = "Gearbox", .fitted = "Stock", .owned = {}}},
+        .class_name = "Sport",
+        .level_name = "Promo",
+        .unlocked_class = R"(Super "stock")",
+        .unlocked_level = "Belofte",
+        .seasons_on_level = 2,
+        .title_on_level = true,
+        .other_tractors = {{.class_name = R"(Standard "3.5" t)",
+                            .upgrades = {{.name = "Drawbar", .level = 3}},
+                            .choices = {},
+                            .look = SavedLook{.model = R"(The "Oldtimer")", .paint = "Snow white"}},
+                           {.class_name = "Sport 4.5 t",
+                            .upgrades = {},
+                            .choices = {{.name = "Turbo", .fitted = "Small", .owned = {"Big"}}},
+                            .look = SavedLook{.model = "", .paint = ""}}},
+        .look = SavedLook{.model = "Sprint Low", .paint = "Night black"}};
     save.events = {
         {{.puller = 2, .place = 1},
          {.puller = 0, .place = 2},
-         {.puller = 1, .place = 3, .disqualified = true}},
+         {.puller = 1, .place = 3, .disqualified = true},
+         {.puller = 3, .place = 4, .guest = true}},
         {{.puller = 0, .place = 1}, {.puller = 1, .place = 1}, {.puller = 2, .place = 3}}};
     return save;
 }
@@ -71,6 +82,26 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
               (std::vector<std::string>{"68 mm turbo", R"(A "huge" one)"}));
     EXPECT_EQ(career.choices[1].name, "Gearbox");
     EXPECT_TRUE(career.choices[1].owned.empty());
+    // The other classes' tractors, each by its class.
+    ASSERT_EQ(career.other_tractors.size(), 2U);
+    EXPECT_EQ(career.other_tractors[0].class_name, R"(Standard "3.5" t)");
+    ASSERT_EQ(career.other_tractors[0].upgrades.size(), 1U);
+    EXPECT_EQ(career.other_tractors[0].upgrades[0].name, "Drawbar");
+    EXPECT_EQ(career.other_tractors[0].upgrades[0].level, 3);
+    EXPECT_TRUE(career.other_tractors[0].choices.empty());
+    EXPECT_EQ(career.other_tractors[1].class_name, "Sport 4.5 t");
+    ASSERT_EQ(career.other_tractors[1].choices.size(), 1U);
+    EXPECT_EQ(career.other_tractors[1].choices[0].fitted, "Small");
+    EXPECT_EQ(career.other_tractors[1].choices[0].owned, (std::vector<std::string>{"Big"}));
+    // Each tractor's model and paint: a model of "" not bought yet.
+    ASSERT_TRUE(career.look.has_value());
+    EXPECT_EQ(career.look.value_or(SavedLook{}).model, "Sprint Low");
+    EXPECT_EQ(career.look.value_or(SavedLook{}).paint, "Night black");
+    EXPECT_EQ(career.other_tractors[0].look.value_or(SavedLook{}).model, R"(The "Oldtimer")");
+    EXPECT_EQ(career.other_tractors[0].look.value_or(SavedLook{}).paint, "Snow white");
+    ASSERT_TRUE(career.other_tractors[1].look.has_value());
+    EXPECT_EQ(career.other_tractors[1].look.value_or(SavedLook{.model = "x", .paint = "x"}).model,
+              "");
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
         ASSERT_EQ(back.events[e].size(), save.events[e].size()) << e;
@@ -79,6 +110,7 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
             EXPECT_EQ(back.events[e][i].place, save.events[e][i].place) << e << ' ' << i;
             EXPECT_EQ(back.events[e][i].disqualified, save.events[e][i].disqualified)
                 << e << ' ' << i;
+            EXPECT_EQ(back.events[e][i].guest, save.events[e][i].guest) << e << ' ' << i;
         }
     }
 }
@@ -156,11 +188,62 @@ TEST(SeasonSave, ReadsASaveFromBeforeTheLevels) {
     EXPECT_FALSE(career.title_on_level);
 }
 
+// A version 5 save has no other class's tractor: the career goes on with
+// the one it pulls.
+TEST(SeasonSave, ReadsASaveFromBeforeEachClassKeptItsTractor) {
+    std::string text = write_season_save(example());
+    const std::string head = "version = " + std::to_string(kSeasonSaveVersion);
+    ASSERT_NE(text.find(head), std::string::npos);
+    text.replace(text.find(head), head.size(), "version = 5");
+    const Result<SeasonSave> read = parse_season_save(text, "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    const SavedCareer career = read.value().career.value_or(SavedCareer{});
+    EXPECT_TRUE(career.other_tractors.empty());
+    EXPECT_EQ(career.upgrades.size(), 2U);
+}
+
+// A version 6 save has no models: each tractor is the one the player had
+// before there were dealers (data::career_from_names makes it the
+// dealer's first model).
+TEST(SeasonSave, ReadsASaveFromBeforeTheDealers) {
+    std::string text = write_season_save(example());
+    const std::string head = "version = " + std::to_string(kSeasonSaveVersion);
+    text.replace(text.find(head), head.size(), "version = 6");
+    const Result<SeasonSave> read = parse_season_save(text, "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    const SavedCareer career = read.value().career.value_or(SavedCareer{});
+    EXPECT_FALSE(career.look.has_value());
+    ASSERT_EQ(career.other_tractors.size(), 2U);
+    EXPECT_FALSE(career.other_tractors[0].look.has_value());
+    EXPECT_EQ(career.upgrades.size(), 2U);
+    // Written again, they stay tractors from before the dealers (the
+    // dealer's first model), not tractors still to buy.
+    const Result<SeasonSave> again =
+        parse_season_save(write_season_save(read.value()), "season.toml");
+    ASSERT_TRUE(again) << again.error().message;
+    const SavedCareer kept = again.value().career.value_or(SavedCareer{});
+    EXPECT_FALSE(kept.look.has_value());
+    ASSERT_EQ(kept.other_tractors.size(), 2U);
+    EXPECT_FALSE(kept.other_tractors[0].look.has_value());
+    EXPECT_FALSE(kept.other_tractors[1].look.has_value());
+    // A model without its paint, or the other way round, is refused.
+    std::string no_paint = write_season_save(example());
+    no_paint.replace(no_paint.find("paint = \"Night black\"\n"), 22, "");
+    EXPECT_NE(error_of(no_paint).find("season.toml: career: a tractor needs both its model"),
+              std::string::npos)
+        << error_of(no_paint);
+    std::string no_model = write_season_save(example());
+    no_model.replace(no_model.find("model = \"\"\n"), 11, "");
+    EXPECT_NE(error_of(no_model).find("career.tractors: a tractor needs both its model"),
+              std::string::npos)
+        << error_of(no_model);
+}
+
 TEST(SeasonSave, RefusesNonsense) {
     EXPECT_EQ(error_of(kHead), "");
     std::string other_version = kHead;
-    other_version.replace(0, 11, "version = 6");
-    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 5"),
+    other_version.replace(0, 11, "version = 8");
+    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 7"),
               std::string::npos)
         << error_of(other_version);
     std::string version_2 = kHead;

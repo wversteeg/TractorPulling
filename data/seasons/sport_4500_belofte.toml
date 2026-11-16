@@ -15,7 +15,7 @@ points = [20, 17, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3]
 # Every place pays, the last at least half the garage's cheapest upgrade
 # (one every two events), so a tractor at the back can still be built up;
 # a disqualified pull earns nothing.
-prize_money_eur = [2070, 1720, 1490, 1320, 1210, 1090, 1010, 940, 890, 830, 760, 700, 630, 570, 500]
+prize_money_eur = [2070, 1720, 1490, 1320, 1210, 1090, 1010, 940, 890, 830, 760, 700, 630, 500]
 garage = "../garages/sport_4500.toml"   # one tractor for the class's levels
 
 [[season.events]]

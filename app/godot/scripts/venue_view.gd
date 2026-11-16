@@ -18,9 +18,10 @@
 # fences and only a signal light on a pole at the full-pull line; a club
 # event the covered grandstand and the banner; a big event a longer, taller
 # grandstand, a crowd three deep and flames and fireworks for a full pull
-# (celebrate()). The time of day sets the sky, the sun and, in the evening,
-# floodlights along the track, over the parking and at the track's end
-# (light()); the track's soil sets its colour (track_colours()). Past the
+# (celebrate()). The time of day sets the sky, the sun and the floodlights:
+# a few dim ones along the track at sunset, and in the evening many bright
+# ones along the track, over the parking and at the track's end (light(),
+# FLOODLIGHTS); the track's soil sets its colour (track_colours()). Past the
 # end a pile of dirt across the track, and the event's trailers and pop-up
 # tents behind it: at a club or big event a trailer with a big screen
 # showing the run and the standings (TrackEnd).
@@ -96,15 +97,29 @@ const BAY_SIZE_M := Vector2(5.0, 4.0)
 # A bay starts this far behind the tractor's rear axle: room for the rear
 # tires [m].
 const BAY_BEHIND_REAR_AXLE_M := 1.0
+# The grass texture repeats this often, on the field and on the parking
+# grass that carries it on [m].
+const GRASS_TILE_M := 12.0
 # The parking's ground: behind the start line from here to the run-up's
 # end, out from the lane's right-hand chalk line between these [m].
 const PARKING_FRONT_X_M := -3.0
 const PARKING_FROM_LANE_M := Vector2(1.0, 15.0)
+# The parking's ground is laid in pieces about this big, gravel or the
+# field's grass over it, so each is lit by the parking's own lights: a
+# renderer lights each mesh with only its nearest few lights (8 on a phone),
+# and the field's one big plane picks the track's [m].
+const PARKING_PIECE_M := 7.5
+# The grass pieces lie this far over the field, clear of it [m].
+const PARKING_GRASS_LIFT_M := 0.01
 const GRAVEL_DARK := Color(0.42, 0.4, 0.37)
 const GRAVEL_LIGHT := Color(0.66, 0.63, 0.58)
 # The clay strip: from this far behind the start line (just behind the
 # sled), this far past each chalk line [m].
 const CLAY_BEHIND_START_M := 5.0
+# The clay is laid in pieces about this long, each lit by the floodlights
+# near it, and its texture repeats every this many metres [m].
+const CLAY_PIECE_M := 20.0
+const CLAY_TILE_M := 6.0
 const CLAY_PAST_LANE_M := 1.5
 # The signal light's lamps on the full-pull gantry.
 const LAMP_RADIUS_M := 0.22
@@ -149,19 +164,35 @@ const SAND := Color(0.72, 0.57, 0.33)
 const CLAY := Color(0.5, 0.3, 0.19)
 const WET_DARKENING := 1.6
 const TRACK_LIGHTER := 0.25
-# The evening's floodlights: masts this far apart down both sides, this
-# high, and their light [m, m, energy, m].
-const FLOODLIGHT_EVERY_M := 30.0
+# The floodlights at each time of day: masts this far apart down both
+# sides (none in the day), their spotlights' energy and reach, and whether
+# the parking gets its own [m, energy, m]. At sunset a few come on, dim,
+# as the light goes; in the evening many, bright.
+const FLOODLIGHTS := {
+	"sunset": {"every_m": 45.0, "energy": 2.5, "range_m": 50.0, "parking": false},
+	"evening": {"every_m": 20.0, "energy": 7.0, "range_m": 60.0, "parking": true},
+}
 const FLOODLIGHT_HEIGHT_M := 14.0
-const FLOODLIGHT_ENERGY := 5.0
-const FLOODLIGHT_RANGE_M := 55.0
+# A floodlight's beam: this wide from its middle to its edge, and fading
+# this slowly towards the edge (Godot's spot_angle_attenuation, 1 linear):
+# wide and even enough, aimed at the track, to light the grass beside it
+# and the crowd at the fence too [deg, -].
+const FLOODLIGHT_SPREAD_DEG := 70.0
+const FLOODLIGHT_EDGE_FADE := 0.5
 const FLOODLIGHT := Color(1.0, 0.93, 0.8)
-# One more pair of masts this far past the track's end (over the run-off,
-# by the pile), and two over the parking at these distances behind the
-# start line, beyond its far edge [m].
+# One more pair of masts this far past the track's end (over the run-off),
+# another beside the pile's crest (TrackEnd), and over the parking at these
+# distances behind the start line, beyond its far edge [m].
 const END_LIGHTS_PAST_M := 25.0
-const PARKING_LIGHTS_X_M: Array[float] = [-12.0, -30.0]
+const PARKING_LIGHTS_X_M: Array[float] = [-10.0, -24.0, -38.0]
 const PARKING_LIGHTS_OUT_M := 2.0
+# A lower lamp post beside each rival's bay, this far inside the parking's
+# far edge (behind the parked tractor), this high [m].
+const RIVAL_LIGHT_IN_M := 1.0
+const RIVAL_LIGHT_HEIGHT_M := 7.0
+# How far a bay's lamp reaches: its own bay, not the track's lights' share
+# of the meshes around it [m].
+const RIVAL_LIGHT_RANGE_M := 20.0
 # The fields stay this far clear past the track's end: the pile and the
 # trailers behind it [m].
 const END_CLEAR_M := 40.0
@@ -254,6 +285,11 @@ var _track_end: TrackEnd = null
 # Where the floodlight masts stand (x down the track, y to the left) [m].
 var _masts: Array[Vector2] = []
 var _parking_masts: Array[Vector2] = []
+# The field's grass, and its plane's corner (Godot's x and z) the texture
+# starts from: the parking's grass pieces carry it on [m].
+var _grass_material: StandardMaterial3D = null
+var _field_corner := Vector2.ZERO
+var _rival_lights: Array[Vector2] = []
 
 
 func build(d: Dictionary) -> void:
@@ -282,8 +318,8 @@ func build(d: Dictionary) -> void:
 		_add_standing_crowd(length_m, lane_m, -1.0)
 		if _size()["left_crowd"]:
 			_add_standing_crowd(length_m, lane_m, 1.0)
-		if _look["time"] == "evening":
-			_add_floodlights(length_m, lane_m)
+		if FLOODLIGHTS.has(_look["time"]):
+			_add_floodlights(length_m, lane_m, FLOODLIGHTS[_look["time"]])
 		add_child(_track_end)
 		_track_end.build(length_m, lane_m, lane_m + 2.0 * CLAY_PAST_LANE_M,
 				track_colours(float(_look["clay_fraction"]), float(_look["moisture"])),
@@ -301,8 +337,10 @@ func build(d: Dictionary) -> void:
 		add_child(_parking)
 		_add_parking(_parking, lane_m)
 		_parking_masts.clear()
-		if _look["time"] == "evening":
-			_add_parking_lights(_parking, lane_m)
+		_rival_lights.clear()
+		var lights: Dictionary = FLOODLIGHTS.get(_look["time"], {})
+		if lights.get("parking", false):
+			_add_parking_lights(_parking, lane_m, lights)
 		_parking_built = _parking_layout
 	_lane_m = lane_m
 	# A rebuild freed the flags: up again as they were.
@@ -385,6 +423,15 @@ func bays() -> Array[Vector3]:
 	return out
 
 
+# The rivals' bays (bays() after the player's) [m, m, rad].
+func rival_bays() -> Array[Vector3]:
+	var all := bays()
+	var out: Array[Vector3] = []
+	for i in RIVAL_BAYS:
+		out.append(all[1 + i])
+	return out
+
+
 # Where the banner over the full-pull line stands, along the track [m].
 func banner_at_m() -> float:
 	return _full_pull_m
@@ -451,8 +498,9 @@ static func environment() -> WorldEnvironment:
 
 # The light for the time of day ("day", "sunset" or "evening") on the
 # scene's sky (environment()) and sun: a high afternoon sun; a low orange
-# sun under a red horizon; or night falling, the sky deep blue and a faint
-# cold light left, the floodlights lighting the track (_add_floodlights()).
+# sun under a red horizon, the first floodlights on; or night falling, the
+# sky deep blue and a faint cold light left, the floodlights lighting the
+# track (_add_floodlights()).
 static func light(world: WorldEnvironment, sun: DirectionalLight3D, time: String) -> void:
 	var look: Dictionary = TIMES.get(time, TIMES["day"])
 	var env := world.environment
@@ -475,12 +523,14 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	grass_material.normal_enabled = true
 	grass_material.normal_texture = Art.ground_normal(0.08, 8, 6.0)
 	grass_material.normal_scale = 0.6
-	grass_material.uv1_scale = Vector3(FIELD_M.x / 12.0, FIELD_M.y / 12.0, 1.0)
+	grass_material.uv1_scale = Vector3(FIELD_M.x / GRASS_TILE_M, FIELD_M.y / GRASS_TILE_M, 1.0)
 	grass_material.roughness = 1.0
 	var grass := PlaneMesh.new()
 	grass.size = FIELD_M
 	var field := Art.instance(grass, grass_material)
 	field.position = TrackSpace.point(length_m / 2.0, 0.0, GRASS_Y_M)
+	_grass_material = grass_material
+	_field_corner = Vector2(field.position.x, field.position.z) - FIELD_M / 2.0
 	_quiet(field)
 	add_child(field)
 
@@ -493,14 +543,23 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	clay_material.normal_enabled = true
 	clay_material.normal_texture = Art.ground_normal(0.06, 12, 5.0)
 	clay_material.normal_scale = 0.8
-	clay_material.uv1_scale = Vector3(strip_width_m / 6.0, strip_length_m / 6.0, 1.0)
 	clay_material.roughness = 0.95
+	# In pieces down the track: a renderer lights each mesh with only its
+	# nearest few lights, so one long strip would miss most floodlights.
+	# Each piece carries on the texture where the last one stopped.
+	var end_m := length_m + OVERRUN_M
+	var pieces := ceili(strip_length_m / CLAY_PIECE_M)
+	var piece_m := strip_length_m / pieces
 	var clay := PlaneMesh.new()
-	clay.size = Vector2(strip_width_m, strip_length_m)
-	var strip := Art.instance(clay, clay_material)
-	strip.position = TrackSpace.point(length_m + OVERRUN_M - strip_length_m / 2.0, 0.0, -0.03)
-	_quiet(strip)
-	add_child(strip)
+	clay.size = Vector2(strip_width_m, piece_m)
+	for i in pieces:
+		var surface := clay_material.duplicate() as StandardMaterial3D
+		surface.uv1_scale = Vector3(strip_width_m / CLAY_TILE_M, piece_m / CLAY_TILE_M, 1.0)
+		surface.uv1_offset = Vector3(0.0, i * piece_m / CLAY_TILE_M, 0.0)
+		var strip := Art.instance(clay, surface)
+		strip.position = TrackSpace.point(end_m - (i + 0.5) * piece_m, 0.0, -0.03)
+		_quiet(strip)
+		add_child(strip)
 
 
 # The parking behind the start line on the right: gravel with white lines
@@ -508,21 +567,7 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 func _add_parking(parent: Node3D, lane_m: float) -> void:
 	var layout := parking_layout()
 	var edge_m := lane_m / 2.0
-	if layout["ground"] == "gravel":
-		var gravel_material := StandardMaterial3D.new()
-		gravel_material.albedo_texture = Art.ground_texture(GRAVEL_DARK, GRAVEL_LIGHT, 0.2, 5)
-		gravel_material.normal_enabled = true
-		gravel_material.normal_texture = Art.ground_normal(0.3, 6, 3.0)
-		gravel_material.roughness = 1.0
-		var size := Vector2(PARKING_FROM_LANE_M.y - PARKING_FROM_LANE_M.x,
-				PARKING_FRONT_X_M + RUN_UP_M)
-		gravel_material.uv1_scale = Vector3(size.x / 4.0, size.y / 4.0, 1.0)
-		var plane := PlaneMesh.new()
-		plane.size = size
-		var gravel := Art.instance(plane, gravel_material)
-		gravel.position = TrackSpace.point(PARKING_FRONT_X_M - size.y / 2.0,
-				-(edge_m + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y) / 2.0), -0.035)
-		parent.add_child(_quiet(gravel))
+	_add_parking_ground(parent, lane_m, layout["ground"] == "gravel")
 	# Each bay's sides: along the tractor's heading, half a bay either side
 	# of its middle, which is half a bay ahead of the bay's back.
 	var heading: float = layout["heading"]
@@ -548,6 +593,52 @@ func _add_parking(parent: Node3D, lane_m: float) -> void:
 		var stake := BoxMesh.new()
 		stake.size = Vector3(0.06, 0.5, 0.06)
 		parent.add_child(_quiet(Art.many(stake, stakes, Art.material(Color(0.95, 0.5, 0.1), 0.8))))
+
+
+# The parking's ground in PARKING_PIECE_M pieces: gravel, its texture every
+# 4 m; or the field's grass just over the field, its texture carried on
+# from the field's so no seam shows, a piece further out all round (but
+# towards the lane) so the light fades out over the grass.
+func _add_parking_ground(parent: Node3D, lane_m: float, gravel: bool) -> void:
+	var size := Vector2(PARKING_FROM_LANE_M.y - PARKING_FROM_LANE_M.x,
+			PARKING_FRONT_X_M + RUN_UP_M)
+	var out_m := 0.0 if gravel else PARKING_PIECE_M
+	var middle := TrackSpace.point(PARKING_FRONT_X_M - size.y / 2.0,
+			-(lane_m / 2.0 + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y + out_m) / 2.0), 0.0)
+	size += Vector2(out_m, 2.0 * out_m)
+	var material: StandardMaterial3D
+	var tile_m := GRASS_TILE_M
+	var height_m := GRASS_Y_M + PARKING_GRASS_LIFT_M
+	if gravel:
+		material = StandardMaterial3D.new()
+		material.albedo_texture = Art.ground_texture(GRAVEL_DARK, GRAVEL_LIGHT, 0.2, 5)
+		material.normal_enabled = true
+		material.normal_texture = Art.ground_normal(0.3, 6, 3.0)
+		material.roughness = 1.0
+		tile_m = 4.0
+		height_m = -0.035
+	elif _grass_material != null:
+		material = _grass_material
+	else:
+		return
+	# Across the lane is Godot's x, along it its z (TrackSpace).
+	var across := ceili(size.x / PARKING_PIECE_M)
+	var along := ceili(size.y / PARKING_PIECE_M)
+	var piece := Vector2(size.x / across, size.y / along)
+	var corner := Vector2(middle.x, middle.z) - piece * Vector2(across, along) / 2.0
+	var plane := PlaneMesh.new()
+	plane.size = piece
+	for i in across:
+		for j in along:
+			var at := corner + piece * Vector2(i, j)
+			var surface := material.duplicate() as StandardMaterial3D
+			surface.uv1_scale = Vector3(piece.x / tile_m, piece.y / tile_m, 1.0)
+			var from := at - (Vector2.ZERO if gravel else _field_corner)
+			surface.uv1_offset = Vector3(from.x / tile_m, from.y / tile_m, 0.0)
+			var ground := Art.instance(plane, surface)
+			ground.name = "ParkingGround%d_%d" % [i, j]
+			ground.position = Vector3(at.x + piece.x / 2.0, height_m, at.y + piece.y / 2.0)
+			parent.add_child(_quiet(ground))
 
 
 # How much further out the venue stands beside the lane on `side` (-1 right,
@@ -857,42 +948,61 @@ static func _fade(from: Color, to: Color) -> Gradient:
 	return ramp
 
 
-# Floodlight masts down both sides for an evening event, and a pair past
-# the track's end over the run-off and the pile.
-func _add_floodlights(length_m: float, lane_m: float) -> void:
+# Floodlight masts down both sides, `lights` (FLOODLIGHTS) apart, a pair
+# past the track's end over the run-off, and a pair either side of the pile
+# lighting the berm.
+func _add_floodlights(length_m: float, lane_m: float, lights: Dictionary) -> void:
 	var xs: Array[float] = []
 	var x_m := -10.0
 	while x_m <= length_m + 20.0:
 		xs.append(x_m)
-		x_m += FLOODLIGHT_EVERY_M
+		x_m += float(lights["every_m"])
 	xs.append(length_m + END_LIGHTS_PAST_M)
 	for along_m in xs:
 		for side: float in [-1.0, 1.0]:
 			var out_m := lane_m / 2.0 + FENCE_OUT_M + 1.0 + past_lane_m(side)
 			_add_mast(self, Vector2(along_m, side * out_m),
-					Vector2(along_m + 6.0, -side * 1.0), side * 0.3)
+					Vector2(along_m + 6.0, -side * 1.0), side * 0.3, lights)
 			_masts.append(Vector2(along_m, side * out_m))
+	var crest_m := length_m + TrackEnd.PILE_FROM_M + TrackEnd.PILE_LENGTH_M / 2.0
+	for side: float in [-1.0, 1.0]:
+		var out_m := lane_m / 2.0 + FENCE_OUT_M + 1.0 + past_lane_m(side)
+		_add_mast(self, Vector2(crest_m, side * out_m), Vector2(crest_m, 0.0), side * 0.3,
+				lights)
+		_masts.append(Vector2(crest_m, side * out_m))
 
 
-# Two masts beyond the parking's far edge, lighting the bays.
-func _add_parking_lights(parent: Node3D, lane_m: float) -> void:
+# Masts beyond the parking's far edge, lighting the bays, and a lower lamp
+# post behind each rival's bay, aimed at the tractor parked in it.
+func _add_parking_lights(parent: Node3D, lane_m: float, lights: Dictionary) -> void:
 	var out_m := lane_m / 2.0 + PARKING_FROM_LANE_M.y + PARKING_LIGHTS_OUT_M
 	for x_m: float in PARKING_LIGHTS_X_M:
 		var middle := Vector2(x_m, -(lane_m / 2.0 + (PARKING_FROM_LANE_M.x
 				+ PARKING_FROM_LANE_M.y) / 2.0))
-		_add_mast(parent, Vector2(x_m, -out_m), middle, -0.3)
+		_add_mast(parent, Vector2(x_m, -out_m), middle, -0.3, lights)
 		_parking_masts.append(Vector2(x_m, -out_m))
+	var heading: float = parking_layout()["heading"]
+	var ahead := Vector2(cos(heading), sin(heading))
+	var post_out_m := lane_m / 2.0 + PARKING_FROM_LANE_M.y - RIVAL_LIGHT_IN_M
+	for bay in rival_bays():
+		var rear := Vector2(bay.x, -(lane_m / 2.0 + bay.y))
+		var tractor := rear + ahead * (BAY_SIZE_M.x / 2.0 - BAY_BEHIND_REAR_AXLE_M)
+		_add_mast(parent, Vector2(bay.x, -post_out_m), tractor, -0.3,
+				lights.merged({"range_m": RIVAL_LIGHT_RANGE_M}, true), RIVAL_LIGHT_HEIGHT_M)
+		_rival_lights.append(Vector2(bay.x, -post_out_m))
 
 
 # A floodlight mast at `at` (down the track, to the left) with its lamp
 # head `inward` metres towards the track, glowing, and a spotlight aimed at
-# `aim` on the ground (no shadows, for a phone).
-func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float) -> void:
-	var mast := Art.cylinder(0.15, FLOODLIGHT_HEIGHT_M, STEEL, 8, 0.4, 0.6)
-	mast.position = TrackSpace.point(at.x, at.y, FLOODLIGHT_HEIGHT_M / 2.0)
+# `aim` on the ground (no shadows, for a phone), as bright and far as
+# `lights` (FLOODLIGHTS) says, its lamp `height_m` up [m].
+func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float,
+		lights: Dictionary, height_m := FLOODLIGHT_HEIGHT_M) -> void:
+	var mast := Art.cylinder(0.15, height_m, STEEL, 8, 0.4, 0.6)
+	mast.position = TrackSpace.point(at.x, at.y, height_m / 2.0)
 	parent.add_child(_quiet(mast))
 	var head := Art.box(Vector3(1.6, 0.6, 0.4), Color(0.15, 0.15, 0.16))
-	head.position = TrackSpace.point(at.x, at.y - inward, FLOODLIGHT_HEIGHT_M)
+	head.position = TrackSpace.point(at.x, at.y - inward, height_m)
 	parent.add_child(_quiet(head))
 	var face := MeshInstance3D.new()
 	var plate := BoxMesh.new()
@@ -904,23 +1014,32 @@ func _add_mast(parent: Node3D, at: Vector2, aim: Vector2, inward: float) -> void
 	lit.emission = FLOODLIGHT
 	lit.emission_energy_multiplier = 4.0
 	face.material_override = lit
-	face.position = TrackSpace.point(at.x, at.y - 1.8 * inward, FLOODLIGHT_HEIGHT_M)
+	face.position = TrackSpace.point(at.x, at.y - 1.8 * inward, height_m)
 	parent.add_child(_quiet(face))
 	var spot := SpotLight3D.new()
 	spot.light_color = FLOODLIGHT
-	spot.light_energy = FLOODLIGHT_ENERGY
-	spot.spot_range = FLOODLIGHT_RANGE_M
-	spot.spot_angle = 50.0
+	spot.light_energy = float(lights["energy"])
+	spot.spot_range = float(lights["range_m"])
+	spot.spot_angle = FLOODLIGHT_SPREAD_DEG
+	spot.spot_angle_attenuation = FLOODLIGHT_EDGE_FADE
 	spot.shadow_enabled = false
-	spot.position = TrackSpace.point(at.x, at.y - 2.0 * inward, FLOODLIGHT_HEIGHT_M)
+	spot.position = TrackSpace.point(at.x, at.y - 2.0 * inward, height_m)
 	parent.add_child(spot)
 	spot.look_at(TrackSpace.point(aim.x, aim.y, 0.0), Vector3.UP)
 
 
 # Where the floodlight masts stand, along the track and over the parking
-# (x down the track, y to the left) [m]: none but in the evening.
+# (x down the track, y to the left) [m]: none in the day, a few along the
+# track at sunset, many in the evening and over the parking too, with a
+# lamp post behind each rival's bay (rival_lights()).
 func floodlight_masts() -> Array[Vector2]:
-	return _masts + _parking_masts
+	return _masts + _parking_masts + _rival_lights
+
+
+# The lamp posts behind the rivals' bays, one each, in the evening
+# (x down the track, y to the left) [m].
+func rival_lights() -> Array[Vector2]:
+	return _rival_lights
 
 
 # The track's end: the pile and the trailers (TrackEnd); null before the

@@ -27,6 +27,19 @@ struct TractionCurve {
     double mobility_rate = 0.0;
     /// How quickly grip builds with slip.
     double slip_rate = 0.0;
+    /// Above its reference load a tire grips less per unit of load: its
+    /// traction coefficient falls by 1 / (1 + load_sensitivity (W / W_ref
+    /// - 1)), as a pressed tire's lugs and the soil under them give. On
+    /// strong ground, where the mobility number holds grip at its limit,
+    /// this is what keeps a tire pressed down hard (a chain pulling down
+    /// at the hitch) from gripping without bound. 0 for none; below 1, so
+    /// that pressing a tire harder still adds pull, if less and less.
+    double load_sensitivity = 0.0;
+    /// The load the sensitivity is measured from: up to it a tire grips as
+    /// its limit says [N]. A tuning constant, about one tire's share of the
+    /// tractor at rest as built; the weights' place and the free weight
+    /// move the real share around it.
+    double reference_load_n = 0.0;
     /// How the grip depends on how fast the tread sweeps through the soil:
     /// its slip speed v, the wheel's surface speed less the ground speed
     /// (see Params). The grip is scaled by a share that moves from
@@ -47,6 +60,10 @@ struct TractionCurve {
     /// The slip speed over which the share moves 63 % of its way [m/s].
     double spin_speed_m_s = 1.0;
 };
+
+/// The share of a tire's traction coefficient it keeps under `load_n`
+/// (TractionCurve::load_sensitivity): 1 up to its reference load.
+[[nodiscard]] double load_factor(const TractionCurve& curve, double load_n) noexcept;
 
 /// A tire's side grip on soil. Like traction, it follows the mobility
 /// number: soft ground gives a tire less side grip, and lets it build more
@@ -117,8 +134,9 @@ struct Pressure {
 /// leaves out: past the peak, a spinning tire smears or digs and loses
 /// grip, which makes wheelspin run away once it starts. k(v) is the tread's
 /// own response to how fast it spins (TractionCurve), which Brixius leaves
-/// out too. Load sensitivity follows from Bn. Braking (s < 0) mirrors
-/// traction.
+/// out too. Load sensitivity follows from Bn, and above the tire's
+/// reference load from its load_sensitivity (TractionCurve). Braking
+/// (s < 0) mirrors traction.
 struct Params {
     Size size;
     TractionCurve traction;
@@ -138,6 +156,9 @@ enum class ParamError : std::uint8_t {
     kDeflectionOutOfRange,
     kTractionLimitOutOfRange,
     kTractionRateNotPositive,
+    /// The load sensitivity negative, or set without a positive reference
+    /// load.
+    kLoadSensitivityInvalid,
     /// slow_spin_grip or fast_spin_grip outside (0, 1], or spin_speed_m_s
     /// not above 0.
     kSpinGripOutOfRange,

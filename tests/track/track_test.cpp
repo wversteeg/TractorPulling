@@ -369,6 +369,31 @@ TEST(Track, WeakSpotsTakeSomeGrip) {
     EXPECT_LE(spots, 15);
 }
 
+// The ground as prepared is the track without its spots: on a spotted
+// track it is what the same track without spots gives everywhere, its
+// profile included, and the spots only ever add drag or take grip.
+TEST(Track, TheGroundWithoutSpotsIsTheTrackWithoutThem) {
+    Params spotted = with_weak_spots(5);
+    spotted.hard_spots = with_hard_spots(7).hard_spots;
+    spotted.moisture_along_m = wet_patch().moisture_along_m;
+    Params plain = reference_params();
+    plain.moisture_along_m = spotted.moisture_along_m;
+    const Model with = model_of(spotted);
+    const Model without = model_of(plain);
+    for (int i = 0; i <= 400; ++i) {
+        const double x_m = 0.25 * i;
+        const soil::Surface ground = with.surface_without_spots(x_m);
+        expect_same(ground, without.surface_at(x_m));
+        EXPECT_DOUBLE_EQ(ground.drag_scale, 1.0);
+        for (const double y_m : {-4.0, 0.0, 4.0}) {
+            const soil::Surface under = with.surface_at(x_m, y_m);
+            EXPECT_LE(under.grip_factor, ground.grip_factor);
+            EXPECT_GE(under.drag_scale, ground.drag_scale);
+            EXPECT_EQ(under.cone_index_pa, ground.cone_index_pa);
+        }
+    }
+}
+
 // The same seed lays the same weak spots; another seed, others.
 TEST(Track, WeakSpotsFollowTheirSeed) {
     const Model first = model_of(with_weak_spots(5));

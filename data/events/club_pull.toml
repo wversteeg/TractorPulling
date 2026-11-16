@@ -78,8 +78,22 @@ max_steps_per_change = 4         # at most this many steps at once
 strong_full_pull_from = 0.8
 trouble_share = 0.6
 
-# The event in the game: the player and fourteen scripted rivals, drawn from the
-# field as above.
+# The event in the game: the player and eleven scripted rivals, drawn from
+# the field as above, the season's competition; and at every event two
+# guests (bijschrijvers) from a pool of six, who pull at a few of the
+# season's events but are not in the competition: they take places at the
+# event (and its prize money), never championship points, and a guest who
+# would have made the pull-off among the competitors pulls off too
+# (event::Event).
 [event.game]
-pullers = 15
-rival_names = ["Henk", "Gerrit", "Annemiek", "Bert", "Klaas", "Marieke", "Dirk", "Anouk", "Wim", "Jos", "Ilse", "Gijs", "Tineke", "Arie"]
+pullers = 12
+rival_names = ["Henk", "Gerrit", "Annemiek", "Bert", "Klaas", "Marieke", "Dirk", "Anouk", "Wim", "Jos", "Ilse"]
+guests = 2
+guest_names = ["Evert", "Hilde", "Martijn", "Truus", "Sjaak", "Wendy"]
+
+# The guests are drawn as the field is, but for their strength: from the
+# field's weakest to a little above its best, so a guest may win the event
+# or finish last.
+[event.guests]
+torque_scale = [0.84, 1.06]
+traction_limit = [0.83, 0.96]

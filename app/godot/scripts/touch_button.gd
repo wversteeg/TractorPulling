@@ -10,6 +10,7 @@ signal tapped
 const COLOUR := Color(0.1, 0.1, 0.1, 0.45)
 const HELD_COLOUR := Color(1.0, 0.8, 0.2, 0.8)
 const SELECTED_COLOUR := Color(0.2, 0.45, 0.8, 0.85)
+const INVISIBLE_HELD_COLOUR := Color(1.0, 1.0, 1.0, 0.12)
 const TEXT_COLOUR := Color(0.95, 0.95, 0.95)
 const DISABLED_TEXT_COLOUR := Color(0.55, 0.55, 0.55)
 const FONT_SIZE := 36
@@ -54,6 +55,12 @@ const ICON_GAP := 14.0
 	set(value):
 		readout = value
 		release()
+# Drawn as nothing but a faint light while held: a tap area over a picture
+# (the pit board's lane, which opens the track screen).
+@export var invisible := false:
+	set(value):
+		invisible = value
+		queue_redraw()
 # Shown, but not to be tapped (an upgrade the player cannot afford).
 @export var disabled := false:
 	set(value):
@@ -110,6 +117,10 @@ func _notification(what: int) -> void:
 
 
 func _draw() -> void:
+	if invisible:
+		if _held:
+			draw_rect(Rect2(Vector2.ZERO, size), INVISIBLE_HELD_COLOUR)
+		return
 	var text_colour := DISABLED_TEXT_COLOUR if disabled else TEXT_COLOUR
 	if rounded:
 		text_colour = draw_card()

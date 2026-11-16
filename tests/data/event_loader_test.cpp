@@ -108,9 +108,18 @@ TEST(EventLoader, LoadsTheShippedEvent) {
     EXPECT_EQ(definition.rules.pull_off_full_pull_m, 120.0);
     EXPECT_EQ(definition.rules.qualifying_below_line_m, 20.0);
     EXPECT_EQ(definition.pull_to_pull.pan_drag_share, 0.06);
-    EXPECT_EQ(definition.game.pullers, 15);
-    ASSERT_EQ(definition.game.rival_names.size(), 14U);
+    EXPECT_EQ(definition.game.pullers, 12);
+    ASSERT_EQ(definition.game.rival_names.size(), 11U);
     EXPECT_EQ(definition.game.rival_names.front(), "Henk");
+    // Two guests at each event from a pool of six, the field's but for
+    // their strength.
+    EXPECT_EQ(definition.game.guests, 2);
+    ASSERT_EQ(definition.game.guest_names.size(), 6U);
+    EXPECT_EQ(definition.game.guest_names.front(), "Evert");
+    EXPECT_EQ(definition.game.guest_variation.torque_scale.high, 1.06);
+    EXPECT_EQ(definition.game.guest_variation.traction_limit.high, 0.96);
+    EXPECT_EQ(definition.game.guest_variation.mass_kg.high, 3550.0);
+    EXPECT_EQ(definition.game.season_guests().pool, 6);
     EXPECT_EQ(definition.reference.driver.gear, 5);
     EXPECT_EQ(definition.variation.lowest_gear, 4);
     EXPECT_EQ(definition.variation.highest_gear, 5);
@@ -181,12 +190,21 @@ TEST(EventLoader, RejectsNonsense) {
     EXPECT_NE(
         error_of(with("launch_hold_share = 0.8", "launch_hold_share = 1.0")).find("event.driver"),
         std::string::npos);
-    EXPECT_NE(error_of(with("pullers = 15\nrival_names", "pullers = 1\nrival_names"))
+    EXPECT_NE(error_of(with("pullers = 12\nrival_names", "pullers = 1\nrival_names"))
                   .find("event.game.pullers"),
               std::string::npos);
-    EXPECT_NE(error_of(with("\"Arie\"]", "\"\"]")).find("event.game.rival_names"),
+    EXPECT_NE(error_of(with("\"Ilse\"]", "\"\"]")).find("event.game.rival_names"),
               std::string::npos);
-    EXPECT_NE(error_of(with(", \"Arie\"]", "]")).find("event.game.rival_names"), std::string::npos);
+    EXPECT_NE(error_of(with(", \"Ilse\"]", "]")).find("event.game.rival_names"), std::string::npos);
+    EXPECT_NE(error_of(with("guests = 2", "guests = 7")).find("event.game.guests"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("guests = 2", "guests = -1")).find("event.game.guests"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("\"Wendy\"]", "\"\"]")).find("event.game.guest_names"),
+              std::string::npos);
+    EXPECT_NE(error_of(with("torque_scale = [0.84, 1.06]", "torque_scale = [1.06, 0.84]"))
+                  .find("event.guests"),
+              std::string::npos);
     EXPECT_NE(error_of(with("trouble_share = 0.6", "trouble_share = 1.5"))
                   .find("event.rules: need strong_full_pull_from 0 to 1"),
               std::string::npos);
@@ -236,8 +254,8 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog first = run(definition.value());
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
-    EXPECT_EQ(first.pulls, 20);
-    EXPECT_EQ(first.hash, 0xf431169ca25558fbULL);
+    EXPECT_EQ(first.pulls, 19);
+    EXPECT_EQ(first.hash, 0x28b5da57560d9cdbULL);
 }
 
 }  // namespace

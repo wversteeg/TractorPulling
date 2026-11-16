@@ -128,6 +128,8 @@ struct State {
     bool sled_back = false;
     /// Times the pull has been restarted (restart()).
     std::uint8_t restarts = 0;
+    /// The driver chose not to restart a pull that may be (decline_restart()).
+    bool restart_declined = false;
 };
 
 /// The pull alone: hooked at the start line, the green flag already waved.
@@ -189,8 +191,17 @@ inline constexpr std::uint8_t kMaxRestarts = 1;
 /// Whether the pull just ended may be restarted: it stopped (stalled, spun
 /// out or eased off, or the time ran out on a sled barely nudged) or went
 /// out of bounds before kRestartBefore_m, the chain still on (just after
-/// the stop), and it has not been restarted kMaxRestarts times yet.
+/// the stop), it has not been restarted kMaxRestarts times yet, and the
+/// driver has not declined (decline_restart()). From the parking the chain
+/// stays on while it may: the sled, coasting up to a tractor that stopped
+/// first, may slacken the chain at once, and the choice must not go with it.
 [[nodiscard]] bool may_restart(const State& state) noexcept;
+
+/// The driver lets the pull count as it is: no restart, and from the
+/// parking the chain comes off once slack, as after any pull. Only when
+/// may_restart(): otherwise nothing, so an early call cannot take a later
+/// restart away.
+void decline_restart(State& state) noexcept;
 
 /// The pull again from the start line, the track as the last pull left it:
 /// the sled and the tractor pulled back, the tractor in neutral, the chain
@@ -205,6 +216,7 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.ready_steps);
     hash.add(state.sled_back);
     hash.add(static_cast<std::uint64_t>(state.restarts));
+    hash.add(state.restart_declined);
 }
 
 }  // namespace tp::turn

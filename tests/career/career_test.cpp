@@ -182,5 +182,32 @@ TEST(Career, AOneRungLadderNeverPromotes) {
     EXPECT_FALSE(may_move_up(p));
 }
 
+// Between seasons the player may pull on any rung open to them: back down
+// to a class below (its seasons there start afresh) and up again, never
+// past the highest opened, which stays open; their own rung keeps its
+// seasons and title.
+TEST(Career, ChoosesAnyOpenRung) {
+    Progress p;
+    ASSERT_TRUE(finish_season(p, kTractorPath, 1));
+    ASSERT_TRUE(move_up(p));
+    ASSERT_TRUE(finish_season(p, kTractorPath, 1));
+    ASSERT_EQ(p.unlocked, 2);
+    EXPECT_TRUE(choose_rung(p, 1));
+    EXPECT_EQ(p.seasons, 1) << "its own rung: as it was";
+    EXPECT_TRUE(p.title);
+    EXPECT_TRUE(choose_rung(p, 0));
+    EXPECT_EQ(p.rung, 0);
+    EXPECT_EQ(p.seasons, 0);
+    EXPECT_FALSE(p.title);
+    EXPECT_EQ(p.unlocked, 2) << "what is open stays open";
+    EXPECT_TRUE(may_move_up(p));
+    EXPECT_FALSE(choose_rung(p, 3)) << "not open";
+    EXPECT_FALSE(choose_rung(p, -1));
+    EXPECT_EQ(p.rung, 0);
+    EXPECT_TRUE(choose_rung(p, 2));
+    EXPECT_EQ(p.rung, 2);
+    EXPECT_TRUE(valid(p, kTractorPath));
+}
+
 }  // namespace
 }  // namespace tp::career

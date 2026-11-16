@@ -71,9 +71,19 @@ package "GDScript (app/godot/scripts)" {
     +paint, paint_dark, trim, rim, disc, ring : Color
     +number : String
     +driver_shirt : Color
+    +style_id : String : the dealer's model
+    +rival_styles : Array[String]
     +{static} schemes() : Dictionary : by class name
     +{static} for_class(class_name, protection) : TractorLook
-    +rival(i) : TractorLook : the class's trim, own paint
+    +rival(i) : TractorLook : the class's trim, own paint,\n another of the dealer's models
+    +painted(paint, trim, rim) : TractorLook
+  }
+  class TractorModels {
+    the dealers' models: a hood or bonnet,
+    a cab, canopy, cage or roll bar, their
+    heights, the stack, fenders and extras
+    +{static} STYLES : Dictionary, by id
+    +{static} style(id, protection) : Dictionary
   }
   class SledView {
     +build(dimensions)
@@ -82,6 +92,7 @@ package "GDScript (app/godot/scripts)" {
     +start_run(snapshot)
     +show_box_mass(box_mass_kg)
     +weights_shown() : int
+    +flap_angle() : float : the folding fenders, 45° and swinging
     +hook_position() : Vector3
     +camera_mount() : Vector3
     +{static} transport_wanted(snapshot) : float
@@ -106,7 +117,8 @@ package "GDScript (app/godot/scripts)" {
     +{static} past_lane_m(side) : float
     +show_signal(signal) : the gantry's light
     +signal_shown() : String
-    +floodlight_masts() : Array[Vector2], the evening's
+    +floodlight_masts() : Array[Vector2], at sunset and in the evening
+    +rival_lights() : Array[Vector2], a post behind each rival's bay
     +track_end() : TrackEnd
     +show_screen_live(target, delta)
     +show_screen_standings(rows)
@@ -232,6 +244,9 @@ package "GDScript (app/godot/scripts)" {
     +slack_to_go_m(snapshot) : float, still to creep into the ready band
     +guide_shown() : bool, the slack gauge
     +boost_bar() : float, the boost gauge's reading
+    +front_state() : String, down, up or bar
+    +nose_share() : float, 0 level to 1 on the wheelie bar
+    +front_text() : String
     +show_signal(signal) : the lamp on the HUD
     +signal_shown() : String
     +{static} gear_name(gear) : String
@@ -246,6 +261,33 @@ package "GDScript (app/godot/scripts)" {
     +add_button_row() : HBoxContainer
     +add_button(row, text, icon) : TouchButton
     +release_buttons()
+  }
+  class CareerScreen {
+    before a new season with more than one level
+    open: every class's levels, the tractor there
+    +level_buttons : Array[TouchButton], by rung
+    +start_button, back_button : TouchButton
+    +show_career(career, pick, can_go_back)
+    +pick_rung(rung)
+    +picked_rung() : int
+    ..signals..
+    start_requested(rung), back_requested
+  }
+  class DealerScreen {
+    the class's dealer: buying its tractor, or
+    the paint shop; a turntable in its own world
+    +mode : BUY, PAINT
+    +picked_model, picked_paint : int
+    +model_buttons, swatches : Array[TouchButton]
+    +action_button, back_button : TouchButton
+    +preview : TractorView
+    +show_dealer(dealer, dimensions, base, paint_shop, message)
+    +pick_model(model)
+    +pick_paint(paint)
+    +{static} look_for(base, dealer, model, paint) : TractorLook
+    ..signals..
+    buy_requested(model, paint), paint_requested(paint),
+    back_requested
   }
   class StartScreen {
     +practice_button, garage_button, event_button : TouchButton
@@ -291,13 +333,16 @@ package "GDScript (app/godot/scripts)" {
     +upgrade_pins, choice_pins : Array[PartPin]
     +buy_button, back_button, done_button : TouchButton
     +alternative_buttons : Array[TouchButton]
+    +paint_shop_button : TouchButton
+    +has_paint_shop : bool
     +show_garage(garage, message)
     +show_workshop()
     +open_upgrade(index)
     +open_choice(index)
     +{static} euros(amount) : String
     ..signals..
-    buy_requested(index), choice_requested(choice, alternative), done
+    buy_requested(index), choice_requested(choice, alternative),
+    paint_shop_requested, done
   }
   class TractorSketch {
     a pulling tractor from the side, to scale
@@ -352,12 +397,17 @@ package "GDScript (app/godot/scripts)" {
     +ballast_slider, pressure_slider, hitch_slider : TouchSlider
     +start_slider : TouchSlider, full left .. full right
     +pull_button, back_button : TouchButton
+    +lane_button : TouchButton, invisible, over the lane
+    +track_screen : TrackScreen
     +show_setup(title, tuning, pro, tilt, track, track_name, crew)
+    +open_track()
+    +close_track()
     +show_values(tuning)
     +start_y_m() : float
     +tip_text() : String : the crew chief: track, gear, hitch
     +release_sliders()
     +release_buttons()
+    +{static} make_panel(), make_label(), make_button()
     ..signals..
     tuning_changed(ballast_position, pressure_bar, hitch_m),
     start_changed(y_m),
@@ -369,8 +419,23 @@ package "GDScript (app/godot/scripts)" {
     the crew's own start marked
     +report : Dictionary (get_crew_report())
     +start_y_m : float
+    +lengthwise : bool, the start on the left
+    +marks : bool, a line every 10 m
     +show_report(crew)
     +show_start(y_m)
+  }
+  class TrackScreen {
+    the track, big: the lane lengthwise, the start,
+    the ground along the track, the crew's spots
+    +lane : LaneMap
+    +start_slider : TouchSlider, upright: full right .. full left
+    +done_button : TouchButton
+    +show_track(track, track_name, crew, start)
+    +show_start(y_m)
+    +release_buttons()
+    +release_sliders()
+    ..signals..
+    done_requested
   }
   class ResultScreen {
     +again_button, menu_button : TouchButton
@@ -425,6 +490,7 @@ package "GDScript (app/godot/scripts)" {
     +primary : bool
     +icon : String
     +readout : bool
+    +invisible : bool, a tap area over a picture
     +disabled : bool
     +is_held() : bool
     +release()
@@ -491,8 +557,12 @@ Pull *-- HapticsScreen : from the settings
 MenuPanel <|-- HapticsScreen
 HapticsScreen ..> Haptics : its kinds
 Pull *-- StartScreen
+Pull *-- CareerScreen : a new season, the class\nand level picked
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen
+Pull *-- DealerScreen : before a class's first season;\nthe garage's paint shop
+DealerScreen *-- TractorView : on the turntable
+DealerScreen ..> TractorModels
 GarageScreen *-- TractorSketch : the workshop
 GarageScreen *-- PartPin : a pin per part
 GarageScreen *-- LevelLine
@@ -510,6 +580,9 @@ Pull *-- ResultScreen
 Pull *-- SetupScreen : before every pull
 SetupScreen *-- "4" TouchSlider : weights,\ntire pressure, hitch, start
 SetupScreen *-- LaneMap : the lane
+SetupScreen *-- TrackScreen : the track, big,\nopened by tapping the lane
+TrackScreen *-- LaneMap : the lane, lengthwise
+TrackScreen *-- TouchSlider : the start
 SetupScreen *-- TractorSketch : the setup shown
 Pull *-- BoardScreen : the event, its results,\nthe season's standings
 Pull ..> EventTexts
@@ -541,6 +614,7 @@ VenueView ..> Trees : copses and\nthe tree line
 VenueView ..> People : the crowd, one\nMultiMesh a pose
 TractorView ..> People : the driver
 TractorView o-- TractorLook : its colours and number
+TractorView ..> TractorModels : draws the look's model
 Pull ..> TractorLook : the class's, and the rivals'
 CameraRig ..> TractorView : the cab camera, at the driver's eyes
 Flagman ..> People : the official

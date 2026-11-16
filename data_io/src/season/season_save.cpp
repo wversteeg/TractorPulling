@@ -82,26 +82,32 @@ std::optional<event::Standing> read_standing(const toml::node& node) {
     const std::optional<std::int64_t> puller = line->at_path("puller").value<std::int64_t>();
     const std::optional<std::int64_t> place = line->at_path("place").value<std::int64_t>();
     const std::optional<bool> disqualified = line->at_path("disqualified").value<bool>();
+    // Optional: a save from before the guests has none.
+    const bool guest = line->at_path("guest").value<bool>().value_or(false);
     if (!puller || !place || !disqualified || *puller < 0 || *place < 1 ||
         *puller >= event::kMaxPullers || *place > event::kMaxPullers) {
         return std::nullopt;
     }
     return event::Standing{.puller = static_cast<int>(*puller),
                            .place = static_cast<int>(*place),
-                           .disqualified = *disqualified};
+                           .disqualified = *disqualified,
+                           .guest = guest};
 }
 
 constexpr std::int64_t kBeforeTheGarage = 1;
 constexpr std::int64_t kBeforeTheClasses = 2;
 constexpr std::int64_t kBeforeTheLevels = 3;
 constexpr std::int64_t kBeforeTheChoices = 4;
+constexpr std::int64_t kBeforeTheTractors = 5;
+constexpr std::int64_t kBeforeTheDealers = 6;
 
-// The choices (version 5 on) into `career`; the error if they are broken.
+// The choices (version 5 on) at `path` of `root` into `out`; the error if
+// they are broken.
 std::optional<LoadError> read_choices(const toml::table& root, std::string_view source,
-                                      SavedCareer& career) {
-    const toml::array* list = root.at_path("career.choices").as_array();
+                                      const std::string& path, std::vector<SavedChoice>& out) {
+    const toml::array* list = root.at_path(path).as_array();
     if (list == nullptr) {
-        return detail::make_error(source, "career.choices", "must be an array of tables");
+        return detail::make_error(source, path, "must be an array of tables");
     }
     for (const toml::node& node : *list) {
         const toml::table* line = node.as_table();
@@ -111,19 +117,104 @@ std::optional<LoadError> read_choices(const toml::table& root, std::string_view 
             line != nullptr ? line->at_path("fitted").value<std::string>() : std::nullopt;
         const toml::array* owned = line != nullptr ? line->at_path("owned").as_array() : nullptr;
         if (!name || !fitted || owned == nullptr) {
-            return detail::make_error(source, "career.choices",
-                                      "every choice needs a name, fitted and owned");
+            return detail::make_error(source, path, "every choice needs a name, fitted and owned");
         }
         SavedChoice choice{.name = *name, .fitted = *fitted, .owned = {}};
         for (const toml::node& alternative : *owned) {
             const std::optional<std::string> label = alternative.value<std::string>();
             if (!label) {
-                return detail::make_error(source, "career.choices.owned",
+                return detail::make_error(source, path + ".owned",
                                           *name + ": the alternatives owned, by name");
             }
             choice.owned.push_back(*label);
         }
-        career.choices.push_back(std::move(choice));
+        out.push_back(std::move(choice));
+    }
+    return std::nullopt;
+}
+
+// The upgrades at `path` of `root` (none if it is not there) into `out`;
+// the error if they are broken.
+std::optional<LoadError> read_upgrades(const toml::table& root, std::string_view source,
+                                       const std::string& path, std::vector<SavedUpgrade>& out) {
+    const toml::node_view<const toml::node> upgrades = root.at_path(path);
+    if (!upgrades) {
+        return std::nullopt;
+    }
+    const toml::array* list = upgrades.as_array();
+    if (list == nullptr) {
+        return detail::make_error(source, path, "must be an array of tables");
+    }
+    for (const toml::node& node : *list) {
+        const toml::table* line = node.as_table();
+        const std::optional<std::string> name =
+            line != nullptr ? line->at_path("name").value<std::string>() : std::nullopt;
+        const std::optional<std::int64_t> level =
+            line != nullptr ? line->at_path("level").value<std::int64_t>() : std::nullopt;
+        constexpr std::int64_t kMaxLevel = 1000;
+        if (!name || !level || *level < 0 || *level > kMaxLevel) {
+            return detail::make_error(source, path,
+                                      "every upgrade needs a name and a level (0 or more)");
+        }
+        out.push_back({.name = *name, .level = static_cast<int>(*level)});
+    }
+    return std::nullopt;
+}
+
+// A tractor's model and paint (version 7 on) in `table` into `look`: both,
+// or neither for a tractor from before the dealers (as a version 6 save
+// has it, kept so); the error if only one is there.
+std::optional<LoadError> read_look(const toml::table& table, std::string_view source,
+                                   std::string_view path, std::int64_t version,
+                                   std::optional<SavedLook>& look) {
+    if (version <= kBeforeTheDealers) {
+        return std::nullopt;
+    }
+    std::optional<std::string> model = table.at_path("model").value<std::string>();
+    std::optional<std::string> paint = table.at_path("paint").value<std::string>();
+    if (!model && !paint) {
+        return std::nullopt;
+    }
+    if (!model || !paint) {
+        return detail::make_error(source, path, "a tractor needs both its model and paint");
+    }
+    look = SavedLook{.model = std::move(*model), .paint = std::move(*paint)};
+    return std::nullopt;
+}
+
+// The other classes' tractors (version 6 on) into `career`; the error if
+// they are broken.
+std::optional<LoadError> read_other_tractors(const toml::table& root, std::string_view source,
+                                             std::int64_t version, SavedCareer& career) {
+    const toml::node_view<const toml::node> tractors = root.at_path("career.tractors");
+    if (!tractors) {
+        return std::nullopt;
+    }
+    const toml::array* list = tractors.as_array();
+    if (list == nullptr) {
+        return detail::make_error(source, "career.tractors", "must be an array of tables");
+    }
+    for (const toml::node& node : *list) {
+        const toml::table* line = node.as_table();
+        const std::optional<std::string> name =
+            line != nullptr ? line->at_path("class").value<std::string>() : std::nullopt;
+        if (!name) {
+            return detail::make_error(source, "career.tractors", "every tractor needs its class");
+        }
+        SavedTractor tractor{.class_name = *name, .upgrades = {}, .choices = {}, .look = {}};
+        if (std::optional<LoadError> error =
+                read_upgrades(*line, source, "upgrades", tractor.upgrades)) {
+            return error;
+        }
+        if (std::optional<LoadError> error =
+                read_choices(*line, source, "choices", tractor.choices)) {
+            return error;
+        }
+        if (std::optional<LoadError> error =
+                read_look(*line, source, "career.tractors", version, tractor.look)) {
+            return error;
+        }
+        career.other_tractors.push_back(std::move(tractor));
     }
     return std::nullopt;
 }
@@ -162,32 +253,23 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
     career.seasons_on_level = static_cast<int>(seasons);
     career.title_on_level = *title;
     if (version > kBeforeTheChoices) {
-        if (std::optional<LoadError> error = read_choices(root, source, career)) {
+        if (std::optional<LoadError> error =
+                read_choices(root, source, "career.choices", career.choices)) {
             return error;
         }
     }
-    const toml::node_view<const toml::node> upgrades = root.at_path("career.upgrades");
-    if (!upgrades) {
-        return std::nullopt;
-    }
-    const toml::array* list = upgrades.as_array();
-    if (list == nullptr) {
-        return detail::make_error(source, "career.upgrades", "must be an array of tables");
-    }
-    for (const toml::node& node : *list) {
-        const toml::table* line = node.as_table();
-        const std::optional<std::string> name =
-            line != nullptr ? line->at_path("name").value<std::string>() : std::nullopt;
-        const std::optional<std::int64_t> level =
-            line != nullptr ? line->at_path("level").value<std::int64_t>() : std::nullopt;
-        constexpr std::int64_t kMaxLevel = 1000;
-        if (!name || !level || *level < 0 || *level > kMaxLevel) {
-            return detail::make_error(source, "career.upgrades",
-                                      "every upgrade needs a name and a level (0 or more)");
+    if (version > kBeforeTheTractors) {
+        if (std::optional<LoadError> error = read_other_tractors(root, source, version, career)) {
+            return error;
         }
-        career.upgrades.push_back({.name = *name, .level = static_cast<int>(*level)});
     }
-    return std::nullopt;
+    if (const toml::table* table = root.at_path("career").as_table()) {
+        if (std::optional<LoadError> error =
+                read_look(*table, source, "career", version, career.look)) {
+            return error;
+        }
+    }
+    return read_upgrades(root, source, "career.upgrades", career.upgrades);
 }
 
 // The tuning is the tractor's to hold to its ranges; a save only needs to
@@ -276,6 +358,35 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     return save;
 }
 
+// A tractor's model, paint, upgrades and choices, by name, as TOML keys.
+std::string parts(const std::optional<SavedLook>& look, const std::vector<SavedUpgrade>& upgrades,
+                  const std::vector<SavedChoice>& choices) {
+    // Neither for a tractor from before the dealers: the dealer's first model
+    // (data::career_from_names), not one still to buy (a model of "").
+    std::string out;
+    if (look) {
+        out += "model = " + toml_string(look->model) + "\n";
+        out += "paint = " + toml_string(look->paint) + "\n";
+    }
+    out += "upgrades = [\n";
+    for (const SavedUpgrade& upgrade : upgrades) {
+        out += "    { name = " + toml_string(upgrade.name) +
+               ", level = " + std::to_string(upgrade.level) + " },\n";
+    }
+    out += "]\n";
+    out += "choices = [\n";
+    for (const SavedChoice& choice : choices) {
+        out += "    { name = " + toml_string(choice.name) +
+               ", fitted = " + toml_string(choice.fitted) + ", owned = [";
+        for (std::size_t i = 0; i < choice.owned.size(); ++i) {
+            out += (i == 0 ? "" : ", ") + toml_string(choice.owned[i]);
+        }
+        out += "] },\n";
+    }
+    out += "]\n";
+    return out;
+}
+
 }  // namespace
 
 std::string write_season_save(const SeasonSave& save) {
@@ -296,28 +407,19 @@ std::string write_season_save(const SeasonSave& save) {
     out += "unlocked_level = " + toml_string(career.unlocked_level) + "\n";
     out += "seasons_on_level = " + std::to_string(career.seasons_on_level) + "\n";
     out += std::string{"title_on_level = "} + (career.title_on_level ? "true" : "false") + "\n";
-    out += "upgrades = [\n";
-    for (const SavedUpgrade& upgrade : career.upgrades) {
-        out += "    { name = " + toml_string(upgrade.name) +
-               ", level = " + std::to_string(upgrade.level) + " },\n";
+    out += parts(career.look, career.upgrades, career.choices);
+    for (const SavedTractor& tractor : career.other_tractors) {
+        out += "\n[[career.tractors]]\n";
+        out += "class = " + toml_string(tractor.class_name) + "\n";
+        out += parts(tractor.look, tractor.upgrades, tractor.choices);
     }
-    out += "]\n";
-    out += "choices = [\n";
-    for (const SavedChoice& choice : career.choices) {
-        out += "    { name = " + toml_string(choice.name) +
-               ", fitted = " + toml_string(choice.fitted) + ", owned = [";
-        for (std::size_t i = 0; i < choice.owned.size(); ++i) {
-            out += (i == 0 ? "" : ", ") + toml_string(choice.owned[i]);
-        }
-        out += "] },\n";
-    }
-    out += "]\n";
     for (const std::vector<event::Standing>& standings : save.events) {
         out += "\n[[events]]\nstandings = [\n";
         for (const event::Standing& s : standings) {
             out += "    { puller = " + std::to_string(s.puller) +
                    ", place = " + std::to_string(s.place) +
-                   ", disqualified = " + (s.disqualified ? "true" : "false") + " },\n";
+                   ", disqualified = " + (s.disqualified ? "true" : "false") +
+                   (s.guest ? ", guest = true" : "") + " },\n";
         }
         out += "]\n";
     }

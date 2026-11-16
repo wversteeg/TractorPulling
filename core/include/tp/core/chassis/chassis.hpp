@@ -40,6 +40,10 @@ struct Ballast {
     double front_ahead_of_rear_axle_m = 0.0;
     /// Where they sit as built, 0 (rearmost) to 1 (foremost).
     double position = 0.0;
+    /// Where those not free to move are bolted (with_free_weight), 0
+    /// (rearmost, a weight carrier by the hitch) to 1 (foremost, a farm
+    /// tractor's front weights).
+    double fixed_position = 0.0;
 };
 
 /// The tractor body: it moves along the track and pitches about the rear
@@ -167,14 +171,22 @@ enum class ParamError : std::uint8_t {
 /// gives `params` unchanged, bit for bit.
 [[nodiscard]] Params with_ballast_at(const Params& params, double position) noexcept;
 
-/// The tractor with `mass_kg` of ballast instead of what it has, where its
-/// ballast sits now: the whole mass changes by the difference, the centre
-/// of gravity moves towards the weights (or away), and the pitch and yaw
-/// inertias follow (parallel axes; the weights as a point at the centre of
-/// gravity's height). The ballast it has gives `params` unchanged, bit for
-/// bit; so does a mass that is not finite or below 0. validate() judges
-/// the result (e.g. ballast heavier than the tractor).
-[[nodiscard]] Params with_ballast_mass(const Params& params, double mass_kg) noexcept;
+/// The tractor with only `free_kg` of its weights free to move: the rest
+/// is fixed where Ballast::fixed_position puts them (at their rearmost
+/// place by default), the whole mass the same. The centre of gravity moves
+/// towards where the fixed weights sit and the pitch and yaw inertias
+/// follow (parallel axes; the
+/// weights as a point at the centre of gravity's height). All its weights
+/// free gives `params` unchanged, bit for bit; so does a mass that is not
+/// finite, below 0, or more than the weights it has.
+[[nodiscard]] Params with_free_weight(const Params& params, double free_kg) noexcept;
+
+/// The pitch at which the wheelie bar's tip touches the ground [rad]: how
+/// far the nose may come up before it stands on the bar. Within
+/// kMaxWheelieBarContactPitch_rad for valid params (found by bisection, the
+/// same bits on every platform); for a game showing how high the nose is,
+/// not for the step.
+[[nodiscard]] double wheelie_bar_contact_pitch_rad(const Params& params) noexcept;
 
 /// The share of the tractor's weight on the rear axle at rest, 0 to 1:
 /// from the centre of gravity alone, as a setup screen shows it (the front

@@ -26,6 +26,11 @@ slip_rate = 8.0                    # cut lugs: grip builds with more slip than a
 # (tp::tire::TractionCurve), along with the side grip it shares.
 fast_spin_grip = 0.9
 spin_speed_m_s = 4.0
+# Pressed harder than its share of the tractor at rest (the chain pulling
+# down at the hitch, the weights back), the tire grips less per unit of
+# load (tp::tire::TractionCurve::load_sensitivity).
+load_sensitivity = 0.3
+reference_load_n = 15900.0          # where the sensitivity starts: about one tire's share at rest as built
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint

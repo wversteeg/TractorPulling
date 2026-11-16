@@ -5,8 +5,9 @@
 # binding passes the controls and the time to tp::session unchanged. The
 # GDScript also checks the binding's edges (run_test.gd), and the pull
 # scene draws the run where it is (scene_test.gd), takes the touch controls
-# (touch_test.gd), plays an event's flow (flow_test.gd) and offers a short
-# pull's restart (restart_test.gd).
+# (touch_test.gd), plays an event's flow (flow_test.gd), sells the class's
+# tractor (dealer_test.gd) and offers a short pull's restart
+# (restart_test.gd).
 #
 #   scripts/godot_test.sh <godot binary> [build directory, default build/godot]
 #
@@ -29,12 +30,15 @@ cd "${root}"
 # app/godot/tests/run_test.gd. Their values live here only: Godot gets them
 # as user arguments. The timings (neutral until 0.5 s, the launch at 3 s)
 # are tp_pull's kPullSelectGear_s and kPullRevUpEnd_s.
-readonly gear=6
+# 4th: a dumped clutch in a taller gear bogs the farm tractor down to a
+# stall, the chain pressing its rear tires down; in 4th the easy run pulls
+# the full 100 m.
+readonly gear=4
 readonly stick=0.032        # both runs' steering control, just past the layouts' dead zone
 # The pro run's right brake, with a dumped clutch. It pulls the tractor
-# onto the chalk line at 25.9 s on purpose, so the run also ends in a
+# onto the chalk line at 38.1 s on purpose, so the run also ends in a
 # disqualification: "pro result: out_of_bounds 0.0 m" is the expected end.
-readonly brake_right=0.05
+readonly brake_right=0.1
 readonly tractor=data/tractors/farm_stock_light.toml
 readonly sled=data/sleds/light_class.toml
 readonly track=data/tracks/ideal_clay_sand.toml
@@ -119,6 +123,8 @@ play --fixed-fps 60 --script res://tests/scene_test.gd
 play --fixed-fps 60 --script res://tests/touch_test.gd
 # The game's flow: start screen, qualifying, pull-off, the next event.
 play --fixed-fps 60 --script res://tests/flow_test.gd
+# The tractor dealer on the shipped career: buying, the paint shop.
+play --fixed-fps 60 --script res://tests/dealer_test.gd
 # A whole turn, a scripted driver from the parking to the sled and back.
 # Headless: drawn by a software renderer its thousands of frames would take
 # far too long.
