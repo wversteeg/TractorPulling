@@ -47,7 +47,7 @@
 extends Node3D
 
 enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
-		SEASON }
+		SEASON, CAREER }
 # The menus drawn over the backdrop (MenuBackdrop), not over the venue;
 # the 3D world is not drawn behind it.
 # A whole turn's stages up to and through the pull: no result yet.
@@ -55,7 +55,7 @@ const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", 
 # The stages once the pull is over: the chain coming off, the drive back.
 const AFTER_PULL_STAGES := ["releasing", "to_the_parking", "parked"]
 const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
-		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON]
+		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON, Screen.CAREER]
 
 @export var career_path := "res://data/careers/tractor_path.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
@@ -144,6 +144,9 @@ var haptics_screen := HapticsScreen.new()
 var haptics := Haptics.new()
 var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
+var career_screen := CareerScreen.new()
+# Where "Back" on the career screen goes: the screen it was opened from.
+var _career_back := Screen.START
 var result_screen := ResultScreen.new()
 var restart_screen := RestartScreen.new()
 var flagman := Flagman.new()
@@ -204,7 +207,7 @@ func _ready() -> void:
 	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
 	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, haptics_screen,
-			garage_screen, board, setup_screen, result_screen, restart_screen]:
+			garage_screen, career_screen, board, setup_screen, result_screen, restart_screen]:
 		layer.add_child(node)
 	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
@@ -276,7 +279,11 @@ func _ready() -> void:
 			_set_screen(Screen.EVENT))
 	start_screen.event_requested.connect(func() -> void: _set_screen(Screen.EVENT))
 	start_screen.continue_requested.connect(show_start)
-	start_screen.new_season_requested.connect(_new_season)
+	start_screen.new_season_requested.connect(func() -> void: _choose_season())
+	career_screen.start_requested.connect(func(rung: int) -> void:
+		var seed := _seed()
+		_season_started(event.choose_season(rung, seed), seed))
+	career_screen.back_requested.connect(func() -> void: _set_screen(_career_back))
 	start_screen.move_up_requested.connect(_move_up)
 	start_screen.new_career_requested.connect(_new_season.bind(true))
 	settings_screen.new_career_requested.connect(func(rung: int) -> void:
@@ -314,7 +321,9 @@ func _ready() -> void:
 			start_screen.show_event({}, error)
 			_set_screen(Screen.START)
 		elif not _resume_season():
-			_new_season()
+			# A season over (or none yet): the next one, where the player
+			# picks if more than one class or level is open.
+			_choose_season(-1, false)
 
 
 func _start_autoplay() -> void:
@@ -361,6 +370,20 @@ func _new_season(new_career: bool = false, rung: int = 0) -> void:
 	var seed := _seed()
 	var error := event.new_career_at(rung, seed) if new_career else event.new_season(seed)
 	_season_started(error, seed)
+
+
+# A new season: with more than one class or level open, the career screen
+# first, to pick where (`pick`, the highest open by default; "Back" to the
+# screen before unless `can_go_back` is false); else a new season on the
+# player's level.
+func _choose_season(pick: int = -1, can_go_back: bool = true) -> void:
+	var career := event.get_career()
+	if int(career.get("unlocked", 0)) == 0:
+		_new_season()
+		return
+	_career_back = screen
+	career_screen.show_career(career, pick, can_go_back)
+	_set_screen(Screen.CAREER)
 
 
 # The class a title opened, and a new season in it; money and upgrades
@@ -621,6 +644,7 @@ func _set_screen(next: Screen) -> void:
 	settings_screen.visible = screen == Screen.SETTINGS
 	haptics_screen.visible = screen == Screen.HAPTICS
 	garage_screen.visible = screen == Screen.GARAGE
+	career_screen.visible = screen == Screen.CAREER
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
 	result_screen.visible = screen == Screen.RESULT
@@ -635,6 +659,7 @@ func _set_screen(next: Screen) -> void:
 	settings_screen.release_buttons()
 	haptics_screen.release_buttons()
 	garage_screen.release_buttons()
+	career_screen.release_buttons()
 	setup_screen.release_buttons()
 	setup_screen.release_sliders()
 	board.release_buttons()
@@ -933,9 +958,9 @@ func _on_board_first() -> void:
 			if not event.get_season().get("over", false):
 				show_start()
 			elif event.get_career().get("can_move_up", false):
-				_move_up()
+				_choose_season(int(event.get_career().get("rung", 0)) + 1)
 			else:
-				_new_season()
+				_choose_season()
 
 
 func _on_board_second() -> void:
@@ -943,7 +968,7 @@ func _on_board_second() -> void:
 		event.decide(false)
 	elif screen == Screen.SEASON and event.get_season().get("over", false):
 		# Staying to defend the title: the class above stays open.
-		_new_season()
+		_choose_season(int(event.get_career().get("rung", 0)))
 
 
 func _read_controls() -> void:

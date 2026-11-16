@@ -30,7 +30,15 @@ SeasonSave example() {
                               .unlocked_class = R"(Super "stock")",
                               .unlocked_level = "Belofte",
                               .seasons_on_level = 2,
-                              .title_on_level = true};
+                              .title_on_level = true,
+                              .other_tractors = {{.class_name = R"(Standard "3.5" t)",
+                                                  .upgrades = {{.name = "Drawbar", .level = 3}},
+                                                  .choices = {}},
+                                                 {.class_name = "Sport 4.5 t",
+                                                  .upgrades = {},
+                                                  .choices = {{.name = "Turbo",
+                                                               .fitted = "Small",
+                                                               .owned = {"Big"}}}}}};
     save.events = {
         {{.puller = 2, .place = 1},
          {.puller = 0, .place = 2},
@@ -71,6 +79,17 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
               (std::vector<std::string>{"68 mm turbo", R"(A "huge" one)"}));
     EXPECT_EQ(career.choices[1].name, "Gearbox");
     EXPECT_TRUE(career.choices[1].owned.empty());
+    // The other classes' tractors, each by its class.
+    ASSERT_EQ(career.other_tractors.size(), 2U);
+    EXPECT_EQ(career.other_tractors[0].class_name, R"(Standard "3.5" t)");
+    ASSERT_EQ(career.other_tractors[0].upgrades.size(), 1U);
+    EXPECT_EQ(career.other_tractors[0].upgrades[0].name, "Drawbar");
+    EXPECT_EQ(career.other_tractors[0].upgrades[0].level, 3);
+    EXPECT_TRUE(career.other_tractors[0].choices.empty());
+    EXPECT_EQ(career.other_tractors[1].class_name, "Sport 4.5 t");
+    ASSERT_EQ(career.other_tractors[1].choices.size(), 1U);
+    EXPECT_EQ(career.other_tractors[1].choices[0].fitted, "Small");
+    EXPECT_EQ(career.other_tractors[1].choices[0].owned, (std::vector<std::string>{"Big"}));
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
         ASSERT_EQ(back.events[e].size(), save.events[e].size()) << e;
@@ -156,11 +175,25 @@ TEST(SeasonSave, ReadsASaveFromBeforeTheLevels) {
     EXPECT_FALSE(career.title_on_level);
 }
 
+// A version 5 save has no other class's tractor: the career goes on with
+// the one it pulls.
+TEST(SeasonSave, ReadsASaveFromBeforeEachClassKeptItsTractor) {
+    std::string text = write_season_save(example());
+    const std::string head = "version = " + std::to_string(kSeasonSaveVersion);
+    ASSERT_NE(text.find(head), std::string::npos);
+    text.replace(text.find(head), head.size(), "version = 5");
+    const Result<SeasonSave> read = parse_season_save(text, "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    const SavedCareer career = read.value().career.value_or(SavedCareer{});
+    EXPECT_TRUE(career.other_tractors.empty());
+    EXPECT_EQ(career.upgrades.size(), 2U);
+}
+
 TEST(SeasonSave, RefusesNonsense) {
     EXPECT_EQ(error_of(kHead), "");
     std::string other_version = kHead;
-    other_version.replace(0, 11, "version = 6");
-    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 5"),
+    other_version.replace(0, 11, "version = 7");
+    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 6"),
               std::string::npos)
         << error_of(other_version);
     std::string version_2 = kHead;

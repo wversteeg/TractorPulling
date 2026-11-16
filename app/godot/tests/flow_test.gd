@@ -555,10 +555,14 @@ func _check_garage_choice(event: TractorPullEvent, garage: GarageScreen) -> void
 
 
 # A title opened the level above (a save that says so: a season won, and
-# the app closed on the season's board): launched again, the new season's
-# start screen offers to move up, which starts the level above's season
-# with the money and upgrades carried up. Then the settings' "Start" (for
-# testing a class) starts a new career a class up.
+# the app closed on the season's board): launched again, the career screen
+# offers every class and level, the level above picked (the highest open)
+# and the class above locked, with no going back (no season to go back
+# to); starting there gives the level above's season with the money and
+# upgrades carried up. Then the settings' "Start" (for testing a class)
+# starts a new career a class up, and the career screen takes the player
+# down a class and back up again: each class keeps its own tractor, the
+# money one wallet.
 func _check_move_up() -> void:
 	var saved := FileAccess.get_file_as_string(SAVE_PATH)
 	_expect(saved.contains("class = \"Practice\"") and saved.contains("unlocked_level = \"Belofte\""),
@@ -570,10 +574,13 @@ func _check_move_up() -> void:
 	var start: StartScreen = pull.get("start_screen")
 	var event: TractorPullEvent = pull.get("event")
 	var garage := event.get_garage()
-	_expect(start.visible and start.move_up_button.visible and start.event_button.visible,
-			"the level above to move up to")
-	await _shot("8_move_up")
-	_tap(start.move_up_button)
+	var careers: CareerScreen = pull.get("career_screen")
+	_expect(careers.visible and not start.visible and careers.picked_rung() == 1
+			and not careers.back_button.visible and careers.level_buttons.size() == 3
+			and not careers.level_buttons[1].disabled and careers.level_buttons[2].disabled,
+			"the career screen, the level above picked, the class above locked")
+	await _shot("8_career")
+	_tap(careers.start_button)
 	await _frames(2)
 	var career := event.get_career()
 	_expect(career.get("rung", -1) == 1 and career.get("level_name", "") == "Promo"
@@ -604,6 +611,49 @@ func _check_move_up() -> void:
 	_expect(career.get("rung", -1) == 2 and career.get("class_name", "") == "Practice, a class up"
 			and int(event.get_garage().get("money_eur", -1)) == START_MONEY_EUR,
 			"a new career a class up: %s" % career)
+	await _check_class_round_trip(pull)
+
+
+# A part bought a class up; the career screen (from a new season) to the
+# class below, which has a new tractor of its own, the same money; a part
+# bought there; then back up, where the tractor is as it was left, and the
+# save keeps the other class's tractor.
+func _check_class_round_trip(pull: Node) -> void:
+	var event: TractorPullEvent = pull.get("event")
+	var careers: CareerScreen = pull.get("career_screen")
+	_expect(event.buy_upgrade(0).is_empty(), "a part bought a class up")
+	var up := event.get_garage()
+	pull.call("_choose_season")
+	await _frames(2)
+	_expect(careers.visible and careers.picked_rung() == 2 and careers.back_button.visible,
+			"the career screen, the highest open picked")
+	_tap(careers.level_buttons[0])
+	await _frames(1)
+	_expect(careers.picked_rung() == 0, "the class below picked")
+	_tap(careers.start_button)
+	await _frames(2)
+	var career := event.get_career()
+	var down := event.get_garage()
+	_expect(career.get("class_name", "") == "Practice" and int(career.get("rung", -1)) == 0
+			and int(career.get("unlocked", -1)) == 2, "down a class, the class above open: %s"
+			% career)
+	_expect(int(down["money_eur"]) == int(up["money_eur"]), "one wallet: %s" % down)
+	var bought := 0
+	for part: Dictionary in down["upgrades"]:
+		bought += int(part["level"])
+	_expect(bought == 0, "the class below's own tractor, new: %s" % down)
+	var choices: Array = career.get("choices", [])
+	_expect(choices.size() == 3 and String(choices[2]["tractor"]) == "yours"
+			and int(choices[2]["stages_bought"]) == 1, "the class above's tractor kept: %s"
+			% [choices])
+	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("[[career.tractors]]"),
+			"the save keeps the other class's tractor")
+	pull.call("_choose_season")
+	await _frames(2)
+	_tap(careers.start_button)
+	await _frames(2)
+	_expect(event.get_career().get("rung", -1) == 2 and event.get_garage()["upgrades"]
+			== up["upgrades"], "back up, the tractor as it was left: %s" % event.get_garage())
 
 
 # The pull scene again, as at the next launch, on the same save; with
