@@ -2,9 +2,11 @@
 
 #include "tp/core/engine/engine.hpp"
 #include "tp/core/units/conversions.hpp"
+#include "tp/data/files.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -221,6 +223,35 @@ TEST(GarageLoader, RefusesNonsenseInChoices) {
     EXPECT_NE(choice_error_of("name = \"Weights\"", "name = \"Big build\"")
                   .find("'Big build' is listed twice"),
               std::string::npos);
+}
+
+// The pulling hitch's holes are 2 cm apart, counted from the drawbar bought
+// down to the farm drawbar's height (the setup screen's HITCH_STEP_M), so
+// every drawbar the garages sell sits a whole number of holes above the
+// first level's: one only 1 cm up would leave no hole to choose below it.
+TEST(GarageLoader, ShippedDrawbarsSitOnWholeHoles) {
+    constexpr double kHoleStep_m = 0.02;
+    constexpr double kTolerance_m = 1e-9;
+    const std::filesystem::path garages = std::filesystem::path{TP_DATA_DIR} / "garages";
+    int drawbars = 0;
+    for (const auto& file : std::filesystem::directory_iterator{garages}) {
+        const auto result = load_garage(file.path().generic_string(), read_from_disk);
+        ASSERT_TRUE(result.ok()) << result.error().message;
+        for (const garage::Upgrade& upgrade : result.value().catalogue.offer()) {
+            if (upgrade.part != garage::Part::kHitchHeight) {
+                continue;
+            }
+            ++drawbars;
+            const double first_m = upgrade.levels[0].value;
+            for (std::size_t i = 1; i < upgrade.level_count; ++i) {
+                const double holes = (upgrade.levels[i].value - first_m) / kHoleStep_m;
+                EXPECT_NEAR(holes, std::round(holes), kTolerance_m / kHoleStep_m)
+                    << file.path().filename() << " level " << i;
+                EXPECT_GE(holes, 1.0 - kTolerance_m) << file.path().filename() << " level " << i;
+            }
+        }
+    }
+    EXPECT_GT(drawbars, 0);
 }
 
 }  // namespace
