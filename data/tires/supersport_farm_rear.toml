@@ -4,10 +4,11 @@
 # tall. Bigger round than the puller tire (supersport_puller_rear.toml, a
 # 30.5L-32). Its lugs push into the track: grip builds quickly with slip,
 # and spun fast they dig in and smear, so it pulls best spinning little,
-# on the short final drive (drivelines/supersport_3600_short.toml). Tall
-# lugs that reach firm soil hold on a soft, wet track where the puller
-# tire's shallow bars cannot. The limit is the fully built tire's; the
-# garage sets it.
+# on the short final drive (drivelines/supersport_3600_short.toml). Fully
+# built it pulls a little short of the puller tire on a good track (the
+# clay-sand) and further short where the tires spin; in some conditions
+# it may still win (a part-built tractor on the watered start). The limit
+# is the fully built tire's; the garage sets it.
 [tire]
 radius_m = 0.98                    # rolling radius
 section_width_m = 0.71
