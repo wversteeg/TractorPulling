@@ -2,10 +2,13 @@
 # the stall and rated speeds marked, the gear, the speed, a bar down the
 # track with the full-pull line, the stretch where the sled's push-down
 # comes on (orange: from there the drag rises to its most) and how far the
-# sled has got, with "PUSH-DOWN" beside it once it is on, and how much the
-# front tires still carry, against what they carry at rest (marked): the
-# pull takes weight off the front, and with none left the front is up and
-# the front wheels do not steer. Left of the bars a boost gauge: the turbo's
+# sled has got, with "PUSH-DOWN" beside it once it is on, and the front:
+# while its tires are down (yellow) how much they still carry, against
+# what they carry at rest (marked): the pull takes weight off the front;
+# once it is up (green: all the weight on the rear tires, though the front
+# wheels do not steer) how high the nose is, in degrees and as a share of
+# the way up to the wheelie bar; standing on the bar (red) it has gone too
+# far: the bar carries what the rear tires should. Left of the bars a boost gauge: the turbo's
 # pressure in bar, its full boost marked (shown when the engine gives one).
 # In the pro layout also how far the clutch
 # is in. In a whole turn, a short line along the top in the middle says
@@ -98,8 +101,12 @@ const RATED_COLOUR := Color(0.3, 0.85, 0.3)
 const SLED_COLOUR := Color(0.95, 0.95, 0.9)
 const LINE_COLOUR := Color(0.9, 0.2, 0.15)
 const PUSHDOWN_COLOUR := Color(1.0, 0.55, 0.1)
-const FRONT_COLOUR := Color(0.45, 0.7, 0.95)
-const FRONT_UP_COLOUR := Color(0.95, 0.3, 0.2)
+const FRONT_DOWN_COLOUR := Color(0.95, 0.8, 0.25)
+const FRONT_UP_COLOUR := Color(0.35, 0.85, 0.35)
+const FRONT_BAR_COLOUR := Color(0.95, 0.3, 0.2)
+# The nose stands on the wheelie bar within this of the pitch at which the
+# bar touches down (the bar's tip gives a little) [rad].
+const ON_THE_BAR_WITHIN_RAD := 0.01
 # The front bar ends a little past the load at rest: a dip of the nose
 # (a hard shift) loads the front more.
 const FRONT_HEADROOM := 1.5
@@ -126,6 +133,9 @@ var _pushdown := 0.0
 var _pushdown_label := Label.new()
 var _front_rest_n := 1.0
 var _front_n := 0.0
+# The pitch now, and the pitch at which the wheelie bar touches down [rad].
+var _pitch_rad := 0.0
+var _bar_pitch_rad := 0.3
 var _front := Label.new()
 # The boost: its share (0 to 1) and the pressure at full boost, 0 when the
 # engine gives none [bar].
@@ -205,6 +215,7 @@ func build(dimensions: Dictionary) -> void:
 	_pushdown_start_m = dimensions["pushdown_start_m"]
 	_pushdown_full_m = dimensions["pushdown_full_m"]
 	_front_rest_n = maxf(float(dimensions["front_axle_rest_load_n"]), 1.0)
+	_bar_pitch_rad = maxf(float(dimensions.get("wheelie_bar_contact_pitch_rad", 0.3)), 0.01)
 	_chain_m = dimensions["chain_length_m"]
 	_steer_hint_m = STEER_HINT_SHARE * float(dimensions["hook_off_line_m"])
 	_taut_within_m = dimensions["ready_taut_within_m"]
@@ -262,10 +273,9 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	else:
 		_pushdown_label.text = "PUSH-DOWN SET"
 	_front_n = s["front_axle_load_n"]
-	_front.text = "FRONT UP" if _front_n <= 0.0 else "front %3.0f %%" % (
-			_front_n / _front_rest_n * 100.0)
-	_front.add_theme_color_override("font_color",
-			FRONT_UP_COLOUR if _front_n <= 0.0 else Color.WHITE)
+	_pitch_rad = float(s.get("tractor_pitch_rad", 0.0))
+	_front.text = front_text()
+	_front.add_theme_color_override("font_color", _front_colour())
 	var gear: int = s["gear"]
 	var text := "%s   %4.0f rpm   %4.1f km/h   %6.2f m" % [
 			gear_name(gear), _omega_rad_s * RPM_PER_RAD_S,
@@ -414,16 +424,54 @@ func _draw() -> void:
 	_mark(track, _pushdown_start_m / _bar_m, PUSHDOWN_COLOUR)
 	_mark(track, _line_m / _bar_m, LINE_COLOUR)
 
-	# What the front tires carry, the load at rest marked.
+	# The front: down, what its tires carry (the load at rest marked); up,
+	# how high the nose is, filling to the wheelie bar; on the bar, full
+	# and framed.
 	var front := Rect2(BAR_LEFT, FRONT_TOP, BAR_WIDTH, BAR_HEIGHT)
 	draw_rect(front, BACK_COLOUR)
-	var front_top_n := _front_rest_n * FRONT_HEADROOM
-	var front_share := clampf(_front_n / front_top_n, 0.0, 1.0)
+	var state := front_state()
+	var front_share := nose_share()
+	if state == "down":
+		front_share = clampf(_front_n / (_front_rest_n * FRONT_HEADROOM), 0.0, 1.0)
 	draw_rect(Rect2(front.position, Vector2(BAR_WIDTH * front_share, BAR_HEIGHT)),
-			FRONT_COLOUR)
-	_mark(front, 1.0 / FRONT_HEADROOM, Color.WHITE)
-	if _front_n <= 0.0:
-		draw_rect(front, FRONT_UP_COLOUR, false, 3.0)
+			_front_colour())
+	if state == "down":
+		_mark(front, 1.0 / FRONT_HEADROOM, Color.WHITE)
+	elif state == "bar":
+		draw_rect(front, FRONT_BAR_COLOUR, false, 3.0)
+
+
+# Where the front is: "down" (its tires carry), "up" (in the air) or "bar"
+# (standing on the wheelie bar).
+func front_state() -> String:
+	if _front_n > 0.0:
+		return "down"
+	return "bar" if _pitch_rad >= _bar_pitch_rad - ON_THE_BAR_WITHIN_RAD else "up"
+
+
+# How high the nose is, 0 level to 1 on the wheelie bar.
+func nose_share() -> float:
+	return clampf(_pitch_rad / _bar_pitch_rad, 0.0, 1.0)
+
+
+# The front in words: what its tires carry, or how high the nose is.
+func front_text() -> String:
+	match front_state():
+		"down":
+			return "front %3.0f %%" % (_front_n / _front_rest_n * 100.0)
+		"up":
+			return "nose up %2.0f° · %3.0f %%" % [rad_to_deg(maxf(_pitch_rad, 0.0)),
+					nose_share() * 100.0]
+	return "ON THE BAR %2.0f°" % rad_to_deg(_pitch_rad)
+
+
+func _front_colour() -> Color:
+	match front_state():
+		"down":
+			return FRONT_DOWN_COLOUR
+		"up":
+			return FRONT_UP_COLOUR
+	return FRONT_BAR_COLOUR
 
 
 # The slack gauge: the slack shrinking to the right, the band where it

@@ -95,6 +95,7 @@ func _play() -> void:
 	_expect(venue.signal_shown() == "off" and hud.signal_shown() == "off",
 			"no signal before the chain is on")
 	_check_steer_hint(hud)
+	_check_front(hud)
 	_check_reverse_key(_pull.get("controls"))
 
 	var stages: Array[String] = [s["stage"]]
@@ -201,6 +202,30 @@ func _play() -> void:
 	_expect(not bool(s["chain_hooked"]) and not marker.visible, "the chain off again")
 	print("turn test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# The front as the HUD shows it: down, yellow, what its tires carry; up,
+# green, how high the nose is (degrees, and the share of the way to the
+# wheelie bar, which the run's dimensions give); on the bar, red.
+func _check_front(hud: Hud) -> void:
+	var bar_rad: float = hud.get("_bar_pitch_rad")
+	_expect(bar_rad > 0.1 and bar_rad < 0.53, "the wheelie bar touches down at %.2f rad" % bar_rad)
+	var front_n: float = hud.get("_front_n")
+	var pitch_rad: float = hud.get("_pitch_rad")
+	hud.set("_front_n", 1000.0)
+	hud.set("_pitch_rad", 0.0)
+	_expect(hud.front_state() == "down" and hud.front_text().begins_with("front")
+			and hud.call("_front_colour") == Hud.FRONT_DOWN_COLOUR, "the front down: %s" % hud.front_text())
+	hud.set("_front_n", 0.0)
+	hud.set("_pitch_rad", bar_rad / 2.0)
+	_expect(hud.front_state() == "up" and is_equal_approx(hud.nose_share(), 0.5)
+			and hud.front_text().contains("50 %")
+			and hud.call("_front_colour") == Hud.FRONT_UP_COLOUR, "the nose up: %s" % hud.front_text())
+	hud.set("_pitch_rad", bar_rad)
+	_expect(hud.front_state() == "bar" and hud.front_text().begins_with("ON THE BAR")
+			and hud.call("_front_colour") == Hud.FRONT_BAR_COLOUR, "on the bar: %s" % hud.front_text())
+	hud.set("_front_n", front_n)
+	hud.set("_pitch_rad", pitch_rad)
 
 
 # Backing up, the tail goes the way the wheel is turned: a hitch left of

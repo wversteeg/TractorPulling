@@ -287,6 +287,24 @@ AxleLoads axle_loads_at_rest(const Params& params) noexcept {
     return axle_loads(params, State{}, Drawbar{});
 }
 
+double wheelie_bar_contact_pitch_rad(const Params& params) noexcept {
+    // The tip's depth rises with the pitch up to the contact: bisect between
+    // level, where it is clear of the ground, and the most the bar may
+    // allow, where it is in.
+    constexpr int kHalvings = 60;
+    double clear_rad = 0.0;
+    double in_rad = kMaxWheelieBarContactPitch_rad;
+    for (int i = 0; i < kHalvings; ++i) {
+        const double middle_rad = 0.5 * (clear_rad + in_rad);
+        if (wheelie_bar(params, math::sin_cos(middle_rad)).depth_m > 0.0) {
+            in_rad = middle_rad;
+        } else {
+            clear_rad = middle_rad;
+        }
+    }
+    return in_rad;
+}
+
 double rear_axle_share(const Params& params) noexcept {
     return 1.0 - params.cg_ahead_of_rear_axle_m / params.wheelbase_m;
 }
