@@ -384,6 +384,17 @@ A class is pulled at up to three levels, **belofte**, **promo** and
 **top**, each a season with its own field of rivals, on the class's one
 tractor:
 
+- **Twelve in the competition, two guests.** Each level's competition is
+  the player and eleven named rivals, the same all season. At every event
+  two guests (bijschrijvers) pull too, two of a pool of six drawn afresh
+  per event, so each pulls a few events a season. A guest may be anyone
+  from the field's weakest to a little above its best (at a class's top
+  level up to a fully built tractor), so a guest may win or finish last.
+  Guests take their place and its prize money at the event, but no
+  points: the points go by place among the competitors, so a guest who
+  wins leaves the best competitor the 20 points. A guest who would have
+  made the pull-off among the competitors alone (a full pull, or further
+  than the fourth competitor) pulls off too, a fifth.
 - A new tractor (every part at its first stage) finishes **around last**
   at the class's first level; a **fully upgraded** one **wins at the
   class's last level**
@@ -397,7 +408,7 @@ tractor:
 - The money is set so that the rule rarely has to hold anyone back: each
   part's stages dearer as they go, each level paying about 30 % more than
   the one below. Every place pays, so a new tractor at the back still
-  climbs: in the standard class, the career's start, the 15th earns the
+  climbs: in the standard class, the career's start, the last (14th) earns the
   garage's cheapest upgrade every event, in the Sport classes one every
   two events. Within a class each level pays every place at least about
   10 % more than the level below, so moving up never cuts a back-marker's
@@ -414,6 +425,12 @@ tractor:
   about two seasons.
 - Within a class the tractor stays as it is; a new class is a new tractor
   (see "Every class has its own tractor").
+- **The player picks where to pull each season.** When a new season
+  starts with more than one class or level open, a career screen lists
+  them all (the highest open picked); the player may go back to a lower
+  level or class, a Standard 3.5 t season after unlocking Sport 4.5 t
+  too. Each class keeps its own tractor, as it was left, and the money is
+  one wallet.
 - The NTTO's standard class has no levels (nor has the game's) and Pro
   Stock has groups II and I: the game uses the Farmstock levels for the
   other classes alike, except **Sport 2.5 t, only promo and top**: it is the introduction to

@@ -234,6 +234,9 @@ package "GDScript (app/godot/scripts)" {
     +slack_to_go_m(snapshot) : float, still to creep into the ready band
     +guide_shown() : bool, the slack gauge
     +boost_bar() : float, the boost gauge's reading
+    +front_state() : String, down, up or bar
+    +nose_share() : float, 0 level to 1 on the wheelie bar
+    +front_text() : String
     +show_signal(signal) : the lamp on the HUD
     +signal_shown() : String
     +{static} gear_name(gear) : String
@@ -248,6 +251,17 @@ package "GDScript (app/godot/scripts)" {
     +add_button_row() : HBoxContainer
     +add_button(row, text, icon) : TouchButton
     +release_buttons()
+  }
+  class CareerScreen {
+    before a new season with more than one level
+    open: every class's levels, the tractor there
+    +level_buttons : Array[TouchButton], by rung
+    +start_button, back_button : TouchButton
+    +show_career(career, pick, can_go_back)
+    +pick_rung(rung)
+    +picked_rung() : int
+    ..signals..
+    start_requested(rung), back_requested
   }
   class StartScreen {
     +practice_button, garage_button, event_button : TouchButton
@@ -514,6 +528,7 @@ Pull *-- HapticsScreen : from the settings
 MenuPanel <|-- HapticsScreen
 HapticsScreen ..> Haptics : its kinds
 Pull *-- StartScreen
+Pull *-- CareerScreen : a new season, the class\nand level picked
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen
 GarageScreen *-- TractorSketch : the workshop

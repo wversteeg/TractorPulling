@@ -95,6 +95,7 @@ package "tp::chassis" {
     +with_ballast_at(const Params&, position) : Params
     +with_free_weight(const Params&, free_kg) : Params
     +rear_axle_share(const Params&) : double
+    +wheelie_bar_contact_pitch_rad(const Params&) : double
     +hitch(const Params&, const State&) : Hitch
     +axle_loads(const Params&, const State&, const Drawbar&) : AxleLoads
     +axle_loads_at_rest(const Params&) : AxleLoads

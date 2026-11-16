@@ -63,12 +63,18 @@ bool may_move_up(const Progress& progress) noexcept {
 }
 
 bool move_up(Progress& progress) noexcept {
-    if (!may_move_up(progress)) {
+    return may_move_up(progress) && choose_rung(progress, progress.rung + 1);
+}
+
+bool choose_rung(Progress& progress, int rung) noexcept {
+    if (rung < 0 || rung > progress.unlocked) {
         return false;
     }
-    ++progress.rung;
-    progress.seasons = 0;
-    progress.title = false;
+    if (rung != progress.rung) {
+        progress.rung = rung;
+        progress.seasons = 0;
+        progress.title = false;
+    }
     return true;
 }
 

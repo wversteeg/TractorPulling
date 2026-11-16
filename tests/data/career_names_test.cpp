@@ -99,5 +99,37 @@ TEST(CareerNames, FitsOnlyWhatIsOwned) {
     EXPECT_EQ(career.owned[0], 0b10);
 }
 
+// Each class its own tractor: moving A to B parks A's by name and carries
+// the career into B by name (B not pulled in yet); back to A brings A's
+// tractor back as it was left and parks B's; the money goes along.
+TEST(CareerNames, EachClassKeepsItsOwnTractor) {
+    const GarageDefinition a = garage_of(kWeightsAndPump, kTwoTurbos);
+    const GarageDefinition b = garage_of(R"(
+[[garage.upgrades]]
+part = "engine_torque"
+name = "Pump"
+levels = [{ value = 0.5, cost_eur = 0, label = "a" }, { value = 0.6, cost_eur = 1, label = "b" }]
+)",
+                                         kThreeTurbos);
+    const garage::Career in_a{.money_eur = 50, .levels = {1, 1}, .fitted = {1}, .owned = {0b10}};
+    ClassTractors to_b = switch_class(in_a, a, "A", {}, b, "B");
+    EXPECT_EQ(to_b.career.money_eur, 50);
+    EXPECT_EQ(to_b.career.levels[0], 1) << "the pump carried in by name";
+    ASSERT_EQ(to_b.parked.size(), 1U);
+    EXPECT_EQ(to_b.parked[0].class_name, "A");
+    garage::Career in_b = to_b.career;
+    in_b.levels[0] = 0;
+    in_b.money_eur = 80;
+    const ClassTractors back = switch_class(in_b, b, "B", to_b.parked, a, "A");
+    EXPECT_EQ(back.career.money_eur, 80) << "one wallet";
+    EXPECT_EQ(back.career.levels, in_a.levels) << "A's tractor as it was left";
+    EXPECT_EQ(back.career.fitted, in_a.fitted);
+    EXPECT_EQ(back.career.owned, in_a.owned);
+    ASSERT_EQ(back.parked.size(), 1U);
+    EXPECT_EQ(back.parked[0].class_name, "B");
+    ASSERT_FALSE(back.parked[0].upgrades.empty());
+    EXPECT_EQ(back.parked[0].upgrades[0].level, 0) << "B's tractor parked as it was left";
+}
+
 }  // namespace
 }  // namespace tp::data

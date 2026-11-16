@@ -62,9 +62,13 @@ package "tp::data" {
   class GameField <<struct>> {
     +pullers : int
     +rival_names : vector<string>
+    +guests : int, at each event
+    +guest_names : vector<string>, the pool
+    +guest_variation : field::Variation
+    +season_guests() : field::Guests
     --
-    the event in the game: the player
-    and the named scripted rivals
+    the event in the game: the player,
+    the named scripted rivals and guests
   }
   EventDefinition *-- GameField
   class "event_loader" as EventLoader <<free functions>> {
@@ -115,7 +119,7 @@ package "tp::data" {
     +season : string
     +seed : uint64
     +tuning : vehicle::Tuning
-    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n choices : vector<{name, fitted, owned}>, class_name, level_name,\n unlocked_class, unlocked_level, seasons_on_level, title_on_level}>
+    +career : optional<SavedCareer{money_eur, upgrades : vector<{name, level}>,\n choices : vector<{name, fitted, owned}>, class_name, level_name,\n unlocked_class, unlocked_level, seasons_on_level, title_on_level,\n other_tractors : vector<SavedTractor{class_name, upgrades, choices}>}>
     +events : vector<vector<event::Standing>>
   }
   class GarageDefinition <<struct>> {
@@ -135,11 +139,12 @@ package "tp::data" {
     +name_career(const garage::Career&, const GarageDefinition&, SavedCareer&)
     +career_from_names(const SavedCareer&, const GarageDefinition&) : garage::Career
     +carry_career(const garage::Career&, from, to) : garage::Career
+    +switch_class(career, from, from_class, parked, to, to_class)\n : ClassTractors{career, parked}, each class its own tractor
     --
     upgrades and choices by name: saves, moving up a class
   }
   class "season_save" as SeasonSaveFns <<free functions>> {
-    +kSeasonSaveVersion = 5 (1 read too: no career;\n2: the first rung; 3: the classes' first levels;\n4: no choices, the hitch in its top hole)
+    +kSeasonSaveVersion = 6 (1 read too: no career;\n2: the first rung; 3: the classes' first levels;\n4: no choices, the hitch in its top hole;\n5: no other class's tractor)
     +write_season_save(const SeasonSave&) : string
     +parse_season_save(text, source) : Result<SeasonSave>
     --
