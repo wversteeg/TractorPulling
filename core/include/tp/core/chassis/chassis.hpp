@@ -40,6 +40,10 @@ struct Ballast {
     double front_ahead_of_rear_axle_m = 0.0;
     /// Where they sit as built, 0 (rearmost) to 1 (foremost).
     double position = 0.0;
+    /// Where those not free to move are bolted (with_free_weight), 0
+    /// (rearmost, a weight carrier by the hitch) to 1 (foremost, a farm
+    /// tractor's front weights).
+    double fixed_position = 0.0;
 };
 
 /// The tractor body: it moves along the track and pitches about the rear
@@ -168,8 +172,8 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] Params with_ballast_at(const Params& params, double position) noexcept;
 
 /// The tractor with only `free_kg` of its weights free to move: the rest
-/// is fixed at their rearmost place (Ballast::rear_ahead_of_rear_axle_m),
-/// the whole mass the same. The centre of gravity moves back with the fixed
+/// is fixed where Ballast::fixed_position puts them (at their rearmost
+/// place by default), the whole mass the same. The centre of gravity moves back with the fixed
 /// weights and the pitch and yaw inertias follow (parallel axes; the
 /// weights as a point at the centre of gravity's height). All its weights
 /// free gives `params` unchanged, bit for bit; so does a mass that is not

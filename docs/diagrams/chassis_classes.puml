@@ -35,6 +35,7 @@ package "tp::chassis" {
     +rear_ahead_of_rear_axle_m : double
     +front_ahead_of_rear_axle_m : double
     +position : double
+    +fixed_position : double, where those not free sit
     --
     weights moved before a pull,
     part of the mass; 0 rearmost, 1 foremost

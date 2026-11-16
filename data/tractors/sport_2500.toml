@@ -62,11 +62,18 @@ protection = "roll_bar"           # no cab: an ETPC roll bar (60 x 60 x 4 mm up 
 # back (82 % on the rear axle) it climbs onto its wheelie bar and stands
 # up again as the sled gets heavy, and with them at the front (62 %) it
 # stays down. The track's grip decides how high it goes.
+#
+# Weights the garage has not freed yet are bolted to the front bracket, a
+# farm tractor's front weights (fixed_position 1): fixed at the back, a
+# promo tractor with little weight free hopped onto its wheelie bar and
+# back again all along a grippy track (play-testers on the loam). Freed
+# weights may be moved back, for a slippery track.
 [tractor.chassis.ballast]
 mass_kg = 300.0
 rear_ahead_of_rear_axle_m = -0.75  # by the hitch, at the rear tires' edge (ETPC FS 2026 1.2.2: none beyond the rear tires)
 front_ahead_of_rear_axle_m = 2.8
 position = 0.5
+fixed_position = 1.0
 
 [tractor.chassis.front_tires]
 stiffness_n_per_m = 300000.0
