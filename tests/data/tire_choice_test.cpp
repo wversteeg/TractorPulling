@@ -8,9 +8,13 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
+#include <limits>
 #include <optional>
+#include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace tp::field {
 namespace {
@@ -38,21 +42,35 @@ struct Tires {
     int final_drive = 0;
 };
 
-// How far the fully built Supersport 3.6 t tractor, its 7 l engine on
-// `tires`, pulls the class's sled made kHeavier steps heavier on `track`,
-// in its best pulling gear, driven as the class's reference driver.
-double pulled_m(const std::string& track_file, Tires tires) {
-    const auto loaded = data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" /
-                                          "supersport_3600_top.toml");
-    EXPECT_TRUE(loaded.ok()) << loaded.error().message;
-    const data::SeasonDefinition& d = loaded.value();
+// The Supersport 3.6 t class at top, loaded once for the test.
+data::SeasonDefinition supersport() {
+    auto loaded = data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" /
+                                    "supersport_3600_top.toml");
+    if (!loaded.ok()) {
+        throw std::runtime_error(loaded.error().message);
+    }
+    return std::move(loaded).value();
+}
+
+data::Track track(const std::string& file) {
+    auto loaded = data::load_track(std::filesystem::path{TP_DATA_DIR} / "tracks" / file);
+    if (!loaded.ok()) {
+        throw std::runtime_error(loaded.error().message);
+    }
+    return std::move(loaded).value();
+}
+
+// How far the fully built tractor of `d`'s class, its 7 l engine on
+// `tires`, pulls the class's sled made kHeavier steps heavier on `on`, in
+// its best pulling gear, driven as the class's reference driver.
+double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires tires) {
     const data::EventDefinition& e = d.event;
     const garage::Catalogue& catalogue = d.garage.catalogue;
     garage::Career full = garage::new_career(catalogue);
     for (std::size_t i = 0; i < catalogue.count; ++i) {
         full.levels.at(i) = static_cast<int>(catalogue.upgrades.at(i).level_count) - 1;
     }
-    full.owned.fill(0xFF);
+    full.owned.fill(std::numeric_limits<std::uint8_t>::max());
     full.fitted.at(kEngine) = kSevenLitre;
     full.fitted.at(kRearTires) = tires.tires;
     full.fitted.at(kFinalDrive) = tires.final_drive;
@@ -61,10 +79,7 @@ double pulled_m(const std::string& track_file, Tires tires) {
     EXPECT_TRUE(tractor.has_value());
     Puller puller = e.reference;
     puller.tractor = tractor.value_or(e.reference.tractor);
-
-    const auto track = data::load_track(std::filesystem::path{TP_DATA_DIR} / "tracks" / track_file);
-    EXPECT_TRUE(track.ok()) << track.error().message;
-    const Venue venue = data::venue(e.sled, track.value());
+    const Venue venue = data::venue(e.sled, on);
     const std::optional<GearTrial> trial = best_gear_trial(
         puller, sled::heavier(venue.sled, kHeavier), venue.track, kLowestPullingGear,
         kHighestPullingGear, trial_pull_rules(e.rules, venue, e.rules.full_pull_m));
@@ -73,24 +88,31 @@ double pulled_m(const std::string& track_file, Tires tires) {
 }
 
 constexpr Tires kPullerOnTall{.tires = kPullerTires, .final_drive = kTall};
+constexpr Tires kPullerOnShort{.tires = kPullerTires, .final_drive = kShort};
 constexpr Tires kFarmOnShort{.tires = kFarmTires, .final_drive = kShort};
 // A clear win: more than the spot on the track decides [m].
 constexpr double kClearly_m = 2.0;
 
-// Fully built, each tire on the final drive that suits it: the puller tires
-// pull furthest on a firm track, where they spin up to their bite; on the
-// watered start, slick under the tires at the launch, the farm tires' lugs
-// grip at little slip and they win there. Neither combination is the best
-// everywhere.
+// Fully built, each tire on the final drive the crew pairs it with (the
+// one it suits): the puller tires pull furthest on a firm track, where
+// they spin up to their bite; on the watered start, slick under the tires
+// at the launch, the farm tires' lugs grip at little slip and they beat
+// the puller tires on the tall drive there. Neither pairing is the best
+// everywhere. The tires alone are another matter: on the watered start the
+// puller tires on the short drive go further still, so a player who owns
+// both drives is never worse off on the puller tires. The farm tires are
+// the stock ones, cheaper: they may win somewhere, but need not.
 TEST(TireChoice, PullerTiresWinOnAFirmTrackAndFarmTiresOnAWetStart) {
+    const data::SeasonDefinition d = supersport();
     for (const char* firm : {"firm_loam.toml", "ideal_clay_sand.toml"}) {
-        const double puller_m = pulled_m(firm, kPullerOnTall);
-        const double farm_m = pulled_m(firm, kFarmOnShort);
-        EXPECT_GT(puller_m, farm_m + kClearly_m) << firm;
+        const data::Track on = track(firm);
+        EXPECT_GT(pulled_m(d, on, kPullerOnTall), pulled_m(d, on, kFarmOnShort) + kClearly_m)
+            << firm;
     }
-    const double puller_m = pulled_m("watered_start.toml", kPullerOnTall);
-    const double farm_m = pulled_m("watered_start.toml", kFarmOnShort);
-    EXPECT_GT(farm_m, puller_m + kClearly_m);
+    const data::Track wet = track("watered_start.toml");
+    const double farm_m = pulled_m(d, wet, kFarmOnShort);
+    EXPECT_GT(farm_m, pulled_m(d, wet, kPullerOnTall) + kClearly_m);
+    EXPECT_GT(pulled_m(d, wet, kPullerOnShort), farm_m + kClearly_m);
 }
 
 }  // namespace
