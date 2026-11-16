@@ -213,6 +213,27 @@ public:
     /// Fits an alternative owned, for nothing; "" or why not ("not bought
     /// yet", "not during an event", "no such part").
     godot::String fit_alternative(std::int64_t choice, std::int64_t alternative);
+    /// The class's tractor dealer: {money_eur, needs_tractor, can_buy,
+    /// model, paint, paint_cost_eur, models, paints}; `model` and `paint`
+    /// the tractor's (model -1 before it is bought), each model {name,
+    /// style, about, cost_eur, price_eur} (`price_eur` what it costs now:
+    /// the cheapest no dearer than the money there is), each paint {name,
+    /// paint, trim, rims} ("#rrggbb"). `needs_tractor`: a season in the
+    /// class waits for the tractor to be bought. {} before a season; no
+    /// models for a class without a dealer.
+    [[nodiscard]] godot::Dictionary get_dealer() const;
+    /// The player's tractor as built and tuned, as TractorPullRun's
+    /// get_dimensions() gives the tractor's keys, to draw it off the track
+    /// (the dealer's turntable). {} before a season.
+    [[nodiscard]] godot::Dictionary get_tractor_dimensions() const;
+    /// Buys the class's tractor as model `model` in paint `paint`; "" or why
+    /// not ("owned already", "not enough money", "not during an event", "no
+    /// such model").
+    godot::String buy_tractor(std::int64_t model, std::int64_t paint);
+    /// Paints the tractor in paint `paint`, for the dealer's paint cost; ""
+    /// or why not ("not bought yet", "painted so already", "not enough
+    /// money", "not during an event", "no such paint").
+    godot::String repaint(std::int64_t paint);
     /// For testing: adds `amount_eur` to the player's money (a negative
     /// amount takes it away, to no less than 0); false without a career.
     bool add_money(std::int64_t amount_eur);

@@ -15,7 +15,7 @@
 # thirds of the stages bought (careers/tractor_path.toml).
 
 [garage]
-start_money_eur = 1000
+start_money_eur = 2500
 
 [[garage.upgrades]]
 part = "engine_torque"
@@ -89,3 +89,89 @@ levels = [
     { value = 2425.0, cost_eur = 650, label = "Turned up, 2425 rpm" },
     { value = 2500.0, cost_eur = 800, label = "2500 rpm, 2700 unloaded" },
 ]
+
+# The dealer: the tractor a career starts with, bought before the first
+# season, as one of these models (the game draws each its own way; all pull
+# alike). The cheapest leaves the € 1,000 a career starts the garage with;
+# a dearer one, less. Painting it another colour later costs paint_cost_eur.
+[garage.dealer]
+paint_cost_eur = 300
+
+[[garage.dealer.models]]
+name = "Veldmeester 65"
+style = "farm_classic"
+cost_eur = 1500
+about = "The all-rounder: a square hood, a closed cab and a beacon on the roof."
+
+[[garage.dealer.models]]
+name = "Oldtimer 55"
+style = "farm_vintage"
+cost_eur = 1750
+about = "A rounded hood, chrome and a tall stack, no cab: a restored classic."
+
+[[garage.dealer.models]]
+name = "Laagland 70"
+style = "farm_low"
+cost_eur = 2000
+about = "Low and lean: a flat hood, a low cab and the exhaust up its corner."
+
+[[garage.dealer.models]]
+name = "Hoogland 75"
+style = "farm_high"
+cost_eur = 2250
+about = "Tall and proud: a high hood, a big cab, twin stacks and wide fenders."
+
+[[garage.dealer.models]]
+name = "Akkerman 80 S"
+style = "farm_modern"
+cost_eur = 2500
+about = "The new one: a sloping nose with lamp strips and a rounded cab."
+
+# The colours, the same at every dealer: the first comes with the tractor.
+[[garage.dealer.paints]]
+name = "Field red"
+paint = "#b3241c"
+trim = "#f2f0e8"
+rims = "#e8dcb4"
+
+[[garage.dealer.paints]]
+name = "Forest green"
+paint = "#1f5e2e"
+trim = "#f2d230"
+rims = "#f2d230"
+
+[[garage.dealer.paints]]
+name = "Lake blue"
+paint = "#1d4f9c"
+trim = "#f2f0e8"
+rims = "#d8d8dc"
+
+[[garage.dealer.paints]]
+name = "Harvest orange"
+paint = "#e3741c"
+trim = "#20201f"
+rims = "#20201f"
+
+[[garage.dealer.paints]]
+name = "Steel grey"
+paint = "#9aa0a6"
+trim = "#1c1c1e"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Night black"
+paint = "#121214"
+trim = "#e0aa2a"
+rims = "#e0aa2a"
+
+[[garage.dealer.paints]]
+name = "Snow white"
+paint = "#f0efe9"
+trim = "#b3241c"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Royal purple"
+paint = "#5c1a6e"
+trim = "#f2f0e8"
+rims = "#d8d8dc"

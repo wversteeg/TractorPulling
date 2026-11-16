@@ -47,7 +47,7 @@
 extends Node3D
 
 enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
-		SEASON, CAREER }
+		SEASON, CAREER, DEALER }
 # The menus drawn over the backdrop (MenuBackdrop), not over the venue;
 # the 3D world is not drawn behind it.
 # A whole turn's stages up to and through the pull: no result yet.
@@ -55,7 +55,8 @@ const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", 
 # The stages once the pull is over: the chain coming off, the drive back.
 const AFTER_PULL_STAGES := ["releasing", "to_the_parking", "parked"]
 const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
-		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON, Screen.CAREER]
+		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON, Screen.CAREER,
+		Screen.DEALER]
 
 @export var career_path := "res://data/careers/tractor_path.toml"
 # The season's draws: the rivals, the running orders and their pulls; -1
@@ -145,6 +146,7 @@ var haptics := Haptics.new()
 var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
 var career_screen := CareerScreen.new()
+var dealer_screen := DealerScreen.new()
 # Where "Back" on the career screen goes: the screen it was opened from.
 var _career_back := Screen.START
 var result_screen := ResultScreen.new()
@@ -207,7 +209,8 @@ func _ready() -> void:
 	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
 	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, haptics_screen,
-			garage_screen, career_screen, board, setup_screen, result_screen, restart_screen]:
+			garage_screen, career_screen, dealer_screen, board, setup_screen, result_screen,
+			restart_screen]:
 		layer.add_child(node)
 	add_child(layer)
 	controls.camera_requested.connect(cameras.next)
@@ -244,8 +247,23 @@ func _ready() -> void:
 	garage_screen.event = event
 	start_screen.garage_requested.connect(func() -> void:
 		garage_screen.show_workshop()
-		garage_screen.show_garage(event.get_garage())
-		_set_screen(Screen.GARAGE))
+		_show_garage())
+	garage_screen.paint_shop_requested.connect(func() -> void: _show_dealer(true))
+	dealer_screen.buy_requested.connect(func(model: int, paint: int) -> void:
+		var error := event.buy_tractor(model, paint)
+		if error.is_empty():
+			_save_season()
+			show_start()
+		else:
+			_show_dealer(false, "Cannot buy it: %s." % error))
+	dealer_screen.paint_requested.connect(func(paint: int) -> void:
+		var error := event.repaint(paint)
+		if error.is_empty():
+			_save_season()
+			_show_garage("Painted %s." % event.get_dealer()["paints"][paint]["name"])
+		else:
+			_show_dealer(true, "Cannot paint it: %s." % error))
+	dealer_screen.back_requested.connect(func() -> void: _show_garage())
 	garage_screen.buy_requested.connect(func(index: int) -> void:
 		var error := event.buy_upgrade(index)
 		if error.is_empty():
@@ -464,8 +482,12 @@ func _save_season() -> void:
 		push_warning("cannot save the season: %s" % error_string(error))
 
 
-# The start screen, with the season's next event started behind it.
+# The start screen, with the season's next event started behind it; first
+# the dealer, while the class's tractor is not bought.
 func show_start(error: String = "") -> void:
+	if error.is_empty() and event.get_dealer().get("needs_tractor", false):
+		_show_dealer(false)
+		return
 	if error.is_empty() and not _event_ready:
 		error = event.start_event()
 		_event_ready = error.is_empty()
@@ -473,6 +495,23 @@ func show_start(error: String = "") -> void:
 		push_error("cannot start the event: " + error)
 	start_screen.show_event(event.get_event(), error, event.get_career())
 	_set_screen(Screen.START)
+
+
+# The garage's workshop as it is now, with the paint shop if the class's
+# dealer paints; `message` what the last purchase said, if anything.
+func _show_garage(message: String = "") -> void:
+	garage_screen.has_paint_shop = not (event.get_dealer().get("models", []) as Array).is_empty()
+	garage_screen.show_garage(event.get_garage(), message)
+	_set_screen(Screen.GARAGE)
+
+
+# The class's dealer: to buy the class's tractor, or (`paint_shop`) to
+# paint the one bought; `message` what the last try said.
+func _show_dealer(paint_shop: bool, message: String = "") -> void:
+	var dimensions := event.get_tractor_dimensions()
+	dealer_screen.show_dealer(event.get_dealer(), dimensions, _class_base_look(dimensions),
+			paint_shop, message)
+	_set_screen(Screen.DEALER)
 
 
 # The setup screen before a pull: the tractor's tuning. For
@@ -599,9 +638,23 @@ func _build(error: String) -> bool:
 	return true
 
 
-# The look of the class being pulled: the career's class in an event, by
-# the tractor's protection on a scripted run.
+# The look of the class being pulled: the career's class in an event, as
+# the player bought and painted it at the dealer, the rivals in the
+# dealer's other models; by the tractor's protection on a scripted run.
 func class_look(dimensions: Dictionary) -> TractorLook:
+	var base := _class_base_look(dimensions)
+	if autoplay:
+		return base
+	var dealer := event.get_dealer()
+	var look := DealerScreen.look_for(base, dealer, int(dealer.get("model", -1)),
+			int(dealer.get("paint", 0)))
+	for model: Dictionary in dealer.get("models", []):
+		look.rival_styles.append(String(model["style"]))
+	return look
+
+
+# The class's own look, before the dealer's model and paint.
+func _class_base_look(dimensions: Dictionary) -> TractorLook:
 	var class_label := "" if autoplay else str(event.get_career().get("class_name", ""))
 	return TractorLook.for_class(class_label, str(dimensions.get("protection", "cab")))
 
@@ -644,6 +697,7 @@ func _set_screen(next: Screen) -> void:
 	settings_screen.visible = screen == Screen.SETTINGS
 	haptics_screen.visible = screen == Screen.HAPTICS
 	garage_screen.visible = screen == Screen.GARAGE
+	dealer_screen.visible = screen == Screen.DEALER
 	career_screen.visible = screen == Screen.CAREER
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
@@ -660,6 +714,7 @@ func _set_screen(next: Screen) -> void:
 	haptics_screen.release_buttons()
 	garage_screen.release_buttons()
 	career_screen.release_buttons()
+	dealer_screen.release_buttons()
 	setup_screen.release_buttons()
 	setup_screen.release_sliders()
 	board.release_buttons()

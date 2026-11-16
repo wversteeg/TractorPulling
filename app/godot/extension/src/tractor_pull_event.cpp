@@ -272,7 +272,8 @@ godot::Dictionary TractorPullEvent::get_career() const {
                                                   .unlocked_level = {},
                                                   .seasons_on_level = 0,
                                                   .title_on_level = false,
-                                                  .other_tractors = {}};
+                                                  .other_tractors = {},
+                                                  .look = kept.look};
                     tractor = data::career_from_names(named, *garage);
                 }
             }
@@ -486,7 +487,8 @@ godot::String TractorPullEvent::get_save() const {
                                  .unlocked_level = {},
                                  .seasons_on_level = 0,
                                  .title_on_level = false,
-                                 .other_tractors = {}};
+                                 .other_tractors = {},
+                                 .look = {}};
         if (career_definition_) {
             const std::vector<data::CareerRung>& rungs = career_definition_->rungs;
             const data::CareerRung& here = rungs.at(static_cast<std::size_t>(progress_.rung));
@@ -1151,6 +1153,103 @@ godot::String TractorPullEvent::buy_upgrade(std::int64_t index) {
     return {};
 }
 
+godot::Dictionary TractorPullEvent::get_dealer() const {
+    godot::Dictionary out;
+    if (!season_ || !definition_ || !career_) {
+        return out;
+    }
+    const data::GarageDefinition& garage = definition_->garage;
+    const garage::Dealer& dealer = garage.catalogue.dealer;
+    out["money_eur"] = career_->money_eur;
+    out["needs_tractor"] = garage::needs_tractor(garage.catalogue, *career_);
+    out["can_buy"] = season_->player_may_change_tractor();
+    out["model"] = career_->model;
+    out["paint"] = career_->paint;
+    out["paint_cost_eur"] = dealer.paint_cost_eur;
+    godot::Array models;
+    for (std::size_t m = 0; m < dealer.model_count && m < garage.model_texts.size(); ++m) {
+        const data::ModelText& text = garage.model_texts[m];
+        godot::Dictionary line;
+        line["name"] = to_godot(text.name);
+        line["style"] = to_godot(text.style);
+        line["about"] = to_godot(text.about);
+        line["cost_eur"] = dealer.model_cost_eur.at(m);
+        line["price_eur"] = garage::model_price_eur(garage.catalogue, m, career_->money_eur);
+        models.push_back(line);
+    }
+    out["models"] = models;
+    godot::Array paints;
+    for (const data::PaintText& text : garage.paint_texts) {
+        godot::Dictionary line;
+        line["name"] = to_godot(text.name);
+        line["paint"] = to_godot(text.paint);
+        line["trim"] = to_godot(text.trim);
+        line["rims"] = to_godot(text.rims);
+        paints.push_back(line);
+    }
+    out["paints"] = paints;
+    return out;
+}
+
+godot::Dictionary TractorPullEvent::get_tractor_dimensions() const {
+    if (!season_ || !definition_ || !career_) {
+        return {};
+    }
+    return TractorPullRun::tractor_dimensions(vehicle::tuned(player_tractor(), tuning_));
+}
+
+godot::String TractorPullEvent::buy_tractor(std::int64_t model, std::int64_t paint) {
+    if (!season_ || !definition_ || !career_ || model < 0 || paint < 0) {
+        return "no such model";
+    }
+    if (!season_->player_may_change_tractor()) {
+        return "not during an event";
+    }
+    const std::optional<garage::BuyError> error =
+        garage::buy_model(*career_, definition_->garage.catalogue, static_cast<std::size_t>(model),
+                          static_cast<std::size_t>(paint));
+    if (!error) {
+        return {};
+    }
+    switch (*error) {
+        case garage::BuyError::kOwned:
+            return "owned already";
+        case garage::BuyError::kNotEnoughMoney:
+            return "not enough money";
+        case garage::BuyError::kNoSuchUpgrade:
+        case garage::BuyError::kTopLevel:
+            break;
+    }
+    return "no such model";
+}
+
+godot::String TractorPullEvent::repaint(std::int64_t paint) {
+    if (!season_ || !definition_ || !career_ || paint < 0) {
+        return "no such paint";
+    }
+    if (!season_->player_may_change_tractor()) {
+        return "not during an event";
+    }
+    if (career_->model == garage::kNoModel) {
+        return "not bought yet";
+    }
+    const std::optional<garage::BuyError> error =
+        garage::repaint(*career_, definition_->garage.catalogue, static_cast<std::size_t>(paint));
+    if (!error) {
+        return {};
+    }
+    switch (*error) {
+        case garage::BuyError::kOwned:
+            return "painted so already";
+        case garage::BuyError::kNotEnoughMoney:
+            return "not enough money";
+        case garage::BuyError::kNoSuchUpgrade:
+        case garage::BuyError::kTopLevel:
+            break;
+    }
+    return "no such paint";
+}
+
 bool TractorPullEvent::add_money(std::int64_t amount_eur) {
     if (!career_) {
         return false;
@@ -1220,6 +1319,11 @@ void TractorPullEvent::_bind_methods() {
                          &TractorPullEvent::buy_alternative);
     ClassDB::bind_method(D_METHOD("fit_alternative", "choice", "alternative"),
                          &TractorPullEvent::fit_alternative);
+    ClassDB::bind_method(D_METHOD("get_dealer"), &TractorPullEvent::get_dealer);
+    ClassDB::bind_method(D_METHOD("get_tractor_dimensions"),
+                         &TractorPullEvent::get_tractor_dimensions);
+    ClassDB::bind_method(D_METHOD("buy_tractor", "model", "paint"), &TractorPullEvent::buy_tractor);
+    ClassDB::bind_method(D_METHOD("repaint", "paint"), &TractorPullEvent::repaint);
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
     ClassDB::bind_method(D_METHOD("get_crew_report"), &TractorPullEvent::get_crew_report);

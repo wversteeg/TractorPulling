@@ -99,6 +99,7 @@ constexpr std::int64_t kBeforeTheClasses = 2;
 constexpr std::int64_t kBeforeTheLevels = 3;
 constexpr std::int64_t kBeforeTheChoices = 4;
 constexpr std::int64_t kBeforeTheTractors = 5;
+constexpr std::int64_t kBeforeTheDealers = 6;
 
 // The choices (version 5 on) at `path` of `root` into `out`; the error if
 // they are broken.
@@ -160,10 +161,31 @@ std::optional<LoadError> read_upgrades(const toml::table& root, std::string_view
     return std::nullopt;
 }
 
+// A tractor's model and paint (version 7 on) in `table` into `look`: both,
+// or neither for a tractor from before the dealers (as a version 6 save
+// has it, kept so); the error if only one is there.
+std::optional<LoadError> read_look(const toml::table& table, std::string_view source,
+                                   std::string_view path, std::int64_t version,
+                                   std::optional<SavedLook>& look) {
+    if (version <= kBeforeTheDealers) {
+        return std::nullopt;
+    }
+    std::optional<std::string> model = table.at_path("model").value<std::string>();
+    std::optional<std::string> paint = table.at_path("paint").value<std::string>();
+    if (!model && !paint) {
+        return std::nullopt;
+    }
+    if (!model || !paint) {
+        return detail::make_error(source, path, "a tractor needs both its model and paint");
+    }
+    look = SavedLook{.model = std::move(*model), .paint = std::move(*paint)};
+    return std::nullopt;
+}
+
 // The other classes' tractors (version 6 on) into `career`; the error if
 // they are broken.
 std::optional<LoadError> read_other_tractors(const toml::table& root, std::string_view source,
-                                             SavedCareer& career) {
+                                             std::int64_t version, SavedCareer& career) {
     const toml::node_view<const toml::node> tractors = root.at_path("career.tractors");
     if (!tractors) {
         return std::nullopt;
@@ -179,13 +201,17 @@ std::optional<LoadError> read_other_tractors(const toml::table& root, std::strin
         if (!name) {
             return detail::make_error(source, "career.tractors", "every tractor needs its class");
         }
-        SavedTractor tractor{.class_name = *name, .upgrades = {}, .choices = {}};
+        SavedTractor tractor{.class_name = *name, .upgrades = {}, .choices = {}, .look = {}};
         if (std::optional<LoadError> error =
                 read_upgrades(*line, source, "upgrades", tractor.upgrades)) {
             return error;
         }
         if (std::optional<LoadError> error =
                 read_choices(*line, source, "choices", tractor.choices)) {
+            return error;
+        }
+        if (std::optional<LoadError> error =
+                read_look(*line, source, "career.tractors", version, tractor.look)) {
             return error;
         }
         career.other_tractors.push_back(std::move(tractor));
@@ -233,7 +259,13 @@ std::optional<LoadError> read_career(const toml::table& root, std::string_view s
         }
     }
     if (version > kBeforeTheTractors) {
-        if (std::optional<LoadError> error = read_other_tractors(root, source, career)) {
+        if (std::optional<LoadError> error = read_other_tractors(root, source, version, career)) {
+            return error;
+        }
+    }
+    if (const toml::table* table = root.at_path("career").as_table()) {
+        if (std::optional<LoadError> error =
+                read_look(*table, source, "career", version, career.look)) {
             return error;
         }
     }
@@ -326,10 +358,17 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
     return save;
 }
 
-// A tractor's upgrades and choices, by name, as TOML keys.
-std::string parts(const std::vector<SavedUpgrade>& upgrades,
+// A tractor's model, paint, upgrades and choices, by name, as TOML keys.
+std::string parts(const std::optional<SavedLook>& look, const std::vector<SavedUpgrade>& upgrades,
                   const std::vector<SavedChoice>& choices) {
-    std::string out = "upgrades = [\n";
+    // Neither for a tractor from before the dealers: the dealer's first model
+    // (data::career_from_names), not one still to buy (a model of "").
+    std::string out;
+    if (look) {
+        out += "model = " + toml_string(look->model) + "\n";
+        out += "paint = " + toml_string(look->paint) + "\n";
+    }
+    out += "upgrades = [\n";
     for (const SavedUpgrade& upgrade : upgrades) {
         out += "    { name = " + toml_string(upgrade.name) +
                ", level = " + std::to_string(upgrade.level) + " },\n";
@@ -368,11 +407,11 @@ std::string write_season_save(const SeasonSave& save) {
     out += "unlocked_level = " + toml_string(career.unlocked_level) + "\n";
     out += "seasons_on_level = " + std::to_string(career.seasons_on_level) + "\n";
     out += std::string{"title_on_level = "} + (career.title_on_level ? "true" : "false") + "\n";
-    out += parts(career.upgrades, career.choices);
+    out += parts(career.look, career.upgrades, career.choices);
     for (const SavedTractor& tractor : career.other_tractors) {
         out += "\n[[career.tractors]]\n";
         out += "class = " + toml_string(tractor.class_name) + "\n";
-        out += parts(tractor.upgrades, tractor.choices);
+        out += parts(tractor.look, tractor.upgrades, tractor.choices);
     }
     for (const std::vector<event::Standing>& standings : save.events) {
         out += "\n[[events]]\nstandings = [\n";

@@ -42,6 +42,11 @@ var disc := Color(0.25, 0.26, 0.28)
 var ring := Color(0.95, 0.95, 0.93)
 var number := PLAYER_NUMBER
 var driver_shirt := Color(0.16, 0.26, 0.52)
+# The model (TractorModels.STYLES' id), "" for the class's usual tractor.
+var style_id := ""
+# The models the rivals drive (the class's dealer's styles), each rival
+# the next; none: the class's usual tractor.
+var rival_styles: Array[String] = []
 
 
 # The schemes by the class's name, as the career names it.
@@ -94,7 +99,27 @@ func rival(i: int) -> TractorLook:
 	other.ring = ring
 	other.number = RIVAL_NUMBERS[i % RIVAL_NUMBERS.size()]
 	other.driver_shirt = RIVAL_SHIRTS[i % RIVAL_SHIRTS.size()]
+	# The player's own model left for last, so the parking shows the others.
+	var styles := rival_styles.filter(func(id: String) -> bool: return id != style_id)
+	other.style_id = styles[i % styles.size()] if not styles.is_empty() else ""
 	return other
+
+
+# This look painted in `paint` with `trim` (a cab roof, a bonnet top, the
+# stripe) and rims in `rim`: the player's colours from the dealer.
+func painted(paint_colour: Color, trim_colour: Color, rim_colour: Color) -> TractorLook:
+	var out := TractorLook.new()
+	out.name = name
+	out.paint = paint_colour
+	out.paint_dark = paint_colour.darkened(DARKER)
+	out.trim = trim_colour
+	out.rim = rim_colour
+	out.disc = disc
+	out.ring = trim_colour
+	out.number = number
+	out.driver_shirt = driver_shirt
+	out.style_id = style_id
+	return out
 
 
 # How far apart two paints are (RGB distance).

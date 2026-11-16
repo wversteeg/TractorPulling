@@ -19,8 +19,12 @@ inline constexpr std::size_t kMaxUpgrades = 16;
 inline constexpr std::size_t kMaxLevels = 12;
 inline constexpr std::size_t kMaxChoices = 4;
 inline constexpr std::size_t kMaxAlternatives = 4;
+inline constexpr std::size_t kMaxModels = 8;
+inline constexpr std::size_t kMaxPaints = 12;
 /// An upgrade that belongs to no choice's alternative: it always counts.
 inline constexpr int kNoChoice = -1;
+/// A career whose tractor is not bought yet (Career::model).
+inline constexpr int kNoModel = -1;
 
 /// What an upgrade changes on the tractor. Each level sets the part's value
 /// outright, so the levels of different parts never interact:
@@ -101,6 +105,21 @@ struct Choice {
     std::size_t alternative_count = 0;
 };
 
+/// The class's tractor dealer: the models a player buys their tractor in the
+/// class as, and the paints. For now a model and a paint only change how
+/// the tractor looks (the game draws them; the core counts their money):
+/// each class's tractor pulls the same whatever its model.
+struct Dealer {
+    /// What each model costs [EUR]. None: the class's tractor comes with
+    /// the career, as before there were dealers.
+    std::array<std::int64_t, kMaxModels> model_cost_eur{};
+    std::size_t model_count = 0;
+    std::size_t paint_count = 0;
+    /// Painting the tractor another colour after buying it [EUR]; the first
+    /// colour comes with the tractor.
+    std::int64_t paint_cost_eur = 0;
+};
+
 /// The garage's offer for one class: the parts the player can upgrade, each
 /// from the level the tractor starts at, and the money a career starts with.
 struct Catalogue {
@@ -109,6 +128,7 @@ struct Catalogue {
     std::int64_t start_money_eur = 0;
     std::array<Choice, kMaxChoices> choices{};
     std::size_t choice_count = 0;
+    Dealer dealer;
 
     [[nodiscard]] std::span<const Upgrade> offer() const noexcept {
         return {upgrades.data(), count};
@@ -130,6 +150,10 @@ struct Career {
     /// Each choice's alternatives bought, bit i for alternative i. The first
     /// is always owned, whatever its bit says.
     std::array<std::uint8_t, kMaxChoices> owned{};
+    /// The dealer's model the tractor was bought as and its paint (by the
+    /// dealer's order); kNoModel before it is bought.
+    int model = kNoModel;
+    int paint = 0;
 };
 
 enum class ParamError : std::uint8_t {
@@ -152,6 +176,9 @@ enum class ParamError : std::uint8_t {
     kValueInvalid,
     /// A level gives a tractor the class does not allow.
     kOutsideTheClass,
+    /// A dealer with more than kMaxModels models or kMaxPaints paints,
+    /// models without paints, or a cost below 0.
+    kDealer,
 };
 
 /// Whether, with every combination of the choices' alternatives fitted,
@@ -216,6 +243,27 @@ std::optional<BuyError> buy(Career& career, const Catalogue& catalogue,
 /// (kNoSuchUpgrade: no such choice or alternative).
 std::optional<BuyError> buy_alternative(Career& career, const Catalogue& catalogue,
                                         std::size_t choice, std::size_t alternative) noexcept;
+
+/// Whether the career has to buy its tractor before it can pull: the
+/// dealer sells models and none is bought yet.
+[[nodiscard]] bool needs_tractor(const Catalogue& catalogue, const Career& career) noexcept;
+
+/// What model `model` costs a career with `money_eur`: its price, but the
+/// cheapest model is never dearer than all the money there is (the dealer
+/// takes what the player has rather than leave them without a tractor).
+[[nodiscard]] std::int64_t model_price_eur(const Catalogue& catalogue, std::size_t model,
+                                           std::int64_t money_eur) noexcept;
+
+/// Buys the career's tractor as model `model` in paint `paint`, paying
+/// model_price_eur; once (kOwned after). The career is unchanged if that
+/// cannot be done (kNoSuchUpgrade: no such model or paint).
+std::optional<BuyError> buy_model(Career& career, const Catalogue& catalogue, std::size_t model,
+                                  std::size_t paint) noexcept;
+
+/// Paints the bought tractor in paint `paint`, paying the dealer's paint
+/// cost (kOwned: it is that colour already, or no tractor is bought yet).
+std::optional<BuyError> repaint(Career& career, const Catalogue& catalogue,
+                                std::size_t paint) noexcept;
 
 enum class FitError : std::uint8_t {
     kNoSuchAlternative,

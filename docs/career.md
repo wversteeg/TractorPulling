@@ -50,6 +50,27 @@ Every Farmstock class the NTTO pulls in 2026 above the standard class, in
 order of the engine each allows, then the Grand National classes that
 still pull a farm tractor.
 
+**Each class's tractor is bought from its dealer (game choice).** A new
+career starts at the Standard 3.5 t dealer, and a class the player has not
+pulled in yet at its own: the season waits for the tractor. (The parts
+carried into the class by name, as every move up does, come along on the
+new tractor: the dealer sells the tractor, not its parts.) The dealer
+sells five models of the class's tractor and eight colours
+(`[garage.dealer]` in each class's garage file); for now the models only
+look different (`TractorModels` in the game), each pulling the same, so the
+choice is the player's taste: a later version may give them their own
+engines or weights. The prices are a part of the money a class's player
+has: the Standard 3.5 t's models cost € 1,500 to 2,500, with € 2,500 to
+start, so the cheapest leaves the € 1,000 the garage was balanced for (a
+dearer one, less: the first upgrades come a little later); the Sport
+2.5 t's € 4,000 to 6,500 and the Sport 4.5 t's € 6,500 to 9,800, a fifth
+to a third of what a winning season at the level below pays, so a player
+who moves up with a fully built tractor and some money left buys one
+outright, and one who spent everything still gets the cheapest
+(`garage::model_price_eur`: never dearer than the money there is). The
+garage's paint shop paints the tractor another colour between events
+(€ 300, 500 and 700). The rivals drive the dealer's other models.
+
 **Every class has its own tractor (game choice).** The weight goes up and
 down along the way (3.5, 2.5, 4.5, 3.4, 3.6, 4.5, then 3.5 t), and each
 class allows a different engine, so no one tractor climbs the whole

@@ -275,12 +275,8 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     return out;
 }
 
-godot::Dictionary TractorPullRun::get_dimensions() const {
+godot::Dictionary TractorPullRun::tractor_dimensions(const vehicle::Params& tractor) {
     godot::Dictionary out;
-    if (!setup_) {
-        return out;
-    }
-    const vehicle::Params& tractor = setup_->tractor;
     const chassis::Params& chassis = tractor.chassis;
     out["wheelbase_m"] = chassis.wheelbase_m;
     out["rear_axle_height_m"] = chassis.rear_axle_height_m;
@@ -306,6 +302,24 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["front_axle_rest_load_n"] = chassis::axle_loads_at_rest(chassis).front_n;
     out["gear_count"] = static_cast<std::int64_t>(tractor.driveline.gear_count);
     out["has_reverse"] = tractor.driveline.reverse_ratio > 0.0;
+    const engine::Params& engine = tractor.engine;
+    out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
+    out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
+    out["full_boost_bar"] = units::pa_to_bar(engine.full_boost_pressure_pa);
+    out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
+    out["idle_omega_rad_s"] = engine.idle_omega_rad_s;
+    out["engine_cylinders"] = engine.cylinders;
+    const clutch::EngagementRange clutch = clutch::engagement_range(tractor.clutch);
+    out["clutch_full_grip_pedal"] = clutch.full_grip_pedal;
+    out["clutch_bite_pedal"] = clutch.bite_pedal;
+    return out;
+}
+
+godot::Dictionary TractorPullRun::get_dimensions() const {
+    if (!setup_) {
+        return {};
+    }
+    godot::Dictionary out = tractor_dimensions(setup_->tractor);
     const sled::Params& sled = setup_->sled;
     out["sled_wheel_radius_m"] = sled.wheel.radius_m;
     out["sled_wheel_width_m"] = sled.wheel.section_width_m;
@@ -337,16 +351,6 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["fender_behind_hook_m"] = setup_->sled.fenders.behind_hook_m;
     out["take_up_tension_n"] = turn::kTakeUpTension_n;
     out["restart_before_m"] = turn::kRestartBefore_m;
-    const engine::Params& engine = tractor.engine;
-    out["stall_omega_rad_s"] = engine.stall_omega_rad_s;
-    out["rated_omega_rad_s"] = engine.rated_omega_rad_s;
-    out["full_boost_bar"] = units::pa_to_bar(engine.full_boost_pressure_pa);
-    out["high_idle_omega_rad_s"] = engine.high_idle_omega_rad_s;
-    out["idle_omega_rad_s"] = engine.idle_omega_rad_s;
-    out["engine_cylinders"] = engine.cylinders;
-    const clutch::EngagementRange clutch = clutch::engagement_range(tractor.clutch);
-    out["clutch_full_grip_pedal"] = clutch.full_grip_pedal;
-    out["clutch_bite_pedal"] = clutch.bite_pedal;
     return out;
 }
 

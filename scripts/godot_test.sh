@@ -5,8 +5,9 @@
 # binding passes the controls and the time to tp::session unchanged. The
 # GDScript also checks the binding's edges (run_test.gd), and the pull
 # scene draws the run where it is (scene_test.gd), takes the touch controls
-# (touch_test.gd), plays an event's flow (flow_test.gd) and offers a short
-# pull's restart (restart_test.gd).
+# (touch_test.gd), plays an event's flow (flow_test.gd), sells the class's
+# tractor (dealer_test.gd) and offers a short pull's restart
+# (restart_test.gd).
 #
 #   scripts/godot_test.sh <godot binary> [build directory, default build/godot]
 #
@@ -122,6 +123,8 @@ play --fixed-fps 60 --script res://tests/scene_test.gd
 play --fixed-fps 60 --script res://tests/touch_test.gd
 # The game's flow: start screen, qualifying, pull-off, the next event.
 play --fixed-fps 60 --script res://tests/flow_test.gd
+# The tractor dealer on the shipped career: buying, the paint shop.
+play --fixed-fps 60 --script res://tests/dealer_test.gd
 # A whole turn, a scripted driver from the parking to the sled and back.
 # Headless: drawn by a software renderer its thousands of frames would take
 # far too long.

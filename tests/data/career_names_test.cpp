@@ -99,6 +99,56 @@ TEST(CareerNames, FitsOnlyWhatIsOwned) {
     EXPECT_EQ(career.owned[0], 0b10);
 }
 
+constexpr std::string_view kDealer = R"(
+[garage.dealer]
+paint_cost_eur = 1
+models = [
+    { name = "Classic", style = "farm_classic", cost_eur = 10, about = "a" },
+    { name = "Low", style = "farm_low", cost_eur = 20, about = "b" },
+]
+paints = [
+    { name = "Red", paint = "#ff0000", trim = "#ffffff", rims = "#ffffff" },
+    { name = "Blue", paint = "#0000ff", trim = "#ffffff", rims = "#ffffff" },
+]
+)";
+
+// The tractor's model and paint go by the dealer's names: read back as
+// they were, a model the dealer does not sell is not bought (to buy
+// again), a paint it does not offer its first, and a save from before the
+// dealers has the tractor the player had, the dealer's first model.
+TEST(CareerNames, KeepsTheModelAndPaintByName) {
+    const GarageDefinition g =
+        garage_of(std::string{kWeightsAndPump} + std::string{kDealer}, kTwoTurbos);
+    garage::Career career = garage::new_career(g.catalogue);
+    career.model = 1;
+    career.paint = 1;
+    SavedCareer named;
+    name_career(career, g, named);
+    ASSERT_TRUE(named.look.has_value());
+    EXPECT_EQ(named.look.value_or(SavedLook{}).model, "Low");
+    EXPECT_EQ(named.look.value_or(SavedLook{}).paint, "Blue");
+    garage::Career back = career_from_names(named, g);
+    EXPECT_EQ(back.model, 1);
+    EXPECT_EQ(back.paint, 1);
+    named.look = SavedLook{.model = "Gone", .paint = "Green"};
+    back = career_from_names(named, g);
+    EXPECT_EQ(back.model, garage::kNoModel);
+    EXPECT_EQ(back.paint, 0);
+    named.look.reset();
+    back = career_from_names(named, g);
+    EXPECT_EQ(back.model, 0) << "before the dealers";
+    EXPECT_EQ(back.paint, 0);
+    // Not bought yet: named "", read back as not bought.
+    name_career(garage::new_career(g.catalogue), g, named);
+    EXPECT_EQ(named.look.value_or(SavedLook{.model = "x", .paint = ""}).model, "");
+    EXPECT_EQ(career_from_names(named, g).model, garage::kNoModel);
+    // Without a dealer there is nothing to buy, whatever the save says.
+    const GarageDefinition bare = garage_of(kWeightsAndPump, kTwoTurbos);
+    named.look.reset();
+    EXPECT_EQ(career_from_names(named, bare).model, garage::kNoModel);
+    EXPECT_FALSE(garage::needs_tractor(bare.catalogue, career_from_names(named, bare)));
+}
+
 // Each class its own tractor: moving A to B parks A's by name and carries
 // the career into B by name (B not pulled in yet); back to A brings A's
 // tractor back as it was left and parks B's; the money goes along.
@@ -129,6 +179,47 @@ levels = [{ value = 0.5, cost_eur = 0, label = "a" }, { value = 0.6, cost_eur = 
     EXPECT_EQ(back.parked[0].class_name, "B");
     ASSERT_FALSE(back.parked[0].upgrades.empty());
     EXPECT_EQ(back.parked[0].upgrades[0].level, 0) << "B's tractor parked as it was left";
+}
+
+// A class's dealer: a class not pulled in yet starts without its tractor;
+// one parked comes back as the model and paint it was bought in.
+TEST(CareerNames, EachClassKeepsItsOwnModel) {
+    const GarageDefinition a =
+        garage_of(std::string{kWeightsAndPump} + std::string{kDealer}, kTwoTurbos);
+    const GarageDefinition b =
+        garage_of(std::string{kWeightsAndPump} + std::string{kDealer}, kThreeTurbos);
+    garage::Career in_a = garage::new_career(a.catalogue);
+    in_a.model = 1;
+    in_a.paint = 1;
+    const ClassTractors to_b = switch_class(in_a, a, "A", {}, b, "B");
+    EXPECT_EQ(to_b.career.model, garage::kNoModel) << "B's tractor still to buy";
+    EXPECT_TRUE(garage::needs_tractor(b.catalogue, to_b.career));
+    garage::Career in_b = to_b.career;
+    in_b.model = 0;
+    const ClassTractors back = switch_class(in_b, b, "B", to_b.parked, a, "A");
+    EXPECT_EQ(back.career.model, 1);
+    EXPECT_EQ(back.career.paint, 1);
+    ASSERT_EQ(back.parked.size(), 1U);
+    EXPECT_EQ(back.parked[0].look.value_or(SavedLook{}).model, "Classic");
+}
+
+// Parked entries a save may hold from before: one without a class (a
+// version 5 save's) is dropped, and a stale one for the class being left
+// gives way to the tractor left there now.
+TEST(CareerNames, SwitchingClassTidiesTheParkedTractors) {
+    const GarageDefinition a = garage_of(kWeightsAndPump, kTwoTurbos);
+    const garage::Career in_a{.money_eur = 5, .levels = {1, 0}, .fitted = {0}, .owned = {0}};
+    const std::vector<SavedTractor> parked{
+        {.class_name = "", .upgrades = {}, .choices = {}, .look = {}},
+        {.class_name = "A",
+         .upgrades = {{.name = "Weights", .level = 0}},
+         .choices = {},
+         .look = {}}};
+    const ClassTractors moved = switch_class(in_a, a, "A", parked, a, "B");
+    ASSERT_EQ(moved.parked.size(), 1U);
+    EXPECT_EQ(moved.parked[0].class_name, "A");
+    ASSERT_FALSE(moved.parked[0].upgrades.empty());
+    EXPECT_EQ(moved.parked[0].upgrades[0].level, 1) << "A's tractor as it was left now";
 }
 
 }  // namespace

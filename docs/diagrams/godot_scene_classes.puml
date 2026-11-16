@@ -71,9 +71,19 @@ package "GDScript (app/godot/scripts)" {
     +paint, paint_dark, trim, rim, disc, ring : Color
     +number : String
     +driver_shirt : Color
+    +style_id : String : the dealer's model
+    +rival_styles : Array[String]
     +{static} schemes() : Dictionary : by class name
     +{static} for_class(class_name, protection) : TractorLook
-    +rival(i) : TractorLook : the class's trim, own paint
+    +rival(i) : TractorLook : the class's trim, own paint,\n another of the dealer's models
+    +painted(paint, trim, rim) : TractorLook
+  }
+  class TractorModels {
+    the dealers' models: a hood or bonnet,
+    a cab, canopy, cage or roll bar, their
+    heights, the stack, fenders and extras
+    +{static} STYLES : Dictionary, by id
+    +{static} style(id, protection) : Dictionary
   }
   class SledView {
     +build(dimensions)
@@ -263,6 +273,22 @@ package "GDScript (app/godot/scripts)" {
     ..signals..
     start_requested(rung), back_requested
   }
+  class DealerScreen {
+    the class's dealer: buying its tractor, or
+    the paint shop; a turntable in its own world
+    +mode : BUY, PAINT
+    +picked_model, picked_paint : int
+    +model_buttons, swatches : Array[TouchButton]
+    +action_button, back_button : TouchButton
+    +preview : TractorView
+    +show_dealer(dealer, dimensions, base, paint_shop, message)
+    +pick_model(model)
+    +pick_paint(paint)
+    +{static} look_for(base, dealer, model, paint) : TractorLook
+    ..signals..
+    buy_requested(model, paint), paint_requested(paint),
+    back_requested
+  }
   class StartScreen {
     +practice_button, garage_button, event_button : TouchButton
     +continue_button, new_season_button, new_career_button : TouchButton
@@ -307,13 +333,16 @@ package "GDScript (app/godot/scripts)" {
     +upgrade_pins, choice_pins : Array[PartPin]
     +buy_button, back_button, done_button : TouchButton
     +alternative_buttons : Array[TouchButton]
+    +paint_shop_button : TouchButton
+    +has_paint_shop : bool
     +show_garage(garage, message)
     +show_workshop()
     +open_upgrade(index)
     +open_choice(index)
     +{static} euros(amount) : String
     ..signals..
-    buy_requested(index), choice_requested(choice, alternative), done
+    buy_requested(index), choice_requested(choice, alternative),
+    paint_shop_requested, done
   }
   class TractorSketch {
     a pulling tractor from the side, to scale
@@ -531,6 +560,9 @@ Pull *-- StartScreen
 Pull *-- CareerScreen : a new season, the class\nand level picked
 Pull *-- SettingsScreen : from the start screen's gear
 Pull *-- GarageScreen : from the start screen
+Pull *-- DealerScreen : before a class's first season;\nthe garage's paint shop
+DealerScreen *-- TractorView : on the turntable
+DealerScreen ..> TractorModels
 GarageScreen *-- TractorSketch : the workshop
 GarageScreen *-- PartPin : a pin per part
 GarageScreen *-- LevelLine
@@ -582,6 +614,7 @@ VenueView ..> Trees : copses and\nthe tree line
 VenueView ..> People : the crowd, one\nMultiMesh a pose
 TractorView ..> People : the driver
 TractorView o-- TractorLook : its colours and number
+TractorView ..> TractorModels : draws the look's model
 Pull ..> TractorLook : the class's, and the rivals'
 CameraRig ..> TractorView : the cab camera, at the driver's eyes
 Flagman ..> People : the official

@@ -572,6 +572,13 @@ for the big features; they are repeated at the end for completeness.
 
 ## Garage and career
 
+- **The dealer's models only look different.** Each class's five models
+  pull the same: a model could bring its own engine, weight distribution or
+  wheelbase within the class's rules (a low model's lower centre of
+  gravity, a tall one's bigger tires), so the choice matters on the track.
+  Selling a class's tractor back, or trading it in for another model, is
+  not in the game either.
+
 - **The parts are values, not parts.** An upgrade sets one value (a torque
   scale, a traction limit, a ballast mass, a drawbar height, a downshift
   step); a new tire does not change the tire's size, rolling radius or

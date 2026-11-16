@@ -103,3 +103,90 @@ levels = [
     { value = 1.0, cost_eur = 2400, label = "One gear down under load" },
     { value = 2.0, cost_eur = 1400, label = "Two gears down under load" },
 ]
+
+# The dealer: a new class is a new tractor, bought when the class opens, as
+# one of these models (the game draws each its own way; all pull alike).
+# Priced at about a fifth of a winning season's prize money; the cheapest is
+# never dearer than the money there is. Painting it later costs
+# paint_cost_eur.
+[garage.dealer]
+paint_cost_eur = 500
+
+[[garage.dealer.models]]
+name = "Sprint Classic"
+style = "pull_classic"
+cost_eur = 4000
+about = "The pulling tractor as it should be: a round bonnet, chrome and a roll bar."
+
+[[garage.dealer.models]]
+name = "Sprint Low"
+style = "pull_low"
+cost_eur = 4600
+about = "Built low: a low bonnet, a short roll bar and one tall stack."
+
+[[garage.dealer.models]]
+name = "Sprint High"
+style = "pull_high"
+cost_eur = 5200
+about = "A tall square bonnet, twin stacks and wide fenders."
+
+[[garage.dealer.models]]
+name = "Sprint Cage"
+style = "pull_cage"
+cost_eur = 5800
+about = "A safety cage with a roof and lamps over a round bonnet."
+
+[[garage.dealer.models]]
+name = "Sprint Farm"
+style = "pull_farm"
+cost_eur = 6500
+about = "A farm tractor's square hood on a pulling frame: the farmer's choice."
+
+# The colours, the same at every dealer: the first comes with the tractor.
+[[garage.dealer.paints]]
+name = "Field red"
+paint = "#b3241c"
+trim = "#f2f0e8"
+rims = "#e8dcb4"
+
+[[garage.dealer.paints]]
+name = "Forest green"
+paint = "#1f5e2e"
+trim = "#f2d230"
+rims = "#f2d230"
+
+[[garage.dealer.paints]]
+name = "Lake blue"
+paint = "#1d4f9c"
+trim = "#f2f0e8"
+rims = "#d8d8dc"
+
+[[garage.dealer.paints]]
+name = "Harvest orange"
+paint = "#e3741c"
+trim = "#20201f"
+rims = "#20201f"
+
+[[garage.dealer.paints]]
+name = "Steel grey"
+paint = "#9aa0a6"
+trim = "#1c1c1e"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Night black"
+paint = "#121214"
+trim = "#e0aa2a"
+rims = "#e0aa2a"
+
+[[garage.dealer.paints]]
+name = "Snow white"
+paint = "#f0efe9"
+trim = "#b3241c"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Royal purple"
+paint = "#5c1a6e"
+trim = "#f2f0e8"
+rims = "#d8d8dc"
