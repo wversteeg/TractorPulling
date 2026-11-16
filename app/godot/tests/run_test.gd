@@ -284,7 +284,7 @@ func _check_career() -> void:
 	_expect(event.buy_upgrade(0).is_empty(), "a part bought")
 	var garage := event.get_garage()
 	var save := event.get_save()
-	_expect(save.contains("version = 5") and save.contains("class = \"Practice\"")
+	_expect(save.contains("version = 6") and save.contains("class = \"Practice\"")
 			and save.contains("level = \"Belofte\"") and save.contains("unlocked = \"Practice\"")
 			and save.contains("unlocked_level = \"Belofte\""),
 			"the save names the class and level: %s" % save)
@@ -385,7 +385,12 @@ func _check_upgrades_cross_garages() -> void:
 			and garage["upgrades"][0]["level"] == 0 and garage["upgrades"][1]["name"] == "Powershift"
 			and garage["upgrades"][1]["level"] == 1 and garage["money_eur"] == bought["money_eur"],
 			"the upper garage, the powershift carried by name: %s" % garage)
-	_expect(not up.get_save().contains("Governor"), "the governor left behind")
+	# The class below's tractor kept, governor and all, for going back.
+	var up_save := up.get_save()
+	var kept_at := up_save.find("[[career.tractors]]")
+	_expect(kept_at > 0 and up_save.find("Governor") > kept_at
+			and up_save.substr(kept_at).contains("class = \"Practice\""),
+			"the governor left behind, on the class below's tractor: %s" % up_save)
 
 
 # The player's tuning: as built at first, each setting held to its range,
