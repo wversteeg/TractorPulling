@@ -203,5 +203,24 @@ TEST(CareerNames, EachClassKeepsItsOwnModel) {
     EXPECT_EQ(back.parked[0].look.value_or(SavedLook{}).model, "Classic");
 }
 
+// Parked entries a save may hold from before: one without a class (a
+// version 5 save's) is dropped, and a stale one for the class being left
+// gives way to the tractor left there now.
+TEST(CareerNames, SwitchingClassTidiesTheParkedTractors) {
+    const GarageDefinition a = garage_of(kWeightsAndPump, kTwoTurbos);
+    const garage::Career in_a{.money_eur = 5, .levels = {1, 0}, .fitted = {0}, .owned = {0}};
+    const std::vector<SavedTractor> parked{
+        {.class_name = "", .upgrades = {}, .choices = {}, .look = {}},
+        {.class_name = "A",
+         .upgrades = {{.name = "Weights", .level = 0}},
+         .choices = {},
+         .look = {}}};
+    const ClassTractors moved = switch_class(in_a, a, "A", parked, a, "B");
+    ASSERT_EQ(moved.parked.size(), 1U);
+    EXPECT_EQ(moved.parked[0].class_name, "A");
+    ASSERT_FALSE(moved.parked[0].upgrades.empty());
+    EXPECT_EQ(moved.parked[0].upgrades[0].level, 1) << "A's tractor as it was left now";
+}
+
 }  // namespace
 }  // namespace tp::data
