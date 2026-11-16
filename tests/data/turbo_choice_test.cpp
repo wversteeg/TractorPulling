@@ -71,7 +71,9 @@ TEST(TurboChoice, TheSixtyEightMillimetreTurboIsTheUpgrade) {
             distance_m[turbo] = trial.has_value() ? trial->distance_m : 0.0;
         }
         ++visits;
-        // Both at the run's limit, the track shows no difference.
+        // Both stopped by the run's distance limit (the track's 130 m), the
+        // track shows no difference. (A pull cut off by the run's time limit
+        // would still count; none comes near it.)
         if (std::ranges::min(distance_m) < rules.track_length_m) {
             gained_m += distance_m[1] - distance_m[0];
             ++showing;

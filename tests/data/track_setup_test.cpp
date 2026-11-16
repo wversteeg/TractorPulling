@@ -222,11 +222,8 @@ public:
     // The place of the i-th of the nine (0 all back, 1 all forward).
     static double place(int i) { return static_cast<double>(i) / (kPlaces - 1); }
 
-    // The furthest any place gets [m], and the place that gets it.
+    // The furthest any place gets [m].
     [[nodiscard]] double best_m() const { return std::ranges::max(reach_m_); }
-    [[nodiscard]] double best_at() const {
-        return place(static_cast<int>(std::ranges::max_element(reach_m_) - reach_m_.begin()));
-    }
 
     // The furthest a place from `back` to `forward` gets [m].
     [[nodiscard]] double best_between_m(double back, double forward) const {
@@ -242,8 +239,26 @@ public:
     // Where the track wants the weights: the middle of the places as good
     // as the best (0 all back, 1 all forward). Near its best a track's reach
     // is flat, so the middle of that stretch moves less than the single
-    // furthest place.
+    // furthest place. The stretch is one (as_good_is_one_stretch): with two
+    // humps the middle could lie in the dip between them.
     [[nodiscard]] double wants_weights_at() const { return (as_good(true) + as_good(false)) / 2.0; }
+
+    // Of the nine places, the one nearest where the track wants the weights.
+    [[nodiscard]] double wanted_place() const {
+        return place(static_cast<int>(std::lround(wants_weights_at() * (kPlaces - 1))));
+    }
+
+    // Whether the places as good as the best lie side by side, with none
+    // between them that falls short.
+    [[nodiscard]] bool as_good_is_one_stretch() const {
+        for (int i = 0; i < kPlaces; ++i) {
+            if (place(i) > as_good(true) && place(i) < as_good(false) &&
+                reach_m_.at(static_cast<std::size_t>(i)) < best_m() - kAsGood_m) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     // What the worst of the places costs against the best [m].
     [[nodiscard]] double setup_matters_m() const { return best_m() - std::ranges::min(reach_m_); }
@@ -308,6 +323,7 @@ std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
 TEST(TrackSetup, TheGrippierTheTrackTheFurtherForwardTheWeights) {
     const SportSetup sport;
     const WeightsCurve loose{sport, "Sandy clay"};
+    const WeightsCurve grippiest{sport, "Firm loam"};
     for (const char* track :
          {"Firm loam", "Summer, dry hard clay", "Rainy day, covered heavy clay"}) {
         const WeightsCurve grippy{sport, track};
@@ -318,12 +334,12 @@ TEST(TrackSetup, TheGrippierTheTrackTheFurtherForwardTheWeights) {
         const WeightsCurve between{sport, track};
         EXPECT_GT(between.wants_weights_at(), loose.wants_weights_at())
             << track << ": " << between.text() << "\nSandy clay: " << loose.text();
-        const WeightsCurve grippiest{sport, "Firm loam"};
         EXPECT_LT(between.wants_weights_at(), grippiest.wants_weights_at())
             << track << ": " << between.text() << "\nFirm loam: " << grippiest.text();
     }
     for (const std::string& track : rounds_on_their_own_tracks(sport)) {
         const WeightsCurve curve{sport, track};
+        EXPECT_TRUE(curve.as_good_is_one_stretch()) << track << ": " << curve.text();
         EXPECT_GT(curve.setup_matters_m(), kShows_m) << track << ": " << curve.text();
     }
 }
@@ -370,7 +386,7 @@ TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
     constexpr double kReference_bar = 1.0;
     constexpr double kHard_bar = 1.6;
     const auto reach = [&](const char* track, double bar) {
-        const double weights_at = WeightsCurve{sport, track}.best_at();
+        const double weights_at = WeightsCurve{sport, track}.wanted_place();
         return sport.reach_m(track, weights_at, bar, sport.steps_short_of_line(track));
     };
     const auto soft_gains_m = [&](const char* track) {
