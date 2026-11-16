@@ -165,6 +165,10 @@ public:
     [[nodiscard]] soil::Surface surface_at(double x_m) const noexcept {
         return surface_at(x_m, 0.0);
     }
+    /// The ground as prepared at `x_m`, its profiles blended between
+    /// samples, without the hard and weak spots: what can be told of the
+    /// track along its length before anyone has pulled on it.
+    [[nodiscard]] soil::Surface surface_without_spots(double x_m) const noexcept;
 
     /// The spots as laid, by where they start along the track.
     [[nodiscard]] std::span<const Spot> hard_spots() const noexcept { return hard_.spots(); }
@@ -178,8 +182,6 @@ public:
 
 private:
     explicit Model(const Params& params) noexcept;
-    // The soil's own surface at x_m, its profiles blended between samples.
-    [[nodiscard]] soil::Surface surface_without_spots(double x_m) const noexcept;
 
     Params params_;
     double first_x_m_ = 0.0;
