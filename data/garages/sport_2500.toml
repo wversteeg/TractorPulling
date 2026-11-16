@@ -15,7 +15,8 @@
 # - ballast_kg: the free weight. The tractor is at the class's 2500 kg
 #   with the driver, its weights fixed at the back; each level frees more
 #   of them to move forward before a pull, up to all of them.
-# - hitch_height_m: the drawbar, up to the class's 0.5 m.
+# - hitch_height_m: the drawbar, up to the class's 0.5 m, a hole (2 cm)
+#   at a time, so each level adds a hole to set it in below.
 # - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
 #   class's 2700 rpm.
 # - load_downshift_gears: a powershift step that shifts down under load,
@@ -75,11 +76,10 @@ part = "hitch_height_m"
 name = "Pulling hitch"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
-    { value = 0.41, cost_eur = 700, label = "Drawbar raised, 0.41 m" },
-    { value = 0.42, cost_eur = 950, label = "Drawbar raised, 0.42 m" },
-    { value = 0.43, cost_eur = 1200, label = "Drawbar raised, 0.43 m" },
-    { value = 0.45, cost_eur = 1450, label = "Pulling hitch, 0.45 m" },
-    { value = 0.47, cost_eur = 1700, label = "Pulling hitch, 0.47 m" },
+    { value = 0.42, cost_eur = 700, label = "Drawbar raised, 0.42 m" },
+    { value = 0.44, cost_eur = 950, label = "Drawbar raised, 0.44 m" },
+    { value = 0.46, cost_eur = 1250, label = "Pulling hitch, 0.46 m" },
+    { value = 0.48, cost_eur = 1550, label = "Pulling hitch, 0.48 m" },
     { value = 0.50, cost_eur = 1950, label = "Pulling hitch, 0.50 m" },
 ]
 
