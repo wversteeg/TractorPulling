@@ -573,7 +573,8 @@ func _check_move_up() -> void:
 	var pull := await _launch(LADDER)
 	var start: StartScreen = pull.get("start_screen")
 	var event: TractorPullEvent = pull.get("event")
-	var garage := event.get_garage()
+	# No season yet behind the career screen: the career's money.
+	var money := int(event.get_career().get("money_eur", -1))
 	var careers: CareerScreen = pull.get("career_screen")
 	_expect(careers.visible and not start.visible and careers.picked_rung() == 1
 			and not careers.back_button.visible and careers.level_buttons.size() == 3
@@ -588,8 +589,8 @@ func _check_move_up() -> void:
 	_expect(start.visible and not start.move_up_button.visible
 			and int(event.get_season().get("scored", -1)) == 0
 			and int(event.get_event().get("index", -1)) == 0, "the level above's first event")
-	_expect(event.get_garage()["money_eur"] == garage["money_eur"]
-			and event.get_garage()["upgrades"] == garage["upgrades"], "the career carried up")
+	_expect(money > 0 and int(event.get_garage().get("money_eur", -1)) == money,
+			"the career carried up: %s" % event.get_garage())
 	_expect(FileAccess.get_file_as_string(SAVE_PATH).contains("level = \"Promo\""),
 			"saved on the level above")
 

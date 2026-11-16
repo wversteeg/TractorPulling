@@ -17,6 +17,8 @@ const LINE_SIZE := 22
 const LEVEL_BUTTON_SIZE := Vector2(190.0, 58.0)
 const LEVEL_FONT_SIZE := 24
 const CAREER_PANEL_SIZE := Vector2(960.0, 680.0)
+# Wide enough for "Start season" with its icon.
+const START_BUTTON_SIZE := Vector2(320.0, 90.0)
 
 var start_button: TouchButton
 var back_button: TouchButton
@@ -46,6 +48,7 @@ func _ready() -> void:
 	back_button = add_button(row, "Back", "")
 	start_button = add_button(row, "Start season", "event")
 	start_button.primary = true
+	start_button.custom_minimum_size = START_BUTTON_SIZE
 	back_button.tapped.connect(func() -> void: back_requested.emit())
 	start_button.tapped.connect(func() -> void:
 		if _picked >= 0:
