@@ -16,6 +16,10 @@
 #   (higher puts more of the sled's pull on the rear tires, but lifts the
 #   nose sooner).
 #
+# Tapping the lane opens the track screen (TrackScreen): the lane big,
+# the ground along the track and the crew's spots listed; its start slider
+# is this one's while it is open.
+#
 # A line names the controls (picked in the settings). TractorPullEvent
 # keeps the setting for the season; the run takes it from there.
 class_name SetupScreen
@@ -55,11 +59,19 @@ var hitch_slider := TouchSlider.new()
 var start_slider := TouchSlider.new()
 var pull_button: TouchButton
 var back_button: TouchButton
+# The tap area over the lane that opens the track screen.
+var lane_button := TouchButton.new()
+var track_screen := TrackScreen.new()
 var _stage := Control.new()
 var _title: Label
 var _track_name: Label
 var _grip: Label
 var _lane := LaneMap.new()
+# What the track screen shows: the event's track, its name and the crew's
+# report.
+var _track: Dictionary = {}
+var _track_label := ""
+var _crew: Dictionary = {}
 var _lane_note: Label
 var _start_note: Label
 var _sent_start := 0.0
@@ -100,44 +112,54 @@ func _ready() -> void:
 	_stage.offset_bottom = STAGE.y / 2.0
 	add_child(_stage)
 
-	_panel(_stage, Rect2(0, 0, STAGE.x, 64), Color(0.04, 0.05, 0.07, 0.9), 0)
-	_title = _label(_stage, Rect2(28, 12, 860, 40), 26, GarageArt.TEXT)
-	back_button = _button(_stage, "Back", Rect2(940, 8, 140, 48), 24)
-	pull_button = _button(_stage, "Pull ›", Rect2(1100, 8, 156, 48), 26)
+	make_panel(_stage, Rect2(0, 0, STAGE.x, 64), Color(0.04, 0.05, 0.07, 0.9), 0)
+	_title = make_label(_stage, Rect2(28, 12, 860, 40), 26, GarageArt.TEXT)
+	back_button = make_button(_stage, "Back", Rect2(940, 8, 140, 48), 24)
+	pull_button = make_button(_stage, "Pull ›", Rect2(1100, 8, 156, 48), 26)
 	pull_button.selected = true
 	pull_button.tapped.connect(func() -> void: pull_requested.emit())
 	back_button.tapped.connect(func() -> void: back_requested.emit())
 
-	var card := _panel(_stage, Rect2(28, 84, 330, 560), GarageArt.PANEL, 14)
-	_label(card, Rect2(16, 10, 300, 20), 13, GarageArt.DIM).text = "TODAY'S TRACK"
-	_track_name = _label(card, Rect2(16, 28, 300, 28), 19, GarageArt.TEXT)
+	var card := make_panel(_stage, Rect2(28, 84, 330, 560), GarageArt.PANEL, 14)
+	make_label(card, Rect2(16, 10, 300, 20), 13, GarageArt.DIM).text = "TODAY'S TRACK"
+	_track_name = make_label(card, Rect2(16, 28, 300, 28), 19, GarageArt.TEXT)
 	_track_name.clip_text = true
 	_grip = _scale_row(card, 60, "Grip", _grip_bar, GarageArt.GREEN)
 	_firm = _scale_row(card, 98, "Firmness", _firm_bar, Color(0.79, 0.75, 0.42))
-	var tip_box := _panel(card, Rect2(16, 140, 298, 86), Color(0.16, 0.13, 0.08), 10)
-	_tip = _label(tip_box, Rect2(10, 6, 278, 76), 14, Color(0.91, 0.83, 0.67))
+	var tip_box := make_panel(card, Rect2(16, 140, 298, 86), Color(0.16, 0.13, 0.08), 10)
+	_tip = make_label(tip_box, Rect2(10, 6, 278, 76), 14, Color(0.91, 0.83, 0.67))
 	_tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label(card, Rect2(16, 232, 140, 20), 13, GarageArt.DIM).text = "THE LANE"
-	_lane_note = _label(card, Rect2(90, 232, 224, 20), 13, GarageArt.DIM)
+	make_label(card, Rect2(16, 232, 140, 20), 13, GarageArt.DIM).text = "THE LANE"
+	_lane_note = make_label(card, Rect2(90, 232, 224, 20), 13, GarageArt.DIM)
 	_lane_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_lane.position = Vector2(16, 254)
 	_lane.size = Vector2(298, 198)
 	card.add_child(_lane)
+	var hint := make_panel(card, Rect2(196, 424, 112, 24), Color(0.04, 0.05, 0.07, 0.8), 8)
+	var hint_text := make_label(hint, Rect2(0, 2, 112, 20), 13, GarageArt.TEXT)
+	hint_text.text = "Tap: bigger ›"
+	hint_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lane_button.invisible = true
+	lane_button.fires_on_release = true
+	lane_button.position = _lane.position
+	lane_button.size = _lane.size
+	lane_button.tapped.connect(open_track)
+	card.add_child(lane_button)
 	start_slider.colour = START_COLOUR
 	start_slider.label = "start"
 	start_slider.position = Vector2(16, 458)
 	start_slider.size = Vector2(298, 52)
 	start_slider.custom_minimum_size = start_slider.size
 	card.add_child(start_slider)
-	_start_note = _label(card, Rect2(16, 514, 298, 40), 14, GarageArt.TEXT)
+	_start_note = make_label(card, Rect2(16, 514, 298, 40), 14, GarageArt.TEXT)
 	_start_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-	var view := _panel(_stage, Rect2(380, 84, 872, 340), GarageArt.PANEL, 14)
+	var view := make_panel(_stage, Rect2(380, 84, 872, 340), GarageArt.PANEL, 14)
 	_sketch.position = Vector2(30, 34)
 	_sketch.size = Vector2(812, 296)
 	view.add_child(_sketch)
-	_shares = _label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
-	_controls = _label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
+	_shares = make_label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
+	_controls = make_label(view, Rect2(18, 10, 836, 22), 15, GarageArt.DIM)
 	_controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	_weights = _setting(Rect2(380, 440, 280, 204), "WEIGHTS", "ballast_kg", ballast_slider,
@@ -148,6 +170,29 @@ func _ready() -> void:
 			HITCH_COLOUR, "low", "top")
 	_hitch_panel = hitch_slider.get_parent() as Panel
 
+	track_screen.visible = false
+	track_screen.done_requested.connect(close_track)
+	add_child(track_screen)
+
+
+# The track screen over the pit board, its start slider where this one is.
+# The pit board's own controls are hidden under it, so a tap meant for the
+# track screen does not reach them.
+func open_track() -> void:
+	release_buttons()
+	release_sliders()
+	track_screen.show_track(_track, _track_label, _crew, start_slider)
+	track_screen.show_start(start_y_m())
+	track_screen.visible = true
+	_stage.visible = false
+
+
+func close_track() -> void:
+	track_screen.release_buttons()
+	track_screen.release_sliders()
+	track_screen.visible = false
+	_stage.visible = true
+
 
 # `title` names the pull to come; `tuning` is TractorPullEvent.get_tuning();
 # `pro` and `tilt` the controls that will drive (`tilt` only where the
@@ -157,7 +202,11 @@ func _ready() -> void:
 # (TractorPullEvent.get_crew_report()).
 func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool,
 		track: Dictionary = {}, track_name: String = "", crew: Dictionary = {}) -> void:
+	close_track()
 	_title.text = title
+	_track = track
+	_track_label = track_name
+	_crew = crew
 	ballast_slider.visible = tuning.get("ballast", false)
 	pressure_slider.visible = tuning.get("pressure", false)
 	pressure_slider.start_value = tuning.get("min_bar", 0.0)
@@ -218,6 +267,8 @@ func show_values(tuning: Dictionary) -> void:
 func _process(_delta: float) -> void:
 	if not visible:
 		return
+	if track_screen.visible:
+		start_slider.value = track_screen.start_slider.value
 	var bar := snappedf(pressure_slider.value, PRESSURE_STEP_BAR)
 	var now := Vector3(ballast_slider.value, bar, _hitch_m())
 	if now != _sent:
@@ -227,6 +278,7 @@ func _process(_delta: float) -> void:
 	if start != _sent_start:
 		_sent_start = start
 		_lane.show_start(start)
+		track_screen.show_start(start)
 		_start_note.text = _start_words(start)
 		start_changed.emit(start)
 
@@ -253,11 +305,14 @@ func release_sliders() -> void:
 	pressure_slider.release()
 	hitch_slider.release()
 	start_slider.release()
+	track_screen.release_sliders()
 
 
 func release_buttons() -> void:
 	pull_button.release()
 	back_button.release()
+	lane_button.release()
+	track_screen.release_buttons()
 
 
 func _show_track(track: Dictionary, track_name: String) -> void:
@@ -368,8 +423,8 @@ func _side_words(y_m: float) -> String:
 
 # A labelled bar on the track card; returns the label for its word.
 func _scale_row(card: Panel, y: float, name_text: String, bar: ColorRect, colour: Color) -> Label:
-	_label(card, Rect2(16, y, 150, 22), 15, GarageArt.TEXT).text = name_text
-	var word := _label(card, Rect2(160, y, 154, 22), 15, colour)
+	make_label(card, Rect2(16, y, 150, 22), 15, GarageArt.TEXT).text = name_text
+	var word := make_label(card, Rect2(160, y, 154, 22), 15, colour)
 	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	var track := ColorRect.new()
 	track.color = GarageArt.LINE
@@ -387,8 +442,8 @@ func _scale_row(card: Panel, y: float, name_text: String, bar: ColorRect, colour
 # and the slider with its ends named.
 func _setting(rect: Rect2, heading: String, icon: String, slider: TouchSlider, colour: Color,
 		start: String, end: String) -> Label:
-	var panel := _panel(_stage, rect, GarageArt.PANEL, 14)
-	_label(panel, Rect2(16, 12, 200, 20), 13, GarageArt.DIM).text = heading
+	var panel := make_panel(_stage, rect, GarageArt.PANEL, 14)
+	make_label(panel, Rect2(16, 12, 200, 20), 13, GarageArt.DIM).text = heading
 	var art := Control.new()
 	art.position = Vector2(rect.size.x - 44, 8)
 	art.size = Vector2(30, 30)
@@ -396,21 +451,22 @@ func _setting(rect: Rect2, heading: String, icon: String, slider: TouchSlider, c
 	art.draw.connect(func() -> void:
 		GarageArt.draw_icon(art, icon, art.size / 2.0, 26.0, colour))
 	panel.add_child(art)
-	var value := _label(panel, Rect2(16, 38, rect.size.x - 32, 34), 22, GarageArt.TEXT)
+	var value := make_label(panel, Rect2(16, 38, rect.size.x - 32, 34), 22, GarageArt.TEXT)
 	slider.colour = colour
 	slider.position = Vector2(16, 86)
 	slider.size = Vector2(rect.size.x - 32, SLIDER_HEIGHT)
 	slider.custom_minimum_size = slider.size
 	panel.add_child(slider)
-	var ends := _label(panel, Rect2(16, 152, rect.size.x - 32, 22), 13, GarageArt.DIM)
+	var ends := make_label(panel, Rect2(16, 152, rect.size.x - 32, 22), 13, GarageArt.DIM)
 	ends.text = start
-	var right := _label(panel, Rect2(16, 152, rect.size.x - 32, 22), 13, GarageArt.DIM)
+	var right := make_label(panel, Rect2(16, 152, rect.size.x - 32, 22), 13, GarageArt.DIM)
 	right.text = end
 	right.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	return value
 
 
-func _panel(parent: Control, rect: Rect2, colour: Color, corner: int) -> Panel:
+# The pit board's panels, text and buttons; the track screen's too.
+static func make_panel(parent: Control, rect: Rect2, colour: Color, corner: int) -> Panel:
 	var panel := Panel.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = colour
@@ -425,7 +481,7 @@ func _panel(parent: Control, rect: Rect2, colour: Color, corner: int) -> Panel:
 	return panel
 
 
-func _label(parent: Control, rect: Rect2, font_size: int, colour: Color) -> Label:
+static func make_label(parent: Control, rect: Rect2, font_size: int, colour: Color) -> Label:
 	var label := Label.new()
 	label.position = rect.position
 	label.size = rect.size
@@ -436,7 +492,7 @@ func _label(parent: Control, rect: Rect2, font_size: int, colour: Color) -> Labe
 	return label
 
 
-func _button(parent: Control, text: String, rect: Rect2, font_size: int) -> TouchButton:
+static func make_button(parent: Control, text: String, rect: Rect2, font_size: int) -> TouchButton:
 	var button := TouchButton.new()
 	button.text = text
 	button.font_size = font_size
