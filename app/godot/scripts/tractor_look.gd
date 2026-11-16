@@ -1,7 +1,7 @@
 # How a class's tractors are painted, so the classes look apart at a
 # glance: the Standard class's farm tractor in red with a white cab roof,
 # the Sport 2.5 t in blue with a white top, the Sport 4.5 t in black and
-# gold. The player's tractor wears its class's scheme; the rivals keep the
+# gold, the Supersport 3.6 t in white with red trim and rims. The player's tractor wears its class's scheme; the rivals keep the
 # class's trim (the top, the rims) in their own paint and numbers.
 # The shapes (a cab or a roll bar) come from the tractor's data, not from
 # here.
@@ -68,7 +68,17 @@ static func schemes() -> Dictionary:
 	sport_4500.disc = Color(0.08, 0.08, 0.09)
 	sport_4500.ring = sport_4500.trim
 	sport_4500.driver_shirt = Color(0.8, 0.12, 0.1)
-	return {standard.name: standard, sport_2500.name: sport_2500, sport_4500.name: sport_4500}
+	var supersport_3600 := TractorLook.new()
+	supersport_3600.name = "Supersport 3.6 t"
+	supersport_3600.paint = Color(0.93, 0.93, 0.91)
+	supersport_3600.paint_dark = Color(0.62, 0.62, 0.6)
+	supersport_3600.trim = Color(0.78, 0.1, 0.09)
+	supersport_3600.rim = Color(0.78, 0.1, 0.09)
+	supersport_3600.disc = Color(0.12, 0.12, 0.13)
+	supersport_3600.ring = supersport_3600.trim
+	supersport_3600.driver_shirt = Color(0.12, 0.12, 0.13)
+	return {standard.name: standard, sport_2500.name: sport_2500, sport_4500.name: sport_4500,
+			supersport_3600.name: supersport_3600}
 
 
 # The class's look; for a class without its own (or none named), a farm or

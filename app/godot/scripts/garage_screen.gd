@@ -293,7 +293,7 @@ func _build_part() -> void:
 
 func _show_workshop() -> void:
 	_title.text = "WORKSHOP"
-	_subtitle.text = ""
+	_subtitle.text = crew_advice(_garage)
 	_icon_part = ""
 	for pin: PartPin in upgrade_pins + choice_pins:
 		pin.queue_free()
@@ -305,6 +305,10 @@ func _show_workshop() -> void:
 	var upgrades: Array = _garage.get("upgrades", [])
 	for i in upgrades.size():
 		var line: Dictionary = upgrades[i]
+		# A part for an alternative not fitted (the other engine's build)
+		# waits on that alternative's screen; its stages stay bought.
+		if not line.get("counts", true):
+			continue
 		var pin := _pin(String(line.get("part", "")), used)
 		var levels := int(line["levels"])
 		var level := int(line["level"])
@@ -421,7 +425,10 @@ func _show_choice() -> void:
 	var slot := String(choice.get("slot", ""))
 	_icon_part = slot
 	_title.text = String(choice["name"]).to_upper()
-	_subtitle.text = "Parts you own swap for free between events"
+	var advice := crew_advice(_garage)
+	_subtitle.text = "Parts you own swap for free between events" if advice.is_empty() \
+			or int((_garage.get("advice", {}) as Dictionary).get("choice", -1)) != view_index \
+			else advice
 	for child in _choice.get_children():
 		child.queue_free()
 	alternative_buttons.clear()
@@ -460,6 +467,10 @@ func _show_choice() -> void:
 		var heading := _label(card, Rect2(140, 44, width - 160, 80), 26, GarageArt.TEXT)
 		heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		heading.text = String(alternative["label"])
+		var suits := String(alternative.get("suits", ""))
+		if not suits.is_empty():
+			var made := _label(card, Rect2(140, 124, width - 160, 30), 17, GarageArt.DIM)
+			made.text = "Made for the %s" % suits.to_lower()
 		if a < dynos.size() and not (dynos[a] as Dictionary).is_empty():
 			var chart := DynoChart.new()
 			chart.position = Vector2(16, 150)
@@ -490,6 +501,17 @@ func _show_choice() -> void:
 
 
 # ---------------------------------------------------------------- helpers
+
+
+# The crew chief's word on what is fitted (TractorPullEvent.get_garage's
+# "advice"): the final drive the tires want, or "" when all suits.
+static func crew_advice(garage: Dictionary) -> String:
+	var advice: Dictionary = garage.get("advice", {})
+	if advice.is_empty():
+		return ""
+	return "Crew chief: with the %s, fit the %s%s." % [String(advice["for"]).to_lower(),
+			String(advice["label"]).to_lower(),
+			"" if advice.get("owned", false) else " (buy it first)"]
 
 
 # A pin for `part` at its place round the tractor, beside one already
