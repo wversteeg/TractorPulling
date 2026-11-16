@@ -98,12 +98,13 @@ struct PlayedEvent {
 /// so its spots are the event's own: each driver guesses a
 /// gear for the day's track (between `variation`'s gears), every pull
 /// differs a little (`pull_to_pull`), and test pullers decide as
-/// suggested. Deterministic for `seed`. Runs whole pulls: for tools,
+/// suggested. Deterministic for `seed`. The field's last `guests`
+/// pullers are guests (event::Event::create). Runs whole pulls: for tools,
 /// tests and seasons, not inside a frame.
 [[nodiscard]] std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& venue,
                                                     const Field& field, const Variation& variation,
                                                     const PullToPull& pull_to_pull,
                                                     std::span<const int> running_order,
-                                                    std::uint64_t seed) noexcept;
+                                                    std::uint64_t seed, int guests = 0) noexcept;
 
 }  // namespace tp::field

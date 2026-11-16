@@ -246,6 +246,26 @@ func _play() -> void:
 	var bold := EventTexts.leading_rows(log, 4)
 	bold.sort()
 	_expect(bold == PackedInt32Array([1, 3, 6, 7, 9]), "the bold rows: %s" % bold)
+	# A guest: marked by name, no points, and in bold only past the
+	# competitors' last pull-off place.
+	var guest := EventTexts.standing_row({"place": 1, "name": "Rik", "guest": true,
+			"disqualified": false, "full_pull": false, "distance_m": 96.0, "points": 0})
+	_expect(guest[1] == "Rik (guest)" and guest[3] == "guest", "a guest's row: %s" % guest)
+	var with_guests := [
+		{"puller": 0, "kind": "test", "reached_m": 95.0, "disqualified": false},
+		{"puller": 1, "kind": "competition", "reached_m": 94.0, "disqualified": false},
+		{"puller": 5, "kind": "competition", "reached_m": 99.0, "disqualified": false,
+				"guest": true},
+		{"puller": 2, "kind": "competition", "reached_m": 93.0, "disqualified": false},
+		{"puller": 6, "kind": "competition", "reached_m": 91.0, "disqualified": false,
+				"guest": true},
+		{"puller": 3, "kind": "competition", "reached_m": 92.0, "disqualified": false},
+		{"puller": 4, "kind": "competition", "reached_m": 80.0, "disqualified": false},
+	]
+	var bold_guests := EventTexts.leading_rows(with_guests, 4)
+	bold_guests.sort()
+	_expect(bold_guests == PackedInt32Array([0, 1, 2, 3, 5]),
+			"the competitors' four and the guest past them: %s" % bold_guests)
 
 	# The start screen: the season's first event, started behind it.
 	var info := event.get_event()

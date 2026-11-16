@@ -10,6 +10,7 @@
 #include "tp/data/session/run_setup.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -435,9 +436,10 @@ godot::String TractorPullEvent::start_season(const godot::String& season_path, s
     }
     const data::SeasonDefinition& d = loaded.value();
     const data::EventDefinition& e = d.event;
-    std::optional<field::LiveSeason> season = field::LiveSeason::create(
-        e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull, d.points, e.game.pullers,
-        static_cast<int>(d.rounds.size()), static_cast<std::uint64_t>(seed));
+    std::optional<field::LiveSeason> season =
+        field::LiveSeason::create(e.rules, e.reference, e.variation, e.class_rules, e.pull_to_pull,
+                                  d.points, e.game.pullers, static_cast<int>(d.rounds.size()),
+                                  static_cast<std::uint64_t>(seed), e.game.season_guests());
     if (!season) {
         return "the season's field, points or rules are inconsistent";
     }
@@ -651,10 +653,23 @@ std::int64_t TractorPullEvent::advance(std::int64_t max_steps) {
 }
 
 godot::String TractorPullEvent::name_of(int puller) const {
-    if (puller < 0 || static_cast<std::size_t>(puller) >= names_.size()) {
-        return godot::vformat("#%d", puller + 1);
+    if (puller >= 0 && static_cast<std::size_t>(puller) < names_.size()) {
+        return to_godot(names_[static_cast<std::size_t>(puller)]);
     }
-    return to_godot(names_[static_cast<std::size_t>(puller)]);
+    // A guest at the event being pulled: after the competitors, the
+    // pool's guests drawn for it.
+    if (season_ && definition_ && season_->events_started() > 0) {
+        const int i = puller - season_->puller_count();
+        const std::vector<std::string>& pool = definition_->event.game.guest_names;
+        if (i >= 0 && i < season_->guests().per_event) {
+            const int guest = season_->guests_at_event(season_->events_started() - 1)
+                                  .at(static_cast<std::size_t>(i));
+            if (guest >= 0 && static_cast<std::size_t>(guest) < pool.size()) {
+                return to_godot(pool[static_cast<std::size_t>(guest)]);
+            }
+        }
+    }
+    return godot::vformat("#%d", puller + 1);
 }
 
 double TractorPullEvent::first_line_m() const {
@@ -722,6 +737,7 @@ godot::Dictionary TractorPullEvent::entry(const field::LogEntry& e, double line_
     }
     out["puller"] = e.pull.puller;
     out["name"] = name_of(e.pull.puller);
+    out["guest"] = season_->event()->guest(e.pull.puller);
     out["kind"] = kind_name(e.pull.kind);
     out["pull_off_round"] = e.pull.pull_off_round;
     out["reached_m"] = e.reached_m;
@@ -769,9 +785,16 @@ godot::Array TractorPullEvent::get_standings() const {
     if (!season_ || season_->event() == nullptr) {
         return out;
     }
-    for (const event::Standing& s : season_->event()->standings()) {
+    const std::span<const event::Standing> standings = season_->event()->standings();
+    // What each place scores in the championship once the event is over:
+    // by place among the competitors, nothing for a guest.
+    const std::array<int, event::kMaxPullers> points =
+        season::event_points(season_->points(), standings);
+    for (std::size_t i = 0; i < standings.size(); ++i) {
+        const event::Standing& s = standings[i];
         godot::Dictionary line;
         line["place"] = s.place;
+        line["guest"] = s.guest;
         line["puller"] = s.puller;
         line["name"] = name_of(s.puller);
         line["distance_m"] = s.distance_m;
@@ -784,8 +807,7 @@ godot::Array TractorPullEvent::get_standings() const {
             rounds.push_back(s.pull_off_distances_m.at(static_cast<std::size_t>(r)));
         }
         line["pull_off_distances_m"] = rounds;
-        // What the place scores in the championship once the event is over.
-        line["points"] = season::points_scored(season_->points(), s);
+        line["points"] = points.at(i);
         out.push_back(line);
     }
     return out;

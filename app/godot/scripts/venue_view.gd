@@ -97,10 +97,20 @@ const BAY_SIZE_M := Vector2(5.0, 4.0)
 # A bay starts this far behind the tractor's rear axle: room for the rear
 # tires [m].
 const BAY_BEHIND_REAR_AXLE_M := 1.0
+# The grass texture repeats this often, on the field and on the parking
+# grass that carries it on [m].
+const GRASS_TILE_M := 12.0
 # The parking's ground: behind the start line from here to the run-up's
 # end, out from the lane's right-hand chalk line between these [m].
 const PARKING_FRONT_X_M := -3.0
 const PARKING_FROM_LANE_M := Vector2(1.0, 15.0)
+# The parking's ground is laid in pieces about this big, gravel or the
+# field's grass over it, so each is lit by the parking's own lights: a
+# renderer lights each mesh with only its nearest few lights (8 on a phone),
+# and the field's one big plane picks the track's [m].
+const PARKING_PIECE_M := 7.5
+# The grass pieces lie this far over the field, clear of it [m].
+const PARKING_GRASS_LIFT_M := 0.01
 const GRAVEL_DARK := Color(0.42, 0.4, 0.37)
 const GRAVEL_LIGHT := Color(0.66, 0.63, 0.58)
 # The clay strip: from this far behind the start line (just behind the
@@ -180,6 +190,9 @@ const PARKING_LIGHTS_OUT_M := 2.0
 # far edge (behind the parked tractor), this high [m].
 const RIVAL_LIGHT_IN_M := 1.0
 const RIVAL_LIGHT_HEIGHT_M := 7.0
+# How far a bay's lamp reaches: its own bay, not the track's lights' share
+# of the meshes around it [m].
+const RIVAL_LIGHT_RANGE_M := 20.0
 # The fields stay this far clear past the track's end: the pile and the
 # trailers behind it [m].
 const END_CLEAR_M := 40.0
@@ -272,6 +285,10 @@ var _track_end: TrackEnd = null
 # Where the floodlight masts stand (x down the track, y to the left) [m].
 var _masts: Array[Vector2] = []
 var _parking_masts: Array[Vector2] = []
+# The field's grass, and its plane's corner (Godot's x and z) the texture
+# starts from: the parking's grass pieces carry it on [m].
+var _grass_material: StandardMaterial3D = null
+var _field_corner := Vector2.ZERO
 var _rival_lights: Array[Vector2] = []
 
 
@@ -506,12 +523,14 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	grass_material.normal_enabled = true
 	grass_material.normal_texture = Art.ground_normal(0.08, 8, 6.0)
 	grass_material.normal_scale = 0.6
-	grass_material.uv1_scale = Vector3(FIELD_M.x / 12.0, FIELD_M.y / 12.0, 1.0)
+	grass_material.uv1_scale = Vector3(FIELD_M.x / GRASS_TILE_M, FIELD_M.y / GRASS_TILE_M, 1.0)
 	grass_material.roughness = 1.0
 	var grass := PlaneMesh.new()
 	grass.size = FIELD_M
 	var field := Art.instance(grass, grass_material)
 	field.position = TrackSpace.point(length_m / 2.0, 0.0, GRASS_Y_M)
+	_grass_material = grass_material
+	_field_corner = Vector2(field.position.x, field.position.z) - FIELD_M / 2.0
 	_quiet(field)
 	add_child(field)
 
@@ -548,21 +567,7 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 func _add_parking(parent: Node3D, lane_m: float) -> void:
 	var layout := parking_layout()
 	var edge_m := lane_m / 2.0
-	if layout["ground"] == "gravel":
-		var gravel_material := StandardMaterial3D.new()
-		gravel_material.albedo_texture = Art.ground_texture(GRAVEL_DARK, GRAVEL_LIGHT, 0.2, 5)
-		gravel_material.normal_enabled = true
-		gravel_material.normal_texture = Art.ground_normal(0.3, 6, 3.0)
-		gravel_material.roughness = 1.0
-		var size := Vector2(PARKING_FROM_LANE_M.y - PARKING_FROM_LANE_M.x,
-				PARKING_FRONT_X_M + RUN_UP_M)
-		gravel_material.uv1_scale = Vector3(size.x / 4.0, size.y / 4.0, 1.0)
-		var plane := PlaneMesh.new()
-		plane.size = size
-		var gravel := Art.instance(plane, gravel_material)
-		gravel.position = TrackSpace.point(PARKING_FRONT_X_M - size.y / 2.0,
-				-(edge_m + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y) / 2.0), -0.035)
-		parent.add_child(_quiet(gravel))
+	_add_parking_ground(parent, lane_m, layout["ground"] == "gravel")
 	# Each bay's sides: along the tractor's heading, half a bay either side
 	# of its middle, which is half a bay ahead of the bay's back.
 	var heading: float = layout["heading"]
@@ -588,6 +593,52 @@ func _add_parking(parent: Node3D, lane_m: float) -> void:
 		var stake := BoxMesh.new()
 		stake.size = Vector3(0.06, 0.5, 0.06)
 		parent.add_child(_quiet(Art.many(stake, stakes, Art.material(Color(0.95, 0.5, 0.1), 0.8))))
+
+
+# The parking's ground in PARKING_PIECE_M pieces: gravel, its texture every
+# 4 m; or the field's grass just over the field, its texture carried on
+# from the field's so no seam shows, a piece further out all round (but
+# towards the lane) so the light fades out over the grass.
+func _add_parking_ground(parent: Node3D, lane_m: float, gravel: bool) -> void:
+	var size := Vector2(PARKING_FROM_LANE_M.y - PARKING_FROM_LANE_M.x,
+			PARKING_FRONT_X_M + RUN_UP_M)
+	var out_m := 0.0 if gravel else PARKING_PIECE_M
+	var middle := TrackSpace.point(PARKING_FRONT_X_M - size.y / 2.0,
+			-(lane_m / 2.0 + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y + out_m) / 2.0), 0.0)
+	size += Vector2(out_m, 2.0 * out_m)
+	var material: StandardMaterial3D
+	var tile_m := GRASS_TILE_M
+	var height_m := GRASS_Y_M + PARKING_GRASS_LIFT_M
+	if gravel:
+		material = StandardMaterial3D.new()
+		material.albedo_texture = Art.ground_texture(GRAVEL_DARK, GRAVEL_LIGHT, 0.2, 5)
+		material.normal_enabled = true
+		material.normal_texture = Art.ground_normal(0.3, 6, 3.0)
+		material.roughness = 1.0
+		tile_m = 4.0
+		height_m = -0.035
+	elif _grass_material != null:
+		material = _grass_material
+	else:
+		return
+	# Across the lane is Godot's x, along it its z (TrackSpace).
+	var across := ceili(size.x / PARKING_PIECE_M)
+	var along := ceili(size.y / PARKING_PIECE_M)
+	var piece := Vector2(size.x / across, size.y / along)
+	var corner := Vector2(middle.x, middle.z) - piece * Vector2(across, along) / 2.0
+	var plane := PlaneMesh.new()
+	plane.size = piece
+	for i in across:
+		for j in along:
+			var at := corner + piece * Vector2(i, j)
+			var surface := material.duplicate() as StandardMaterial3D
+			surface.uv1_scale = Vector3(piece.x / tile_m, piece.y / tile_m, 1.0)
+			var from := at - (Vector2.ZERO if gravel else _field_corner)
+			surface.uv1_offset = Vector3(from.x / tile_m, from.y / tile_m, 0.0)
+			var ground := Art.instance(plane, surface)
+			ground.name = "ParkingGround%d_%d" % [i, j]
+			ground.position = Vector3(at.x + piece.x / 2.0, height_m, at.y + piece.y / 2.0)
+			parent.add_child(_quiet(ground))
 
 
 # How much further out the venue stands beside the lane on `side` (-1 right,
@@ -936,8 +987,8 @@ func _add_parking_lights(parent: Node3D, lane_m: float, lights: Dictionary) -> v
 	for bay in rival_bays():
 		var rear := Vector2(bay.x, -(lane_m / 2.0 + bay.y))
 		var tractor := rear + ahead * (BAY_SIZE_M.x / 2.0 - BAY_BEHIND_REAR_AXLE_M)
-		_add_mast(parent, Vector2(bay.x, -post_out_m), tractor, -0.3, lights,
-				RIVAL_LIGHT_HEIGHT_M)
+		_add_mast(parent, Vector2(bay.x, -post_out_m), tractor, -0.3,
+				lights.merged({"range_m": RIVAL_LIGHT_RANGE_M}, true), RIVAL_LIGHT_HEIGHT_M)
 		_rival_lights.append(Vector2(bay.x, -post_out_m))
 
 

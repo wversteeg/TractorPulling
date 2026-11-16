@@ -30,8 +30,22 @@ enum class ParamError : std::uint8_t {
 [[nodiscard]] int points_for(const Points& points, int place) noexcept;
 
 /// The points a line of an event's standings scores: its place's, nothing
-/// for a disqualified pull, whatever place it ends in.
+/// for a disqualified pull, whatever place it ends in, or a guest. In an
+/// event with guests a competitor scores by their place among the
+/// competitors: event_points().
 [[nodiscard]] int points_scored(const Points& points, const event::Standing& standing) noexcept;
+
+/// A competitor's place among the competitors: their place in
+/// `event_standings` less the guests ahead of them (a guest who wins
+/// leaves the best competitor first); 0 for a guest.
+[[nodiscard]] int competition_place(std::span<const event::Standing> event_standings,
+                                    const event::Standing& standing) noexcept;
+
+/// What each line of an event's standings scores, in the same order: a
+/// competitor by their competition_place(), nothing for a disqualified
+/// pull or a guest.
+[[nodiscard]] std::array<int, event::kMaxPullers> event_points(
+    const Points& points, std::span<const event::Standing> event_standings) noexcept;
 
 /// A puller's place in the championship.
 struct Standing {
@@ -43,16 +57,17 @@ struct Standing {
     std::array<int, kMaxEvents> event_points{};
 };
 
-/// A season's championship: each event's standings score points by place,
-/// a disqualified pull none; the most points win, and more event wins break
-/// a tie.
+/// A season's championship: each event's standings score points by place
+/// among the competitors (event_points), a disqualified pull none and a
+/// guest none, outside the championship; the most points win, and more
+/// event wins (first among the competitors) break a tie.
 class Championship {
 public:
     [[nodiscard]] static std::optional<Championship> create(const Points& points,
                                                             int pullers) noexcept;
 
-    /// Scores an event. False once the season is full or for a puller
-    /// outside the field.
+    /// Scores an event. False once the season is full or for a competitor
+    /// outside the field; guests' lines are passed over.
     bool add(std::span<const event::Standing> event_standings) noexcept;
 
     [[nodiscard]] int events() const noexcept { return events_; }

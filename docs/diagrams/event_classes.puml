@@ -49,6 +49,7 @@ package "tp::event" {
     +distance_m : double
     +full_pull : bool
     +disqualified : bool
+    +guest : bool, not in the competition
     +pull_off_rounds : int
     +pull_off_distances_m : array<double, 5>, each round's
     +pull_off_distance_m() : double, the last round's
@@ -60,7 +61,8 @@ package "tp::event" {
     -step_estimate_m_ : double, learnt from each change
     -queue_ : array<Pull>
     -entries_ : array<Entry, 32>
-    +{static} create(const Rules&, const sled::Params&, span<const int> order) : optional<Event>
+    +{static} create(const Rules&, const sled::Params&, span<const int> order,\n      guests = 0) : optional<Event> (the last `guests` pullers)
+    +guest(puller) : bool
     +next() : optional<Pull>
     +sled() : const sled::Params&
     +full_pull_m() : double, the pull-off line in a pull-off
