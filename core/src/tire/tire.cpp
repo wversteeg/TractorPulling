@@ -227,6 +227,7 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
         const double unscaled_n = out.force_n;
         out.force_n = unscaled_n * share;
         out.full_bite = bite * share;
+        out.grip_share = share;
         out.force_per_slip_speed =
             std::max(load_n * dmu_ds / reference_m_s * share +
                          std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s,
@@ -312,6 +313,11 @@ SideGrip with_traction(SideGrip grip, double traction_n, double full_bite_n,
     const double sliding = std::min(std::abs(slip_ratio), kFullSlip);
     grip.limit_n *= std::sqrt(1.0 - used * used) * (kFullSlip - sliding);
     return grip;
+}
+
+SideGrip with_traction(SideGrip grip, const Traction& traction, double load_n) noexcept {
+    grip.limit_n *= traction.grip_share;
+    return with_traction(grip, traction.force_n, traction.full_bite * load_n, traction.slip_ratio);
 }
 
 double side_force_n(const SideGrip& grip, double deflection_m) noexcept {

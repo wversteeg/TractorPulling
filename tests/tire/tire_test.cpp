@@ -424,36 +424,47 @@ TEST(TireSpin, APullerTireBitesSpinningFastAFarmTireSmears) {
                 1e-3 * force(plain, kVeryFast_m_s));
 }
 
-// The grip a tire shares between traction and side force follows the spin
-// response too: a farm tire spun fast, which pulls less, does not gain
-// side grip for it (it smears both ways), and a puller tire turning
-// slowly has less of both.
+// The tread's grip share (k(v)) holds across the tire as along it: the
+// same share of its grip is in use as without the response, and its side
+// grip is k(v) of the unspun tire's. A farm tire spun fast smears both
+// ways (less side grip, never more), and a puller tire turning slowly
+// grips less both ways.
 TEST(TireSpin, SideGripSharesTheSpinResponse) {
     const soil::Surface surface = reference_surface();
+    const auto at = [&](const Params& p, double ground_m_s) {
+        return traction(p, wheel_speed_for(0.5, ground_m_s), ground_m_s, kLoad_n, surface);
+    };
     const auto side_limit_n = [&](const Params& p, double ground_m_s) {
-        const Traction t =
-            traction(p, wheel_speed_for(0.5, ground_m_s), ground_m_s, kLoad_n, surface);
-        EXPECT_NEAR(std::abs(t.force_n) / (t.full_bite * kLoad_n),
-                    std::abs(traction(unspun(), wheel_speed_for(0.5, ground_m_s), ground_m_s,
-                                      kLoad_n, surface)
-                                 .force_n) /
-                        (full_bite(p, kLoad_n, surface) * kLoad_n),
-                    1e-12)
-            << "the same share of its grip in use as without the response";
-        return with_traction(side_grip(p.size, p.cornering, kLoad_n, surface), t.force_n,
-                             t.full_bite * kLoad_n, t.slip_ratio)
+        return with_traction(side_grip(p.size, p.cornering, kLoad_n, surface), at(p, ground_m_s),
+                             kLoad_n)
             .limit_n;
     };
     for (const double ground_m_s : {0.5, 4.0, 20.0}) {
-        EXPECT_NEAR(side_limit_n(farm(), ground_m_s), side_limit_n(unspun(), ground_m_s),
-                    1e-9 * side_limit_n(unspun(), ground_m_s))
-            << "spun fast, no more side grip than without the response";
-        EXPECT_NEAR(side_limit_n(puller(), ground_m_s), side_limit_n(unspun(), ground_m_s),
-                    1e-9 * side_limit_n(unspun(), ground_m_s));
+        const double unspun_n = side_limit_n(unspun(), ground_m_s);
+        for (const Params& p : {farm(), puller()}) {
+            const Traction t = at(p, ground_m_s);
+            EXPECT_NEAR(std::abs(t.force_n) / (t.full_bite * kLoad_n),
+                        std::abs(at(unspun(), ground_m_s).force_n) /
+                            (full_bite(p, kLoad_n, surface) * kLoad_n),
+                        1e-12)
+                << "the same share of its grip in use as without the response";
+            EXPECT_NEAR(side_limit_n(p, ground_m_s), t.grip_share * unspun_n, 1e-9 * unspun_n);
+            EXPECT_LE(side_limit_n(p, ground_m_s), unspun_n * (1.0 + 1e-12));
+        }
     }
-    // What it pulls with and the grip it shares fall together.
-    const Traction fast = traction(farm(), wheel_speed_for(0.5, 20.0), 20.0, kLoad_n, surface);
-    EXPECT_LT(fast.full_bite, full_bite(farm(), kLoad_n, surface));
+    // Spun fast the farm tire has clearly less side grip; a puller tire has
+    // its least turning slowly.
+    EXPECT_LT(side_limit_n(farm(), 20.0), 0.9 * side_limit_n(unspun(), 20.0));
+    EXPECT_LT(
+        side_limit_n(puller(), 0.5),
+        side_limit_n(puller(), 20.0) * side_limit_n(unspun(), 0.5) / side_limit_n(unspun(), 20.0));
+    // Without the response the share is 1 and the side grip as before.
+    EXPECT_EQ(at(unspun(), 4.0).grip_share, 1.0);
+    const Traction plain = at(unspun(), 4.0);
+    EXPECT_EQ(side_limit_n(unspun(), 4.0),
+              with_traction(side_grip(unspun().size, unspun().cornering, kLoad_n, surface),
+                            plain.force_n, plain.full_bite * kLoad_n, plain.slip_ratio)
+                  .limit_n);
 }
 
 // The implicit solve's slope includes the spin response: a small drop in

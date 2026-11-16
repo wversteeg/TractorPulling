@@ -65,6 +65,7 @@ package "tp::tire" {
     +force_per_slip_speed : double
     +slip_ratio : double
     +full_bite : double
+    +grip_share : double (k(v), 1 without)
   }
   enum ParamError
   class "tire functions" as TireFns <<free functions>> {
@@ -85,6 +86,7 @@ package "tp::tire" {
     +traction / driven_rolling_resistance / thrown_soil_m3_s / side_grip\n      on a Footing: the same results, worked out once per step
     +side_grip(const Size&, const Cornering&, load_n, const Surface&) : SideGrip
     +with_traction(SideGrip, traction_n, full_bite_n, slip_ratio) : SideGrip
+    +with_traction(SideGrip, const Traction&, load_n) : SideGrip  (side grip × k(v))
     +side_force_n(const SideGrip&, deflection_m) : double
     +relax_deflection_m(const SideGrip&, const Cornering&, deflection_m,\n      lateral_m_s, rolling_m_s, min_rolling_m_s, dt_s) : double
   }

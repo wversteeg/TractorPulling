@@ -203,10 +203,13 @@ struct Traction {
     double slip_ratio = 0.0;
     /// full_bite() for this load and ground, which traction works from,
     /// scaled by the tread's response to how fast it spins (k(v),
-    /// TractionCurve): the grip the tire has to share between traction and
-    /// side force (with_traction), so a smearing tire spun fast has less of
-    /// both.
+    /// TractionCurve, grip_share).
     double full_bite = 0.0;
+    /// k(v): the share of its grip the tread has at this slip speed, for
+    /// traction and side force alike (with_traction): a smearing tire spun
+    /// fast, or a puller tire turning slowly, has less of both. 1 for a
+    /// tire without the response.
+    double grip_share = 1.0;
 };
 
 [[nodiscard]] Traction traction(const Params& params, double wheel_surface_speed_m_s,
@@ -287,6 +290,12 @@ struct SideGrip {
 /// side grip falls with slip and is gone at full spin.
 [[nodiscard]] SideGrip with_traction(SideGrip grip, double traction_n, double full_bite_n,
                                      double slip_ratio) noexcept;
+
+/// As above for `traction` under `load_n`, its grip share (k(v),
+/// Traction::grip_share) scaling the side grip too: the tread that grips
+/// less along the tire spinning fast (or slowly) grips less across it.
+[[nodiscard]] SideGrip with_traction(SideGrip grip, const Traction& traction,
+                                     double load_n) noexcept;
 
 /// The side force from a lateral patch deflection, positive to the tire's
 /// left [N].
