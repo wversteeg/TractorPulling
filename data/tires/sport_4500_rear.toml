@@ -21,9 +21,9 @@ min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 limit = 1.4                        # μ on very strong ground at full bite: a hand cut farm tire on a prepared track
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 8.0                    # cut lugs: grip builds with more slip than an uncut farm tire's
-# Spun fast, the tall lugs dig in and smear: grip falls to fast_spin_grip
-# of itself as the tread's slip speed passes spin_speed_m_s
-# (tp::tire::TractionCurve).
+# Spun fast, the tall lugs dig in and smear: grip falls towards
+# fast_spin_grip of itself over a tread slip speed of about spin_speed_m_s
+# (tp::tire::TractionCurve), along with the side grip it shares.
 fast_spin_grip = 0.9
 spin_speed_m_s = 4.0
 

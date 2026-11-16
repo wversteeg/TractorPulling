@@ -30,8 +30,8 @@ struct TractionCurve {
     /// How the grip depends on how fast the tread sweeps through the soil:
     /// its slip speed v, the wheel's surface speed less the ground speed
     /// (see Params). The grip is scaled by a share that moves from
-    /// slow_spin_grip at v = 0 to fast_spin_grip as v passes
-    /// spin_speed_m_s,
+    /// slow_spin_grip at v = 0 to fast_spin_grip over about spin_speed_m_s
+    /// (63 % of the way there),
     ///
     ///   k(v) = slow + (fast - slow) (1 - e^(-|v| / spin_speed_m_s))
     ///
@@ -44,7 +44,7 @@ struct TractionCurve {
     /// 1 (the default): grip does not depend on it.
     double slow_spin_grip = 1.0;
     double fast_spin_grip = 1.0;
-    /// The slip speed over which the share moves most of its way [m/s].
+    /// The slip speed over which the share moves 63 % of its way [m/s].
     double spin_speed_m_s = 1.0;
 };
 
@@ -180,7 +180,11 @@ struct Traction {
     double force_n = 0.0;
     double force_per_slip_speed = 0.0;  // [N per m/s]
     double slip_ratio = 0.0;
-    /// full_bite() for this load and ground, which traction works from.
+    /// full_bite() for this load and ground, which traction works from,
+    /// scaled by the tread's response to how fast it spins (k(v),
+    /// TractionCurve): the grip the tire has to share between traction and
+    /// side force (with_traction), so a smearing tire spun fast has less of
+    /// both.
     double full_bite = 0.0;
 };
 

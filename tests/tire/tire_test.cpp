@@ -389,6 +389,38 @@ TEST(TireSpin, APullerTireBitesSpinningFastAFarmTireSmears) {
                 1e-3 * force(plain, kVeryFast_m_s));
 }
 
+// The grip a tire shares between traction and side force follows the spin
+// response too: a farm tire spun fast, which pulls less, does not gain
+// side grip for it (it smears both ways), and a puller tire turning
+// slowly has less of both.
+TEST(TireSpin, SideGripSharesTheSpinResponse) {
+    const soil::Surface surface = reference_surface();
+    const auto side_limit_n = [&](const Params& p, double ground_m_s) {
+        const Traction t =
+            traction(p, wheel_speed_for(0.5, ground_m_s), ground_m_s, kLoad_n, surface);
+        EXPECT_NEAR(std::abs(t.force_n) / (t.full_bite * kLoad_n),
+                    std::abs(traction(unspun(), wheel_speed_for(0.5, ground_m_s), ground_m_s,
+                                      kLoad_n, surface)
+                                 .force_n) /
+                        (full_bite(p, kLoad_n, surface) * kLoad_n),
+                    1e-12)
+            << "the same share of its grip in use as without the response";
+        return with_traction(side_grip(p.size, p.cornering, kLoad_n, surface), t.force_n,
+                             t.full_bite * kLoad_n, t.slip_ratio)
+            .limit_n;
+    };
+    for (const double ground_m_s : {0.5, 4.0, 20.0}) {
+        EXPECT_NEAR(side_limit_n(farm(), ground_m_s), side_limit_n(unspun(), ground_m_s),
+                    1e-9 * side_limit_n(unspun(), ground_m_s))
+            << "spun fast, no more side grip than without the response";
+        EXPECT_NEAR(side_limit_n(puller(), ground_m_s), side_limit_n(unspun(), ground_m_s),
+                    1e-9 * side_limit_n(unspun(), ground_m_s));
+    }
+    // What it pulls with and the grip it shares fall together.
+    const Traction fast = traction(farm(), wheel_speed_for(0.5, 20.0), 20.0, kLoad_n, surface);
+    EXPECT_LT(fast.full_bite, full_bite(farm(), kLoad_n, surface));
+}
+
 // The implicit solve's slope includes the spin response: a small drop in
 // ground speed reproduces it on the rising side.
 TEST(TireSpin, LinearizationIncludesTheSpinResponse) {

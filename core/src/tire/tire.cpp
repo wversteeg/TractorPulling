@@ -214,6 +214,7 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
         const double share = curve.slow_spin_grip + change * (1.0 - unspun);
         const double unscaled_n = out.force_n;
         out.force_n = unscaled_n * share;
+        out.full_bite = bite * share;
         out.force_per_slip_speed =
             std::max(load_n * dmu_ds / reference_m_s * share +
                          std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s,
