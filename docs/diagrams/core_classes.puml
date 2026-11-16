@@ -95,6 +95,7 @@ skinparam classAttributeIconSize 0
        dt_over_inertia, viscous_divisor
     }
     class "engine functions" as EngineFns <<free functions>> {
+      +kMinDroop_rad_s = 25 rpm
       +validate(const Params&) : optional<ParamError>
       +with_torque_scale(const Params&, scale) : optional<Params>
       +with_rated_speed(const Params&, rated_omega_rad_s) : optional<Params>

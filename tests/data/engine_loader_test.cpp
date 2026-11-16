@@ -135,7 +135,9 @@ TEST(EngineLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 16> cases = {{
+    const std::array<Case, 17> cases = {{
+        {"rated_rpm = 2200", "rated_rpm = 2390",
+         "engine.rated_rpm: must be at least 25 rpm below high_idle_rpm"},
         {"stall_rpm = 450", "stall_rpm = 450\nmax_high_idle_rpm = 2300",
          "engine.max_high_idle_rpm: must not be below high_idle_rpm"},
         {"stall_rpm = 450", "stall_rpm = 450\nmax_high_idle_rpm = 2600",

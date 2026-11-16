@@ -86,6 +86,15 @@ TEST(EngineParams, RejectsNonsense) {
               ParamError::kMaxHighIdleBelowHighIdle);
     EXPECT_EQ(with([](Params& p) { p.max_high_idle_omega_rad_s = 0.0; }), std::nullopt)
         << "no stop";
+    EXPECT_EQ(with([](Params& p) {
+                  p.rated_omega_rad_s = p.high_idle_omega_rad_s - 0.5 * kMinDroop_rad_s;
+              }),
+              ParamError::kDroopTooShort);
+    EXPECT_EQ(with([](Params& p) {
+                  p.rated_omega_rad_s = p.high_idle_omega_rad_s - 1.01 * kMinDroop_rad_s;
+              }),
+              std::nullopt)
+        << "the shortest droop";
 }
 
 TEST(EngineParams, RejectsNegativeTorque) {
@@ -433,8 +442,20 @@ TEST(Engine, APullingGovernorRunsUpToItsStop) {
     EXPECT_GT(pulling_state.omega_rad_s, rpm_to_rad_s(2640.0));
     EXPECT_LE(loaded.max_omega_rad_s, p.high_idle_omega_rad_s);
 
-    // At or past the stop there is no governor.
+    // At or past the stop, or so close below it that the droop would be
+    // too short to govern steadily, there is no governor.
     EXPECT_FALSE(with_rated_speed(stock, stock.max_high_idle_omega_rad_s).has_value());
+    EXPECT_FALSE(with_rated_speed(stock, stock.max_high_idle_omega_rad_s - 0.5 * kMinDroop_rad_s)
+                     .has_value());
+    EXPECT_TRUE(with_rated_speed(stock, stock.max_high_idle_omega_rad_s - 1.01 * kMinDroop_rad_s)
+                    .has_value());
+
+    // The droop kept is the engine's own: turned up to the stop and back
+    // down, the cut-off does not come back to where it was. Callers apply
+    // it to the reference engine.
+    const std::optional<Params> back = with_rated_speed(p, stock.rated_omega_rad_s);
+    ASSERT_TRUE(back.has_value());
+    EXPECT_LT(back.value_or(p).high_idle_omega_rad_s, stock.high_idle_omega_rad_s);
 }
 
 // Beyond what the torque curve covers, or not above idle, it is no engine.

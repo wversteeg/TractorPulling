@@ -41,6 +41,8 @@ FieldError describe(engine::ParamError error) {
             return {"engine.idle_rpm", "must be below rated_rpm"};
         case ParamError::kRatedNotBelowHighIdle:
             return {"engine.rated_rpm", "must be below high_idle_rpm"};
+        case ParamError::kDroopTooShort:
+            return {"engine.rated_rpm", "must be at least 25 rpm below high_idle_rpm"};
         case ParamError::kMaxHighIdleBelowHighIdle:
             return {"engine.max_high_idle_rpm", "must not be below high_idle_rpm"};
         case ParamError::kFrictionNegative:

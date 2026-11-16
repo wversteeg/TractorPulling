@@ -57,7 +57,10 @@ struct Variation {
     int most_load_downshift_gears = -1;
     /// The governor's rated speed [rad/s] (engine::with_rated_speed), the
     /// cut-off's stop held to the class's unloaded engine speed: near it
-    /// the droop shortens. {0, 0} keeps the reference's.
+    /// the droop shortens. The whole range must lie at least the shortest
+    /// droop (engine::kMinDroop_rad_s) below the stop, so below the class's
+    /// limit: a rated speed there is refused, not clamped. {0, 0} keeps the
+    /// reference's.
     Range rated_omega_rad_s;
 };
 

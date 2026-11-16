@@ -71,6 +71,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (params.rated_omega_rad_s >= params.high_idle_omega_rad_s) {
         return ParamError::kRatedNotBelowHighIdle;
     }
+    if (params.high_idle_omega_rad_s - params.rated_omega_rad_s < kMinDroop_rad_s) {
+        return ParamError::kDroopTooShort;
+    }
     if (params.max_high_idle_omega_rad_s != 0.0 &&
         params.max_high_idle_omega_rad_s < params.high_idle_omega_rad_s) {
         return ParamError::kMaxHighIdleBelowHighIdle;

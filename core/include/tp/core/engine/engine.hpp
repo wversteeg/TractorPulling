@@ -3,6 +3,7 @@
 #include "tp/core/coupling/shaft_prediction.hpp"
 #include "tp/core/hash/fnv1a.hpp"
 #include "tp/core/math/curve.hpp"
+#include "tp/core/units/conversions.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -71,6 +72,8 @@ enum class ParamError : std::uint8_t {
     kStallNotBelowIdle,
     kIdleNotBelowRated,
     kRatedNotBelowHighIdle,
+    /// The droop (high idle - rated speed) shorter than kMinDroop_rad_s.
+    kDroopTooShort,
     /// A stop for the cut-off below the high idle.
     kMaxHighIdleBelowHighIdle,
     kFrictionNegative,
@@ -82,6 +85,13 @@ enum class ParamError : std::uint8_t {
     kTorqueCurveNegative,
     kTorqueCurveDoesNotCoverRange,
 };
+
+/// The shortest droop a governor may have [rad/s] (25 rpm). The governor's
+/// fuel is explicit in the engine speed, so its gain is the full-load
+/// torque over the droop: much shorter and it would overshoot from step
+/// to step at 1 kHz and chatter (on a 1 kg·m² engine with 300 N·m from
+/// about 1.5 rpm). A pulling governor's 50 rpm is well clear of it.
+inline constexpr double kMinDroop_rad_s = units::rpm_to_rad_s(25.0);
 
 /// Returns the first physically meaningless value in `params`, if any.
 /// `step` assumes valid parameters.
@@ -100,7 +110,12 @@ enum class ParamError : std::uint8_t {
 /// to just below the class's limit, so that under load the engine runs up
 /// against it (the "regelaar" the commentator hears it hit). The torque
 /// curve stays. Nothing if the result is not a valid engine (the rated
-/// speed not below the stop, or not above idle).
+/// speed not above idle, or not at least kMinDroop_rad_s below the stop).
+///
+/// The droop kept is `params`' own: apply it to the engine as it comes
+/// (the reference), not to one already governed, whose droop may have
+/// been shortened at the stop (turned up to the stop and back down, the
+/// cut-off would not come back to where it was).
 [[nodiscard]] std::optional<Params> with_rated_speed(const Params& params,
                                                      double rated_omega_rad_s) noexcept;
 
