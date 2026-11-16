@@ -329,6 +329,32 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 				and posts[i].y < -(float(dimensions["lane_width_m"]) / 2.0 + rivals[i].y)
 	_expect(by_each and rivals.size() == VenueView.RIVAL_BAYS,
 			"a lamp post behind each rival's bay: %s, bays %s" % [posts, rivals])
+	_check_parking_ground(venue, dimensions)
+
+
+# The parking's ground, gravel or grass, is laid in small pieces, so the
+# phone's renderer lights each with the parking's own lights (it lights a
+# mesh with only its nearest 8): in the evening it is lit, not black under
+# the lit tractors. A bay's lamp reaches its bay only.
+func _check_parking_ground(venue: VenueView, dimensions: Dictionary) -> void:
+	for layout in VenueView.PARKINGS.size():
+		venue.set_parking_layout(layout)
+		venue.build(dimensions)
+		var pieces := venue.find_children("*ParkingGround*", "MeshInstance3D", true, false)
+		var small := pieces.size() >= 4
+		for piece: Node in pieces:
+			var size: Vector2 = ((piece as MeshInstance3D).mesh as PlaneMesh).size
+			small = small and size.x <= VenueView.PARKING_PIECE_M + 0.01 \
+					and size.y <= VenueView.PARKING_PIECE_M + 0.01
+		_expect(small, "the parking's ground (%s) in small pieces: %d" % [
+				VenueView.PARKINGS[layout]["ground"], pieces.size()])
+	var reach := INF
+	for light: Node in venue.find_children("*", "SpotLight3D", true, false):
+		var spot := light as SpotLight3D
+		if spot.global_position.y < VenueView.RIVAL_LIGHT_HEIGHT_M + 0.5:
+			reach = minf(reach, spot.spot_range)
+	_expect(is_equal_approx(reach, VenueView.RIVAL_LIGHT_RANGE_M),
+			"a bay's lamp reaches its bay: %.0f m" % reach)
 
 
 # The masts along the track's left side stand this far apart (the smallest
