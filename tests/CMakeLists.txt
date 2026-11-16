@@ -15,6 +15,7 @@ add_executable(tp_core_tests
     event/event_test.cpp
     field/field_test.cpp
     garage/garage_choice_test.cpp
+    garage/garage_dealer_test.cpp
     garage/garage_test.cpp
     hash/fnv1a_test.cpp
     math/curve_test.cpp

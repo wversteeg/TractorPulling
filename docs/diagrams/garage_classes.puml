@@ -49,12 +49,19 @@ package "tp::garage" {
     +alternatives : array<Alternative, 4>
     +alternative_count : size_t
   }
+  class Dealer <<struct>> {
+    +model_cost_eur : array<int64, 8>
+    +model_count : size_t
+    +paint_count : size_t
+    +paint_cost_eur : int64
+  }
   class Catalogue <<struct>> {
     +upgrades : array<Upgrade, 16>
     +count : size_t
     +start_money_eur : int64
     +choices : array<Choice, 4>
     +choice_count : size_t
+    +dealer : Dealer
     +offer() : span<const Upgrade>
     +choice_offer() : span<const Choice>
   }
@@ -63,6 +70,8 @@ package "tp::garage" {
     +levels : array<int, 16>
     +fitted : array<int, 4>
     +owned : array<uint8, 4>
+    +model : int
+    +paint : int
   }
   class "garage functions" as GarageFns <<free functions>> {
     +validate(const Catalogue&, const vehicle::Params&, const rules::ClassRules&) : optional<ParamError>
@@ -76,9 +85,14 @@ package "tp::garage" {
     +fitted(const Catalogue&, const Career&, choice) : size_t
     +counts(const Catalogue&, const Career&, upgrade) : bool
     +prize_eur(span<const int64> by_place, const event::Standing&) : int64
+    +needs_tractor(const Catalogue&, const Career&) : bool
+    +model_price_eur(const Catalogue&, model, money_eur) : int64
+    +buy_model(Career&, const Catalogue&, model, paint) : optional<BuyError>
+    +repaint(Career&, const Catalogue&, paint) : optional<BuyError>
   }
   Catalogue *-- Upgrade
   Catalogue *-- Choice
+  Catalogue *-- Dealer
   Choice *-- Alternative
   Choice --> Slot
   Upgrade *-- Level
@@ -99,6 +113,12 @@ note bottom of Catalogue
   and validate() checks each level with the others at their top.
   The top levels reach the class's limits (NTTO standard 3.5 t:
   85 hp at the PTO, 2700 rpm unloaded, 3500 kg, the hitch at 0.5 m)
+end note
+note bottom of Dealer
+  the class's tractor, bought before its first season as one of the
+  dealer's models (kNoModel until then) in one of its paints; for now
+  they only change the look. The cheapest model is never dearer than
+  the money there is; another paint costs paint_cost_eur
 end note
 note bottom of Choice
   alternatives owned side by side, one fitted: the first comes with

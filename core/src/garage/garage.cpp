@@ -213,6 +213,21 @@ std::optional<ParamError> fitting_error(const Catalogue& catalogue, const Career
 
 }  // namespace
 
+namespace {
+
+// Within its limits, every model with paints to choose from, no cost
+// below 0.
+bool dealer_error(const Dealer& dealer) noexcept {
+    if (dealer.model_count > kMaxModels || dealer.paint_count > kMaxPaints ||
+        (dealer.model_count > 0 && dealer.paint_count == 0) || dealer.paint_cost_eur < 0) {
+        return true;
+    }
+    return std::ranges::any_of(std::span{dealer.model_cost_eur.data(), dealer.model_count},
+                               [](std::int64_t cost_eur) { return cost_eur < 0; });
+}
+
+}  // namespace
+
 std::optional<ParamError> validate(const Catalogue& catalogue, const vehicle::Params& tractor,
                                    const rules::ClassRules& class_rules) noexcept {
     if (catalogue.count > kMaxUpgrades || catalogue.choice_count > kMaxChoices) {
@@ -220,6 +235,9 @@ std::optional<ParamError> validate(const Catalogue& catalogue, const vehicle::Pa
     }
     if (catalogue.start_money_eur < 0) {
         return ParamError::kStartMoneyNegative;
+    }
+    if (dealer_error(catalogue.dealer)) {
+        return ParamError::kDealer;
     }
     for (const Choice& choice : catalogue.choice_offer()) {
         if (const std::optional<ParamError> error = choice_error(choice)) {
@@ -244,7 +262,65 @@ std::optional<ParamError> validate(const Catalogue& catalogue, const vehicle::Pa
 }
 
 Career new_career(const Catalogue& catalogue) noexcept {
-    return {.money_eur = catalogue.start_money_eur, .levels = {}, .fitted = {}, .owned = {}};
+    return {.money_eur = catalogue.start_money_eur,
+            .levels = {},
+            .fitted = {},
+            .owned = {},
+            .model = kNoModel,
+            .paint = 0};
+}
+
+bool needs_tractor(const Catalogue& catalogue, const Career& career) noexcept {
+    return catalogue.dealer.model_count > 0 && career.model == kNoModel;
+}
+
+std::int64_t model_price_eur(const Catalogue& catalogue, std::size_t model,
+                             std::int64_t money_eur) noexcept {
+    const Dealer& dealer = catalogue.dealer;
+    if (model >= dealer.model_count || model >= kMaxModels) {
+        return 0;
+    }
+    const std::int64_t cost_eur = dealer.model_cost_eur[model];
+    const auto models = std::span{dealer.model_cost_eur.data(), dealer.model_count};
+    const bool cheapest = std::ranges::all_of(models, [&](std::int64_t c) { return c >= cost_eur; });
+    return cheapest ? std::min(cost_eur, std::max<std::int64_t>(money_eur, 0)) : cost_eur;
+}
+
+std::optional<BuyError> buy_model(Career& career, const Catalogue& catalogue, std::size_t model,
+                                  std::size_t paint) noexcept {
+    const Dealer& dealer = catalogue.dealer;
+    if (model >= dealer.model_count || model >= kMaxModels || paint >= dealer.paint_count ||
+        paint >= kMaxPaints) {
+        return BuyError::kNoSuchUpgrade;
+    }
+    if (career.model != kNoModel) {
+        return BuyError::kOwned;
+    }
+    const std::int64_t price_eur = model_price_eur(catalogue, model, career.money_eur);
+    if (price_eur > career.money_eur) {
+        return BuyError::kNotEnoughMoney;
+    }
+    career.money_eur -= price_eur;
+    career.model = static_cast<int>(model);
+    career.paint = static_cast<int>(paint);
+    return std::nullopt;
+}
+
+std::optional<BuyError> repaint(Career& career, const Catalogue& catalogue,
+                                std::size_t paint) noexcept {
+    const Dealer& dealer = catalogue.dealer;
+    if (paint >= dealer.paint_count || paint >= kMaxPaints) {
+        return BuyError::kNoSuchUpgrade;
+    }
+    if (career.model == kNoModel || career.paint == static_cast<int>(paint)) {
+        return BuyError::kOwned;
+    }
+    if (dealer.paint_cost_eur > career.money_eur) {
+        return BuyError::kNotEnoughMoney;
+    }
+    career.money_eur -= dealer.paint_cost_eur;
+    career.paint = static_cast<int>(paint);
+    return std::nullopt;
 }
 
 std::optional<vehicle::Params> equipped(const vehicle::Params& tractor, const Catalogue& catalogue,

@@ -99,5 +99,55 @@ TEST(CareerNames, FitsOnlyWhatIsOwned) {
     EXPECT_EQ(career.owned[0], 0b10);
 }
 
+constexpr std::string_view kDealer = R"(
+[garage.dealer]
+paint_cost_eur = 1
+models = [
+    { name = "Classic", style = "farm_classic", cost_eur = 10, about = "a" },
+    { name = "Low", style = "farm_low", cost_eur = 20, about = "b" },
+]
+paints = [
+    { name = "Red", paint = "#ff0000", trim = "#ffffff", rims = "#ffffff" },
+    { name = "Blue", paint = "#0000ff", trim = "#ffffff", rims = "#ffffff" },
+]
+)";
+
+// The tractor's model and paint go by the dealer's names: read back as
+// they were, a model the dealer does not sell is not bought (to buy
+// again), a paint it does not offer its first, and a save from before the
+// dealers has the tractor the player had, the dealer's first model.
+TEST(CareerNames, KeepsTheModelAndPaintByName) {
+    const GarageDefinition g = garage_of(std::string{kWeightsAndPump} + std::string{kDealer},
+                                         kTwoTurbos);
+    garage::Career career = garage::new_career(g.catalogue);
+    career.model = 1;
+    career.paint = 1;
+    SavedCareer named;
+    name_career(career, g, named);
+    ASSERT_TRUE(named.look.has_value());
+    EXPECT_EQ(named.look.value_or(SavedLook{}).model, "Low");
+    EXPECT_EQ(named.look.value_or(SavedLook{}).paint, "Blue");
+    garage::Career back = career_from_names(named, g);
+    EXPECT_EQ(back.model, 1);
+    EXPECT_EQ(back.paint, 1);
+    named.look = SavedLook{.model = "Gone", .paint = "Green"};
+    back = career_from_names(named, g);
+    EXPECT_EQ(back.model, garage::kNoModel);
+    EXPECT_EQ(back.paint, 0);
+    named.look.reset();
+    back = career_from_names(named, g);
+    EXPECT_EQ(back.model, 0) << "before the dealers";
+    EXPECT_EQ(back.paint, 0);
+    // Not bought yet: named "", read back as not bought.
+    name_career(garage::new_career(g.catalogue), g, named);
+    EXPECT_EQ(named.look.value_or(SavedLook{.model = "x", .paint = ""}).model, "");
+    EXPECT_EQ(career_from_names(named, g).model, garage::kNoModel);
+    // Without a dealer there is nothing to buy, whatever the save says.
+    const GarageDefinition bare = garage_of(kWeightsAndPump, kTwoTurbos);
+    named.look.reset();
+    EXPECT_EQ(career_from_names(named, bare).model, garage::kNoModel);
+    EXPECT_FALSE(garage::needs_tractor(bare.catalogue, career_from_names(named, bare)));
+}
+
 }  // namespace
 }  // namespace tp::data

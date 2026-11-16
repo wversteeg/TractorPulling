@@ -33,12 +33,16 @@ SeasonSave example() {
                               .title_on_level = true,
                               .other_tractors = {{.class_name = R"(Standard "3.5" t)",
                                                   .upgrades = {{.name = "Drawbar", .level = 3}},
-                                                  .choices = {}},
+                                                  .choices = {},
+                                                  .look = SavedLook{.model = R"(The "Oldtimer")",
+                                                                    .paint = "Snow white"}},
                                                  {.class_name = "Sport 4.5 t",
                                                   .upgrades = {},
                                                   .choices = {{.name = "Turbo",
                                                                .fitted = "Small",
-                                                               .owned = {"Big"}}}}}};
+                                                               .owned = {"Big"}}},
+                                                  .look = SavedLook{.model = "", .paint = ""}}},
+                              .look = SavedLook{.model = "Sprint Low", .paint = "Night black"}};
     save.events = {
         {{.puller = 2, .place = 1},
          {.puller = 0, .place = 2},
@@ -90,6 +94,15 @@ TEST(SeasonSave, ReadsBackWhatItWrote) {
     ASSERT_EQ(career.other_tractors[1].choices.size(), 1U);
     EXPECT_EQ(career.other_tractors[1].choices[0].fitted, "Small");
     EXPECT_EQ(career.other_tractors[1].choices[0].owned, (std::vector<std::string>{"Big"}));
+    // Each tractor's model and paint: a model of "" not bought yet.
+    ASSERT_TRUE(career.look.has_value());
+    EXPECT_EQ(career.look.value_or(SavedLook{}).model, "Sprint Low");
+    EXPECT_EQ(career.look.value_or(SavedLook{}).paint, "Night black");
+    EXPECT_EQ(career.other_tractors[0].look.value_or(SavedLook{}).model, R"(The "Oldtimer")");
+    EXPECT_EQ(career.other_tractors[0].look.value_or(SavedLook{}).paint, "Snow white");
+    ASSERT_TRUE(career.other_tractors[1].look.has_value());
+    EXPECT_EQ(career.other_tractors[1].look.value_or(SavedLook{.model = "x", .paint = "x"}).model,
+              "");
     ASSERT_EQ(back.events.size(), save.events.size());
     for (std::size_t e = 0; e < save.events.size(); ++e) {
         ASSERT_EQ(back.events[e].size(), save.events[e].size()) << e;
@@ -189,11 +202,38 @@ TEST(SeasonSave, ReadsASaveFromBeforeEachClassKeptItsTractor) {
     EXPECT_EQ(career.upgrades.size(), 2U);
 }
 
+// A version 6 save has no models: each tractor is the one the player had
+// before there were dealers (data::career_from_names makes it the
+// dealer's first model).
+TEST(SeasonSave, ReadsASaveFromBeforeTheDealers) {
+    std::string text = write_season_save(example());
+    const std::string head = "version = " + std::to_string(kSeasonSaveVersion);
+    text.replace(text.find(head), head.size(), "version = 6");
+    const Result<SeasonSave> read = parse_season_save(text, "season.toml");
+    ASSERT_TRUE(read) << read.error().message;
+    const SavedCareer career = read.value().career.value_or(SavedCareer{});
+    EXPECT_FALSE(career.look.has_value());
+    ASSERT_EQ(career.other_tractors.size(), 2U);
+    EXPECT_FALSE(career.other_tractors[0].look.has_value());
+    EXPECT_EQ(career.upgrades.size(), 2U);
+    // Version 7 asks every tractor's model and paint.
+    std::string no_paint = write_season_save(example());
+    no_paint.replace(no_paint.find("paint = \"Night black\"\n"), 22, "");
+    EXPECT_NE(error_of(no_paint).find("season.toml: career: every tractor needs its model"),
+              std::string::npos)
+        << error_of(no_paint);
+    std::string no_model = write_season_save(example());
+    no_model.replace(no_model.find("model = \"\"\n"), 11, "");
+    EXPECT_NE(error_of(no_model).find("career.tractors: every tractor needs its model"),
+              std::string::npos)
+        << error_of(no_model);
+}
+
 TEST(SeasonSave, RefusesNonsense) {
     EXPECT_EQ(error_of(kHead), "");
     std::string other_version = kHead;
-    other_version.replace(0, 11, "version = 7");
-    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 6"),
+    other_version.replace(0, 11, "version = 8");
+    EXPECT_NE(error_of(other_version).find("season.toml: version: must be from 1 to 7"),
               std::string::npos)
         << error_of(other_version);
     std::string version_2 = kHead;

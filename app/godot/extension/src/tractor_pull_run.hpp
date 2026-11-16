@@ -89,6 +89,9 @@ public:
     /// clutch_full_grip_pedal and clutch_bite_pedal
     /// (clutch::engagement_range). {} before setup().
     [[nodiscard]] godot::Dictionary get_dimensions() const;
+    /// get_dimensions()'s keys that are the tractor's alone, for `tractor`
+    /// (TractorPullEvent::get_tractor_dimensions()).
+    [[nodiscard]] static godot::Dictionary tractor_dimensions(const vehicle::Params& tractor);
 
     /// "easy" or "pro", the layout the run is played in; "" before setup().
     [[nodiscard]] godot::String get_layout() const;

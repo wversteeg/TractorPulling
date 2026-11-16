@@ -59,6 +59,8 @@ static func draw_icon(ci: CanvasItem, part: String, centre: Vector2, size: float
 			_arrow_up(ci, centre, s, w, colour)
 		"restart":
 			_restart(ci, centre, s, w, colour)
+		"paint":
+			_roller(ci, centre, s, w, colour)
 		_:
 			ci.draw_arc(centre, s * 0.8, 0.0, TAU, 24, colour, w)
 
@@ -103,6 +105,15 @@ static func _restart(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Col
 	var tip := c + Vector2.from_angle(-PI * 0.35) * s * 0.6
 	ci.draw_colored_polygon(PackedVector2Array([tip + Vector2(0.3, -0.05) * s,
 			tip + Vector2(-0.25, -0.3) * s, tip + Vector2(-0.05, 0.3) * s]), colour)
+
+
+# A paint roller: the roller, its arm and the handle.
+static func _roller(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	var p := func(x: float, y: float) -> Vector2: return c + Vector2(x, y) * s
+	ci.draw_rect(Rect2(p.call(-0.75, -0.8), Vector2(1.3, 0.45) * s), colour)
+	ci.draw_polyline(PackedVector2Array([p.call(0.55, -0.58), p.call(0.8, -0.58),
+			p.call(0.8, -0.15), p.call(0.0, -0.05), p.call(0.0, 0.25)]), colour, w * 1.2)
+	ci.draw_line(p.call(0.0, 0.25), p.call(0.0, 0.85), colour, w * 2.6)
 
 
 static func _engine(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:

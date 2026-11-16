@@ -17,9 +17,10 @@ namespace tp::data {
 /// career's classes) as a career on its first rung, version 3 (before the
 /// levels) at the first level of its classes, version 4 (before the
 /// garage's choices) with every choice at its first alternative, version 5
-/// (before each class kept its own tractor) with no other class's tractor.
-/// Any other is refused.
-inline constexpr std::int64_t kSeasonSaveVersion = 6;
+/// (before each class kept its own tractor) with no other class's tractor,
+/// version 6 (before the dealers) with each tractor as the dealer's first
+/// model in its first paint (SavedLook). Any other is refused.
+inline constexpr std::int64_t kSeasonSaveVersion = 7;
 
 /// An upgrade's level, by the garage's name for it (data::UpgradeText), so
 /// that a save outlives a garage file whose order changes.
@@ -37,6 +38,13 @@ struct SavedChoice {
     std::vector<std::string> owned;
 };
 
+/// The model a tractor was bought as and its paint, by the dealer's names
+/// (data::ModelText, data::PaintText); a model of "" is not bought yet.
+struct SavedLook {
+    std::string model;
+    std::string paint;
+};
+
 /// A tractor the player has in another class than the one they pull in
 /// now, kept for when they go back to it: its upgrades and choices, by
 /// name (as SavedCareer's).
@@ -44,6 +52,9 @@ struct SavedTractor {
     std::string class_name;
     std::vector<SavedUpgrade> upgrades;
     std::vector<SavedChoice> choices;
+    /// None in a save from before version 7: the tractor the player had
+    /// before there were dealers.
+    std::optional<SavedLook> look;
 };
 
 /// The player's career: their money, what they have bought, and how far up
@@ -70,6 +81,9 @@ struct SavedCareer {
     /// The player's tractors in the other classes they have pulled in (each
     /// class its own tractor, the money one wallet); none before version 6.
     std::vector<SavedTractor> other_tractors;
+    /// The tractor's model and paint; none before version 7, as
+    /// SavedTractor's.
+    std::optional<SavedLook> look;
 };
 
 /// A season saved between events, to pick up on the next launch: which
@@ -101,8 +115,9 @@ struct SeasonSave {
 /// (0 or more) or with an upgrade without a name or a level (0 or more),
 /// (version 3 on) a career without its class and the class unlocked, and
 /// (version 4 on) without their levels, its seasons there (0 or more) or
-/// whether one was won, and (version 5) a choice without a name, the
-/// alternative fitted or the list of those owned.
+/// whether one was won, (version 5 on) a choice without a name, the
+/// alternative fitted or the list of those owned, and (version 7) a
+/// tractor without its model and paint.
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

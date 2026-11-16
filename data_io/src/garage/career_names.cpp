@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,13 @@ void name_career(const garage::Career& career, const GarageDefinition& garage, S
         }
         out.choices.push_back(std::move(choice));
     }
+    const auto model = static_cast<std::size_t>(career.model);
+    const auto paint = static_cast<std::size_t>(career.paint);
+    out.look = SavedLook{
+        .model = career.model != garage::kNoModel && model < garage.model_texts.size()
+                     ? garage.model_texts[model].name
+                     : "",
+        .paint = paint < garage.paint_texts.size() ? garage.paint_texts[paint].name : ""};
 }
 
 namespace {
@@ -46,10 +54,43 @@ void read_choice(const SavedChoice& saved, std::size_t c, const std::vector<std:
     }
 }
 
+// The model and paint `look` names in `garage`, into `career`: before the
+// dealers (no look), the tractor the player had, as the first model; a
+// model the dealer does not sell, none (to buy again); a paint it does not
+// offer, its first.
+void read_look(const std::optional<SavedLook>& look, const GarageDefinition& garage,
+               garage::Career& career) {
+    const std::vector<ModelText>& models = garage.model_texts;
+    const std::vector<PaintText>& paints = garage.paint_texts;
+    career.model = garage::kNoModel;
+    career.paint = 0;
+    if (models.empty()) {
+        return;
+    }
+    if (!look) {
+        career.model = 0;
+        return;
+    }
+    const auto model = std::ranges::find(models, look->model, &ModelText::name);
+    if (model != models.end()) {
+        career.model = static_cast<int>(model - models.begin());
+    }
+    const auto paint = std::ranges::find(paints, look->paint, &PaintText::name);
+    if (paint != paints.end()) {
+        career.paint = static_cast<int>(paint - paints.begin());
+    }
+}
+
 }  // namespace
 
 garage::Career career_from_names(const SavedCareer& saved, const GarageDefinition& garage) {
-    garage::Career career{.money_eur = saved.money_eur, .levels = {}, .fitted = {}, .owned = {}};
+    garage::Career career{.money_eur = saved.money_eur,
+                          .levels = {},
+                          .fitted = {},
+                          .owned = {},
+                          .model = garage::kNoModel,
+                          .paint = 0};
+    read_look(saved.look, garage, career);
     for (const SavedUpgrade& upgrade : saved.upgrades) {
         for (std::size_t i = 0; i < garage.texts.size() && i < garage::kMaxUpgrades; ++i) {
             if (garage.texts[i].name == upgrade.name) {
