@@ -500,6 +500,10 @@ godot::Dictionary TractorPullEvent::get_event() const {
         const int steps = static_cast<int>(std::ceil(until_m / kProfileStep_m));
         for (int i = 0; i <= steps; ++i) {
             const double at_m = std::min(static_cast<double>(i) * kProfileStep_m, until_m);
+            // A step a rounding past the line would repeat it.
+            if (i > 0 && at_m <= static_cast<double>(i - 1) * kProfileStep_m) {
+                break;
+            }
             const soil::Surface here = model->surface_without_spots(at_m);
             godot::Dictionary point;
             point["at_m"] = at_m;
