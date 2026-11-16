@@ -241,7 +241,8 @@ grip on most tracks, a Sport 4.5 t does not (`TrackSetup.*`):
 - **The turbo**: the stock tractor comes with a small, quick turbo
   (`engines/sport_4500_fast_turbo.toml`, about 660 hp fully built); the
   68 mm turbo (`engines/sport_4500.toml`, the rivals' too, about 780 hp)
-  is the upgrade, further on every track
+  is the upgrade: over the season clearly further on most tracks and
+  never clearly behind
   (`TurboChoice.TheSixtyEightMillimetreTurboIsTheUpgrade`). It is a
   garage choice (owned side by side, one fitted), the garage the
   Supersport classes' engine, tires and gearbox choices will use: there

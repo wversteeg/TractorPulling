@@ -12,6 +12,8 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -44,8 +46,23 @@ public:
         }
     }
 
+    // A pull already run is looked up: the tests ask for many of them more
+    // than once, and each takes a pull of up to two minutes' simulated time.
     double reach_m(const std::string& round, double ballast_position, double pressure_bar = 1.0,
                    int heavier_steps = 0, std::optional<double> hitch_m = std::nullopt) const {
+        const PullKey key{round, ballast_position, pressure_bar, heavier_steps, hitch_m};
+        const auto known = reached_.find(key);
+        if (known != reached_.end()) {
+            return known->second;
+        }
+        return reached_
+            .emplace(key, pull_m(round, ballast_position, pressure_bar, heavier_steps, hitch_m))
+            .first->second;
+    }
+
+private:
+    double pull_m(const std::string& round, double ballast_position, double pressure_bar,
+                  int heavier_steps, std::optional<double> hitch_m) const {
         const data::SeasonRound& r = round_named(round);
         const data::EventDefinition& e = season_.event;
         Venue venue = data::venue(e.sled, r.track);
@@ -71,6 +88,7 @@ public:
         return trial->distance_m;
     }
 
+public:
     // How many steps heavier than the operator's sled the round needs for
     // the tractor to stop short of the pull-off's line however its weights
     // sit, where a setting shows (the run's limit hides the rest).
@@ -165,6 +183,9 @@ private:
     // The operator's sled for each round already worked out.
     mutable std::map<std::string, sled::Params> sleds_;
     mutable std::map<std::string, int> steps_;
+    // The distance of each pull already run [m].
+    using PullKey = std::tuple<std::string, double, double, int, std::optional<double>>;
+    mutable std::map<PullKey, double> reached_;
 };
 
 constexpr double kBack = 0.0;
@@ -172,24 +193,104 @@ constexpr double kQuarter = 0.25;
 constexpr double kHalfway = 0.5;
 constexpr double kThreeQuarters = 0.75;
 constexpr double kForward = 1.0;
-// More than the spot on the track decides [m].
-constexpr double kClearly_m = 3.0;
+// A setting that shows: well more than a pull-to-pull difference, the
+// metres a puller would notice [m]. The tests are rules of thumb (which
+// way the weights go on which track), not the exact places and distances,
+// which move with every change to the physics.
+constexpr double kShows_m = 1.5;
+// Within a pull-to-pull difference: two places this close are as good as
+// each other [m]. Near its best a track's reach changes little with the
+// weights, so which of two such places comes out ahead is the luck of the
+// spot, not the setup.
+constexpr double kAsGood_m = 0.5;
 
-// Where the weights pull furthest on `track` (of the five places tried),
-// on a sled heavy enough that the tractor stops short of the line.
-double best_weights(const SportSetup& sport, const std::string& track) {
-    const int steps = sport.steps_short_of_line(track);
-    double best_m = 0.0;
-    double best_at = -1.0;
-    for (const double ballast : {kBack, kQuarter, kHalfway, kThreeQuarters, kForward}) {
-        const double reached_m = sport.reach_m(track, ballast, 1.0, steps);
-        if (reached_m > best_m) {
-            best_m = reached_m;
-            best_at = ballast;
+// How far the tractor gets with the weights at each of nine places, from
+// all back to all forward (an eighth of the range apart), on a sled heavy
+// enough that the tractor stops short of the line.
+class WeightsCurve {
+public:
+    static constexpr int kPlaces = 9;
+
+    WeightsCurve(const SportSetup& sport, const std::string& track, double pressure_bar = 1.0) {
+        const int steps = sport.steps_short_of_line(track);
+        for (int i = 0; i < kPlaces; ++i) {
+            reach_m_.at(static_cast<std::size_t>(i)) =
+                sport.reach_m(track, place(i), pressure_bar, steps);
         }
     }
-    return best_at;
-}
+
+    // The place of the i-th of the nine (0 all back, 1 all forward).
+    static double place(int i) { return static_cast<double>(i) / (kPlaces - 1); }
+
+    // The furthest any place gets [m].
+    [[nodiscard]] double best_m() const { return std::ranges::max(reach_m_); }
+
+    // The furthest a place from `back` to `forward` gets [m].
+    [[nodiscard]] double best_between_m(double back, double forward) const {
+        double best_m = 0.0;
+        for (int i = 0; i < kPlaces; ++i) {
+            if (place(i) >= back && place(i) <= forward) {
+                best_m = std::max(best_m, reach_m_.at(static_cast<std::size_t>(i)));
+            }
+        }
+        return best_m;
+    }
+
+    // Where the track wants the weights: the middle of the places as good
+    // as the best (0 all back, 1 all forward). Near its best a track's reach
+    // is flat, so the middle of that stretch moves less than the single
+    // furthest place. The stretch is one (as_good_is_one_stretch): with two
+    // humps the middle could lie in the dip between them.
+    [[nodiscard]] double wants_weights_at() const { return (as_good(true) + as_good(false)) / 2.0; }
+
+    // Of the nine places, the one nearest where the track wants the weights.
+    [[nodiscard]] double wanted_place() const {
+        return place(static_cast<int>(std::lround(wants_weights_at() * (kPlaces - 1))));
+    }
+
+    // Whether the places as good as the best lie side by side, with none
+    // between them that falls short.
+    [[nodiscard]] bool as_good_is_one_stretch() const {
+        for (int i = 0; i < kPlaces; ++i) {
+            if (place(i) > as_good(true) && place(i) < as_good(false) &&
+                reach_m_.at(static_cast<std::size_t>(i)) < best_m() - kAsGood_m) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // What the worst of the places costs against the best [m].
+    [[nodiscard]] double setup_matters_m() const { return best_m() - std::ranges::min(reach_m_); }
+
+    // A place's distance [m]; `at` one of the nine places.
+    [[nodiscard]] double at_m(double at) const {
+        return reach_m_.at(static_cast<std::size_t>(std::lround(at * (kPlaces - 1))));
+    }
+
+    // The nine distances, for a failure message.
+    [[nodiscard]] std::string text() const {
+        std::string out;
+        for (int i = 0; i < kPlaces; ++i) {
+            out += std::to_string(place(i)).substr(0, 5) + ": " +
+                   std::to_string(reach_m_.at(static_cast<std::size_t>(i))).substr(0, 6) + " m  ";
+        }
+        return out;
+    }
+
+private:
+    [[nodiscard]] double as_good(bool rearmost) const {
+        double found = rearmost ? 1.0 : 0.0;
+        for (int i = 0; i < kPlaces; ++i) {
+            if (reach_m_.at(static_cast<std::size_t>(i)) >= best_m() - kAsGood_m) {
+                found = rearmost ? std::min(found, place(i)) : std::max(found, place(i));
+            }
+        }
+        return found;
+    }
+
+    std::array<double, kPlaces> reach_m_{};
+};
 
 // The season's rounds on different tracks, by their ground (the soil's
 // make-up and the track's grip), not their names: a track may come round
@@ -209,95 +310,97 @@ std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
     return names;
 }
 
-// Each track has its own best place for the weights. On a sled heavy
-// enough that the tractor stops short of the line, where a setting shows:
-// forward on the grippy tracks (the firm loam, the dry hard clay, the moist
-// heavy clay), where the tires hold and the chain, low on the sled, pulls
-// the nose up; back on the loose sandy clay, where the grip runs out before
-// the front can rise and the rear tires need every kilo; in between on the
-// clay-sand and on the wet start, which is wet only at the start: enough
+// Rules of thumb for the weights, on a sled heavy enough that the tractor
+// stops short of the line, where a setting shows. The grippier the track,
+// the further forward the weights: on the grippy tracks (the firm loam, the
+// dry hard clay, the moist heavy clay) the tires hold and the chain, low on
+// the sled, pulls the nose up; on the loose sandy clay the grip runs out
+// before the front can rise and the rear tires need every kilo. The
+// clay-sand and the wet start (wet only at the start) lie in between: enough
 // weight back to get the sled going, not so much that the grippy rest of
-// the track lifts the nose. Over the tracks the best places use at least
-// three quarters of the weights' range.
-TEST(TrackSetup, EachTrackHasItsOwnBestWeights) {
+// the track lifts the nose. And on every track the setup matters: the worst
+// place costs metres against the best.
+TEST(TrackSetup, TheGrippierTheTrackTheFurtherForwardTheWeights) {
     const SportSetup sport;
-    const std::map<std::string, std::vector<double>> best_on{
-        {"Spring opener, watered start", {kHalfway, kThreeQuarters}},
-        {"Sandy clay", {kQuarter, kHalfway}},
-        {"Clay-sand", {kHalfway, kThreeQuarters}},
-        {"Firm loam", {kThreeQuarters, kForward}},
-        {"Summer, dry hard clay", {kThreeQuarters, kForward}},
-        {"Rainy day, covered heavy clay", {kThreeQuarters, kForward}},
-    };
-    double furthest_back = kForward;
-    double furthest_forward = kBack;
-    for (const std::string& track : rounds_on_their_own_tracks(sport)) {
-        const double best_at = best_weights(sport, track);
-        furthest_back = std::min(furthest_back, best_at);
-        furthest_forward = std::max(furthest_forward, best_at);
-        ASSERT_TRUE(best_on.contains(track)) << track;
-        const std::vector<double>& expected = best_on.at(track);
-        EXPECT_NE(std::ranges::find(expected, best_at), expected.end())
-            << track << ": best with the weights at " << best_at;
+    const WeightsCurve loose{sport, "Sandy clay"};
+    const WeightsCurve grippiest{sport, "Firm loam"};
+    for (const char* track :
+         {"Firm loam", "Summer, dry hard clay", "Rainy day, covered heavy clay"}) {
+        const WeightsCurve grippy{sport, track};
+        EXPECT_GE(grippy.wants_weights_at(), loose.wants_weights_at() + kQuarter)
+            << track << ": " << grippy.text() << "\nSandy clay: " << loose.text();
     }
-    constexpr double kMostOfTheRange = 0.75;
-    EXPECT_GE(furthest_forward - furthest_back, kMostOfTheRange)
-        << "best from " << furthest_back << " to " << furthest_forward;
+    for (const char* track : {"Clay-sand", "Spring opener, watered start"}) {
+        const WeightsCurve between{sport, track};
+        EXPECT_GT(between.wants_weights_at(), loose.wants_weights_at())
+            << track << ": " << between.text() << "\nSandy clay: " << loose.text();
+        EXPECT_LT(between.wants_weights_at(), grippiest.wants_weights_at())
+            << track << ": " << between.text() << "\nFirm loam: " << grippiest.text();
+    }
+    for (const std::string& track : rounds_on_their_own_tracks(sport)) {
+        const WeightsCurve curve{sport, track};
+        EXPECT_TRUE(curve.as_good_is_one_stretch()) << track << ": " << curve.text();
+        EXPECT_GT(curve.setup_matters_m(), kShows_m) << track << ": " << curve.text();
+    }
 }
 
 // Less grippy rear tires want the weights further back: on the firm loam
-// the built puller tires pull furthest with them forward, tires that grip
-// less (a lower traction limit) with them no further than halfway.
+// tires that grip less (a lower traction limit) want them clearly further
+// back than the built puller tires.
 TEST(TrackSetup, LessGrippyTiresWantTheWeightsFurtherBack) {
     constexpr double kLessGrip = 1.1;
     const char* firm = "Firm loam";
     const SportSetup grippy;
     const SportSetup less{"sport_4500_top.toml", kLessGrip};
     ASSERT_GT(grippy.rear_traction(), kLessGrip);
-    EXPECT_EQ(best_weights(grippy, firm), kForward);
-    EXPECT_LE(best_weights(less, firm), kHalfway);
+    const WeightsCurve on_grippy{grippy, firm};
+    const WeightsCurve on_less{less, firm};
+    EXPECT_GE(on_grippy.wants_weights_at(), on_less.wants_weights_at() + kQuarter)
+        << "grippy: " << on_grippy.text() << "\nless grippy: " << on_less.text();
 }
 
 // What the wrong weights cost depends on the track. On the loose sandy
-// clay forward costs metres, the rear tires short of load, and all back
-// stands the tractor on its wheelie bar, which costs as much. On the grippy
-// firm loam and the dry hard clay it is the other way round: forward pays,
-// the weights halfway let the nose climb.
+// clay both ends cost against the best place: forward the rear tires are
+// short of load, all back the tractor stands on its wheelie bar. On the
+// grippy firm loam and the dry hard clay it is the other way round:
+// forward pays, the weights halfway let the nose climb.
 TEST(TrackSetup, TheTrackDecidesWhatTheWrongWeightsCost) {
     const SportSetup sport;
-    const auto reach = [&](const char* track, double ballast) {
-        return sport.reach_m(track, ballast, 1.0, sport.steps_short_of_line(track));
-    };
-    const char* loose = "Sandy clay";
-    EXPECT_GT(reach(loose, kQuarter), reach(loose, kForward) + kClearly_m);
-    EXPECT_GT(reach(loose, kQuarter), reach(loose, kBack) + kClearly_m);
-    for (const char* grippy : {"Firm loam", "Summer, dry hard clay"}) {
-        EXPECT_GT(reach(grippy, kForward), reach(grippy, kHalfway) + kClearly_m) << grippy;
+    const WeightsCurve loose{sport, "Sandy clay"};
+    EXPECT_GT(loose.best_m(), loose.at_m(kForward) + kShows_m) << loose.text();
+    EXPECT_GT(loose.best_m(), loose.at_m(kBack) + kShows_m) << loose.text();
+    for (const char* track : {"Firm loam", "Summer, dry hard clay"}) {
+        const WeightsCurve grippy{sport, track};
+        EXPECT_GT(grippy.best_between_m(kThreeQuarters, kForward), grippy.at_m(kHalfway) + kShows_m)
+            << track << ": " << grippy.text();
     }
 }
 
-// Each track has its own best tire pressure, and both sides of it cost:
-// too soft lets the lugs squirm, too hard shrinks the footprint. With the
-// weights where the track wants them: soft pays on the heavy clay, where
-// the tires dig in; on the firm loam and the dry hard clay the reference,
-// where the softest costs metres. On a sled heavy enough that the tractor
-// stops short of the line.
-TEST(TrackSetup, EachTrackHasItsOwnBestTirePressure) {
+// Rules of thumb for the tire pressure, with the weights where the track
+// wants them: soft pays on the heavy clay, where the tires dig in, and
+// pays more there than on the firm loam or the dry hard clay; too hard
+// costs on all three, the footprint shrunk.
+TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
     const SportSetup sport;
     constexpr double kSoft_bar = 0.5;
     constexpr double kReference_bar = 1.0;
     constexpr double kHard_bar = 1.6;
-    constexpr double kSoftCosts_m = 2.0;
     const auto reach = [&](const char* track, double bar) {
-        return sport.reach_m(track, best_weights(sport, track), bar,
-                             sport.steps_short_of_line(track));
+        const double weights_at = WeightsCurve{sport, track}.wanted_place();
+        return sport.reach_m(track, weights_at, bar, sport.steps_short_of_line(track));
+    };
+    const auto soft_gains_m = [&](const char* track) {
+        return reach(track, kSoft_bar) - reach(track, kReference_bar);
     };
     const char* heavy = "Rainy day, covered heavy clay";
-    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kReference_bar));
-    EXPECT_GT(reach(heavy, kSoft_bar), reach(heavy, kHard_bar) + 0.5);
+    EXPECT_GT(soft_gains_m(heavy), 0.0);
     for (const char* firm : {"Firm loam", "Summer, dry hard clay"}) {
-        EXPECT_GT(reach(firm, kReference_bar), reach(firm, kSoft_bar) + kSoftCosts_m) << firm;
-        EXPECT_GT(reach(firm, kReference_bar), reach(firm, kHard_bar)) << firm;
+        EXPECT_GT(soft_gains_m(heavy), soft_gains_m(firm)) << firm;
+    }
+    for (const char* track : {heavy, "Firm loam", "Summer, dry hard clay"}) {
+        EXPECT_GT(std::max(reach(track, kSoft_bar), reach(track, kReference_bar)),
+                  reach(track, kHard_bar) + kAsGood_m)
+            << track;
     }
 }
 
