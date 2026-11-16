@@ -107,6 +107,16 @@ TEST(GarageLoader, RefusesNonsense) {
               std::string::npos);
     EXPECT_NE(error_of("[garage]\nstart_money_eur = 1\n").find("garage.upgrades"),
               std::string::npos);
+    EXPECT_NE(error_of(with("name = \"Drawbar\"\n", "name = \"Drawbar\"\nformerly = \"Hitch\"\n"))
+                  .find("garage.upgrades.formerly"),
+              std::string::npos)
+        << "a list";
+    EXPECT_NE(error_of(with("name = \"Drawbar\"\n", "name = \"Drawbar\"\nformerly = [\"\"]\n"))
+                  .find("garage.upgrades.formerly"),
+              std::string::npos)
+        << "of names";
+    EXPECT_EQ(
+        error_of(with("name = \"Drawbar\"\n", "name = \"Drawbar\"\nformerly = [\"Hitch\"]\n")), "");
 }
 
 // A garage with a turbo choice between two of the shipped engines, each

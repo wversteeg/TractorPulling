@@ -124,7 +124,7 @@ package "tp::data" {
   }
   class GarageDefinition <<struct>> {
     +catalogue : garage::Catalogue
-    +texts : vector<UpgradeText{name, level_labels}>
+    +texts : vector<UpgradeText{name, level_labels, former_names}>
     +choice_texts : vector<ChoiceText{name, alternative_labels}>
     +model_texts : vector<ModelText{name, style, about}>
     +paint_texts : vector<PaintText{name, paint, trim, rims}>

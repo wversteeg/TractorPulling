@@ -51,7 +51,7 @@ const SKETCH_RECT := Rect2(150, 250, 830, 340)
 const ABOUT := {
 	"engine_torque": "More fuel and air: the engine's torque all through its range.",
 	"rated_rpm": "The governor: full fuel up to higher revs, so the same gear pulls faster.",
-	"rear_traction": "Grip: from worn farm tires to cut puller tires that bite as they spin.",
+	"rear_traction": "Grip: from worn farm tires to tires cut for pulling, whose lugs bite harder.",
 	"ballast_kg": "Weights up to the class's limit. Where they sit you set before each pull.",
 	"hitch_height_m": "The pulling hitch's top hole: higher puts more of the sled's pull on the rear tires, and lifts the front sooner.",
 	"load_downshift_gears": "Shift down under load, the clutch in: it saves a pull that bogs at the end.",

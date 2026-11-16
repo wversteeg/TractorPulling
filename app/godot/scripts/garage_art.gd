@@ -187,7 +187,7 @@ static func _governor(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Co
 
 
 # A tire's tread seen from behind, `rect` its face: lugs as chevrons,
-# `depth` 0 (worn) to 1 (cut puller tread) setting how big they are.
+# `depth` 0 (worn) to 1 (hand cut tread) setting how big they are.
 static func draw_tread(ci: CanvasItem, rect: Rect2, depth: float, colour: Color) -> void:
 	var face := StyleBoxFlat.new()
 	face.bg_color = Color(0.105, 0.115, 0.135)

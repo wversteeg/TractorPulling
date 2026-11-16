@@ -989,9 +989,19 @@ TEST(VehicleBrakes, NeverDriveTheWheels) {
 
 // Pulling hard in first gear with the left brake full on, the tractor
 // comes to rest; the held side's tire then pushes it backwards and the
-// brake holds it with negative torque: friction works both ways.
+// brake holds it with negative torque: friction works both ways. Whether
+// the tire pushes back depends finely on how hard the free side's
+// spinning tire pulls (at 16 kN instead of 20 kN it does not), so the
+// scenario takes the tire without its loss of grip spun fast
+// (tire::TractionCurve), which would tip it the other way.
 TEST(VehicleBrakes, HoldAgainstTurningBackwards) {
+    Params params = reference_params();
+    params.rear_tire.traction.fast_spin_grip = 1.0;
+    const std::optional<Model> model = Model::create(params);
+    ASSERT_TRUE(model.has_value());
     Pull pull;
+    pull.model = model.value_or(pull.model);
+    pull.state = initial_state(pull.model);
     pull.brake_left = 1.0;
     pull.run(1, 20000.0, false, 14.0);
     EXPECT_FALSE(pull.brake_misbehaved);
@@ -1107,7 +1117,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x6b2b48556b2db740ULL);
+    EXPECT_EQ(pull_hash(), 0x25cd850a07defeb0ULL);
 }
 
 }  // namespace

@@ -94,7 +94,9 @@ garage::Career career_from_names(const SavedCareer& saved, const GarageDefinitio
     read_look(saved.look, garage, career);
     for (const SavedUpgrade& upgrade : saved.upgrades) {
         for (std::size_t i = 0; i < garage.texts.size() && i < garage::kMaxUpgrades; ++i) {
-            if (garage.texts[i].name == upgrade.name) {
+            const UpgradeText& text = garage.texts[i];
+            if (text.name == upgrade.name ||
+                std::ranges::find(text.former_names, upgrade.name) != text.former_names.end()) {
                 career.levels.at(i) = upgrade.level;
             }
         }

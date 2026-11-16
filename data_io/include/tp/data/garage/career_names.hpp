@@ -16,13 +16,14 @@ namespace tp::data {
 void name_career(const garage::Career& career, const GarageDefinition& garage, SavedCareer& out);
 
 /// A career from `saved`'s money, upgrades, choices, model and paint,
-/// matched by name to `garage`: an upgrade, choice or alternative the
-/// garage does not offer is left behind, one it offers that was not saved
-/// starts at its first level or alternative, and a fitted alternative not
-/// owned gives way to the first. A level past its top is held to it
-/// (garage::equipped). A model the dealer does not sell is not bought (and
-/// a paint it does not offer is its first); a save from before the
-/// dealers (no SavedLook) has the dealer's first model.
+/// matched by name to `garage` (an upgrade by its name or a former one): an
+/// upgrade, choice or alternative the garage does not offer is left behind,
+/// one it offers that was not saved starts at its first level or
+/// alternative, and a fitted alternative not owned gives way to the first.
+/// A level past its top is held to it (garage::equipped). A model the
+/// dealer does not sell is not bought (and a paint it does not offer is its
+/// first); a save from before the dealers (no SavedLook) has the dealer's
+/// first model.
 [[nodiscard]] garage::Career career_from_names(const SavedCareer& saved,
                                                const GarageDefinition& garage);
 

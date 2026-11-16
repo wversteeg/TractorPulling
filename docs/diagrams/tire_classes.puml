@@ -25,6 +25,9 @@ package "tp::tire" {
     +slip_rate : double
     +load_sensitivity : double (0 none)
     +reference_load_n : double
+    +slow_spin_grip : double = 1
+    +fast_spin_grip : double = 1
+    +spin_speed_m_s : double
   }
   class Cornering <<struct>> {
     +stiffness_per_rad : double
@@ -62,6 +65,7 @@ package "tp::tire" {
     +force_per_slip_speed : double
     +slip_ratio : double
     +full_bite : double
+    +grip_share : double (k(v), 1 without)
   }
   enum ParamError
   class "tire functions" as TireFns <<free functions>> {
@@ -82,6 +86,7 @@ package "tp::tire" {
     +traction / driven_rolling_resistance / thrown_soil_m3_s / side_grip\n      on a Footing: the same results, worked out once per step
     +side_grip(const Size&, const Cornering&, load_n, const Surface&) : SideGrip
     +with_traction(SideGrip, traction_n, full_bite_n, slip_ratio) : SideGrip
+    +with_traction(SideGrip, const Traction&, load_n) : SideGrip  (side grip × k(v))
     +side_force_n(const SideGrip&, deflection_m) : double
     +relax_deflection_m(const SideGrip&, const Cornering&, deflection_m,\n      lateral_m_s, rolling_m_s, min_rolling_m_s, dt_s) : double
   }
@@ -98,7 +103,9 @@ package "tp::tire" {
 }
 note bottom of TireFns
   Bn = CI b d / W · (1 + 5 δ/h) / (1 + 3 b/d)
-  μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²)
+  μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²) k(v)
+  k(v) = slow + (fast - slow) (1 - e^(-|v| / spin_speed)), v the slip speed:
+  a puller tire bites harder spinning fast (slow < 1), a farm tire smears (fast < 1)
   driven: 1/Bn + 0.5 |s| / √Bn;  towed: 1/Bn + 0.04
   thrown soil: width · diameter · driven resistance · |wheel surface speed|
   side grip: C = stiffness · g m W, F_max = limit · g m W, m = 1 - e^(-rate Bn);

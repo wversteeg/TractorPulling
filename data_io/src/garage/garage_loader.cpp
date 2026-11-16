@@ -324,10 +324,25 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
         return detail::make_error(source, "garage.upgrades.name",
                                   "'" + *name + "' is listed twice");
     }
-    UpgradeText text{.name = *name, .level_labels = {}};
+    UpgradeText text{.name = *name, .level_labels = {}, .former_names = {}};
     if (std::optional<LoadError> error =
             read_levels(*levels, *name, part->to_si, source, upgrade, text)) {
         return error;
+    }
+    if (const toml::node* formerly = table->get("formerly")) {
+        const toml::array* names = formerly->as_array();
+        if (names == nullptr) {
+            return detail::make_error(source, "garage.upgrades.formerly",
+                                      *name + ": must list the upgrade's former names");
+        }
+        for (const toml::node& former : *names) {
+            const std::optional<std::string> former_name = former.value<std::string>();
+            if (!former_name || former_name->empty()) {
+                return detail::make_error(source, "garage.upgrades.formerly",
+                                          *name + ": must list the upgrade's former names");
+            }
+            text.former_names.push_back(*former_name);
+        }
     }
     // The same part twice only for different alternatives of one choice
     // (each engine's own build): never two that could count at once.

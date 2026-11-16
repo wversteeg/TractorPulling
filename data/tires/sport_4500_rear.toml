@@ -1,15 +1,13 @@
-# The Sport 4.5 t tractor's rear tire: a puller tire (cut tread allowed
-# from Sport on) at the class's widest, 30.5" (775 mm) on a 32" rim
-# (docs/career.md): a 30.5L-32, bigger round and wider than the 2.5 t
-# tractor's (sport_rear.toml). The garage (garages/sport_4500.toml) takes
-# its grip from worn farm tires to cut puller tires.
+# The Sport 4.5 t tractor's rear tire: a farm tire cut for pulling (cut
+# tires, not puller tires, in the NTTO's Sport classes; docs/career.md) at
+# the class's widest, 30.5" (775 mm) on a 32" rim: a 30.5L-32, bigger
+# round and wider than the 2.5 t tractor's (sport_rear.toml). The garage
+# (garages/sport_4500.toml) takes its grip from worn farm tires to hand
+# cut ones.
 #
-# A puller tire grips harder than a farm tire, but only spinning: its cut
-# lugs bite as they dig, so grip builds slowly with slip (slip_rate a third
-# of a farm tire's) to a higher limit. It spins at the launch, so the engine
-# keeps its revs, and grips hard late in the pull, where a gear too tall
-# for a grippy track bogs the engine. The limit is the fully built tire's;
-# the garage sets it.
+# Cut, the farm tire's lugs bite harder than an uncut tire's, build their
+# grip with more slip and do not smear spun fast (see sport_rear.toml).
+# The limit is the fully built tire's; the garage sets it.
 [tire]
 radius_m = 0.88                    # rolling radius
 section_width_m = 0.78
@@ -19,9 +17,12 @@ wheel_inertia_kg_m2 = 60.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-limit = 1.4                        # μ on very strong ground at full bite: a cut puller tire
+limit = 1.4                        # μ on very strong ground at full bite: a hand cut farm tire on a prepared track
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
-slip_rate = 6.0                    # grip builds slowly with slip: a puller tire bites spinning hard
+slip_rate = 6.0                    # cut lugs: grip builds with more slip than an uncut farm tire's
+# Cut lower and sharper, the lugs no longer dig in and smear when spun
+# fast as an uncut farm tire's do (pulling_rear.toml): no fast_spin_grip
+# (tp::tire::TractionCurve), so grip keeps up however fast it spins.
 # Pressed harder than its share of the tractor at rest (the chain pulling
 # down at the hitch, the weights back), the tire grips less per unit of
 # load (tp::tire::TractionCurve::load_sensitivity).

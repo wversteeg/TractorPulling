@@ -38,6 +38,14 @@ Result<tire::Params> read_tire(const toml::table& root, std::string_view source)
                     reader.optional_number("tire.traction.load_sensitivity").value_or(0.0),
                 .reference_load_n =
                     reader.optional_number("tire.traction.reference_load_n").value_or(0.0),
+                // Optional: without them grip does not depend on how fast
+                // the tread spins.
+                .slow_spin_grip =
+                    reader.optional_number("tire.traction.slow_spin_grip").value_or(1.0),
+                .fast_spin_grip =
+                    reader.optional_number("tire.traction.fast_spin_grip").value_or(1.0),
+                .spin_speed_m_s =
+                    reader.optional_number("tire.traction.spin_speed_m_s").value_or(1.0),
             },
         .cornering = detail::read_cornering(reader, "tire.cornering"),
         .wheel_inertia_kg_m2 = reader.number("tire.wheel_inertia_kg_m2"),

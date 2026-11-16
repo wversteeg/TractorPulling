@@ -19,7 +19,8 @@
 #   manifold, head and cam. The labels name no power: it depends on the
 #   turbo fitted.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
-#   cut 30.5" puller tires.
+#   30.5" farm tires hand cut for pulling (cut tires, not puller tires, in
+#   the NTTO's Sport classes; docs/career.md).
 # - ballast_kg: the free weight. The tractor is at the class's 4500 kg
 #   with the driver, its weights fixed at the back; each level frees more
 #   of them to move forward before a pull, up to all of them.
@@ -67,17 +68,18 @@ levels = [
 
 [[garage.upgrades]]
 part = "rear_traction"
-name = "30.5\" puller tires"
+name = "30.5\" cut farm tires"
+formerly = ["30.5\" puller tires"]   # a save from before keeps its level
 levels = [
     { value = 1.29, cost_eur = 0, label = "Worn farm tires" },
     { value = 1.312, cost_eur = 900, label = "Farm tires, good tread" },
     { value = 1.335, cost_eur = 1200, label = "New farm tires" },
     { value = 1.358, cost_eur = 1500, label = "Wide farm tires" },
-    { value = 1.38, cost_eur = 1800, label = "Puller tires" },
-    { value = 1.403, cost_eur = 2100, label = "Puller tires, cut" },
-    { value = 1.417, cost_eur = 2400, label = "Wide puller tires, cut" },
-    { value = 1.432, cost_eur = 2700, label = "30.5\" puller tires, cut" },
-    { value = 1.462, cost_eur = 3000, label = "30.5\" puller tires, hand cut" },
+    { value = 1.38, cost_eur = 1800, label = "Farm tires, cut" },
+    { value = 1.403, cost_eur = 2100, label = "Farm tires, cut deeper" },
+    { value = 1.417, cost_eur = 2400, label = "Wide farm tires, cut" },
+    { value = 1.432, cost_eur = 2700, label = "30.5\" farm tires, cut" },
+    { value = 1.462, cost_eur = 3000, label = "30.5\" farm tires, hand cut" },
 ]
 
 [[garage.upgrades]]
