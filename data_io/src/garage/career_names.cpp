@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace tp::data {
@@ -73,6 +74,31 @@ garage::Career carry_career(const garage::Career& career, const GarageDefinition
     named.money_eur = career.money_eur;
     name_career(career, from, named);
     return career_from_names(named, to);
+}
+
+ClassTractors switch_class(const garage::Career& career, const GarageDefinition& from,
+                           const std::string& from_class, std::vector<SavedTractor> parked,
+                           const GarageDefinition& to, const std::string& to_class) {
+    SavedCareer left;
+    name_career(career, from, left);
+    std::erase_if(parked, [&](const SavedTractor& t) {
+        return t.class_name == from_class || t.class_name.empty();
+    });
+    ClassTractors out{.career = carry_career(career, from, to), .parked = {}};
+    for (const SavedTractor& kept : parked) {
+        if (kept.class_name == to_class) {
+            SavedCareer back = left;
+            back.upgrades = kept.upgrades;
+            back.choices = kept.choices;
+            out.career = career_from_names(back, to);
+        }
+    }
+    out.career.money_eur = career.money_eur;
+    std::erase_if(parked, [&](const SavedTractor& t) { return t.class_name == to_class; });
+    parked.push_back(
+        {.class_name = from_class, .upgrades = left.upgrades, .choices = left.choices});
+    out.parked = std::move(parked);
+    return out;
 }
 
 }  // namespace tp::data
