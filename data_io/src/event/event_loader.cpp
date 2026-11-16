@@ -96,6 +96,17 @@ field::Range range(detail::Reader& reader, std::string_view path) {
     return {.low = values[0], .high = values[1]};
 }
 
+// How many guests pull at each event, and the pool's names: optional, an
+// event without guests.
+std::pair<std::int64_t, std::vector<std::string>> read_game_guests(detail::Reader& reader) {
+    const std::int64_t guests =
+        reader.has("event.game.guests") ? reader.integer("event.game.guests") : 0;
+    std::vector<std::string> names = reader.has("event.game.guest_names")
+                                         ? reader.texts("event.game.guest_names")
+                                         : std::vector<std::string>{};
+    return {guests, std::move(names)};
+}
+
 // The guests' variation: the field's, but for what [event.guests] sets.
 field::Variation guests_variation(detail::Reader& reader, const field::Variation& field) {
     field::Variation out = field;
@@ -171,12 +182,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     const std::vector<double> gears = reader.numbers("event.field.gears");
     const std::int64_t game_pullers = reader.integer("event.game.pullers");
     std::vector<std::string> rival_names = reader.texts("event.game.rival_names");
-    // Optional: an event without guests.
-    const std::int64_t guests =
-        reader.has("event.game.guests") ? reader.integer("event.game.guests") : 0;
-    std::vector<std::string> guest_names = reader.has("event.game.guest_names")
-                                               ? reader.texts("event.game.guest_names")
-                                               : std::vector<std::string>{};
+    auto [guests, guest_names] = read_game_guests(reader);
     const event::Rules rules{
         .full_pull_m = reader.number("event.rules.full_pull_m"),
         .extended_full_pull_m = reader.number("event.rules.extended_full_pull_m"),
