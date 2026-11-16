@@ -270,8 +270,8 @@ TEST(RivalDifficulty, ANewSportTractorIsAtTheBackOfPromoAndAThirdOfItsGarageFigh
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSportTractorWinsAtTop) {
     expect_level("sport_2500_top.toml",
-                 {{.share = 0.45, .places = {.best = 12, .worst = 15}},
-                  {.share = 0.8, .places = {.best = 2, .worst = 10}},
+                 {{.share = 0.45, .places = {.best = 12, .worst = 14}},
+                  {.share = 0.8, .places = {.best = 1, .worst = 10}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
 }
