@@ -27,6 +27,25 @@ struct TractionCurve {
     double mobility_rate = 0.0;
     /// How quickly grip builds with slip.
     double slip_rate = 0.0;
+    /// How the grip depends on how fast the tread sweeps through the soil:
+    /// its slip speed v, the wheel's surface speed less the ground speed
+    /// (see Params). The grip is scaled by a share that moves from
+    /// slow_spin_grip at v = 0 to fast_spin_grip as v passes
+    /// spin_speed_m_s,
+    ///
+    ///   k(v) = slow + (fast - slow) (1 - e^(-|v| / spin_speed_m_s))
+    ///
+    /// A puller tire's many low, sharp bars cut a thin slice of fresh track
+    /// each and throw it out behind: the faster they sweep, the more fresh,
+    /// firm soil they bite, so turning slowly it grips little (slow < 1,
+    /// fast = 1) and it needs gearing tall enough to spin up. A farm tire's
+    /// few tall lugs each push against a block of soil: it grips at little
+    /// slip, and spun fast it digs in and smears (slow = 1, fast < 1). Both
+    /// 1 (the default): grip does not depend on it.
+    double slow_spin_grip = 1.0;
+    double fast_spin_grip = 1.0;
+    /// The slip speed over which the share moves most of its way [m/s].
+    double spin_speed_m_s = 1.0;
 };
 
 /// A tire's side grip on soil. Like traction, it follows the mobility
@@ -92,12 +111,14 @@ struct Pressure {
 /// reference is the larger of the two and a small minimum, clamped to
 /// [-1, 1]. The traction coefficient is
 ///
-///   μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²)
+///   μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²) k(v)
 ///
 /// with g the surface's grip factor and f its spin fall-off, which Brixius
 /// leaves out: past the peak, a spinning tire smears or digs and loses
-/// grip, which makes wheelspin run away once it starts. Load sensitivity
-/// follows from Bn. Braking (s < 0) mirrors traction.
+/// grip, which makes wheelspin run away once it starts. k(v) is the tread's
+/// own response to how fast it spins (TractionCurve), which Brixius leaves
+/// out too. Load sensitivity follows from Bn. Braking (s < 0) mirrors
+/// traction.
 struct Params {
     Size size;
     TractionCurve traction;
@@ -117,6 +138,9 @@ enum class ParamError : std::uint8_t {
     kDeflectionOutOfRange,
     kTractionLimitOutOfRange,
     kTractionRateNotPositive,
+    /// slow_spin_grip or fast_spin_grip outside (0, 1], or spin_speed_m_s
+    /// not above 0.
+    kSpinGripOutOfRange,
     kInertiaNotPositive,
     kMinReferenceSpeedNotPositive,
     kCorneringNotPositive,

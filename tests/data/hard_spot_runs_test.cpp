@@ -47,7 +47,9 @@ struct Sample {
 };
 
 // The Sport 2.5 t tractor pulling its class's sled on `track`, its driver
-// in 5th without a downshift, so the engine alone answers the drag.
+// in 4th without a downshift, so the engine alone answers the drag. (Its
+// cut farm tires grip at little slip, so 5th lugs the engine down on the
+// dry hard clay.)
 std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_offs = 0) {
     const vehicle::Params built = loaded(load_tractor(data("tractors/sport_2500.toml")));
     const sled::Params sled = loaded(load_sled(data("sleds/sport_2500.toml")));
@@ -59,7 +61,7 @@ std::vector<Sample> pull(const Track& track, double start_y_m = 0.0, int pull_of
     if (!model) {
         throw std::runtime_error("the pull was refused");
     }
-    const driver::Plan plan{.gear = 5,
+    const driver::Plan plan{.gear = 4,
                             .select_gear_s = 0.5,
                             .launch_s = 3.0,
                             .clutch_slip_in_s = 3.0,
@@ -88,7 +90,9 @@ struct Jumps {
     double slip_rise = 0.0;
 };
 
-constexpr double kFrom_m = 15.0;
+// From past the launch: on cut farm tires the tractor is still getting
+// the sled going, the clutch eased in and out, until about 17 m.
+constexpr double kFrom_m = 20.0;
 // Short of the push-down, which starts at 60 m on the dry hard clay and
 // raises the pan's drag over its ramp.
 constexpr double kUntil_m = 58.0;

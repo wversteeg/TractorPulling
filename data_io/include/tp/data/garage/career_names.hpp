@@ -12,7 +12,8 @@ namespace tp::data {
 void name_career(const garage::Career& career, const GarageDefinition& garage, SavedCareer& out);
 
 /// A career from `saved`'s money, upgrades and choices, matched by name to
-/// `garage`: an upgrade, choice or alternative the garage does not offer is
+/// `garage` (an upgrade by its name or a former one): an upgrade, choice or
+/// alternative the garage does not offer is
 /// left behind, one it offers that was not saved starts at its first level
 /// or alternative, and a fitted alternative not owned gives way to the
 /// first. A level past its top is held to it (garage::equipped).

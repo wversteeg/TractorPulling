@@ -184,7 +184,7 @@ TEST(ShippedSeason, TwoEventsScoreAndReplay) {
     EXPECT_LT(awarded, 2 * table_total + 20);
     EXPECT_EQ(standings[0].place, 1);
     EXPECT_GE(standings[0].points, standings[1].points);
-    EXPECT_EQ(hash.value(), 0xcc1f0199deb0c1ddULL);
+    EXPECT_EQ(hash.value(), 0x2efe61a4260b4c3ULL);
 }
 
 // In every class the hitch is set per pull once a drawbar above the farm

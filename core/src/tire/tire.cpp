@@ -97,9 +97,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (const auto error = validate(params.cornering)) {
         return error;
     }
-    const std::array scalars = {params.traction.limit, params.traction.mobility_rate,
-                                params.traction.slip_rate, params.wheel_inertia_kg_m2,
-                                params.min_reference_speed_m_s};
+    const std::array scalars = {params.traction.limit,          params.traction.mobility_rate,
+                                params.traction.slip_rate,      params.traction.slow_spin_grip,
+                                params.traction.fast_spin_grip, params.traction.spin_speed_m_s,
+                                params.wheel_inertia_kg_m2,     params.min_reference_speed_m_s};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -108,6 +109,11 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.traction.mobility_rate <= 0.0 || params.traction.slip_rate <= 0.0) {
         return ParamError::kTractionRateNotPositive;
+    }
+    const TractionCurve& curve = params.traction;
+    if (curve.slow_spin_grip <= 0.0 || curve.slow_spin_grip > 1.0 || curve.fast_spin_grip <= 0.0 ||
+        curve.fast_spin_grip > 1.0 || curve.spin_speed_m_s <= 0.0) {
+        return ParamError::kSpinGripOutOfRange;
     }
     if (params.wheel_inertia_kg_m2 <= 0.0) {
         return ParamError::kInertiaNotPositive;
@@ -198,6 +204,21 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
     const double dmu_ds =
         bite * (curve.slip_rate * slip_term * kept - built * 2.0 * surface.spin_fall_off * s);
     out.force_per_slip_speed = std::max(load_n * dmu_ds / reference_m_s, 0.0);
+
+    // The tread's response to its slip speed v (TractionCurve), when it has
+    // one: F = F_s k(v), dF/dv = (dF_s/dv) k + F_s (fast - slow) e^(-v/v0) / v0.
+    if (curve.slow_spin_grip != 1.0 || curve.fast_spin_grip != 1.0) {
+        const double slip_speed_m_s = std::abs(wheel_surface_speed_m_s - ground_speed_m_s);
+        const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
+        const double change = curve.fast_spin_grip - curve.slow_spin_grip;
+        const double share = curve.slow_spin_grip + change * (1.0 - unspun);
+        const double unscaled_n = out.force_n;
+        out.force_n = unscaled_n * share;
+        out.force_per_slip_speed =
+            std::max(load_n * dmu_ds / reference_m_s * share +
+                         std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s,
+                     0.0);
+    }
     return out;
 }
 

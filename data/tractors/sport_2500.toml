@@ -1,7 +1,7 @@
 # The Sport 2.5 t class's tractor (docs/career.md): a small farm tractor
 # built for pulling, no cab but a roll bar, its engine, clutch and gears
-# uprated (engines/, clutches/, drivelines/sport_2500.toml) and puller
-# tires (tires/sport_rear.toml). Within the class: 2500 kg with the driver,
+# uprated (engines/, clutches/, drivelines/sport_2500.toml) and farm tires
+# cut for pulling (tires/sport_rear.toml). Within the class: 2500 kg with the driver,
 # a wheelbase under 2.6 m, nothing more than 3.5 m ahead of the rear axle,
 # the hitch at most 0.5 m high and at least 0.45 m behind the axle. The
 # garage (garages/sport_2500.toml) builds it from a stock tractor.

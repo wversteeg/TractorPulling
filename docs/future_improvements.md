@@ -574,12 +574,15 @@ for the big features; they are repeated at the end for completeness.
   limit for them, and the core checks only mass, engine speed and hitch.
   The Sport engines' 350 and 780 hp are set from videos of top tractors
   (their pace and wheelies), not measured on a dyno.
-- **Puller-tire grip is an estimate.** The Sport tires' grip (1.5 times
-  a farm tire's, building at a third of its rate with slip) is set with
-  the engines from the videos and so that a too tall gear bogs and a too
-  low one spins out, not from measurements.
+- **Cut-tire grip is an estimate.** The Sport classes' cut farm tires'
+  grip (1.5 times an uncut farm tire's, building at under half its rate
+  with slip, a tenth lost spun fast) is set with the engines from the
+  videos and so that a too tall gear bogs and a too low one spins out,
+  not from measurements; so is how much grip a tire gains or loses with
+  how fast its tread spins (`tire::TractionCurve`), from pullers'
+  experience rather than an engineering study.
   Every stage of the Sport garages' tires, the worn farm tires too, uses
-  the puller tire's curve; only the limit changes.
+  the hand cut tire's curve; only the limit changes.
 - **The operator's box step is one share for every class.** A lighter
   step that takes weight out of the box (once the knives are out and the
   push-down is past the end) takes a tenth of it, a constant in the core
