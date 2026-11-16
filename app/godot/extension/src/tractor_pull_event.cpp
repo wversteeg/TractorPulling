@@ -107,6 +107,8 @@ const char* slot_name(garage::Slot slot) {
 constexpr double kWattsPerKw = 1000.0;
 // Points of a dyno curve, idle to high idle.
 constexpr int kDynoPoints = 41;
+// The track screen's profile: the ground every this far along [m].
+constexpr double kProfileStep_m = 2.5;
 
 // The engine's dyno curve at full throttle: (rpm, kW) from idle to high
 // idle, none below 0.
@@ -604,14 +606,38 @@ godot::Dictionary TractorPullEvent::get_event() const {
     const data::SeasonRound& round = definition_->rounds.at(static_cast<std::size_t>(index));
     out["size"] = to_godot(std::string{data::name_of(round.size)});
     out["time"] = to_godot(std::string{data::name_of(round.time_of_day)});
-    // The track at the start line, for the pit board.
+    // The track at the start line, and along it to the full-pull line, for
+    // the pit board and its track screen: the ground as prepared, not the
+    // hard and weak spots, which only the crew's report tells.
     const data::Track& track = round.track;
     godot::Dictionary ground;
     if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
-        const soil::Surface start = model->surface_at(0.0);
+        const soil::Surface start = model->surface_without_spots(0.0);
         ground["grip"] = start.grip_factor;
         ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
+        godot::Array profile;
+        // Every step, and the full-pull line itself (a 110 m line, or one
+        // between two steps).
+        const double until_m = event.full_pull_m();
+        const int steps = static_cast<int>(std::ceil(until_m / kProfileStep_m));
+        for (int i = 0; i <= steps; ++i) {
+            const double at_m = std::min(static_cast<double>(i) * kProfileStep_m, until_m);
+            // A step a rounding past the line would repeat it.
+            if (i > 0 && at_m <= static_cast<double>(i - 1) * kProfileStep_m) {
+                break;
+            }
+            const soil::Surface here = model->surface_without_spots(at_m);
+            godot::Dictionary point;
+            point["at_m"] = at_m;
+            point["grip"] = here.grip_factor;
+            point["cone_index_kpa"] = units::pa_to_kpa(here.cone_index_pa);
+            point["moisture"] = track::composition_at(track.ground, at_m).moisture;
+            profile.push_back(point);
+        }
+        ground["profile"] = profile;
     }
+    ground["clay_fraction"] = track.ground.soil.clay_fraction;
+    ground["moisture"] = track::composition_at(track.ground, 0.0).moisture;
     ground["tip"] = to_godot(track.setup_tip);
     out["track"] = ground;
     return out;
