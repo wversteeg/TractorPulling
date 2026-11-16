@@ -32,19 +32,22 @@ const PREVIEW_RECT := Rect2(24, 84, 760, 470)
 const ABOUT_RECT := Rect2(24, 566, 760, 100)
 const SIDE_X := 808.0
 const SIDE_WIDTH := 448.0
-const MODEL_CARD_HEIGHT := 60.0
-const MODEL_CARD_GAP := 10.0
+const MODEL_CARD_HEIGHT := 56.0
+const MODEL_CARD_GAP := 8.0
 const SWATCH_SIZE := 48.0
 const SWATCH_GAP := 8.0
 const ACTION_RECT := Rect2(808, 596, 448, 74)
 # The turntable: how fast it turns [rad/s], the camera's place and aim
 # from the tractor's middle (Godot's axes) [m], and its field of view [deg].
 const TURN_RATE_RAD_S := 0.35
+# Where the turntable starts for each model: the nose towards the camera,
+# a front quarter [rad].
+const FRONT_QUARTER_RAD := -1.86
 const CAMERA_FROM := Vector3(5.2, 2.3, 5.6)
 const CAMERA_AT := Vector3(0.0, 0.95, 0.0)
 const CAMERA_FOV_DEG := 38.0
 const FLOOR_RADIUS_M := 3.6
-const FLOOR := Color(0.16, 0.17, 0.2)
+const FLOOR := Color(0.1, 0.105, 0.12)
 const SHOWROOM := Color(0.09, 0.1, 0.13)
 
 var mode := Mode.BUY
@@ -116,6 +119,7 @@ func show_dealer(dealer: Dictionary, dimensions: Dictionary, base: TractorLook,
 	picked_paint = clampi(int(dealer.get("paint", 0)), 0,
 			maxi((dealer.get("paints", []) as Array).size() - 1, 0))
 	_build_cards()
+	_turntable.rotation.y = FRONT_QUARTER_RAD
 	_show(message)
 
 
@@ -124,6 +128,7 @@ func pick_model(model: int) -> void:
 	if mode != Mode.BUY or model < 0 or model >= (_dealer.get("models", []) as Array).size():
 		return
 	picked_model = model
+	_turntable.rotation.y = FRONT_QUARTER_RAD
 	_show("")
 
 
@@ -245,14 +250,13 @@ func _build_preview() -> void:
 	environment.background_color = SHOWROOM
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.75, 0.78, 0.85)
-	environment.ambient_light_energy = 0.55
-	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	environment.ambient_light_energy = 0.4
 	var world := WorldEnvironment.new()
 	world.environment = environment
 	_viewport.add_child(world)
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-50.0, 35.0, 0.0)
-	key.light_energy = 1.25
+	key.light_energy = 0.9
 	key.shadow_enabled = true
 	_viewport.add_child(key)
 	var fill := DirectionalLight3D.new()
