@@ -161,8 +161,9 @@ std::optional<LoadError> read_upgrades(const toml::table& root, std::string_view
     return std::nullopt;
 }
 
-// A tractor's model and paint (version 7 on) in `table` into `look`; the
-// error if they are missing.
+// A tractor's model and paint (version 7 on) in `table` into `look`: both,
+// or neither for a tractor from before the dealers (as a version 6 save
+// has it, kept so); the error if only one is there.
 std::optional<LoadError> read_look(const toml::table& table, std::string_view source,
                                    std::string_view path, std::int64_t version,
                                    std::optional<SavedLook>& look) {
@@ -171,8 +172,11 @@ std::optional<LoadError> read_look(const toml::table& table, std::string_view so
     }
     std::optional<std::string> model = table.at_path("model").value<std::string>();
     std::optional<std::string> paint = table.at_path("paint").value<std::string>();
+    if (!model && !paint) {
+        return std::nullopt;
+    }
     if (!model || !paint) {
-        return detail::make_error(source, path, "every tractor needs its model and paint");
+        return detail::make_error(source, path, "a tractor needs both its model and paint");
     }
     look = SavedLook{.model = std::move(*model), .paint = std::move(*paint)};
     return std::nullopt;
@@ -357,9 +361,13 @@ Result<SeasonSave> read_save(const toml::table& root, std::string_view source) {
 // A tractor's model, paint, upgrades and choices, by name, as TOML keys.
 std::string parts(const std::optional<SavedLook>& look, const std::vector<SavedUpgrade>& upgrades,
                   const std::vector<SavedChoice>& choices) {
-    const SavedLook named = look.value_or(SavedLook{});
-    std::string out = "model = " + toml_string(named.model) + "\n";
-    out += "paint = " + toml_string(named.paint) + "\n";
+    // Neither for a tractor from before the dealers: the dealer's first model
+    // (data::career_from_names), not one still to buy (a model of "").
+    std::string out;
+    if (look) {
+        out += "model = " + toml_string(look->model) + "\n";
+        out += "paint = " + toml_string(look->paint) + "\n";
+    }
     out += "upgrades = [\n";
     for (const SavedUpgrade& upgrade : upgrades) {
         out += "    { name = " + toml_string(upgrade.name) +

@@ -216,15 +216,25 @@ TEST(SeasonSave, ReadsASaveFromBeforeTheDealers) {
     ASSERT_EQ(career.other_tractors.size(), 2U);
     EXPECT_FALSE(career.other_tractors[0].look.has_value());
     EXPECT_EQ(career.upgrades.size(), 2U);
-    // Version 7 asks every tractor's model and paint.
+    // Written again, they stay tractors from before the dealers (the
+    // dealer's first model), not tractors still to buy.
+    const Result<SeasonSave> again =
+        parse_season_save(write_season_save(read.value()), "season.toml");
+    ASSERT_TRUE(again) << again.error().message;
+    const SavedCareer kept = again.value().career.value_or(SavedCareer{});
+    EXPECT_FALSE(kept.look.has_value());
+    ASSERT_EQ(kept.other_tractors.size(), 2U);
+    EXPECT_FALSE(kept.other_tractors[0].look.has_value());
+    EXPECT_FALSE(kept.other_tractors[1].look.has_value());
+    // A model without its paint, or the other way round, is refused.
     std::string no_paint = write_season_save(example());
     no_paint.replace(no_paint.find("paint = \"Night black\"\n"), 22, "");
-    EXPECT_NE(error_of(no_paint).find("season.toml: career: every tractor needs its model"),
+    EXPECT_NE(error_of(no_paint).find("season.toml: career: a tractor needs both its model"),
               std::string::npos)
         << error_of(no_paint);
     std::string no_model = write_season_save(example());
     no_model.replace(no_model.find("model = \"\"\n"), 11, "");
-    EXPECT_NE(error_of(no_model).find("career.tractors: every tractor needs its model"),
+    EXPECT_NE(error_of(no_model).find("career.tractors: a tractor needs both its model"),
               std::string::npos)
         << error_of(no_model);
 }

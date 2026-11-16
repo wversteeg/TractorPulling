@@ -117,7 +117,8 @@ struct SeasonSave {
 /// (version 4 on) without their levels, its seasons there (0 or more) or
 /// whether one was won, (version 5 on) a choice without a name, the
 /// alternative fitted or the list of those owned, and (version 7) a
-/// tractor without its model and paint.
+/// tractor with its model but not its paint, or the other way round (with
+/// neither it is one from before the dealers, as in a version 6 save).
 [[nodiscard]] Result<SeasonSave> parse_season_save(std::string_view toml_text,
                                                    std::string_view source_name);
 

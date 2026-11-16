@@ -52,7 +52,9 @@ still pull a farm tractor.
 
 **Each class's tractor is bought from its dealer (game choice).** A new
 career starts at the Standard 3.5 t dealer, and a class the player has not
-pulled in yet at its own: the season waits for the tractor. The dealer
+pulled in yet at its own: the season waits for the tractor. (The parts
+carried into the class by name, as every move up does, come along on the
+new tractor: the dealer sells the tractor, not its parts.) The dealer
 sells five models of the class's tractor and eight colours
 (`[garage.dealer]` in each class's garage file); for now the models only
 look different (`TractorModels` in the game), each pulling the same, so the
