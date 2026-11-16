@@ -141,6 +141,24 @@ TEST(VehicleParams, NamesTheInvalidPart) {
                      .has_value());
 }
 
+// On bigger tires the tractor rides higher: the rear axle at their radius
+// and the centre of gravity up with it, the rest as it was.
+TEST(VehicleParams, OnOtherTiresTheTractorRidesOnThem) {
+    const Params p = reference_params();
+    tire::Params bigger = p.rear_tire;
+    bigger.size.radius_m += 0.1;
+    const std::optional<Params> on_them = with_rear_tire(p, bigger);
+    ASSERT_TRUE(on_them.has_value());
+    const Params& q = on_them.value_or(p);
+    EXPECT_EQ(q.chassis.rear_axle_height_m, bigger.size.radius_m);
+    EXPECT_DOUBLE_EQ(q.chassis.cg_height_m, p.chassis.cg_height_m + 0.1);
+    EXPECT_EQ(q.chassis.wheelbase_m, p.chassis.wheelbase_m);
+    EXPECT_EQ(q.rear_tire.size.radius_m, bigger.size.radius_m);
+    tire::Params none = p.rear_tire;
+    none.size.radius_m = 0.0;
+    EXPECT_FALSE(with_rear_tire(p, none).has_value());
+}
+
 TEST(Vehicle, ModelPutsTheRearWheelsOnTheAxle) {
     const Model model = reference_model();
     const Params& p = model.params();

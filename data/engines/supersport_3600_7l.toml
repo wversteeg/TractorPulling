@@ -1,0 +1,40 @@
+# The Supersport 3.6 t class's big engine (ETPC FS 2026, Level 3;
+# docs/career.md): a six-cylinder turbo diesel of at most 7000 cm³ with 4
+# valves a cylinder, at most 2700 rpm unloaded. One turbo, an intercooler
+# and water injection before the compressor. The rules set no power. The
+# curve below is the fully built engine, about 1000 hp (750 kW) from
+# 2400 rpm, a game estimate: the Sport 4.5 t's 7 l engine
+# (engines/sport_4500.toml, 780 hp) with 4 valves, a bigger turbo and
+# water injection. Its torque low down is its strength: it pulls through
+# a heavy track where the small engine bogs. The garage
+# (garages/supersport_3600.toml) starts it at about 35 % of this torque, a
+# stock 7 l farm engine, and builds it up.
+# Speeds are in rpm and converted to rad/s on load.
+
+[engine]
+inertia_kg_m2 = 2.0      # crankshaft and flywheel of a 7 l six
+idle_rpm = 800
+rated_rpm = 2500         # full fuel to here: a farm governor; the garage sets it
+high_idle_rpm = 2700     # the governor's cut-off, at the class's unloaded limit for 7 l
+max_high_idle_rpm = 2700 # and no further: a pulling governor moves full fuel up to it
+stall_rpm = 450
+cylinders = 6            # a six: for the engine's sound only
+
+[engine.friction]
+constant_nm = 28.0
+viscous_nm_per_1000_rpm = 15.0
+
+# The turbo: a big one, little boost low down.
+[engine.turbo]
+na_torque_fraction = 0.4
+time_constant_s = 1.2
+boost_onset_rpm = 1100
+full_boost_rpm = 1900
+full_boost_bar = 3.0          # above the atmosphere, for the boost gauge
+
+# Full-load torque at full boost: peak 3200 N·m at 2000 rpm, about 750 kW
+# (1000 hp) from 2400 to 2600 rpm; past the rated speed the engine's own
+# fall-off.
+[engine.torque_curve]
+rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800, 3000]
+torque_nm = [1450, 1750, 2150, 2600, 2950, 3150, 3200, 3120, 2980, 2780, 2560, 2300]

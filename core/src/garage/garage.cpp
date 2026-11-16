@@ -77,7 +77,12 @@ std::optional<vehicle::Params> with_alternative(const vehicle::Params& tractor, 
             if (!alternative.rear_tire) {
                 return std::nullopt;
             }
-            out.rear_tire = *alternative.rear_tire;
+            if (const std::optional<vehicle::Params> on_them =
+                    vehicle::with_rear_tire(tractor, *alternative.rear_tire)) {
+                out = *on_them;
+            } else {
+                return std::nullopt;
+            }
             break;
         case Slot::kDriveline:
             if (!alternative.driveline) {

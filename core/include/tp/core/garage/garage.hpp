@@ -74,8 +74,8 @@ struct Upgrade {
 enum class Slot : std::uint8_t {
     /// engine::Params: another engine, or the same one with another turbo.
     kEngine,
-    /// tire::Params, the rear tires: of the tractor's radius (the rear axle's
-    /// height is the tire's), with another grip or size of section.
+    /// tire::Params, the rear tires: another grip, size of section or
+    /// radius; the tractor rides on them (vehicle::with_rear_tire).
     kRearTire,
     /// driveline::Params: another gearbox or final drive.
     kDriveline,

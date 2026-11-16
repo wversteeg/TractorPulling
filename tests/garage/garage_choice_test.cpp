@@ -242,5 +242,24 @@ TEST(GarageChoice, TiresAndDrivelineSwap) {
     EXPECT_EQ(t.value_or(kTractor).driveline.final_drive_ratio, taller.final_drive_ratio);
 }
 
+// A tire of another size fits too: the tractor rides on it.
+TEST(GarageChoice, ABiggerTireRaisesTheAxle) {
+    Catalogue c;
+    tire::Params bigger = kTractor.rear_tire;
+    bigger.size.radius_m += 0.1;
+    c.choices[0].slot = Slot::kRearTire;
+    c.choices[0].alternatives[0] = tire_alternative(kTractor.rear_tire, 0);
+    c.choices[0].alternatives[1] = tire_alternative(bigger, 100);
+    c.choices[0].alternative_count = 2;
+    c.choice_count = 1;
+    EXPECT_EQ(validate(c, kTractor, kClass), std::nullopt);
+    Career career = new_career(c);
+    career.money_eur = 100;
+    ASSERT_EQ(buy_alternative(career, c, 0, 1), std::nullopt);
+    const std::optional<vehicle::Params> t = equipped(kTractor, c, career);
+    ASSERT_TRUE(t.has_value());
+    EXPECT_EQ(t.value_or(kTractor).chassis.rear_axle_height_m, bigger.size.radius_m);
+}
+
 }  // namespace
 }  // namespace tp::garage

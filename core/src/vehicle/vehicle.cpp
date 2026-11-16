@@ -53,6 +53,17 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     return std::nullopt;
 }
 
+std::optional<Params> with_rear_tire(const Params& params, const tire::Params& rear_tire) noexcept {
+    Params out = params;
+    out.rear_tire = rear_tire;
+    out.chassis.cg_height_m += rear_tire.size.radius_m - params.chassis.rear_axle_height_m;
+    out.chassis.rear_axle_height_m = rear_tire.size.radius_m;
+    if (validate(out)) {
+        return std::nullopt;
+    }
+    return out;
+}
+
 Model::Model(const Params& params) noexcept : params_(params), driveline_(params.driveline) {
     driveline_.output_inertia_kg_m2 +=
         params.rear_tire_count * params.rear_tire.wheel_inertia_kg_m2;

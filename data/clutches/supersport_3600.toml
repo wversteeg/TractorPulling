@@ -1,0 +1,12 @@
+# The Supersport 3.6 t tractor's clutch: a certified pulling clutch (ETPC
+# FS 2026, Level 3), holding half as much again as the big engine's peak
+# torque (engines/supersport_3600_7l.toml, 3200 N·m), as the Sport
+# classes' clutches do.
+
+[clutch]
+static_torque_capacity_nm = 4800.0
+kinetic_ratio = 0.8                 # sliding friction / static friction
+
+[clutch.engagement]
+pedal    = [0.0, 0.3, 0.45, 0.55, 0.7, 1.0]
+fraction = [1.0, 1.0, 0.6,  0.15, 0.0, 0.0]

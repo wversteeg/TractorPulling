@@ -1,0 +1,13 @@
+# The pulling sled (pulling_sled.toml) set for the Supersport 3.6 t class:
+# a little more weight than the Sport 4.5 t's (sleds/sport_4500.toml) for
+# a lighter tractor with a quarter more power.
+[sled]
+base = "pulling_sled.toml"
+
+[sled.weight_box]
+mass_kg = 10000.0
+start_ahead_of_wheels_m = -0.75
+
+# The push-down from 70 m takes the pan to half the sled (the base's).
+[sled.pushdown]
+start_m = 70.0
