@@ -105,6 +105,9 @@ const PARKING_FROM_LANE_M := Vector2(1.0, 15.0)
 # field's grass over it, so each is lit by the parking's own lights: a
 # renderer lights each mesh with only its nearest few lights (8 on a phone),
 # and the field's one big plane picks the track's [m].
+# The grass texture repeats every GRASS_TILE_M, on the field and on the
+# parking grass that carries it on.
+const GRASS_TILE_M := 12.0
 const PARKING_PIECE_M := 7.5
 # The grass pieces lie this far over the field, clear of it [m].
 const PARKING_GRASS_LIFT_M := 0.01
@@ -520,7 +523,7 @@ func _add_ground(length_m: float, lane_m: float) -> void:
 	grass_material.normal_enabled = true
 	grass_material.normal_texture = Art.ground_normal(0.08, 8, 6.0)
 	grass_material.normal_scale = 0.6
-	grass_material.uv1_scale = Vector3(FIELD_M.x / 12.0, FIELD_M.y / 12.0, 1.0)
+	grass_material.uv1_scale = Vector3(FIELD_M.x / GRASS_TILE_M, FIELD_M.y / GRASS_TILE_M, 1.0)
 	grass_material.roughness = 1.0
 	var grass := PlaneMesh.new()
 	grass.size = FIELD_M
@@ -604,7 +607,7 @@ func _add_parking_ground(parent: Node3D, lane_m: float, gravel: bool) -> void:
 			-(lane_m / 2.0 + (PARKING_FROM_LANE_M.x + PARKING_FROM_LANE_M.y + out_m) / 2.0), 0.0)
 	size += Vector2(out_m, 2.0 * out_m)
 	var material: StandardMaterial3D
-	var tile_m := 12.0
+	var tile_m := GRASS_TILE_M
 	var height_m := GRASS_Y_M + PARKING_GRASS_LIFT_M
 	if gravel:
 		material = StandardMaterial3D.new()
