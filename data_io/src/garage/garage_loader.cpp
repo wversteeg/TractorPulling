@@ -348,6 +348,121 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
     return std::nullopt;
 }
 
+// "#rrggbb".
+bool is_colour(std::string_view text) {
+    constexpr std::size_t kLength = 7;
+    return text.size() == kLength && text.front() == '#' &&
+           std::ranges::all_of(text.substr(1), [](char c) {
+               return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+           });
+}
+
+// The text at `key` in `table`, if there is one and it is not empty.
+std::optional<std::string> text_at(const toml::table* table, std::string_view key) {
+    std::optional<std::string> text =
+        table != nullptr ? table->at_path(key).value<std::string>() : std::nullopt;
+    if (text && text->empty()) {
+        return std::nullopt;
+    }
+    return text;
+}
+
+// One model the dealer sells, appended to `out`.
+std::optional<LoadError> read_model(const toml::node& node, std::string_view source,
+                                    GarageDefinition& out) {
+    const toml::table* table = node.as_table();
+    const std::optional<std::string> name = text_at(table, "name");
+    const std::optional<std::string> style = text_at(table, "style");
+    const std::optional<std::string> about = text_at(table, "about");
+    const std::optional<std::int64_t> cost =
+        table != nullptr ? table->at_path("cost_eur").value<std::int64_t>() : std::nullopt;
+    if (!name || !style || !about || !cost) {
+        return detail::make_error(source, "garage.dealer.models",
+                                  "every model needs a name, style, cost_eur and about");
+    }
+    if (*cost < 0) {
+        return detail::make_error(source, "garage.dealer.models.cost_eur",
+                                  *name + ": must not be negative");
+    }
+    if (std::ranges::any_of(out.model_texts, [&](const ModelText& t) { return t.name == *name; })) {
+        return detail::make_error(source, "garage.dealer.models.name",
+                                  "'" + *name + "' is listed twice");
+    }
+    garage::Dealer& dealer = out.catalogue.dealer;
+    dealer.model_cost_eur[dealer.model_count] = *cost;
+    ++dealer.model_count;
+    out.model_texts.push_back({.name = *name, .style = *style, .about = *about});
+    return std::nullopt;
+}
+
+// One paint the dealer offers, appended to `out`.
+std::optional<LoadError> read_paint(const toml::node& node, std::string_view source,
+                                    GarageDefinition& out) {
+    const toml::table* table = node.as_table();
+    PaintText paint{.name = text_at(table, "name").value_or(""),
+                    .paint = text_at(table, "paint").value_or(""),
+                    .trim = text_at(table, "trim").value_or(""),
+                    .rims = text_at(table, "rims").value_or("")};
+    if (paint.name.empty() || !is_colour(paint.paint) || !is_colour(paint.trim) ||
+        !is_colour(paint.rims)) {
+        return detail::make_error(
+            source, "garage.dealer.paints",
+            "every paint needs a name and its paint, trim and rims as \"#rrggbb\"");
+    }
+    if (std::ranges::any_of(out.paint_texts,
+                            [&](const PaintText& t) { return t.name == paint.name; })) {
+        return detail::make_error(source, "garage.dealer.paints.name",
+                                  "'" + paint.name + "' is listed twice");
+    }
+    ++out.catalogue.dealer.paint_count;
+    out.paint_texts.push_back(std::move(paint));
+    return std::nullopt;
+}
+
+// The list at `path`, if it holds 1 to `most` entries.
+const toml::array* list_at(const toml::table& root, std::string_view path, std::size_t most) {
+    const toml::array* list = root.at_path(path).as_array();
+    return list != nullptr && !list->empty() && list->size() <= most ? list : nullptr;
+}
+
+// The dealer, if the garage has one, into `out`.
+std::optional<LoadError> read_dealer(const toml::table& root, std::string_view source,
+                                     GarageDefinition& out) {
+    if (!root.at_path("garage.dealer")) {
+        return std::nullopt;
+    }
+    const std::optional<std::int64_t> paint_cost =
+        root.at_path("garage.dealer.paint_cost_eur").value<std::int64_t>();
+    if (!paint_cost || *paint_cost < 0) {
+        return detail::make_error(source, "garage.dealer.paint_cost_eur",
+                                  "must be a cost of 0 or more");
+    }
+    out.catalogue.dealer.paint_cost_eur = *paint_cost;
+    const toml::array* models = list_at(root, "garage.dealer.models", garage::kMaxModels);
+    if (models == nullptr) {
+        return detail::make_error(
+            source, "garage.dealer.models",
+            "must list 1 to " + std::to_string(garage::kMaxModels) + " models");
+    }
+    for (const toml::node& model : *models) {
+        if (std::optional<LoadError> error = read_model(model, source, out)) {
+            return error;
+        }
+    }
+    const toml::array* paints = list_at(root, "garage.dealer.paints", garage::kMaxPaints);
+    if (paints == nullptr) {
+        return detail::make_error(
+            source, "garage.dealer.paints",
+            "must list 1 to " + std::to_string(garage::kMaxPaints) + " paints");
+    }
+    for (const toml::node& paint : *paints) {
+        if (std::optional<LoadError> error = read_paint(paint, source, out)) {
+            return error;
+        }
+    }
+    return std::nullopt;
+}
+
 Result<GarageDefinition> read_garage(const toml::table& root, std::string_view source,
                                      std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
@@ -372,6 +487,9 @@ Result<GarageDefinition> read_garage(const toml::table& root, std::string_view s
         if (std::optional<LoadError> error = read_upgrade(node, source, out)) {
             return *error;
         }
+    }
+    if (std::optional<LoadError> error = read_dealer(root, source, out)) {
+        return *error;
     }
     return out;
 }

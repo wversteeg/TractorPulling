@@ -2,6 +2,7 @@
 # a scripted driver pulls a few metres and lifts off, then lets go of the
 # controls; the run waits for the choice, "Restart" puts the sled and the
 # tractor back at the line for the pull again; a second short stop counts.
+# A fresh short pull then takes "Finish": declined, it counts and ends.
 # Run: godot --headless --fixed-fps 30 --path app/godot --script res://tests/restart_test.gd
 extends SceneTree
 
@@ -94,5 +95,29 @@ func _play() -> void:
 	await process_frame
 	_expect(not restart.visible and not run.may_restart() and not run.get_result().is_empty(),
 			"stopped short again: one restart only, the pull counts")
+	# A fresh pull stopped short, and "Finish": the restart is declined
+	# (TractorPullRun.decline_restart), the choice gone, and the pull ends
+	# with its result shown.
+	_pull.call("_start_practice")
+	run = _pull.get("run")
+	_time_s = 0.0
+	_pull.set("driver", _drive)
+	frame = 0
+	while frame < MAX_FRAMES and not run.may_restart():
+		await process_frame
+		frame += 1
+	_pull.set("driver", Callable())
+	await process_frame
+	await process_frame
+	_expect(restart.visible, "the choice again on a fresh pull")
+	restart.finish_requested.emit()
+	await process_frame
+	_expect(not restart.visible and not run.may_restart() and not run.get_result().is_empty(),
+			"finished: declined, the short pull counts")
+	frame = 0
+	while frame < MAX_FRAMES and _pull.get("screen") != _pull.Screen.RESULT:
+		await process_frame
+		frame += 1
+	_expect(_pull.get("screen") == _pull.Screen.RESULT, "the result shown after finishing")
 	print("restart test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)

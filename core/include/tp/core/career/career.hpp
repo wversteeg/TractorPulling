@@ -77,4 +77,10 @@ bool finish_season(Progress& progress, const Ladder& ladder,
 /// new rung yet; true if it did.
 bool move_up(Progress& progress) noexcept;
 
+/// Puts the player on any open rung, from the first up to the highest
+/// opened, for their next season: back down to a lower level or class, or
+/// up. A rung other than their own starts with no seasons on it; what is
+/// open stays open. True if it did; false for a rung not open.
+bool choose_rung(Progress& progress, int rung) noexcept;
+
 }  // namespace tp::career

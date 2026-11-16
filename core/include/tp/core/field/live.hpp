@@ -46,14 +46,16 @@ public:
     };
 
     /// The field (its pullers in `field`) pulls in `running_order`; puller
-    /// `player` is the player, whose tractor `field` holds. Nothing if
-    /// play_event would refuse these.
+    /// `player` is the player, whose tractor `field` holds, and the last
+    /// `guests` are guests (event::Event::create). Nothing if play_event
+    /// would refuse these, or the player is a guest.
     [[nodiscard]] static std::optional<LiveEvent> create(const event::Rules& rules,
                                                          const Venue& venue, const Field& field,
                                                          const Variation& variation,
                                                          const PullToPull& pull_to_pull,
                                                          std::span<const int> running_order,
-                                                         int player, std::uint64_t seed) noexcept;
+                                                         int player, std::uint64_t seed,
+                                                         int guests = 0) noexcept;
 
     [[nodiscard]] Turn turn() const noexcept;
 
@@ -101,6 +103,8 @@ public:
     /// The pulls pulled so far at the event, the player's too.
     [[nodiscard]] int pulls_done() const noexcept { return event_.pulls_done(); }
     [[nodiscard]] int puller_count() const noexcept { return field_.count; }
+    /// Whether `puller` is a guest at this event, not in the competition.
+    [[nodiscard]] bool guest(int puller) const noexcept { return event_.guest(puller); }
     /// The gear each puller chose for the day (the player's is the field's
     /// guess for them, unused).
     [[nodiscard]] int gear(int puller) const noexcept;

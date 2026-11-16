@@ -22,7 +22,8 @@ const IRON := Color(0.22, 0.22, 0.24)
 const FRAME := Color(0.06, 0.06, 0.06)
 const CHROME := Color(0.8, 0.8, 0.82)
 const WEIGHT := Color(0.9, 0.72, 0.1)
-const GLASS := Color(0.75, 0.85, 0.95, 0.35)
+# Nearly clear and colourless: the cab and the driver show through it.
+const GLASS := Color(0.92, 0.94, 0.94, 0.15)
 const LAMP := Color(1.0, 0.95, 0.75)
 const SMOKE := Color(0.16, 0.16, 0.16, 0.8)
 const DIRT := Color(0.45, 0.31, 0.19)
@@ -63,6 +64,8 @@ const HOOD_TOP_M := 0.65          # above the rear axle
 const HOOD_PAST_FRONT_AXLE_M := 0.3
 const CAB_ROOF_M := 1.75          # above the rear axle
 const CAB_HALF_DEPTH_M := 0.55
+# The cab-side exhaust ends this far over the cab's roof [m].
+const SIDE_STACK_OVER_ROOF_M := 0.2
 const CAB_FLOOR_M := 0.35         # above the rear axle
 # A farm cab: its corner posts, the roof's thickness and how far it
 # overhangs the glass, the beacon on it and the work lamps at its front,
@@ -70,6 +73,9 @@ const CAB_FLOOR_M := 0.35         # above the rear axle
 const CAB_POST_M := 0.07
 const CAB_ROOF_THICK_M := 0.12
 const CAB_ROOF_OVERHANG_M := 0.08
+# The back window's sill, above the rear axle: level with the fenders'
+# tops, a dark panel below it down to the floor [m].
+const CAB_BACK_SILL_M := 0.9
 const BEACON := Color(1.0, 0.55, 0.05)
 const BEACON_RADIUS_M := 0.07
 const WORK_LAMP_M := Vector3(0.12, 0.08, 0.06)
@@ -154,6 +160,15 @@ var _dust: Array[CPUParticles3D] = []
 var _built_for := ""
 # Drawn as a pulling tractor (a roll bar, the Sport classes) or a farm one.
 var _pulling_look := false
+# The model drawn (TractorModels.style()), and the sizes it sets: the farm
+# hood's top and the cab's roof above the rear axle, the bonnet's height
+# as a share [m, m, share].
+var _style: Dictionary = TractorModels.STYLES["farm_classic"]
+var _hood_top_m := HOOD_TOP_M
+var _cab_roof_m := CAB_ROOF_M
+var _bonnet_share := 1.0
+# Half the cab's width, from the rear track [m].
+var _cab_half_width_m := 0.5
 # How much bigger than drawn the pulling tractor's body is (BODY_WHEELBASE_M).
 var _body_scale := 1.0
 var _rear_radius_m := 1.0
@@ -208,7 +223,7 @@ func build(d: Dictionary) -> void:
 # The look and the sizes the tractor is drawn from; the weights are not.
 func _shape_of(d: Dictionary) -> String:
 	var sizes: Array = [look.name, look.paint, look.paint_dark, look.trim, look.rim, look.disc,
-			look.ring, look.number, look.driver_shirt]
+			look.ring, look.number, look.driver_shirt, look.style_id]
 	for key: String in ["protection", "wheelbase_m", "rear_axle_height_m", "rear_track_m",
 			"front_track_m", "rear_tire_radius_m", "rear_tire_width_m", "front_tire_radius_m",
 			"front_tire_width_m", "hitch_behind_rear_axle_m", "hitch_height_m",
@@ -253,11 +268,16 @@ func _build_body(d: Dictionary) -> void:
 	var rear_width_m: float = d["rear_tire_width_m"]
 	var front_width_m: float = d["front_tire_width_m"]
 
-	# A tractor behind a roll bar is a pulling tractor, drawn as one.
-	var pulling: bool = d.get("protection", "cab") == "roll_bar"
+	# The model: without one, a tractor behind a roll bar is a pulling
+	# tractor, drawn as one, and one with a cab a farm tractor.
+	_style = TractorModels.style(look.style_id, d.get("protection", "cab"))
+	var pulling: bool = _style["body"] == TractorModels.PULLING
 	_pulling_look = pulling
 	_body_scale = clampf(wheelbase_m / BODY_WHEELBASE_M, 1.0, BODY_MOST_SCALE) \
 			if pulling else 1.0
+	_hood_top_m = HOOD_TOP_M * float(_style["hood_height"])
+	_bonnet_share = float(_style["hood_height"])
+	_cab_roof_m = CAB_FLOOR_M + (CAB_ROOF_M - CAB_FLOOR_M) * float(_style["cab_height"])
 	_body.position = TrackSpace.point(0.0, 0.0, axle_height_m)
 	add_child(_body)
 	_add_driveline(wheelbase_m, rear_track_m, front_track_m, axle_height_m)
@@ -266,7 +286,7 @@ func _build_body(d: Dictionary) -> void:
 		_add_front_frame(wheelbase_m, axle_height_m)
 	else:
 		_add_hood(wheelbase_m)
-	_add_cab(rear_track_m, pulling)
+	_add_cab(rear_track_m)
 	_add_fenders(rear_track_m, rear_width_m, 12 if pulling else 7)
 	_add_hitch_and_bar(d, axle_height_m, rear_track_m)
 
@@ -318,72 +338,112 @@ func _add_driveline(wheelbase_m: float, rear_track_m: float, front_track_m: floa
 	_body.add_child(pivot)
 
 
+# A farm tractor's hood over the engine, in the model's shape: square (a
+# box with a rounded top), round (an older hood, rounded all over and a
+# little narrower at the front) or sloped (a modern one, falling to its
+# nose, lamp strips in the grille); its stripe, louvres and number on each
+# side, a grille with bars, and lamps.
 func _add_hood(wheelbase_m: float) -> void:
 	var front_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M
 	var back_m := 0.75
 	var length_m := front_m - back_m
-	var hood := Art.box(Vector3(HOOD_WIDTH_M, 0.5, length_m), look.paint, 0.35)
+	var top_m := _hood_top_m
+	var shape: String = _style["hood"]
+	# The hood's body: down to 0.25 m below the usual top, whatever its height.
+	var depth_m := 0.5 + (top_m - HOOD_TOP_M)
+	var hood := Node3D.new()
 	hood.name = "Hood"
-	hood.material_override = Art.paint(look.paint)
-	hood.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M - 0.25)
 	_body.add_child(hood)
-	# A rounded top: a half cylinder along the hood.
-	var top := Art.instance(Art.cylinder_mesh(HOOD_WIDTH_M / 2.0, HOOD_WIDTH_M / 2.0, length_m, 16),
+	var fall_rad := 0.0
+	if shape == "sloped":
+		# Falling to the nose from the windscreen.
+		fall_rad = atan2(0.18 * float(_style["hood_height"]), length_m)
+	hood.position = TrackSpace.point(back_m, 0.0, 0.0)
+	hood.rotation.x = -fall_rad
+	var block_height_m := depth_m if shape != "round" else depth_m * 0.55
+	var block := Art.box(Vector3(HOOD_WIDTH_M, block_height_m, length_m), look.paint, 0.35)
+	block.material_override = Art.paint(look.paint)
+	# Its bottom where the usual hood's is, over the engine.
+	block.position = TrackSpace.point(length_m / 2.0, 0.0,
+			HOOD_TOP_M - 0.5 + block_height_m / 2.0)
+	hood.add_child(block)
+	var top := Art.instance(Art.cylinder_mesh(HOOD_WIDTH_M / 2.0, HOOD_WIDTH_M / 2.0, length_m, 18),
 			Art.paint(look.paint))
 	top.rotation.x = PI / 2.0
-	top.scale = Vector3(1.0, 1.0, 0.35)
-	top.position = TrackSpace.point(back_m + length_m / 2.0, 0.0, HOOD_TOP_M)
-	_body.add_child(top)
-	# Side panels with louvres, the model's stripe and its number.
+	# Square: a gently rounded top; round: a full half round down the sides.
+	top.scale = Vector3(1.0, 1.0, 0.35 if shape != "round" else 1.25)
+	top.position = TrackSpace.point(length_m / 2.0, 0.0,
+			top_m - (0.0 if shape != "round" else HOOD_WIDTH_M * 0.62))
+	hood.add_child(top)
 	for side: float in [-1.0, 1.0]:
 		var stripe := Art.box(Vector3(0.02, 0.06, length_m * 0.8), look.trim)
-		stripe.position = TrackSpace.point(back_m + length_m * 0.55,
-				side * (HOOD_WIDTH_M / 2.0 + 0.005), HOOD_TOP_M - 0.12)
-		_body.add_child(stripe)
+		stripe.position = TrackSpace.point(length_m * 0.55, side * (HOOD_WIDTH_M / 2.0 + 0.005),
+				top_m - 0.12)
+		hood.add_child(stripe)
 		for i in 6:
 			var louvre := Art.box(Vector3(0.02, 0.03, 0.18), look.paint_dark)
-			louvre.position = TrackSpace.point(front_m - 0.35, side * (HOOD_WIDTH_M / 2.0 + 0.005),
-					HOOD_TOP_M - 0.22 - i * 0.05)
-			_body.add_child(louvre)
+			louvre.position = TrackSpace.point(length_m - 0.35, side * (HOOD_WIDTH_M / 2.0 + 0.005),
+					top_m - 0.22 - i * 0.05)
+			hood.add_child(louvre)
 		var number := Art.label(look.number, 90, Color.WHITE, Color.BLACK)
-		number.position = TrackSpace.point(back_m + length_m * 0.35,
-				side * (HOOD_WIDTH_M / 2.0 + 0.012), HOOD_TOP_M - 0.3)
+		number.position = TrackSpace.point(length_m * 0.35, side * (HOOD_WIDTH_M / 2.0 + 0.012),
+				top_m - 0.3)
 		number.rotation.y = side * -PI / 2.0
-		_body.add_child(number)
-	# The grille, its bars and the two lamps.
-	var grille := Art.box(Vector3(HOOD_WIDTH_M - 0.06, 0.55, 0.04), FRAME, 0.6)
-	grille.position = TrackSpace.point(front_m + 0.01, 0.0, HOOD_TOP_M - 0.3)
-	_body.add_child(grille)
-	for i in 5:
-		var bar := Art.box(Vector3(HOOD_WIDTH_M - 0.1, 0.025, 0.03), CHROME, 0.25, 0.8)
-		bar.position = TrackSpace.point(front_m + 0.03, 0.0, HOOD_TOP_M - 0.08 - i * 0.1)
-		_body.add_child(bar)
-	for side: float in [-1.0, 1.0]:
-		var lamp := Art.axle_cylinder(0.07, 0.05, LAMP, 12, 0.1)
-		lamp.rotation = Vector3(PI / 2.0, 0.0, 0.0)
-		lamp.position = TrackSpace.point(front_m + 0.04, side * 0.22, HOOD_TOP_M - 0.02)
-		_body.add_child(lamp)
+		hood.add_child(number)
+	# The grille, its bars (chrome on a model that has them) and the lamps.
+	var grille_height_m := depth_m * 1.1
+	var grille := Art.box(Vector3(HOOD_WIDTH_M - 0.06, grille_height_m, 0.04), FRAME, 0.6)
+	grille.position = TrackSpace.point(length_m + 0.01, 0.0, top_m - 0.05 - grille_height_m / 2.0)
+	hood.add_child(grille)
+	var bars := int(grille_height_m / 0.1)
+	var bar_colour := CHROME if _style["chrome"] or shape != "sloped" else IRON
+	for i in bars:
+		var bar := Art.box(Vector3(HOOD_WIDTH_M - 0.1, 0.025, 0.03), bar_colour, 0.25, 0.8)
+		bar.position = TrackSpace.point(length_m + 0.03, 0.0, top_m - 0.08 - i * 0.1)
+		hood.add_child(bar)
+	if _style["grille_lamps"] and shape == "sloped":
+		# Lamp strips across the nose, a modern tractor's.
+		for side: float in [-1.0, 1.0]:
+			var strip := Art.instance(_box_mesh(Vector3(0.2, 0.04, 0.02)), _lamp(LAMP, 1.5))
+			strip.position = TrackSpace.point(length_m + 0.05, side * 0.16, top_m - 0.12)
+			hood.add_child(strip)
+	else:
+		for side: float in [-1.0, 1.0]:
+			var lamp := Art.axle_cylinder(0.07, 0.05, LAMP, 12, 0.1)
+			lamp.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+			var at_m := 0.22 if shape != "round" else 0.27
+			lamp.position = TrackSpace.point(length_m + 0.04, side * at_m, top_m - 0.02)
+			hood.add_child(lamp)
+	if shape == "round":
+		# An older tractor's: a round badge on the nose.
+		var badge := Art.axle_cylinder(0.06, 0.02, look.trim, 16, 0.3)
+		badge.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+		badge.position = TrackSpace.point(length_m + 0.04, 0.0, top_m - 0.18)
+		hood.add_child(badge)
 
 
 # A pulling tractor's bonnet: a rounded body in the paint over black lower
 # panels, a white top, a dark nose with the grille and two lamp strips;
-# tall at the dashboard and falling to the nose, as today's are.
+# tall at the dashboard and falling to the nose, as today's are. The
+# model sets its height (its bottom stays on the frame) and whether it is
+# rounded or square-edged.
 func _add_bonnet(wheelbase_m: float) -> void:
 	var front_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M
 	var back_m := 0.75
 	var length_m := front_m - back_m
 	var width_m := BONNET_WIDTH_M * _body_scale
-	var height_m := BONNET_HEIGHT_M * _body_scale
+	var height_m := BONNET_HEIGHT_M * _body_scale * _bonnet_share
+	var round_m := BONNET_ROUND_M * _body_scale if _style["hood"] != "square" else 0.04
 	# Everything below hangs from the bonnet's back top edge, tilted down
 	# to the front: x along the bonnet, z down from its top.
 	var bonnet := Node3D.new()
 	bonnet.name = "Bonnet"
-	bonnet.position = TrackSpace.point(back_m, 0.0, BONNET_TOP_M * _body_scale)
+	bonnet.position = TrackSpace.point(back_m, 0.0, bonnet_top_m())
 	bonnet.rotation.x = -BONNET_FALL_RAD
 	_body.add_child(bonnet)
 	var middle_m := length_m / 2.0
 	var body := Art.instance(Art.rounded_box(Vector3(width_m, height_m, length_m),
-			BONNET_ROUND_M * _body_scale, Vector3.AXIS_Z), Art.paint(look.paint))
+			round_m, Vector3.AXIS_Z), Art.paint(look.paint))
 	body.position = TrackSpace.point(middle_m, 0.0, -height_m / 2.0)
 	bonnet.add_child(body)
 	var lower := Art.instance(Art.rounded_box(Vector3(width_m + 0.02, 0.22, length_m - 0.1),
@@ -421,6 +481,12 @@ func _add_bonnet(wheelbase_m: float) -> void:
 		bonnet.add_child(lamp)
 
 
+# The bonnet's back top edge above the rear axle: a taller or lower
+# bonnet on the same frame [m].
+func bonnet_top_m() -> float:
+	return (BONNET_TOP_M - BONNET_HEIGHT_M * (1.0 - _bonnet_share)) * _body_scale
+
+
 # The black frame of a pulling tractor out to its front weights: two rails
 # under the bonnet and a bumper ahead of the nose.
 func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
@@ -446,23 +512,117 @@ func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 # The floor, the seat, the steering wheel and the driver, in a cab frame
 # (four posts, a roof and a screen) or, for a pulling tractor, open behind
 # a roll bar.
-func _add_cab(rear_track_m: float, roll_bar: bool) -> void:
+func _add_cab(rear_track_m: float) -> void:
 	var half_width_m := rear_track_m / 2.0 - 0.35
+	_cab_half_width_m = half_width_m
 	var floor := Art.box(Vector3(2.0 * half_width_m, 0.06, 2.0 * CAB_HALF_DEPTH_M), IRON)
 	floor.position = TrackSpace.point(0.15, 0.0, 0.35)
 	_body.add_child(floor)
-	if roll_bar:
-		_add_roll_bar(half_width_m)
-	else:
-		_add_cab_frame(half_width_m)
-	_add_seat_and_driver(roll_bar)
+	var cab: String = _style["cab"]
+	match cab:
+		"cab":
+			_add_cab_frame(half_width_m)
+		"canopy", "open":
+			_add_frame_posts(half_width_m, cab == "canopy")
+		"cage":
+			_add_cage(half_width_m)
+		_:
+			_add_roll_bar(half_width_m)
+	# A pulling tractor's high-backed seat, but in a closed cab.
+	_add_seat_and_driver(cab != "cab" and (_pulling_look or cab == "roll_bar"))
+
+
+# A farm tractor's safety frame: two square posts behind the seat joined
+# at the top, in black; with a canopy, a flat roof over the seat in the
+# trim.
+func _add_frame_posts(half_width_m: float, canopy: bool) -> void:
+	var x_m := -0.42
+	var height_m := _cab_roof_m - CAB_FLOOR_M
+	for side: float in [-1.0, 1.0]:
+		var post := Art.box(Vector3(0.08, height_m, 0.08), FRAME, 0.4)
+		post.position = TrackSpace.point(x_m, side * (half_width_m - 0.05),
+				CAB_FLOOR_M + height_m / 2.0)
+		_body.add_child(post)
+	var beam := Art.box(Vector3(2.0 * half_width_m, 0.08, 0.08), FRAME, 0.4)
+	beam.position = TrackSpace.point(x_m, 0.0, _cab_roof_m)
+	_body.add_child(beam)
+	if canopy:
+		var roof := Art.instance(Art.rounded_box(Vector3(2.0 * half_width_m + 0.1, 0.06, 1.2), 0.03,
+				Vector3.AXIS_Z), Art.paint(look.trim))
+		roof.name = "CabRoof"
+		roof.position = TrackSpace.point(x_m + 0.5, 0.0, _cab_roof_m + 0.05)
+		_body.add_child(roof)
+		_add_roof_extras(x_m + 0.5, half_width_m, _cab_roof_m + 0.08)
+
+
+# A pulling tractor's safety cage: four posts of tube, two rails along
+# each side, a roof over it all in the trim; no glass.
+func _add_cage(half_width_m: float) -> void:
+	var back_m := 0.15 - CAB_HALF_DEPTH_M
+	var front_m := 0.15 + CAB_HALF_DEPTH_M
+	var height_m := _cab_roof_m - CAB_FLOOR_M
+	var cage := Art.paint(CHROME, 0.3) if _style["chrome"] else Art.material(FRAME, 0.4, 0.4)
+	for x_m: float in [back_m, front_m]:
+		for side: float in [-1.0, 1.0]:
+			var post := Art.cylinder(ROLL_BAR_TUBE_M, height_m, CHROME, 10)
+			post.material_override = cage
+			post.position = TrackSpace.point(x_m, side * half_width_m, CAB_FLOOR_M + height_m / 2.0)
+			_body.add_child(post)
+	for side: float in [-1.0, 1.0]:
+		for z_m: float in [CAB_FLOOR_M + height_m * 0.45, _cab_roof_m]:
+			var rail := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, front_m - back_m, CHROME, 8)
+			rail.material_override = cage
+			rail.rotation.x = PI / 2.0
+			rail.position = TrackSpace.point((back_m + front_m) / 2.0, side * half_width_m, z_m)
+			_body.add_child(rail)
+	_add_roof(half_width_m, (back_m + front_m) / 2.0)
+
+
+# The roof over a cab or a cage: flat or rounded, as the model has it, in
+# the trim, a little wider than the posts.
+func _add_roof(half_width_m: float, middle_m: float) -> void:
+	var size := Vector3(2.0 * (half_width_m + CAB_ROOF_OVERHANG_M), CAB_ROOF_THICK_M,
+			2.0 * (CAB_HALF_DEPTH_M + CAB_ROOF_OVERHANG_M))
+	var rounded: bool = _style["roof"] == "rounded"
+	var roof := Art.instance(Art.rounded_box(size, 0.05 if not rounded else 0.1,
+			Vector3.AXIS_Z), Art.paint(look.trim))
+	roof.name = "CabRoof"
+	roof.position = TrackSpace.point(middle_m, 0.0, _cab_roof_m + CAB_ROOF_THICK_M / 2.0)
+	_body.add_child(roof)
+	if rounded:
+		# A domed top over the flat one.
+		var dome := Art.instance(Art.rounded_box(Vector3(size.x - 0.12, 0.1, size.z - 0.16), 0.05,
+				Vector3.AXIS_Z), Art.paint(look.trim))
+		dome.position = TrackSpace.point(middle_m, 0.0, _cab_roof_m + CAB_ROOF_THICK_M + 0.03)
+		_body.add_child(dome)
+	_add_roof_extras(middle_m, half_width_m, _cab_roof_m + CAB_ROOF_THICK_M
+			+ (0.08 if rounded else 0.0))
+
+
+# On a roof whose middle is `middle_m` along and whose top is `top_m` up:
+# the amber beacon and the work lamps at its front, as the model has them.
+func _add_roof_extras(middle_m: float, half_width_m: float, top_m: float) -> void:
+	if _style["beacon"]:
+		var beacon := Art.cylinder(BEACON_RADIUS_M, 0.1, BEACON, 12, 0.3)
+		beacon.name = "Beacon"
+		beacon.material_override = _lamp(BEACON, 1.2)
+		beacon.position = TrackSpace.point(middle_m - CAB_HALF_DEPTH_M + 0.15,
+				half_width_m - 0.12, top_m + 0.05)
+		_body.add_child(beacon)
+	if _style["roof_lamps"]:
+		for side: float in [-1.0, 1.0]:
+			var lamp := Art.instance(_box_mesh(WORK_LAMP_M), _lamp(LAMP, 1.0))
+			lamp.position = TrackSpace.point(middle_m + CAB_HALF_DEPTH_M + CAB_ROOF_OVERHANG_M,
+					side * (half_width_m - 0.12), top_m - CAB_ROOF_THICK_M / 2.0)
+			_body.add_child(lamp)
 
 
 # A hoop of tube behind the seat, braced back to the frame.
 func _add_roll_bar(half_width_m: float) -> void:
 	var bar_half_width_m := half_width_m - 0.1
 	var x_m := -ROLL_BAR_BEHIND_M
-	var height_m := ROLL_BAR_TOP_M - 0.35
+	var top_m := 0.35 + (ROLL_BAR_TOP_M - 0.35) * float(_style["cab_height"])
+	var height_m := top_m - 0.35
 	for side: float in [-1.0, 1.0]:
 		var post := Art.cylinder(ROLL_BAR_TUBE_M, height_m, CHROME, 10)
 		post.material_override = Art.paint(CHROME, 0.3)
@@ -481,7 +641,7 @@ func _add_roll_bar(half_width_m: float) -> void:
 			CHROME, 10)
 	top.material_override = Art.paint(CHROME, 0.3)
 	top.rotation.z = PI / 2.0
-	top.position = TrackSpace.point(x_m, 0.0, ROLL_BAR_TOP_M)
+	top.position = TrackSpace.point(x_m, 0.0, top_m)
 	_body.add_child(top)
 
 
@@ -492,7 +652,7 @@ func _add_cab_frame(half_width_m: float) -> void:
 	var back_m := 0.15 - CAB_HALF_DEPTH_M
 	var front_m := 0.15 + CAB_HALF_DEPTH_M
 	var middle_m := 0.15
-	var height_m := CAB_ROOF_M - CAB_FLOOR_M
+	var height_m := _cab_roof_m - CAB_FLOOR_M
 	var middle_z_m := CAB_FLOOR_M + height_m / 2.0
 	for x_m: float in [back_m, front_m]:
 		for side: float in [-1.0, 1.0]:
@@ -508,7 +668,8 @@ func _add_cab_frame(half_width_m: float) -> void:
 	var glass := _glass()
 	var panes: Array[Array] = [
 		["Front", Vector3(2.0 * half_width_m, height_m, 0.02), Vector3(front_m, 0.0, middle_z_m)],
-		["Back", Vector3(2.0 * half_width_m, height_m, 0.02), Vector3(back_m, 0.0, middle_z_m)],
+		["Back", Vector3(2.0 * half_width_m, _cab_roof_m - CAB_BACK_SILL_M, 0.02), Vector3(back_m,
+				0.0, (CAB_BACK_SILL_M + _cab_roof_m) / 2.0)],
 		["Left", Vector3(0.02, height_m, 2.0 * CAB_HALF_DEPTH_M), Vector3(middle_m, half_width_m,
 				middle_z_m)],
 		["Right", Vector3(0.02, height_m, 2.0 * CAB_HALF_DEPTH_M), Vector3(middle_m,
@@ -521,44 +682,37 @@ func _add_cab_frame(half_width_m: float) -> void:
 		window.position = TrackSpace.point(at.x, at.y, at.z)
 		window.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_body.add_child(window)
-	var roof_size := Vector3(2.0 * (half_width_m + CAB_ROOF_OVERHANG_M), CAB_ROOF_THICK_M,
-			2.0 * (CAB_HALF_DEPTH_M + CAB_ROOF_OVERHANG_M))
-	var roof := Art.instance(Art.rounded_box(roof_size, 0.05, Vector3.AXIS_Z),
-			Art.paint(look.trim))
-	roof.name = "CabRoof"
-	roof.position = TrackSpace.point(middle_m, 0.0, CAB_ROOF_M + CAB_ROOF_THICK_M / 2.0)
-	_body.add_child(roof)
+	# The back wall below the window, and the sill across its top.
+	var wall_height_m := CAB_BACK_SILL_M - CAB_FLOOR_M
+	var wall := Art.box(Vector3(2.0 * half_width_m, wall_height_m, 0.03), FRAME, 0.6)
+	wall.name = "CabBackWall"
+	wall.position = TrackSpace.point(back_m, 0.0, CAB_FLOOR_M + wall_height_m / 2.0)
+	_body.add_child(wall)
+	var back_sill := Art.box(Vector3(2.0 * half_width_m, CAB_POST_M, CAB_POST_M), FRAME, 0.4)
+	back_sill.position = TrackSpace.point(back_m, 0.0, CAB_BACK_SILL_M)
+	_body.add_child(back_sill)
+	_add_roof(half_width_m, middle_m)
 	var lining := Art.box(Vector3(2.0 * half_width_m + 0.04, 0.05,
 			2.0 * CAB_HALF_DEPTH_M + 0.04), FRAME, 0.6)
-	lining.position = TrackSpace.point(middle_m, 0.0, CAB_ROOF_M - 0.01)
+	lining.position = TrackSpace.point(middle_m, 0.0, _cab_roof_m - 0.01)
 	_body.add_child(lining)
-	var beacon := Art.cylinder(BEACON_RADIUS_M, 0.1, BEACON, 12, 0.3)
-	beacon.name = "Beacon"
-	beacon.material_override = _lamp(BEACON, 1.2)
-	beacon.position = TrackSpace.point(back_m + 0.15, half_width_m - 0.12,
-			CAB_ROOF_M + CAB_ROOF_THICK_M + 0.05)
-	_body.add_child(beacon)
 	for side: float in [-1.0, 1.0]:
-		var lamp := Art.instance(_box_mesh(WORK_LAMP_M), _lamp(LAMP, 1.0))
-		lamp.position = TrackSpace.point(front_m + CAB_ROOF_OVERHANG_M, side * (half_width_m - 0.12),
-				CAB_ROOF_M + CAB_ROOF_THICK_M / 2.0)
-		_body.add_child(lamp)
 		# The mirror: an arm out from the front post, the glass at its end.
 		var arm := Art.box(Vector3(MIRROR_ARM_M, 0.025, 0.025), FRAME, 0.4)
 		arm.position = TrackSpace.point(front_m, side * (half_width_m + MIRROR_ARM_M / 2.0),
-				CAB_ROOF_M - 0.25)
+				_cab_roof_m - 0.25)
 		_body.add_child(arm)
 		var mirror := Art.box(MIRROR_M, FRAME, 0.3)
 		mirror.name = "Mirror"
 		mirror.position = TrackSpace.point(front_m, side * (half_width_m + MIRROR_ARM_M),
-				CAB_ROOF_M - 0.35)
+				_cab_roof_m - 0.35)
 		_body.add_child(mirror)
 	var handle := Art.box(Vector3(0.03, 0.02, 0.14), CHROME, 0.25, 0.8)
 	handle.position = TrackSpace.point(back_m + 0.2, half_width_m + 0.02, CAB_FLOOR_M + 0.75)
 	_body.add_child(handle)
 
 
-# Clear, tinted glass that casts no shadow of its own.
+# Clear glass that casts no shadow of its own.
 static func _glass() -> StandardMaterial3D:
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = GLASS
@@ -691,19 +845,48 @@ static func _backlit(colour: Color) -> StandardMaterial3D:
 
 # Fenders over the rear wheels: an arc of panels from the cab to the front
 # of the wheel.
+# The model's fenders: round (the arc), wide (an arc past the tire's
+# sides, with a lamp at its front) or flat (a modern tractor's: a flat top
+# over the wheel and a short slope down at each end).
 func _add_fenders(rear_track_m: float, rear_width_m: float, panels: int) -> void:
 	var radius_m := _rear_radius_m + 0.12
+	var kind: String = _style["fenders"]
+	var width_m := rear_width_m + (0.1 if kind != "wide" else 0.24)
 	for side: float in [-1.0, 1.0]:
+		var y_m := side * (rear_track_m / 2.0 + (0.0 if kind != "wide" else 0.04))
+		if kind == "flat":
+			var top := Art.box(Vector3(width_m, 0.04, radius_m * 1.3), look.paint, 0.35)
+			top.material_override = Art.paint(look.paint)
+			top.position = TrackSpace.point(-0.05, y_m, radius_m)
+			_body.add_child(top)
+			for end: float in [-1.0, 1.0]:
+				var slope := Art.box(Vector3(width_m, 0.04, radius_m * 0.55), look.paint, 0.35)
+				slope.material_override = Art.paint(look.paint)
+				slope.position = TrackSpace.point(-0.05 + end * radius_m * 0.85, y_m,
+						radius_m * 0.82)
+				# Falling away from the flat top at each end.
+				slope.rotation.x = -end * 0.75
+				_body.add_child(slope)
+			var lamp := Art.instance(_box_mesh(WORK_LAMP_M), _lamp(LAMP, 1.0))
+			lamp.position = TrackSpace.point(radius_m * 0.75, y_m, radius_m + 0.06)
+			_body.add_child(lamp)
+			continue
 		for i in panels:
 			var angle := lerpf(0.25, PI - 0.55, (float(i) + 0.5) / panels)
-			var panel := Art.box(Vector3(rear_width_m + 0.1, 0.03, radius_m * PI / panels * 0.75),
+			var panel := Art.box(Vector3(width_m, 0.03, radius_m * PI / panels * 0.75),
 					look.paint, 0.35)
 			panel.material_override = Art.paint(look.paint)
-			panel.position = TrackSpace.point(radius_m * cos(angle), side * rear_track_m / 2.0,
-					radius_m * sin(angle))
+			panel.position = TrackSpace.point(radius_m * cos(angle), y_m, radius_m * sin(angle))
 			# Tangent to the arc: turned about the axle's line.
 			panel.rotation.x = angle - PI / 2.0
 			_body.add_child(panel)
+		if kind == "wide" or (_style["grille_lamps"] and _style["body"] == TractorModels.FARM):
+			# A lamp at the fender's front edge, an older or a wider tractor's.
+			var lamp := Art.axle_cylinder(0.06, 0.06, LAMP, 12, 0.1)
+			lamp.material_override = _lamp(LAMP, 0.8)
+			lamp.rotation = Vector3(PI / 2.0, 0.0, 0.0)
+			lamp.position = TrackSpace.point(radius_m * 0.55, y_m, radius_m * 0.86 + 0.06)
+			_body.add_child(lamp)
 
 
 # The drawbar out to the hitch, and the wheelie bar behind the tractor.
@@ -831,17 +1014,36 @@ func _show_weights(d: Dictionary) -> void:
 			holder.add_child(disc)
 
 
+# The exhaust as the model has it, and the smoke from it: one stack up
+# through the hood (single, or tall), one each side (twin), or one up the
+# cab's front corner (side). Twin stacks smoke from the left one.
 func _add_smoke(wheelbase_m: float) -> void:
+	var kind: String = _style["stack"]
 	var x_m := wheelbase_m - 0.55
-	# A bigger bonnet: the stack as much higher, and thicker.
-	var lift_m := BONNET_TOP_M * (_body_scale - 1.0)
-	var stack := Art.cylinder(0.055 * _body_scale, 1.0, CHROME, 12, 0.2, 0.9)
-	stack.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.45 + lift_m)
-	_body.add_child(stack)
-	var cap := Art.cylinder(0.075 * _body_scale, 0.05, FRAME, 12)
-	cap.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 0.97 + lift_m)
-	_body.add_child(cap)
-	_smoke.position = TrackSpace.point(x_m, 0.18, HOOD_TOP_M + 1.0 + lift_m)
+	# Out of the hood's top: a bigger bonnet's as much higher, and thicker.
+	var base_m := (bonnet_top_m() - (BONNET_TOP_M - HOOD_TOP_M)) if _pulling_look else _hood_top_m
+	var length_m := 1.0 if kind != "tall" else 1.35
+	var at := Vector3(x_m, 0.18, base_m + length_m / 2.0 - 0.05)
+	var places: Array[Vector3] = [at]
+	if kind == "twin":
+		places = [Vector3(x_m - 0.3, 0.22, at.z), Vector3(x_m - 0.3, -0.22, at.z)]
+	elif kind == "side":
+		# Up outside the cab's right front post, from the hood's side, to
+		# just over the roof; bright, so it stands out from the black post.
+		length_m = _cab_roof_m - 0.2 + SIDE_STACK_OVER_ROOF_M
+		places = [Vector3(0.15 + CAB_HALF_DEPTH_M + 0.04, -(_cab_half_width_m + 0.12),
+				0.2 + length_m / 2.0)]
+	var radius_m := 0.055 * _body_scale * (0.85 if kind == "twin" else 1.0)
+	var finish := CHROME
+	for place: Vector3 in places:
+		var stack := Art.cylinder(radius_m, length_m, finish, 12, 0.2, 0.9)
+		stack.position = TrackSpace.point(place.x, place.y, place.z)
+		_body.add_child(stack)
+		var cap := Art.cylinder(radius_m * 1.36, 0.05, FRAME, 12)
+		cap.position = TrackSpace.point(place.x, place.y, place.z + length_m / 2.0 - 0.03)
+		_body.add_child(cap)
+	var out: Vector3 = places[0]
+	_smoke.position = TrackSpace.point(out.x, out.y, out.z + length_m / 2.0)
 	_smoke.amount = 60
 	_smoke.lifetime = 2.2
 	_smoke.emitting = false

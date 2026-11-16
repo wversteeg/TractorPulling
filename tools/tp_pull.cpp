@@ -564,7 +564,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                 << pull.tractor.chassis.lateral_position_m << ','
                 << rad_to_deg(pull.tractor.chassis.heading_rad) << ','
                 << pull.sled.lateral_position_m << ',' << rad_to_deg(pull.sled.heading_rad) << ','
-                << pull.sled.distance_m << ',' << out.sled.pan_front_lift << '\n';
+                << pull.sled.distance_m << '\n';
         }
     }
     const std::optional<tp::run::Result>& result = session->result();
@@ -580,7 +580,7 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
            "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg,"
-           "sled_lateral_m,sled_heading_deg,sled_travel_m,pan_front_lift\n";
+           "sled_lateral_m,sled_heading_deg,sled_travel_m\n";
     for (int round = 0; round <= kMaxPullOffs; ++round) {
         const auto outcome =
             one_run(driven_setup(tractor, class_sled, track, options, round), options, round, csv);
@@ -799,7 +799,11 @@ void report_round(int number, const tp::data::SeasonRound& round,
         }
     }
     std::cout << '\n';
-    for (const tp::event::Standing& s : event.standings()) {
+    const std::span<const tp::event::Standing> standings = event.standings();
+    const std::array<int, tp::event::kMaxPullers> scored =
+        tp::season::event_points(points, standings);
+    for (std::size_t i = 0; i < standings.size(); ++i) {
+        const tp::event::Standing& s = standings[i];
         if (s.place > kTopPlaces) {
             break;
         }
@@ -810,8 +814,11 @@ void report_round(int number, const tp::data::SeasonRound& round,
         if (s.pull_off_rounds > 0) {
             std::cout << "  pull-off " << std::setw(6) << s.pull_off_distance_m() << " m";
         }
-        std::cout << "  " << (s.disqualified ? 0 : tp::season::points_for(points, s.place))
-                  << " pts\n";
+        if (s.guest) {
+            std::cout << "  guest\n";
+        } else {
+            std::cout << "  " << scored.at(i) << " pts\n";
+        }
     }
 }
 
@@ -819,29 +826,40 @@ int run_season(const tp::data::SeasonDefinition& definition, std::uint64_t seed)
     const tp::data::EventDefinition& base = definition.event;
     const auto field =
         tp::field::generate(base.reference, base.variation, base.class_rules, base.pullers, seed);
+    // The game's guests at every event, as field::LiveSeason has them.
+    const tp::field::Guests guests = base.game.season_guests();
+    const auto pool = tp::field::guests_valid(guests, base.pullers)
+                          ? tp::field::guest_pool(base.reference, guests, base.class_rules, seed)
+                          : std::nullopt;
     auto championship = tp::season::Championship::create(definition.points, base.pullers);
-    if (!field || !championship) {
+    if (!field || !pool || !championship) {
         std::cerr << "inconsistent season\n";
         return EXIT_FAILURE;
     }
-    std::cout << std::fixed << std::setprecision(2) << base.pullers << " pullers, "
-              << definition.rounds.size() << " events, seed " << seed << '\n';
+    std::cout << std::fixed << std::setprecision(2) << base.pullers << " pullers and "
+              << guests.per_event << " guests, " << definition.rounds.size() << " events, seed "
+              << seed << '\n';
     int number = 0;
     for (const tp::data::SeasonRound& round : definition.rounds) {
-        // Every event its own draws: running order, gears and pulls.
+        // Every event its own draws: guests, running order, gears and pulls.
         const std::uint64_t event_seed = tp::field::event_seed(seed, number);
-        const auto order = tp::event::running_order(base.pullers, event_seed);
+        const std::array<int, tp::field::kMaxGuests> chosen =
+            tp::field::guests_at(seed, number, guests);
+        const tp::field::Field today = tp::field::with_guests(
+            *field, *pool, std::span{chosen.data(), static_cast<std::size_t>(guests.per_event)});
+        const auto order = tp::event::running_order(today.count, event_seed);
         const tp::field::Venue venue = tp::data::venue(base.sled, round.track);
-        const auto played = tp::field::play_event(
-            base.rules, venue, *field, base.variation, base.pull_to_pull,
-            std::span{order.data(), static_cast<std::size_t>(base.pullers)}, event_seed + 1);
+        const auto played =
+            tp::field::play_event(base.rules, venue, today, base.variation, base.pull_to_pull,
+                                  std::span{order.data(), static_cast<std::size_t>(today.count)},
+                                  event_seed + 1, guests.per_event);
         if (!played) {
             std::cerr << round.name << ": inconsistent event\n";
             return EXIT_FAILURE;
         }
         tp::event::Event event = played->event;
         championship->add(event.standings());
-        report_round(++number, round, *played, event, definition.points, base.pullers);
+        report_round(++number, round, *played, event, definition.points, today.count);
     }
     std::cout << "\nchampionship\n  place  puller  points  wins   points per event\n";
     for (const tp::season::Standing& s : championship->standings()) {

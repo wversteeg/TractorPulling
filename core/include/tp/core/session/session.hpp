@@ -148,10 +148,6 @@ struct Snapshot {
     /// The push-down, 0 off to 1 fully set: the sled's rear wheels off the
     /// track, all its weight on the pan, its drag at its most.
     double pushdown = 0.0;
-    /// The share of the pan's length off the track at its front, the chain
-    /// lifting it (sled::Loads::pan_front_lift): 0 flat to 1 on its back
-    /// edge.
-    double pan_front_lift = 0.0;
     /// The loose soil heaped in front of the pan, which it pushes along: the
     /// berm (sled::Berm), as a volume to draw [m³].
     double berm_m3 = 0.0;
@@ -229,8 +225,13 @@ public:
     /// The pull again from the start line (turn::restart), the controls'
     /// assist as at the start; nothing unless may_restart().
     void restart() noexcept;
+    /// The pull counts as it is (turn::decline_restart): no restart, the
+    /// chain off once slack.
+    void decline_restart() noexcept { turn::decline_restart(turn_); }
     /// The turn is over: the pull ended (at the line), or the tractor
-    /// stands in the parking again.
+    /// stands in the parking again. In a whole turn a pull that stopped
+    /// short holds the chain on until restart() or decline_restart(): a
+    /// front end that never chooses never gets back to the parking.
     [[nodiscard]] bool over() const noexcept { return turn_.stage == turn::Stage::kParked; }
     /// The replay hash: the run's state and the layout's (the clutch
     /// assist's and the steering's, controls::AssistState). It leaves

@@ -20,7 +20,9 @@
 #   turbo fitted.
 # - rear_traction: the rear tires' traction limit, from worn farm tires to
 #   cut 30.5" puller tires.
-# - ballast_kg: weights up to the class's 4500 kg with the driver.
+# - ballast_kg: the free weight. The tractor is at the class's 4500 kg
+#   with the driver, its weights fixed at the back; each level frees more
+#   of them to move forward before a pull, up to all of them.
 # - hitch_height_m: the pulling hitch's top hole, up to the class's 0.5 m;
 #   the puller sets it before each pull from its lowest hole, 0.40 m
 #   (tractors/sport_4500.toml), up to the top one.
@@ -80,15 +82,15 @@ levels = [
 
 [[garage.upgrades]]
 part = "ballast_kg"
-name = "Weights and front bracket"
+name = "Free weight"
 levels = [
-    { value = 0.0, cost_eur = 0, label = "No weights" },
-    { value = 80.0, cost_eur = 900, label = "80 kg of weights" },
-    { value = 160.0, cost_eur = 1200, label = "160 kg of weights" },
-    { value = 240.0, cost_eur = 1500, label = "240 kg of weights" },
-    { value = 320.0, cost_eur = 1800, label = "320 kg of weights" },
-    { value = 400.0, cost_eur = 2100, label = "400 kg of weights" },
-    { value = 500.0, cost_eur = 2400, label = "500 kg, the class's 4500 kg" },
+    { value = 0.0, cost_eur = 0, label = "All weights fixed at the back" },
+    { value = 80.0, cost_eur = 900, label = "80 kg free to move" },
+    { value = 160.0, cost_eur = 1200, label = "160 kg free to move" },
+    { value = 240.0, cost_eur = 1500, label = "240 kg free to move" },
+    { value = 320.0, cost_eur = 1800, label = "320 kg free to move" },
+    { value = 400.0, cost_eur = 2100, label = "400 kg free to move" },
+    { value = 500.0, cost_eur = 2400, label = "All 500 kg free to move" },
 ]
 
 [[garage.upgrades]]
@@ -124,3 +126,90 @@ levels = [
     { value = 1.0, cost_eur = 3200, label = "One gear down under load" },
     { value = 2.0, cost_eur = 1800, label = "Two gears down under load" },
 ]
+
+# The dealer: a new class is a new tractor, bought when the class opens, as
+# one of these models (the game draws each its own way; all pull alike).
+# Priced at about a quarter of a winning season's prize money; the cheapest
+# is never dearer than the money there is. Painting it later costs
+# paint_cost_eur.
+[garage.dealer]
+paint_cost_eur = 700
+
+[[garage.dealer.models]]
+name = "Titan Classic"
+style = "pull_classic"
+cost_eur = 6500
+about = "The pulling tractor as it should be: a round bonnet, chrome and a roll bar."
+
+[[garage.dealer.models]]
+name = "Titan Low"
+style = "pull_low"
+cost_eur = 7300
+about = "Built low: a low bonnet, a short roll bar and one tall stack."
+
+[[garage.dealer.models]]
+name = "Titan High"
+style = "pull_high"
+cost_eur = 8100
+about = "A tall square bonnet, twin stacks and wide fenders."
+
+[[garage.dealer.models]]
+name = "Titan Farm"
+style = "pull_farm"
+cost_eur = 8900
+about = "A farm tractor's square hood on a pulling frame: the farmer's choice."
+
+[[garage.dealer.models]]
+name = "Titan Cab"
+style = "pull_cab"
+cost_eur = 9800
+about = "A closed cab on a pulling frame, lamps all round: pulling in comfort."
+
+# The colours, the same at every dealer: the first comes with the tractor.
+[[garage.dealer.paints]]
+name = "Field red"
+paint = "#b3241c"
+trim = "#f2f0e8"
+rims = "#e8dcb4"
+
+[[garage.dealer.paints]]
+name = "Forest green"
+paint = "#1f5e2e"
+trim = "#f2d230"
+rims = "#f2d230"
+
+[[garage.dealer.paints]]
+name = "Lake blue"
+paint = "#1d4f9c"
+trim = "#f2f0e8"
+rims = "#d8d8dc"
+
+[[garage.dealer.paints]]
+name = "Harvest orange"
+paint = "#e3741c"
+trim = "#20201f"
+rims = "#20201f"
+
+[[garage.dealer.paints]]
+name = "Steel grey"
+paint = "#9aa0a6"
+trim = "#1c1c1e"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Night black"
+paint = "#121214"
+trim = "#e0aa2a"
+rims = "#e0aa2a"
+
+[[garage.dealer.paints]]
+name = "Snow white"
+paint = "#f0efe9"
+trim = "#b3241c"
+rims = "#b3241c"
+
+[[garage.dealer.paints]]
+name = "Royal purple"
+paint = "#5c1a6e"
+trim = "#f2f0e8"
+rims = "#d8d8dc"

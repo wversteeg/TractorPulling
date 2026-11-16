@@ -1,8 +1,11 @@
 #include "tp/core/driver/driver.hpp"
+#include "tp/core/garage/garage.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/time/fixed_step_clock.hpp"
 #include "tp/core/turn/turn.hpp"
 #include "tp/core/vehicle/tuning.hpp"
+#include "tp/data/files.hpp"
+#include "tp/data/garage/garage_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
 #include "tp/data/sled/sled_loader.hpp"
 #include "tp/data/track/track_loader.hpp"
@@ -12,8 +15,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <filesystem>
 #include <limits>
+#include <numbers>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -45,11 +51,11 @@ struct FrontLoads {
     run::Result result;
 };
 
-// The middle ends before the push-down (from 65 m on the Sport 2.5 t's
+// The middle ends before the push-down (from 60 m on the Sport 2.5 t's
 // sled); the end is well into it.
 constexpr double kLaunchUntil_m = 10.0;
 constexpr double kMiddleFrom_m = 35.0;
-constexpr double kMiddleUntil_m = 62.0;
+constexpr double kMiddleUntil_m = 58.0;
 constexpr double kEndFrom_m = 90.0;
 
 // A pull on `track_file` with `tractor_file` tuned to `ballast_position`
@@ -107,7 +113,7 @@ const driver::Plan kSportDriver{.gear = 5,
 // Where the weights sit: 0 rearmost, 1 foremost.
 constexpr double kBack = 0.0;
 constexpr double kQuarter = 0.25;
-constexpr double kHalfway = 0.5;
+constexpr double kThreeQuarters = 0.75;
 constexpr double kForward = 1.0;
 // The front tires carry this much or more: down [N]; on average this much
 // or more over a stretch: light, but down rather than up.
@@ -140,20 +146,22 @@ TEST(WheelieRuns, TheWeightsAllBackKeepItUpAllTheWay) {
     EXPECT_LT(back.result.distance_m, sport("ideal_clay_sand.toml", kQuarter).result.distance_m);
 }
 
-// Halfway, the front is down through the middle and comes up only at the
-// end; all forward it stays down from the launch on (the launch still
-// lifts it: 350 hp). Both trade grip at the rear for it and pull shorter
-// than a quarter forward.
+// The chain, hooked low on the pan, pulls the hitch down and lifts the
+// front: with the weights three-quarters or all forward the front stays
+// down through the middle and comes up only at the end, as the push-down
+// comes on (the launch still lifts it: 350 hp). On a good track the rear
+// tires have the grip to spare, so the weights forward pull further than
+// a quarter forward, which rides up and down through the middle.
 TEST(WheelieRuns, TheWeightsForwardKeepTheFrontDown) {
     const FrontLoads quarter = sport("ideal_clay_sand.toml", kQuarter);
-    const FrontLoads halfway = sport("ideal_clay_sand.toml", kHalfway);
-    const FrontLoads forward = sport("ideal_clay_sand.toml", kForward);
-    EXPECT_GT(halfway.middle_n, kDown_n);
-    EXPECT_EQ(halfway.end_n, 0.0);
-    EXPECT_GT(forward.middle_n, kDown_n);
-    EXPECT_GT(forward.end_n, kDown_n);
-    EXPECT_LT(halfway.result.distance_m, quarter.result.distance_m);
-    EXPECT_LT(forward.result.distance_m, quarter.result.distance_m);
+    for (const double position : {kThreeQuarters, kForward}) {
+        const FrontLoads f = sport("ideal_clay_sand.toml", position);
+        EXPECT_EQ(f.launch_n, 0.0) << position;
+        EXPECT_GT(f.middle_n, kDown_n) << position;
+        EXPECT_EQ(f.end_n, 0.0) << position;
+        EXPECT_GT(f.result.distance_m, quarter.result.distance_m) << position;
+    }
+    EXPECT_EQ(quarter.middle_n, 0.0) << "up for moments in the middle";
 }
 
 // A pull that ends with the front up and the chain pulling hard leaves the
@@ -195,7 +203,7 @@ TEST(WheelieRuns, PressingTheClutchAfterThePullLetsTheFrontDown) {
     ASSERT_EQ(state.stage, turn::Stage::kReleasing);
     ASSERT_EQ(state.run.result.value_or(run::Result{}).ending, run::Ending::kFullPull);
     const int gear = state.run.pull.tractor.driveline.gear;
-    ASSERT_GT(out.chain.tension_n, 20000.0) << "the chain pulling hard at the line";
+    ASSERT_GT(out.chain.tension_n, 12000.0) << "the chain pulling hard at the line";
     ASSERT_EQ(out.tractor.axle_loads.front_n, 0.0) << "the front up";
     // Off the gas, the clutch pressed: the tractor and the sled roll to a
     // stop, the chain between them.
@@ -270,6 +278,87 @@ TEST(SportPace, TheTopTractorsPullAsFastAsInTheVideos) {
     EXPECT_GT(sport_45_s, 11.0);
     EXPECT_LT(sport_45_s, 14.5);
     EXPECT_LT(sport_45_s, sport_25_s);
+}
+
+// How a pull rides: how often the nose went up (past kNoseUp_deg after
+// being down below kNoseDown_deg) and how long it was up [s].
+struct Ride {
+    int lifts = 0;
+    double up_s = 0.0;
+    run::Result result;
+};
+
+constexpr double kNoseUp_deg = 6.0;
+constexpr double kNoseDown_deg = 2.0;
+
+Ride ride(const vehicle::Params& tractor, const std::string& track_file, int gear) {
+    vehicle::Tuning tuning = vehicle::as_built(tractor);
+    tuning.ballast_position = kForward;
+    const sled::Params sled = loaded(load_sled(data("sleds/sport_2500.toml")));
+    const Track track = loaded(load_track(data("tracks/" + track_file)));
+    const session::Setup setup = run_setup(vehicle::tuned(tractor, tuning), sled, track, 0);
+    const std::optional<pull::Model> model =
+        pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
+    if (!model) {
+        throw std::runtime_error("the pull was refused");
+    }
+    driver::Plan plan = kSportDriver;
+    plan.gear = gear;
+    run::State state = run::start(*model);
+    driver::State driver;
+    Ride out;
+    bool up = false;
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        run::step(state, *model, setup.rules,
+                  driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
+        const double pitch_deg = state.pull.tractor.chassis.pitch_rad * 180.0 / std::numbers::pi;
+        if (!up && pitch_deg > kNoseUp_deg) {
+            up = true;
+            ++out.lifts;
+        } else if (up && pitch_deg < kNoseDown_deg) {
+            up = false;
+        }
+        out.up_s += up ? kDt_s : 0.0;
+    }
+    out.result = state.result.value_or(run::Result{});
+    return out;
+}
+
+// A Sport 2.5 t as a promo puller has it: every part two stages up (100 kg
+// of its weights free), the free weights forward, in 4th on the grippy
+// firm loam. The weights not yet free are bolted to the front bracket
+// (Ballast::fixed_position), so the nose comes up on the launch and at the
+// end and stays down between. Fixed at the back, as they were, it hopped
+// onto its wheelie bar and back again all along the track.
+TEST(WheelieRuns, ASportTractorWithLittleWeightFreeDoesNotHopOnTheLoam) {
+    const vehicle::Params reference = loaded(load_tractor(data("tractors/sport_2500.toml")));
+    const GarageDefinition g =
+        loaded(load_garage(data("garages/sport_2500.toml").generic_string(), read_from_disk));
+    garage::Career career = garage::new_career(g.catalogue);
+    constexpr int kStages = 2;
+    for (std::size_t i = 0; i < g.catalogue.count; ++i) {
+        career.levels.at(i) =
+            std::min(kStages, static_cast<int>(g.catalogue.upgrades.at(i).level_count) - 1);
+    }
+    const std::optional<vehicle::Params> equipped =
+        garage::equipped(reference, g.catalogue, career);
+    ASSERT_TRUE(equipped.has_value());
+    const vehicle::Params promo = equipped.value_or(reference);
+    ASSERT_LT(promo.chassis.ballast.mass_kg, reference.chassis.ballast.mass_kg);
+    constexpr int kGear = 4;
+    const Ride front = ride(promo, "firm_loam.toml", kGear);
+    EXPECT_LE(front.lifts, 2) << "the launch and the end";
+    EXPECT_LT(front.up_s, 3.0);
+
+    vehicle::Params old_reference = reference;
+    old_reference.chassis.ballast.fixed_position = 0.0;
+    const std::optional<vehicle::Params> old = garage::equipped(old_reference, g.catalogue, career);
+    ASSERT_TRUE(old.has_value());
+    const Ride back = ride(old.value_or(old_reference), "firm_loam.toml", kGear);
+    EXPECT_GE(back.lifts, 4) << "fixed at the back it hopped";
+    EXPECT_GT(back.up_s, 2.0 * front.up_s);
+    EXPECT_GT(front.result.distance_m, back.result.distance_m);
 }
 
 }  // namespace

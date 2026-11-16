@@ -219,7 +219,7 @@ TEST(LiveEvent, WaitsForThePlayer) {
 
     // A short test pull: the operator lightens the sled, and the rivals go on.
     const event::Outcome outcome =
-        live->record_player({.ending = run::Ending::kStalled, .distance_m = 60.0}, 5);
+        live->record_player({.ending = run::Ending::kStalled, .distance_m = 80.0}, 5);
     EXPECT_EQ(outcome.change, event::SledChange::kLighter);
     EXPECT_EQ(live->turn(), LiveEvent::Turn::kRivals);
     EXPECT_EQ(live->log().back().pull.puller, player);

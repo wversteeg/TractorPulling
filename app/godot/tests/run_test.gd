@@ -11,7 +11,7 @@
 # the same hashes. Exits non-zero if any check fails.
 #
 #   godot --path app/godot --script res://tests/run_test.gd \
-#       -- --gear=6 --stick=0.032 --brake-right=0.05
+#       -- --gear=4 --stick=0.032 --brake-right=0.1
 extends SceneTree
 
 const TRACTOR := "res://data/tractors/farm_stock_light.toml"
@@ -21,8 +21,9 @@ const EASY := "res://data/controls/easy.toml"
 const PRO := "res://data/controls/pro.toml"
 const SEASON := "res://data/seasons/club_season.toml"
 const LADDER := "res://tests/data/practice_ladder.toml"
-# The garage's starting tractor's rear axle share at rest, weights halfway.
-const REAR_SHARE := 0.616
+# The garage's starting tractor's rear axle share at rest: its weights
+# fixed at the back, the 100 kg free to move halfway.
+const REAR_SHARE := 0.662
 
 const STEP_NS := 1_000_000
 const STEP_S := 0.001
@@ -144,7 +145,8 @@ func _check_parking() -> void:
 	_expect(error.is_empty(), "a turn from the parking: " + error)
 	var start := run.get_snapshot()
 	_expect(start.get("stage", "") == "to_the_sled" and not start.get("chain_hooked", true)
-			and float(start["tractor_x_m"]) == -15.0 and float(start["tractor_y_m"]) == -10.0
+			and is_equal_approx(float(start["tractor_x_m"]), -15.0)
+			and is_equal_approx(float(start["tractor_y_m"]), -10.0)
 			and not run.is_over() and not run.is_finished(),
 			"from the parking, the chain off: %s" % start)
 	run.set_controls(0.4, 1.0, -1, 0.0, 0.0, 0.0)
@@ -176,13 +178,13 @@ func _check_event() -> void:
 	_expect(error.is_empty(), "the season: " + error)
 	var season := event.get_season()
 	var names: PackedStringArray = season.get("names", PackedStringArray())
-	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 15
+	_expect(season.get("events", 0) == 10 and season.get("index", -1) == 0 and names.size() == 12
 			and names[0] == "You" and names[1] == "Henk", "the season: %s" % season)
 	error = event.start_event()
 	_expect(error.is_empty(), "the first event: " + error)
 	var info := event.get_event()
 	_expect(info.get("name", "") == "Spring opener, watered start" and info.get("index", -1) == 0
-			and info.get("pullers", 0) == 15 and info.get("full_pull_m", 0.0) == 100.0
+			and info.get("pullers", 0) == 14 and info.get("full_pull_m", 0.0) == 100.0
 			and info.get("standard_full_pull_m", 0.0) == 100.0,
 			"the event: %s" % info)
 
@@ -234,6 +236,7 @@ func _check_event() -> void:
 		_expect(run.setup_event_pull(event, EASY).contains("no pull"),
 				"no pull of the player's due")
 	_expect(not event.score_event(), "an unfinished event is not scored")
+	_check_guests(event)
 
 
 # A save the season no longer takes (here another season's) still gives
@@ -282,7 +285,7 @@ func _check_career() -> void:
 	_expect(event.buy_upgrade(0).is_empty(), "a part bought")
 	var garage := event.get_garage()
 	var save := event.get_save()
-	_expect(save.contains("version = 5") and save.contains("class = \"Practice\"")
+	_expect(save.contains("version = 7") and save.contains("class = \"Practice\"")
 			and save.contains("level = \"Belofte\"") and save.contains("unlocked = \"Practice\"")
 			and save.contains("unlocked_level = \"Belofte\""),
 			"the save names the class and level: %s" % save)
@@ -383,13 +386,19 @@ func _check_upgrades_cross_garages() -> void:
 			and garage["upgrades"][0]["level"] == 0 and garage["upgrades"][1]["name"] == "Powershift"
 			and garage["upgrades"][1]["level"] == 1 and garage["money_eur"] == bought["money_eur"],
 			"the upper garage, the powershift carried by name: %s" % garage)
-	_expect(not up.get_save().contains("Governor"), "the governor left behind")
+	# The class below's tractor kept, governor and all, for going back.
+	var up_save := up.get_save()
+	var kept_at := up_save.find("[[career.tractors]]")
+	_expect(kept_at > 0 and up_save.find("Governor") > kept_at
+			and up_save.substr(kept_at).contains("class = \"Practice\""),
+			"the governor left behind, on the class below's tractor: %s" % up_save)
 
 
 # The player's tuning: as built at first, each setting held to its range,
 # and a run set up after it is on the tuned tractor. The player starts on
-# the garage's first levels: 100 kg of weights halfway put a little more of
-# the lighter tractor on its rear axle than the reference's 60 %.
+# the garage's first levels: the weights fixed at the back but 100 kg,
+# halfway, put more of the tractor on its rear axle than the reference's
+# 60 %.
 func _check_tuning(event: TractorPullEvent) -> void:
 	var tuning := event.get_tuning()
 	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)
@@ -450,3 +459,19 @@ func _play(layout: String, controls: String, gear: int, stick: float,
 	var result := run.get_result()
 	print(layout, " result: ", result.ending, " ", result.distance_m, " m")
 	print(layout, " state hash ", run.get_state_hash())
+
+
+# The event's guests: after the twelve competitors, named from the
+# season's pool, marked in the standings once they have pulled and
+# scoring no points.
+func _check_guests(event: TractorPullEvent) -> void:
+	var standings := event.get_standings()
+	var guests := 0
+	for line: Dictionary in standings:
+		if line.get("guest", false):
+			guests += 1
+			_expect(int(line["puller"]) >= 12 and int(line["points"]) == 0
+					and not String(line["name"]).begins_with("#"),
+					"a guest, named, without points: %s" % line)
+	_expect(guests <= 2, "two guests at most: %d" % guests)
+

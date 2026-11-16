@@ -3,7 +3,7 @@ title The game's flow: a season's event against the rivals, then the standings
 autonumber
 actor Player
 participant "pull.gd" as Pull
-participant "StartScreen / SettingsScreen /\nGarageScreen / BoardScreen /\nResultScreen" as Screens
+participant "StartScreen / SettingsScreen /\nGarageScreen / DealerScreen /\nBoardScreen / ResultScreen" as Screens
 participant "TractorPullEvent" as Event
 participant "TractorPullRun" as Run
 
@@ -25,6 +25,12 @@ else none
   Pull -> Event : new_season(new seed)
 end
 Pull -> Pull : save: get_save()
+opt get_dealer()["needs_tractor"]: a new career, or a class not pulled in yet
+  Pull -> Screens : the dealer: get_dealer(), get_tractor_dimensions();\nthe models on a turntable, no way past
+  Player -> Screens : a model, a colour, Buy
+  Pull -> Event : buy_tractor(model, paint)\n(garage::buy_model)
+  Pull -> Pull : save: get_save()
+end
 Pull -> Event : start_event()
 Pull -> Screens : start screen: get_event() (name, n of count)
 loop each frame on the start screen and the board
@@ -39,6 +45,11 @@ opt Garage (before the player's first pull of the event)
   loop each Buy
     Player -> Screens : Buy
     Pull -> Event : buy_upgrade(index)\n(garage::buy; the tractor is garage::equipped)
+    Pull -> Pull : save: get_save()
+  end
+  opt Paint shop
+    Player -> Screens : Paint shop, a colour, Paint
+    Pull -> Event : repaint(paint)\n(garage::repaint)
     Pull -> Pull : save: get_save()
   end
 end

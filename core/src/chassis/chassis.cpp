@@ -112,7 +112,8 @@ bool ballast_valid(const Params& params) noexcept {
     }
     if (ballast.mass_kg < 0.0 || ballast.mass_kg >= params.mass_kg ||
         ballast.rear_ahead_of_rear_axle_m >= ballast.front_ahead_of_rear_axle_m ||
-        ballast.position < 0.0 || ballast.position > 1.0) {
+        ballast.position < 0.0 || ballast.position > 1.0 || ballast.fixed_position < 0.0 ||
+        ballast.fixed_position > 1.0) {
         return false;
     }
     // The centre of gravity is linear in the weights' position: the ends
@@ -161,7 +162,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.ballast.mass_kg,
                                 params.ballast.rear_ahead_of_rear_axle_m,
                                 params.ballast.front_ahead_of_rear_axle_m,
-                                params.ballast.position};
+                                params.ballast.position,
+                                params.ballast.fixed_position};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -259,31 +261,50 @@ Params with_ballast_at(const Params& params, double position) noexcept {
     return out;
 }
 
-Params with_ballast_mass(const Params& params, double mass_kg) noexcept {
+Params with_free_weight(const Params& params, double free_kg) noexcept {
     const Ballast& ballast = params.ballast;
-    if (!std::isfinite(mass_kg) || mass_kg < 0.0 || mass_kg == ballast.mass_kg) {
+    if (!std::isfinite(free_kg) || free_kg < 0.0 || free_kg >= ballast.mass_kg) {
         return params;
     }
-    const double added_kg = mass_kg - ballast.mass_kg;
-    const double at_m = ballast_x_m(ballast, ballast.position);
+    // The fixed weights go from where the ballast sits to where they are
+    // bolted: about the old centre of gravity only their term changes, then
+    // the parallel axis theorem moves the sum to the new one.
+    const double fixed_kg = ballast.mass_kg - free_kg;
+    const double from_m = ballast_x_m(ballast, ballast.position);
+    const double to_m = ballast_x_m(ballast, ballast.fixed_position);
     const double cg_m = params.cg_ahead_of_rear_axle_m;
-    const double total_kg = params.mass_kg + added_kg;
-    const double new_cg_m = (params.mass_kg * cg_m + added_kg * at_m) / total_kg;
-    // The added weights about the new centre of gravity, and the rest moved
-    // to it (parallel axes); taking weights off is the same with a minus.
-    const double moved = params.mass_kg * (cg_m - new_cg_m) * (cg_m - new_cg_m) +
-                         added_kg * (at_m - new_cg_m) * (at_m - new_cg_m);
+    const double new_cg_m = cg_m + fixed_kg * (to_m - from_m) / params.mass_kg;
+    const double about_old_cg =
+        fixed_kg * ((to_m - cg_m) * (to_m - cg_m) - (from_m - cg_m) * (from_m - cg_m));
+    const double shift = params.mass_kg * (new_cg_m - cg_m) * (new_cg_m - cg_m);
     Params out = params;
-    out.mass_kg = total_kg;
     out.cg_ahead_of_rear_axle_m = new_cg_m;
-    out.pitch_inertia_kg_m2 = params.pitch_inertia_kg_m2 + moved;
-    out.yaw_inertia_kg_m2 = params.yaw_inertia_kg_m2 + moved;
-    out.ballast.mass_kg = mass_kg;
+    out.pitch_inertia_kg_m2 = params.pitch_inertia_kg_m2 + about_old_cg - shift;
+    out.yaw_inertia_kg_m2 = params.yaw_inertia_kg_m2 + about_old_cg - shift;
+    out.ballast.mass_kg = free_kg;
     return out;
 }
 
 AxleLoads axle_loads_at_rest(const Params& params) noexcept {
     return axle_loads(params, State{}, Drawbar{});
+}
+
+double wheelie_bar_contact_pitch_rad(const Params& params) noexcept {
+    // The tip's depth rises with the pitch up to the contact: bisect between
+    // level, where it is clear of the ground, and the most the bar may
+    // allow, where it is in.
+    constexpr int kHalvings = 60;
+    double clear_rad = 0.0;
+    double in_rad = kMaxWheelieBarContactPitch_rad;
+    for (int i = 0; i < kHalvings; ++i) {
+        const double middle_rad = 0.5 * (clear_rad + in_rad);
+        if (wheelie_bar(params, math::sin_cos(middle_rad)).depth_m > 0.0) {
+            in_rad = middle_rad;
+        } else {
+            clear_rad = middle_rad;
+        }
+    }
+    return in_rad;
 }
 
 double rear_axle_share(const Params& params) noexcept {

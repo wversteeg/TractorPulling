@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <functional>
 #include <limits>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -581,7 +582,7 @@ TEST(Event, PullOffsRepeatUntilOneIsStrongest) {
 }
 
 // A second pull-off follows pulls of at least 120 m, so its sled is made
-// heavier for 20 m or more past the main line: as many steps as the
+// heavier by twice the first's steps, and at least as many as the
 // operator changes at once.
 TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
     Event event = make(5);
@@ -597,6 +598,33 @@ TEST(Event, ASecondPullOffTakesTheMostStepsAtOnce) {
         return p.puller == 4 ? 99.0 : 97.0;
     });
     EXPECT_EQ(knives_in_round[2] - knives_in_round[1], kRules.max_steps_per_change);
+}
+
+// Full pulls stopped at the line (as a run stops them), or within a step of
+// it, show no margin: the
+// first pull-off is as many steps heavier as the operator changes at once,
+// a second twice that, and a third heavier still, as far as the sled goes.
+TEST(Event, FullPullsStoppedAtTheLineMakeThePullOffsFarHeavier) {
+    Event event = make(5);
+    std::array<int, 4> knives_in_round{};
+    knives_in_round[0] = knives(event);
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
+        if (p.kind != PullKind::kPullOff) {
+            // One at the line, one a little past it: no margin either.
+            constexpr std::array<double, 5> kMain = {95.0, 95.0, 95.0, 100.0, 101.0};
+            return kMain.at(static_cast<std::size_t>(p.puller));
+        }
+        knives_in_round[static_cast<std::size_t>(p.pull_off_round)] = knives(event);
+        if (p.pull_off_round < 3) {
+            return p.puller >= 3 ? 120.0 : 96.0;
+        }
+        return p.puller == 4 ? 99.0 : 97.0;
+    });
+    EXPECT_EQ(pulls.back().pull_off_round, 3);
+    const int steps = kRules.max_steps_per_change;
+    EXPECT_EQ(knives_in_round[1] - knives_in_round[0], steps) << "the most at once";
+    EXPECT_EQ(knives_in_round[2] - knives_in_round[1], 2 * steps) << "twice that";
+    EXPECT_GT(knives_in_round[3], knives_in_round[2]) << "heavier still, up to the sled's most";
 }
 
 // In a pull-off only the pull-off line (120 m) is a full pull: two pullers
@@ -672,6 +700,82 @@ TEST(Event, EqualResultsShareAPlace) {
     EXPECT_EQ(standings[1].place, 1);
     EXPECT_EQ(standings[2].place, 1);
     EXPECT_EQ(standings[3].place, 4);
+}
+
+// Guests (the last pullers of the field) pull and take their places, but
+// the pull-off is the competitors': their four, as without the guests; a
+// guest further than the last competitor in pulls off too, a fifth.
+TEST(Event, AGuestFurtherThanTheFourthCompetitorPullsOff) {
+    // Competitors 0 to 6 as in QualifyingFillsUpWithTheBestFromNinetyMetres
+    // (in: 100, 100, 95 and 93); guest 7 pulls 94, guest 8 92.
+    constexpr std::array<double, 9> kReach = {95.0,  100.0, 89.0, 93.0, 91.0,
+                                              100.0, 70.0,  94.0, 92.0};
+    const std::vector<int> order = in_order(9);
+    std::optional<Event> created =
+        Event::create(kRules, sled::testing::reference_params(), order, 2);
+    if (!created.has_value()) {
+        FAIL() << "the event with guests was refused";
+    }
+    Event event = *created;
+    EXPECT_FALSE(event.guest(6));
+    EXPECT_TRUE(event.guest(7));
+    EXPECT_TRUE(event.guest(8));
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
+        return p.kind == PullKind::kPullOff ? 80.0 : kReach[static_cast<std::size_t>(p.puller)];
+    });
+    std::vector<int> pull_off;
+    for (const Pull& p : pulls) {
+        if (p.kind == PullKind::kPullOff) {
+            pull_off.push_back(p.puller);
+        }
+    }
+    EXPECT_EQ(pull_off, (std::vector<int>{0, 1, 3, 5, 7}))
+        << "the competitors' four, and the guest further than their fourth";
+}
+
+// A guest's full pull is in, as any full pull, and a guest never takes a
+// competitor's place in the pull-off: with both guests in, six pull off.
+// In the standings guests are marked and take their places among everyone.
+TEST(Event, GuestsTakePlacesButNotCompetitorsPullOffPlaces) {
+    constexpr std::array<double, 9> kReach = {95.0,  100.0, 89.0,  93.0, 91.0,
+                                              100.0, 70.0,  100.0, 99.0};
+    const std::vector<int> order = in_order(9);
+    std::optional<Event> created =
+        Event::create(kRules, sled::testing::reference_params(), order, 2);
+    if (!created.has_value()) {
+        FAIL() << "the event with guests was refused";
+    }
+    Event event = *created;
+    const std::vector<Pull> pulls = run(event, [&](const Pull& p) {
+        if (p.kind == PullKind::kPullOff) {
+            return p.puller == 8 ? 110.0 : 80.0;
+        }
+        return kReach[static_cast<std::size_t>(p.puller)];
+    });
+    std::vector<int> pull_off;
+    for (const Pull& p : pulls) {
+        if (p.kind == PullKind::kPullOff) {
+            pull_off.push_back(p.puller);
+        }
+    }
+    EXPECT_EQ(pull_off, (std::vector<int>{0, 1, 3, 5, 7, 8}));
+    const std::span<const Standing> standings = event.standings();
+    ASSERT_EQ(standings.size(), 9U);
+    EXPECT_EQ(standings[0].puller, 8) << "the guest won the pull-off";
+    EXPECT_TRUE(standings[0].guest);
+    EXPECT_EQ(standings[0].place, 1);
+    EXPECT_FALSE(standings[1].guest);
+    EXPECT_EQ(standings[1].place, 2);
+    EXPECT_EQ(std::ranges::count_if(standings, [](const Standing& s) { return s.guest; }), 2);
+}
+
+// Guests are the field's last pullers, fewer than all of them.
+TEST(Event, RejectsGuestsWithoutCompetitors) {
+    const std::vector<int> order = in_order(3);
+    const sled::Params sled = sled::testing::reference_params();
+    EXPECT_FALSE(Event::create(kRules, sled, order, 3).has_value());
+    EXPECT_FALSE(Event::create(kRules, sled, order, -1).has_value());
+    EXPECT_TRUE(Event::create(kRules, sled, order, 2).has_value());
 }
 
 }  // namespace
