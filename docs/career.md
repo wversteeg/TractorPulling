@@ -462,7 +462,7 @@ tractor:
 - Sport 4.5 t has all three again. Being a wheelspin class near its
   limits at top, about 90 % of its garage reaches the podium there and
   only a fully built tractor is sure to win; its governor comes in six
-  small stages, since each 50 rpm is worth a metre or more there.
+  small stages, since each 75 rpm is worth a metre or more there.
 
 ## Upgrades (game choice)
 

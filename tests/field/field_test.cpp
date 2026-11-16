@@ -73,9 +73,17 @@ TEST(FieldParams, RejectsNonsense) {
     faster.max_engine_speed_rad_s = units::rpm_to_rad_s(3200.0);
     v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(2200.0), .high = units::rpm_to_rad_s(3000.0)};
     EXPECT_EQ(validate(reference(), v, faster, 15), ParamError::kGovernorOutOfRange)
-        << "a high idle past the torque curve";
+        << "full fuel past the cut-off's stop";
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kGovernorOutOfRange)
+        << "full fuel past the class's 2700 rpm";
+    Puller unstopped = reference();
+    unstopped.tractor.engine.max_high_idle_omega_rad_s = 0.0;
+    v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(2200.0), .high = units::rpm_to_rad_s(2700.0)};
+    EXPECT_EQ(validate(unstopped, v, faster, 15), ParamError::kGovernorOutOfRange)
+        << "the cut-off at the class's 3200 rpm, past the torque curve";
+    v.rated_omega_rad_s = {.low = units::rpm_to_rad_s(2200.0), .high = units::rpm_to_rad_s(2650.0)};
     EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), std::nullopt)
-        << "held to the class's 2700 rpm, the curve covers it";
+        << "below the class's 2700 rpm, the droop shortened";
     v = kVariation;
     v.fewest_load_downshift_gears = 1;
     v.most_load_downshift_gears = 0;
@@ -251,7 +259,7 @@ TEST(Field, GovernorsVary) {
     }
     Variation v = kVariation;
     v.rated_omega_rad_s = {.low = base.engine.rated_omega_rad_s,
-                           .high = units::rpm_to_rad_s(2700.0)};
+                           .high = units::rpm_to_rad_s(2650.0)};
     const Field field = field_of(event::kMaxPullers, 5, v);
     bool raised = false;
     bool at_the_limit = false;
@@ -268,7 +276,7 @@ TEST(Field, GovernorsVary) {
             << i;
     }
     EXPECT_TRUE(raised);
-    EXPECT_TRUE(at_the_limit) << "a draw past the class's engine speed is held to it";
+    EXPECT_TRUE(at_the_limit) << "a draw near the class's engine speed cuts off at it";
 }
 
 // A heavier tractor keeps its balance: the pitch inertia scales with the

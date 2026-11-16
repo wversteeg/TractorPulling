@@ -7,7 +7,8 @@
 inertia_kg_m2 = 1.2      # crankshaft and flywheel
 idle_rpm = 800           # governed speed at zero throttle
 rated_rpm = 2200         # full fuel at full throttle from here down
-high_idle_rpm = 2400     # governed no-load speed at full throttle
+high_idle_rpm = 2400     # governed no-load speed at full throttle: the governor's cut-off
+max_high_idle_rpm = 2700 # the cut-off turned up no further: the class's unloaded limit
 stall_rpm = 450
 cylinders = 4            # a four: for the engine's sound only
 
@@ -28,6 +29,12 @@ full_boost_bar = 1.0          # above the atmosphere, for the boost gauge: a sto
 # 2500 rpm: a governor set higher (the garage's) gives about the same power
 # at a higher speed. It reaches past the class's 2700 rpm unloaded, for
 # that governor.
+#
+# The governor: turned up (the garage's rated_rpm), its cut-off rises with
+# it, 200 rpm above, until it reaches max_high_idle_rpm, where pullers set
+# it (the "regelaar"); from there full fuel reaches closer to the cut-off,
+# a pulling governor, so that under load the engine runs up against the
+# limit.
 [engine.torque_curve]
 rpm       = [800, 1000, 1200, 1400, 1600, 1800, 2000, 2200, 2400, 2600, 2800]
 torque_nm = [279,  335,  381,  400,  395,  381,  358,  316,  290,  266,  238]

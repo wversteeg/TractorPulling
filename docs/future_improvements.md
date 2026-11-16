@@ -233,7 +233,7 @@ for the big features; they are repeated at the end for completeness.
   move the cliff. Real drivers start a gear higher with a slipping clutch
   and more revs; a clutch or launch model with more to it (a slipping
   clutch held at a set engine speed) would let technique move it.
-- **The governor gives speed, not metres.** With the governor at 2500 rpm
+- **The governor gives speed, not metres.** With the governor at 2650 rpm
   the tractor pulls faster in the same gear, but in the scripted pulls the
   tires' grip, not the engine, ends the pull, so it barely changes the
   place. Its worth to a player is the higher gear and the speed; a sled

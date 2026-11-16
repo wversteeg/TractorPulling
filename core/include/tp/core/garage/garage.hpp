@@ -48,8 +48,10 @@ enum class Part : std::uint8_t {
     /// tractor's driveline allows (load_shifts_per_pull).
     kLoadDownshift,
     /// The governor's rated speed [rad/s] (engine::with_rated_speed): full
-    /// fuel up to a higher speed, the high idle moved with it, up to the
-    /// class's unloaded engine speed.
+    /// fuel up to a higher speed, the cut-off moved with it up to its stop
+    /// (the class's unloaded engine speed), then the droop shortened: a
+    /// pulling governor, so that under load the engine runs up against the
+    /// limit.
     kRatedSpeed,
 };
 

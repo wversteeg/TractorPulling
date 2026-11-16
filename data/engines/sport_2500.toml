@@ -12,8 +12,9 @@
 [engine]
 inertia_kg_m2 = 1.0      # crankshaft and a light flywheel
 idle_rpm = 800
-rated_rpm = 2500         # the governor as built; the garage sets it
-high_idle_rpm = 2700     # the class's unloaded limit
+rated_rpm = 2500         # full fuel to here: a farm governor; the garage sets it
+high_idle_rpm = 2700     # the governor's cut-off, at the class's unloaded limit
+max_high_idle_rpm = 2700 # and no further: a pulling governor moves full fuel up to it
 stall_rpm = 450
 cylinders = 4            # a four: for the engine's sound only
 

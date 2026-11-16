@@ -26,8 +26,10 @@
 # - hitch_height_m: the pulling hitch's top hole, up to the class's 0.5 m;
 #   the puller sets it before each pull from its lowest hole, 0.40 m
 #   (tractors/sport_4500.toml), up to the top one.
-# - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
-#   class's 2700 rpm.
+# - rated_rpm: the governor: full fuel up to this speed, cut off at the
+#   class's 2700 rpm (the engine's high idle), the droop between them
+#   shortening as it is turned up, so that under load the engine runs up
+#   against the limit.
 # - load_downshift_gears: a powershift step that shifts down under load,
 #   one gear or two (the Sport classes still allow it; Supersport and up
 #   do not).
@@ -107,13 +109,13 @@ levels = [
 part = "rated_rpm"
 name = "Governor"
 levels = [
-    { value = 2200.0, cost_eur = 0, label = "Stock, 2200 rpm" },
-    { value = 2250.0, cost_eur = 1000, label = "Turned up, 2250 rpm" },
-    { value = 2300.0, cost_eur = 1300, label = "Turned up, 2300 rpm" },
-    { value = 2350.0, cost_eur = 1600, label = "Turned up, 2350 rpm" },
-    { value = 2400.0, cost_eur = 1900, label = "Turned up, 2400 rpm" },
-    { value = 2450.0, cost_eur = 2200, label = "Turned up, 2450 rpm" },
-    { value = 2500.0, cost_eur = 2500, label = "2500 rpm, 2700 unloaded" },
+    { value = 2200.0, cost_eur = 0, label = "Stock, full fuel to 2200 rpm" },
+    { value = 2275.0, cost_eur = 1000, label = "Turned up, 2275 rpm" },
+    { value = 2350.0, cost_eur = 1300, label = "Turned up, 2350 rpm" },
+    { value = 2425.0, cost_eur = 1600, label = "Turned up, 2425 rpm" },
+    { value = 2500.0, cost_eur = 1900, label = "Turned up, 2500 rpm" },
+    { value = 2575.0, cost_eur = 2200, label = "Turned up, 2575 rpm" },
+    { value = 2650.0, cost_eur = 2500, label = "Pulling governor, 2650 rpm, cut at 2700" },
 ]
 
 [[garage.upgrades]]

@@ -83,11 +83,11 @@ levels = [
 part = "rated_rpm"
 name = "Governor"
 levels = [
-    { value = 2200.0, cost_eur = 0, label = "Stock, 2200 rpm" },
-    { value = 2275.0, cost_eur = 300, label = "Turned up, 2275 rpm" },
-    { value = 2350.0, cost_eur = 500, label = "Turned up, 2350 rpm" },
-    { value = 2425.0, cost_eur = 650, label = "Turned up, 2425 rpm" },
-    { value = 2500.0, cost_eur = 800, label = "2500 rpm, 2700 unloaded" },
+    { value = 2200.0, cost_eur = 0, label = "Stock, full fuel to 2200 rpm" },
+    { value = 2310.0, cost_eur = 300, label = "Turned up, 2310 rpm" },
+    { value = 2420.0, cost_eur = 500, label = "Turned up, 2420 rpm" },
+    { value = 2530.0, cost_eur = 650, label = "Turned up, 2530 rpm" },
+    { value = 2650.0, cost_eur = 800, label = "Pulling governor, 2650 rpm, cut at 2700" },
 ]
 
 # The dealer: the tractor a career starts with, bought before the first
