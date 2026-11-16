@@ -234,6 +234,9 @@ package "GDScript (app/godot/scripts)" {
     +slack_to_go_m(snapshot) : float, still to creep into the ready band
     +guide_shown() : bool, the slack gauge
     +boost_bar() : float, the boost gauge's reading
+    +front_state() : String, down, up or bar
+    +nose_share() : float, 0 level to 1 on the wheelie bar
+    +front_text() : String
     +show_signal(signal) : the lamp on the HUD
     +signal_shown() : String
     +{static} gear_name(gear) : String

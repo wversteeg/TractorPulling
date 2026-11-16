@@ -295,6 +295,9 @@ godot::Dictionary TractorPullRun::get_dimensions() const {
     out["protection"] = chassis.protection == chassis::Protection::kRollBar ? "roll_bar" : "cab";
     out["wheelie_bar_behind_rear_axle_m"] = chassis.wheelie_bar.behind_rear_axle_m;
     out["wheelie_bar_tip_height_m"] = chassis.wheelie_bar.tip_height_m;
+    // How far the nose may come up before it stands on the bar: the HUD
+    // shows how high it is against it.
+    out["wheelie_bar_contact_pitch_rad"] = chassis::wheelie_bar_contact_pitch_rad(chassis);
     // The weights as the puller set them, for drawing: how much, and where
     // between their rearmost and foremost places (0 to 1).
     out["ballast_mass_kg"] = chassis.ballast.mass_kg;
