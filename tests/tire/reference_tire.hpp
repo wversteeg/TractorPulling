@@ -17,7 +17,7 @@ inline Params reference_params() {
                      .mobility_rate = 0.1,
                      .slip_rate = 18.0,
                      .slow_spin_grip = 1.0,
-                     .fast_spin_grip = 0.9,
+                     .fast_spin_grip = 0.95,
                      .spin_speed_m_s = 4.0},
         .cornering = {.stiffness_per_rad = 4.0,
                       .limit = 0.8,

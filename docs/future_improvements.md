@@ -605,8 +605,8 @@ for the big features; they are repeated at the end for completeness.
   The Sport engines' 350 and 780 hp are set from videos of top tractors
   (their pace and wheelies), not measured on a dyno.
 - **Cut-tire grip is an estimate.** The Sport classes' cut farm tires'
-  grip (1.5 times an uncut farm tire's, building at under half its rate
-  with slip, a tenth lost spun fast) is set with the engines from the
+  grip (1.5 times an uncut farm tire's, building at a third of its rate
+  with slip, none lost spun fast) is set with the engines from the
   videos and so that a too tall gear bogs and a too low one spins out,
   not from measurements; so is how much grip a tire gains or loses with
   how fast its tread spins (`tire::TractionCurve`), from pullers'

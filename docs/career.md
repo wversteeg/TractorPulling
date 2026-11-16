@@ -263,21 +263,23 @@ powershift pulls a slightly too tall gear through. The game gets there
 with three things:
 
 - **Cut farm tires** (`data/tires/sport_*rear.toml`) grip harder than
-  uncut ones, about 1.5 times, and build their grip with more slip (under
-  half an uncut tire's rate), so they still spin up at the launch and the
-  engine keeps its revs; spun fast their tall lugs dig in and smear, and a
-  tenth of the grip goes (`fast_spin_grip`). (Until the tire model knew how
-  fast a tread spins, these were puller tires, which the NTTO's Sport
-  classes do not allow.)
+  uncut ones, about 1.5 times, and build their grip with more slip (a
+  third of an uncut tire's rate), so they still spin up at the launch and
+  the engine keeps its revs. Cut lower and sharper, their lugs do not dig
+  in and smear when spun fast as an uncut farm tire's do. (Until the tire
+  model knew how fast a tread spins, these were puller tires, which the
+  NTTO's Sport classes do not allow; their grip is as it was.)
 - **Puller tires and farm tires differ in how they spin**
   (`tire::TractionCurve`): a farm tire's few tall lugs each push against
   a block of soil, so it grips at little slip, and spun fast it digs in and
   smears (grip falls to `fast_spin_grip`); a puller tire's many low, sharp
   bars each cut a thin slice of fresh track and throw it out, so it bites
   harder the faster its tread sweeps (from `slow_spin_grip` up to full
-  grip as the slip speed passes `spin_speed_m_s`) and wants gearing tall
-  enough to spin it up. Every tire has the response but the Sport classes'
-  and the standard class's are farm tires; Supersport brings the choice.
+  grip over a slip speed of about `spin_speed_m_s`) and wants gearing tall
+  enough to spin it up; the side grip follows the same share. The
+  standard class's farm tire smears a little (5 %); the Sport classes'
+  cut ones do not; Supersport brings the puller tire, so no shipped tire
+  uses `slow_spin_grip` yet.
 - **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels
   turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count.
   1st to 5th are about 40 % apart (4th about 20 km/h), so 3rd and 4th

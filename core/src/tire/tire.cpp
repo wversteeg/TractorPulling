@@ -316,6 +316,9 @@ SideGrip with_traction(SideGrip grip, double traction_n, double full_bite_n,
 }
 
 SideGrip with_traction(SideGrip grip, const Traction& traction, double load_n) noexcept {
+    // The share is of the grip, how much side force the patch holds before
+    // it slides (on top of with_traction's loss to slip); the patch's
+    // stiffness, how far it deflects first, is the carcass's and stays.
     grip.limit_n *= traction.grip_share;
     return with_traction(grip, traction.force_n, traction.full_bite * load_n, traction.slip_ratio);
 }

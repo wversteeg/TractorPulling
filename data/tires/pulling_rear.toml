@@ -22,7 +22,7 @@ slip_rate = 18.0                   # how fast grip builds with slip
 # Spun fast, the tall lugs dig in and smear: grip falls towards
 # fast_spin_grip of itself over a tread slip speed of about spin_speed_m_s
 # (tp::tire::TractionCurve), along with the side grip it shares.
-fast_spin_grip = 0.9
+fast_spin_grip = 0.95
 spin_speed_m_s = 4.0
 
 # The inflation pressure the puller sets before a pull (see
