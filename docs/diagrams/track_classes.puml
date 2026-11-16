@@ -57,8 +57,8 @@ package "tp::track" {
     +params() : const Params&
     +surface_at(x_m, y_m = 0) : soil::Surface
     +surface_across(x_m, y_m, half_width_m) : soil::Surface
+    +surface_without_spots(x_m) : soil::Surface
     +hard_spots(), weak_spots() : span<const Spot>
-    -surface_without_spots(x_m) : soil::Surface
   }
   enum ParamError {
     kSoil
