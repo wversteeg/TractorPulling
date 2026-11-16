@@ -28,6 +28,8 @@ const WATER_HIGH := 0.3
 # The ground differs from the start's by more than these shares.
 const SAME_GRIP := 0.05
 const SAME_FIRMNESS := 0.2
+# The ground's stretches told in words, at most.
+const ALONG_STRETCHES := 2
 # The spots listed, strongest first, and the strength above which a spot
 # is called strong, below which mild.
 const LISTED_SPOTS := 5
@@ -180,27 +182,49 @@ static func _facts_words(track: Dictionary) -> String:
 	return words + " " + _along_words(track.get("profile", []))
 
 
-# How the ground changes down the lane: where it first differs from the
-# start's, and how; a patch if it comes back to the start's further on.
+# How the ground changes down the lane: each stretch that differs from the
+# start's (a patch, or from somewhere on to the end), and how, by its most
+# different point; the first ALONG_STRETCHES of them.
 static func _along_words(profile: Array) -> String:
 	if profile.size() < 2:
 		return ""
 	var first: Dictionary = profile[0]
-	var from := -1
-	var to := -1
-	for i in profile.size():
-		if _differs(profile[i], first):
-			if from < 0:
-				from = i
-			to = i
-	if from < 0:
+	var stretches: Array[String] = []
+	var count := 0
+	var i := 0
+	while i < profile.size():
+		if not _differs(profile[i], first):
+			i += 1
+			continue
+		var from := i
+		var most := i
+		while i < profile.size() and _differs(profile[i], first):
+			if _difference(profile[i], first) > _difference(profile[most], first):
+				most = i
+			i += 1
+		count += 1
+		if count > ALONG_STRETCHES:
+			continue
+		var how := _change_words(first, profile[most])
+		var from_m := roundi(float(profile[from].get("at_m", 0.0)))
+		if i >= profile.size():
+			stretches.append("from about %d m on: %s" % [from_m, how])
+		else:
+			stretches.append("a patch from about %d to %d m: %s" % [from_m,
+					roundi(float(profile[i - 1].get("at_m", 0.0))), how])
+	if stretches.is_empty():
 		return "The same all the way down."
-	var changed: Dictionary = profile[to]
-	var how := _change_words(first, changed)
-	if to < profile.size() - 1:
-		return "A patch from about %d to %d m: %s." % [roundi(float(profile[from].get("at_m", 0.0))),
-				roundi(float(changed.get("at_m", 0.0))), how]
-	return "From about %d m on: %s." % [roundi(float(profile[from].get("at_m", 0.0))), how]
+	var words := "; ".join(stretches)
+	if count > ALONG_STRETCHES:
+		words += "; and more further on"
+	return words.left(1).to_upper() + words.substr(1) + "."
+
+
+# How far `a` is from `b`: grip and firmness as shares, together.
+static func _difference(a: Dictionary, b: Dictionary) -> float:
+	var grip := float(a.get("grip", 1.0)) / maxf(float(b.get("grip", 1.0)), 0.01)
+	var firm := float(a.get("cone_index_kpa", 1.0)) / maxf(float(b.get("cone_index_kpa", 1.0)), 1.0)
+	return absf(grip - 1.0) + absf(firm - 1.0)
 
 
 static func _differs(a: Dictionary, b: Dictionary) -> bool:

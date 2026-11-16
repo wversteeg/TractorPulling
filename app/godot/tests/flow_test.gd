@@ -490,7 +490,7 @@ func _check_track_screen(setup: SetupScreen, event: TractorPullEvent) -> void:
 	var profile: Array = ground.get("profile", [])
 	var full_m := float(event.get_crew_report().get("full_pull_m", 0.0))
 	_expect(profile.size() >= 2 and float(profile[0]["at_m"]) == 0.0
-			and absf(float(profile[profile.size() - 1]["at_m"]) - full_m) < 2.5
+			and float(profile[profile.size() - 1]["at_m"]) == full_m
 			and float(profile[0]["grip"]) == float(ground.get("grip", -1.0)),
 			"the ground along the track: %d points to %f" % [profile.size(), full_m])
 	_expect(track.lane.lengthwise and track.lane.marks
@@ -500,6 +500,17 @@ func _check_track_screen(setup: SetupScreen, event: TractorPullEvent) -> void:
 			and is_equal_approx(setup.start_y_m(), before)
 			and track.start_slider.end_value > track.start_slider.start_value,
 			"the start where the pit board has it, full left at the top")
+	# The ground in words: each stretch apart, by its most different point.
+	var ground_along := []
+	for i in 41:
+		var at_m := 2.5 * i
+		var soft := at_m >= 20.0 and at_m <= 30.0
+		var firm := at_m >= 80.0
+		ground_along.append({"at_m": at_m, "grip": 1.2,
+				"cone_index_kpa": 1200.0 if soft else (4000.0 if firm else 2500.0)})
+	var words: String = TrackScreen._along_words(ground_along)
+	_expect(words == "A patch from about 20 to 30 m: softer; from about 80 m on: firmer.",
+			"the ground's stretches in words: %s" % words)
 	await _shot("1c_track")
 	_slide_to_bottom(track.start_slider)
 	await _frames(2)

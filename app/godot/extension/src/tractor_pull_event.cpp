@@ -494,9 +494,12 @@ godot::Dictionary TractorPullEvent::get_event() const {
         ground["grip"] = start.grip_factor;
         ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
         godot::Array profile;
+        // Every step, and the full-pull line itself (a 110 m line, or one
+        // between two steps).
         const double until_m = event.full_pull_m();
-        for (int i = 0; static_cast<double>(i) * kProfileStep_m <= until_m; ++i) {
-            const double at_m = static_cast<double>(i) * kProfileStep_m;
+        const int steps = static_cast<int>(std::ceil(until_m / kProfileStep_m));
+        for (int i = 0; i <= steps; ++i) {
+            const double at_m = std::min(static_cast<double>(i) * kProfileStep_m, until_m);
             const soil::Surface here = model->surface_without_spots(at_m);
             godot::Dictionary point;
             point["at_m"] = at_m;
