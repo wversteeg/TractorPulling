@@ -13,8 +13,9 @@
 #   cut 24.5" puller tires (cut tires allowed from Sport on); the tire's
 #   size stays as tires/sport_rear.toml has it.
 # - ballast_kg: the free weight. The tractor is at the class's 2500 kg
-#   with the driver, its weights fixed at the back; each level frees more
-#   of them to move forward before a pull, up to all of them.
+#   with the driver, its weights bolted to the front bracket (the tractor
+#   file's fixed_position); each level frees more of them to move before
+#   a pull (back, for a slippery track), up to all of them.
 # - hitch_height_m: the drawbar, up to the class's 0.5 m, a hole (2 cm)
 #   at a time, so each level adds a hole to set it in below.
 # - rated_rpm: the governor, its unloaded speed 200 rpm above it, up to the
@@ -62,7 +63,7 @@ levels = [
 part = "ballast_kg"
 name = "Free weight"
 levels = [
-    { value = 0.0, cost_eur = 0, label = "All weights fixed at the back" },
+    { value = 0.0, cost_eur = 0, label = "All weights fixed at the front" },
     { value = 50.0, cost_eur = 700, label = "50 kg free to move" },
     { value = 100.0, cost_eur = 950, label = "100 kg free to move" },
     { value = 150.0, cost_eur = 1200, label = "150 kg free to move" },
