@@ -173,8 +173,9 @@ enum class ParamError : std::uint8_t {
 
 /// The tractor with only `free_kg` of its weights free to move: the rest
 /// is fixed where Ballast::fixed_position puts them (at their rearmost
-/// place by default), the whole mass the same. The centre of gravity moves back with the fixed
-/// weights and the pitch and yaw inertias follow (parallel axes; the
+/// place by default), the whole mass the same. The centre of gravity moves
+/// towards where the fixed weights sit and the pitch and yaw inertias
+/// follow (parallel axes; the
 /// weights as a point at the centre of gravity's height). All its weights
 /// free gives `params` unchanged, bit for bit; so does a mass that is not
 /// finite, below 0, or more than the weights it has.
