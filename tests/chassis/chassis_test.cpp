@@ -596,5 +596,23 @@ TEST(Ballast, RejectsAnInertiaThatTurnsNegativeBetweenTheEnds) {
     EXPECT_EQ(validate(params), ParamError::kBallastOutOfRange);
 }
 
+// How far the nose may come up before the wheelie bar's tip touches the
+// ground: there the tip, swung down behind the rear axle, reaches the
+// ground (a right angle's geometry, -b sin θ + t cos θ = -h), within the
+// most a bar may allow; a longer bar touches sooner.
+TEST(Chassis, TheWheelieBarTouchesDownAtItsPitch) {
+    const Params params = reference_params();
+    const double touch_rad = wheelie_bar_contact_pitch_rad(params);
+    EXPECT_GT(touch_rad, 0.0);
+    EXPECT_LT(touch_rad, kMaxWheelieBarContactPitch_rad);
+    const double b = params.wheelie_bar.behind_rear_axle_m;
+    const double t = params.wheelie_bar.tip_height_m - params.rear_axle_height_m;
+    const double h = params.rear_axle_height_m;
+    EXPECT_NEAR(-b * std::sin(touch_rad) + t * std::cos(touch_rad), -h, 1e-9);
+    Params longer = params;
+    longer.wheelie_bar.behind_rear_axle_m += 0.5;
+    EXPECT_LT(wheelie_bar_contact_pitch_rad(longer), touch_rad);
+}
+
 }  // namespace
 }  // namespace tp::chassis
