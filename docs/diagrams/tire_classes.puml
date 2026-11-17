@@ -51,6 +51,15 @@ package "tp::tire" {
     +wheel_inertia_kg_m2 : double
     +min_reference_speed_m_s : double
     +pressure : Pressure
+    +tread : Tread
+  }
+  enum Tread {
+    kFarm
+    kCut
+    kPuller
+    --
+    for drawing only: the physics
+    reads the traction curve
   }
   class Pressure <<struct>> {
     +reference_bar : double
@@ -94,6 +103,7 @@ package "tp::tire" {
   Params *-- TractionCurve
   Params *-- Cornering
   Params *-- Pressure
+  Params --> Tread
   TireFns ..> SideGrip
   TireFns ..> Footing
   TireFns ..> Params

@@ -5,6 +5,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "../tire/reference_tire.hpp"
 
@@ -111,13 +112,44 @@ TEST(TireLoader, ThePressureIsOptional) {
     EXPECT_EQ(result.value().pressure.reference_bar, 0.0);
 }
 
+// The tread is only for drawing: a farm tire's unless the file names it.
+TEST(TireLoader, TheTreadIsAFarmTiresUnlessNamed) {
+    const auto plain = parse_tire(kValidTire, "test.toml");
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().tread, tire::Tread::kFarm);
+    for (const auto& [name, tread] :
+         {std::pair{"farm", tire::Tread::kFarm}, std::pair{"cut", tire::Tread::kCut},
+          std::pair{"puller", tire::Tread::kPuller}}) {
+        const auto named = parse_tire(
+            with("[tire]\n", std::string{"[tire]\ntread = \""} + name + "\"\n"), "test.toml");
+        ASSERT_TRUE(named.ok()) << named.error().message;
+        EXPECT_EQ(named.value().tread, tread) << name;
+    }
+}
+
+// Each shipped rear tire is drawn as what it is: the standard class's
+// farm tire, the Sport classes' cut farm tires, the Supersport's modified
+// farm tire and its puller tire.
+TEST(TireLoader, ShippedTiresNameTheirTread) {
+    for (const auto& [file, tread] :
+         {std::pair{"pulling_rear.toml", tire::Tread::kFarm},
+          std::pair{"sport_rear.toml", tire::Tread::kCut},
+          std::pair{"sport_4500_rear.toml", tire::Tread::kCut},
+          std::pair{"supersport_farm_rear.toml", tire::Tread::kFarm},
+          std::pair{"supersport_puller_rear.toml", tire::Tread::kPuller}}) {
+        const auto result = load_tire(std::string{TP_DATA_DIR} + "/tires/" + file);
+        ASSERT_TRUE(result.ok()) << result.error().message;
+        EXPECT_EQ(result.value().tread, tread) << file;
+    }
+}
+
 TEST(TireLoader, RejectsNonsenseValues) {
     struct Case {
         std::string_view from;
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 15> cases = {{
+    const std::array<Case, 16> cases = {{
         {"radius_m = 0.7", "", "tire.radius_m: missing or not a number"},
         {"radius_m = 0.7", "radius_m = 0.0", "tire.radius_m: must be > 0"},
         {"section_width_m = 0.42", "section_width_m = 0.0", "tire.section_width_m: section width"},
@@ -139,6 +171,8 @@ TEST(TireLoader, RejectsNonsenseValues) {
         // So soft the tire would deflect past its section height.
         {"min_bar = 0.6", "min_bar = 0.1", "tire.pressure: need 0 < min_bar <= reference_bar"},
         {"lug_squirm = 0.4", "", "tire.pressure.lug_squirm: missing or not a number"},
+        {"[tire]\n", "[tire]\ntread = \"slick\"\n",
+         R"(tire.tread: must be "farm", "cut" or "puller")"},
     }};
     for (const Case& c : cases) {
         const std::string message = error_of(with(c.from, c.to));

@@ -102,7 +102,7 @@ const ROLL_BAR_TUBE_M := 0.035
 const CELL_HALF_WIDTH_M := 0.34
 const CELL_TOP_M := 1.86
 const CELL_HOOPS_M: Array[float] = [-0.42, -0.12, 0.2]
-const CELL_ARCH_SEGMENTS := 8
+const CELL_ARCH_SEGMENTS := 8         # a multiple of 4: the bars meet its quarters
 const CELL_RUNGS: Array[float] = [0.35, 0.65]
 # The cab camera: at the seated driver's eyes, a little in front of the
 # face so the head does not fill the view, above the rear axle [m]; and
@@ -664,8 +664,9 @@ func _add_cell() -> void:
 			_add_tube(cell, points[i], points[i + 1], ROLL_BAR_TUBE_M, tube)
 	# Front to back: over the top and the arch's shoulders, and the ladder
 	# rungs up each side.
-	var joins: Array[int] = [1 + CELL_ARCH_SEGMENTS / 2, 1 + CELL_ARCH_SEGMENTS / 4,
-			1 + 3 * CELL_ARCH_SEGMENTS / 4, 1, 1 + CELL_ARCH_SEGMENTS]
+	var quarter := floori(CELL_ARCH_SEGMENTS / 4.0)
+	var joins: Array[int] = [1 + 2 * quarter, 1 + quarter, 1 + 3 * quarter, 1,
+			1 + CELL_ARCH_SEGMENTS]
 	for h in hoops.size() - 1:
 		for k: int in joins:
 			_add_tube(cell, hoops[h][k], hoops[h + 1][k], ROLL_BAR_TUBE_M * 0.8, tube)

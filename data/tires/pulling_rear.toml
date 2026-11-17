@@ -8,6 +8,7 @@
 # torque in its pulling gears (6 and 7) and spins out in the low gears.
 
 [tire]
+tread = "farm"                     # the pattern drawn (the grip is in [tire.traction])
 radius_m = 0.8                     # rolling radius
 section_width_m = 0.47
 section_height_m = 0.4

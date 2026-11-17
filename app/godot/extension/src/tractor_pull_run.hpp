@@ -93,9 +93,9 @@ public:
     /// get_dimensions()'s keys that are the tractor's alone, for `tractor`
     /// (TractorPullEvent::get_tractor_dimensions()).
     [[nodiscard]] static godot::Dictionary tractor_dimensions(const vehicle::Params& tractor);
-    /// The rear tires' tread for drawing (rear_tire_tread): "puller",
-    /// "farm" or "cut", by how their grip answers their spin.
-    [[nodiscard]] static const char* rear_tread(const tire::TractionCurve& traction);
+    /// A tread's name for drawing (rear_tire_tread): "farm", "cut" or
+    /// "puller", as the tire's file sets it (tire::Tread).
+    [[nodiscard]] static const char* tread_name(tire::Tread tread);
 
     /// "easy" or "pro", the layout the run is played in; "" before setup().
     [[nodiscard]] godot::String get_layout() const;

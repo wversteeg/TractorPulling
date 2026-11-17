@@ -1,6 +1,7 @@
 #include "tp/data/tire/tire_loader.hpp"
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "../common/toml_reader.hpp"
@@ -21,6 +22,25 @@ tire::Pressure read_pressure(detail::Reader& reader) {
             .min_bar = reader.number("tire.pressure.min_bar"),
             .max_bar = reader.number("tire.pressure.max_bar"),
             .lug_squirm = reader.number("tire.pressure.lug_squirm")};
+}
+
+// The optional tread, by name: a farm tire's unless the file says
+// otherwise. Only for drawing the tire.
+tire::Tread read_tread(detail::Reader& reader) {
+    if (!reader.has("tire.tread")) {
+        return tire::Tread::kFarm;
+    }
+    const std::string tread = reader.text("tire.tread");
+    if (tread == "cut") {
+        return tire::Tread::kCut;
+    }
+    if (tread == "puller") {
+        return tire::Tread::kPuller;
+    }
+    if (tread != "farm") {
+        reader.fail("tire.tread", R"(must be "farm", "cut" or "puller")");
+    }
+    return tire::Tread::kFarm;
 }
 
 Result<tire::Params> read_tire(const toml::table& root, std::string_view source) {
@@ -51,6 +71,7 @@ Result<tire::Params> read_tire(const toml::table& root, std::string_view source)
         .wheel_inertia_kg_m2 = reader.number("tire.wheel_inertia_kg_m2"),
         .min_reference_speed_m_s = reader.number("tire.min_reference_speed_m_s"),
         .pressure = read_pressure(reader),
+        .tread = read_tread(reader),
     };
     if (const std::optional<LoadError>& error = reader.error()) {
         return *error;

@@ -10,6 +10,7 @@
 # (tests/data/tire_choice_test.cpp). The limit is the fully built tire's;
 # the garage sets it.
 [tire]
+tread = "farm"                     # the pattern drawn (the grip is in [tire.traction])
 radius_m = 0.98                    # rolling radius
 section_width_m = 0.71
 section_height_m = 0.50
