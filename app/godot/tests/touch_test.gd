@@ -111,6 +111,10 @@ func _play() -> void:
 			controls.menu_button])
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible
 			and not controls.brake_left_slider.visible, "the easy layout, without clutch or brakes")
+	_expect(not controls.hold_button.visible, "no brake hold on a farm tractor")
+	_check_hold_button(controls, [controls.steering_slider, controls.throttle_slider,
+			controls.gear_up, controls.gear_down, controls.gear_readout, controls.camera_button,
+			controls.restart_button, controls.menu_button])
 
 	# A touch on no control changes nothing.
 	_touch(TAP_FINGER, Vector2(640.0, 300.0), true)
@@ -250,6 +254,74 @@ func _play() -> void:
 
 	print("touch test: %d failure(s)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+# The brake hold's button, as on a pulling tractor before the pull: in each
+# of its places on the screen, clear of the layout's other controls
+# (`others`); a tap holds the brakes and another lets them go; release_hold()
+# and the pull under way let them go too; then back where it was.
+func _check_hold_button(controls: DriveControls, others: Array) -> void:
+	var place := controls.hold_place
+	for i in DriveControls.HOLD_PLACES.size():
+		controls.set_hold_place(i)
+		controls.set_hold_available(true)
+		_expect_on_screen(others + [controls.hold_button])
+		controls.set_hold_available(false)
+	controls.set_hold_place(place)
+	controls.set_hold_available(true)
+	_tap(controls.hold_button)
+	_expect(controls.hold and controls.hold_button.selected, "HOLD holds the brakes")
+	controls.latch_brakes(false)
+	if controls.pro:
+		_expect(controls.brake_left_slider.value == 1.0
+				and controls.brake_right_slider.value == 1.0, "both pedals shown fully pressed")
+	_tap(controls.hold_button)
+	_expect(not controls.hold, "another tap lets them go")
+	controls.latch_brakes(false)
+	_expect(controls.brake_left_slider.value == controls.brake_left_slider.rest_value
+			and controls.brake_right_slider.value == controls.brake_right_slider.rest_value,
+			"the pedals back at rest")
+	_tap(controls.hold_button)
+	controls.release_hold()
+	_expect(not controls.hold, "released at the boost")
+	_tap(controls.hold_button)
+	controls.set_hold_available(false)
+	_expect(not controls.hold and not controls.hold_button.visible,
+			"the pull under way: let go, the button gone")
+
+
+# The Brake hold menu from the settings: "By hand" and "Auto" kept in the
+# settings file, the slider in steps of 5 % within its range, each place of
+# the button kept and the controls' button moved to it; Back to the
+# settings.
+func _check_brake_hold_menu(settings: SettingsScreen, controls: DriveControls) -> void:
+	var menu: BrakeHoldScreen = _pull.get("brake_hold_screen")
+	_tap(settings.brake_hold_button)
+	await _frames(2)
+	_expect(menu.visible and not settings.visible, "the Brake hold menu from the settings")
+	_expect_on_screen([menu.auto_button, menu.hand_button, menu.boost_slider, menu.back_button]
+			+ menu.place_buttons)
+	_tap(menu.hand_button)
+	_expect(not GameSettings.read(SETTINGS_PATH).hold_auto_release
+			and not menu.boost_slider.visible, "by hand: kept, no slider")
+	_tap(menu.auto_button)
+	_expect(GameSettings.read(SETTINGS_PATH).hold_auto_release and menu.boost_slider.visible,
+			"auto again, with its slider")
+	var rect := menu.boost_slider.get_global_rect()
+	_touch(TAP_FINGER, Vector2(rect.position.x + 2.0, rect.get_center().y), true)
+	_drag(TAP_FINGER, Vector2(rect.end.x + 20.0, rect.get_center().y))
+	await _frames(2)
+	_touch(TAP_FINGER, Vector2(rect.end.x + 20.0, rect.get_center().y), false)
+	var boost := GameSettings.read(SETTINGS_PATH).hold_release_boost
+	_expect(is_equal_approx(boost, GameSettings.HOLD_BOOST_MAX),
+			"the slider to its top: %.2f" % boost)
+	_tap(menu.place_buttons[0])
+	_expect(GameSettings.read(SETTINGS_PATH).hold_place == 0 and controls.hold_place == 0,
+			"the button above the gas, kept")
+	_tap(menu.place_buttons[1])
+	_tap(menu.back_button)
+	await _frames(2)
+	_expect(settings.visible and not menu.visible, "back to the settings")
 
 
 # Every control in `list` is on the screen, where a thumb can reach it, and
@@ -436,6 +508,7 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(GameSettings.read("user://touch_test_old_settings.cfg").sound,
 			"a settings file without the sound reads it on")
 	await _check_haptics_menu(settings)
+	await _check_brake_hold_menu(settings, controls)
 	_check_haptics()
 	_tap(settings.done_button)
 	await _frames(2)
@@ -454,6 +527,10 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	# The clutch slider marks where the clutch slips, its line at the bite,
 	# where the thumb's middle is for those pedals.
 	var clutch := controls.clutch_slider
+	_check_hold_button(controls, [controls.steering_slider, controls.throttle_slider,
+			controls.clutch_slider, controls.brake_left_slider, controls.brake_right_slider,
+			controls.gear_up, controls.gear_down, controls.gear_readout, controls.camera_button,
+			controls.restart_button, controls.menu_button])
 	_expect(clutch.has_band and is_equal_approx(clutch.band_from, CLUTCH_FULL_GRIP)
 			and is_equal_approx(clutch.band_to, CLUTCH_BITE)
 			and is_equal_approx(clutch.mark, CLUTCH_BITE), "the clutch's range marked")

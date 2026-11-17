@@ -181,8 +181,11 @@ void Session::step(const Controls& controls) noexcept {
     const vehicle::Params& tractor = model_.tractor().params();
     const double dt_s = clock_.step_s();
     if (layout_ == Layout::kEasy) {
-        const controls::EasyInput easy{
-            .throttle = controls.throttle, .gear = controls.gear, .steering = controls.steering};
+        const controls::EasyInput easy{.throttle = controls.throttle,
+                                       .gear = controls.gear,
+                                       .steering = controls.steering,
+                                       .hold_brakes = controls.hold_brakes,
+                                       .hold_until_boost = controls.hold_until_boost};
         input_ = controls::easy(easy, easy_, assist_, tractor, turn_.run.pull.tractor, dt_s);
     } else {
         const controls::ProInput pro{.throttle = controls.throttle,
@@ -190,7 +193,9 @@ void Session::step(const Controls& controls) noexcept {
                                      .gear = controls.gear,
                                      .steering = controls.steering,
                                      .brake_left = controls.brake_left,
-                                     .brake_right = controls.brake_right};
+                                     .brake_right = controls.brake_right,
+                                     .hold_brakes = controls.hold_brakes,
+                                     .hold_until_boost = controls.hold_until_boost};
         input_ = controls::pro(pro, pro_, assist_, tractor, turn_.run.pull.tractor, dt_s);
         // Outside the pull the pedals are latched together, as on a road
         // tractor: either brakes both. In the pull, until the sled stops,
@@ -234,6 +239,8 @@ Snapshot Session::snapshot() const noexcept {
             .front_axle_load_n = output_.tractor.axle_loads.front_n,
             .engine_omega_rad_s = tractor.engine.omega_rad_s,
             .engine_running = tractor.engine.running,
+            .brakes_held = input_.hold_brakes,
+            .hold_released = assist_.hold_released,
             .boost = tractor.engine.boost,
             .gear = tractor.driveline.gear,
             .lowest_gear = driveline::lowest_gear(tractor.driveline, model_.tractor().driveline()),

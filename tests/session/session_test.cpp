@@ -502,6 +502,27 @@ TEST(Session, ReadsNotANumberAsAtRest) {
     }
 }
 
+// The snapshot says when the start's brake hold has let go at its boost,
+// even on the first step after it was asked, and forgets it once HOLD is
+// let go. In gear, the engine works against the hold and the turbo spools.
+TEST(Session, ShowsTheBrakeHoldLettingGo) {
+    Session session = make(reference_setup(Layout::kEasy));
+    Controls hold{.throttle = 1.0, .gear = 6, .hold_brakes = true, .hold_until_boost = 1.0};
+    for (int frame = 0; frame < 300; ++frame) {
+        session.advance(hold, 16 * kStep_ns);
+    }
+    ASSERT_GT(session.current().boost, 0.0);
+    EXPECT_TRUE(session.current().brakes_held);
+    EXPECT_FALSE(session.current().hold_released);
+    hold.hold_until_boost = session.current().boost / 2.0;
+    session.advance(hold, kNanosecondsPerSecond / 1000);
+    EXPECT_FALSE(session.current().brakes_held);
+    EXPECT_TRUE(session.current().hold_released) << "let go at once: the boost is there";
+    hold.hold_brakes = false;
+    session.advance(hold, kNanosecondsPerSecond / 1000);
+    EXPECT_FALSE(session.current().hold_released);
+}
+
 TEST(Blend, GoesFromOneSnapshotToTheNext) {
     const Snapshot from{
         .time_s = 1.0, .tractor_x_m = 10.0, .boost = 0.4, .gear = 5, .sled_x_m = 2.0};

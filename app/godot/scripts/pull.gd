@@ -47,7 +47,7 @@
 extends Node3D
 
 enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
-		SEASON, CAREER, DEALER }
+		SEASON, CAREER, DEALER, BRAKE_HOLD }
 # The menus drawn over the backdrop (MenuBackdrop), not over the venue;
 # the 3D world is not drawn behind it.
 # A whole turn's stages up to and through the pull: no result yet.
@@ -55,6 +55,7 @@ const PULL_STAGES := ["to_the_sled", "taking_up_slack", "waiting_for_the_flag", 
 # The stages once the pull is over: the chain coming off, the drive back.
 const AFTER_PULL_STAGES := ["releasing", "to_the_parking", "parked"]
 const MENU_BACKDROP_SCREENS: Array[Screen] = [Screen.START, Screen.SETTINGS, Screen.HAPTICS,
+		Screen.BRAKE_HOLD,
 		Screen.GARAGE, Screen.EVENT, Screen.SETUP, Screen.EVENT_END, Screen.SEASON, Screen.CAREER,
 		Screen.DEALER]
 
@@ -142,6 +143,7 @@ var board := BoardScreen.new()
 var setup_screen := SetupScreen.new()
 var settings_screen := SettingsScreen.new()
 var haptics_screen := HapticsScreen.new()
+var brake_hold_screen := BrakeHoldScreen.new()
 var haptics := Haptics.new()
 var menu_backdrop := MenuBackdrop.new()
 var garage_screen := GarageScreen.new()
@@ -162,6 +164,14 @@ var hitch_marker := MeshInstance3D.new()
 # brake_right] for the run in place of the touch controls.
 var driver := Callable()
 var screen := Screen.START
+# The brake hold for the start ("optoeren"): on a pulling tractor (one with
+# a roll bar: the Sport classes up), until the sled has moved this far [m];
+# the game lets the brakes go at `hold_release_boost` of full boost when
+# `hold_auto_release`, else the player does (the settings).
+const HOLD_UNTIL_M := 0.5
+var hold_auto_release := true
+var hold_release_boost := 0.75
+var _pulling_tractor := false
 # The pull being pulled is a practice pull (or autoplay's), not the event's.
 var practice := false
 # The season's next event is started and waits behind the start screen.
@@ -209,6 +219,7 @@ func _ready() -> void:
 	hitch_marker.material_override = Art.material(Color(0.95, 0.95, 0.9), 0.9)
 	var layer := CanvasLayer.new()
 	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, haptics_screen,
+			brake_hold_screen,
 			garage_screen, career_screen, dealer_screen, board, setup_screen, result_screen,
 			restart_screen]:
 		layer.add_child(node)
@@ -239,6 +250,16 @@ func _ready() -> void:
 		haptics.set_enabled_by_key(by_key)
 		_keep_settings())
 	haptics_screen.done.connect(func() -> void: _set_screen(Screen.SETTINGS))
+	settings_screen.brake_hold_requested.connect(func() -> void:
+		brake_hold_screen.show_hold(hold_auto_release, hold_release_boost, controls.hold_place)
+		_set_screen(Screen.BRAKE_HOLD))
+	brake_hold_screen.changed.connect(func(auto_release: bool, release_boost: float,
+			place: int) -> void:
+		hold_auto_release = auto_release
+		hold_release_boost = release_boost
+		controls.set_hold_place(place)
+		_keep_settings())
+	brake_hold_screen.done.connect(func() -> void: _set_screen(Screen.SETTINGS))
 	settings_screen.done.connect(show_start)
 	settings_screen.money_requested.connect(func(amount_eur: int) -> void:
 		if event.add_money(amount_eur):
@@ -333,6 +354,9 @@ func _ready() -> void:
 		hud.guidance = settings.guidance
 		engine_sound.enabled = settings.sound
 		haptics.set_enabled_by_key(settings.haptics)
+		hold_auto_release = settings.hold_auto_release
+		hold_release_boost = settings.hold_release_boost
+		controls.set_hold_place(settings.hold_place)
 		var error := event.load_career(career_path)
 		if not error.is_empty():
 			push_error("cannot load the career: " + error)
@@ -367,6 +391,9 @@ func _keep_settings() -> void:
 	settings.guidance = hud.guidance
 	settings.sound = engine_sound.enabled
 	settings.haptics = haptics.enabled_by_key()
+	settings.hold_auto_release = hold_auto_release
+	settings.hold_release_boost = hold_release_boost
+	settings.hold_place = controls.hold_place
 	var error := settings.write(settings_path)
 	if error != OK:
 		push_warning("cannot keep the settings: %s" % error_string(error))
@@ -580,12 +607,24 @@ static func best_in_pull_off(log: Array, pull_off_round: int) -> float:
 	return best
 
 
+# The brake hold's button while the pull is still to start on a pulling
+# tractor. The run lets the brakes go at the settings' boost, step by step
+# (set_controls' hold_until_boost); the button follows it (hold_released),
+# even when the run lets go on the first step after the tap.
+func _show_hold(s: Dictionary) -> void:
+	controls.set_hold_available(_pulling_tractor and not autoplay
+			and s.get("stage", "") == "pulling" and float(s.get("pulled_m", 0.0)) < HOLD_UNTIL_M)
+	if controls.hold and bool(s.get("hold_released", false)):
+		controls.release_hold()
+
+
 # Builds the views for the run just set up, if `error` is ""; false if not.
 func _build(error: String) -> bool:
 	if not error.is_empty():
 		push_error("cannot set up the pull: " + error)
 		return false
 	var dimensions := run.get_dimensions()
+	_pulling_tractor = str(dimensions.get("protection", "cab")) == "roll_bar"
 	# The banner over the class's own full-pull line: a test pull or a
 	# pull-off moves the chalk line, not the banner.
 	dimensions["banner_line_m"] = float(event.get_event().get("standard_full_pull_m",
@@ -703,6 +742,7 @@ func _set_screen(next: Screen) -> void:
 	start_screen.visible = screen == Screen.START
 	settings_screen.visible = screen == Screen.SETTINGS
 	haptics_screen.visible = screen == Screen.HAPTICS
+	brake_hold_screen.visible = screen == Screen.BRAKE_HOLD
 	garage_screen.visible = screen == Screen.GARAGE
 	dealer_screen.visible = screen == Screen.DEALER
 	career_screen.visible = screen == Screen.CAREER
@@ -719,6 +759,7 @@ func _set_screen(next: Screen) -> void:
 	start_screen.release_buttons()
 	settings_screen.release_buttons()
 	haptics_screen.release_buttons()
+	brake_hold_screen.release_buttons()
 	garage_screen.release_buttons()
 	career_screen.release_buttons()
 	dealer_screen.release_buttons()
@@ -753,8 +794,8 @@ func _process(delta: float) -> void:
 			_ended_s += delta
 			if _ended_s >= RESULT_DELAY_S:
 				_show_result()
-	elif screen in [Screen.START, Screen.SETTINGS, Screen.HAPTICS, Screen.GARAGE, Screen.EVENT,
-			Screen.SETUP]:
+	elif screen in [Screen.START, Screen.SETTINGS, Screen.HAPTICS, Screen.BRAKE_HOLD,
+			Screen.GARAGE, Screen.EVENT, Screen.SETUP]:
 		# The rivals get on with their work (their gears first) while the
 		# player reads the start screen too.
 		_advance_rivals()
@@ -1049,7 +1090,8 @@ func _read_controls() -> void:
 	# pedals are latched together.
 	controls.latch_brakes(not run.get_snapshot().get("pull_rules", true))
 	run.set_controls(controls.throttle(), controls.clutch(), controls.gear, controls.steering(),
-			controls.brake_left(), controls.brake_right())
+			controls.brake_left(), controls.brake_right(), controls.hold,
+			hold_release_boost if hold_auto_release else 0.0)
 
 
 func _show(delta: float) -> void:
@@ -1059,6 +1101,7 @@ func _show(delta: float) -> void:
 		return
 	controls.lowest_gear = s["lowest_gear"]
 	controls.show_gear(s["gear"])
+	_show_hold(s)
 	tractor_view.show_snapshot(s, delta)
 	sled_view.show_snapshot(s, delta)
 	# After the pull its distance stays on the boards while the sled drives

@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "../common/toml_reader.hpp"
 #include "../tire/tire_fields.hpp"
@@ -111,6 +112,23 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
     return result.value();
 }
 
+// vehicle::validate's verdict on the brakes, named by field.
+std::optional<LoadError> check_brakes(const vehicle::Brakes& brakes, std::string_view source) {
+    const std::optional<vehicle::BrakesError> error = vehicle::validate(brakes);
+    if (!error) {
+        return std::nullopt;
+    }
+    switch (*error) {
+        case vehicle::BrakesError::kPedalTorque:
+            return detail::make_error(source, "tractor.brakes.max_torque_nm",
+                                      "must be a finite number, not negative");
+        case vehicle::BrakesError::kHoldTorque:
+            return detail::make_error(source, "tractor.brakes.hold_torque_nm",
+                                      "must be 0 (the pedals' torque) or at least max_torque_nm");
+    }
+    return std::nullopt;
+}
+
 Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view source,
                                      std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
@@ -129,7 +147,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .max_angle_rad = units::deg_to_rad(reader.number("tractor.steering.max_angle_deg")),
         .front_tires = detail::read_cornering(reader, "tractor.steering.cornering"),
     };
-    const vehicle::Brakes brakes{.max_torque_nm = reader.number("tractor.brakes.max_torque_nm")};
+    const vehicle::Brakes brakes{
+        .max_torque_nm = reader.number("tractor.brakes.max_torque_nm"),
+        // Optional: without it the hold brakes as the pedals do.
+        .hold_torque_nm = reader.optional_number("tractor.brakes.hold_torque_nm").value_or(0.0)};
     // Optional: an open differential without it.
     const vehicle::Differential differential{
         .coupling_nm_s_per_rad =
@@ -205,9 +226,8 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         return detail::make_error(source, "tractor.steering.max_angle_deg", "must be in (0, 45]");
     }
 
-    if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
-        return detail::make_error(source, "tractor.brakes.max_torque_nm",
-                                  "must be a finite number, not negative");
+    if (auto brakes_error = check_brakes(brakes, source)) {
+        return *std::move(brakes_error);
     }
     if (!std::isfinite(differential.coupling_nm_s_per_rad) ||
         differential.coupling_nm_s_per_rad < 0.0) {
