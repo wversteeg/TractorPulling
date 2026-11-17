@@ -22,6 +22,9 @@ struct ProInput {
     double steering = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
+    /// Both brakes held full, whatever the pedals say: the brake hold for
+    /// the start, to build boost on the brakes (the puller's "optoeren").
+    bool hold_brakes = false;
 };
 
 /// The easy layout: the throttle, the gear and one steering control whose
@@ -34,6 +37,11 @@ struct EasyInput {
     int gear = driveline::kNeutral;
     /// -1 (full right) to 1 (full left).
     double steering = 0.0;
+    /// The brake hold for the start ("optoeren"): both brakes held full
+    /// while the assist lets the clutch bite, the engine kept high in its
+    /// revs (ClutchAssist::hold_guard_speed_share), so the load against the
+    /// brakes spools the turbo before the tractor moves.
+    bool hold_brakes = false;
 };
 
 /// Works the clutch for the easy layout. It lets the clutch in at a steady
@@ -61,6 +69,10 @@ struct ClutchAssist {
     double guard_band_share = 0.0;
     /// Below this throttle the driver has lifted off.
     double min_throttle = 0.0;
+    /// The guard speed while the brakes are held (EasyInput::hold_brakes),
+    /// as a share of the rated speed: high, where a loaded engine builds its
+    /// boost. 0: guard_speed_share.
+    double hold_guard_speed_share = 0.0;
 };
 
 struct EasyParams {

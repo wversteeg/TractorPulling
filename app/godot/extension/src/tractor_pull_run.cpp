@@ -207,13 +207,15 @@ void TractorPullRun::clear_parking() {
 }
 
 void TractorPullRun::set_controls(double throttle, double clutch_pedal, std::int64_t gear,
-                                  double steering, double brake_left, double brake_right) {
+                                  double steering, double brake_left, double brake_right,
+                                  bool hold_brakes) {
     controls_ = {.throttle = throttle,
                  .clutch_pedal = clutch_pedal,
                  .gear = static_cast<int>(std::clamp<std::int64_t>(gear, kMinGear, kMaxGear)),
                  .steering = steering,
                  .brake_left = brake_left,
-                 .brake_right = brake_right};
+                 .brake_right = brake_right,
+                 .hold_brakes = hold_brakes};
 }
 
 std::int64_t TractorPullRun::advance(std::int64_t elapsed_ns) {
@@ -450,8 +452,8 @@ void TractorPullRun::_bind_methods() {
                          &TractorPullRun::set_parking, DEFVAL(0.0));
     ClassDB::bind_method(D_METHOD("clear_parking"), &TractorPullRun::clear_parking);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
-                                  "brake_left", "brake_right"),
-                         &TractorPullRun::set_controls);
+                                  "brake_left", "brake_right", "hold_brakes"),
+                         &TractorPullRun::set_controls, DEFVAL(false));
     ClassDB::bind_method(D_METHOD("advance", "elapsed_ns"), &TractorPullRun::advance);
     ClassDB::bind_method(D_METHOD("get_dropped_ns"), &TractorPullRun::get_dropped_ns);
     ClassDB::bind_method(D_METHOD("get_snapshot"), &TractorPullRun::get_snapshot);

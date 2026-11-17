@@ -90,6 +90,10 @@ struct Controls {
     /// pressed brakes both sides; in the pull each brakes its own side.
     double brake_left = 0.0;
     double brake_right = 0.0;
+    /// The brake hold for the start ("optoeren"), either layout: both
+    /// brakes held full (controls::ProInput::hold_brakes,
+    /// controls::EasyInput::hold_brakes).
+    bool hold_brakes = false;
 };
 
 /// What a front end draws and shows after a step: plain data in SI units.

@@ -58,9 +58,10 @@ public:
     void set_parking(double x_m, double right_of_lane_m, double heading_rad = 0.0);
     void clear_parking();
     /// The controls held from now on (see session::Controls: held to their
-    /// range, and a value that is not a number reads as the control at rest).
+    /// range, and a value that is not a number reads as the control at rest);
+    /// `hold_brakes` the brake hold for the start ("optoeren"), either layout.
     void set_controls(double throttle, double clutch_pedal, std::int64_t gear, double steering,
-                      double brake_left, double brake_right);
+                      double brake_left, double brake_right, bool hold_brakes = false);
 
     /// Runs the whole 1 ms steps `elapsed_ns` of real time makes up; returns
     /// how many. Nothing before setup().

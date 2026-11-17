@@ -39,6 +39,10 @@
 // --launch-hold S lets the clutch in as the events' drivers do: eased back
 // while the engine is below S of its rated speed, for up to 8 s.
 //
+// --hold-boost B (with --easy) starts on the brake hold ("optoeren"): both
+// brakes held, the clutch assist letting the clutch bite, until the turbo's
+// boost reaches B of full boost; then the brakes come off.
+//
 // --start-y puts the sled (and the tractor in line with it) M metres to the
 // left of the lane's middle at the start (negative to the right), as far as
 // the lane allows (run::max_start_offset_m).
@@ -237,6 +241,10 @@ struct PullOptions {
     /// --launch-hold: the clutch eased back while the engine is below this
     /// share of its rated speed, as the events' drivers launch.
     std::optional<double> launch_hold_share;
+    /// --hold-boost (with --easy): the brake hold for the start
+    /// ("optoeren"), both brakes held until the turbo's boost reaches this
+    /// share of full boost.
+    std::optional<double> hold_boost;
     /// run: where the sled starts across the lane, to the left of the
     /// middle [m].
     double start_y_m = 0.0;
@@ -497,6 +505,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                                 .launch_hold_share = options.launch_hold_share.value_or(0.0),
                                 .launch_hold_max_s = kPullLaunchHoldMax_s};
     tp::driver::State driver;
+    bool on_brakes = options.hold_boost.has_value();
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
@@ -518,6 +527,11 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         if (downshifted) {
             controls.gear = gear;
         }
+        // --hold-boost: on the brakes until the boost is up, then off for good.
+        if (on_brakes && tractor.engine.boost >= *options.hold_boost) {
+            on_brakes = false;
+        }
+        controls.hold_brakes = on_brakes;
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
         const tp::pull::State& after = tp::session::Inspector::run_state(*session).pull;
@@ -996,6 +1010,14 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         pull.launch_hold_share = share;
         return Parsed::kOk;
     }
+    if (arg == "--hold-boost") {
+        const auto share = parse_number<double>(value);
+        if (!share || *share <= 0.0 || *share > 1.0) {
+            return Parsed::kInvalid;
+        }
+        pull.hold_boost = share;
+        return Parsed::kOk;
+    }
     if (arg == "--start-y") {
         const auto y_m = parse_number<double>(value);
         pull.start_y_m = y_m.value_or(0.0);
@@ -1081,6 +1103,7 @@ int usage() {
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
                  "                   [--hash] [--ballast B] [--pressure BAR] [--hitch M]\n"
                  "                   [--downshift S] [--launch-hold S] [--start-y M]\n"
+                 "                   [--hold-boost B]\n"
                  "                   [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump] [--ballast B]\n"

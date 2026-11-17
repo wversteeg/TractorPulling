@@ -129,6 +129,17 @@ TEST(ControlsParams, RejectsNonsense) {
     EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2 = std::nan(""); }),
               ParamError::kNotFinite);
     EXPECT_EQ(with([](EasyParams& p) { p.steer_side_accel_m_s2.reset(); }), std::nullopt);
+    // The guard on the brake hold: none (0), or as the guard, above its band.
+    EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.hold_guard_speed_share = 0.9; }),
+              std::nullopt);
+    EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.hold_guard_speed_share = 1.1; }),
+              ParamError::kGuardOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) {
+                  p.clutch_assist.hold_guard_speed_share = p.clutch_assist.guard_band_share;
+              }),
+              ParamError::kGuardOutOfRange);
+    EXPECT_EQ(with([](EasyParams& p) { p.clutch_assist.hold_guard_speed_share = -0.1; }),
+              ParamError::kGuardOutOfRange);
 }
 
 TEST(ControlsParams, ProReferenceAndDefaultAreValid) {
@@ -264,6 +275,19 @@ TEST(Pro, MapsEachControlOnItsOwn) {
     EXPECT_EQ(in.brake_left, 0.2);
     EXPECT_EQ(in.brake_right, 1.0);
     EXPECT_DOUBLE_EQ(pro({.steering = 3.0}, tractor).steering_rad, max_rad);
+}
+
+// The brake hold for the start ("optoeren"): both brakes full, whatever the
+// pedals say; the other controls as they are.
+TEST(Pro, TheBrakeHoldHoldsBothBrakes) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    const vehicle::Input in = pro(
+        {.throttle = 1.0, .clutch_pedal = 0.3, .gear = 3, .brake_left = 0.2, .hold_brakes = true},
+        tractor);
+    EXPECT_EQ(in.brake_left, 1.0);
+    EXPECT_EQ(in.brake_right, 1.0);
+    EXPECT_EQ(in.throttle, 1.0);
+    EXPECT_EQ(in.clutch_pedal, 0.3);
 }
 
 // A control that is not a number (a NaN from a front end's maths) reads as
@@ -492,6 +516,38 @@ TEST(ClutchAssist, KeepsTheEngineFromStalling) {
         kEasy.clutch_assist.guard_band_share * tractor.engine.rated_omega_rad_s;
     EXPECT_GT(r.lowest_running_omega_rad_s, guard_rad_s - 2.0 * band_rad_s);
     EXPECT_GT(r.result.distance_m, sled::testing::reference_params().pushdown_start_m);
+}
+
+// On the brake hold the assist lets the clutch bite against both brakes and
+// keeps the engine high in its revs (the hold's guard), where a loaded engine
+// builds its boost: the tractor stands, the clutch slips, partly in.
+TEST(ClutchAssist, OnTheBrakeHoldTheEngineWorksAgainstTheBrakes) {
+    const pull::Model model = model_with(light_sled());
+    const vehicle::Params& tractor = model.tractor().params();
+    EasyParams params = kEasy;
+    params.clutch_assist.hold_guard_speed_share = 0.9;
+    run::State state = run::start(model);
+    AssistState assist;
+    constexpr double kHeld_s = 6.0;
+    double fastest_m_s = 0.0;
+    for (int i = 0; i * kDt_s < kHeld_s; ++i) {
+        EasyInput in = launch(i * kDt_s);
+        in.hold_brakes = true;
+        const vehicle::Input out = easy(in, params, assist, tractor, state.pull.tractor, kDt_s);
+        EXPECT_EQ(out.brake_left, 1.0);
+        EXPECT_EQ(out.brake_right, 1.0);
+        run::step(state, model, kRules, out, kDt_s);
+        fastest_m_s = std::max(fastest_m_s, std::abs(state.pull.tractor.chassis.velocity_m_s));
+    }
+    constexpr double kStanding_m_s = 0.05;
+    EXPECT_LT(fastest_m_s, kStanding_m_s);
+    EXPECT_GT(assist.engagement, 0.0);
+    EXPECT_LT(assist.engagement, 1.0);
+    const double band_rad_s =
+        params.clutch_assist.guard_band_share * tractor.engine.rated_omega_rad_s;
+    EXPECT_GT(state.pull.tractor.engine.omega_rad_s,
+              params.clutch_assist.hold_guard_speed_share * tractor.engine.rated_omega_rad_s -
+                  band_rad_s);
 }
 
 // Lifting off presses the clutch within the release time: the sled stops
