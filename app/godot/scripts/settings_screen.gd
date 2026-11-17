@@ -45,8 +45,8 @@ const ROW_HEIGHT := 88.0
 const PAIR_BUTTON := Vector2(120.0, 58.0)
 const PAIR_GAP := 8.0
 const CAREER_GAP := 16.0
-const CAREER_BUTTON := Vector2(180.0, 64.0)
-const CAREER_NOTE_WIDTH := 270.0
+const CAREER_BUTTON := Vector2(188.0, 64.0)
+const CAREER_NOTE_WIDTH := 230.0
 # What "+ € 1000" adds to the bank [EUR].
 const TEST_MONEY_EUR := 1000
 
@@ -137,7 +137,7 @@ func _ready() -> void:
 	money_button = _button(career, "+ € %d" % TEST_MONEY_EUR, Rect2(Vector2(x, y), CAREER_BUTTON))
 	x += CAREER_BUTTON.x + CAREER_GAP
 	keep_money_button = _button(career, "Money: start", Rect2(Vector2(x, y), CAREER_BUTTON))
-	_text(career, "Start over. For testing: the class to start in, money",
+	_text(career, "Start over.\nFor testing: class, money",
 			Rect2(CARD_PADDING, CARD_HEADING_M - 4.0, CAREER_NOTE_WIDTH, 50.0), NOTE_SIZE,
 			GarageArt.DIM) \
 			.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
