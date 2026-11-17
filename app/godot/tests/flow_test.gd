@@ -673,6 +673,10 @@ func _check_move_up() -> void:
 			and not careers.back_button.visible and careers.level_buttons.size() == 3
 			and not careers.level_buttons[1].disabled and careers.level_buttons[2].disabled,
 			"the career screen, the level above picked, the class above locked")
+	# What opens a level, from the career's promotion place.
+	_expect(CareerScreen.places_words(1) == "1st" and CareerScreen.places_words(2) == "1st or 2nd"
+			and CareerScreen.places_words(3) == "1st to 3rd"
+			and CareerScreen.places_words(12) == "1st to 12th", "the places that open a level")
 	await _shot("8_career")
 	_tap(careers.start_button)
 	await _frames(2)
