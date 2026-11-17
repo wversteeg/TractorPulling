@@ -40,6 +40,7 @@ package "tp::session" {
     +steering : double
     +brake_left : double
     +brake_right : double
+    +hold_brakes : bool, the start's brake hold
   }
   class Snapshot <<struct>> {
     +time_s : double, the pull's clock

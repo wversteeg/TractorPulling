@@ -469,6 +469,18 @@ tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
     return setup;
 }
 
+// --hold-boost: on the brakes from the start until the boost reaches
+// `until_boost` of full boost, then off for good.
+struct BrakeHold {
+    std::optional<double> until_boost;
+    bool released = false;
+
+    bool held(double boost) {
+        released = released || !until_boost || boost >= *until_boost;
+        return !released;
+    }
+};
+
 // How a run ended, and the session's state hash at its end.
 struct RunOutcome {
     tp::run::Result result;
@@ -505,7 +517,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                                 .launch_hold_share = options.launch_hold_share.value_or(0.0),
                                 .launch_hold_max_s = kPullLaunchHoldMax_s};
     tp::driver::State driver;
-    bool on_brakes = options.hold_boost.has_value();
+    BrakeHold hold{.until_boost = options.hold_boost};
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
@@ -527,11 +539,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         if (downshifted) {
             controls.gear = gear;
         }
-        // --hold-boost: on the brakes until the boost is up, then off for good.
-        if (on_brakes && tractor.engine.boost >= *options.hold_boost) {
-            on_brakes = false;
-        }
-        controls.hold_brakes = on_brakes;
+        controls.hold_brakes = hold.held(tractor.engine.boost);
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
         const tp::pull::State& after = tp::session::Inspector::run_state(*session).pull;
@@ -1010,14 +1018,6 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         pull.launch_hold_share = share;
         return Parsed::kOk;
     }
-    if (arg == "--hold-boost") {
-        const auto share = parse_number<double>(value);
-        if (!share || *share <= 0.0 || *share > 1.0) {
-            return Parsed::kInvalid;
-        }
-        pull.hold_boost = share;
-        return Parsed::kOk;
-    }
     if (arg == "--start-y") {
         const auto y_m = parse_number<double>(value);
         pull.start_y_m = y_m.value_or(0.0);
@@ -1032,6 +1032,20 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         return Parsed::kOk;
     }
     return Parsed::kUnknown;
+}
+
+// --hold-boost: the brake hold for the start, until this share of full
+// boost.
+Parsed parse_hold_option(std::string_view arg, std::string_view value, PullOptions& pull) {
+    if (arg != "--hold-boost") {
+        return Parsed::kUnknown;
+    }
+    const auto share = parse_number<double>(value);
+    if (!share || *share <= 0.0 || *share > 1.0) {
+        return Parsed::kInvalid;
+    }
+    pull.hold_boost = share;
+    return Parsed::kOk;
 }
 
 // An option that takes a value: `-o`, `--seed`, `--easy`, `--pro`, or a
@@ -1058,6 +1072,9 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
     if (const Parsed tuning = parse_tuning_option(arg, value, options.pull);
         tuning != Parsed::kUnknown) {
         return tuning;
+    }
+    if (const Parsed hold = parse_hold_option(arg, value, options.pull); hold != Parsed::kUnknown) {
+        return hold;
     }
     return parse_driving_option(arg, value, options.pull);
 }

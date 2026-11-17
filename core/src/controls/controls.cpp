@@ -235,9 +235,10 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     // steering's brake may add to one.
     const bool off_the_gas = throttle < params.clutch_assist.min_throttle;
     // The brake hold for the start holds both, full.
-    const double hold = input.hold_brakes                         ? 1.0
-                        : off_the_gas && assist.engagement == 0.0 ? params.brake_off_the_gas
-                                                                  : 0.0;
+    double hold = off_the_gas && assist.engagement == 0.0 ? params.brake_off_the_gas : 0.0;
+    if (input.hold_brakes) {
+        hold = 1.0;
+    }
     return {.throttle = throttle,
             .clutch_pedal = clutch::pedal_for(tractor.clutch, assist.engagement),
             .gear = load_shift || (shifting && assist.engagement == 0.0) ? wanted_gear : gear_in,

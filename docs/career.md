@@ -377,14 +377,23 @@ side by side, each fitted between events (K-6), each best somewhere:
 
 #### How a Supersport pulls (game)
 
-- **"Optoeren"**, building boost before the launch: the engine is held at
-  high revs on a slipping clutch while the big turbo comes up, the
-  clutch let in over about 3 s but eased back while the engine is below
-  80 % of its rated speed, for up to 8 s; the wheels do not spin yet. It
-  is the Sport classes' held launch (see "How the Sport classes pull"),
-  and it matters more here: in a tall pulling gear without it the engine
-  stalls before the sled moves, with it the same gear pulls a full pull.
-  The easy clutch assist does it for the player.
+- **"Optoeren"**, building boost before the launch, as real pullers do
+  it: on the brakes. Boost needs the engine loaded, not just revved, so
+  the driver holds both brakes, opens the throttle and lets the clutch
+  bite; the load against the brakes spools the turbo, and with the boost
+  up the brakes come off. In the game the HOLD button does it, from the
+  Sport classes up (a thumb cannot work two brakes, the throttle and the
+  clutch): a tap holds both brakes; in the easy layout the clutch assist
+  then lets the clutch bite, keeping the engine at 90 % of its rated
+  speed. The brakes let go at the boost the settings name (50 to 80 % of
+  full boost) or at another tap. The Sport and Supersport brakes hold
+  that load in a pulling gear (12, 20 and 25 kN·m a side), so the tractor
+  stands while its boost builds to three quarters within a few seconds
+  (`BrakeHoldRuns.TheTractorStandsWhileTheBoostBuilds`). Without it the
+  tractor moves off at about 10 % boost. The scripted rivals still launch
+  with a slipping clutch (eased back while the engine is below 80 % of its
+  rated speed, for up to 8 s): in a tall gear without that the engine
+  stalls.
 - **The nose** (videos of good pulls): up once on the launch, touching
   down softly now and then, light through the middle and down at the
   end. With the weights forward and the hitch in its top hole the
