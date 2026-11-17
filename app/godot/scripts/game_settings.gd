@@ -6,7 +6,8 @@
 # what share of full boost, and where its button sits (DriveControls'
 # HOLD_PLACES). A missing or unreadable file gives the defaults: easy, with
 # the slider, guided, with sound and every haptic, the brakes let go at
-# 75 % boost from the button above the gears.
+# 75 % boost from the button above the right brake (above the gears in the
+# easy layout).
 class_name GameSettings
 extends RefCounted
 

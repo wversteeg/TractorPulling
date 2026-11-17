@@ -16,7 +16,8 @@ const TITLE_SIZE := 36
 const HINT_SIZE := 20
 const LINE_SIZE := 22
 const PAIR_BUTTON_SIZE := Vector2(260.0, 70.0)
-const PLACE_BUTTON_SIZE := Vector2(260.0, 70.0)
+const PLACE_BUTTON_SIZE := Vector2(270.0, 70.0)
+const PLACE_FONT_SIZE := 21
 const SLIDER_SIZE := Vector2(560.0, 90.0)
 const BOOST_STEP := 0.05
 
@@ -60,6 +61,7 @@ func _ready() -> void:
 	for i in DriveControls.HOLD_PLACES.size():
 		var button := add_button(places, DriveControls.HOLD_PLACES[i].capitalize())
 		button.custom_minimum_size = PLACE_BUTTON_SIZE
+		button.font_size = PLACE_FONT_SIZE
 		button.tapped.connect(func() -> void:
 			_place = i
 			_changed())

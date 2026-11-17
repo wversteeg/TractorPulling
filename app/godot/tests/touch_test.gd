@@ -271,8 +271,16 @@ func _check_hold_button(controls: DriveControls, others: Array) -> void:
 	controls.set_hold_available(true)
 	_tap(controls.hold_button)
 	_expect(controls.hold and controls.hold_button.selected, "HOLD holds the brakes")
+	controls.latch_brakes(false)
+	if controls.pro:
+		_expect(controls.brake_left_slider.value == 1.0
+				and controls.brake_right_slider.value == 1.0, "both pedals shown fully pressed")
 	_tap(controls.hold_button)
 	_expect(not controls.hold, "another tap lets them go")
+	controls.latch_brakes(false)
+	_expect(controls.brake_left_slider.value == controls.brake_left_slider.rest_value
+			and controls.brake_right_slider.value == controls.brake_right_slider.rest_value,
+			"the pedals back at rest")
 	_tap(controls.hold_button)
 	controls.release_hold()
 	_expect(not controls.hold, "released at the boost")

@@ -63,10 +63,13 @@ const GAS_COLOUR := Color(0.3, 0.85, 0.35, 0.9)
 const CLUTCH_COLOUR := Color(0.3, 0.6, 1.0, 0.9)
 const BRAKE_COLOUR := Color(0.95, 0.3, 0.25, 0.9)
 # The brake hold's button and where it may go (hold_place): above the gas,
-# above the gear buttons, or on the left (above the steering in the easy
-# layout, above the left brake in the pro layout).
+# above the right brake (in the pro layout, between the gear buttons and the
+# gas; in the easy layout, which has no brakes, above the gear buttons), or
+# on the left (above the steering in the easy layout, above the left brake
+# in the pro layout). Over the right brake it is as narrow as fits.
 const HOLD_SIZE := Vector2(170.0, 84.0)
-const HOLD_PLACES: Array[String] = ["above the gas", "above the gears", "left"]
+const HOLD_OVER_BRAKE_WIDTH := 140.0
+const HOLD_PLACES: Array[String] = ["above the gas", "above the right brake", "left"]
 const BUTTON_SIZE := 130.0
 const SMALL_BUTTON := Vector2(120.0, 80.0)
 # The keyboard's steering: about half lock (past the core's dead zone, and
@@ -106,6 +109,8 @@ var hold := false
 # Which of HOLD_PLACES the button sits in.
 var hold_place := 1
 var _hold_available := false
+# The brake pedals were shown pressed for the hold (latch_brakes).
+var _hold_shown_on_pedals := false
 
 
 func _ready() -> void:
@@ -229,7 +234,10 @@ func set_hold_place(place: int) -> void:
 			rect = _right_column(0, HOLD_SIZE.x, HOLD_SIZE.y, THROTTLE_LENGTH + GAP)
 			_anchor(hold_button, Vector2(1.0, 1.0), rect)
 		1:
-			rect = _right_column(column, HOLD_SIZE.x, HOLD_SIZE.y, 3.0 * (BUTTON_SIZE + GAP))
+			if pro:
+				rect = _right_column(1, HOLD_OVER_BRAKE_WIDTH, HOLD_SIZE.y, BRAKE_SIZE.y + GAP)
+			else:
+				rect = _right_column(column, HOLD_SIZE.x, HOLD_SIZE.y, 3.0 * (BUTTON_SIZE + GAP))
 			_anchor(hold_button, Vector2(1.0, 1.0), rect)
 		_:
 			# Pro: above the left brake, clear of the HUD's gauges over the
@@ -359,12 +367,24 @@ func brake_right() -> float:
 # Outside the pull the pedals are latched together, as on a road tractor
 # (the run brakes both with either): `latched`, the slider a thumb holds
 # moves the other along, and both spring back together. Called every
-# frame; in the pull each brake is its own.
+# frame; in the pull each brake is its own. While the brake hold holds,
+# both pedals show fully pressed.
 func latch_brakes(latched: bool) -> void:
-	if not latched:
-		return
 	var left := brake_left_slider
 	var right := brake_right_slider
+	# The brake hold: both pedals shown fully pressed while it holds, back
+	# to rest when it lets go.
+	if hold or _hold_shown_on_pedals:
+		_hold_shown_on_pedals = hold
+		for slider: TouchSlider in [left, right]:
+			var at := 1.0 if hold else slider.rest_value
+			if not slider.is_held() and slider.value != at:
+				slider.value = at
+				slider.queue_redraw()
+		if hold:
+			return
+	if not latched:
+		return
 	var both := left.rest_value
 	if left.is_held() or right.is_held():
 		both = maxf(left.value if left.is_held() else left.rest_value,

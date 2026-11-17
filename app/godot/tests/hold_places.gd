@@ -41,11 +41,12 @@ func _play() -> void:
 		for place in DriveControls.HOLD_PLACES.size():
 			controls.set_hold_place(place)
 			controls.set_hold_available(true)
-			# The middle one as it looks held.
+			# The middle one as it looks held, its pedals pressed.
 			controls.hold = place == 1
 			controls.hold_button.selected = controls.hold
 			controls.hold_button.text = "HOLDING" if controls.hold else "HOLD"
 			controls.hold_button.queue_redraw()
+			controls.latch_brakes(false)
 			await _frames(3)
 			var path := "%s/hold_%s_%d_%s.png" % [_directory, "pro" if pro else "easy", place + 1,
 					DriveControls.HOLD_PLACES[place].replace(" ", "_")]
