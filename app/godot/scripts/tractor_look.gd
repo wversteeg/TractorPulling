@@ -78,6 +78,9 @@ static func schemes() -> Dictionary:
 	supersport_3600.disc = Color(0.12, 0.12, 0.13)
 	supersport_3600.ring = supersport_3600.trim
 	supersport_3600.driver_shirt = Color(0.12, 0.12, 0.13)
+	# A rebuilt farm tractor until the dealer's model is picked, never the
+	# Sport classes' pulling bonnet.
+	supersport_3600.style_id = "ss_square"
 	return {standard.name: standard, sport_2500.name: sport_2500, sport_4500.name: sport_4500,
 			supersport_3600.name: supersport_3600}
 
@@ -112,7 +115,7 @@ func rival(i: int) -> TractorLook:
 	other.driver_shirt = RIVAL_SHIRTS[i % RIVAL_SHIRTS.size()]
 	# The player's own model left for last, so the parking shows the others.
 	var styles := rival_styles.filter(func(id: String) -> bool: return id != style_id)
-	other.style_id = styles[i % styles.size()] if not styles.is_empty() else ""
+	other.style_id = styles[i % styles.size()] if not styles.is_empty() else style_id
 	return other
 
 

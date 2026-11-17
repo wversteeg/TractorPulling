@@ -118,6 +118,15 @@ struct Pressure {
     double lug_squirm = 0.0;
 };
 
+/// The tread's pattern, for drawing the tire; the physics reads the
+/// traction curve, never this. A farm tire's few tall lugs; one cut for
+/// pulling, lower and sharper; a puller tire's many low bars.
+enum class Tread : std::uint8_t {
+    kFarm,
+    kCut,
+    kPuller,
+};
+
 /// A driven tire on soil, after Brixius (1987, ASAE D497): soil strength
 /// (cone index) and the tire's size and load combine into a mobility number
 ///
@@ -147,6 +156,8 @@ struct Params {
     /// Smallest reference speed for the slip ratio [m/s].
     double min_reference_speed_m_s = 0.0;
     Pressure pressure;
+    /// Only for drawing the tire (Tread).
+    Tread tread = Tread::kFarm;
 };
 
 enum class ParamError : std::uint8_t {

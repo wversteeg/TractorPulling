@@ -8,7 +8,9 @@
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure. "Start" (for testing a class) picks the
 # rung of the career's ladder, a class at a level, the new career starts on.
-# "+ € 1000" (for testing, for now) puts that much in the bank. The build
+# "+ € 1000" (for testing, for now) puts that much in the bank, and
+# "Money: keep" (for testing) lets a new career keep the money there is
+# instead of the garage's start money. The build
 # (BuildInfo) shows small at the panel's bottom edge, so a tester can say
 # which one they play.
 class_name SettingsScreen
@@ -18,7 +20,7 @@ signal changed(pro: bool, tilt: bool, guidance: bool)
 signal sound_changed(on: bool)
 signal haptics_requested
 signal done
-signal new_career_requested(rung: int)
+signal new_career_requested(rung: int, keep_money: bool)
 signal money_requested(amount_eur: int)
 
 # Laid out as the pit board: the title with Done beside it, a card of the
@@ -43,7 +45,8 @@ const ROW_HEIGHT := 88.0
 const PAIR_BUTTON := Vector2(120.0, 58.0)
 const PAIR_GAP := 8.0
 const CAREER_GAP := 16.0
-const CAREER_BUTTON := Vector2(220.0, 64.0)
+const CAREER_BUTTON := Vector2(188.0, 64.0)
+const CAREER_NOTE_WIDTH := 230.0
 # What "+ € 1000" adds to the bank [EUR].
 const TEST_MONEY_EUR := 1000
 
@@ -59,6 +62,7 @@ var haptics_button: TouchButton
 var new_career_button: TouchButton
 var start_button: TouchButton
 var money_button: TouchButton
+var keep_money_button: TouchButton
 var done_button: TouchButton
 # The build, in the panel's bottom padding, below the last row.
 var build_label := Label.new()
@@ -78,6 +82,10 @@ var _start_rung := 0
 var _start_shown := false
 # The bank after the last tap on "+ € 1000", or -1: the hint shows it.
 var _money_shown_eur := -1
+# A new career keeps the money there is (for testing), not the garage's
+# start money; the last tap was on it: the hint says which.
+var _keep_money := false
+var _keep_shown := false
 
 
 func _init() -> void:
@@ -121,14 +129,17 @@ func _ready() -> void:
 	_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	var career := _card(layout, CAREER_RECT, "Career")
 	var y := (CAREER_RECT.size.y - CAREER_BUTTON.y) / 2.0
-	var x := CAREER_RECT.size.x - CARD_PADDING - 3.0 * CAREER_BUTTON.x - 2.0 * CAREER_GAP
+	var x := CAREER_RECT.size.x - CARD_PADDING - 4.0 * CAREER_BUTTON.x - 3.0 * CAREER_GAP
 	new_career_button = _button(career, "New career", Rect2(Vector2(x, y), CAREER_BUTTON), "new")
 	x += CAREER_BUTTON.x + CAREER_GAP
 	start_button = _button(career, "Start: 1", Rect2(Vector2(x, y), CAREER_BUTTON))
 	x += CAREER_BUTTON.x + CAREER_GAP
 	money_button = _button(career, "+ € %d" % TEST_MONEY_EUR, Rect2(Vector2(x, y), CAREER_BUTTON))
-	_text(career, "Start over. For testing: the class to start in, money",
-			Rect2(CARD_PADDING, CARD_HEADING_M - 4.0, 330.0, 50.0), NOTE_SIZE, GarageArt.DIM) \
+	x += CAREER_BUTTON.x + CAREER_GAP
+	keep_money_button = _button(career, "Money: start", Rect2(Vector2(x, y), CAREER_BUTTON))
+	_text(career, "Start over.\nFor testing: class, money",
+			Rect2(CARD_PADDING, CARD_HEADING_M - 4.0, CAREER_NOTE_WIDTH, 50.0), NOTE_SIZE,
+			GarageArt.DIM) \
 			.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	easy_button.tapped.connect(func() -> void: _pick(false, _tilt, _guidance))
 	pro_button.tapped.connect(func() -> void: _pick(true, _tilt, _guidance))
@@ -143,6 +154,7 @@ func _ready() -> void:
 	new_career_button.tapped.connect(_ask_new_career)
 	start_button.tapped.connect(_next_start)
 	money_button.tapped.connect(func() -> void: money_requested.emit(TEST_MONEY_EUR))
+	keep_money_button.tapped.connect(_toggle_keep_money)
 	build_label.text = BuildInfo.describe()
 	build_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	build_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -161,7 +173,8 @@ func _ready() -> void:
 func release_buttons() -> void:
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
 			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
-			haptics_button, new_career_button, start_button, money_button, done_button]:
+			haptics_button, new_career_button, start_button, money_button, keep_money_button,
+			done_button]:
 		button.release()
 
 
@@ -248,6 +261,7 @@ func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool =
 	_career_asked = false
 	_start_shown = false
 	_money_shown_eur = -1
+	_keep_shown = false
 	_show()
 
 
@@ -256,6 +270,7 @@ func show_money(money_eur: int) -> void:
 	_career_asked = false
 	_start_shown = false
 	_money_shown_eur = money_eur
+	_keep_shown = false
 	_show()
 
 
@@ -264,12 +279,27 @@ func start_rung() -> int:
 	return _start_rung
 
 
+# Whether a new career keeps the money there is, from "Money".
+func keeps_money() -> bool:
+	return _keep_money
+
+
+func _toggle_keep_money() -> void:
+	_keep_money = not _keep_money
+	_career_asked = false
+	_start_shown = false
+	_money_shown_eur = -1
+	_keep_shown = true
+	_show()
+
+
 # The next rung up, round to the first after the top.
 func _next_start() -> void:
 	_start_rung = 0 if _rungs.is_empty() else (_start_rung + 1) % _rungs.size()
 	_career_asked = false
 	_start_shown = true
 	_money_shown_eur = -1
+	_keep_shown = false
 	_show()
 
 
@@ -280,6 +310,7 @@ func _pick(pro: bool, tilt: bool, guidance: bool) -> void:
 	_career_asked = false
 	_start_shown = false
 	_money_shown_eur = -1
+	_keep_shown = false
 	_show()
 	changed.emit(pro, tilt, guidance)
 
@@ -289,6 +320,7 @@ func _pick_sound(on: bool) -> void:
 	_career_asked = false
 	_start_shown = false
 	_money_shown_eur = -1
+	_keep_shown = false
 	_show()
 	sound_changed.emit(on)
 
@@ -304,10 +336,17 @@ func _show() -> void:
 	sound_off_button.selected = not _sound
 	new_career_button.text = "Sure? Tap again" if _career_asked else "New career"
 	start_button.text = "Start: %d" % (_start_rung + 1)
+	keep_money_button.text = "Money: keep" if _keep_money else "Money: start"
+	keep_money_button.selected = _keep_money
 	var start_at := _rungs[_start_rung] if _start_rung < _rungs.size() else ""
 	if _career_asked:
-		_hint.text = "A new career starts over: the garage's start money, nothing bought%s." \
-				% ("" if _start_rung == 0 else ", at " + start_at)
+		_hint.text = "A new career starts over: %s, nothing bought%s." % [
+				"the money you have" if _keep_money else "the garage's start money",
+				"" if _start_rung == 0 else ", at " + start_at]
+		return
+	if _keep_shown:
+		_hint.text = "For testing: a new career keeps the money you have." if _keep_money \
+				else "A new career starts with the garage's start money."
 		return
 	if _start_shown:
 		_hint.text = "For testing: a new career starts at %s." % start_at
@@ -329,9 +368,10 @@ func _ask_new_career() -> void:
 	if _career_asked:
 		_career_asked = false
 		_show()
-		new_career_requested.emit(_start_rung)
+		new_career_requested.emit(_start_rung, _keep_money)
 		return
 	_career_asked = true
 	_start_shown = false
 	_money_shown_eur = -1
+	_keep_shown = false
 	_show()

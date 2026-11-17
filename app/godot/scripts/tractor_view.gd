@@ -53,6 +53,13 @@ const BUMPER_DEPTH_M := 0.14
 # drawn, and at most this much bigger.
 const BODY_WHEELBASE_M := 2.2
 const BODY_MOST_SCALE := 1.4
+# A weight rack (a model's "rack" nose) reaches this far past the hood's
+# nose, instead of the bumper's FRAME_PAST_HOOD_M [m].
+const RACK_PAST_HOOD_M := 0.5
+# A pulling turbo's big stack (a model's "fat" one): this much thicker and
+# longer than the usual one.
+const FAT_STACK_RADIUS := 1.5
+const FAT_STACK_LENGTH := 1.15
 # The front weights hang this far ahead of the pulling tractor's bumper [m].
 const WEIGHTS_AHEAD_OF_BUMPER_M := 0.03
 # The pulling seat's back: this tall over the seat [m].
@@ -87,6 +94,16 @@ const ROLL_BAR_TOP_M := 1.62
 const ROLL_BAR_BEHIND_M := 0.36
 const ROLL_BAR_BRACE_BEHIND_M := 0.8
 const ROLL_BAR_TUBE_M := 0.035
+# A Supersport driver's cell: its half width (just wider than the seat),
+# the top of its arches over the helmet, above the rear axle, its hoops
+# along the tractor (behind the seat to before the face), the segments of
+# each arch, and the ladder's rungs up each side, as shares of the posts'
+# height [m].
+const CELL_HALF_WIDTH_M := 0.34
+const CELL_TOP_M := 1.86
+const CELL_HOOPS_M: Array[float] = [-0.42, -0.12, 0.2]
+const CELL_ARCH_SEGMENTS := 8         # a multiple of 4: the bars meet its quarters
+const CELL_RUNGS: Array[float] = [0.35, 0.65]
 # The cab camera: at the seated driver's eyes, a little in front of the
 # face so the head does not fill the view, above the rear axle [m]; and
 # its near plane, close enough for the steering wheel [m].
@@ -116,7 +133,31 @@ const REV_COUNTER_HEADROOM := 1.25
 const DIAL_TICKS := 9
 const DIAL := Color(0.93, 0.93, 0.9)
 const NEEDLE := Color(0.9, 0.2, 0.1)
-const LUGS_PER_SIDE := 23
+# The rear tires' tread, as fitted (the run's rear_tire_tread): lugs per
+# side of the chevron, how tall, how thick along the tread, how long (a
+# share of the tire's width), turned how far off square, and how far
+# from the tread's middle they start (a share of the width) [m, rad]. A
+# farm tire's few tall lugs, an open centre between the halves; one cut for
+# pulling, lower; a puller tire's many low, sharp bars meeting in the
+# middle as a V.
+const TREADS := {
+	"farm": {"lugs": 20, "height_m": 0.08, "thick_m": 0.11, "length": 0.46, "turn_rad": 0.62,
+			"from_middle": 0.05},
+	"cut": {"lugs": 23, "height_m": 0.06, "thick_m": 0.085, "length": 0.56, "turn_rad": 0.5,
+			"from_middle": 0.0},
+	"puller": {"lugs": 46, "height_m": 0.035, "thick_m": 0.045, "length": 0.54,
+			"turn_rad": 0.42, "from_middle": 0.0},
+}
+# A big painted weight box on the front (a model's "box" nose): its size
+# beside the bonnet's width, its height and depth [m].
+const BOX_WIDER_M := 0.16
+const BOX_HEIGHT_M := 0.42
+const BOX_DEPTH_M := 0.38
+# How far the box's middle sits above the frame's end, a share of its height.
+const BOX_RISE := 0.3
+# A front weight's thickness and the step from one to the next [m].
+const PLATE_THICK_M := 0.045
+const PLATE_PITCH_M := 0.05
 # The weights at the sizes they come in, so any class's ballast draws
 # right: a suitcase weight on the front bracket, a wheel weight on a rear
 # hub [kg]; and as many as the bracket and a hub take.
@@ -171,6 +212,16 @@ var _bonnet_share := 1.0
 var _cab_half_width_m := 0.5
 # How much bigger than drawn the pulling tractor's body is (BODY_WHEELBASE_M).
 var _body_scale := 1.0
+# A rebuilt tractor's farm hood, as much wider and taller (1 on a farm or a
+# bonnet tractor); how far its frame reaches past the nose [m].
+var _hood_scale := 1.0
+var _frame_past_hood_m := FRAME_PAST_HOOD_M
+# The front of the frame: its depth (a bumper, or a weight box) [m].
+var _bumper_depth_m := BUMPER_DEPTH_M
+# A weight box on the front (a model's "box" nose), its plates the weights.
+var _weight_box := false
+# The rear tires' tread drawn (TREADS).
+var _tread: Dictionary = TREADS["cut"]
 var _rear_radius_m := 1.0
 var _front_radius_m := 0.5
 var _rated_rad_s := 230.0
@@ -225,7 +276,8 @@ func _shape_of(d: Dictionary) -> String:
 	var sizes: Array = [look.name, look.paint, look.paint_dark, look.trim, look.rim, look.disc,
 			look.ring, look.number, look.driver_shirt, look.style_id]
 	for key: String in ["protection", "wheelbase_m", "rear_axle_height_m", "rear_track_m",
-			"front_track_m", "rear_tire_radius_m", "rear_tire_width_m", "front_tire_radius_m",
+			"front_track_m", "rear_tire_radius_m", "rear_tire_width_m", "rear_tire_tread",
+			"front_tire_radius_m",
 			"front_tire_width_m", "hitch_behind_rear_axle_m", "hitch_height_m",
 			"wheelie_bar_behind_rear_axle_m", "wheelie_bar_tip_height_m"]:
 		sizes.append(d.get(key))
@@ -266,26 +318,36 @@ func _build_body(d: Dictionary) -> void:
 	_rear_radius_m = d["rear_tire_radius_m"]
 	_front_radius_m = d["front_tire_radius_m"]
 	var rear_width_m: float = d["rear_tire_width_m"]
+	_tread = TREADS.get(String(d.get("rear_tire_tread", "cut")), TREADS["cut"])
 	var front_width_m: float = d["front_tire_width_m"]
 
 	# The model: without one, a tractor behind a roll bar is a pulling
 	# tractor, drawn as one, and one with a cab a farm tractor.
 	_style = TractorModels.style(look.style_id, d.get("protection", "cab"))
-	var pulling: bool = _style["body"] == TractorModels.PULLING
+	# A pulling or a rebuilt tractor: on a pulling frame, its parts drawn.
+	var pulling := TractorModels.on_pulling_frame(_style)
+	var bonnet: bool = _style["body"] == TractorModels.PULLING
 	_pulling_look = pulling
 	_body_scale = clampf(wheelbase_m / BODY_WHEELBASE_M, 1.0, BODY_MOST_SCALE) \
 			if pulling else 1.0
+	# A rebuilt tractor's farm hood grows with the tractor as a bonnet does.
+	_hood_scale = _body_scale if not bonnet else 1.0
 	_hood_top_m = HOOD_TOP_M * float(_style["hood_height"])
+	_frame_past_hood_m = RACK_PAST_HOOD_M if _style.get("nose", "bumper") == "rack" \
+			else FRAME_PAST_HOOD_M
+	_weight_box = _style.get("nose", "bumper") == "box"
+	_bumper_depth_m = BOX_DEPTH_M if _weight_box else BUMPER_DEPTH_M
 	_bonnet_share = float(_style["hood_height"])
 	_cab_roof_m = CAB_FLOOR_M + (CAB_ROOF_M - CAB_FLOOR_M) * float(_style["cab_height"])
 	_body.position = TrackSpace.point(0.0, 0.0, axle_height_m)
 	add_child(_body)
 	_add_driveline(wheelbase_m, rear_track_m, front_track_m, axle_height_m)
-	if pulling:
+	if bonnet:
 		_add_bonnet(wheelbase_m)
-		_add_front_frame(wheelbase_m, axle_height_m)
 	else:
 		_add_hood(wheelbase_m)
+	if pulling:
+		_add_front_frame(wheelbase_m, axle_height_m)
 	_add_cab(rear_track_m)
 	_add_fenders(rear_track_m, rear_width_m, 12 if pulling else 7)
 	_add_hitch_and_bar(d, axle_height_m, rear_track_m)
@@ -305,7 +367,7 @@ func _build_body(d: Dictionary) -> void:
 	# On the farm hood's front; on a pulling tractor, from its bumper.
 	if pulling:
 		_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M
-				+ FRAME_PAST_HOOD_M + BUMPER_DEPTH_M / 2.0 + WEIGHTS_AHEAD_OF_BUMPER_M, 0.0,
+				+ _frame_past_hood_m + _bumper_depth_m / 2.0 + WEIGHTS_AHEAD_OF_BUMPER_M, 0.0,
 				_front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M)
 	else:
 		_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.05,
@@ -360,6 +422,8 @@ func _add_hood(wheelbase_m: float) -> void:
 		fall_rad = atan2(0.18 * float(_style["hood_height"]), length_m)
 	hood.position = TrackSpace.point(back_m, 0.0, 0.0)
 	hood.rotation.x = -fall_rad
+	# Wider and taller on a bigger rebuilt tractor (sideways and up only).
+	hood.scale = Vector3(_hood_scale, _hood_scale, 1.0)
 	var block_height_m := depth_m if shape != "round" else depth_m * 0.55
 	var block := Art.box(Vector3(HOOD_WIDTH_M, block_height_m, length_m), look.paint, 0.35)
 	block.material_override = Art.paint(look.paint)
@@ -491,7 +555,7 @@ func bonnet_top_m() -> float:
 # under the bonnet and a bumper ahead of the nose.
 func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 	var from_m := wheelbase_m - 0.6
-	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + FRAME_PAST_HOOD_M
+	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + _frame_past_hood_m
 	var z_m := _front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M
 	var rail_size := Vector3(FRAME_RAIL_M.x * _body_scale, FRAME_RAIL_M.y * _body_scale,
 			to_m - from_m)
@@ -501,11 +565,26 @@ func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 				Art.material(BONNET_DARK, 0.5, 0.3))
 		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * rails_apart_m / 2.0, z_m)
 		_body.add_child(rail)
-	var bumper := Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + 0.1,
-			0.18 * _body_scale, BUMPER_DEPTH_M), 0.05,
-			Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
+	var bumper: MeshInstance3D
+	if _weight_box:
+		# A big weight box in the trim, its front a grid of slots, sitting
+		# on the frame's end.
+		bumper = Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + BOX_WIDER_M,
+				BOX_HEIGHT_M * _body_scale, BOX_DEPTH_M), 0.04, Vector3.AXIS_Z),
+				Art.paint(look.trim))
+		bumper.position = TrackSpace.point(to_m, 0.0, z_m + BOX_HEIGHT_M * _body_scale * BOX_RISE)
+		for row in 2:
+			var slot := Art.box(Vector3(BONNET_WIDTH_M * _body_scale * 0.7, 0.04, 0.02),
+					BONNET_DARK, 0.6)
+			slot.position = TrackSpace.point(to_m + BOX_DEPTH_M / 2.0 + 0.005, 0.0,
+					z_m + BOX_HEIGHT_M * _body_scale * (0.42 - 0.22 * row))
+			_body.add_child(slot)
+	else:
+		bumper = Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + 0.1,
+				0.18 * _body_scale, BUMPER_DEPTH_M), 0.05,
+				Vector3.AXIS_Z), Art.material(BONNET_DARK, 0.5, 0.3))
+		bumper.position = TrackSpace.point(to_m, 0.0, z_m)
 	bumper.name = "Bumper"
-	bumper.position = TrackSpace.point(to_m, 0.0, z_m)
 	_body.add_child(bumper)
 
 
@@ -524,8 +603,10 @@ func _add_cab(rear_track_m: float) -> void:
 			_add_cab_frame(half_width_m)
 		"canopy", "open":
 			_add_frame_posts(half_width_m, cab == "canopy")
-		"cage":
-			_add_cage(half_width_m)
+		"cage", "open_cage":
+			_add_cage(half_width_m, cab == "cage")
+		"cell":
+			_add_cell()
 		_:
 			_add_roll_bar(half_width_m)
 	# A pulling tractor's high-backed seat, but in a closed cab.
@@ -555,9 +636,67 @@ func _add_frame_posts(half_width_m: float, canopy: bool) -> void:
 		_add_roof_extras(x_m + 0.5, half_width_m, _cab_roof_m + 0.08)
 
 
+# A Supersport driver's roll cage, as the class's real ones are: a narrow
+# cell round the seat, three hoops one behind the other, each two posts up
+# from the floor and an arch over the helmet, joined front to back by bars
+# over the top and up the sides like a ladder; in black, chrome or the
+# paint, as the model has it.
+func _add_cell() -> void:
+	var half_width_m := CELL_HALF_WIDTH_M
+	var top_m := CAB_FLOOR_M + (CELL_TOP_M - CAB_FLOOR_M) * float(_style["cab_height"])
+	var spring_m := top_m - half_width_m
+	var finish: String = _style.get("cell", "black")
+	var tube := Art.paint(CHROME, 0.3) if finish == "chrome" \
+			else (Art.paint(look.paint) if finish == "paint" else Art.material(FRAME, 0.4, 0.4))
+	var cell := Node3D.new()
+	cell.name = "Cell"
+	_body.add_child(cell)
+	# Each hoop's points, from one foot over the arch to the other.
+	var hoops: Array[PackedVector3Array] = []
+	for x_m: float in CELL_HOOPS_M:
+		var points := PackedVector3Array()
+		points.append(Vector3(x_m, half_width_m, CAB_FLOOR_M))
+		for i in CELL_ARCH_SEGMENTS + 1:
+			var angle := PI * float(i) / CELL_ARCH_SEGMENTS
+			points.append(Vector3(x_m, half_width_m * cos(angle),
+					spring_m + half_width_m * sin(angle)))
+		points.append(Vector3(x_m, -half_width_m, CAB_FLOOR_M))
+		hoops.append(points)
+		for i in points.size() - 1:
+			_add_tube(cell, points[i], points[i + 1], ROLL_BAR_TUBE_M, tube)
+	# Front to back: over the top and the arch's shoulders, and the ladder
+	# rungs up each side.
+	var quarter := floori(CELL_ARCH_SEGMENTS / 4.0)
+	var joins: Array[int] = [1 + 2 * quarter, 1 + quarter, 1 + 3 * quarter, 1,
+			1 + CELL_ARCH_SEGMENTS]
+	for h in hoops.size() - 1:
+		for k: int in joins:
+			_add_tube(cell, hoops[h][k], hoops[h + 1][k], ROLL_BAR_TUBE_M * 0.8, tube)
+		for side: float in [-1.0, 1.0]:
+			for share: float in CELL_RUNGS:
+				var z_m := CAB_FLOOR_M + (spring_m - CAB_FLOOR_M) * share
+				_add_tube(cell, Vector3(CELL_HOOPS_M[h], side * half_width_m, z_m),
+						Vector3(CELL_HOOPS_M[h + 1], side * half_width_m, z_m),
+						ROLL_BAR_TUBE_M * 0.8, tube)
+
+
+# A tube from `from` to `to` (the tractor's x along, y left, z up) [m].
+func _add_tube(parent: Node3D, from: Vector3, to: Vector3, radius_m: float,
+		material: Material) -> void:
+	var a := TrackSpace.point(from.x, from.y, from.z)
+	var b := TrackSpace.point(to.x, to.y, to.z)
+	var length_m := a.distance_to(b)
+	if length_m <= 0.0:
+		return
+	var tube := Art.instance(Art.cylinder_mesh(radius_m, radius_m, length_m, 8), material)
+	tube.position = (a + b) / 2.0
+	tube.basis = Basis(Quaternion(Vector3.UP, (b - a) / length_m))
+	parent.add_child(tube)
+
+
 # A pulling tractor's safety cage: four posts of tube, two rails along
-# each side, a roof over it all in the trim; no glass.
-func _add_cage(half_width_m: float) -> void:
+# each side, with a roof over it all in the trim or open; no glass.
+func _add_cage(half_width_m: float, roof: bool) -> void:
 	var back_m := 0.15 - CAB_HALF_DEPTH_M
 	var front_m := 0.15 + CAB_HALF_DEPTH_M
 	var height_m := _cab_roof_m - CAB_FLOOR_M
@@ -575,7 +714,31 @@ func _add_cage(half_width_m: float) -> void:
 			rail.rotation.x = PI / 2.0
 			rail.position = TrackSpace.point((back_m + front_m) / 2.0, side * half_width_m, z_m)
 			_body.add_child(rail)
-	_add_roof(half_width_m, (back_m + front_m) / 2.0)
+	if roof:
+		_add_roof(half_width_m, (back_m + front_m) / 2.0)
+		return
+	# Open: tubes across the top, front and back, and one corner to corner.
+	for x_m: float in [back_m, front_m]:
+		var across := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, 2.0 * half_width_m, CHROME, 8)
+		across.material_override = cage
+		across.rotation.z = PI / 2.0
+		across.position = TrackSpace.point(x_m, 0.0, _cab_roof_m)
+		_body.add_child(across)
+	var diagonal := Vector3(front_m - back_m, 2.0 * half_width_m, 0.0)
+	var brace := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, diagonal.length(), CHROME, 8)
+	brace.name = "CageBrace"
+	brace.material_override = cage
+	brace.rotation = Vector3(PI / 2.0, atan2(diagonal.y, diagonal.x), 0.0)
+	brace.position = TrackSpace.point((back_m + front_m) / 2.0, 0.0, _cab_roof_m)
+	_body.add_child(brace)
+	# And across the back, corner to corner: a full roll cage.
+	var back_brace := Vector2(2.0 * half_width_m, height_m)
+	var cross := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, back_brace.length(), CHROME, 8)
+	cross.name = "CageBackBrace"
+	cross.material_override = cage
+	cross.rotation.z = atan2(back_brace.x, back_brace.y)
+	cross.position = TrackSpace.point(back_m, 0.0, CAB_FLOOR_M + height_m / 2.0)
+	_body.add_child(cross)
 
 
 # The roof over a cab or a cage: flat or rounded, as the model has it, in
@@ -754,6 +917,9 @@ func _add_seat_and_driver(racing: bool) -> void:
 	driver.rotation.y = PI
 	driver.position = TrackSpace.point(0.37, 0.0, 0.3)
 	_body.add_child(driver)
+	if _pulling_look:
+		# A puller on a pulling frame wears a helmet, as the rules ask.
+		driver.add_child(People.helmet(look.trim))
 
 
 # The steering wheel on its column, tilted back towards the driver: a rim,
@@ -926,7 +1092,7 @@ func _add_hitch_and_bar(d: Dictionary, axle_height_m: float, rear_track_m: float
 func _add_rear_wheel(spin: Node3D, side_m: float, width_m: float, disc: bool) -> void:
 	spin.position = TrackSpace.point(0.0, side_m, 0.0)
 	_body.add_child(spin)
-	var lug_height_m := 0.06
+	var lug_height_m: float = _tread["height_m"]
 	var carcass_m := _rear_radius_m - lug_height_m
 	Art.tire(spin, carcass_m, width_m, TIRE)
 	var outward := signf(side_m)
@@ -942,19 +1108,26 @@ func _add_rear_wheel(spin: Node3D, side_m: float, width_m: float, disc: bool) ->
 				Art.material(look.ring, 0.5))
 		ring.position = cover.position
 		spin.add_child(ring)
-	# Pulling bars: tall lugs in a chevron, each half of the tread angled
-	# towards the middle, reaching over the shoulder onto the sidewall.
+	# The tread as fitted (TREADS): lugs in a chevron, each half of the
+	# tread angled towards the middle, reaching over the shoulder onto the
+	# sidewall; a farm tire's apart in the middle, a puller tire's meeting.
 	var lugs: Array[Transform3D] = []
 	var lug := BoxMesh.new()
-	lug.size = Vector3(width_m * 0.56, lug_height_m * 2.0, 0.085)
-	for i in LUGS_PER_SIDE:
+	var length_m := width_m * float(_tread["length"])
+	lug.size = Vector3(length_m, lug_height_m * 2.0, float(_tread["thick_m"]))
+	var per_side: int = _tread["lugs"]
+	var turn_rad: float = _tread["turn_rad"]
+	var middle_m := width_m * (float(_tread["from_middle"]) + float(_tread["length"]) / 2.0) \
+			* 0.9
+	for i in per_side:
 		for half: float in [-1.0, 1.0]:
-			var angle := TAU * (float(i) + (0.5 if half > 0.0 else 0.0)) / LUGS_PER_SIDE
-			var basis := Basis(Vector3.RIGHT, -angle) * Basis(Vector3.UP, half * 0.5)
-			var at := Basis(Vector3.RIGHT, -angle) * Vector3(half * width_m * 0.25,
-					carcass_m, 0.0)
+			var angle := TAU * (float(i) + (0.5 if half > 0.0 else 0.0)) / per_side
+			var basis := Basis(Vector3.RIGHT, -angle) * Basis(Vector3.UP, half * turn_rad)
+			var at := Basis(Vector3.RIGHT, -angle) * Vector3(half * middle_m, carcass_m, 0.0)
 			lugs.append(Transform3D(basis, at))
-	spin.add_child(Art.many(lug, lugs, Art.material(TIRE, 0.9)))
+	var tread := Art.many(lug, lugs, Art.material(TIRE, 0.9))
+	tread.name = "Lugs"
+	spin.add_child(tread)
 	# A wheel weight's place: on the hub, outboard of the rim and its cap.
 	var weights := Node3D.new()
 	weights.name = "weights"
@@ -995,14 +1168,27 @@ func _show_weights(d: Dictionary) -> void:
 	# Each end gets its share of the mass, in plates or discs of their size.
 	# Rounded up, so a little weight at an end still shows.
 	var plates := mini(ceili(position_share * mass_kg / PLATE_KG - WEIGHT_COUNT_TOLERANCE), MAX_PLATES)
-	var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
-	bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
-	_front_weights.add_child(bracket)
-	for i in plates:
-		var plate := Art.box(Vector3(0.68, 0.5, 0.045), WEIGHT if i % 2 == 0 else WEIGHT.darkened(0.2),
-				0.6)
-		plate.position = TrackSpace.point(0.03 + i * 0.05, 0.0, 0.0)
-		_front_weights.add_child(plate)
+	if _weight_box:
+		# A weight box: its plates are the box's own, its shape and paint,
+		# stacked onto its front; no suitcase weights, no bracket.
+		var size := Vector3(BONNET_WIDTH_M * _body_scale + BOX_WIDER_M,
+				BOX_HEIGHT_M * _body_scale, PLATE_THICK_M)
+		for i in plates:
+			var slab := Art.instance(_box_mesh(size), Art.paint(look.trim if i % 2 == 0
+					else look.trim.darkened(0.15)))
+			slab.position = TrackSpace.point(i * PLATE_PITCH_M, 0.0,
+					BOX_HEIGHT_M * _body_scale * BOX_RISE)
+			_front_weights.add_child(slab)
+	else:
+		var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
+		bracket.set_meta("bracket", true)
+		bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
+		_front_weights.add_child(bracket)
+		for i in plates:
+			var plate := Art.box(Vector3(0.68, 0.5, PLATE_THICK_M),
+					WEIGHT if i % 2 == 0 else WEIGHT.darkened(0.2), 0.6)
+			plate.position = TrackSpace.point(0.03 + i * PLATE_PITCH_M, 0.0, 0.0)
+			_front_weights.add_child(plate)
 	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG
 			- WEIGHT_COUNT_TOLERANCE), MAX_DISCS_A_SIDE)
 	for holder: Node3D in holders:
@@ -1021,8 +1207,11 @@ func _add_smoke(wheelbase_m: float) -> void:
 	var kind: String = _style["stack"]
 	var x_m := wheelbase_m - 0.55
 	# Out of the hood's top: a bigger bonnet's as much higher, and thicker.
-	var base_m := (bonnet_top_m() - (BONNET_TOP_M - HOOD_TOP_M)) if _pulling_look else _hood_top_m
+	var base_m := (bonnet_top_m() - (BONNET_TOP_M - HOOD_TOP_M)) \
+			if _style["body"] == TractorModels.PULLING else _hood_top_m * _hood_scale
 	var length_m := 1.0 if kind != "tall" else 1.35
+	if kind == "fat":
+		length_m *= FAT_STACK_LENGTH
 	var at := Vector3(x_m, 0.18, base_m + length_m / 2.0 - 0.05)
 	var places: Array[Vector3] = [at]
 	if kind == "twin":
@@ -1033,7 +1222,8 @@ func _add_smoke(wheelbase_m: float) -> void:
 		length_m = _cab_roof_m - 0.2 + SIDE_STACK_OVER_ROOF_M
 		places = [Vector3(0.15 + CAB_HALF_DEPTH_M + 0.04, -(_cab_half_width_m + 0.12),
 				0.2 + length_m / 2.0)]
-	var radius_m := 0.055 * _body_scale * (0.85 if kind == "twin" else 1.0)
+	var radius_m := 0.055 * _body_scale * (0.85 if kind == "twin" else 1.0) \
+			* (FAT_STACK_RADIUS if kind == "fat" else 1.0)
 	var finish := CHROME
 	for place: Vector3 in places:
 		var stack := Art.cylinder(radius_m, length_m, finish, 12, 0.2, 0.9)
@@ -1151,6 +1341,18 @@ func body_scale() -> float:
 	return _body_scale
 
 
+# The lugs drawn round a rear tire: the tread as fitted (TREADS).
+func rear_lug_count() -> int:
+	var tread := _rear_left.get_node_or_null("Lugs") as MultiMeshInstance3D
+	return tread.multimesh.instance_count if tread != null else 0
+
+
+# The front weights' node, its children the weights (and a bracket, marked
+# with the "bracket" meta).
+func front_weights_node() -> Node3D:
+	return _front_weights
+
+
 # Where the front weights hang, in the world.
 func front_weights_position() -> Vector3:
 	return _front_weights.global_position
@@ -1161,7 +1363,9 @@ func front_weights_position() -> Vector3:
 func weight_counts() -> Vector2i:
 	var plates := 0
 	for child: Node in _front_weights.get_children():
-		if not child.is_queued_for_deletion() and child is MeshInstance3D:
+		# The bracket is not a weight.
+		if not child.is_queued_for_deletion() and child is MeshInstance3D \
+				and not child.has_meta("bracket"):
 			plates += 1
 	var discs := 0
 	var holder := _rear_left.get_node_or_null("weights")
@@ -1169,8 +1373,7 @@ func weight_counts() -> Vector2i:
 		for child: Node in holder.get_children():
 			if not child.is_queued_for_deletion():
 				discs += 1
-	# The bracket is not a weight.
-	return Vector2i(maxi(plates - 1, 0), discs)
+	return Vector2i(plates, discs)
 
 
 # A camera at the driver's eyes, looking ahead: it turns and pitches with
@@ -1182,6 +1385,8 @@ func cab_camera() -> Camera3D:
 		_cab_camera.far = CameraRig.FAR_M
 		_cab_camera.position = TrackSpace.point(EYES_AHEAD_M, 0.0, EYES_UP_M)
 		_cab_camera.rotation.x = -EYES_DOWN_RAD
+		# From inside the driver's helmet: not drawn.
+		_cab_camera.set_cull_mask_value(People.HELMET_LAYER, false)
 		_body.add_child(_cab_camera)
 	return _cab_camera
 

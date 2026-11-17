@@ -13,6 +13,7 @@
 # spun fast as uncut lugs do. The limit is the fully built tire's; the
 # garage sets it.
 [tire]
+tread = "cut"                      # the pattern drawn (the grip is in [tire.traction])
 radius_m = 0.78                    # rolling radius
 section_width_m = 0.62
 section_height_m = 0.4

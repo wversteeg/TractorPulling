@@ -40,6 +40,8 @@ package "tp::godot_binding" {
     ..C++ only..
     +session() : const session::Session*
     +event_pull() : optional<PullKey>
+    +{static} tractor_dimensions(const vehicle::Params&) : Dictionary
+    +{static} tread_name(tire::Tread) : const char*
   }
   class TractorPullEvent {
     -career_definition_ : optional<data::CareerDefinition>

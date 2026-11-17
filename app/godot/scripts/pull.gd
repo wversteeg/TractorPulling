@@ -304,8 +304,8 @@ func _ready() -> void:
 	career_screen.back_requested.connect(func() -> void: _set_screen(_career_back))
 	start_screen.move_up_requested.connect(_move_up)
 	start_screen.new_career_requested.connect(_new_season.bind(true))
-	settings_screen.new_career_requested.connect(func(rung: int) -> void:
-		_new_season(true, rung))
+	settings_screen.new_career_requested.connect(func(rung: int, keep_money: bool) -> void:
+		_new_season(true, rung, keep_money))
 	board.first_tapped.connect(_on_board_first)
 	board.second_tapped.connect(_on_board_second)
 	restart_screen.restart_requested.connect(func() -> void:
@@ -382,11 +382,15 @@ func _seed() -> int:
 
 # A new season on the player's rung (a class at a level); with
 # `new_career` also a new career on rung `rung` (the first, unless the
-# settings picked another for testing; the garage's start money, nothing
-# bought), else the career carries over.
-func _new_season(new_career: bool = false, rung: int = 0) -> void:
+# settings picked another for testing; the garage's start money, or with
+# `keep_money` the money there was, for testing; nothing bought), else the
+# career carries over.
+func _new_season(new_career: bool = false, rung: int = 0, keep_money: bool = false) -> void:
 	var seed := _seed()
+	var money_eur := int(event.get_garage().get("money_eur", 0))
 	var error := event.new_career_at(rung, seed) if new_career else event.new_season(seed)
+	if new_career and keep_money and error.is_empty():
+		event.add_money(money_eur - int(event.get_garage().get("money_eur", 0)))
 	_season_started(error, seed)
 
 

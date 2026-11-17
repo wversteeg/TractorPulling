@@ -461,6 +461,8 @@ func _check_floodlight_reach(venue: VenueView, dimensions: Dictionary) -> void:
 func _check_pulling_look(dimensions: Dictionary) -> void:
 	var farm: TractorView = _pull.get("tractor_view")
 	_expect(not farm.pulling_look(), "the farm tractor drawn as one")
+	_expect(dimensions.get("rear_tire_tread", "") == "farm",
+			"the farm tractor's tires drawn as farm tires: %s" % dimensions.get("rear_tire_tread"))
 	_expect(farm.find_child("Hood", true, false) != null, "the farm tractor's hood")
 	_expect(farm.find_child("Bonnet", true, false) == null, "no pulling bonnet on a farm tractor")
 	var pulling := TractorView.new()
@@ -470,7 +472,7 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	d["ballast_position"] = 1.0
 	pulling.build(d)
 	_expect(pulling.pulling_look(), "a roll-bar tractor drawn as a pulling tractor")
-	for part: String in ["Bonnet", "Bumper", "RimDisc"]:
+	for part: String in ["Bonnet", "Bumper", "RimDisc", "Helmet"]:
 		_expect(pulling.find_child(part, true, false) != null, "the pulling tractor's %s" % part)
 	_expect(pulling.find_child("Hood", true, false) == null, "no farm hood on a pulling tractor")
 	_expect(pulling.weight_counts().x > 0, "the weights forward hang on the pulling tractor")
@@ -482,6 +484,57 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 			"the front weights ahead of the bumper (%.2f m, bumper to %.2f m)" % [
 			-weights.z, bumper_front_m])
 	pulling.free()
+	# A farm tractor rebuilt for pulling (the Supersport classes): its own
+	# farm hood on the pulling frame, the weights out on its rack.
+	var rebuilt := TractorView.new()
+	root.add_child(rebuilt)
+	rebuilt.look.style_id = "ss_square"
+	rebuilt.build(d)
+	_expect(rebuilt.pulling_look(), "a rebuilt tractor drawn on a pulling frame")
+	for part: String in ["Hood", "Bumper", "RimDisc", "Cell", "Helmet"]:
+		_expect(rebuilt.find_child(part, true, false) != null, "the rebuilt tractor's %s" % part)
+	_expect(rebuilt.find_child("Bonnet", true, false) == null, "no pulling bonnet when rebuilt")
+	var rack := rebuilt.find_child("Bumper", true, false) as MeshInstance3D
+	_expect(-rack.global_position.z + TractorView.BUMPER_DEPTH_M / 2.0 > bumper_front_m,
+			"the weight rack reaches further than the bumper")
+	# On a weight box: the weights are the box's own plates, no yellow
+	# suitcase weights and no bracket.
+	rebuilt.look.style_id = "ss_round"
+	rebuilt.build(d)
+	var slabs := rebuilt.front_weights_node().get_children().filter(
+			func(s: Node) -> bool: return not s.is_queued_for_deletion())
+	_expect(rebuilt.weight_counts().x > 0 and slabs.size() == rebuilt.weight_counts().x
+			and slabs.all(func(s: Node) -> bool:
+				var m := (s as MeshInstance3D).material_override as StandardMaterial3D
+				return m != null and not m.albedo_color.is_equal_approx(TractorView.WEIGHT)),
+			"the weight box's own plates, no suitcase weights: %d" % slabs.size())
+	rebuilt.look.style_id = "ss_square"
+	rebuilt.build(d)
+	_expect(not rebuilt.cab_camera().get_cull_mask_value(People.HELMET_LAYER),
+			"the cab camera, inside the helmet, leaves it out")
+	# The tread as fitted: a puller tire's many low bars, a farm tire's
+	# few tall lugs, one cut for pulling between.
+	var lugs := {}
+	for tread: String in ["puller", "cut", "farm"]:
+		d["rear_tire_tread"] = tread
+		rebuilt.build(d)
+		lugs[tread] = rebuilt.rear_lug_count()
+	_expect(lugs["puller"] > lugs["cut"] and lugs["cut"] > lugs["farm"] and lugs["farm"] > 0,
+			"the tread drawn as fitted: %s" % lugs)
+	rebuilt.free()
+	_expect(farm.find_child("Helmet", true, false) == null, "no helmet in a farm cab")
+	# The Supersport classes ask a full roll cage and no cab: every rebuilt
+	# model has one.
+	for id: String in TractorModels.STYLES:
+		var style: Dictionary = TractorModels.STYLES[id]
+		_expect(style["body"] != TractorModels.REBUILT or style["cab"] == "cell",
+				"a full roll cage round the seat, no cab: %s" % id)
+	# The Sport and Supersport classes allow one turbo, one stage: every
+	# pulling or rebuilt model has one stack.
+	for id: String in TractorModels.STYLES:
+		var style: Dictionary = TractorModels.STYLES[id]
+		_expect(not TractorModels.on_pulling_frame(style) or style["stack"] != "twin",
+				"one stack off the single turbo: %s" % id)
 
 
 # Each class looks its own: every class of the career has a scheme, no two

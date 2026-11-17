@@ -275,6 +275,19 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     return out;
 }
 
+// The tread's name, for drawing (tire::Tread, from the tire's file).
+const char* TractorPullRun::tread_name(tire::Tread tread) {
+    switch (tread) {
+        case tire::Tread::kCut:
+            return "cut";
+        case tire::Tread::kPuller:
+            return "puller";
+        case tire::Tread::kFarm:
+            break;
+    }
+    return "farm";
+}
+
 godot::Dictionary TractorPullRun::tractor_dimensions(const vehicle::Params& tractor) {
     godot::Dictionary out;
     const chassis::Params& chassis = tractor.chassis;
@@ -284,6 +297,7 @@ godot::Dictionary TractorPullRun::tractor_dimensions(const vehicle::Params& trac
     out["front_track_m"] = chassis.front_track_m;
     out["rear_tire_radius_m"] = tractor.rear_tire.size.radius_m;
     out["rear_tire_width_m"] = tractor.rear_tire.size.section_width_m;
+    out["rear_tire_tread"] = tread_name(tractor.rear_tire.tread);
     out["front_tire_radius_m"] = tractor.front_tire.radius_m;
     out["front_tire_width_m"] = tractor.front_tire.section_width_m;
     out["hitch_behind_rear_axle_m"] = chassis.hitch_behind_rear_axle_m;
