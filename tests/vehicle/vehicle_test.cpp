@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 
@@ -943,6 +944,22 @@ TEST(VehicleBrakes, OneBrakeTurnsTheTractorToItsSide) {
     left.run(4, 5000.0, false, 12.0);
     EXPECT_EQ(left.state.chassis.heading_rad, -right.state.chassis.heading_rad);
     EXPECT_EQ(left.state.chassis.lateral_position_m, -right.state.chassis.lateral_position_m);
+}
+
+// The pedals brake with a finite torque, never negative; the hold clamps
+// at least as hard (or 0: as the pedals).
+TEST(VehicleBrakes, ValidateNamesTheBadTorque) {
+    EXPECT_FALSE(validate(Brakes{.max_torque_nm = 8000.0}));
+    EXPECT_FALSE(validate(Brakes{.max_torque_nm = 8000.0, .hold_torque_nm = 8000.0}));
+    EXPECT_EQ(validate(Brakes{.max_torque_nm = std::nan("")}), BrakesError::kPedalTorque);
+    EXPECT_EQ(validate(Brakes{.max_torque_nm = -1.0}), BrakesError::kPedalTorque);
+    EXPECT_EQ(validate(Brakes{.max_torque_nm = 8000.0, .hold_torque_nm = -1.0}),
+              BrakesError::kHoldTorque);
+    EXPECT_EQ(validate(Brakes{.max_torque_nm = 8000.0, .hold_torque_nm = 4000.0}),
+              BrakesError::kHoldTorque);
+    EXPECT_EQ(validate(Brakes{.max_torque_nm = 8000.0,
+                              .hold_torque_nm = std::numeric_limits<double>::infinity()}),
+              BrakesError::kHoldTorque);
 }
 
 // The start's brake hold clamps both sides at the brakes' hold torque,

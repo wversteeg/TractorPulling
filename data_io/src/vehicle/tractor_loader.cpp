@@ -112,20 +112,19 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
     return result.value();
 }
 
-// The brakes: the pedals' torque, and the start's hold at least as hard
-// (or 0: the pedals' torque).
+// vehicle::validate's verdict on the brakes, named by field.
 std::optional<LoadError> check_brakes(const vehicle::Brakes& brakes, std::string_view source) {
-    if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
-        return detail::make_error(source, "tractor.brakes.max_torque_nm",
-                                  "must be a finite number, not negative");
+    const std::optional<vehicle::BrakesError> error = vehicle::validate(brakes);
+    if (!error) {
+        return std::nullopt;
     }
-    if (!std::isfinite(brakes.hold_torque_nm) || brakes.hold_torque_nm < 0.0) {
-        return detail::make_error(source, "tractor.brakes.hold_torque_nm",
-                                  "must be a finite number, not negative");
-    }
-    if (brakes.hold_torque_nm > 0.0 && brakes.hold_torque_nm < brakes.max_torque_nm) {
-        return detail::make_error(source, "tractor.brakes.hold_torque_nm",
-                                  "must be 0 (the pedals' torque) or at least max_torque_nm");
+    switch (*error) {
+        case vehicle::BrakesError::kPedalTorque:
+            return detail::make_error(source, "tractor.brakes.max_torque_nm",
+                                      "must be a finite number, not negative");
+        case vehicle::BrakesError::kHoldTorque:
+            return detail::make_error(source, "tractor.brakes.hold_torque_nm",
+                                      "must be 0 (the pedals' torque) or at least max_torque_nm");
     }
     return std::nullopt;
 }

@@ -35,10 +35,22 @@ struct Brakes {
     /// Braking torque on one side's wheels while the start's brake hold
     /// holds them (Input::hold_brakes): clamped harder than a foot presses,
     /// to hold a loaded engine while the turbo spools ("optoeren") [N·m].
-    /// 0: max_torque_nm; otherwise at least max_torque_nm. The pedals, and the easy layout's
-    /// steering brake, brake at max_torque_nm as ever.
+    /// 0: max_torque_nm; otherwise at least max_torque_nm. The pedals, and
+    /// the easy layout's steering brake, brake at max_torque_nm as ever.
     double hold_torque_nm = 0.0;
 };
+
+/// Which of the brakes' torques is invalid.
+enum class BrakesError : std::uint8_t {
+    /// max_torque_nm: not a finite number, or negative.
+    kPedalTorque,
+    /// hold_torque_nm: not a finite number, negative, or softer than the
+    /// pedals (and not 0).
+    kHoldTorque,
+};
+
+/// What is wrong with `brakes`, if anything.
+[[nodiscard]] std::optional<BrakesError> validate(const Brakes& brakes) noexcept;
 
 /// The differential between the rear sides. An open one gives both sides
 /// the same torque, so a side on a weak spot spins and costs the other side

@@ -8,6 +8,17 @@
 
 namespace tp::vehicle {
 
+std::optional<BrakesError> validate(const Brakes& brakes) noexcept {
+    if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
+        return BrakesError::kPedalTorque;
+    }
+    if (!std::isfinite(brakes.hold_torque_nm) || brakes.hold_torque_nm < 0.0 ||
+        (brakes.hold_torque_nm > 0.0 && brakes.hold_torque_nm < brakes.max_torque_nm)) {
+        return BrakesError::kHoldTorque;
+    }
+    return std::nullopt;
+}
+
 std::optional<ParamError> validate(const Params& params) noexcept {
     if (engine::validate(params.engine)) {
         return ParamError::kEngine;
@@ -33,10 +44,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         tire::validate(params.steering.front_tires)) {
         return ParamError::kSteering;
     }
-    if (!std::isfinite(params.brakes.max_torque_nm) || params.brakes.max_torque_nm < 0.0 ||
-        !std::isfinite(params.brakes.hold_torque_nm) || params.brakes.hold_torque_nm < 0.0 ||
-        (params.brakes.hold_torque_nm > 0.0 &&
-         params.brakes.hold_torque_nm < params.brakes.max_torque_nm)) {
+    if (validate(params.brakes)) {
         return ParamError::kBrakes;
     }
     if (!std::isfinite(params.differential.coupling_nm_s_per_rad) ||

@@ -198,7 +198,8 @@ TEST(TractorLoader, ReadsTheBrakeHoldsTorque) {
     EXPECT_EQ(held.value().brakes.hold_torque_nm, 20000.0);
     EXPECT_NE(
         error_of(with("max_torque_nm = 8000.0", "max_torque_nm = 8000.0\nhold_torque_nm = -1.0"))
-            .find("tractor.brakes.hold_torque_nm: must be a finite number, not negative"),
+            .find("tractor.brakes.hold_torque_nm: must be 0 (the pedals' torque) or at least "
+                  "max_torque_nm"),
         std::string::npos);
     EXPECT_NE(
         error_of(with("max_torque_nm = 8000.0", "max_torque_nm = 8000.0\nhold_torque_nm = 4000.0"))
