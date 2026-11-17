@@ -254,30 +254,41 @@ TEST(Run, WaitingAtTheStartIsNotAStop) {
     EXPECT_FALSE(state.result.has_value());
 }
 
-// An engine that stalls before the sled has pulled kStallRestartsWithin_m
-// (the clutch let in hard against the start's brake hold) does not end the
-// run: the pull has not begun (turn::step starts the engine again). Further
-// on, a stall is a stop.
-TEST(Run, AStallBeforeTheSledMovesIsNoStop) {
-    const pull::Model model = model_with(sled::testing::reference_params());
-    for (const double nudged_m : {0.0, 0.5 * kStallRestartsWithin_m}) {
-        State state = start(model);
-        state.pull.sled.position_m += nudged_m;
-        state.pull.sled.distance_m = nudged_m;
-        state.pull.tractor.engine.running = false;
-        for (int i = 0; i < 100; ++i) {
-            step(state, model, kRules, {}, kDt_s);
-        }
-        EXPECT_FALSE(state.result.has_value()) << nudged_m << " m";
-    }
+// An engine stalled before the sled has pulled kStallRestartsWithin_m:
+// with a driver who starts it again (Rules::restarts_a_stall, the game's
+// turn) it is no stop, the pull not yet begun; without one (a scripted
+// puller) it ends the run, stalled, the sled moved or not. Further on a
+// stall is a stop either way.
+State stalled_at(const pull::Model& model, double pulled_m) {
     State state = start(model);
-    const double past_m = 2.0 * kStallRestartsWithin_m;
-    state.pull.sled.position_m += past_m;
-    state.pull.sled.distance_m = past_m;
+    state.pull.sled.position_m += pulled_m;
+    state.pull.sled.distance_m = pulled_m;
     state.pull.tractor.engine.running = false;
-    step(state, model, kRules, {}, kDt_s);
-    ASSERT_TRUE(state.result.has_value());
-    EXPECT_EQ(state.result.value_or(Result{}).ending, Ending::kStalled);
+    return state;
+}
+
+TEST(Run, AStallBeforeTheSledMovesIsNoStopWithADriver) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    Rules with_a_driver = kRules;
+    with_a_driver.restarts_a_stall = true;
+    for (const double pulled_m : {0.0, 0.5 * kStallRestartsWithin_m}) {
+        State driven = stalled_at(model, pulled_m);
+        for (int i = 0; i < 100; ++i) {
+            step(driven, model, with_a_driver, {}, kDt_s);
+        }
+        EXPECT_FALSE(driven.result.has_value()) << pulled_m << " m";
+        State scripted = stalled_at(model, pulled_m);
+        step(scripted, model, kRules, {}, kDt_s);
+        EXPECT_EQ(scripted.result.value_or(Result{}).ending, Ending::kStalled) << pulled_m << " m";
+    }
+    // From the line on (a hair past it: the start plus the line need not
+    // add up exactly), a stall is a stop.
+    for (const double pulled_m : {kStallRestartsWithin_m + 1e-9, 2.0 * kStallRestartsWithin_m}) {
+        State driven = stalled_at(model, pulled_m);
+        step(driven, model, with_a_driver, {}, kDt_s);
+        ASSERT_TRUE(driven.result.has_value()) << pulled_m << " m";
+        EXPECT_EQ(driven.result.value_or(Result{}).ending, Ending::kStalled);
+    }
 }
 
 // A full pull ends at the end of the track; the pull-off sled stops the

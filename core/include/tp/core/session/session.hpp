@@ -94,7 +94,8 @@ struct Controls {
     /// brakes clamped (controls::ProInput::hold_brakes,
     /// controls::EasyInput::hold_brakes) until the boost reaches
     /// hold_until_boost, a share of full boost, 0 to 1 (0, or not a number:
-    /// while asked; above 1 reads as 1).
+    /// while asked; above 1 reads as 1). Asked for before the green flag it
+    /// is armed, and clamps from the flag on.
     bool hold_brakes = false;
     double hold_until_boost = 0.0;
 };

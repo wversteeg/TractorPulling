@@ -279,7 +279,10 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
         if (pull.sled.position_m - model.sled_start_m() < run::kStallRestartsWithin_m) {
             restart_if_stalled(pull, model, input);
         }
-        const pull::Output out = run::step(state.run, model, rules, input, dt_s);
+        // The driver starts a stall at the start again (above): no stop.
+        run::Rules with_a_driver = rules;
+        with_a_driver.restarts_a_stall = true;
+        const pull::Output out = run::step(state.run, model, with_a_driver, input, dt_s);
         if (state.run.result && !state.from_the_parking) {
             // At the line the pull is the whole turn.
             state.stage = Stage::kParked;

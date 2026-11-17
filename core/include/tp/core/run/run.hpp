@@ -20,6 +20,10 @@ struct Rules {
     /// chalk line disqualifies the pull; past it, it may [m]. The sled may
     /// always cross the lines.
     double full_pull_line_m = 0.0;
+    /// A driver at the wheel starts an engine stalled before the sled has
+    /// pulled kStallRestartsWithin_m again (turn::step), so such a stall is
+    /// no stop. Without one (a scripted puller) it ends the run, stalled.
+    bool restarts_a_stall = false;
 };
 
 enum class ParamError : std::uint8_t {

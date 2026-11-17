@@ -22,14 +22,19 @@ Ending why_it_stopped(const pull::State& pull, const pull::Output& out) noexcept
 
 // Whether the sled has stopped for good, and why: any stop ends the run,
 // measured where the sled stands, except a sled nudged a few centimetres
-// with the tractor still able to pull (kStopCountsFrom_m), and a stall
-// before the sled has pulled kStallRestartsWithin_m: the engine is started
-// again (turn::step), the pull not yet begun.
-std::optional<Ending> stopped(const pull::State& pull, const pull::Output& out,
+// with the tractor still able to pull (kStopCountsFrom_m). A stall before
+// the sled has pulled kStallRestartsWithin_m: a driver who starts the
+// engine again (Rules::restarts_a_stall) has not begun the pull; without
+// one, it ends the run there, the sled moved or not.
+std::optional<Ending> stopped(const pull::State& pull, const pull::Output& out, const Rules& rules,
                               bool sled_was_moving, double pulled_m) noexcept {
-    const bool stalled_at_the_start =
-        !pull.tractor.engine.running && pulled_m < kStallRestartsWithin_m;
-    if (!sled_was_moving || pull.sled.velocity_m_s != 0.0 || stalled_at_the_start) {
+    if (pull.sled.velocity_m_s != 0.0) {
+        return std::nullopt;
+    }
+    if (!pull.tractor.engine.running && pulled_m < kStallRestartsWithin_m) {
+        return rules.restarts_a_stall ? std::nullopt : std::optional{Ending::kStalled};
+    }
+    if (!sled_was_moving) {
         return std::nullopt;
     }
     const Ending ending = why_it_stopped(pull, out);
@@ -143,7 +148,7 @@ pull::Output step(State& state, const pull::Model& model, const Rules& rules,
     } else if (pulled_m >= rules.track_length_m) {
         finish(Ending::kFullPull, rules.track_length_m);
     } else if (const std::optional<Ending> stop =
-                   stopped(state.pull, out, sled_was_moving, pulled_m)) {
+                   stopped(state.pull, out, rules, sled_was_moving, pulled_m)) {
         finish(*stop, pulled_m);
     } else if (time_s >= rules.max_duration_s) {
         finish(Ending::kTimedOut, pulled_m);

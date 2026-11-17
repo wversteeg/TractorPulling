@@ -523,6 +523,22 @@ TEST(Session, ShowsTheBrakeHoldLettingGo) {
     EXPECT_FALSE(session.current().hold_released);
 }
 
+// Asked for before the green flag, the brake hold is only armed: it would
+// stop the tractor creeping up to the sled, and in the easy layout keep the
+// flag down. It clamps from the flag on (ShowsTheBrakeHoldLettingGo).
+TEST(Session, TheBrakeHoldClampsFromTheFlag) {
+    for (const Layout layout : {Layout::kPro, Layout::kEasy}) {
+        session::Setup setup = reference_setup(layout);
+        setup.parking = turn::Parking{.x_m = -15.0, .y_m = -10.0};
+        Session session = make(setup);
+        const Controls hold{.throttle = 1.0, .gear = 6, .hold_brakes = true};
+        session.advance(hold, kNanosecondsPerSecond / 10);
+        EXPECT_NE(session.current().stage, turn::Stage::kPulling);
+        EXPECT_FALSE(session.current().brakes_held);
+        EXPECT_FALSE(session.current().hold_released);
+    }
+}
+
 TEST(Blend, GoesFromOneSnapshotToTheNext) {
     const Snapshot from{
         .time_s = 1.0, .tractor_x_m = 10.0, .boost = 0.4, .gear = 5, .sled_x_m = 2.0};
