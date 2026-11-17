@@ -142,10 +142,10 @@ package "GDScript (app/godot/scripts)" {
   class Flagman {
     +stand(at, facing)
     +use_lamp(lamp)
-    +show_signal(green, raise, wave, delta)
+    +show_signal(green, raise, wave, delta, lit)
     +colour_name() : String
     +raised() : bool
-    +holds_lamp() : bool
+    +holds_lamp(), lamp_lit() : bool
     +shown_signal() : String
     +hand_position(), signal_position() : Vector3
     +cloth_normal() : Vector3
