@@ -596,6 +596,9 @@ func _build(error: String) -> bool:
 			"moisture": dimensions.get("moisture", 0.15)}
 	venue_view.set_look(look)
 	VenueView.light(world, sun, venue_view.look()["time"])
+	# In the evening the officials signal with light wands, not flags.
+	for official: Flagman in [flagman, end_flagman]:
+		official.use_lamp(venue_view.look()["time"] == "evening")
 	venue_view.build(dimensions)
 	# The chequered flag at the full-pull line; an event's pull sets the
 	# flags again (_start_event_pull).
