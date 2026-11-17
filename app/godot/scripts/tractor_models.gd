@@ -24,8 +24,9 @@
 #   pulling turbo). The Sport and Supersport classes allow one turbo, one
 #   stage: their tractors have one stack;
 # - cell: a cell's tubes, "black", "chrome" or "paint" (the body's);
-# - nose: a pulling frame's front, "bumper" (just past the nose) or "rack"
-#   (a weight rack out ahead of the grille); none on a farm tractor;
+# - nose: a pulling frame's front, "bumper" (just past the nose), "rack"
+#   (a weight rack out ahead of the grille) or "box" (a big weight box in
+#   the trim); none on a farm tractor;
 # - fenders: "round" (an arc of panels), "flat" (a flat top over the wheel,
 #   a modern tractor's) or "wide" (an arc wider than the tire);
 # - beacon, roof_lamps, grille_lamps, chrome: extras.
@@ -77,15 +78,15 @@ const STYLES := {
 	# its maker's hood and grille (the rules' "look of the farm tractor"):
 	# an eighties tractor's square one, an older round one, a modern sloped
 	# one; no cab but a full roll cage round the seat (a cell of arched
-	# hoops), as the class asks; one big stack off the single turbo, and
-	# most a weight rack out ahead of the grille.
+	# hoops), as the class asks; one big stack off the single turbo, and a
+	# weight rack or a big weight box out ahead of the grille.
 	"ss_square": {"body": REBUILT, "hood": "square", "hood_height": 1.05, "cab": "cell",
 			"cell": "black", "cab_height": 1.0, "roof": "flat", "stack": "fat",
 			"fenders": "wide", "nose": "rack", "beacon": false, "roof_lamps": false,
 			"grille_lamps": false, "chrome": false},
 	"ss_round": {"body": REBUILT, "hood": "round", "hood_height": 1.0, "cab": "cell",
 			"cell": "chrome", "cab_height": 1.0, "roof": "flat", "stack": "tall",
-			"fenders": "round", "nose": "bumper", "beacon": false, "roof_lamps": false,
+			"fenders": "round", "nose": "box", "beacon": false, "roof_lamps": false,
 			"grille_lamps": true, "chrome": true},
 	"ss_low": {"body": REBUILT, "hood": "square", "hood_height": 0.84, "cab": "cell",
 			"cell": "black", "cab_height": 0.92, "roof": "flat", "stack": "fat",
@@ -93,11 +94,11 @@ const STYLES := {
 			"grille_lamps": false, "chrome": true},
 	"ss_sloped": {"body": REBUILT, "hood": "sloped", "hood_height": 1.05, "cab": "cell",
 			"cell": "paint", "cab_height": 1.0, "roof": "flat", "stack": "fat",
-			"fenders": "flat", "nose": "rack", "beacon": false, "roof_lamps": false,
+			"fenders": "flat", "nose": "box", "beacon": false, "roof_lamps": false,
 			"grille_lamps": true, "chrome": false},
 	"ss_high": {"body": REBUILT, "hood": "square", "hood_height": 1.15, "cab": "cell",
 			"cell": "chrome", "cab_height": 1.04, "roof": "flat", "stack": "single",
-			"fenders": "wide", "nose": "bumper", "beacon": false, "roof_lamps": false,
+			"fenders": "wide", "nose": "box", "beacon": false, "roof_lamps": false,
 			"grille_lamps": false, "chrome": true},
 }
 

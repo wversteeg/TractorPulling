@@ -420,6 +420,8 @@ func _check_floodlight_reach(venue: VenueView, dimensions: Dictionary) -> void:
 func _check_pulling_look(dimensions: Dictionary) -> void:
 	var farm: TractorView = _pull.get("tractor_view")
 	_expect(not farm.pulling_look(), "the farm tractor drawn as one")
+	_expect(dimensions.get("rear_tire_tread", "") == "farm",
+			"the farm tractor's tires drawn as farm tires: %s" % dimensions.get("rear_tire_tread"))
 	_expect(farm.find_child("Hood", true, false) != null, "the farm tractor's hood")
 	_expect(farm.find_child("Bonnet", true, false) == null, "no pulling bonnet on a farm tractor")
 	var pulling := TractorView.new()
@@ -456,6 +458,15 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 			"the weight rack reaches further than the bumper")
 	_expect(not rebuilt.cab_camera().get_cull_mask_value(People.HELMET_LAYER),
 			"the cab camera, inside the helmet, leaves it out")
+	# The tread as fitted: a puller tire's many low bars, a farm tire's
+	# few tall lugs, one cut for pulling between.
+	var lugs := {}
+	for tread: String in ["puller", "cut", "farm"]:
+		d["rear_tire_tread"] = tread
+		rebuilt.build(d)
+		lugs[tread] = rebuilt.rear_lug_count()
+	_expect(lugs["puller"] > lugs["cut"] and lugs["cut"] > lugs["farm"] and lugs["farm"] > 0,
+			"the tread drawn as fitted: %s" % lugs)
 	rebuilt.free()
 	_expect(farm.find_child("Helmet", true, false) == null, "no helmet in a farm cab")
 	# The Supersport classes ask a full roll cage and no cab: every rebuilt

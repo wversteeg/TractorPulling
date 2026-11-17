@@ -1,6 +1,7 @@
 #pragma once
 
 #include "tp/core/session/session.hpp"
+#include "tp/core/tire/tire.hpp"
 #include "tp/data/files.hpp"
 
 #include <cstdint>
@@ -73,7 +74,7 @@ public:
 
     /// The run's fixed sizes, to build the scene from (SI). The tractor's:
     /// wheelbase_m, rear_axle_height_m, rear_track_m, front_track_m,
-    /// rear_tire_radius_m, rear_tire_width_m, front_tire_radius_m,
+    /// rear_tire_radius_m, rear_tire_width_m, rear_tire_tread, front_tire_radius_m,
     /// front_tire_width_m, hitch_behind_rear_axle_m, hitch_height_m,
     /// wheelie_bar_behind_rear_axle_m, wheelie_bar_tip_height_m, the
     /// weights as set (ballast_mass_kg, and ballast_position from 0
@@ -92,6 +93,9 @@ public:
     /// get_dimensions()'s keys that are the tractor's alone, for `tractor`
     /// (TractorPullEvent::get_tractor_dimensions()).
     [[nodiscard]] static godot::Dictionary tractor_dimensions(const vehicle::Params& tractor);
+    /// The rear tires' tread for drawing (rear_tire_tread): "puller",
+    /// "farm" or "cut", by how their grip answers their spin.
+    [[nodiscard]] static const char* rear_tread(const tire::TractionCurve& traction);
 
     /// "easy" or "pro", the layout the run is played in; "" before setup().
     [[nodiscard]] godot::String get_layout() const;

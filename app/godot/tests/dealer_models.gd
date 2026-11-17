@@ -1,7 +1,8 @@
 # Pictures of every tractor model the dealers sell (TractorModels), for
 # reviewing them: each class's tractor (its real sizes, from the data)
 # in each of its models, painted in one of the dealer's colours, from the
-# front quarter and from the side, standing at the start line in the day.
+# front quarter and from the side, standing at the start line in the day;
+# the Supersport also on its modified farm tires.
 # Then each class's dealer screen (DealerScreen), as a career entering the
 # class sees it, on each of its models in turn. Each shot is a PNG in the
 # directory given after `--`. Needs a display (or Xvfb) and a renderer:
@@ -86,6 +87,20 @@ func _play() -> void:
 			await _shoot(name + "_front", Vector3(t + 4.6, -3.6, 1.8), Vector3(t + 1.0, 0.0, 1.0))
 			await _shoot(name + "_side", Vector3(t + 1.0, -6.4, 1.3), Vector3(t + 1.0, 0.0, 1.0))
 			shot += 1
+		# Supersport on either rear tire: the first model again on the
+		# modified farm tires (the tractor file has the puller tires).
+		if entry[0] == "supersport_3600":
+			var farm := dimensions.duplicate()
+			farm["rear_tire_tread"] = "farm"
+			var look := view.look.painted(PAINTS[0][0], PAINTS[0][1], PAINTS[0][2])
+			look.style_id = entry[3][0]
+			view.look = look
+			view.build(farm)
+			await _frames(4)
+			var t := float(run.get_snapshot()["tractor_x_m"])
+			var name := "%s_farm_tires" % entry[0]
+			await _shoot(name + "_front", Vector3(t + 4.6, -3.6, 1.8), Vector3(t + 1.0, 0.0, 1.0))
+			await _shoot(name + "_side", Vector3(t + 1.0, -6.4, 1.3), Vector3(t + 1.0, 0.0, 1.0))
 		_pull.remove_child(_camera)
 		_pull.queue_free()
 		await _frames(2)
