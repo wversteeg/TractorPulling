@@ -66,8 +66,8 @@ const BRAKE_COLOUR := Color(0.95, 0.3, 0.25, 0.9)
 # above the right brake (in the pro layout, between the gear buttons and the
 # gas; in the easy layout, which has no brakes, above the gear buttons), or
 # on the left (above the steering in the easy layout, above the left brake
-# in the pro layout). Over the right brake it is the pedal's width, its
-# text smaller.
+# in the pro layout). Over the right brake it is the pedal's width and the
+# gear buttons' height, its text smaller.
 const HOLD_SIZE := Vector2(170.0, 84.0)
 const HOLD_FONT_SIZE := 28
 const HOLD_OVER_BRAKE_FONT_SIZE := 21
@@ -240,7 +240,7 @@ func set_hold_place(place: int) -> void:
 			_anchor(hold_button, Vector2(1.0, 1.0), rect)
 		1:
 			if pro:
-				rect = _right_column(1, BRAKE_SIZE.x, HOLD_SIZE.y, BRAKE_SIZE.y + GAP)
+				rect = _right_column(1, BRAKE_SIZE.x, BUTTON_SIZE, BRAKE_SIZE.y + GAP)
 			else:
 				rect = _right_column(column, HOLD_SIZE.x, HOLD_SIZE.y, 3.0 * (BUTTON_SIZE + GAP))
 			_anchor(hold_button, Vector2(1.0, 1.0), rect)
