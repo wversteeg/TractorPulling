@@ -22,16 +22,15 @@ Ending why_it_stopped(const pull::State& pull, const pull::Output& out) noexcept
 
 // Whether the sled has stopped for good, and why: any stop ends the run,
 // measured where the sled stands, except a sled nudged a few centimetres
-// with the tractor still able to pull (kStopCountsFrom_m). An engine that
-// stalls before the sled moves (against the brake hold, or the clutch let
-// in too hard) ends it too: nothing in the pull starts it again.
+// with the tractor still able to pull (kStopCountsFrom_m), and a stall
+// before the sled has pulled kStallRestartsWithin_m: the engine is started
+// again (turn::step), the pull not yet begun.
 std::optional<Ending> stopped(const pull::State& pull, const pull::Output& out,
                               bool sled_was_moving, double pulled_m) noexcept {
-    if (pull.sled.velocity_m_s != 0.0) {
+    const bool stalled_at_the_start =
+        !pull.tractor.engine.running && pulled_m < kStallRestartsWithin_m;
+    if (!sled_was_moving || pull.sled.velocity_m_s != 0.0 || stalled_at_the_start) {
         return std::nullopt;
-    }
-    if (!sled_was_moving) {
-        return pull.tractor.engine.running ? std::nullopt : std::optional{Ending::kStalled};
     }
     const Ending ending = why_it_stopped(pull, out);
     if (ending == Ending::kStopped && pulled_m < kStopCountsFrom_m) {

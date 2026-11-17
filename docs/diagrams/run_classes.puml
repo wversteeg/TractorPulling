@@ -60,7 +60,7 @@ RunFns ..> Pull : steps
 Result ..> Sled : full pull:\npull-off on heavier()
 note bottom of RunFns
   the run ends at the sled's first stop after it has moved
-  (or a stall before it moves, at 0 m),
+  (a stall within kStallRestartsWithin_m is none: turn restarts the engine),
   measured where it stands, or with a full pull at the track's end;
   the clock is steps × dt, exact
 end note

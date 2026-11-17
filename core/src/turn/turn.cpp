@@ -116,8 +116,9 @@ void stop_at_the_fenders(pull::State& state, const pull::Model& model) noexcept 
     body.velocity_m_s = 0.0;
 }
 
-// Outside the pull the driver starts a stalled engine again, the clutch
-// pressed or the gear out, as a real one would before driving on.
+// Outside the pull, and in it before the sled has moved
+// (run::kStallRestartsWithin_m), the driver starts a stalled engine again,
+// the clutch pressed or the gear out, as a real one would before driving on.
 void restart_if_stalled(pull::State& state, const pull::Model& model,
                         const vehicle::Input& input) noexcept {
     engine::State& engine = state.tractor.engine;
@@ -273,6 +274,11 @@ pull::Output step(State& state, const pull::Model& model, const run::Rules& rule
     pull::State& pull = state.run.pull;
     if (state.stage == Stage::kPulling) {
         input.pull_on = true;
+        // A stall before the sled has moved is no stop (run::stopped): the
+        // driver starts the engine again, ready to pull.
+        if (pull.sled.position_m - model.sled_start_m() < run::kStallRestartsWithin_m) {
+            restart_if_stalled(pull, model, input);
+        }
         const pull::Output out = run::step(state.run, model, rules, input, dt_s);
         if (state.run.result && !state.from_the_parking) {
             // At the line the pull is the whole turn.
