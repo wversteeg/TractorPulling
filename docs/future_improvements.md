@@ -288,6 +288,10 @@ for the big features; they are repeated at the end for completeness.
   the chain tight; there is no false start (moving before the flag only
   lowers it again) and no time limit on the way to the sled or for the
   flag.
+- **The evening's light wand lights nothing.** It glows and has a halo,
+  but casts no light of its own: a renderer lights each mesh with only its
+  nearest few lights (8 on a phone), and a lamp in the official's hand
+  would take one from the floodlights on the track around it.
 - **The red flag is a signal only.** After the pull the officials wave red
   and the driver should close the throttle, but nothing counts against one
   who does not; the result is the sled's, at its stop.

@@ -141,9 +141,14 @@ package "GDScript (app/godot/scripts)" {
   }
   class Flagman {
     +stand(at, facing)
-    +show_signal(green, raise, wave, delta)
+    +use_lamp(lamp)
+    +show_signal(green, raise, wave, delta, lit)
     +colour_name() : String
     +raised() : bool
+    +holds_lamp(), lamp_lit() : bool
+    +shown_signal() : String
+    +hand_position(), signal_position() : Vector3
+    +cloth_normal() : Vector3
   }
   class TrackMarks {
     +build(dimensions)
@@ -152,6 +157,8 @@ package "GDScript (app/godot/scripts)" {
   }
   class People <<static>> {
     +{static} standing() : ArrayMesh
+    +{static} standing_without_arm() : ArrayMesh
+    +{static} arm() : ArrayMesh
     +{static} seated() : ArrayMesh
     +{static} material(shirt, skin) : ShaderMaterial
     +{static} one(seated, shirt) : MeshInstance3D
@@ -542,7 +549,7 @@ Pull *-- VenueView : the grandstand, crowd, fences,\nboards, scoreboard, sky, hi
 Pull *-- TrackMarks : ruts and the pan's band,\ncleared each pull
 Pull *-- TractorView
 Pull *-- "3" TractorView : the rivals in their bays\n(a whole turn)
-Pull *-- "2" Flagman : at the start and down the track:\ngreen while the pull is good, red to stop
+Pull *-- "2" Flagman : at the start and down the track:\ngreen while the pull is good, red to stop;\na light wand in the evening
 Pull *-- SledView
 Pull *-- ChainView
 Pull *-- CameraRig

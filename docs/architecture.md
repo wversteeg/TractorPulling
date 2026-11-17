@@ -284,7 +284,7 @@ distance. Each pull is the player's whole turn (`set_parking()`): from the
 bay in the parking (`VenueView`'s, beside the return lane on the right) to
 the sled and back, the rivals' tractors parked in the bays behind, two
 officials (`Flagman`, at the start and walking ahead of the tractor down
-the track) and the gantry's and the `Hud`'s lights showing the run's
+the track, with a flag, or a light wand in the evening) and the gantry's and the `Hud`'s lights showing the run's
 signal (green while the pull is good, red to wait or to stop), and the
 `Hud` saying what to do next; the result screen comes once the run says the turn is over.
 Who pulls next, and the standings, are the event's answer.
