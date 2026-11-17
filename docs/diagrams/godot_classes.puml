@@ -25,7 +25,7 @@ package "tp::godot_binding" {
     +setup_practice(event : TractorPullEvent, controls_path) : String
     +set_parking(x_m, right_of_lane_m)
     +clear_parking()
-    +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right,\n      hold_brakes = false)
+    +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right,\n      hold_brakes = false, hold_until_boost = 0)
     +advance(elapsed_ns) : int
     +get_dropped_ns() : int
     +get_snapshot() : Dictionary

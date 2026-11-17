@@ -172,6 +172,8 @@ const HOLD_UNTIL_M := 0.5
 var hold_auto_release := true
 var hold_release_boost := 0.75
 var _pulling_tractor := false
+# The run has held the brakes since HOLD was tapped (_show_hold).
+var _hold_seen := false
 # The pull being pulled is a practice pull (or autoplay's), not the event's.
 var practice := false
 # The season's next event is started and waits behind the start screen.
@@ -608,12 +610,21 @@ static func best_in_pull_off(log: Array, pull_off_round: int) -> float:
 
 
 # The brake hold's button while the pull is still to start on a pulling
-# tractor; the brakes let go at the settings' boost when they say so.
+# tractor. The run lets the brakes go at the settings' boost, step by step
+# (set_controls' hold_until_boost); the button follows it (brakes_held).
 func _show_hold(s: Dictionary) -> void:
 	controls.set_hold_available(_pulling_tractor and not autoplay
 			and s.get("stage", "") == "pulling" and float(s.get("pulled_m", 0.0)) < HOLD_UNTIL_M)
-	if controls.hold and hold_auto_release and float(s.get("boost", 0.0)) >= hold_release_boost:
+	# Only once the run has held since the tap: the frame after a tap may
+	# show the steps before it.
+	var held := bool(s.get("brakes_held", false))
+	if not controls.hold:
+		_hold_seen = false
+	elif held:
+		_hold_seen = true
+	elif _hold_seen and hold_auto_release:
 		controls.release_hold()
+		_hold_seen = false
 
 
 # Builds the views for the run just set up, if `error` is ""; false if not.
@@ -1088,7 +1099,8 @@ func _read_controls() -> void:
 	# pedals are latched together.
 	controls.latch_brakes(not run.get_snapshot().get("pull_rules", true))
 	run.set_controls(controls.throttle(), controls.clutch(), controls.gear, controls.steering(),
-			controls.brake_left(), controls.brake_right(), controls.hold)
+			controls.brake_left(), controls.brake_right(), controls.hold,
+			hold_release_boost if hold_auto_release else 0.0)
 
 
 func _show(delta: float) -> void:

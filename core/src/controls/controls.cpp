@@ -44,6 +44,19 @@ double guard_rad_s(const ClutchAssist& assist, const engine::Params& engine, dou
     return std::max(lugging_rad_s, engine.stall_omega_rad_s + band_rad_s);
 }
 
+// Whether the start's brake hold holds this step: asked for, and not yet
+// let go at its boost (a release stands until the hold is let go).
+bool holding(bool asked, double until_boost, double boost, AssistState& state) noexcept {
+    if (!asked) {
+        state.hold_released = false;
+        return false;
+    }
+    if (until_boost > 0.0 && boost >= until_boost) {
+        state.hold_released = true;
+    }
+    return !state.hold_released;
+}
+
 // How far the assist lets the clutch in after this step: in while the
 // engine holds the guard speed, out again below it, and out at the fastest
 // rate when the driver lifts off, when neutral is in, or before a shift.
@@ -170,6 +183,8 @@ vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& 
     state.steering = steering_after(params.steer_dead_zone, params.steer_rate_per_s, state.steering,
                                     signed_unit(input.steering), dt_s);
     ProInput shaped = input;
+    shaped.hold_brakes =
+        holding(input.hold_brakes, input.hold_until_boost, vehicle.engine.boost, state);
     shaped.steering =
         state.steering * steering_share_at_speed(tractor, vehicle.chassis.velocity_m_s,
                                                  params.steer_side_accel_m_s2);
@@ -181,8 +196,9 @@ vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexce
             .clutch_pedal = unit(input.clutch_pedal, kClutchPedalRest),
             .gear = input.gear,
             .steering_rad = signed_unit(input.steering) * tractor.steering.max_angle_rad,
-            .brake_left = input.hold_brakes ? 1.0 : unit(input.brake_left, kBrakeRest),
-            .brake_right = input.hold_brakes ? 1.0 : unit(input.brake_right, kBrakeRest)};
+            .brake_left = unit(input.brake_left, kBrakeRest),
+            .brake_right = unit(input.brake_right, kBrakeRest),
+            .hold_brakes = input.hold_brakes};
 }
 
 vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistState& assist,
@@ -190,6 +206,8 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
                     double dt_s) noexcept {
     const double throttle = unit(input.throttle, kThrottleRest);
     const int gear_in = state.driveline.gear;
+    const bool held =
+        holding(input.hold_brakes, input.hold_until_boost, state.engine.boost, assist);
     // A gear the gearbox does not have is held to its range: otherwise the
     // assist would keep the clutch out for a shift that never comes.
     // Reverse, where the gearbox has it, waits with the clutch out until the
@@ -211,7 +229,7 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
         throttle < params.clutch_assist.min_throttle || shifting || gear_in == driveline::kNeutral;
     assist.engagement =
         engagement_after(params.clutch_assist, assist.engagement, clutch_wanted_out, tractor.engine,
-                         throttle, state.engine.omega_rad_s, input.hold_brakes, dt_s);
+                         throttle, state.engine.omega_rad_s, held, dt_s);
 
     // The first stretch of travel turns the wheels; the rest brakes the
     // rear wheels on the inside of the turn.
@@ -234,17 +252,15 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     // the engine, and a brief lift in the pull barely brakes. The
     // steering's brake may add to one.
     const bool off_the_gas = throttle < params.clutch_assist.min_throttle;
-    // The brake hold for the start holds both, full.
-    double hold = off_the_gas && assist.engagement == 0.0 ? params.brake_off_the_gas : 0.0;
-    if (input.hold_brakes) {
-        hold = 1.0;
-    }
+    const double hold = off_the_gas && assist.engagement == 0.0 ? params.brake_off_the_gas : 0.0;
     return {.throttle = throttle,
             .clutch_pedal = clutch::pedal_for(tractor.clutch, assist.engagement),
             .gear = load_shift || (shifting && assist.engagement == 0.0) ? wanted_gear : gear_in,
             .steering_rad = std::copysign(wheels, steering) * tractor.steering.max_angle_rad,
             .brake_left = std::max(left ? brake : 0.0, hold),
-            .brake_right = std::max(left ? 0.0 : brake, hold)};
+            .brake_right = std::max(left ? 0.0 : brake, hold),
+            // The start's brake hold clamps both (vehicle::Brakes).
+            .hold_brakes = held};
 }
 
 }  // namespace tp::controls

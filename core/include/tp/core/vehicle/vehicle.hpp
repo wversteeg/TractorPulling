@@ -32,6 +32,12 @@ struct Steering {
 struct Brakes {
     /// Braking torque on one side's wheels at full pedal [N·m].
     double max_torque_nm = 0.0;
+    /// Braking torque on one side's wheels while the start's brake hold
+    /// holds them (Input::hold_brakes): clamped harder than a foot presses,
+    /// to hold a loaded engine while the turbo spools ("optoeren") [N·m].
+    /// 0: max_torque_nm. The pedals, and the easy layout's steering brake,
+    /// brake at max_torque_nm as ever.
+    double hold_torque_nm = 0.0;
 };
 
 /// The differential between the rear sides. An open one gives both sides
@@ -156,6 +162,9 @@ struct Input {
     /// Brake pedals for the left and right rear wheels, 0 to 1.
     double brake_left = 0.0;
     double brake_right = 0.0;
+    /// The start's brake hold: both sides held at Brakes::hold_torque_nm
+    /// (at least), whatever the pedals.
+    bool hold_brakes = false;
     /// The pull is on: moving off past kUnderWay_m_s arms the gearbox's
     /// floor (driveline::start_pull). Off (driving to the sled or away from
     /// it) any gear may be chosen, and the floor is cleared.

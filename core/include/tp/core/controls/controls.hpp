@@ -22,9 +22,14 @@ struct ProInput {
     double steering = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
-    /// Both brakes held full, whatever the pedals say: the brake hold for
-    /// the start, to build boost on the brakes (the puller's "optoeren").
+    /// The brake hold for the start, to build boost on the brakes (the
+    /// puller's "optoeren"): both brakes clamped (vehicle::Brakes::
+    /// hold_torque_nm), whatever the pedals say, until hold_until_boost.
     bool hold_brakes = false;
+    /// The hold lets go once the turbo's boost reaches this share of full
+    /// boost, and stays off until hold_brakes is let go and asked again
+    /// (AssistState::hold_released); 0: held while hold_brakes.
+    double hold_until_boost = 0.0;
 };
 
 /// The easy layout: the throttle, the gear and one steering control whose
@@ -37,11 +42,13 @@ struct EasyInput {
     int gear = driveline::kNeutral;
     /// -1 (full right) to 1 (full left).
     double steering = 0.0;
-    /// The brake hold for the start ("optoeren"): both brakes held full
+    /// The brake hold for the start ("optoeren"): both brakes clamped
     /// while the assist lets the clutch bite, the engine kept high in its
     /// revs (ClutchAssist::hold_guard_speed_share), so the load against the
-    /// brakes spools the turbo before the tractor moves.
+    /// brakes spools the turbo before the tractor moves; let go as
+    /// ProInput::hold_until_boost says.
     bool hold_brakes = false;
+    double hold_until_boost = 0.0;
 };
 
 /// Works the clutch for the easy layout. It lets the clutch in at a steady
@@ -139,6 +146,9 @@ struct AssistState {
     /// Where the steering is, following the control at the steering rate:
     /// -1 (full right) to 1 (full left), past the dead zone. Both layouts.
     double steering = 0.0;
+    /// The brake hold let go at its boost (hold_until_boost): it stays off
+    /// until the hold is let go and asked again. Both layouts.
+    bool hold_released = false;
 };
 
 /// Adds the assist's state to a replay hash: a front end replaying an easy
@@ -146,6 +156,7 @@ struct AssistState {
 constexpr void hash_append(hash::Fnv1a& hash, const AssistState& state) noexcept {
     hash.add(state.engagement);
     hash.add(state.steering);
+    hash.add(state.hold_released ? 1.0 : 0.0);
 }
 
 /// How much of the steering's range the control turns the wheels through at

@@ -41,6 +41,7 @@ package "tp::session" {
     +brake_left : double
     +brake_right : double
     +hold_brakes : bool, the start's brake hold
+    +hold_until_boost : double, let go at this boost
   }
   class Snapshot <<struct>> {
     +time_s : double, the pull's clock
@@ -53,6 +54,7 @@ package "tp::session" {
     +engine_omega_rad_s : double
     +engine_running : bool
     +boost : double
+    +brakes_held : bool, the start's hold holds
     +gear, lowest_gear : int
     +throttle, clutch_pedal : double
     +sled_x_m, sled_y_m, sled_heading_rad : double

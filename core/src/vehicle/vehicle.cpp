@@ -33,7 +33,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         tire::validate(params.steering.front_tires)) {
         return ParamError::kSteering;
     }
-    if (!std::isfinite(params.brakes.max_torque_nm) || params.brakes.max_torque_nm < 0.0) {
+    if (!std::isfinite(params.brakes.max_torque_nm) || params.brakes.max_torque_nm < 0.0 ||
+        !std::isfinite(params.brakes.hold_torque_nm) || params.brakes.hold_torque_nm < 0.0) {
         return ParamError::kBrakes;
     }
     if (!std::isfinite(params.differential.coupling_nm_s_per_rad) ||
@@ -608,9 +609,16 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         .common_slip_m_s = axle_rad_s * radius_m - ground_m_s,
         .dt_s = dt_s,
         .direction = direction};
+    // The start's brake hold clamps both sides at its own torque.
+    double hold_nm = 0.0;
+    if (input.hold_brakes) {
+        hold_nm = params.brakes.hold_torque_nm > 0.0 ? params.brakes.hold_torque_nm
+                                                     : params.brakes.max_torque_nm;
+    }
     const RearSolution solution = solve_rear_with_brakes(
-        state, model, problem, std::clamp(input.brake_left, 0.0, 1.0) * params.brakes.max_torque_nm,
-        std::clamp(input.brake_right, 0.0, 1.0) * params.brakes.max_torque_nm);
+        state, model, problem,
+        std::max(std::clamp(input.brake_left, 0.0, 1.0) * params.brakes.max_torque_nm, hold_nm),
+        std::max(std::clamp(input.brake_right, 0.0, 1.0) * params.brakes.max_torque_nm, hold_nm));
     const ChainSolution& chain = solution.chain;
 
     // Each side's traction at the solved speeds.

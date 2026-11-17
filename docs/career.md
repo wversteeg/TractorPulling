@@ -386,8 +386,9 @@ side by side, each fitted between events (K-6), each best somewhere:
   clutch): a tap holds both brakes; in the easy layout the clutch assist
   then lets the clutch bite, keeping the engine at 90 % of its rated
   speed. The brakes let go at the boost the settings name (50 to 80 % of
-  full boost) or at another tap. The Sport and Supersport brakes hold
-  that load in a pulling gear (12, 20 and 25 kN·m a side), so the tractor
+  full boost) or at another tap. The hold clamps the brakes harder than a
+  foot (`hold_torque_nm`: 12, 20 and 25 kN·m a side on the Sport and
+  Supersport tractors, the pedals' torque as before), so the tractor
   stands while its boost builds to three quarters within a few seconds
   (`BrakeHoldRuns.TheTractorStandsWhileTheBoostBuilds`). Without it the
   tractor moves off at about 10 % boost. The scripted rivals still launch

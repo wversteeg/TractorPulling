@@ -469,17 +469,14 @@ tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
     return setup;
 }
 
-// --hold-boost: on the brakes from the start until the boost reaches
-// `until_boost` of full boost, then off for good.
-struct BrakeHold {
-    std::optional<double> until_boost;
-    bool released = false;
-
-    bool held(double boost) {
-        released = released || !until_boost || boost >= *until_boost;
-        return !released;
+// --hold-boost: says so when the boost never reached the target, so the
+// brakes held to the end and the tractor never pulled.
+void warn_if_still_held(const tp::session::Session& session, const PullOptions& options) {
+    if (options.hold_boost && tp::session::Inspector::last_input(session).hold_brakes) {
+        std::cerr << "--hold-boost: the boost never reached " << *options.hold_boost
+                  << " of full boost; held to the end\n";
     }
-};
+}
 
 // How a run ended, and the session's state hash at its end.
 struct RunOutcome {
@@ -517,7 +514,6 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                                 .launch_hold_share = options.launch_hold_share.value_or(0.0),
                                 .launch_hold_max_s = kPullLaunchHoldMax_s};
     tp::driver::State driver;
-    BrakeHold hold{.until_boost = options.hold_boost};
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
         tp::session::Controls controls = run_controls(t_s, options, setup.tractor);
@@ -539,7 +535,9 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         if (downshifted) {
             controls.gear = gear;
         }
-        controls.hold_brakes = hold.held(tractor.engine.boost);
+        // --hold-boost: on the brake hold from the start; the assist lets it go.
+        controls.hold_brakes = options.hold_boost.has_value();
+        controls.hold_until_boost = options.hold_boost.value_or(0.0);
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
         const tp::pull::State& after = tp::session::Inspector::run_state(*session).pull;
@@ -590,6 +588,7 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                 << pull.tractor.chassis.velocity_m_s * kMetersPerSecondToKmh << '\n';
         }
     }
+    warn_if_still_held(*session, options);
     const std::optional<tp::run::Result>& result = session->result();
     if (!result) {
         return std::nullopt;
@@ -1195,6 +1194,10 @@ int run_command(const Options& options) {
     }
     if (options.easy_path && options.pro_path) {
         std::cerr << "--easy and --pro are two layouts: pick one\n";
+        return EXIT_FAILURE;
+    }
+    if (options.pull.hold_boost && !options.easy_path) {
+        std::cerr << "--hold-boost is the easy layout's brake hold: it needs --easy\n";
         return EXIT_FAILURE;
     }
     if (options.pull.launch_hold_share && (options.pull.dump || options.easy_path)) {

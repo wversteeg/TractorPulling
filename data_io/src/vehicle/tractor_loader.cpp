@@ -129,7 +129,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .max_angle_rad = units::deg_to_rad(reader.number("tractor.steering.max_angle_deg")),
         .front_tires = detail::read_cornering(reader, "tractor.steering.cornering"),
     };
-    const vehicle::Brakes brakes{.max_torque_nm = reader.number("tractor.brakes.max_torque_nm")};
+    const vehicle::Brakes brakes{
+        .max_torque_nm = reader.number("tractor.brakes.max_torque_nm"),
+        // Optional: without it the hold brakes as the pedals do.
+        .hold_torque_nm = reader.optional_number("tractor.brakes.hold_torque_nm").value_or(0.0)};
     // Optional: an open differential without it.
     const vehicle::Differential differential{
         .coupling_nm_s_per_rad =
@@ -207,6 +210,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
 
     if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
         return detail::make_error(source, "tractor.brakes.max_torque_nm",
+                                  "must be a finite number, not negative");
+    }
+    if (!std::isfinite(brakes.hold_torque_nm) || brakes.hold_torque_nm < 0.0) {
+        return detail::make_error(source, "tractor.brakes.hold_torque_nm",
                                   "must be a finite number, not negative");
     }
     if (!std::isfinite(differential.coupling_nm_s_per_rad) ||

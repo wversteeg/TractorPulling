@@ -91,9 +91,11 @@ struct Controls {
     double brake_left = 0.0;
     double brake_right = 0.0;
     /// The brake hold for the start ("optoeren"), either layout: both
-    /// brakes held full (controls::ProInput::hold_brakes,
-    /// controls::EasyInput::hold_brakes).
+    /// brakes clamped (controls::ProInput::hold_brakes,
+    /// controls::EasyInput::hold_brakes) until the boost reaches
+    /// hold_until_boost (0: while asked).
     bool hold_brakes = false;
+    double hold_until_boost = 0.0;
 };
 
 /// What a front end draws and shows after a step: plain data in SI units.
@@ -128,6 +130,9 @@ struct Snapshot {
     bool engine_running = false;
     /// The turbo's boost, 0 (none) to 1 (full): engine::State::boost.
     double boost = 0.0;
+    /// The start's brake hold holds the brakes now (Controls::hold_brakes,
+    /// not yet let go at its boost).
+    bool brakes_held = false;
     int gear = driveline::kNeutral;
     /// The lowest gear the gearbox goes into now (driveline::lowest_gear):
     /// once the pull is under way, down only as far as the powershift allows.

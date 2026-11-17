@@ -37,6 +37,8 @@ struct Launch {
     double boosted_at_s = -1.0;
     /// The tractor's fastest before then [m/s].
     double fastest_held_m_s = 0.0;
+    /// The boost when the assist let the brakes go.
+    double boost_at_release = 0.0;
     /// How far the pull went.
     double distance_m = 0.0;
 };
@@ -63,20 +65,22 @@ Launch on_the_brakes(const std::string& tractor_file, const std::string& sled_fi
     constexpr double kGo_s = 0.5;
     for (int i = 0; !state.result; ++i) {
         const double t_s = i * kDt_s;
-        const bool held = out.boosted_at_s < 0.0;
-        const controls::EasyInput in =
-            t_s < kGo_s ? controls::EasyInput{.hold_brakes = held}
-                        : controls::EasyInput{.throttle = 1.0, .gear = gear, .hold_brakes = held};
+        controls::EasyInput in{.hold_brakes = true, .hold_until_boost = target};
+        if (t_s >= kGo_s) {
+            in.throttle = 1.0;
+            in.gear = gear;
+        }
         const vehicle::Input input =
             controls::easy(in, easy, assist, setup.tractor, state.pull.tractor, kDt_s);
-        run::step(state, *model, setup.rules, input, kDt_s);
-        if (held) {
+        if (input.hold_brakes) {
             out.fastest_held_m_s =
                 std::max(out.fastest_held_m_s, std::abs(state.pull.tractor.chassis.velocity_m_s));
-            if (state.pull.tractor.engine.boost >= target) {
-                out.boosted_at_s = t_s;
-            }
+        } else if (out.boosted_at_s < 0.0) {
+            // The assist let go: the boost is up.
+            out.boosted_at_s = t_s;
+            out.boost_at_release = state.pull.tractor.engine.boost;
         }
+        run::step(state, *model, setup.rules, input, kDt_s);
     }
     out.distance_m = state.result.value_or(run::Result{}).distance_m;
     return out;
@@ -101,6 +105,7 @@ TEST(BrakeHoldRuns, TheTractorStandsWhileTheBoostBuilds) {
                           Case{"supersport_3600.toml", "supersport_3600.toml", 5}}) {
         const Launch launch = on_the_brakes(c.tractor, c.sled, c.gear, kTarget);
         EXPECT_GT(launch.boosted_at_s, 0.0) << c.tractor;
+        EXPECT_GE(launch.boost_at_release, kTarget) << c.tractor;
         EXPECT_LT(launch.boosted_at_s, kWithin_s) << c.tractor;
         EXPECT_LT(launch.fastest_held_m_s, kStanding_m_s) << c.tractor;
         EXPECT_GT(launch.distance_m, kPulls_m) << c.tractor;

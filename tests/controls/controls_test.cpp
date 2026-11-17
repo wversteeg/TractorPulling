@@ -277,17 +277,46 @@ TEST(Pro, MapsEachControlOnItsOwn) {
     EXPECT_DOUBLE_EQ(pro({.steering = 3.0}, tractor).steering_rad, max_rad);
 }
 
-// The brake hold for the start ("optoeren"): both brakes full, whatever the
-// pedals say; the other controls as they are.
+// The brake hold for the start ("optoeren") goes to the vehicle, which
+// clamps both brakes at their hold torque; the pedals and the other controls
+// as they are.
 TEST(Pro, TheBrakeHoldHoldsBothBrakes) {
     const vehicle::Params tractor = vehicle::testing::reference_params();
     const vehicle::Input in = pro(
         {.throttle = 1.0, .clutch_pedal = 0.3, .gear = 3, .brake_left = 0.2, .hold_brakes = true},
         tractor);
-    EXPECT_EQ(in.brake_left, 1.0);
-    EXPECT_EQ(in.brake_right, 1.0);
+    EXPECT_TRUE(in.hold_brakes);
+    EXPECT_EQ(in.brake_left, 0.2);
+    EXPECT_EQ(in.brake_right, 0.0);
     EXPECT_EQ(in.throttle, 1.0);
     EXPECT_EQ(in.clutch_pedal, 0.3);
+}
+
+// The hold lets go, step by step in the assist, once the turbo's boost
+// reaches hold_until_boost, and stays let go until it is let go and asked
+// again; without a boost it holds while asked.
+TEST(Pro, TheBrakeHoldLetsGoAtItsBoost) {
+    const vehicle::Params tractor = vehicle::testing::reference_params();
+    const std::optional<vehicle::Model> model = vehicle::Model::create(tractor);
+    if (!model) {
+        FAIL() << "the reference tractor was refused";
+    }
+    vehicle::State state = vehicle::initial_state(*model);
+    AssistState assist;
+    const ProInput held{.throttle = 1.0, .hold_brakes = true, .hold_until_boost = 0.6};
+    const auto step = [&](const ProInput& in, double boost) {
+        state.engine.boost = boost;
+        return pro(in, ProParams{}, assist, tractor, state, kDt_s).hold_brakes;
+    };
+    EXPECT_TRUE(step(held, 0.3));
+    EXPECT_TRUE(step(held, 0.59));
+    EXPECT_FALSE(step(held, 0.6)) << "let go at its boost";
+    EXPECT_FALSE(step(held, 0.2)) << "and stays let go while still asked";
+    EXPECT_FALSE(step(ProInput{.throttle = 1.0}, 0.2));
+    EXPECT_TRUE(step(held, 0.2)) << "asked again: holds again";
+    ProInput by_hand = held;
+    by_hand.hold_until_boost = 0.0;
+    EXPECT_TRUE(step(by_hand, 1.0)) << "no boost given: held while asked";
 }
 
 // A control that is not a number (a NaN from a front end's maths) reads as
@@ -534,8 +563,7 @@ TEST(ClutchAssist, OnTheBrakeHoldTheEngineWorksAgainstTheBrakes) {
         EasyInput in = launch(i * kDt_s);
         in.hold_brakes = true;
         const vehicle::Input out = easy(in, params, assist, tractor, state.pull.tractor, kDt_s);
-        EXPECT_EQ(out.brake_left, 1.0);
-        EXPECT_EQ(out.brake_right, 1.0);
+        EXPECT_TRUE(out.hold_brakes);
         run::step(state, model, kRules, out, kDt_s);
         fastest_m_s = std::max(fastest_m_s, std::abs(state.pull.tractor.chassis.velocity_m_s));
     }
@@ -770,7 +798,7 @@ TEST(Easy, ReplayMatchesRegression) {
     run::Result again;
     EXPECT_EQ(easy_hash(again), hash);
     EXPECT_EQ(again.distance_m, result.distance_m);
-    EXPECT_EQ(hash, 0x214502ef049ec961ULL);
+    EXPECT_EQ(hash, 0x028b3f5e0516a781ULL);
     // 91.96327862394119 m, every bit pinned.
     EXPECT_EQ(result.distance_m, 0x1.6fda65b62b0dap+6);
     EXPECT_EQ(result.ending, run::Ending::kStopped);

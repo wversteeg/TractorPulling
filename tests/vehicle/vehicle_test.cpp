@@ -52,6 +52,8 @@ struct Pull {
     double steering_rad = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
+    // The start's brake hold, from when the brakes come on.
+    bool hold_brakes = false;
     bool steered_in_the_air = false;
     // A brake that broke Coulomb friction (see brakes_right).
     bool brake_misbehaved = false;
@@ -73,7 +75,8 @@ struct Pull {
                         .gear = t_s < 0.5 ? driveline::kNeutral : gear,
                         .steering_rad = steering_rad,
                         .brake_left = t_s >= 6.0 ? brake_left : 0.0,
-                        .brake_right = t_s >= 6.0 ? brake_right : 0.0};
+                        .brake_right = t_s >= 6.0 ? brake_right : 0.0,
+                        .hold_brakes = t_s >= 6.0 && hold_brakes};
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
@@ -937,6 +940,33 @@ TEST(VehicleBrakes, OneBrakeTurnsTheTractorToItsSide) {
     left.run(4, 5000.0, false, 12.0);
     EXPECT_EQ(left.state.chassis.heading_rad, -right.state.chassis.heading_rad);
     EXPECT_EQ(left.state.chassis.lateral_position_m, -right.state.chassis.lateral_position_m);
+}
+
+// The start's brake hold clamps both sides at the brakes' hold torque,
+// harder than full pedal, whatever the pedals say; without a hold torque it
+// brakes as full pedal does.
+TEST(VehicleBrakes, TheHoldClampsAtItsOwnTorque) {
+    Pull pedals;
+    pedals.brake_left = 1.0;
+    pedals.brake_right = 1.0;
+    pedals.run(4, 5000.0, false, 12.0);
+    Pull as_pedals;
+    as_pedals.hold_brakes = true;
+    as_pedals.run(4, 5000.0, false, 12.0);
+    EXPECT_EQ(as_pedals.state.chassis.position_m, pedals.state.chassis.position_m);
+    Params harder = testing::reference_params();
+    harder.brakes.hold_torque_nm = 3.0 * harder.brakes.max_torque_nm;
+    const std::optional<Model> harder_model = Model::create(harder);
+    if (!harder_model) {
+        FAIL() << "a hold torque refused";
+    }
+    Pull held;
+    held.model = *harder_model;
+    held.state = initial_state(held.model);
+    held.hold_brakes = true;
+    held.run(4, 5000.0, false, 12.0);
+    EXPECT_LT(held.state.chassis.position_m, pedals.state.chassis.position_m);
+    EXPECT_EQ(held.state.chassis.heading_rad, 0.0);
 }
 
 TEST(VehicleBrakes, BothBrakesSlowItDownWithoutTurning) {
