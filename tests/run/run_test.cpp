@@ -254,6 +254,23 @@ TEST(Run, WaitingAtTheStartIsNotAStop) {
     EXPECT_FALSE(state.result.has_value());
 }
 
+// An engine that stalls before the sled moves (the clutch let in hard
+// against the start's brake hold) ends the run there, stalled at 0 m:
+// nothing in the pull would start it again.
+TEST(Run, AStallBeforeTheSledMovesEndsTheRun) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    State state = start(model);
+    step(state, model, kRules, {}, kDt_s);
+    EXPECT_FALSE(state.result.has_value());
+    state.pull.tractor.engine.running = false;
+    step(state, model, kRules, {}, kDt_s);
+    ASSERT_TRUE(state.result.has_value());
+    const Result result = state.result.value_or(Result{});
+    EXPECT_EQ(result.ending, Ending::kStalled);
+    EXPECT_EQ(result.distance_m, 0.0);
+    EXPECT_EQ(state.pull.sled.distance_m, 0.0) << "the sled never moved";
+}
+
 // A full pull ends at the end of the track; the pull-off sled stops the
 // same tractor short of it.
 TEST(Run, FullPullThenPullOffOnAHeavierSled) {

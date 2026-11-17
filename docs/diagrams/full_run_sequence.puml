@@ -19,6 +19,8 @@ loop until the run has a result (1 kHz)
     Run -> Run : result: full pull, track length
   else sled stopped after moving
     Run -> Run : result: distance where it stands;\nstalled / spun out / stopped
+  else engine stalled before the sled moved
+    Run -> Run : result: stalled, 0 m
   else safety cut-off
     Run -> Run : result: timed out
   end
