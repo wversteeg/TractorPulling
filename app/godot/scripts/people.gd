@@ -16,13 +16,47 @@ const PERSON_SHADER := preload("res://shaders/person.gdshader")
 static var _meshes := {}
 
 
+# Where a standing person's left shoulder is (+x is their left, as they
+# face +z), and how far from it their hand is [m]: arm() hangs from here.
+const SHOULDER_M := Vector3(0.24, 1.43, 0.0)
+const ARM_M := 0.62
+
+
 static func standing() -> ArrayMesh:
-	if _meshes.has("standing"):
-		return _meshes["standing"]
+	return _standing(true)
+
+
+# Standing without the left arm, for one who moves it: arm() at
+# SHOULDER_M, turned as they please (the flag official, Flagman).
+static func standing_without_arm() -> ArrayMesh:
+	return _standing(false)
+
+
+# An arm hanging straight down from the shoulder at the origin, the hand
+# ARM_M below it; vertex-coloured as the rest of a person, for the same
+# material().
+static func arm() -> ArrayMesh:
+	if _meshes.has("arm"):
+		return _meshes["arm"]
+	var tool := _begin()
+	Art.append_coloured(tool, _capsule(0.055, 0.36), _at(0.0, -0.16, 0.0), SHIRT_PART)
+	Art.append_coloured(tool, _capsule(0.048, 0.34), _at(0.0, -0.44, 0.0), SKIN_PART)
+	Art.append_coloured(tool, _sphere(0.055), _at(0.0, -ARM_M, 0.0), SKIN_PART)
+	tool.index()
+	_meshes["arm"] = tool.commit()
+	return _meshes["arm"]
+
+
+static func _standing(left_arm: bool) -> ArrayMesh:
+	var key := "standing" if left_arm else "standing_without_arm"
+	if _meshes.has(key):
+		return _meshes[key]
 	var tool := _begin()
 	for side: float in [-1.0, 1.0]:
 		Art.append_coloured(tool, _box(Vector3(0.11, 0.07, 0.26)), _at(side * 0.1, 0.035, 0.04), Color(SHOES, 1.0))
 		Art.append_coloured(tool, _capsule(0.075, 0.86), _at(side * 0.1, 0.49, 0.0), Color(JEANS, 1.0))
+		if side > 0.0 and not left_arm:
+			continue
 		# Arms hang a little out from the body: a sleeve, then the forearm.
 		Art.append_coloured(tool, _capsule(0.055, 0.34), _at(side * 0.27, 1.27, 0.0, 0.0, 0.0, side * 0.12),
 				SHIRT_PART)
@@ -30,8 +64,8 @@ static func standing() -> ArrayMesh:
 				SKIN_PART)
 	_add_upper_body(tool, 0.0)
 	tool.index()
-	_meshes["standing"] = tool.commit()
-	return _meshes["standing"]
+	_meshes[key] = tool.commit()
+	return _meshes[key]
 
 
 # Sitting on a bench or a seat 0.45 m up, thighs forward, hands on the

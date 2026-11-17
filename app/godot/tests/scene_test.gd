@@ -214,6 +214,47 @@ func _check() -> void:
 	_check_cameras(cameras as CameraRig, tractor as TractorView, _pull.get("sled_view"))
 	_check_pulling_look(dimensions)
 	_check_class_looks(dimensions)
+	_check_flagman()
+
+
+# The official holds the flag in the hand at the end of the arm, low and
+# raised: out to the side and up when low, overhead raised, its cloth
+# facing the tractor. In the evening a light wand instead.
+func _check_flagman() -> void:
+	var official := Flagman.new()
+	root.add_child(official)
+	official.stand(Vector3.ZERO, Vector3(0.0, 0.0, 10.0))
+	var shoulder := official.to_global(People.SHOULDER_M)
+	official.show_signal(false, 0.0, false, 0.0)
+	var low_hand := official.hand_position()
+	var low_tip := official.signal_position()
+	_expect(is_equal_approx(low_hand.distance_to(shoulder), People.ARM_M),
+			"the flag in the hand, an arm from the shoulder: %s, %s" % [low_hand, shoulder])
+	_expect(low_hand.y < shoulder.y and low_tip.y > low_hand.y and low_tip.x > low_hand.x + 0.5,
+			"held low, the flag out to the side and up: hand %s, tip %s" % [low_hand, low_tip])
+	_expect(absf(official.cloth_normal().dot(Vector3(0.0, 0.0, 1.0))) > 0.95,
+			"the cloth faces the tractor: %s" % official.cloth_normal())
+	official.show_signal(true, 1.0, true, 0.3)
+	var high_hand := official.hand_position()
+	var high_tip := official.signal_position()
+	_expect(is_equal_approx(high_hand.distance_to(shoulder), People.ARM_M),
+			"waved overhead, still in the hand: %s" % high_hand)
+	_expect(high_hand.y > 1.9 and high_tip.y > high_hand.y + 0.8,
+			"raised, the flag overhead: hand %s, tip %s" % [high_hand, high_tip])
+	_expect(absf(official.cloth_normal().dot(Vector3(0.0, 0.0, 1.0))) > 0.95,
+			"raised, the cloth still faces the tractor: %s" % official.cloth_normal())
+	_expect(official.shown_signal() == "flag" and not official.holds_lamp(), "a flag by day")
+	official.use_lamp(true)
+	official.show_signal(true, 1.0, false, 0.0)
+	var wand_tip := official.signal_position()
+	_expect(official.shown_signal() == "lamp" and official.colour_name() == "green"
+			and wand_tip.y > official.hand_position().y,
+			"in the evening a light wand, held up: %s" % wand_tip)
+	_expect(official.lamp_lit(), "the wand lit while it signals")
+	official.show_signal(false, 0.0, false, 0.0, false)
+	_expect(not official.lamp_lit() and official.colour_name() == "red",
+			"no signal yet: the wand dark, not a glowing red stop")
+	official.free()
 
 
 # The rev counter's ticks at or past the engine's high idle.

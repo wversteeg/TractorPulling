@@ -7,6 +7,9 @@ uniform vec4 colour : source_color = vec4(0.9, 0.2, 0.15, 1.0);
 uniform float phase = 0.0;
 // Above 0, a black-and-white chequered flag this many squares long.
 uniform float chequers = 0.0;
+// Above 0, the cloth glows this share of its own colour, so a flag held
+// low in a person's shadow still reads from the cab.
+uniform float glow = 0.0;
 
 void vertex() {
 	float free_share = UV.x;
@@ -25,5 +28,6 @@ void fragment() {
 		base = mod(squares, 2.0) < 0.5 ? vec3(0.95) : vec3(0.05);
 	}
 	ALBEDO = base * fold;
+	EMISSION = base * glow;
 	ROUGHNESS = 0.9;
 }

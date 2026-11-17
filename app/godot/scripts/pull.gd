@@ -596,6 +596,9 @@ func _build(error: String) -> bool:
 			"moisture": dimensions.get("moisture", 0.15)}
 	venue_view.set_look(look)
 	VenueView.light(world, sun, venue_view.look()["time"])
+	# In the evening the officials signal with light wands, not flags.
+	for official: Flagman in [flagman, end_flagman]:
+		official.use_lamp(venue_view.look()["time"] == "evening")
 	venue_view.build(dimensions)
 	# The chequered flag at the full-pull line; an event's pull sets the
 	# flags again (_start_event_pull).
@@ -1133,14 +1136,15 @@ func _show_officials(s: Dictionary, delta: float) -> void:
 			raise = 1.0
 	if stop:
 		raise = 1.0
-	flagman.show_signal(shown == "green", raise, stage == "pulling" or stop, delta)
+	flagman.show_signal(shown == "green", raise, stage == "pulling" or stop, delta, shown != "off")
 	# The official down the track walks ahead of the tractor, from 80 m up
 	# to the full-pull line, the green flag up while the pull is good.
 	var at_m := clampf(float(s["tractor_x_m"]) + END_FLAGMAN_AHEAD_M,
 			minf(END_FLAGMAN_FROM_M, _full_pull_m), _full_pull_m)
 	end_flagman.stand(TrackSpace.point(at_m, _left_m, 0.0),
 			TrackSpace.point(float(s["tractor_x_m"]), 0.0, 0.0))
-	end_flagman.show_signal(shown == "green", 1.0 if shown != "off" else 0.0, stop, delta)
+	end_flagman.show_signal(shown == "green", 1.0 if shown != "off" else 0.0, stop, delta,
+			shown != "off")
 	venue_view.show_signal(shown)
 	hud.show_signal(shown)
 
