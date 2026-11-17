@@ -94,6 +94,16 @@ const ROLL_BAR_TOP_M := 1.62
 const ROLL_BAR_BEHIND_M := 0.36
 const ROLL_BAR_BRACE_BEHIND_M := 0.8
 const ROLL_BAR_TUBE_M := 0.035
+# A Supersport driver's cell: its half width (just wider than the seat),
+# the top of its arches over the helmet, above the rear axle, its hoops
+# along the tractor (behind the seat to before the face), the segments of
+# each arch, and the ladder's rungs up each side, as shares of the posts'
+# height [m].
+const CELL_HALF_WIDTH_M := 0.34
+const CELL_TOP_M := 1.86
+const CELL_HOOPS_M: Array[float] = [-0.42, -0.12, 0.2]
+const CELL_ARCH_SEGMENTS := 8
+const CELL_RUNGS: Array[float] = [0.35, 0.65]
 # The cab camera: at the seated driver's eyes, a little in front of the
 # face so the head does not fill the view, above the rear axle [m]; and
 # its near plane, close enough for the steering wheel [m].
@@ -546,6 +556,8 @@ func _add_cab(rear_track_m: float) -> void:
 			_add_frame_posts(half_width_m, cab == "canopy")
 		"cage", "open_cage":
 			_add_cage(half_width_m, cab == "cage")
+		"cell":
+			_add_cell()
 		_:
 			_add_roll_bar(half_width_m)
 	# A pulling tractor's high-backed seat, but in a closed cab.
@@ -573,6 +585,63 @@ func _add_frame_posts(half_width_m: float, canopy: bool) -> void:
 		roof.position = TrackSpace.point(x_m + 0.5, 0.0, _cab_roof_m + 0.05)
 		_body.add_child(roof)
 		_add_roof_extras(x_m + 0.5, half_width_m, _cab_roof_m + 0.08)
+
+
+# A Supersport driver's roll cage, as the class's real ones are: a narrow
+# cell round the seat, three hoops one behind the other, each two posts up
+# from the floor and an arch over the helmet, joined front to back by bars
+# over the top and up the sides like a ladder; in black, chrome or the
+# paint, as the model has it.
+func _add_cell() -> void:
+	var half_width_m := CELL_HALF_WIDTH_M
+	var top_m := CAB_FLOOR_M + (CELL_TOP_M - CAB_FLOOR_M) * float(_style["cab_height"])
+	var spring_m := top_m - half_width_m
+	var finish: String = _style.get("cell", "black")
+	var tube := Art.paint(CHROME, 0.3) if finish == "chrome" \
+			else (Art.paint(look.paint) if finish == "paint" else Art.material(FRAME, 0.4, 0.4))
+	var cell := Node3D.new()
+	cell.name = "Cell"
+	_body.add_child(cell)
+	# Each hoop's points, from one foot over the arch to the other.
+	var hoops: Array[PackedVector3Array] = []
+	for x_m: float in CELL_HOOPS_M:
+		var points := PackedVector3Array()
+		points.append(Vector3(x_m, half_width_m, CAB_FLOOR_M))
+		for i in CELL_ARCH_SEGMENTS + 1:
+			var angle := PI * float(i) / CELL_ARCH_SEGMENTS
+			points.append(Vector3(x_m, half_width_m * cos(angle),
+					spring_m + half_width_m * sin(angle)))
+		points.append(Vector3(x_m, -half_width_m, CAB_FLOOR_M))
+		hoops.append(points)
+		for i in points.size() - 1:
+			_add_tube(cell, points[i], points[i + 1], ROLL_BAR_TUBE_M, tube)
+	# Front to back: over the top and the arch's shoulders, and the ladder
+	# rungs up each side.
+	var joins: Array[int] = [1 + CELL_ARCH_SEGMENTS / 2, 1 + CELL_ARCH_SEGMENTS / 4,
+			1 + 3 * CELL_ARCH_SEGMENTS / 4, 1, 1 + CELL_ARCH_SEGMENTS]
+	for h in hoops.size() - 1:
+		for k: int in joins:
+			_add_tube(cell, hoops[h][k], hoops[h + 1][k], ROLL_BAR_TUBE_M * 0.8, tube)
+		for side: float in [-1.0, 1.0]:
+			for share: float in CELL_RUNGS:
+				var z_m := CAB_FLOOR_M + (spring_m - CAB_FLOOR_M) * share
+				_add_tube(cell, Vector3(CELL_HOOPS_M[h], side * half_width_m, z_m),
+						Vector3(CELL_HOOPS_M[h + 1], side * half_width_m, z_m),
+						ROLL_BAR_TUBE_M * 0.8, tube)
+
+
+# A tube from `from` to `to` (the tractor's x along, y left, z up) [m].
+func _add_tube(parent: Node3D, from: Vector3, to: Vector3, radius_m: float,
+		material: Material) -> void:
+	var a := TrackSpace.point(from.x, from.y, from.z)
+	var b := TrackSpace.point(to.x, to.y, to.z)
+	var length_m := a.distance_to(b)
+	if length_m <= 0.0:
+		return
+	var tube := Art.instance(Art.cylinder_mesh(radius_m, radius_m, length_m, 8), material)
+	tube.position = (a + b) / 2.0
+	tube.basis = Basis(Quaternion(Vector3.UP, (b - a) / length_m))
+	parent.add_child(tube)
 
 
 # A pulling tractor's safety cage: four posts of tube, two rails along

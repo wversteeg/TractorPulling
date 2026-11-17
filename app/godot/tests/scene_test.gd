@@ -448,7 +448,7 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	rebuilt.look.style_id = "ss_square"
 	rebuilt.build(d)
 	_expect(rebuilt.pulling_look(), "a rebuilt tractor drawn on a pulling frame")
-	for part: String in ["Hood", "Bumper", "RimDisc", "CageBrace", "CageBackBrace", "Helmet"]:
+	for part: String in ["Hood", "Bumper", "RimDisc", "Cell", "Helmet"]:
 		_expect(rebuilt.find_child(part, true, false) != null, "the rebuilt tractor's %s" % part)
 	_expect(rebuilt.find_child("Bonnet", true, false) == null, "no pulling bonnet when rebuilt")
 	var rack := rebuilt.find_child("Bumper", true, false) as MeshInstance3D
@@ -462,8 +462,8 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	# model has one.
 	for id: String in TractorModels.STYLES:
 		var style: Dictionary = TractorModels.STYLES[id]
-		_expect(style["body"] != TractorModels.REBUILT or style["cab"] == "open_cage",
-				"a full roll cage, no cab: %s" % id)
+		_expect(style["body"] != TractorModels.REBUILT or style["cab"] == "cell",
+				"a full roll cage round the seat, no cab: %s" % id)
 	# The Sport and Supersport classes allow one turbo, one stage: every
 	# pulling or rebuilt model has one stack.
 	for id: String in TractorModels.STYLES:

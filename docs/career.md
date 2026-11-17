@@ -64,7 +64,8 @@ classes' pulling tractors under a modern pulling bonnet, and the
 Supersport 3.6 t's farm tractors rebuilt for pulling, as the class's real
 ones are (videos and the ETPC results: an IHC 1066, a Ford 8970): each
 keeps its maker's hood and grille, as the rules ask, on a pulling frame,
-no cab but a full roll cage (the class asks one), one big stack off the
+no cab but a full roll cage round the seat (the class asks one: a narrow
+cell of arched hoops over the driver's helmet), one big stack off the
 single turbo (one turbo, one stage) and most a weight rack ahead of the
 grille. A driver on a pulling frame, Sport or Supersport, wears a helmet. The prices are a part of the money a class's player
 has: the Standard 3.5 t's models cost € 1,500 to 2,500, with € 2,500 to
