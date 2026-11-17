@@ -59,7 +59,13 @@ sells five models of the class's tractor and eight colours
 (`[garage.dealer]` in each class's garage file); for now the models only
 look different (`TractorModels` in the game), each pulling the same, so the
 choice is the player's taste: a later version may give them their own
-engines or weights. The prices are a part of the money a class's player
+engines or weights. The Standard 3.5 t's are farm tractors, the Sport
+classes' pulling tractors under a modern pulling bonnet, and the
+Supersport 3.6 t's farm tractors rebuilt for pulling, as the class's real
+ones are (videos and the ETPC results: an IHC 1066, a Ford 8970): each
+keeps its maker's hood and grille, as the rules ask, on a pulling frame,
+with a cage or a roll bar instead of the cab, one big stack off the single
+turbo (one turbo, one stage) and most a weight rack ahead of the grille. The prices are a part of the money a class's player
 has: the Standard 3.5 t's models cost € 1,500 to 2,500, with € 2,500 to
 start, so the cheapest leaves the € 1,000 the garage was balanced for (a
 dearer one, less: the first upgrades come a little later); the Sport

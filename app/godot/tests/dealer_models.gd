@@ -12,7 +12,7 @@ extends SceneTree
 
 # Each class's first rung on the shipped career, for its dealer screen.
 const CAREER := "res://data/careers/tractor_path.toml"
-const RUNGS := {"standard_3500": 0, "sport_2500": 1, "sport_4500": 3}
+const RUNGS := {"standard_3500": 0, "sport_2500": 1, "sport_4500": 3, "supersport_3600": 6}
 # Each class's tractor and sled, and the models its dealer sells.
 const CLASSES := [
 	["standard_3500", "res://data/tractors/farm_stock_light.toml",
@@ -22,6 +22,9 @@ const CLASSES := [
 			["pull_classic", "pull_low", "pull_high", "pull_cage", "pull_farm"]],
 	["sport_4500", "res://data/tractors/sport_4500.toml", "res://data/sleds/sport_4500.toml",
 			["pull_classic", "pull_low", "pull_high", "pull_farm", "pull_cab"]],
+	["supersport_3600", "res://data/tractors/supersport_3600.toml",
+			"res://data/sleds/supersport_3600.toml",
+			["ss_square", "ss_round", "ss_low", "ss_sloped", "ss_stripped_cab"]],
 ]
 # A colour for each picture in turn: paint, trim, rims.
 const PAINTS := [

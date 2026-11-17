@@ -53,6 +53,13 @@ const BUMPER_DEPTH_M := 0.14
 # drawn, and at most this much bigger.
 const BODY_WHEELBASE_M := 2.2
 const BODY_MOST_SCALE := 1.4
+# A weight rack (a model's "rack" nose) reaches this far past the hood's
+# nose, instead of the bumper's FRAME_PAST_HOOD_M [m].
+const RACK_PAST_HOOD_M := 0.5
+# A pulling turbo's big stack (a model's "fat" one): this much thicker and
+# longer than the usual one.
+const FAT_STACK_RADIUS := 1.5
+const FAT_STACK_LENGTH := 1.15
 # The front weights hang this far ahead of the pulling tractor's bumper [m].
 const WEIGHTS_AHEAD_OF_BUMPER_M := 0.03
 # The pulling seat's back: this tall over the seat [m].
@@ -171,6 +178,10 @@ var _bonnet_share := 1.0
 var _cab_half_width_m := 0.5
 # How much bigger than drawn the pulling tractor's body is (BODY_WHEELBASE_M).
 var _body_scale := 1.0
+# A rebuilt tractor's farm hood, as much wider and taller (1 on a farm or a
+# bonnet tractor); how far its frame reaches past the nose [m].
+var _hood_scale := 1.0
+var _frame_past_hood_m := FRAME_PAST_HOOD_M
 var _rear_radius_m := 1.0
 var _front_radius_m := 0.5
 var _rated_rad_s := 230.0
@@ -271,21 +282,28 @@ func _build_body(d: Dictionary) -> void:
 	# The model: without one, a tractor behind a roll bar is a pulling
 	# tractor, drawn as one, and one with a cab a farm tractor.
 	_style = TractorModels.style(look.style_id, d.get("protection", "cab"))
-	var pulling: bool = _style["body"] == TractorModels.PULLING
+	# A pulling or a rebuilt tractor: on a pulling frame, its parts drawn.
+	var pulling := TractorModels.on_pulling_frame(_style)
+	var bonnet: bool = _style["body"] == TractorModels.PULLING
 	_pulling_look = pulling
 	_body_scale = clampf(wheelbase_m / BODY_WHEELBASE_M, 1.0, BODY_MOST_SCALE) \
 			if pulling else 1.0
+	# A rebuilt tractor's farm hood grows with the tractor as a bonnet does.
+	_hood_scale = _body_scale if not bonnet else 1.0
 	_hood_top_m = HOOD_TOP_M * float(_style["hood_height"])
+	_frame_past_hood_m = RACK_PAST_HOOD_M if _style.get("nose", "bumper") == "rack" \
+			else FRAME_PAST_HOOD_M
 	_bonnet_share = float(_style["hood_height"])
 	_cab_roof_m = CAB_FLOOR_M + (CAB_ROOF_M - CAB_FLOOR_M) * float(_style["cab_height"])
 	_body.position = TrackSpace.point(0.0, 0.0, axle_height_m)
 	add_child(_body)
 	_add_driveline(wheelbase_m, rear_track_m, front_track_m, axle_height_m)
-	if pulling:
+	if bonnet:
 		_add_bonnet(wheelbase_m)
-		_add_front_frame(wheelbase_m, axle_height_m)
 	else:
 		_add_hood(wheelbase_m)
+	if pulling:
+		_add_front_frame(wheelbase_m, axle_height_m)
 	_add_cab(rear_track_m)
 	_add_fenders(rear_track_m, rear_width_m, 12 if pulling else 7)
 	_add_hitch_and_bar(d, axle_height_m, rear_track_m)
@@ -305,7 +323,7 @@ func _build_body(d: Dictionary) -> void:
 	# On the farm hood's front; on a pulling tractor, from its bumper.
 	if pulling:
 		_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M
-				+ FRAME_PAST_HOOD_M + BUMPER_DEPTH_M / 2.0 + WEIGHTS_AHEAD_OF_BUMPER_M, 0.0,
+				+ _frame_past_hood_m + BUMPER_DEPTH_M / 2.0 + WEIGHTS_AHEAD_OF_BUMPER_M, 0.0,
 				_front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M)
 	else:
 		_front_weights.position = TrackSpace.point(wheelbase_m + HOOD_PAST_FRONT_AXLE_M + 0.05,
@@ -360,6 +378,8 @@ func _add_hood(wheelbase_m: float) -> void:
 		fall_rad = atan2(0.18 * float(_style["hood_height"]), length_m)
 	hood.position = TrackSpace.point(back_m, 0.0, 0.0)
 	hood.rotation.x = -fall_rad
+	# Wider and taller on a bigger rebuilt tractor (sideways and up only).
+	hood.scale = Vector3(_hood_scale, _hood_scale, 1.0)
 	var block_height_m := depth_m if shape != "round" else depth_m * 0.55
 	var block := Art.box(Vector3(HOOD_WIDTH_M, block_height_m, length_m), look.paint, 0.35)
 	block.material_override = Art.paint(look.paint)
@@ -491,7 +511,7 @@ func bonnet_top_m() -> float:
 # under the bonnet and a bumper ahead of the nose.
 func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 	var from_m := wheelbase_m - 0.6
-	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + FRAME_PAST_HOOD_M
+	var to_m := wheelbase_m + HOOD_PAST_FRONT_AXLE_M + _frame_past_hood_m
 	var z_m := _front_radius_m - axle_height_m + FRAME_ABOVE_FRONT_AXLE_M
 	var rail_size := Vector3(FRAME_RAIL_M.x * _body_scale, FRAME_RAIL_M.y * _body_scale,
 			to_m - from_m)
@@ -524,8 +544,8 @@ func _add_cab(rear_track_m: float) -> void:
 			_add_cab_frame(half_width_m)
 		"canopy", "open":
 			_add_frame_posts(half_width_m, cab == "canopy")
-		"cage":
-			_add_cage(half_width_m)
+		"cage", "open_cage":
+			_add_cage(half_width_m, cab == "cage")
 		_:
 			_add_roll_bar(half_width_m)
 	# A pulling tractor's high-backed seat, but in a closed cab.
@@ -556,8 +576,8 @@ func _add_frame_posts(half_width_m: float, canopy: bool) -> void:
 
 
 # A pulling tractor's safety cage: four posts of tube, two rails along
-# each side, a roof over it all in the trim; no glass.
-func _add_cage(half_width_m: float) -> void:
+# each side, with a roof over it all in the trim or open; no glass.
+func _add_cage(half_width_m: float, roof: bool) -> void:
 	var back_m := 0.15 - CAB_HALF_DEPTH_M
 	var front_m := 0.15 + CAB_HALF_DEPTH_M
 	var height_m := _cab_roof_m - CAB_FLOOR_M
@@ -575,7 +595,23 @@ func _add_cage(half_width_m: float) -> void:
 			rail.rotation.x = PI / 2.0
 			rail.position = TrackSpace.point((back_m + front_m) / 2.0, side * half_width_m, z_m)
 			_body.add_child(rail)
-	_add_roof(half_width_m, (back_m + front_m) / 2.0)
+	if roof:
+		_add_roof(half_width_m, (back_m + front_m) / 2.0)
+		return
+	# Open: tubes across the top, front and back, and one corner to corner.
+	for x_m: float in [back_m, front_m]:
+		var across := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, 2.0 * half_width_m, CHROME, 8)
+		across.material_override = cage
+		across.rotation.z = PI / 2.0
+		across.position = TrackSpace.point(x_m, 0.0, _cab_roof_m)
+		_body.add_child(across)
+	var diagonal := Vector3(front_m - back_m, 2.0 * half_width_m, 0.0)
+	var brace := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, diagonal.length(), CHROME, 8)
+	brace.name = "CageBrace"
+	brace.material_override = cage
+	brace.rotation = Vector3(PI / 2.0, atan2(diagonal.y, diagonal.x), 0.0)
+	brace.position = TrackSpace.point((back_m + front_m) / 2.0, 0.0, _cab_roof_m)
+	_body.add_child(brace)
 
 
 # The roof over a cab or a cage: flat or rounded, as the model has it, in
@@ -1021,8 +1057,11 @@ func _add_smoke(wheelbase_m: float) -> void:
 	var kind: String = _style["stack"]
 	var x_m := wheelbase_m - 0.55
 	# Out of the hood's top: a bigger bonnet's as much higher, and thicker.
-	var base_m := (bonnet_top_m() - (BONNET_TOP_M - HOOD_TOP_M)) if _pulling_look else _hood_top_m
+	var base_m := (bonnet_top_m() - (BONNET_TOP_M - HOOD_TOP_M)) \
+			if _style["body"] == TractorModels.PULLING else _hood_top_m * _hood_scale
 	var length_m := 1.0 if kind != "tall" else 1.35
+	if kind == "fat":
+		length_m *= FAT_STACK_LENGTH
 	var at := Vector3(x_m, 0.18, base_m + length_m / 2.0 - 0.05)
 	var places: Array[Vector3] = [at]
 	if kind == "twin":
@@ -1033,7 +1072,8 @@ func _add_smoke(wheelbase_m: float) -> void:
 		length_m = _cab_roof_m - 0.2 + SIDE_STACK_OVER_ROOF_M
 		places = [Vector3(0.15 + CAB_HALF_DEPTH_M + 0.04, -(_cab_half_width_m + 0.12),
 				0.2 + length_m / 2.0)]
-	var radius_m := 0.055 * _body_scale * (0.85 if kind == "twin" else 1.0)
+	var radius_m := 0.055 * _body_scale * (0.85 if kind == "twin" else 1.0) \
+			* (FAT_STACK_RADIUS if kind == "fat" else 1.0)
 	var finish := CHROME
 	for place: Vector3 in places:
 		var stack := Art.cylinder(radius_m, length_m, finish, 12, 0.2, 0.9)

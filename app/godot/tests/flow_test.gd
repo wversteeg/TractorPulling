@@ -705,7 +705,47 @@ func _check_move_up() -> void:
 	_expect(career.get("rung", -1) == 2 and career.get("class_name", "") == "Practice, a class up"
 			and int(event.get_garage().get("money_eur", -1)) == START_MONEY_EUR,
 			"a new career a class up: %s" % career)
+	await _check_keep_money(pull)
 	await _check_class_round_trip(pull)
+
+
+# For testing, a new career may keep the money there is: € 1000 added in
+# the settings, "Money: keep", and a new career at the same rung starts
+# with it, not the garage's start money; "Money: start" again after.
+func _check_keep_money(pull: Node) -> void:
+	var event: TractorPullEvent = pull.get("event")
+	var start: StartScreen = pull.get("start_screen")
+	var settings: SettingsScreen = pull.get("settings_screen")
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.money_button)
+	await _frames(1)
+	var money := int(event.get_garage().get("money_eur", -1))
+	_expect(money == START_MONEY_EUR + SettingsScreen.TEST_MONEY_EUR, "money added: %d" % money)
+	_expect(not settings.keeps_money() and settings.keep_money_button.text == "Money: start",
+			"a new career starts with the start money by default")
+	_tap(settings.keep_money_button)
+	await _frames(1)
+	_expect(settings.keeps_money() and settings.keep_money_button.text == "Money: keep",
+			"the money kept: %s" % settings.keep_money_button.text)
+	_tap(settings.new_career_button)
+	await _frames(1)
+	_tap(settings.new_career_button)
+	await _frames(2)
+	var career := event.get_career()
+	_expect(career.get("rung", -1) == 2 and int(event.get_garage().get("money_eur", -1)) == money,
+			"a new career with the money kept: %s" % event.get_garage().get("money_eur", -1))
+	var bought := 0
+	for part: Dictionary in event.get_garage()["upgrades"]:
+		bought += int(part["level"])
+	_expect(bought == 0, "and nothing bought")
+	_tap(start.settings_button)
+	await _frames(2)
+	_tap(settings.keep_money_button)
+	await _frames(1)
+	_expect(not settings.keeps_money(), "back to the start money")
+	_tap(settings.done_button)
+	await _frames(2)
 
 
 # A part bought a class up; the career screen (from a new season) to the

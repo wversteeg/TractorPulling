@@ -663,9 +663,10 @@ for the big features; they are repeated at the end for completeness.
 - **The player's pull does not vary from spot to spot.** The rivals'
   pulls each draw the grip, the clutch timing and the sled pan's drag
   (field::PullToPull); the player's run uses the event's sled as it is.
-- **"+ € 1000" in the settings is for testing.** It puts money in the
-  bank at a tap (TractorPullEvent.add_money); take it out, with "Start",
-  before a release.
+- **"+ € 1000" and "Money: keep" in the settings are for testing.** The
+  first puts money in the bank at a tap (TractorPullEvent.add_money), the
+  second lets a new career keep the money there is; take them out, with
+  "Start", before a release.
 
 ## Roadmap features (from CLAUDE.md "Later")
 

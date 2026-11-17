@@ -181,35 +181,39 @@ levels = [
 [garage.dealer]
 paint_cost_eur = 900
 
+# Farm tractors rebuilt for pulling, as the class's are: each keeps its
+# maker's hood and grille (the rules keep the farm tractor's look), a cage
+# or a roll bar instead of its cab and one big stack off its single turbo
+# (one turbo, one stage), most with a weight rack ahead of the grille.
 [[garage.dealer.models]]
-name = "Thunder Classic"
-style = "pull_classic"
+name = "Thunder Eighties"
+style = "ss_square"
 cost_eur = 8500
-about = "The pulling tractor as it should be: a round bonnet, chrome and a roll cage."
+about = "An eighties tractor's square hood, an open cage, one big stack and a weight rack."
+
+[[garage.dealer.models]]
+name = "Thunder Oldtimer"
+style = "ss_round"
+cost_eur = 9400
+about = "An older tractor's round hood behind a chrome roll bar, its tall stack chrome too."
 
 [[garage.dealer.models]]
 name = "Thunder Low"
-style = "pull_low"
-cost_eur = 9400
-about = "Built low: a low bonnet, a short cage and one tall stack."
-
-[[garage.dealer.models]]
-name = "Thunder High"
-style = "pull_high"
+style = "ss_low"
 cost_eur = 10300
-about = "A tall square bonnet, twin stacks and wide fenders."
+about = "Built low: a low square hood, a low roll bar, one big stack and a weight rack."
 
 [[garage.dealer.models]]
-name = "Thunder Farm"
-style = "pull_farm"
+name = "Thunder Modern"
+style = "ss_sloped"
 cost_eur = 11200
-about = "A farm tractor's square hood on a pulling frame: the farmer's choice."
+about = "A modern tractor's sloping hood and lamp strips, a roofed cage and a weight rack."
 
 [[garage.dealer.models]]
-name = "Thunder Cab"
-style = "pull_cab"
+name = "Thunder Stripped Cab"
+style = "ss_stripped_cab"
 cost_eur = 12300
-about = "A closed cab on a pulling frame, lamps all round: pulling in comfort."
+about = "A tall hood and the cab stripped to its frame and roof, work lamps still on."
 
 # The colours, the same at every dealer: the first comes with the tractor.
 [[garage.dealer.paints]]

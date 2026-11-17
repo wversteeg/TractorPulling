@@ -4,19 +4,25 @@
 # later version may give them their own engines or weights).
 #
 # A style is a set of choices on the class's tractor:
-# - body: "farm" (a farm tractor's square hood) or "pulling" (a pulling
-#   tractor's bonnet over a frame out to a bumper);
+# - body: "farm" (a farm tractor's square hood), "pulling" (a pulling
+#   tractor's bonnet over a frame out to a bumper) or "rebuilt" (a farm
+#   tractor rebuilt for pulling, the Supersport classes': its own hood and
+#   grille, as the rules keep them, on a pulling frame with its bumper);
 # - hood: the farm hood's shape, "square", "round" (an older one, rounded
 #   all over) or "sloped" (a modern one, falling to the nose, lamp strips
 #   in the grille); the pulling bonnet's, "round" or "square";
 # - hood_height: the hood's or bonnet's height, a share of the usual;
 # - cab: "cab" (closed, glass all round), "canopy" (a two-post frame with a
-#   roof), "cage" (four posts and a roof, no glass), "roll_bar" or "open"
-#   (a two-post frame alone);
+#   roof), "cage" (four posts and a roof, no glass), "open_cage" (four
+#   posts, no roof), "roll_bar" or "open" (a two-post frame alone);
 # - cab_height: the cab's or frame's height, a share of the usual;
 # - roof: a cab's or cage's roof, "flat" or "rounded";
 # - stack: the exhaust, "single", "twin" (one each side of the hood),
-#   "side" (up the cab's front corner) or "tall";
+#   "side" (up the cab's front corner), "tall" or "fat" (one big pipe off a
+#   pulling turbo). The Sport and Supersport classes allow one turbo, one
+#   stage: their tractors have one stack;
+# - nose: a pulling frame's front, "bumper" (just past the nose) or "rack"
+#   (a weight rack out ahead of the grille); none on a farm tractor;
 # - fenders: "round" (an arc of panels), "flat" (a flat top over the wheel,
 #   a modern tractor's) or "wide" (an arc wider than the tire);
 # - beacon, roof_lamps, grille_lamps, chrome: extras.
@@ -25,6 +31,7 @@ extends RefCounted
 
 const FARM := "farm"
 const PULLING := "pulling"
+const REBUILT := "rebuilt"
 
 # Every style, by its id.
 const STYLES := {
@@ -52,7 +59,7 @@ const STYLES := {
 			"cab_height": 0.9, "roof": "flat", "stack": "tall", "fenders": "round",
 			"beacon": false, "roof_lamps": false, "grille_lamps": true, "chrome": true},
 	"pull_high": {"body": PULLING, "hood": "square", "hood_height": 1.16, "cab": "roll_bar",
-			"cab_height": 1.08, "roof": "flat", "stack": "twin", "fenders": "wide",
+			"cab_height": 1.08, "roof": "flat", "stack": "fat", "fenders": "wide",
 			"beacon": false, "roof_lamps": false, "grille_lamps": true, "chrome": true},
 	"pull_cage": {"body": PULLING, "hood": "round", "hood_height": 1.0, "cab": "cage",
 			"cab_height": 1.0, "roof": "rounded", "stack": "single", "fenders": "wide",
@@ -61,9 +68,37 @@ const STYLES := {
 			"cab_height": 1.0, "roof": "flat", "stack": "tall", "fenders": "round",
 			"beacon": false, "roof_lamps": false, "grille_lamps": false, "chrome": true},
 	"pull_cab": {"body": PULLING, "hood": "square", "hood_height": 1.05, "cab": "cab",
-			"cab_height": 0.95, "roof": "rounded", "stack": "twin", "fenders": "flat",
+			"cab_height": 0.95, "roof": "rounded", "stack": "single", "fenders": "flat",
 			"beacon": true, "roof_lamps": true, "grille_lamps": true, "chrome": false},
+	# Farm tractors rebuilt for pulling: the Supersport classes. Each keeps
+	# its maker's hood and grille (the rules' "look of the farm tractor"):
+	# an eighties tractor's square one, an older round one, a modern sloped
+	# one; a cage or a roll bar instead of the cab, one big stack off the
+	# single turbo, and most a weight rack out ahead of the grille.
+	"ss_square": {"body": REBUILT, "hood": "square", "hood_height": 1.05, "cab": "open_cage",
+			"cab_height": 1.0, "roof": "flat", "stack": "fat", "fenders": "wide", "nose": "rack",
+			"beacon": false, "roof_lamps": false, "grille_lamps": false, "chrome": false},
+	"ss_round": {"body": REBUILT, "hood": "round", "hood_height": 1.0, "cab": "roll_bar",
+			"cab_height": 1.0, "roof": "flat", "stack": "tall", "fenders": "round",
+			"nose": "bumper", "beacon": false, "roof_lamps": false, "grille_lamps": true,
+			"chrome": true},
+	"ss_sloped": {"body": REBUILT, "hood": "sloped", "hood_height": 1.05, "cab": "cage",
+			"cab_height": 1.0, "roof": "rounded", "stack": "fat", "fenders": "flat", "nose": "rack",
+			"beacon": false, "roof_lamps": true, "grille_lamps": true, "chrome": false},
+	"ss_low": {"body": REBUILT, "hood": "square", "hood_height": 0.84, "cab": "roll_bar",
+			"cab_height": 0.9, "roof": "flat", "stack": "fat", "fenders": "round", "nose": "rack",
+			"beacon": false, "roof_lamps": false, "grille_lamps": false, "chrome": true},
+	"ss_stripped_cab": {"body": REBUILT, "hood": "square", "hood_height": 1.15, "cab": "cage",
+			"cab_height": 1.05, "roof": "flat", "stack": "single", "fenders": "wide",
+			"nose": "bumper", "beacon": false, "roof_lamps": true, "grille_lamps": false,
+			"chrome": false},
 }
+
+
+# Whether a style draws the pulling tractor's parts (its frame and bumper,
+# the discs, the high-backed seat): a pulling or a rebuilt tractor.
+static func on_pulling_frame(s: Dictionary) -> bool:
+	return s["body"] != FARM
 
 
 # The style `id`, or the class's usual one when there is none by that name:

@@ -441,6 +441,26 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 			"the front weights ahead of the bumper (%.2f m, bumper to %.2f m)" % [
 			-weights.z, bumper_front_m])
 	pulling.free()
+	# A farm tractor rebuilt for pulling (the Supersport classes): its own
+	# farm hood on the pulling frame, the weights out on its rack.
+	var rebuilt := TractorView.new()
+	root.add_child(rebuilt)
+	rebuilt.look.style_id = "ss_square"
+	rebuilt.build(d)
+	_expect(rebuilt.pulling_look(), "a rebuilt tractor drawn on a pulling frame")
+	for part: String in ["Hood", "Bumper", "RimDisc", "CageBrace"]:
+		_expect(rebuilt.find_child(part, true, false) != null, "the rebuilt tractor's %s" % part)
+	_expect(rebuilt.find_child("Bonnet", true, false) == null, "no pulling bonnet when rebuilt")
+	var rack := rebuilt.find_child("Bumper", true, false) as MeshInstance3D
+	_expect(-rack.global_position.z + TractorView.BUMPER_DEPTH_M / 2.0 > bumper_front_m,
+			"the weight rack reaches further than the bumper")
+	rebuilt.free()
+	# The Sport and Supersport classes allow one turbo, one stage: every
+	# pulling or rebuilt model has one stack.
+	for id: String in TractorModels.STYLES:
+		var style: Dictionary = TractorModels.STYLES[id]
+		_expect(not TractorModels.on_pulling_frame(style) or style["stack"] != "twin",
+				"one stack off the single turbo: %s" % id)
 
 
 # Each class looks its own: every class of the career has a scheme, no two
