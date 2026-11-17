@@ -271,7 +271,8 @@ package "GDScript (app/godot/scripts)" {
   }
   class CareerScreen {
     before a new season with more than one level
-    open: every class's levels, the tractor there
+    open, in the garage's look: the classes as a
+    ladder of cards, their levels and tractors
     +level_buttons : Array[TouchButton], by rung
     +start_button, back_button : TouchButton
     +show_career(career, pick, can_go_back)
