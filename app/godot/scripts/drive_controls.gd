@@ -66,9 +66,11 @@ const BRAKE_COLOUR := Color(0.95, 0.3, 0.25, 0.9)
 # above the right brake (in the pro layout, between the gear buttons and the
 # gas; in the easy layout, which has no brakes, above the gear buttons), or
 # on the left (above the steering in the easy layout, above the left brake
-# in the pro layout). Over the right brake it is as narrow as fits.
+# in the pro layout). Over the right brake it is the pedal's width, its
+# text smaller.
 const HOLD_SIZE := Vector2(170.0, 84.0)
-const HOLD_OVER_BRAKE_WIDTH := 140.0
+const HOLD_FONT_SIZE := 28
+const HOLD_OVER_BRAKE_FONT_SIZE := 21
 const HOLD_PLACES: Array[String] = ["above the gas", "above the right brake", "left"]
 const BUTTON_SIZE := 130.0
 const SMALL_BUTTON := Vector2(120.0, 80.0)
@@ -176,7 +178,7 @@ func _ready() -> void:
 
 	hold_button.text = "HOLD"
 	hold_button.rounded = true
-	hold_button.font_size = 28
+	hold_button.font_size = HOLD_FONT_SIZE
 	hold_button.visible = false
 	add_child(hold_button)
 	hold_button.tapped.connect(func() -> void:
@@ -227,6 +229,9 @@ func set_layout(is_pro: bool) -> void:
 # Puts the brake hold's button in HOLD_PLACES[`place`], for the layout.
 func set_hold_place(place: int) -> void:
 	hold_place = clampi(place, 0, HOLD_PLACES.size() - 1)
+	hold_button.font_size = HOLD_OVER_BRAKE_FONT_SIZE if pro and hold_place == 1 \
+			else HOLD_FONT_SIZE
+	hold_button.queue_redraw()
 	var column := 2 if pro else 1
 	var rect: Rect2
 	match hold_place:
@@ -235,7 +240,7 @@ func set_hold_place(place: int) -> void:
 			_anchor(hold_button, Vector2(1.0, 1.0), rect)
 		1:
 			if pro:
-				rect = _right_column(1, HOLD_OVER_BRAKE_WIDTH, HOLD_SIZE.y, BRAKE_SIZE.y + GAP)
+				rect = _right_column(1, BRAKE_SIZE.x, HOLD_SIZE.y, BRAKE_SIZE.y + GAP)
 			else:
 				rect = _right_column(column, HOLD_SIZE.x, HOLD_SIZE.y, 3.0 * (BUTTON_SIZE + GAP))
 			_anchor(hold_button, Vector2(1.0, 1.0), rect)
