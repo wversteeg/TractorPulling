@@ -61,8 +61,20 @@ static func draw_icon(ci: CanvasItem, part: String, centre: Vector2, size: float
 			_restart(ci, centre, s, w, colour)
 		"paint":
 			_roller(ci, centre, s, w, colour)
+		"lock":
+			_lock(ci, centre, s, w, colour)
 		_:
 			ci.draw_arc(centre, s * 0.8, 0.0, TAU, 24, colour, w)
+
+
+# A padlock: a shackle over a body with a keyhole.
+static func _lock(ci: CanvasItem, c: Vector2, s: float, w: float, colour: Color) -> void:
+	ci.draw_arc(c + Vector2(0.0, -0.18) * s, 0.36 * s, PI, TAU, 16, colour, w * 1.2)
+	for side: float in [-1.0, 1.0]:
+		ci.draw_line(c + Vector2(side * 0.36, -0.18) * s, c + Vector2(side * 0.36, 0.0) * s,
+				colour, w * 1.2)
+	ci.draw_rect(Rect2(c + Vector2(-0.6, 0.0) * s, Vector2(1.2, 0.85) * s), colour)
+	ci.draw_circle(c + Vector2(0.0, 0.38) * s, 0.12 * s, Color(0.0, 0.0, 0.0, 0.55))
 
 
 # The menus' icons.
