@@ -202,7 +202,7 @@ about = "An older tractor's round hood in a chrome roll cage, its tall stack chr
 name = "Thunder Low"
 style = "ss_low"
 cost_eur = 10300
-about = "Built low: a low square hood, a low chrome cage, one big stack and a weight rack."
+about = "Built low: a low square hood, a low black cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Modern"
