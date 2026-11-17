@@ -456,6 +456,19 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	var rack := rebuilt.find_child("Bumper", true, false) as MeshInstance3D
 	_expect(-rack.global_position.z + TractorView.BUMPER_DEPTH_M / 2.0 > bumper_front_m,
 			"the weight rack reaches further than the bumper")
+	# On a weight box: the weights are the box's own plates, no yellow
+	# suitcase weights and no bracket.
+	rebuilt.look.style_id = "ss_round"
+	rebuilt.build(d)
+	var slabs := rebuilt.front_weights_node().get_children().filter(
+			func(s: Node) -> bool: return not s.is_queued_for_deletion())
+	_expect(rebuilt.weight_counts().x > 0 and slabs.size() == rebuilt.weight_counts().x
+			and slabs.all(func(s: Node) -> bool:
+				var m := (s as MeshInstance3D).material_override as StandardMaterial3D
+				return m == null or not m.albedo_color.is_equal_approx(TractorView.WEIGHT)),
+			"the weight box's own plates, no suitcase weights: %d" % slabs.size())
+	rebuilt.look.style_id = "ss_square"
+	rebuilt.build(d)
 	_expect(not rebuilt.cab_camera().get_cull_mask_value(People.HELMET_LAYER),
 			"the cab camera, inside the helmet, leaves it out")
 	# The tread as fitted: a puller tire's many low bars, a farm tire's

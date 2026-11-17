@@ -153,6 +153,11 @@ const TREADS := {
 const BOX_WIDER_M := 0.16
 const BOX_HEIGHT_M := 0.42
 const BOX_DEPTH_M := 0.38
+# How far the box's middle sits above the frame's end, a share of its height.
+const BOX_RISE := 0.3
+# A front weight's thickness and the step from one to the next [m].
+const PLATE_THICK_M := 0.045
+const PLATE_PITCH_M := 0.05
 # The weights at the sizes they come in, so any class's ballast draws
 # right: a suitcase weight on the front bracket, a wheel weight on a rear
 # hub [kg]; and as many as the bracket and a hub take.
@@ -565,7 +570,7 @@ func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 		bumper = Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + BOX_WIDER_M,
 				BOX_HEIGHT_M * _body_scale, BOX_DEPTH_M), 0.04, Vector3.AXIS_Z),
 				Art.paint(look.trim))
-		bumper.position = TrackSpace.point(to_m, 0.0, z_m + BOX_HEIGHT_M * _body_scale * 0.3)
+		bumper.position = TrackSpace.point(to_m, 0.0, z_m + BOX_HEIGHT_M * _body_scale * BOX_RISE)
 		for row in 2:
 			var slot := Art.box(Vector3(BONNET_WIDTH_M * _body_scale * 0.7, 0.04, 0.02),
 					BONNET_DARK, 0.6)
@@ -1160,14 +1165,28 @@ func _show_weights(d: Dictionary) -> void:
 	# Each end gets its share of the mass, in plates or discs of their size.
 	# Rounded up, so a little weight at an end still shows.
 	var plates := mini(ceili(position_share * mass_kg / PLATE_KG - WEIGHT_COUNT_TOLERANCE), MAX_PLATES)
-	var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
-	bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
-	_front_weights.add_child(bracket)
-	for i in plates:
-		var plate := Art.box(Vector3(0.68, 0.5, 0.045), WEIGHT if i % 2 == 0 else WEIGHT.darkened(0.2),
-				0.6)
-		plate.position = TrackSpace.point(0.03 + i * 0.05, 0.0, 0.0)
-		_front_weights.add_child(plate)
+	if _bumper_depth_m == BOX_DEPTH_M:
+		# A weight box: its plates are the box's own, its shape and paint,
+		# stacked onto its front; no suitcase weights, no bracket.
+		var size := Vector3(BONNET_WIDTH_M * _body_scale + BOX_WIDER_M,
+				BOX_HEIGHT_M * _body_scale, PLATE_THICK_M)
+		for i in plates:
+			var slab := Art.box(size, look.trim if i % 2 == 0 else look.trim.darkened(0.15), 0.5)
+			slab.material_override = Art.paint(look.trim if i % 2 == 0
+					else look.trim.darkened(0.15))
+			slab.position = TrackSpace.point(i * PLATE_PITCH_M, 0.0,
+					BOX_HEIGHT_M * _body_scale * BOX_RISE)
+			_front_weights.add_child(slab)
+	else:
+		var bracket := Art.box(Vector3(0.7, 0.08, 0.12), IRON)
+		bracket.set_meta("bracket", true)
+		bracket.position = TrackSpace.point(0.0, 0.0, -0.32)
+		_front_weights.add_child(bracket)
+		for i in plates:
+			var plate := Art.box(Vector3(0.68, 0.5, PLATE_THICK_M),
+					WEIGHT if i % 2 == 0 else WEIGHT.darkened(0.2), 0.6)
+			plate.position = TrackSpace.point(0.03 + i * PLATE_PITCH_M, 0.0, 0.0)
+			_front_weights.add_child(plate)
 	var discs := mini(ceili((1.0 - position_share) * mass_kg / 2.0 / DISC_KG
 			- WEIGHT_COUNT_TOLERANCE), MAX_DISCS_A_SIDE)
 	for holder: Node3D in holders:
@@ -1326,6 +1345,12 @@ func rear_lug_count() -> int:
 	return tread.multimesh.instance_count if tread != null else 0
 
 
+# The front weights' node, its children the weights (and a bracket, marked
+# with the "bracket" meta).
+func front_weights_node() -> Node3D:
+	return _front_weights
+
+
 # Where the front weights hang, in the world.
 func front_weights_position() -> Vector3:
 	return _front_weights.global_position
@@ -1336,7 +1361,9 @@ func front_weights_position() -> Vector3:
 func weight_counts() -> Vector2i:
 	var plates := 0
 	for child: Node in _front_weights.get_children():
-		if not child.is_queued_for_deletion() and child is MeshInstance3D:
+		# The bracket is not a weight.
+		if not child.is_queued_for_deletion() and child is MeshInstance3D \
+				and not child.has_meta("bracket"):
 			plates += 1
 	var discs := 0
 	var holder := _rear_left.get_node_or_null("weights")
@@ -1344,8 +1371,7 @@ func weight_counts() -> Vector2i:
 		for child: Node in holder.get_children():
 			if not child.is_queued_for_deletion():
 				discs += 1
-	# The bracket is not a weight.
-	return Vector2i(maxi(plates - 1, 0), discs)
+	return Vector2i(plates, discs)
 
 
 # A camera at the driver's eyes, looking ahead: it turns and pitches with
