@@ -506,7 +506,7 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	_expect(rebuilt.weight_counts().x > 0 and slabs.size() == rebuilt.weight_counts().x
 			and slabs.all(func(s: Node) -> bool:
 				var m := (s as MeshInstance3D).material_override as StandardMaterial3D
-				return m == null or not m.albedo_color.is_equal_approx(TractorView.WEIGHT)),
+				return m != null and not m.albedo_color.is_equal_approx(TractorView.WEIGHT)),
 			"the weight box's own plates, no suitcase weights: %d" % slabs.size())
 	rebuilt.look.style_id = "ss_square"
 	rebuilt.build(d)

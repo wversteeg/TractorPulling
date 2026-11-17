@@ -218,6 +218,8 @@ var _hood_scale := 1.0
 var _frame_past_hood_m := FRAME_PAST_HOOD_M
 # The front of the frame: its depth (a bumper, or a weight box) [m].
 var _bumper_depth_m := BUMPER_DEPTH_M
+# A weight box on the front (a model's "box" nose), its plates the weights.
+var _weight_box := false
 # The rear tires' tread drawn (TREADS).
 var _tread: Dictionary = TREADS["cut"]
 var _rear_radius_m := 1.0
@@ -333,7 +335,8 @@ func _build_body(d: Dictionary) -> void:
 	_hood_top_m = HOOD_TOP_M * float(_style["hood_height"])
 	_frame_past_hood_m = RACK_PAST_HOOD_M if _style.get("nose", "bumper") == "rack" \
 			else FRAME_PAST_HOOD_M
-	_bumper_depth_m = BOX_DEPTH_M if _style.get("nose", "bumper") == "box" else BUMPER_DEPTH_M
+	_weight_box = _style.get("nose", "bumper") == "box"
+	_bumper_depth_m = BOX_DEPTH_M if _weight_box else BUMPER_DEPTH_M
 	_bonnet_share = float(_style["hood_height"])
 	_cab_roof_m = CAB_FLOOR_M + (CAB_ROOF_M - CAB_FLOOR_M) * float(_style["cab_height"])
 	_body.position = TrackSpace.point(0.0, 0.0, axle_height_m)
@@ -562,9 +565,8 @@ func _add_front_frame(wheelbase_m: float, axle_height_m: float) -> void:
 				Art.material(BONNET_DARK, 0.5, 0.3))
 		rail.position = TrackSpace.point((from_m + to_m) / 2.0, side * rails_apart_m / 2.0, z_m)
 		_body.add_child(rail)
-	var to_box := _bumper_depth_m != BUMPER_DEPTH_M
 	var bumper: MeshInstance3D
-	if to_box:
+	if _weight_box:
 		# A big weight box in the trim, its front a grid of slots, sitting
 		# on the frame's end.
 		bumper = Art.instance(Art.rounded_box(Vector3(BONNET_WIDTH_M * _body_scale + BOX_WIDER_M,
@@ -1166,15 +1168,14 @@ func _show_weights(d: Dictionary) -> void:
 	# Each end gets its share of the mass, in plates or discs of their size.
 	# Rounded up, so a little weight at an end still shows.
 	var plates := mini(ceili(position_share * mass_kg / PLATE_KG - WEIGHT_COUNT_TOLERANCE), MAX_PLATES)
-	if _bumper_depth_m == BOX_DEPTH_M:
+	if _weight_box:
 		# A weight box: its plates are the box's own, its shape and paint,
 		# stacked onto its front; no suitcase weights, no bracket.
 		var size := Vector3(BONNET_WIDTH_M * _body_scale + BOX_WIDER_M,
 				BOX_HEIGHT_M * _body_scale, PLATE_THICK_M)
 		for i in plates:
-			var slab := Art.box(size, look.trim if i % 2 == 0 else look.trim.darkened(0.15), 0.5)
-			slab.material_override = Art.paint(look.trim if i % 2 == 0
-					else look.trim.darkened(0.15))
+			var slab := Art.instance(_box_mesh(size), Art.paint(look.trim if i % 2 == 0
+					else look.trim.darkened(0.15)))
 			slab.position = TrackSpace.point(i * PLATE_PITCH_M, 0.0,
 					BOX_HEIGHT_M * _body_scale * BOX_RISE)
 			_front_weights.add_child(slab)
