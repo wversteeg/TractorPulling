@@ -42,6 +42,9 @@ const STRIPE_HEIGHT := 10.0
 # tall each is and the gap between them [px].
 const LEVELS_TOP := 172.0
 const LEVEL_HEIGHT := 58.0
+# The note at a card's foot: its height above the card's bottom edge [px].
+# The levels' rows shrink to fit above it when a class has more than fit.
+const NOTE_HEIGHT := 70.0
 const LEVEL_GAP := 10.0
 const PROGRESS_HEIGHT := 8.0
 # A class not open yet, faded.
@@ -61,6 +64,8 @@ var _money: Label
 var _picked_line: Label
 var _choices: Array = []
 var _picked := -1
+# The places that open the level above (the career's promotion_place).
+var _promotion_place := 2
 
 
 func _ready() -> void:
@@ -115,6 +120,7 @@ func show_career(career: Dictionary, pick: int = -1, can_go_back: bool = true) -
 	_title.position.x = 80.0 if can_go_back else 28.0
 	_subtitle.position.x = _title.position.x
 	_choices = career.get("choices", [])
+	_promotion_place = maxi(int(career.get("promotion_place", 2)), 1)
 	for child in _cards.get_children():
 		child.free()
 	level_buttons.clear()
@@ -207,13 +213,16 @@ func _add_card(levels: Array, index: int, rect: Rect2) -> void:
 			String(first["class_name"])
 	_add_tractor(card, first, inner)
 	# Top level highest, as a ladder.
+	var count := levels.size()
+	var room := rect.size.y - NOTE_HEIGHT - LEVELS_TOP
+	var row := minf(LEVEL_HEIGHT, (room - LEVEL_GAP * count) / count)
 	var y := LEVELS_TOP
-	for k in range(levels.size() - 1, -1, -1):
+	for k in range(count - 1, -1, -1):
 		var choice: Dictionary = levels[k]
-		_add_level(card, choice, Rect2(CARD_PADDING, y, inner, LEVEL_HEIGHT))
-		y += LEVEL_HEIGHT + LEVEL_GAP
-	var note := _label(card, Rect2(CARD_PADDING, rect.size.y - 70.0, inner, 56), SMALL_SIZE,
-			GarageArt.DIM)
+		_add_level(card, choice, Rect2(CARD_PADDING, y, inner, row))
+		y += row + LEVEL_GAP
+	var note := _label(card, Rect2(CARD_PADDING, rect.size.y - NOTE_HEIGHT, inner, 56),
+			SMALL_SIZE, GarageArt.DIM)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	note.text = _note(levels)
@@ -267,8 +276,9 @@ func _add_level(card: Control, choice: Dictionary, rect: Rect2) -> void:
 		now.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 
 
-# The card's foot: what opens its first level not yet open (1st or 2nd in
-# the championship of the rung before it), or that every level is open.
+# The card's foot: what opens its first level not yet open (a place up to
+# the career's promotion_place in the championship of the rung before it),
+# or that every level is open.
 func _note(levels: Array) -> String:
 	for choice: Dictionary in levels:
 		if not choice.get("open", false):
@@ -276,9 +286,27 @@ func _note(levels: Array) -> String:
 			if rung <= 0:
 				return ""
 			var before: Dictionary = _choices[rung - 1]
-			return "%s opens with 1st or 2nd at %s · %s." % [choice["level_name"],
+			return "%s opens with %s at %s · %s." % [choice["level_name"],
+					places_words(_promotion_place),
 					before["class_name"], before["level_name"]]
 	return "Every level open." if levels.size() > 1 else "Open."
+
+
+# The places up to `places`: "1st", "1st or 2nd", "1st to 3rd".
+static func places_words(places: int) -> String:
+	match places:
+		1:
+			return "1st"
+		2:
+			return "1st or 2nd"
+	return "1st to %s" % _ordinal(places)
+
+
+static func _ordinal(n: int) -> String:
+	var suffix := "th"
+	if n % 100 < 11 or n % 100 > 13:
+		suffix = ["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"][n % 10]
+	return "%d%s" % [n, suffix]
 
 
 # What the player's tractor in `choice`'s class has.
