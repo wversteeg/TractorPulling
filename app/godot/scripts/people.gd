@@ -9,6 +9,12 @@ class_name People
 const JEANS := Color(0.17, 0.22, 0.34)
 const SHOES := Color(0.12, 0.1, 0.09)
 const HAIR := Color(0.2, 0.14, 0.09)
+# A seated driver's helmet: its middle over the head, and its size [m].
+const HELMET_AT := Vector3(0.0, 1.26, -0.29)
+const HELMET_RADIUS_M := 0.15
+# The render layer the helmet is drawn on, so the cab camera, at the
+# driver's eyes inside it, can leave it out (layer 1 is everything else).
+const HELMET_LAYER := 2
 const SHIRT_PART := Color(1.0, 1.0, 1.0, 0.0)
 const SKIN_PART := Color(1.0, 1.0, 1.0, 0.5)
 const PERSON_SHADER := preload("res://shaders/person.gdshader")
@@ -68,6 +74,28 @@ static func one(seated_person: bool, shirt: Color) -> MeshInstance3D:
 	person.mesh = seated() if seated_person else standing()
 	person.material_override = material(shirt)
 	return person
+
+
+# A full-face helmet for the seated driver, over the head and hair: a shell
+# in `colour` and a dark visor in front, in the person's own space.
+static func helmet(colour: Color) -> Node3D:
+	var helmet := Node3D.new()
+	helmet.name = "Helmet"
+	# The seated head's middle (_add_upper_body's, lowered for the seat).
+	helmet.position = HELMET_AT
+	var shell := MeshInstance3D.new()
+	shell.mesh = _sphere(HELMET_RADIUS_M)
+	shell.scale = Vector3(1.0, 1.05, 1.12)
+	shell.material_override = Art.paint(colour, 0.3)
+	shell.layers = 1 << (HELMET_LAYER - 1)
+	helmet.add_child(shell)
+	var visor := MeshInstance3D.new()
+	visor.mesh = _box(Vector3(HELMET_RADIUS_M * 1.5, HELMET_RADIUS_M * 0.55, 0.04))
+	visor.position = Vector3(0.0, 0.01, HELMET_RADIUS_M * 0.98)
+	visor.material_override = Art.material(Color(0.05, 0.05, 0.07), 0.15, 0.4)
+	visor.layers = 1 << (HELMET_LAYER - 1)
+	helmet.add_child(visor)
+	return helmet
 
 
 # The body, neck, head and hair, lowered by `drop_m` for the seated pose

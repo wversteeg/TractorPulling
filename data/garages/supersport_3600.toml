@@ -182,38 +182,39 @@ levels = [
 paint_cost_eur = 900
 
 # Farm tractors rebuilt for pulling, as the class's are: each keeps its
-# maker's hood and grille (the rules keep the farm tractor's look), a cage
-# or a roll bar instead of its cab and one big stack off its single turbo
-# (one turbo, one stage), most with a weight rack ahead of the grille.
+# maker's hood and grille (the rules keep the farm tractor's look), no cab
+# but a full roll cage (the class asks one) and one big stack off its
+# single turbo (one turbo, one stage), most with a weight rack ahead of the
+# grille.
 [[garage.dealer.models]]
 name = "Thunder Eighties"
 style = "ss_square"
 cost_eur = 8500
-about = "An eighties tractor's square hood, an open cage, one big stack and a weight rack."
+about = "An eighties tractor's square hood, a full roll cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Oldtimer"
 style = "ss_round"
 cost_eur = 9400
-about = "An older tractor's round hood behind a chrome roll bar, its tall stack chrome too."
+about = "An older tractor's round hood in a chrome roll cage, its tall stack chrome too."
 
 [[garage.dealer.models]]
 name = "Thunder Low"
 style = "ss_low"
 cost_eur = 10300
-about = "Built low: a low square hood, a low roll bar, one big stack and a weight rack."
+about = "Built low: a low square hood, a low chrome cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Modern"
 style = "ss_sloped"
 cost_eur = 11200
-about = "A modern tractor's sloping hood and lamp strips, a roofed cage and a weight rack."
+about = "A modern tractor's sloping hood and lamp strips, a black cage and a weight rack."
 
 [[garage.dealer.models]]
-name = "Thunder Stripped Cab"
-style = "ss_stripped_cab"
+name = "Thunder High"
+style = "ss_high"
 cost_eur = 12300
-about = "A tall hood and the cab stripped to its frame and roof, work lamps still on."
+about = "A tall square hood in a tall chrome roll cage, with wide fenders."
 
 # The colours, the same at every dealer: the first comes with the tractor.
 [[garage.dealer.paints]]

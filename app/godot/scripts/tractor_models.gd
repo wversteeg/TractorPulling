@@ -13,8 +13,8 @@
 #   in the grille); the pulling bonnet's, "round" or "square";
 # - hood_height: the hood's or bonnet's height, a share of the usual;
 # - cab: "cab" (closed, glass all round), "canopy" (a two-post frame with a
-#   roof), "cage" (four posts and a roof, no glass), "open_cage" (four
-#   posts, no roof), "roll_bar" or "open" (a two-post frame alone);
+#   roof), "cage" (four posts and a roof, no glass), "open_cage" (a full
+#   roll cage: four posts, rails and braces, no roof), "roll_bar" or "open" (a two-post frame alone);
 # - cab_height: the cab's or frame's height, a share of the usual;
 # - roof: a cab's or cage's roof, "flat" or "rounded";
 # - stack: the exhaust, "single", "twin" (one each side of the hood),
@@ -73,25 +73,25 @@ const STYLES := {
 	# Farm tractors rebuilt for pulling: the Supersport classes. Each keeps
 	# its maker's hood and grille (the rules' "look of the farm tractor"):
 	# an eighties tractor's square one, an older round one, a modern sloped
-	# one; a cage or a roll bar instead of the cab, one big stack off the
-	# single turbo, and most a weight rack out ahead of the grille.
+	# one; no cab but a full roll cage, as the class asks, one big stack off
+	# the single turbo, and most a weight rack out ahead of the grille.
 	"ss_square": {"body": REBUILT, "hood": "square", "hood_height": 1.05, "cab": "open_cage",
 			"cab_height": 1.0, "roof": "flat", "stack": "fat", "fenders": "wide", "nose": "rack",
 			"beacon": false, "roof_lamps": false, "grille_lamps": false, "chrome": false},
-	"ss_round": {"body": REBUILT, "hood": "round", "hood_height": 1.0, "cab": "roll_bar",
+	"ss_round": {"body": REBUILT, "hood": "round", "hood_height": 1.0, "cab": "open_cage",
 			"cab_height": 1.0, "roof": "flat", "stack": "tall", "fenders": "round",
 			"nose": "bumper", "beacon": false, "roof_lamps": false, "grille_lamps": true,
 			"chrome": true},
-	"ss_sloped": {"body": REBUILT, "hood": "sloped", "hood_height": 1.05, "cab": "cage",
-			"cab_height": 1.0, "roof": "rounded", "stack": "fat", "fenders": "flat", "nose": "rack",
-			"beacon": false, "roof_lamps": true, "grille_lamps": true, "chrome": false},
-	"ss_low": {"body": REBUILT, "hood": "square", "hood_height": 0.84, "cab": "roll_bar",
+	"ss_low": {"body": REBUILT, "hood": "square", "hood_height": 0.84, "cab": "open_cage",
 			"cab_height": 0.9, "roof": "flat", "stack": "fat", "fenders": "round", "nose": "rack",
 			"beacon": false, "roof_lamps": false, "grille_lamps": false, "chrome": true},
-	"ss_stripped_cab": {"body": REBUILT, "hood": "square", "hood_height": 1.15, "cab": "cage",
-			"cab_height": 1.05, "roof": "flat", "stack": "single", "fenders": "wide",
-			"nose": "bumper", "beacon": false, "roof_lamps": true, "grille_lamps": false,
-			"chrome": false},
+	"ss_sloped": {"body": REBUILT, "hood": "sloped", "hood_height": 1.05, "cab": "open_cage",
+			"cab_height": 1.0, "roof": "flat", "stack": "fat", "fenders": "flat", "nose": "rack",
+			"beacon": false, "roof_lamps": false, "grille_lamps": true, "chrome": false},
+	"ss_high": {"body": REBUILT, "hood": "square", "hood_height": 1.15, "cab": "open_cage",
+			"cab_height": 1.06, "roof": "flat", "stack": "single", "fenders": "wide",
+			"nose": "bumper", "beacon": false, "roof_lamps": false, "grille_lamps": false,
+			"chrome": true},
 }
 
 

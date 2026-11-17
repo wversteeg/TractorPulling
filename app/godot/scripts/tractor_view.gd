@@ -612,6 +612,14 @@ func _add_cage(half_width_m: float, roof: bool) -> void:
 	brace.rotation = Vector3(PI / 2.0, atan2(diagonal.y, diagonal.x), 0.0)
 	brace.position = TrackSpace.point((back_m + front_m) / 2.0, 0.0, _cab_roof_m)
 	_body.add_child(brace)
+	# And across the back, corner to corner: a full roll cage.
+	var back_brace := Vector2(2.0 * half_width_m, height_m)
+	var cross := Art.cylinder(ROLL_BAR_TUBE_M * 0.8, back_brace.length(), CHROME, 8)
+	cross.name = "CageBackBrace"
+	cross.material_override = cage
+	cross.rotation.z = atan2(back_brace.x, back_brace.y)
+	cross.position = TrackSpace.point(back_m, 0.0, CAB_FLOOR_M + height_m / 2.0)
+	_body.add_child(cross)
 
 
 # The roof over a cab or a cage: flat or rounded, as the model has it, in
@@ -790,6 +798,9 @@ func _add_seat_and_driver(racing: bool) -> void:
 	driver.rotation.y = PI
 	driver.position = TrackSpace.point(0.37, 0.0, 0.3)
 	_body.add_child(driver)
+	if _pulling_look:
+		# A puller on a pulling frame wears a helmet, as the rules ask.
+		driver.add_child(People.helmet(look.trim))
 
 
 # The steering wheel on its column, tilted back towards the driver: a rim,
@@ -1222,6 +1233,8 @@ func cab_camera() -> Camera3D:
 		_cab_camera.far = CameraRig.FAR_M
 		_cab_camera.position = TrackSpace.point(EYES_AHEAD_M, 0.0, EYES_UP_M)
 		_cab_camera.rotation.x = -EYES_DOWN_RAD
+		# From inside the driver's helmet: not drawn.
+		_cab_camera.set_cull_mask_value(People.HELMET_LAYER, false)
 		_body.add_child(_cab_camera)
 	return _cab_camera
 

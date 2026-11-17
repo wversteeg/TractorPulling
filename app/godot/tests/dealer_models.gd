@@ -24,7 +24,7 @@ const CLASSES := [
 			["pull_classic", "pull_low", "pull_high", "pull_farm", "pull_cab"]],
 	["supersport_3600", "res://data/tractors/supersport_3600.toml",
 			"res://data/sleds/supersport_3600.toml",
-			["ss_square", "ss_round", "ss_low", "ss_sloped", "ss_stripped_cab"]],
+			["ss_square", "ss_round", "ss_low", "ss_sloped", "ss_high"]],
 ]
 # A colour for each picture in turn: paint, trim, rims.
 const PAINTS := [

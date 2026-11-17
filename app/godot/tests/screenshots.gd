@@ -1,10 +1,13 @@
 # Screenshots of the pull scene from each camera, for reviewing the look:
 # the scripted driver pulls for a while, then each camera saves a PNG to
 # the directory given after `--`, in the easy layout or, with `pro` after
-# it, the pro layout. Needs a display (or Xvfb) and a renderer:
+# it, the pro layout; another class's tractor and sled with
+# `tractor=res://data/tractors/....toml` and `sled=res://data/sleds/....toml`
+# (drawn as its class's usual model). Needs a display (or Xvfb) and a
+# renderer:
 #
 #   godot --fixed-fps 60 --rendering-method gl_compatibility --path app/godot \
-#       --script res://tests/screenshots.gd -- /tmp/shots [pro]
+#       --script res://tests/screenshots.gd -- /tmp/shots [pro] [tractor=...] [sled=...]
 extends SceneTree
 
 const FRAMES_BEFORE := 900
@@ -23,6 +26,10 @@ func _initialize() -> void:
 	_pull = scene.instantiate()
 	_pull.set("autoplay", true)
 	_pull.set("pro", args.has("pro"))
+	for arg: String in args:
+		for key: String in ["tractor", "sled"]:
+			if arg.begins_with(key + "="):
+				_pull.set(key + "_path", arg.trim_prefix(key + "="))
 	root.add_child(_pull)
 
 

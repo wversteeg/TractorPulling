@@ -429,7 +429,7 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	d["ballast_position"] = 1.0
 	pulling.build(d)
 	_expect(pulling.pulling_look(), "a roll-bar tractor drawn as a pulling tractor")
-	for part: String in ["Bonnet", "Bumper", "RimDisc"]:
+	for part: String in ["Bonnet", "Bumper", "RimDisc", "Helmet"]:
 		_expect(pulling.find_child(part, true, false) != null, "the pulling tractor's %s" % part)
 	_expect(pulling.find_child("Hood", true, false) == null, "no farm hood on a pulling tractor")
 	_expect(pulling.weight_counts().x > 0, "the weights forward hang on the pulling tractor")
@@ -448,13 +448,22 @@ func _check_pulling_look(dimensions: Dictionary) -> void:
 	rebuilt.look.style_id = "ss_square"
 	rebuilt.build(d)
 	_expect(rebuilt.pulling_look(), "a rebuilt tractor drawn on a pulling frame")
-	for part: String in ["Hood", "Bumper", "RimDisc", "CageBrace"]:
+	for part: String in ["Hood", "Bumper", "RimDisc", "CageBrace", "CageBackBrace", "Helmet"]:
 		_expect(rebuilt.find_child(part, true, false) != null, "the rebuilt tractor's %s" % part)
 	_expect(rebuilt.find_child("Bonnet", true, false) == null, "no pulling bonnet when rebuilt")
 	var rack := rebuilt.find_child("Bumper", true, false) as MeshInstance3D
 	_expect(-rack.global_position.z + TractorView.BUMPER_DEPTH_M / 2.0 > bumper_front_m,
 			"the weight rack reaches further than the bumper")
+	_expect(not rebuilt.cab_camera().get_cull_mask_value(People.HELMET_LAYER),
+			"the cab camera, inside the helmet, leaves it out")
 	rebuilt.free()
+	_expect(farm.find_child("Helmet", true, false) == null, "no helmet in a farm cab")
+	# The Supersport classes ask a full roll cage and no cab: every rebuilt
+	# model has one.
+	for id: String in TractorModels.STYLES:
+		var style: Dictionary = TractorModels.STYLES[id]
+		_expect(style["body"] != TractorModels.REBUILT or style["cab"] == "open_cage",
+				"a full roll cage, no cab: %s" % id)
 	# The Sport and Supersport classes allow one turbo, one stage: every
 	# pulling or rebuilt model has one stack.
 	for id: String in TractorModels.STYLES:
