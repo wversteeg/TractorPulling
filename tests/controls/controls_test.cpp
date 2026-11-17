@@ -317,6 +317,16 @@ TEST(Pro, TheBrakeHoldLetsGoAtItsBoost) {
     ProInput by_hand = held;
     by_hand.hold_until_boost = 0.0;
     EXPECT_TRUE(step(by_hand, 1.0)) << "no boost given: held while asked";
+    // The boost is a share of full boost: not a number holds while asked,
+    // beyond full boost reads as full boost.
+    ProInput not_a_number = held;
+    not_a_number.hold_until_boost = std::nan("");
+    EXPECT_TRUE(step(not_a_number, 1.0));
+    EXPECT_FALSE(step(ProInput{.throttle = 1.0}, 0.0));
+    ProInput beyond = held;
+    beyond.hold_until_boost = 2.0;
+    EXPECT_TRUE(step(beyond, 0.99));
+    EXPECT_FALSE(step(beyond, 1.0));
 }
 
 // A control that is not a number (a NaN from a front end's maths) reads as

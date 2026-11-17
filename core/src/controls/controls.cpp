@@ -46,12 +46,15 @@ double guard_rad_s(const ClutchAssist& assist, const engine::Params& engine, dou
 
 // Whether the start's brake hold holds this step: asked for, and not yet
 // let go at its boost (a release stands until the hold is let go).
+// `until_boost` is a share of full boost, held to 0 to 1 (unit); 0, or not a
+// number, holds while asked.
 bool holding(bool asked, double until_boost, double boost, AssistState& state) noexcept {
     if (!asked) {
         state.hold_released = false;
         return false;
     }
-    if (until_boost > 0.0 && boost >= until_boost) {
+    const double release_boost = unit(until_boost, 0.0);
+    if (release_boost > 0.0 && boost >= release_boost) {
         state.hold_released = true;
     }
     return !state.hold_released;

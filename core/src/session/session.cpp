@@ -240,6 +240,7 @@ Snapshot Session::snapshot() const noexcept {
             .engine_omega_rad_s = tractor.engine.omega_rad_s,
             .engine_running = tractor.engine.running,
             .brakes_held = input_.hold_brakes,
+            .hold_released = assist_.hold_released,
             .boost = tractor.engine.boost,
             .gear = tractor.driveline.gear,
             .lowest_gear = driveline::lowest_gear(tractor.driveline, model_.tractor().driveline()),

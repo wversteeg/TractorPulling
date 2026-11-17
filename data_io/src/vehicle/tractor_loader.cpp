@@ -12,6 +12,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "../common/toml_reader.hpp"
 #include "../tire/tire_fields.hpp"
@@ -111,6 +112,24 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
     return result.value();
 }
 
+// The brakes: the pedals' torque, and the start's hold at least as hard
+// (or 0: the pedals' torque).
+std::optional<LoadError> check_brakes(const vehicle::Brakes& brakes, std::string_view source) {
+    if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
+        return detail::make_error(source, "tractor.brakes.max_torque_nm",
+                                  "must be a finite number, not negative");
+    }
+    if (!std::isfinite(brakes.hold_torque_nm) || brakes.hold_torque_nm < 0.0) {
+        return detail::make_error(source, "tractor.brakes.hold_torque_nm",
+                                  "must be a finite number, not negative");
+    }
+    if (brakes.hold_torque_nm > 0.0 && brakes.hold_torque_nm < brakes.max_torque_nm) {
+        return detail::make_error(source, "tractor.brakes.hold_torque_nm",
+                                  "must be 0 (the pedals' torque) or at least max_torque_nm");
+    }
+    return std::nullopt;
+}
+
 Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view source,
                                      std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
@@ -208,13 +227,8 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         return detail::make_error(source, "tractor.steering.max_angle_deg", "must be in (0, 45]");
     }
 
-    if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
-        return detail::make_error(source, "tractor.brakes.max_torque_nm",
-                                  "must be a finite number, not negative");
-    }
-    if (!std::isfinite(brakes.hold_torque_nm) || brakes.hold_torque_nm < 0.0) {
-        return detail::make_error(source, "tractor.brakes.hold_torque_nm",
-                                  "must be a finite number, not negative");
+    if (auto brakes_error = check_brakes(brakes, source)) {
+        return *std::move(brakes_error);
     }
     if (!std::isfinite(differential.coupling_nm_s_per_rad) ||
         differential.coupling_nm_s_per_rad < 0.0) {

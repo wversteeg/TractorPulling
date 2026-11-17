@@ -34,7 +34,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         return ParamError::kSteering;
     }
     if (!std::isfinite(params.brakes.max_torque_nm) || params.brakes.max_torque_nm < 0.0 ||
-        !std::isfinite(params.brakes.hold_torque_nm) || params.brakes.hold_torque_nm < 0.0) {
+        !std::isfinite(params.brakes.hold_torque_nm) || params.brakes.hold_torque_nm < 0.0 ||
+        (params.brakes.hold_torque_nm > 0.0 &&
+         params.brakes.hold_torque_nm < params.brakes.max_torque_nm)) {
         return ParamError::kBrakes;
     }
     if (!std::isfinite(params.differential.coupling_nm_s_per_rad) ||

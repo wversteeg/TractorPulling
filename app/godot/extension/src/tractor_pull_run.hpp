@@ -61,7 +61,8 @@ public:
     /// range, and a value that is not a number reads as the control at rest);
     /// `hold_brakes` the brake hold for the start ("optoeren"), either
     /// layout, let go once the boost reaches `hold_until_boost` (0: while
-    /// asked); the snapshot's brakes_held says whether it holds.
+    /// asked); the snapshot's brakes_held says whether it holds, and
+    /// hold_released whether it has let go at that boost.
     void set_controls(double throttle, double clutch_pedal, std::int64_t gear, double steering,
                       double brake_left, double brake_right, bool hold_brakes = false,
                       double hold_until_boost = 0.0);

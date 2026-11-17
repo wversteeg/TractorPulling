@@ -35,8 +35,8 @@ struct Brakes {
     /// Braking torque on one side's wheels while the start's brake hold
     /// holds them (Input::hold_brakes): clamped harder than a foot presses,
     /// to hold a loaded engine while the turbo spools ("optoeren") [N·m].
-    /// 0: max_torque_nm. The pedals, and the easy layout's steering brake,
-    /// brake at max_torque_nm as ever.
+    /// 0: max_torque_nm; otherwise at least max_torque_nm. The pedals, and the easy layout's
+    /// steering brake, brake at max_torque_nm as ever.
     double hold_torque_nm = 0.0;
 };
 

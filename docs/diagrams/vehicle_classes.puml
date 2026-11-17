@@ -33,7 +33,7 @@ package "tp::vehicle" {
   }
   class Brakes <<struct>> {
     +max_torque_nm : double, at full pedal
-    +hold_torque_nm : double, the start's hold (0: as the pedals)
+    +hold_torque_nm : double, the start's hold (0: as the pedals; else at least max)
   }
   class Differential <<struct>> {
     +coupling_nm_s_per_rad : double (0 open, more passes torque to the side that grips)

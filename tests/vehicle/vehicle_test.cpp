@@ -124,6 +124,9 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 3; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.brakes.max_torque_nm = -1.0; }), ParamError::kBrakes);
+    EXPECT_EQ(with([](Params& p) { p.brakes.hold_torque_nm = 0.5 * p.brakes.max_torque_nm; }),
+              ParamError::kBrakes)
+        << "the hold holds harder than a foot";
     EXPECT_EQ(with([](Params& p) { p.differential.coupling_nm_s_per_rad = -1.0; }),
               ParamError::kDifferential);
     EXPECT_EQ(with([](Params& p) { p.front_tire.section_width_m = 0.0; }), ParamError::kFrontTire);
