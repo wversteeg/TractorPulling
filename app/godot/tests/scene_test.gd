@@ -250,6 +250,10 @@ func _check_flagman() -> void:
 	_expect(official.shown_signal() == "lamp" and official.colour_name() == "green"
 			and wand_tip.y > official.hand_position().y,
 			"in the evening a light wand, held up: %s" % wand_tip)
+	_expect(official.lamp_lit(), "the wand lit while it signals")
+	official.show_signal(false, 0.0, false, 0.0, false)
+	_expect(not official.lamp_lit() and official.colour_name() == "red",
+			"no signal yet: the wand dark, not a glowing red stop")
 	official.free()
 
 

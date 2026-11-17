@@ -40,12 +40,19 @@ const WAVE_PER_S := 7.0
 # the environment's glow threshold, so it blooms), and the halo around it
 # that carries it to the cab from far down the track [m].
 const GRIP_M := 0.12
+# How far the grip sticks out past the fist, on the thumb's side [m].
+const GRIP_OVERHANG_M := 0.04
 const WAND_M := 0.5
 const WAND_RADIUS_M := 0.028
 const WAND_GLOW := 4.0
 const HALO_M := 1.1
 const LAMP_RED := Color(1.0, 0.12, 0.08)
 const LAMP_GREEN := Color(0.15, 1.0, 0.3)
+# An unlit wand (no signal yet): the tube's plastic, dark.
+const LAMP_OFF := Color(0.25, 0.22, 0.2)
+# Each official's cloth ripples out of step with the other's: its phase,
+# from its instance id, somewhere in a full wave [rad].
+const FULL_WAVE_RAD := TAU
 
 var _shoulder := Node3D.new()
 var _hand := Node3D.new()
@@ -55,7 +62,10 @@ var _cloth: MeshInstance3D
 var _cloth_material := ShaderMaterial.new()
 var _wand_material := StandardMaterial3D.new()
 var _halo_material := StandardMaterial3D.new()
+var _halo: MeshInstance3D
 var _green := false
+var _lit := true
+var _shown := ""
 var _raise := 0.0
 var _use_lamp := false
 var _time_s := 0.0
@@ -80,7 +90,7 @@ func _ready() -> void:
 	_hand.add_child(_flag)
 	_hand.add_child(_lamp)
 	use_lamp(_use_lamp)
-	show_signal(false, 0.0, false, 0.0)
+	show_signal(false, 0.0, false, 0.0, false)
 
 
 # In the hand's frame the flag runs along -y, out of the fist; the cloth
@@ -96,6 +106,7 @@ func _build_flag() -> void:
 	cloth.orientation = PlaneMesh.FACE_Z
 	_cloth_material.shader = VenueView.FLAG_SHADER
 	_cloth_material.set_shader_parameter("glow", CLOTH_GLOW)
+	_cloth_material.set_shader_parameter("phase", fmod(float(get_instance_id()), FULL_WAVE_RAD))
 	_cloth = Art.instance(cloth, _cloth_material)
 	# Facing the tractor (+z); turned about y so the flag shader's pole
 	# edge (UV.x 0, the plane's -x) is at the pole and the fly end out at -x.
@@ -108,7 +119,7 @@ func _build_flag() -> void:
 # glowing disc always turned to the camera, sits on the lit tube.
 func _build_lamp() -> void:
 	var grip := Art.cylinder(WAND_RADIUS_M, GRIP_M, Color(0.08, 0.08, 0.08), 8)
-	grip.position = Vector3(0.0, -GRIP_M / 2.0 + 0.04, 0.0)
+	grip.position = Vector3(0.0, -GRIP_M / 2.0 + GRIP_OVERHANG_M, 0.0)
 	_lamp.add_child(grip)
 	var tube := CylinderMesh.new()
 	tube.top_radius = WAND_RADIUS_M
@@ -120,7 +131,7 @@ func _build_lamp() -> void:
 	_wand_material.emission_enabled = true
 	_wand_material.emission_energy_multiplier = WAND_GLOW
 	var wand := Art.instance(tube, _wand_material)
-	wand.position = Vector3(0.0, -GRIP_M + 0.04 - WAND_M / 2.0, 0.0)
+	wand.position = Vector3(0.0, -GRIP_M + GRIP_OVERHANG_M - WAND_M / 2.0, 0.0)
 	_lamp.add_child(wand)
 	var halo := QuadMesh.new()
 	halo.size = Vector2(HALO_M, HALO_M)
@@ -141,10 +152,10 @@ func _build_lamp() -> void:
 	_halo_material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	_halo_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	_halo_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var glow := Art.instance(halo, _halo_material)
-	glow.position = wand.position
-	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_lamp.add_child(glow)
+	_halo = Art.instance(halo, _halo_material)
+	_halo.position = wand.position
+	_halo.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_lamp.add_child(_halo)
 
 
 # Stands at `at` (on the ground), facing `facing` (a point to look at).
@@ -163,20 +174,33 @@ func use_lamp(lamp: bool) -> void:
 
 
 # The signal: green or red, raised from 0 (held out low) to 1 (overhead),
-# waved or held still.
-func show_signal(green: bool, raise: float, wave: bool, delta: float) -> void:
+# waved or held still. Not `lit` (no signal yet) the wand is dark, so it
+# does not read as "stop"; the flag is red, held low.
+func show_signal(green: bool, raise: float, wave: bool, delta: float, lit: bool = true) -> void:
 	_time_s += delta
 	_green = green
+	_lit = lit
 	_raise = clampf(raise, 0.0, 1.0)
-	_cloth_material.set_shader_parameter("colour", GREEN if green else RED)
-	var lamp := LAMP_GREEN if green else LAMP_RED
-	_wand_material.albedo_color = lamp
-	_wand_material.emission = lamp
-	_halo_material.albedo_color = lamp
+	_show_colour()
 	var swing := sin(_time_s * WAVE_PER_S) * WAVE_RAD if wave else 0.0
 	var arm_rad := lerpf(ARM_LOW_RAD, ARM_HIGH_RAD, _raise) + swing
 	_shoulder.rotation = Vector3(0.0, 0.0, arm_rad)
 	_hand.rotation = Vector3(0.0, 0.0, lerpf(FLAG_LOW_RAD, FLAG_HIGH_RAD, _raise) - arm_rad + swing)
+
+
+# The cloth's and the wand's colours, set only when they change.
+func _show_colour() -> void:
+	var shown := ("green" if _green else "red") + ("" if _lit else " off")
+	if shown == _shown:
+		return
+	_shown = shown
+	_cloth_material.set_shader_parameter("colour", GREEN if _green else RED)
+	var lamp := LAMP_GREEN if _green else LAMP_RED
+	_wand_material.albedo_color = lamp if _lit else LAMP_OFF
+	_wand_material.emission_enabled = _lit
+	_wand_material.emission = lamp
+	_halo_material.albedo_color = lamp
+	_halo.visible = _lit
 
 
 # The signal's colour now, for tests: "red" or "green".
@@ -187,6 +211,11 @@ func colour_name() -> String:
 # Whether the flag is up (raised past halfway), for tests.
 func raised() -> bool:
 	return _raise > 0.5
+
+
+# Whether the wand is lit (a signal shown), for tests.
+func lamp_lit() -> bool:
+	return _lit
 
 
 # Whether the official signals with the light wand, for tests.
@@ -213,5 +242,5 @@ func shown_signal() -> String:
 # Where the signal is: the flag's tip, or the wand's end, in the world,
 # for tests.
 func signal_position() -> Vector3:
-	var reach_m := GRIP_M - 0.04 + WAND_M if _use_lamp else POLE_M
+	var reach_m := GRIP_M - GRIP_OVERHANG_M + WAND_M if _use_lamp else POLE_M
 	return _hand.global_transform * Vector3(0.0, -reach_m, 0.0)
