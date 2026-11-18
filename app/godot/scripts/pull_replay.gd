@@ -70,7 +70,7 @@ func record(s: Dictionary, delta: float) -> void:
 		if _ended_s >= 0.0:
 			# Pulled again (restarted): the last pull's frames go.
 			clear()
-		var flag := stage == "pulling" and not _frames.is_empty() \
+		var flag: bool = stage == "pulling" and not _frames.is_empty() \
 				and _frames[-1].get("stage", "") != "pulling"
 		_add(s, delta)
 		if flag:
