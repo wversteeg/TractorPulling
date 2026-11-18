@@ -6,6 +6,7 @@
 # stands for each: low beside the launch, alongside the tractor down the
 # track, head-on at the full-pull line, and behind the sled at the end.
 # The replay only draws what was recorded; the run is not stepped again.
+# The track's marks are laid again as it plays (TrackMarks).
 class_name PullReplay
 extends RefCounted
 
@@ -47,6 +48,7 @@ var _times: Array[float] = []
 var _frames: Array[Dictionary] = []
 var _recording_s := 0.0
 var _ended_s := -1.0
+var _has_pull := false
 var _playing := false
 var _play_s := 0.0
 var _index := 0
@@ -57,6 +59,7 @@ func clear() -> void:
 	_frames.clear()
 	_recording_s = 0.0
 	_ended_s = -1.0
+	_has_pull = false
 	_playing = false
 
 
@@ -70,11 +73,11 @@ func record(s: Dictionary, delta: float) -> void:
 		if _ended_s >= 0.0:
 			# Pulled again (restarted): the last pull's frames go.
 			clear()
-		var flag: bool = stage == "pulling" and not _frames.is_empty() \
-				and _frames[-1].get("stage", "") != "pulling"
-		_add(s, delta)
-		if flag:
+		if stage == "pulling" and not _has_pull:
+			# The flag: the wait's last BEFORE_FLAG_S, up to the last frame
+			# before it.
 			_trim_before_flag(true)
+		_add(s, delta)
 		if stage == "waiting_for_the_flag":
 			_trim_before_flag()
 		return
@@ -89,6 +92,7 @@ func record(s: Dictionary, delta: float) -> void:
 
 
 func _add(s: Dictionary, delta: float) -> void:
+	_has_pull = _has_pull or s.get("stage", "") == "pulling"
 	_recording_s += delta
 	_times.append(_recording_s)
 	_frames.append(s)
@@ -111,10 +115,7 @@ func _trim_before_flag(exactly: bool = false) -> void:
 
 # Whether a pull was recorded: one that got the green flag.
 func has_pull() -> bool:
-	for s: Dictionary in _frames:
-		if s.get("stage", "") == "pulling":
-			return true
-	return false
+	return _has_pull
 
 
 func start() -> void:

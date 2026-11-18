@@ -215,6 +215,26 @@ func _check() -> void:
 	_check_pulling_look(dimensions)
 	_check_class_looks(dimensions)
 	_check_flagman()
+	_check_start_official()
+
+
+# The start's official keeps the same room to the tractor's line: a step
+# aside for a sled started left of the middle, a step in for one right of
+# it.
+func _check_start_official() -> void:
+	var official: Flagman = _pull.get("flagman")
+	var left_of := func(sled_y_m: float) -> float:
+		_pull.call("_show_officials", {"stage": "waiting_for_the_flag", "sled_y_m": sled_y_m,
+				"tractor_x_m": 0.0, "flag_progress": 0.0}, 0.0)
+		# TrackSpace: Godot's x is minus the left.
+		return -official.position.x
+	var middle: float = left_of.call(0.0)
+	var aside: float = left_of.call(2.0)
+	var in_step: float = left_of.call(-1.0)
+	left_of.call(0.0)
+	_expect(is_equal_approx(aside - middle, 2.0) and is_equal_approx(in_step - middle, -1.0),
+			"the start's official steps with the sled's start: %.2f, %.2f, %.2f m"
+			% [in_step, middle, aside])
 
 
 # The official holds the flag in the hand at the end of the arm, low and
