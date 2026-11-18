@@ -145,6 +145,13 @@ func next_frame(delta: float) -> Dictionary:
 	return _frames[_index]
 
 
+# The frames still to come while it plays, none once it is over or stopped.
+func frames_left() -> Array[Dictionary]:
+	if not _playing:
+		return []
+	return _frames.slice(_index + 1)
+
+
 # How long the replay lasts [s].
 func length_s() -> float:
 	return 0.0 if _times.is_empty() else _times[-1] - _times[0]

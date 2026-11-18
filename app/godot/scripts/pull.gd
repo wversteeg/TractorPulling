@@ -1207,9 +1207,11 @@ func _show_officials(s: Dictionary, delta: float) -> void:
 	# step aside for a sled started left of the middle, a step in for one
 	# started right of it. The sled's place is the start until the pull.
 	if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
-		_start_y_m = float(s.get("sled_y_m", 0.0))
-	flagman.stand(TrackSpace.point(FLAGMAN_X_M, _left_m + _start_y_m, 0.0),
-			TrackSpace.point(0.0, _start_y_m, 0.0))
+		var start_y_m := float(s.get("sled_y_m", 0.0))
+		if start_y_m != _start_y_m:
+			_start_y_m = start_y_m
+			flagman.stand(TrackSpace.point(FLAGMAN_X_M, _left_m + _start_y_m, 0.0),
+					TrackSpace.point(0.0, _start_y_m, 0.0))
 	var shown := signal_for(s, _whole_turn)
 	var stop := shown == "red" and stage not in ["taking_up_slack", "waiting_for_the_flag"]
 	# The start official: the red flag low, raised while the tractor stands
@@ -1283,6 +1285,9 @@ func _start_replay() -> void:
 
 # Back to the result: the run's cameras and the run as it stands.
 func _end_replay() -> void:
+	# Stopped early ("Back"): the rest of the pull's marks laid at once.
+	for s: Dictionary in replay.frames_left():
+		track_marks.show_snapshot(s)
 	replay.stop()
 	cameras.current_camera().make_current()
 	_set_screen(Screen.RESULT)

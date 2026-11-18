@@ -247,11 +247,15 @@ func _check_replay(result: ResultScreen) -> void:
 			"the replay's trackside shots: %s" % [shots.keys()])
 	_expect(tractor.global_position.distance_to(parked_at) < 0.5,
 			"back in its bay after the replay")
+	var replayed_marks := marks.point_counts()
 	_tap(result.replay_button)
 	await _frames(5)
 	_tap(overlay.back_button)
 	await _frames(2)
 	_expect(result.visible and not overlay.visible, "Back: the result again")
+	_expect(marks.point_counts() == replayed_marks,
+			"Back mid-replay: the pull's marks all laid: %s of %s"
+			% [marks.point_counts(), replayed_marks])
 
 
 func _play() -> void:
