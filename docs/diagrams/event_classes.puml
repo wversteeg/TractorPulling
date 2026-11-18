@@ -104,6 +104,7 @@ note bottom of Event
   pull-off: full pulls, filled to 4 from 90 m; sled heavier so the strongest stops
   at the line; again among those who full-pull again;
   disqualified (a tire on the chalk): 0 m, behind every pull that counts;
-  a disqualified test pull leaves the sled, and the next puller tests it
+  a disqualified test pull leaves the sled and does not count: the next
+  puller tests it, and the test puller pulls again where a re-pull goes
 end note
 @enduml

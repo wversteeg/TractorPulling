@@ -175,8 +175,9 @@ TEST(Event, ADeferredPullerPullsLater) {
     EXPECT_EQ(next_of(last).puller, 1);
 }
 
-// A disqualified test pull says nothing about the sled: it stays, the next
-// puller tests it, and the test puller keeps 0 m without a decision.
+// A disqualified test pull says nothing about the sled and does not count:
+// the sled stays, the next puller tests it, and the test puller pulls again
+// where a re-pull goes, without a decision.
 TEST(Event, DisqualifiedTestPullLeavesTheSled) {
     Event event = make(6);
     const int before = knives(event);
@@ -189,12 +190,17 @@ TEST(Event, DisqualifiedTestPullLeavesTheSled) {
     EXPECT_EQ(second.kind, PullKind::kTest);
     // 70 m makes the sled lighter, unaffected by the disqualified pull.
     EXPECT_EQ(event.record(70.0).change, SledChange::kLighter);
-    run(event, [](const Pull&) { return 95.0; });
+    bool pulled_again = false;
+    run(event, [&](const Pull& pull) {
+        pulled_again = pulled_again || (pull.puller == 0 && pull.kind == PullKind::kRepull);
+        return pull.puller == 0 ? 90.0 : 95.0;
+    });
+    EXPECT_TRUE(pulled_again);
     const std::span<const Standing> standings = event.standings();
     const Standing& last = standings.back();
     EXPECT_EQ(last.puller, 0);
-    EXPECT_TRUE(last.disqualified);
-    EXPECT_EQ(last.distance_m, 0.0);
+    EXPECT_FALSE(last.disqualified);
+    EXPECT_EQ(last.distance_m, 90.0);
 }
 
 // A disqualified pull counts 0 m and ranks behind every pull that counts,

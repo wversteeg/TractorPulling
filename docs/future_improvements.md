@@ -371,10 +371,11 @@ for the big features; they are repeated at the end for completeness.
   the lane come with the left and right track differences.
 - **Disqualification in a pull-off.** A pull-off pull out of bounds counts
   0 m in that round, with no mark of its own in the standings.
-- **The rules on a disqualified test pull.** A disqualified test pull
-  counts 0 m for its puller (no keep-or-re-pull), the sled stays and the
-  next puller tests it; a disqualified pull scores no season points. These
-  are reasonable readings, not checked against the NTTO rule book.
+- **The rules on a disqualified test pull.** A test pull out of bounds
+  does not count: the sled stays, the next puller tests it, and the test
+  puller pulls again where a re-pull goes (the owner's ruling); a
+  disqualified pull scores no season points. Not checked against the NTTO
+  rule book.
 - **Seeds of consecutive seasons.** An event's seed is SplitMix64 of the
   season's seed plus the event's number (`field::event_seed`, as in
   `tp_pull season`), so season seed s + 1's first event draws as season
