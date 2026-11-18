@@ -47,7 +47,7 @@
 extends Node3D
 
 enum Screen { START, SETTINGS, HAPTICS, GARAGE, EVENT, SETUP, PULLING, RESULT, EVENT_END,
-		SEASON, CAREER, DEALER, BRAKE_HOLD }
+		SEASON, CAREER, DEALER, BRAKE_HOLD, REPLAY }
 # The menus drawn over the backdrop (MenuBackdrop), not over the venue;
 # the 3D world is not drawn behind it.
 # A whole turn's stages up to and through the pull: no result yet.
@@ -90,6 +90,8 @@ const DROP_CLUTCH_S := 1.0
 const NS_PER_S := 1_000_000_000.0
 # How long the stopped sled stays in view before the result screen.
 const RESULT_DELAY_S := 2.0
+# The replay's camera sees the whole venue [m].
+const REPLAY_CAMERA_FAR_M := 600.0
 # The rivals' work each frame: slices of steps until this much time is
 # spent, so the board keeps the frame rate on a phone. A slice is the least
 # a frame runs: 500 steps are 25 ms even at the phone's speed budget (50 µs
@@ -185,6 +187,12 @@ var _time_s := 0.0
 # Where the officials stand: the full-pull line, and in from the left
 # chalk line [m].
 var _full_pull_m := 100.0
+var _lane_m := 9.0
+# The pull recorded for its replay, the replay's camera and what it shows
+# over it.
+var replay := PullReplay.new()
+var replay_overlay := ReplayOverlay.new()
+var _replay_camera := Camera3D.new()
 var _left_m := 4.5
 # Set for each run in _build_turn: whether it is the whole turn, and the
 # chain's length [m].
@@ -223,9 +231,13 @@ func _ready() -> void:
 	for node: Node in [menu_backdrop, hud, controls, start_screen, settings_screen, haptics_screen,
 			brake_hold_screen,
 			garage_screen, career_screen, dealer_screen, board, setup_screen, result_screen,
-			restart_screen]:
+			restart_screen, replay_overlay]:
 		layer.add_child(node)
 	add_child(layer)
+	add_child(_replay_camera)
+	_replay_camera.far = REPLAY_CAMERA_FAR_M
+	result_screen.replay_requested.connect(_start_replay)
+	replay_overlay.back_requested.connect(_end_replay)
 	controls.camera_requested.connect(cameras.next)
 	controls.restart_requested.connect(func() -> void:
 		if autoplay:
@@ -655,6 +667,7 @@ func _build(error: String) -> bool:
 	venue_view.show_flags(false, float(dimensions["full_pull_line_m"]))
 	# A new pull on a prepared track: the last pull's marks are gone.
 	track_marks.build(dimensions)
+	replay.clear()
 	# The tractor moves its weights to the tuning on every pull; the rest of
 	# it, and the sled, are built once.
 	tractor_view.look = class_look(dimensions)
@@ -738,6 +751,7 @@ func _build_turn(dimensions: Dictionary) -> void:
 	flagman.stand(TrackSpace.point(FLAGMAN_X_M, lane_m / 2.0 - FLAGMAN_IN_M, 0.0),
 			TrackSpace.point(0.0, 0.0, 0.0))
 	_full_pull_m = dimensions["full_pull_line_m"]
+	_lane_m = lane_m
 	_left_m = lane_m / 2.0 - FLAGMAN_IN_M
 	hud.set_parking(Vector2(bays[0].x, -(lane_m / 2.0 + bays[0].y)) if turn else Vector2.INF)
 
@@ -756,6 +770,7 @@ func _set_screen(next: Screen) -> void:
 	setup_screen.visible = screen == Screen.SETUP
 	board.visible = screen in [Screen.EVENT, Screen.EVENT_END, Screen.SEASON]
 	result_screen.visible = screen == Screen.RESULT
+	replay_overlay.visible = screen == Screen.REPLAY
 	restart_screen.visible = false
 	_choosing = false
 	controls.visible = screen == Screen.PULLING
@@ -775,6 +790,7 @@ func _set_screen(next: Screen) -> void:
 	board.release_buttons()
 	result_screen.release_buttons()
 	restart_screen.release_buttons()
+	replay_overlay.release_buttons()
 	controls.reset_fingers()
 	_ended_s = 0.0
 	_shown_log = -1
@@ -809,9 +825,14 @@ func _process(delta: float) -> void:
 		if screen == Screen.EVENT:
 			_show_event()
 	_show(delta)
-	# The engine is heard on the track during the turn, not behind the
-	# result or the menus: it fades out as the result comes up.
-	engine_sound.show_snapshot(_snapshot if screen == Screen.PULLING else {})
+	if screen == Screen.PULLING and not _choosing:
+		replay.record(_snapshot, delta)
+	# The engine is heard on the track during the turn and the replay, not
+	# behind the result or the menus: it fades out as the result comes up.
+	engine_sound.show_snapshot(_snapshot if screen in [Screen.PULLING, Screen.REPLAY] else {})
+	if screen == Screen.REPLAY:
+		_show_replay_shot()
+		return
 	# The phone vibrates in the pull only (the driver's hands on it).
 	# Not while the restart choice is up: the run stands still then.
 	if screen == Screen.PULLING and not autoplay and not _choosing:
@@ -933,7 +954,7 @@ func _show_result() -> void:
 		entry = event.move_back()
 	if not practice and entry.is_empty():
 		entry = event.record_pull(run)
-	result_screen.show_result(_title, run.get_result(), entry)
+	result_screen.show_result(_title, run.get_result(), entry, replay.has_pull())
 	# The standings again, now with this pull in them.
 	_show_screen_standings()
 	_set_screen(Screen.RESULT)
@@ -1102,13 +1123,16 @@ func _read_controls() -> void:
 
 
 func _show(delta: float) -> void:
-	var s := run.get_snapshot()
+	var replaying := screen == Screen.REPLAY
+	var s := replay.next_frame(delta) if replaying else run.get_snapshot()
+	if replaying and s.is_empty():
+		# The replay is over: back to the result, the run as it is.
+		_end_replay()
+		replaying = false
+		s = run.get_snapshot()
 	_snapshot = s
 	if s.is_empty():
 		return
-	controls.lowest_gear = s["lowest_gear"]
-	controls.show_gear(s["gear"])
-	_show_hold(s)
 	tractor_view.show_snapshot(s, delta)
 	sled_view.show_snapshot(s, delta)
 	# After the pull its distance stays on the boards while the sled drives
@@ -1117,6 +1141,12 @@ func _show(delta: float) -> void:
 	if s.get("stage", "pulling") in AFTER_PULL_STAGES:
 		pulled_m = float(run.get_result().get("distance_m", pulled_m))
 	venue_view.show_distance(pulled_m)
+	if replaying:
+		_show_replay_frame(s, pulled_m, delta)
+		return
+	controls.lowest_gear = s["lowest_gear"]
+	controls.show_gear(s["gear"])
+	_show_hold(s)
 	hud.hold_distance(pulled_m)
 	# The big screen: the TV camera on the tractor while the pull is on,
 	# the day's standings once it is over.
@@ -1131,15 +1161,7 @@ func _show(delta: float) -> void:
 	cameras.rumble = clampf(RUMBLE_PER_THROTTLE * float(s["throttle"])
 			+ RUMBLE_PER_SLIP * absf(float(s["slip_ratio"])), 0.0, 1.0) \
 			if bool(s["engine_running"]) else 0.0
-	var hook := sled_view.hook_position()
-	if s.get("chain_hooked", true):
-		chain_view.show_between(tractor_view.hitch_position(), hook, s["chain_tension_n"])
-	else:
-		# Off the hitch, it lies on the track in front of the hook.
-		var ahead := TrackSpace.point(cos(float(s["sled_heading_rad"])),
-				sin(float(s["sled_heading_rad"])), 0.0)
-		chain_view.show_between(Vector3(hook.x, 0.03, hook.z) + ahead * _chain_m * CHAIN_LYING_SHARE,
-				hook, 0.0)
+	var hook := _show_chain(s)
 	var stage: String = s.get("stage", "pulling")
 	_show_officials(s, delta)
 	hitch_marker.visible = stage == "to_the_sled"
@@ -1201,6 +1223,57 @@ func _show_officials(s: Dictionary, delta: float) -> void:
 			shown != "off")
 	venue_view.show_signal(shown)
 	hud.show_signal(shown)
+
+
+# The chain from the hitch to the hook, or lying on the track in front of
+# the hook once off the hitch; the hook's position.
+func _show_chain(s: Dictionary) -> Vector3:
+	var hook := sled_view.hook_position()
+	if s.get("chain_hooked", true):
+		chain_view.show_between(tractor_view.hitch_position(), hook, s["chain_tension_n"])
+	else:
+		var ahead := TrackSpace.point(cos(float(s["sled_heading_rad"])),
+				sin(float(s["sled_heading_rad"])), 0.0)
+		chain_view.show_between(Vector3(hook.x, 0.03, hook.z) + ahead * _chain_m * CHAIN_LYING_SHARE,
+				hook, 0.0)
+	return hook
+
+
+# The replay's frame `s`, `pulled_m` down the track: the sled, the chain,
+# the big screen and the officials as they were; the track's marks are
+# already there.
+func _show_replay_frame(s: Dictionary, pulled_m: float, delta: float) -> void:
+	replay_overlay.show_distance(pulled_m)
+	venue_view.show_screen_live(tractor_view.global_position, delta)
+	_show_chain(s)
+	_show_officials(s, delta)
+
+
+# The replay's trackside camera, for the frame shown (PullReplay.shot()).
+func _show_replay_shot() -> void:
+	if _snapshot.is_empty():
+		return
+	var shot := PullReplay.shot(_snapshot, _full_pull_m, _lane_m)
+	var from: Vector3 = shot["from"]
+	var at: Vector3 = shot["at"]
+	_replay_camera.position = TrackSpace.point(from.x, from.y, from.z)
+	_replay_camera.look_at(TrackSpace.point(at.x, at.y, at.z), Vector3.UP)
+
+
+# The pull again from beside the track (the result's "Replay").
+func _start_replay() -> void:
+	replay.start()
+	if not replay.playing():
+		return
+	_set_screen(Screen.REPLAY)
+	_replay_camera.make_current()
+
+
+# Back to the result: the run's cameras and the run as it stands.
+func _end_replay() -> void:
+	replay.stop()
+	cameras.current_camera().make_current()
+	_set_screen(Screen.RESULT)
 
 
 func _add_world() -> void:

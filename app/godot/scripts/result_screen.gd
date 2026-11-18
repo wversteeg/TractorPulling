@@ -1,12 +1,14 @@
 # After a pull: how far the sled went and how the pull ended. After a pull
 # at the event, the sled operator's verdict and "Continue" back to the
-# event; after a practice pull, "Again" or "Menu".
+# event; after a practice pull, "Again" or "Menu". "Replay" plays the pull
+# again from beside the track (PullReplay), where one was recorded.
 class_name ResultScreen
 extends MenuPanel
 
 signal again_requested
 signal menu_requested
 signal continue_requested
+signal replay_requested
 
 const LINE_SIZE := 28
 const DISTANCE_SIZE := 64
@@ -30,6 +32,7 @@ const FULL_PULL_COLOUR := GarageArt.GREEN
 var again_button: TouchButton
 var menu_button: TouchButton
 var continue_button: TouchButton
+var replay_button: TouchButton
 var _pull: Label
 var _distance: Label
 var _ending: Label
@@ -55,15 +58,18 @@ func _ready() -> void:
 	menu_button = add_button(row, "Menu")
 	continue_button = add_button(row, "Continue", "continue")
 	continue_button.primary = true
+	replay_button = add_button(row, "Replay")
 	again_button.tapped.connect(func() -> void: again_requested.emit())
 	menu_button.tapped.connect(func() -> void: menu_requested.emit())
 	continue_button.tapped.connect(func() -> void: continue_requested.emit())
+	replay_button.tapped.connect(func() -> void: replay_requested.emit())
 
 
 # `title` names the pull, `result` is the run's get_result(). `entry` is
 # the event's log entry for the pull (TractorPullEvent.record_pull()), or {}
-# for a practice pull.
-func show_result(title: String, result: Dictionary, entry: Dictionary) -> void:
+# for a practice pull. `can_replay`: a replay of it was recorded.
+func show_result(title: String, result: Dictionary, entry: Dictionary,
+		can_replay: bool = false) -> void:
 	var distance_m: float = result["distance_m"]
 	_pull.text = title.to_upper()
 	_distance.text = "%.2f m" % distance_m
@@ -82,6 +88,7 @@ func show_result(title: String, result: Dictionary, entry: Dictionary) -> void:
 	again_button.visible = practice
 	menu_button.visible = practice
 	continue_button.visible = not practice
+	replay_button.visible = can_replay
 
 
 # How the run ended (TractorPullRun.get_result()): a full pull, as the run

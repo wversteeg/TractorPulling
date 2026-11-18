@@ -708,3 +708,8 @@ for the big features; they are repeated at the end for completeness.
   trials (two more pulls, spread over the frames as the rivals' work is)
   and advise per track, or re-try the gears when the player changes the
   setup on the pit board.
+
+## Replay (U-29)
+
+- The replay shows the whole pull's track marks from its first frame, and no full pull's flames or fireworks: it draws the recorded snapshots over the venue as it is after the pull.
+- It keeps one snapshot per drawn frame; if that weighs on a phone, record at 30 Hz and blend between frames on playback.
