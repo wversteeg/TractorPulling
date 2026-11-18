@@ -20,6 +20,10 @@ struct Rules {
     /// chalk line disqualifies the pull; past it, it may [m]. The sled may
     /// always cross the lines.
     double full_pull_line_m = 0.0;
+    /// A driver at the wheel starts an engine stalled before the sled has
+    /// pulled kStallRestartsWithin_m again (turn::step), so such a stall is
+    /// no stop. Without one (a scripted puller) it ends the run, stalled.
+    bool restarts_a_stall = false;
 };
 
 enum class ParamError : std::uint8_t {
@@ -67,6 +71,12 @@ struct Result {
 /// the tires gripping (the jolt of the launch, or the driver easing off) does
 /// not end the run: the tractor may pull on [m].
 inline constexpr double kStopCountsFrom_m = 0.5;
+
+/// An engine that stalls before the sled has pulled this far (against the
+/// start's brake hold, or the clutch let in too hard) does not end the run:
+/// the pull has not begun, and the driver starts the engine again
+/// (turn::step) [m].
+inline constexpr double kStallRestartsWithin_m = 0.1;
 
 /// A run: the pull, its clock, and its result once it has ended. Before the
 /// sled first moves the run is waiting for the launch; after that, the

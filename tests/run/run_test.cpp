@@ -254,6 +254,43 @@ TEST(Run, WaitingAtTheStartIsNotAStop) {
     EXPECT_FALSE(state.result.has_value());
 }
 
+// An engine stalled before the sled has pulled kStallRestartsWithin_m:
+// with a driver who starts it again (Rules::restarts_a_stall, the game's
+// turn) it is no stop, the pull not yet begun; without one (a scripted
+// puller) it ends the run, stalled, the sled moved or not. Further on a
+// stall is a stop either way.
+State stalled_at(const pull::Model& model, double pulled_m) {
+    State state = start(model);
+    state.pull.sled.position_m += pulled_m;
+    state.pull.sled.distance_m = pulled_m;
+    state.pull.tractor.engine.running = false;
+    return state;
+}
+
+TEST(Run, AStallBeforeTheSledMovesIsNoStopWithADriver) {
+    const pull::Model model = model_with(sled::testing::reference_params());
+    Rules with_a_driver = kRules;
+    with_a_driver.restarts_a_stall = true;
+    for (const double pulled_m : {0.0, 0.5 * kStallRestartsWithin_m}) {
+        State driven = stalled_at(model, pulled_m);
+        for (int i = 0; i < 100; ++i) {
+            step(driven, model, with_a_driver, {}, kDt_s);
+        }
+        EXPECT_FALSE(driven.result.has_value()) << pulled_m << " m";
+        State scripted = stalled_at(model, pulled_m);
+        step(scripted, model, kRules, {}, kDt_s);
+        EXPECT_EQ(scripted.result.value_or(Result{}).ending, Ending::kStalled) << pulled_m << " m";
+    }
+    // From the line on (a hair past it: the start plus the line need not
+    // add up exactly), a stall is a stop.
+    for (const double pulled_m : {kStallRestartsWithin_m + 1e-9, 2.0 * kStallRestartsWithin_m}) {
+        State driven = stalled_at(model, pulled_m);
+        step(driven, model, with_a_driver, {}, kDt_s);
+        ASSERT_TRUE(driven.result.has_value()) << pulled_m << " m";
+        EXPECT_EQ(driven.result.value_or(Result{}).ending, Ending::kStalled);
+    }
+}
+
 // A full pull ends at the end of the track; the pull-off sled stops the
 // same tractor short of it.
 TEST(Run, FullPullThenPullOffOnAHeavierSled) {

@@ -270,7 +270,11 @@ Presets: `debug`, `release`, `asan-ubsan`, `android-arm64`, `android-x86_64`, `g
 
 ## Workflow
 
-- Plan first for non-trivial work, and wait for approval before large changes.
+- **Be brief.** The owner pays per token: keep replies and progress notes short (a few lines), no recaps of what was already said, no narration of routine steps.
+- **After a change, give a short summary** of what was implemented (a few bullets).
+- **Ask when something is unclear** rather than guessing.
+- **Default flow for every change** (the owner's standing instruction): commit to the branch, open a PR, wait for the review, process its comments, and merge once CI is green, unless the owner says otherwise. No need to ask before opening or merging.
+- Plan first for large or non-trivial work and wait for the owner's approval of the plan; the default flow above then applies.
 - Small, logical commits with clear messages. One feature per branch and PR.
 - CI (GitHub Actions) must be green: clang and gcc on Linux (x86-64 and arm64), sanitizers, the Android NDK build with its tests on an emulator, clang-tidy, format check. Keep CI config minimal and portable.
 - Ask questions when requirements are ambiguous. State what you chose and why.

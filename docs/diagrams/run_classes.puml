@@ -16,6 +16,7 @@ package "tp::run" {
     +max_duration_s : double
     +lane_width_m : double
     +full_pull_line_m : double
+    +restarts_a_stall : bool, a driver restarts a stall at the start
   }
   enum Ending {
     kFullPull
@@ -59,7 +60,8 @@ RunFns ..> Input
 RunFns ..> Pull : steps
 Result ..> Sled : full pull:\npull-off on heavier()
 note bottom of RunFns
-  the run ends at the sled's first stop after it has moved,
+  the run ends at the sled's first stop after it has moved
+  (a stall within kStallRestartsWithin_m: none if restarts_a_stall, the turn's driver),
   measured where it stands, or with a full pull at the track's end;
   the clock is steps × dt, exact
 end note

@@ -589,6 +589,25 @@ TEST(Turn, AStalledEngineStartsAgainOffThePull) {
     EXPECT_TRUE(state.run.pull.tractor.engine.running);
 }
 
+// In the pull, before the sled has moved, a stall is no stop: the engine
+// starts again once the clutch is pressed, ready to pull. Further on it is
+// a stop (run::kStallRestartsWithin_m).
+TEST(Turn, AStallBeforeTheSledMovesStartsAgain) {
+    const pull::Model model = reference_model();
+    State state = from_the_parking(model, kParking);
+    state.run = run::start(model);
+    state.stage = Stage::kPulling;
+    state.run.pull.tractor.engine.running = false;
+    state.run.pull.tractor.engine.omega_rad_s = 0.0;
+    state.run.pull.tractor.driveline.gear = 6;
+    step(state, model, kRules, kParking, {.clutch_pedal = 0.0, .gear = 6}, kDt_s);
+    EXPECT_FALSE(state.run.pull.tractor.engine.running) << "the clutch is in";
+    step(state, model, kRules, kParking, {.clutch_pedal = 1.0, .gear = 6}, kDt_s);
+    EXPECT_TRUE(state.run.pull.tractor.engine.running);
+    EXPECT_EQ(state.stage, Stage::kPulling);
+    EXPECT_FALSE(state.run.result.has_value());
+}
+
 // ---- A whole turn, played through the session
 
 struct Point {

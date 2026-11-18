@@ -112,6 +112,13 @@ func _play() -> void:
 	_expect(run.get_layout() == "easy" and not controls.clutch_slider.visible
 			and not controls.brake_left_slider.visible, "the easy layout, without clutch or brakes")
 	_expect(not controls.hold_button.visible, "no brake hold on a farm tractor")
+	# On a pulling tractor HOLD shows from taking up the slack until the sled
+	# has moved.
+	for stage: String in ["taking_up_slack", "waiting_for_the_flag", "pulling"]:
+		_expect(_pull.hold_time({"stage": stage, "pulled_m": 0.0}), "HOLD while " + stage)
+	_expect(not _pull.hold_time({"stage": "pulling", "pulled_m": 1.0}), "no HOLD once under way")
+	for stage: String in ["to_the_sled", "releasing", "parked"]:
+		_expect(not _pull.hold_time({"stage": stage, "pulled_m": 0.0}), "no HOLD while " + stage)
 	_check_hold_button(controls, [controls.steering_slider, controls.throttle_slider,
 			controls.gear_up, controls.gear_down, controls.gear_readout, controls.camera_button,
 			controls.restart_button, controls.menu_button])

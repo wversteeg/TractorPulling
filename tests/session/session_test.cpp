@@ -523,6 +523,40 @@ TEST(Session, ShowsTheBrakeHoldLettingGo) {
     EXPECT_FALSE(session.current().hold_released);
 }
 
+// Asked for before the green flag, the brake hold is only armed: it would
+// stop the tractor creeping up to the sled, and in the easy layout keep the
+// flag down. Waiting for the flag with it armed, the flag still comes, and
+// from the flag on it clamps: the tractor stands.
+TEST(Session, TheBrakeHoldClampsFromTheFlag) {
+    for (const Layout layout : {Layout::kPro, Layout::kEasy}) {
+        session::Setup setup = reference_setup(layout);
+        setup.parking = turn::Parking{.x_m = -15.0, .y_m = -10.0};
+        Session session = make(setup);
+        const Controls hold{.gear = 6, .hold_brakes = true};
+        session.advance(hold, kNanosecondsPerSecond / 10);
+        EXPECT_EQ(session.current().stage, turn::Stage::kToTheSled);
+        EXPECT_FALSE(session.current().brakes_held);
+
+        // Hooked on at the line, the slack taken up: waiting for the flag.
+        turn::State waiting = Inspector::turn_state(session);
+        waiting.run = run::start(Inspector::model(session));
+        waiting.run.pull.sled_mode = pull::SledMode::kHeld;
+        waiting.stage = turn::Stage::kWaitingForTheFlag;
+        Inspector::set_turn_state(session, waiting);
+        session.advance(hold, kNanosecondsPerSecond / 100);
+        EXPECT_EQ(session.current().stage, turn::Stage::kWaitingForTheFlag);
+        EXPECT_FALSE(session.current().brakes_held) << "armed only";
+        for (int frame = 0; frame < 1000 && session.current().stage != turn::Stage::kPulling;
+             ++frame) {
+            session.advance(hold, 16 * kStep_ns);
+        }
+        ASSERT_EQ(session.current().stage, turn::Stage::kPulling) << "the flag came";
+        session.advance(hold, 16 * kStep_ns);
+        EXPECT_TRUE(session.current().brakes_held);
+        EXPECT_NEAR(session.current().tractor_speed_m_s, 0.0, 0.05) << "it stands";
+    }
+}
+
 TEST(Blend, GoesFromOneSnapshotToTheNext) {
     const Snapshot from{
         .time_s = 1.0, .tractor_x_m = 10.0, .boost = 0.4, .gear = 5, .sled_x_m = 2.0};

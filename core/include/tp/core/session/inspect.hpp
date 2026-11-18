@@ -22,6 +22,11 @@ public:
     [[nodiscard]] static const turn::State& turn_state(const Session& session) noexcept {
         return session.turn_;
     }
+    /// Puts the turn where a test wants to start it (e.g. just before the
+    /// flag); the next advance() steps on from there.
+    static void set_turn_state(Session& session, const turn::State& state) noexcept {
+        session.turn_ = state;
+    }
     /// The last step's output and the vehicle input it was given.
     [[nodiscard]] static const pull::Output& last_output(const Session& session) noexcept {
         return session.output_;

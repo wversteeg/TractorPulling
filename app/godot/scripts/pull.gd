@@ -165,9 +165,11 @@ var hitch_marker := MeshInstance3D.new()
 var driver := Callable()
 var screen := Screen.START
 # The brake hold for the start ("optoeren"): on a pulling tractor (one with
-# a roll bar: the Sport classes up), until the sled has moved this far [m];
-# the game lets the brakes go at `hold_release_boost` of full boost when
-# `hold_auto_release`, else the player does (the settings).
+# a roll bar: the Sport classes up), from taking up the slack (the stages
+# here) until the sled has moved this far [m]; the game lets the brakes go
+# at `hold_release_boost` of full boost when `hold_auto_release`, else the
+# player does (the settings).
+const HOLD_STAGES: Array[String] = ["taking_up_slack", "waiting_for_the_flag", "pulling"]
 const HOLD_UNTIL_M := 0.5
 var hold_auto_release := true
 var hold_release_boost := 0.75
@@ -607,13 +609,18 @@ static func best_in_pull_off(log: Array, pull_off_round: int) -> float:
 	return best
 
 
+# Whether the snapshot `s` is the start, where the brake hold is offered:
+# from taking up the slack until the sled has moved HOLD_UNTIL_M.
+static func hold_time(s: Dictionary) -> bool:
+	return s.get("stage", "") in HOLD_STAGES and float(s.get("pulled_m", 0.0)) < HOLD_UNTIL_M
+
+
 # The brake hold's button while the pull is still to start on a pulling
 # tractor. The run lets the brakes go at the settings' boost, step by step
 # (set_controls' hold_until_boost); the button follows it (hold_released),
 # even when the run lets go on the first step after the tap.
 func _show_hold(s: Dictionary) -> void:
-	controls.set_hold_available(_pulling_tractor and not autoplay
-			and s.get("stage", "") == "pulling" and float(s.get("pulled_m", 0.0)) < HOLD_UNTIL_M)
+	controls.set_hold_available(_pulling_tractor and not autoplay and hold_time(s))
 	if controls.hold and bool(s.get("hold_released", false)):
 		controls.release_hold()
 
