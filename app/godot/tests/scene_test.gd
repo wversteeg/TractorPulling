@@ -371,6 +371,53 @@ func _check_track_end(venue: VenueView, dimensions: Dictionary) -> void:
 	_expect(by_each and rivals.size() == VenueView.RIVAL_BAYS,
 			"a lamp post behind each rival's bay: %s, bays %s" % [posts, rivals])
 	_check_parking_ground(venue, dimensions)
+	_check_lit_grass(venue, dimensions)
+	_check_clay_under_the_sled(venue, dimensions)
+
+
+# The clay reaches behind the start line past the sled's rear: the whole
+# sled stands on the dirt.
+func _check_clay_under_the_sled(venue: VenueView, dimensions: Dictionary) -> void:
+	var width_m := float(dimensions["lane_width_m"]) + 2.0 * VenueView.CLAY_PAST_LANE_M
+	var behind_m := -INF
+	for node: Node in venue.find_children("*", "MeshInstance3D", true, false):
+		var mesh := node as MeshInstance3D
+		var plane := mesh.mesh as PlaneMesh
+		if plane != null and is_equal_approx(plane.size.x, width_m):
+			# Godot's z is minus the way down the track (TrackSpace).
+			behind_m = maxf(behind_m, mesh.position.z + plane.size.y / 2.0)
+	var sled_m := float(dimensions["hook_ahead_of_wheels_m"]) - SledView.rear_of(dimensions)
+	_expect(behind_m > sled_m, "the clay %.1f m behind the start, the sled %.1f m"
+			% [behind_m, sled_m])
+
+
+# Under the floodlights the grass is laid in pieces over the field (the
+# phone lights a mesh with only its nearest 8 lights, so the field's one
+# plane stays black), round the track and the parking, and the crowd's bank
+# beside the track is in pieces too: no dark patches.
+func _check_lit_grass(venue: VenueView, dimensions: Dictionary) -> void:
+	var lane_m := float(dimensions["lane_width_m"])
+	var pieces := venue.find_children("LitGrass*", "MeshInstance3D", true, false)
+	var covered := Rect2()
+	for piece: Node in pieces:
+		var mesh := piece as MeshInstance3D
+		var size: Vector2 = (mesh.mesh as PlaneMesh).size
+		var rect := Rect2(Vector2(mesh.position.x, mesh.position.z) - size / 2.0, size)
+		covered = rect if covered.size == Vector2.ZERO else covered.merge(rect)
+	# The parking's far corner behind the start line, in Godot's x and z.
+	var parking := TrackSpace.point(-VenueView.RUN_UP_M,
+			-(lane_m / 2.0 + VenueView.PARKING_FROM_LANE_M.y), 0.0)
+	_expect(pieces.size() > 4 and covered.has_point(Vector2(parking.x, parking.z))
+			and covered.has_point(Vector2.ZERO),
+			"the grass under the floodlights in pieces, round the parking: %d over %s"
+			% [pieces.size(), covered])
+	var banks := 0
+	for box: Node in venue.find_children("*", "MeshInstance3D", true, false):
+		var mesh := (box as MeshInstance3D).mesh as BoxMesh
+		if mesh != null and is_equal_approx(mesh.size.x, VenueView.BANK_DEPTH_M) \
+				and is_equal_approx(mesh.size.y, VenueView.BANK_HEIGHT_M):
+			banks += 1 if mesh.size.z <= VenueView.CLAY_PIECE_M + 0.01 else -1000
+	_expect(banks > 1, "the crowd's bank in pieces: %d" % banks)
 
 
 # The parking's ground, gravel or grass, is laid in small pieces, so the
