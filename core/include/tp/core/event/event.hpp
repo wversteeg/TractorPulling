@@ -201,9 +201,9 @@ public:
     /// operator does about it if it was a test pull.
     Outcome record(double reached_m) noexcept;
     /// Records the pull next() named as disqualified: it counts 0 m. A
-    /// disqualified test pull says nothing about the sled, so the operator
-    /// leaves it and the next puller tests it; the test puller keeps the
-    /// 0 m (no keep-or-re-pull).
+    /// disqualified test pull says nothing about the sled and does not
+    /// count: the operator leaves the sled, the next puller tests it, and the
+    /// test puller pulls again where a re-pull goes (no keep-or-re-pull).
     Outcome record_disqualified() noexcept;
 
     /// Moves the pull next() names `places` later in the running order (at

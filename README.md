@@ -322,8 +322,8 @@ runs from 90 m, goes to the pull-off on a heavier sled. Each driver picks a
 gear for the day's track, the best one as often as they read the track
 right, and no two pulls are quite the same. A disqualified pull (a tire on
 the chalk) counts 0 m and ranks behind every pull that counts; a
-disqualified test pull leaves the sled as it is, and the next puller tests
-it.
+disqualified test pull does not count: it leaves the sled as it is, the
+next puller tests it, and the test puller pulls again where a re-pull goes.
 
 ```bash
 ./build/release/tools/tp_pull event data/events/club_pull.toml [--seed N]

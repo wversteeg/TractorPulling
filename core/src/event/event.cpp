@@ -361,9 +361,11 @@ Outcome Event::record_pull(double reached_m, bool disqualified) noexcept {
     switch (pull->kind) {
         case PullKind::kTest:
             if (disqualified) {
-                entry.pulled = true;
-                entry.reached_m = 0.0;
-                entry.disqualified = true;
+                // Out of bounds, the test pull says nothing about the sled
+                // and does not count: the next puller tests, and this one
+                // pulls again where a re-pull goes.
+                entry.test_pull_number = completed_;
+                schedule_repull(pull->puller);
                 retest_next();
                 break;
             }
