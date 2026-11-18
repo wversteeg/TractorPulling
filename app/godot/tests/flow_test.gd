@@ -202,6 +202,10 @@ func _check_replay_recording() -> void:
 		backed_off.record({"stage": stage}, DT)
 	_expect(not backed_off.has_pull() and backed_off.length_s() == 0.0,
 			"no replay before the flag")
+	# On a pull past the line the head-on camera stays ahead of the tractor.
+	var far: Vector3 = PullReplay.shot({"stage": "pulling", "tractor_x_m": 118.0}, 100.0,
+			9.0)["from"]
+	_expect(far.x >= 118.0 + PullReplay.HEAD_ON_AHEAD_M, "head-on ahead of the tractor: %s" % far)
 	var names: Array[String] = []
 	for x_m: float in [5.0, 40.0, 90.0]:
 		names.append(PullReplay.shot({"stage": "pulling", "tractor_x_m": x_m}, 100.0, 9.0)["name"])

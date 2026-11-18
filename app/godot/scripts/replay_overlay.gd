@@ -38,8 +38,7 @@ func _ready() -> void:
 	add_child(back_button)
 
 
-# The pull's distance from the replay's snapshot `s`, and the run's result
-# once the pull is over.
+# The pull's distance in the frame shown [m].
 func show_distance(distance_m: float) -> void:
 	_distance.text = "%.2f m" % distance_m
 

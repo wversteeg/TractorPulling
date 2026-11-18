@@ -11,6 +11,7 @@ extends RefCounted
 
 # Kept from before the green flag, and after the pull has ended [s].
 const BEFORE_FLAG_S := 2.0
+const TRIM_EVERY_S := 1.0
 const AFTER_END_S := 3.0
 # The stages recorded: standing ready for the flag, and the pull.
 const RECORDED_STAGES := ["waiting_for_the_flag", "pulling"]
@@ -29,8 +30,10 @@ const ALONGSIDE_OUT_M := 3.0
 const ALONGSIDE_UP_M := 2.2
 const HEAD_ON_BEFORE_LINE_M := 30.0
 # Head-on: this far past the full-pull line, a little left of the middle,
-# at eye height.
+# at eye height; always at least this far ahead of the tractor (a pull may
+# go on past the line, which a test pull moves to 110 m).
 const HEAD_ON_PAST_LINE_M := 12.0
+const HEAD_ON_AHEAD_M := 10.0
 const HEAD_ON_LEFT_M := 1.5
 const HEAD_ON_UP_M := 1.6
 # Once the pull is over: behind the sled and above it.
@@ -67,7 +70,11 @@ func record(s: Dictionary, delta: float) -> void:
 		if _ended_s >= 0.0:
 			# Pulled again (restarted): the last pull's frames go.
 			clear()
+		var flag := stage == "pulling" and not _frames.is_empty() \
+				and _frames[-1].get("stage", "") != "pulling"
 		_add(s, delta)
+		if flag:
+			_trim_before_flag(true)
 		if stage == "waiting_for_the_flag":
 			_trim_before_flag()
 		return
@@ -87,9 +94,13 @@ func _add(s: Dictionary, delta: float) -> void:
 	_frames.append(s)
 
 
-# Only BEFORE_FLAG_S before the latest frame stays of the wait.
-func _trim_before_flag() -> void:
+# Only BEFORE_FLAG_S before the latest frame stays of the wait: trimmed a
+# second at a time while waiting, rather than every frame, and exactly at
+# the flag (`exactly`).
+func _trim_before_flag(exactly: bool = false) -> void:
 	var from_s := _recording_s - BEFORE_FLAG_S
+	if _times.is_empty() or _times[0] >= from_s - (0.0 if exactly else TRIM_EVERY_S):
+		return
 	var drop := 0
 	while drop < _times.size() and _times[drop] < from_s:
 		drop += 1
@@ -156,8 +167,8 @@ static func shot(s: Dictionary, full_pull_m: float, lane_m: float) -> Dictionary
 	if tractor_m < full_pull_m - HEAD_ON_BEFORE_LINE_M:
 		return {"name": "alongside", "from": Vector3(tractor_m - ALONGSIDE_BEHIND_M,
 				lane_m / 2.0 + ALONGSIDE_OUT_M, ALONGSIDE_UP_M), "at": at}
-	return {"name": "head_on", "from": Vector3(full_pull_m + HEAD_ON_PAST_LINE_M, HEAD_ON_LEFT_M,
-			HEAD_ON_UP_M), "at": at}
+	var ahead_m := maxf(full_pull_m + HEAD_ON_PAST_LINE_M, tractor_m + HEAD_ON_AHEAD_M)
+	return {"name": "head_on", "from": Vector3(ahead_m, HEAD_ON_LEFT_M, HEAD_ON_UP_M), "at": at}
 
 
 static func launch_from(lane_m: float) -> Vector3:
