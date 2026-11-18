@@ -111,7 +111,7 @@ const PARKING_FROM_LANE_M := Vector2(1.0, 15.0)
 const PARKING_PIECE_M := 7.5
 # The parking's grass pieces lie this far over the field, clear of it and
 # of the lit grass below them [m].
-const PARKING_GRASS_LIFT_M := 0.015
+const PARKING_GRASS_LIFT_M := 0.02
 # Where floodlights shine (sunset, evening) the field's grass is laid again
 # over it in pieces this big, each lit by the lights near it (the field's
 # one big plane gets only a few of them), this far over the field, out to
@@ -126,6 +126,8 @@ const GRAVEL_LIGHT := Color(0.66, 0.63, 0.58)
 # The clay strip: from this far behind the sled's rear at the start (the
 # whole sled stands on it), this far past each chalk line [m].
 const CLAY_BEHIND_SLED_M := 2.0
+# Without the sled's size, this far behind the start line [m].
+const CLAY_BEHIND_START_FALLBACK_M := 5.0
 # The clay is laid in pieces about this long, each lit by the floodlights
 # near it, and its texture repeats every this many metres [m].
 const CLAY_PIECE_M := 20.0
@@ -271,7 +273,8 @@ var _red_lamp := StandardMaterial3D.new()
 var _green_lamp := StandardMaterial3D.new()
 var _signal := ""
 var _crowd_material: ShaderMaterial
-# The track's length and lane width the venue was built for [m].
+# The track's length, lane width and the clay's reach behind the start
+# line the venue was built for [m].
 var _sizes := Vector3.ZERO
 var _full_pull_m := -1.0
 # The banner and the scoreboard, which follow the full-pull line.
@@ -310,7 +313,7 @@ var _rival_lights: Array[Vector2] = []
 # its wheels the hook's distance behind the line (SledView.rear_of) [m].
 static func clay_behind_start_m(d: Dictionary) -> float:
 	if not d.has("hook_ahead_of_wheels_m"):
-		return CLAY_BEHIND_SLED_M
+		return CLAY_BEHIND_START_FALLBACK_M
 	return float(d["hook_ahead_of_wheels_m"]) - SledView.rear_of(d) + CLAY_BEHIND_SLED_M
 
 

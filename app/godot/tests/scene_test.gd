@@ -412,12 +412,14 @@ func _check_lit_grass(venue: VenueView, dimensions: Dictionary) -> void:
 			"the grass under the floodlights in pieces, round the parking: %d over %s"
 			% [pieces.size(), covered])
 	var banks := 0
+	var short := true
 	for box: Node in venue.find_children("*", "MeshInstance3D", true, false):
 		var mesh := (box as MeshInstance3D).mesh as BoxMesh
 		if mesh != null and is_equal_approx(mesh.size.x, VenueView.BANK_DEPTH_M) \
 				and is_equal_approx(mesh.size.y, VenueView.BANK_HEIGHT_M):
-			banks += 1 if mesh.size.z <= VenueView.CLAY_PIECE_M + 0.01 else -1000
-	_expect(banks > 1, "the crowd's bank in pieces: %d" % banks)
+			banks += 1
+			short = short and mesh.size.z <= VenueView.CLAY_PIECE_M + 0.01
+	_expect(banks > 1 and short, "the crowd's bank in pieces: %d" % banks)
 
 
 # The parking's ground, gravel or grass, is laid in small pieces, so the
