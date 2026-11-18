@@ -116,6 +116,7 @@ package "GDScript (app/godot/scripts)" {
     +{static} light(world, sun, time)
     +{static} track_colours(clay_fraction, moisture) : Array[Color]
     +{static} past_lane_m(side) : float
+    +{static} clay_behind_start_m(dimensions) : float : the dirt past the sled's rear
     +show_signal(signal) : the gantry's light
     +signal_shown() : String
     +floodlight_masts() : Array[Vector2], at sunset and in the evening
