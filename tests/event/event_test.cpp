@@ -190,12 +190,26 @@ TEST(Event, DisqualifiedTestPullLeavesTheSled) {
     EXPECT_EQ(second.kind, PullKind::kTest);
     // 70 m makes the sled lighter, unaffected by the disqualified pull.
     EXPECT_EQ(event.record(70.0).change, SledChange::kLighter);
-    bool pulled_again = false;
-    run(event, [&](const Pull& pull) {
-        pulled_again = pulled_again || (pull.puller == 0 && pull.kind == PullKind::kRepull);
-        return pull.puller == 0 ? 90.0 : 95.0;
-    });
-    EXPECT_TRUE(pulled_again);
+    // The re-pull comes where a re-pull goes: the pull after the test pull's
+    // repull_after_pulls (the 7th of the event), as a re-pull, not a test,
+    // and puller 0 never has a keep-or-re-pull decision.
+    int pull_number = 2;
+    int pulled_again_at = 0;
+    while (!event.finished()) {
+        if (const std::optional<int> due = event.decision_due()) {
+            EXPECT_NE(*due, 0);
+            event.decide(event.suggested_keep());
+            continue;
+        }
+        const Pull pull = next_of(event);
+        ++pull_number;
+        if (pull.puller == 0 && pull.kind != PullKind::kPullOff) {
+            EXPECT_EQ(pull.kind, PullKind::kRepull);
+            pulled_again_at = pull_number;
+        }
+        event.record(pull.puller == 0 ? 90.0 : 95.0);
+    }
+    EXPECT_EQ(pulled_again_at, 1 + kRules.repull_after_pulls + 1);
     const std::span<const Standing> standings = event.standings();
     const Standing& last = standings.back();
     EXPECT_EQ(last.puller, 0);

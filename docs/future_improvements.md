@@ -375,7 +375,8 @@ for the big features; they are repeated at the end for completeness.
   does not count: the sled stays, the next puller tests it, and the test
   puller pulls again where a re-pull goes (the owner's ruling); a
   disqualified pull scores no season points. Not checked against the NTTO
-  rule book.
+  rule book. When no one is left to test after it (the round's last pull),
+  the re-pull runs on the untested sled as a counting pull.
 - **Seeds of consecutive seasons.** An event's seed is SplitMix64 of the
   season's seed plus the event's number (`field::event_seed`, as in
   `tp_pull season`), so season seed s + 1's first event draws as season
