@@ -185,6 +185,65 @@ func _drive_to_result(controls: DriveControls, result: ResultScreen) -> bool:
 	return false
 
 
+# The replay keeps the last 2 s of the wait for the flag, the pull and 3 s
+# after it, and cuts between its trackside shots down the track.
+func _check_replay_recording() -> void:
+	var replay := PullReplay.new()
+	const DT := 0.1
+	for stage: String in ["to_the_sled", "waiting_for_the_flag", "pulling", "parked"]:
+		for i in 50 if stage != "pulling" else 100:
+			replay.record({"stage": stage, "tractor_x_m": 0.0}, DT)
+	_expect(replay.has_pull() and absf(replay.length_s()
+			- (PullReplay.BEFORE_FLAG_S + 10.0 + PullReplay.AFTER_END_S)) <= DT + 0.001,
+			"the replay from just before the flag to just after the pull: %.1f s"
+			% replay.length_s())
+	var backed_off := PullReplay.new()
+	for stage: String in ["waiting_for_the_flag", "taking_up_slack"]:
+		backed_off.record({"stage": stage}, DT)
+	_expect(not backed_off.has_pull() and backed_off.length_s() == 0.0,
+			"no replay before the flag")
+	var names: Array[String] = []
+	for x_m: float in [5.0, 40.0, 90.0]:
+		names.append(PullReplay.shot({"stage": "pulling", "tractor_x_m": x_m}, 100.0, 9.0)["name"])
+	names.append(PullReplay.shot({"stage": "parked", "sled_x_m": 60.0}, 100.0, 9.0)["name"])
+	_expect(names == ["launch", "alongside", "head_on", "end"], "the replay's shots: %s" % [names])
+
+
+# The result's Replay: the pull again from beside the track, over by
+# itself or by "Back", then the result again.
+func _check_replay(result: ResultScreen) -> void:
+	var overlay: ReplayOverlay = _pull.get("replay_overlay")
+	var tractor: Node3D = _pull.get("tractor_view")
+	var parked_at := tractor.global_position
+	_expect(result.replay_button.visible, "a replay of the pull offered")
+	_tap(result.replay_button)
+	await _frames(2)
+	_expect(_pull.get("screen") == _pull.Screen.REPLAY and overlay.visible
+			and not result.visible, "the replay over the result")
+	var replay: PullReplay = _pull.get("replay")
+	var moved := false
+	var shots := {}
+	for i in MAX_PULL_FRAMES:
+		await process_frame
+		if result.visible:
+			break
+		moved = moved or tractor.global_position.distance_to(parked_at) > 5.0
+		var snapshot: Dictionary = _pull.get("_snapshot")
+		shots[PullReplay.shot(snapshot, 100.0, 9.0)["name"]] = true
+	_expect(result.visible and _pull.get("screen") == _pull.Screen.RESULT,
+			"the result again once the replay is over (%.1f s)" % replay.length_s())
+	_expect(moved, "the replay shows the tractor pulling, away from its bay")
+	_expect(shots.has("launch") and shots.has("alongside"),
+			"the replay's trackside shots: %s" % [shots.keys()])
+	_expect(tractor.global_position.distance_to(parked_at) < 0.5,
+			"back in its bay after the replay")
+	_tap(result.replay_button)
+	await _frames(5)
+	_tap(overlay.back_button)
+	await _frames(2)
+	_expect(result.visible and not overlay.visible, "Back: the result again")
+
+
 func _play() -> void:
 	Engine.time_scale = TIME_SCALE
 	await _frames(2)
@@ -197,6 +256,7 @@ func _play() -> void:
 	var hud: Hud = _pull.get("hud")
 	var setup: SetupScreen = _pull.get("setup_screen")
 
+	_check_replay_recording()
 	# How a pull reads: a full pull as the event judges it; a test pull
 	# that moved the line to 110 m counts its distance.
 	_expect(EventTexts.reach({"disqualified": false, "full_pull": true, "reached_m": 101.0,
@@ -421,6 +481,8 @@ func _play() -> void:
 			_expect(sound.target_volume() == 0.0,
 					"the engine silent behind the result: %f" % sound.target_volume())
 			await _shot("3_result_%d" % my_pulls)
+			if my_pulls == 0:
+				await _check_replay(result)
 			my_pulls += 1
 			_tap(result.continue_button)
 			await _frames(2)

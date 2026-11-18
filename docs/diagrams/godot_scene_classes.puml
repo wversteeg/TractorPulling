@@ -467,11 +467,25 @@ package "GDScript (app/godot/scripts)" {
   }
   class ResultScreen {
     +again_button, menu_button : TouchButton
-    +continue_button : TouchButton
-    +show_result(title, result, full_pull_m, entry)
+    +continue_button, replay_button : TouchButton
+    +show_result(title, result, entry, can_replay)
     ..signals..
     again_requested, menu_requested,
-    continue_requested
+    continue_requested, replay_requested
+  }
+  class PullReplay {
+    +record(snapshot, delta)
+    +has_pull() : bool
+    +start(), stop(), playing() : bool
+    +next_frame(delta) : Dictionary
+    +length_s() : float
+    +{static} shot(snapshot, full_pull_m, lane_m) : Dictionary
+  }
+  class ReplayOverlay {
+    +back_button : TouchButton
+    +show_distance(distance_m)
+    ..signals..
+    back_requested
   }
   class BoardScreen {
     +first_button, second_button : TouchButton
@@ -607,6 +621,9 @@ TouchButton <|-- GearButton
 MenuPanel <|-- SettingsScreen
 DriveControls *-- TiltSteering : steering by tilt,\ncentred at the pull's start
 Pull *-- ResultScreen
+Pull *-- PullReplay : the pull's snapshots, from just\nbefore the flag to just after;\nplayed back from beside the track
+Pull *-- ReplayOverlay : over the replay
+Control <|-- ReplayOverlay
 Pull *-- SetupScreen : before every pull
 SetupScreen *-- "4" TouchSlider : weights,\ntire pressure, hitch, start
 SetupScreen *-- LaneMap : the lane
