@@ -713,5 +713,5 @@ for the big features; they are repeated at the end for completeness.
 
 ## Replay (U-29)
 
-- The replay shows the whole pull's track marks from its first frame, and no full pull's flames or fireworks: it draws the recorded snapshots over the venue as it is after the pull.
+- The replay shows no full pull's flames or fireworks, and after it the track keeps only the pull's own marks (not those of backing off and driving back).
 - It keeps one snapshot per drawn frame; if that weighs on a phone, record at 30 Hz and blend between frames on playback.

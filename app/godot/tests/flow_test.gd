@@ -220,8 +220,13 @@ func _check_replay(result: ResultScreen) -> void:
 	var tractor: Node3D = _pull.get("tractor_view")
 	var parked_at := tractor.global_position
 	_expect(result.replay_button.visible, "a replay of the pull offered")
+	var marks: TrackMarks = _pull.get("track_marks")
+	var pulled_marks := marks.point_counts()
 	_tap(result.replay_button)
 	await _frames(2)
+	_expect(marks.point_counts().x < pulled_marks.x / 4,
+			"the replay lays the track's marks as it plays: %s of %s"
+			% [marks.point_counts(), pulled_marks])
 	_expect(_pull.get("screen") == _pull.Screen.REPLAY and overlay.visible
 			and not result.visible, "the replay over the result")
 	var replay: PullReplay = _pull.get("replay")
@@ -237,15 +242,20 @@ func _check_replay(result: ResultScreen) -> void:
 	_expect(result.visible and _pull.get("screen") == _pull.Screen.RESULT,
 			"the result again once the replay is over (%.1f s)" % replay.length_s())
 	_expect(moved, "the replay shows the tractor pulling, away from its bay")
+	_expect(marks.point_counts().x > 0, "the marks laid again: %s" % marks.point_counts())
 	_expect(shots.has("launch") and shots.has("alongside"),
 			"the replay's trackside shots: %s" % [shots.keys()])
 	_expect(tractor.global_position.distance_to(parked_at) < 0.5,
 			"back in its bay after the replay")
+	var replayed_marks := marks.point_counts()
 	_tap(result.replay_button)
 	await _frames(5)
 	_tap(overlay.back_button)
 	await _frames(2)
 	_expect(result.visible and not overlay.visible, "Back: the result again")
+	_expect(marks.point_counts() == replayed_marks,
+			"Back mid-replay: the pull's marks all laid: %s of %s"
+			% [marks.point_counts(), replayed_marks])
 
 
 func _play() -> void:

@@ -479,6 +479,7 @@ package "GDScript (app/godot/scripts)" {
     +has_pull() : bool
     +start(), stop(), playing() : bool
     +next_frame(delta) : Dictionary
+    +frames_left() : Array[Dictionary]
     +length_s() : float
     +{static} shot(snapshot, full_pull_m, lane_m) : Dictionary
   }

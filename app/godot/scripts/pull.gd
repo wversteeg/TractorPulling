@@ -194,6 +194,8 @@ var replay := PullReplay.new()
 var replay_overlay := ReplayOverlay.new()
 var _replay_camera := Camera3D.new()
 var _left_m := 4.5
+# How far left of the lane's middle the sled started [m].
+var _start_y_m := 0.0
 # Set for each run in _build_turn: whether it is the whole turn, and the
 # chain's length [m].
 var _whole_turn := false
@@ -748,6 +750,7 @@ func _build_turn(dimensions: Dictionary) -> void:
 		parked[i].position = TrackSpace.point(bay.x, -(lane_m / 2.0 + bay.y), 0.0)
 		parked[i].rotation.y = bay.z
 		parked[i].visible = turn
+	_start_y_m = 0.0
 	flagman.stand(TrackSpace.point(FLAGMAN_X_M, lane_m / 2.0 - FLAGMAN_IN_M, 0.0),
 			TrackSpace.point(0.0, 0.0, 0.0))
 	_full_pull_m = dimensions["full_pull_line_m"]
@@ -1200,6 +1203,15 @@ static func signal_for(s: Dictionary, turn: bool) -> String:
 # Both officials, the gantry's light and the HUD's, from the snapshot.
 func _show_officials(s: Dictionary, delta: float) -> void:
 	var stage: String = s.get("stage", "pulling")
+	# The start's official keeps the same room to the tractor's line: a
+	# step aside for a sled started left of the middle, a step in for one
+	# started right of it. The sled's place is the start until the pull.
+	if stage in ["to_the_sled", "taking_up_slack", "waiting_for_the_flag"]:
+		var start_y_m := float(s.get("sled_y_m", 0.0))
+		if start_y_m != _start_y_m:
+			_start_y_m = start_y_m
+			flagman.stand(TrackSpace.point(FLAGMAN_X_M, _left_m + _start_y_m, 0.0),
+					TrackSpace.point(0.0, _start_y_m, 0.0))
 	var shown := signal_for(s, _whole_turn)
 	var stop := shown == "red" and stage not in ["taking_up_slack", "waiting_for_the_flag"]
 	# The start official: the red flag low, raised while the tractor stands
@@ -1240,10 +1252,10 @@ func _show_chain(s: Dictionary) -> Vector3:
 
 
 # The replay's frame `s`, `pulled_m` down the track: the sled, the chain,
-# the big screen and the officials as they were; the track's marks are
-# already there.
+# the big screen, the officials and the track's marks as they were.
 func _show_replay_frame(s: Dictionary, pulled_m: float, delta: float) -> void:
 	replay_overlay.show_distance(pulled_m)
+	track_marks.show_snapshot(s)
 	venue_view.show_screen_live(tractor_view.global_position, delta)
 	_show_chain(s)
 	_show_officials(s, delta)
@@ -1267,10 +1279,15 @@ func _start_replay() -> void:
 		return
 	_set_screen(Screen.REPLAY)
 	_replay_camera.make_current()
+	# The track as it was before the pull: its marks are laid as it plays.
+	track_marks.build(run.get_dimensions())
 
 
 # Back to the result: the run's cameras and the run as it stands.
 func _end_replay() -> void:
+	# Stopped early ("Back"): the rest of the pull's marks laid at once.
+	for s: Dictionary in replay.frames_left():
+		track_marks.show_snapshot(s)
 	replay.stop()
 	cameras.current_camera().make_current()
 	_set_screen(Screen.RESULT)
