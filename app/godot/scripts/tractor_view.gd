@@ -119,12 +119,15 @@ const FLAT_FENDER_WALL_FROM := 0.25
 # A flat fender: this far over its tire [m]; its flat top this long and
 # its middle this far ahead of the axle (negative: behind), each a share
 # of its height over the axle; an end slope this long, falling this steeply
-# [rad].
+# [rad] (or less: _flat_slope_rad); its panels this thick, and the lamp
+# this far back from its top's front [m].
 const FLAT_FENDER_GAP_M := 0.05
 const FLAT_FENDER_LENGTH := 0.95
 const FLAT_FENDER_MIDDLE := -0.15
 const FLAT_FENDER_SLOPE := 0.4
 const FLAT_FENDER_SLOPE_RAD := 0.75
+const FLAT_FENDER_THICKNESS_M := 0.04
+const FLAT_FENDER_LAMP_BACK_M := 0.1
 # The steering wheel: its hub ahead of and above the rear axle, tilted back
 # towards the driver [m, rad]; turned this many times the front wheels'
 # angle (the steering box's ratio).
@@ -1021,6 +1024,16 @@ static func _backlit(colour: Color) -> StandardMaterial3D:
 	return lit
 
 
+# How steeply a flat fender's end slope falls from its top's end `end_m`
+# ahead of the axle (`end`: 1 the front, -1 the back), on a top `flat_m`
+# over the axle [rad]: FLAT_FENDER_SLOPE_RAD, or no steeper than the tire
+# falls away under it there (its tangent), so that the slope only moves
+# away from the tire and never cuts into it.
+func _flat_slope_rad(flat_m: float, end_m: float, end: float) -> float:
+	var clear_m := flat_m - FLAT_FENDER_THICKNESS_M / 2.0
+	return minf(FLAT_FENDER_SLOPE_RAD, atan2(maxf(end * end_m, 0.0), clear_m))
+
+
 # Fenders over the rear wheels: an arc of panels from the cab to the front
 # of the wheel.
 # The model's fenders: round (the arc), wide (an arc past the tire's
@@ -1039,19 +1052,21 @@ func _add_fenders(rear_track_m: float, rear_width_m: float, panels: int) -> void
 			var flat_m := _rear_radius_m + FLAT_FENDER_GAP_M
 			var top_m := flat_m * FLAT_FENDER_LENGTH
 			var middle_m := flat_m * FLAT_FENDER_MIDDLE
-			var top := Art.box(Vector3(width_m, 0.04, top_m), look.paint, 0.35)
+			var top := Art.box(Vector3(width_m, FLAT_FENDER_THICKNESS_M, top_m), look.paint, 0.35)
 			top.material_override = Art.paint(look.paint)
 			top.position = TrackSpace.point(middle_m, y_m, flat_m)
 			_body.add_child(top)
 			var slope_m := flat_m * FLAT_FENDER_SLOPE
 			for end: float in [-1.0, 1.0]:
-				var slope := Art.box(Vector3(width_m, 0.04, slope_m), look.paint, 0.35)
+				var fall_rad := _flat_slope_rad(flat_m, middle_m + end * top_m / 2.0, end)
+				var slope := Art.box(Vector3(width_m, FLAT_FENDER_THICKNESS_M, slope_m),
+						look.paint, 0.35)
 				slope.material_override = Art.paint(look.paint)
 				slope.position = TrackSpace.point(
-						middle_m + end * (top_m + slope_m * cos(FLAT_FENDER_SLOPE_RAD)) / 2.0,
-						y_m, flat_m - slope_m * sin(FLAT_FENDER_SLOPE_RAD) / 2.0)
+						middle_m + end * (top_m + slope_m * cos(fall_rad)) / 2.0,
+						y_m, flat_m - slope_m * sin(fall_rad) / 2.0)
 				# Falling away from the flat top at each end.
-				slope.rotation.x = -end * FLAT_FENDER_SLOPE_RAD
+				slope.rotation.x = -end * fall_rad
 				_body.add_child(slope)
 			# The inner wall down from the top's inner edge to the axle
 			# housing: the fender stands on the tractor, not in the air (from
@@ -1063,7 +1078,8 @@ func _add_fenders(rear_track_m: float, rear_width_m: float, panels: int) -> void
 					flat_m - wall_m / 2.0)
 			_body.add_child(wall)
 			var lamp := Art.instance(_box_mesh(WORK_LAMP_M), _lamp(LAMP, 1.0))
-			lamp.position = TrackSpace.point(middle_m + top_m / 2.0 - 0.1, y_m, flat_m + 0.06)
+			lamp.position = TrackSpace.point(middle_m + top_m / 2.0 - FLAT_FENDER_LAMP_BACK_M, y_m,
+					flat_m + 0.06)
 			_body.add_child(lamp)
 			continue
 		for i in panels:
