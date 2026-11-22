@@ -40,6 +40,22 @@ const HEAD_ON_UP_M := 1.6
 # Once the pull is over: behind the sled and above it.
 const END_BEHIND_SLED_M := 12.0
 const END_UP_M := 5.0
+# How wide each shot frames the scene at the tractor [m]: the launch from
+# the rear wheels' width out to the alongside view's, head-on the tractor
+# with room round it, the finish the tractor and its chain.
+const LAUNCH_FRAME_M := 4.0
+const ALONGSIDE_FRAME_M := 12.0
+const HEAD_ON_FRAME_M := 9.0
+const FINISH_FRAME_M := 7.0
+const MIN_FOV_DEG := 8.0
+const MAX_FOV_DEG := 60.0
+# The finish: over the last this many metres before the tractor stopped,
+# from this far past its stopping place, just outside the right chalk line,
+# low [m].
+const FINISH_WITHIN_M := 6.0
+const FINISH_AHEAD_M := 5.0
+const FINISH_OUT_M := 1.5
+const FINISH_UP_M := 1.0
 # The cameras look at the tractor this high [m].
 const LOOK_AT_UP_M := 1.0
 
@@ -49,6 +65,7 @@ var _frames: Array[Dictionary] = []
 var _recording_s := 0.0
 var _ended_s := -1.0
 var _has_pull := false
+var _stop_m := INF
 var _playing := false
 var _play_s := 0.0
 var _index := 0
@@ -60,6 +77,7 @@ func clear() -> void:
 	_recording_s = 0.0
 	_ended_s = -1.0
 	_has_pull = false
+	_stop_m = INF
 	_playing = false
 
 
@@ -92,7 +110,9 @@ func record(s: Dictionary, delta: float) -> void:
 
 
 func _add(s: Dictionary, delta: float) -> void:
-	_has_pull = _has_pull or s.get("stage", "") == "pulling"
+	if s.get("stage", "") == "pulling":
+		_has_pull = true
+		_stop_m = float(s.get("tractor_x_m", 0.0))
 	_recording_s += delta
 	_times.append(_recording_s)
 	_frames.append(s)
@@ -161,22 +181,54 @@ func length_s() -> float:
 # (TrackSpace), on a track with its full-pull line at `full_pull_m` and
 # `lane_m` between the chalk lines: {"from": Vector3, "at": Vector3,
 # "name": String}.
-static func shot(s: Dictionary, full_pull_m: float, lane_m: float) -> Dictionary:
+# `stop_m` is where the tractor stood when the pull ended (stop_m()): the
+# last metres before it, and after, are the finish shot. Each shot has the
+# zoom ("fov", degrees) that frames the tractor as wide as it says: the
+# launch tight on the rear wheels, to see them bite or spin.
+static func shot(s: Dictionary, full_pull_m: float, lane_m: float,
+		stop_m: float = INF) -> Dictionary:
 	var tractor_m := float(s.get("tractor_x_m", 0.0))
 	var at := Vector3(tractor_m, float(s.get("tractor_y_m", 0.0)), LOOK_AT_UP_M)
-	if s.get("stage", "pulling") != "pulling":
-		if s.get("stage", "") in RECORDED_STAGES:
-			return {"name": "launch", "from": launch_from(lane_m), "at": at}
+	var shot := {}
+	var stage: String = s.get("stage", "pulling")
+	if stage in ["pulling", "waiting_for_the_flag"] and tractor_m < LAUNCH_UNTIL_M \
+			and tractor_m < stop_m - FINISH_WITHIN_M:
+		var from := launch_from(lane_m)
+		# Tight on the wheels as they bite, wider as the tractor comes on.
+		var frame_m := lerpf(LAUNCH_FRAME_M, ALONGSIDE_FRAME_M,
+				clampf(tractor_m / LAUNCH_UNTIL_M, 0.0, 1.0))
+		shot = {"name": "launch", "from": from, "frame_m": frame_m}
+	elif is_finite(stop_m) and tractor_m >= stop_m - FINISH_WITHIN_M:
+		shot = {"name": "finish", "from": Vector3(stop_m + FINISH_AHEAD_M,
+				-(lane_m / 2.0 + FINISH_OUT_M), FINISH_UP_M), "frame_m": FINISH_FRAME_M}
+	elif stage not in ["pulling", "waiting_for_the_flag"]:
 		var sled_m := float(s.get("sled_x_m", 0.0))
-		return {"name": "end", "from": Vector3(sled_m - END_BEHIND_SLED_M, 0.0, END_UP_M),
-				"at": at}
-	if tractor_m < LAUNCH_UNTIL_M:
-		return {"name": "launch", "from": launch_from(lane_m), "at": at}
-	if tractor_m < full_pull_m - HEAD_ON_BEFORE_LINE_M:
-		return {"name": "alongside", "from": Vector3(tractor_m - ALONGSIDE_BEHIND_M,
-				lane_m / 2.0 + ALONGSIDE_OUT_M, ALONGSIDE_UP_M), "at": at}
-	var ahead_m := maxf(full_pull_m + HEAD_ON_PAST_LINE_M, tractor_m + HEAD_ON_AHEAD_M)
-	return {"name": "head_on", "from": Vector3(ahead_m, HEAD_ON_LEFT_M, HEAD_ON_UP_M), "at": at}
+		shot = {"name": "end", "from": Vector3(sled_m - END_BEHIND_SLED_M, 0.0, END_UP_M),
+				"frame_m": FINISH_FRAME_M}
+	elif tractor_m < full_pull_m - HEAD_ON_BEFORE_LINE_M:
+		shot = {"name": "alongside", "from": Vector3(tractor_m - ALONGSIDE_BEHIND_M,
+				lane_m / 2.0 + ALONGSIDE_OUT_M, ALONGSIDE_UP_M), "frame_m": ALONGSIDE_FRAME_M}
+	else:
+		var ahead_m := maxf(full_pull_m + HEAD_ON_PAST_LINE_M, tractor_m + HEAD_ON_AHEAD_M)
+		shot = {"name": "head_on", "from": Vector3(ahead_m, HEAD_ON_LEFT_M, HEAD_ON_UP_M),
+				"frame_m": HEAD_ON_FRAME_M}
+	shot["at"] = at
+	var from_at: Vector3 = shot["from"]
+	shot["fov"] = fov_framing(float(shot["frame_m"]), from_at.distance_to(at))
+	return shot
+
+
+# The zoom [deg] that shows `frame_m` across at `distance_m`, within the
+# camera's range.
+static func fov_framing(frame_m: float, distance_m: float) -> float:
+	var fov := rad_to_deg(2.0 * atan(frame_m / 2.0 / maxf(distance_m, 0.1)))
+	return clampf(fov, MIN_FOV_DEG, MAX_FOV_DEG)
+
+
+# Where the tractor stood when the pull ended [m down the track]; INF until
+# a pull was recorded.
+func stop_m() -> float:
+	return _stop_m
 
 
 static func launch_from(lane_m: float) -> Vector3:
