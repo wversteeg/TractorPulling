@@ -837,7 +837,7 @@ std::optional<session::Setup> TractorPullEvent::player_setup() const {
 }
 
 std::optional<session::Setup> TractorPullEvent::practice_setup(const data::Track* track) const {
-    if (!season_ || season_->event() == nullptr) {
+    if (!season_ || !definition_ || season_->event() == nullptr) {
         return std::nullopt;
     }
     const vehicle::Params tractor = vehicle::tuned(player_tractor(), tuning_);
@@ -848,7 +848,7 @@ std::optional<session::Setup> TractorPullEvent::practice_setup(const data::Track
     return started(data::run_setup(tractor, *season_->event()));
 }
 
-godot::Dictionary TractorPullEvent::get_track_info(const godot::String& track_path) const {
+godot::Dictionary TractorPullEvent::get_track_info(const godot::String& track_path) {
     const auto track = data::load_track(to_std(track_path), read_godot_file);
     if (!track) {
         return {};
@@ -1373,8 +1373,8 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
     ClassDB::bind_method(D_METHOD("get_crew_report"), &TractorPullEvent::get_crew_report);
-    ClassDB::bind_method(D_METHOD("get_track_info", "track_path"),
-                         &TractorPullEvent::get_track_info);
+    ClassDB::bind_static_method("TractorPullEvent", D_METHOD("get_track_info", "track_path"),
+                                &TractorPullEvent::get_track_info);
     ClassDB::bind_method(D_METHOD("set_start", "y_m"), &TractorPullEvent::set_start);
     ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar", "hitch_m"),
                          &TractorPullEvent::set_tuning, DEFVAL(0.0));
