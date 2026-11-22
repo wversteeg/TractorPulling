@@ -129,6 +129,24 @@ std::optional<LoadError> check_brakes(const vehicle::Brakes& brakes, std::string
     return std::nullopt;
 }
 
+// vehicle::validate's verdict on the differential, named by field.
+std::optional<LoadError> check_differential(const vehicle::Differential& differential,
+                                            std::string_view source) {
+    const std::optional<vehicle::DifferentialError> error = vehicle::validate(differential);
+    if (!error) {
+        return std::nullopt;
+    }
+    switch (*error) {
+        case vehicle::DifferentialError::kCoupling:
+            return detail::make_error(source, "tractor.differential.coupling_nm_s_per_rad",
+                                      "must be a finite number, not negative");
+        case vehicle::DifferentialError::kCouplingLimit:
+            return detail::make_error(source, "tractor.differential.coupling_limit_nm",
+                                      "must be a finite number, not negative");
+    }
+    return std::nullopt;
+}
+
 Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view source,
                                      std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
@@ -154,7 +172,10 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     // Optional: an open differential without it.
     const vehicle::Differential differential{
         .coupling_nm_s_per_rad =
-            reader.optional_number("tractor.differential.coupling_nm_s_per_rad").value_or(0.0)};
+            reader.optional_number("tractor.differential.coupling_nm_s_per_rad").value_or(0.0),
+        // Optional: a coupling without a limit without it.
+        .coupling_limit_nm =
+            reader.optional_number("tractor.differential.coupling_limit_nm").value_or(0.0)};
     chassis::Params chassis{
         .mass_kg = reader.number("tractor.chassis.mass_kg"),
         .wheelbase_m = reader.number("tractor.chassis.wheelbase_m"),
@@ -229,10 +250,8 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
     if (auto brakes_error = check_brakes(brakes, source)) {
         return *std::move(brakes_error);
     }
-    if (!std::isfinite(differential.coupling_nm_s_per_rad) ||
-        differential.coupling_nm_s_per_rad < 0.0) {
-        return detail::make_error(source, "tractor.differential.coupling_nm_s_per_rad",
-                                  "must be a finite number, not negative");
+    if (auto differential_error = check_differential(differential, source)) {
+        return *std::move(differential_error);
     }
 
     std::optional<LoadError> error;

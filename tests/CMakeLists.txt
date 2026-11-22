@@ -82,6 +82,7 @@ if(TP_BUILD_DATA_IO)
         data/rev_limit_runs_test.cpp
         data/tire_choice_test.cpp
         data/brake_hold_runs_test.cpp
+        data/brake_steering_runs_test.cpp
         data/wheelie_runs_test.cpp
         data/hard_spot_runs_test.cpp)
     target_link_libraries(tp_data_tests PRIVATE tp::data GTest::gtest_main)

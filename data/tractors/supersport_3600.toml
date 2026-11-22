@@ -46,6 +46,11 @@ hold_torque_nm = 25000.0
 # spot under one side turns the tractor towards it.
 [tractor.differential]
 coupling_nm_s_per_rad = 3000.0
+# The coupling gives way past this torque to one side: the steering brake
+# pressed hard slows its side, and the tractor turns, instead of the
+# coupling driving that side on (a full brake for 2 s with the nose up
+# turns it about 3 to 6 degrees, 1 to 2 m off its line over 30 m).
+coupling_limit_nm = 4400.0
 
 # Body points are measured with the tractor level. The rear axle height is
 # the rear tire's radius.

@@ -8,6 +8,17 @@
 
 namespace tp::vehicle {
 
+std::optional<DifferentialError> validate(const Differential& differential) noexcept {
+    if (!std::isfinite(differential.coupling_nm_s_per_rad) ||
+        differential.coupling_nm_s_per_rad < 0.0) {
+        return DifferentialError::kCoupling;
+    }
+    if (!std::isfinite(differential.coupling_limit_nm) || differential.coupling_limit_nm < 0.0) {
+        return DifferentialError::kCouplingLimit;
+    }
+    return std::nullopt;
+}
+
 std::optional<BrakesError> validate(const Brakes& brakes) noexcept {
     if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
         return BrakesError::kPedalTorque;
@@ -47,8 +58,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     if (validate(params.brakes)) {
         return ParamError::kBrakes;
     }
-    if (!std::isfinite(params.differential.coupling_nm_s_per_rad) ||
-        params.differential.coupling_nm_s_per_rad < 0.0) {
+    if (validate(params.differential)) {
         return ParamError::kDifferential;
     }
     if (chassis::validate(params.chassis)) {
@@ -142,6 +152,8 @@ Side rear_side(const tire::Params& tire, const tire::Footing& footing, double om
 // The coupling's torque 2 c d acts on both sides, against each other: on
 // their difference it counts four times.
 constexpr double kCouplingFactor = 4.0;
+// A limit on the torque passed to one side counts twice on the difference.
+constexpr double kSidesPerDifference = 2.0;
 
 struct RearProblem {
     coupling::ShaftPrediction engine;
@@ -189,12 +201,22 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
                            p.rolling_nm + brake_left_nm + brake_right_nm, p.dt_s, p.direction);
 
     const double slope_difference = p.slope_right - p.slope_left;
+    const double free =
+        2.0 * p.side_inertia_kg_m2 / p.dt_s + r * r * (p.slope_left + p.slope_right);
+    const double driven =
+        -r * (p.force_right_n - p.force_left_n) - (brake_right_nm - brake_left_nm);
     const double coupling = kCouplingFactor * params.differential.coupling_nm_s_per_rad;
-    const double denominator =
-        2.0 * p.side_inertia_kg_m2 / p.dt_s + r * r * (p.slope_left + p.slope_right) + coupling;
-    const double a0 = (-r * (p.force_right_n - p.force_left_n) - (brake_right_nm - brake_left_nm) -
-                       coupling * state.differential_rad_s) /
-                      denominator;
+    double denominator = free + coupling;
+    double a0 = (driven - coupling * state.differential_rad_s) / denominator;
+    // A coupling that would pass more than its limit gives way: it then
+    // passes its limit, against the sides' difference as the step ends
+    // with the common slip held (a0), and no longer stiffens the step.
+    const double limit_nm = kSidesPerDifference * params.differential.coupling_limit_nm;
+    const double coupled_nm = coupling * (state.differential_rad_s + a0);
+    if (limit_nm > 0.0 && std::abs(coupled_nm) > limit_nm) {
+        denominator = free;
+        a0 = (driven - std::copysign(limit_nm, coupled_nm)) / denominator;
+    }
     const double a1 = -r * slope_difference / denominator;
     const TireLine line{
         .force_n = p.force_left_n + p.force_right_n + r * slope_difference * a0,
