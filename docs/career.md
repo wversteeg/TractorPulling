@@ -379,7 +379,7 @@ side by side, each fitted between events (K-6), each best somewhere:
   3 bar turbo, then 4, 5 and 6 bar (€ 6,000, 11,000 and 18,000: the
   dearest part, about three seasons at the top to buy). Each bar more
   gives more torque at full boost (`engine::with_boost_pressure`; 9.5 %
-  of the 6.06 l's own a bar, 8 % of the 7.0 l's, as
+  of the 6.06 l's own a bar, 6.5 % of the 7.0 l's, as
   `[engine.turbo.bigger]` in each engine's file), the torque without
   boost the same, and the boost later (120 and 100 rpm a bar) and slower
   (0.12 s a bar). The garage's dyno shows the new curve. On today's
