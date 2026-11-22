@@ -10,6 +10,7 @@ package "other components" {
   class "event::Standing" as EventStanding
   class "engine::with_torque_scale()" as TorqueScale
   class "engine::with_rated_speed()" as RatedSpeed
+  class "engine::with_boost_pressure()" as BoostPressure
   class "chassis::with_free_weight()" as BallastMass
   class "vehicle::with_rear_tire()" as RearTire
 }
@@ -22,6 +23,7 @@ package "tp::garage" {
     kHitchHeight
     kLoadDownshift
     kRatedSpeed
+    kBoostPressure
   }
   class Level <<struct>> {
     +value : double
@@ -116,6 +118,7 @@ GarageFns ..> ClassRules : every level within the class
 GarageFns ..> EventStanding : pays by place
 GarageFns ..> TorqueScale
 GarageFns ..> RatedSpeed
+GarageFns ..> BoostPressure
 GarageFns ..> BallastMass
 GarageFns ..> RearTire : fits rear tires of another size
 note bottom of Catalogue

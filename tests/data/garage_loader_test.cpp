@@ -82,6 +82,21 @@ TEST(GarageLoader, ReadsTheGovernorInRpm) {
     EXPECT_EQ(governor.levels[1].cost_eur, 1800);
 }
 
+// The turbo's levels are in bar in the file, Pa in the core.
+TEST(GarageLoader, ReadsTheTurboInBar) {
+    const auto result =
+        parse_garage(with("part = \"load_downshift_gears\"\nname = \"Powershift\"\n"
+                          "levels = [{ value = 0.0, cost_eur = 0, label = \"None\" }]",
+                          "part = \"boost_bar\"\nname = \"Turbo\"\n"
+                          "levels = [{ value = 3.0, cost_eur = 0, label = \"Stock\" }, "
+                          "{ value = 6.0, cost_eur = 18000, label = \"Big\" }]"),
+                     "garage.toml");
+    ASSERT_TRUE(result.ok()) << result.error().message;
+    const garage::Upgrade& turbo = result.value().catalogue.upgrades[1];
+    EXPECT_EQ(turbo.part, garage::Part::kBoostPressure);
+    EXPECT_EQ(turbo.levels[1].value, units::bar_to_pa(6.0));
+}
+
 TEST(GarageLoader, RefusesNonsense) {
     EXPECT_EQ(error_of(kGarage), "");
     EXPECT_NE(error_of(with("start_money_eur = 500", "start_money_eur = -1"))

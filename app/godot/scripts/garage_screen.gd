@@ -38,6 +38,8 @@ const CORNER := 14
 const PIN_AT := {
 	"rear_traction": Vector2(225, 185),
 	"load_downshift_gears": Vector2(390, 112),
+	# No class has both: the turbo is the Supersport's, which has no powershift.
+	"boost_bar": Vector2(390, 112),
 	"engine": Vector2(555, 82),
 	"engine_torque": Vector2(720, 112),
 	"rated_rpm": Vector2(875, 170),
@@ -50,6 +52,7 @@ const SKETCH_RECT := Rect2(150, 250, 830, 340)
 # What each part does, for its screen when there is no dyno to show.
 const ABOUT := {
 	"engine_torque": "More fuel and air: the engine's torque all through its range.",
+	"boost_bar": "A bigger turbo: more boost, so more torque at the top, but it comes later and slower.",
 	"rated_rpm": "The governor: full fuel up to higher revs, so the same gear pulls faster.",
 	"rear_traction": "Grip: from worn farm tires to tires cut for pulling, whose lugs bite harder.",
 	"ballast_kg": "Weights up to the class's limit. Where they sit you set before each pull.",
@@ -372,7 +375,7 @@ func _show_upgrade() -> void:
 	_line.show_levels(labels, line.get("costs", []), level, part == "rear_traction", counts)
 	# The engine on the dyno; any other part described.
 	var dyno := {}
-	if event != null and part in ["engine_torque", "rated_rpm"]:
+	if event != null and part in ["engine_torque", "rated_rpm", "boost_bar"]:
 		dyno = event.get_upgrade_dyno(view_index)
 	_dyno.visible = not dyno.is_empty()
 	_about.visible = dyno.is_empty()

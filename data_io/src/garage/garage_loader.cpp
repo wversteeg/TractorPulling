@@ -356,10 +356,11 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
     }
     const std::optional<PartName> part = part_named(*part_name);
     if (!part) {
-        return detail::make_error(source, "garage.upgrades.part",
-                                  "unknown part '" + *part_name +
-                                      "' (engine_torque, rear_traction, ballast_kg, "
-                                      "hitch_height_m, load_downshift_gears, rated_rpm or boost_bar)");
+        return detail::make_error(
+            source, "garage.upgrades.part",
+            "unknown part '" + *part_name +
+                "' (engine_torque, rear_traction, ballast_kg, "
+                "hitch_height_m, load_downshift_gears, rated_rpm or boost_bar)");
     }
     const toml::array* levels = table->at_path("levels").as_array();
     if (levels == nullptr) {

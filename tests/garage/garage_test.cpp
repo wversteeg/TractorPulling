@@ -268,6 +268,28 @@ TEST(Garage, TheGovernorRaisesTheEngineSpeeds) {
     EXPECT_TRUE(rules::check(kClass, raised.value_or(kTractor)).ok());
 }
 
+// A bigger turbo: the engine boosts more and makes more power.
+TEST(Garage, ABiggerTurboBoostsMore) {
+    Catalogue catalogue = reference_catalogue();
+    catalogue.upgrades[6] = {.part = Part::kBoostPressure,
+                             .levels = {{{.value = units::bar_to_pa(3.0), .cost_eur = 0},
+                                         {.value = units::bar_to_pa(4.0), .cost_eur = 6000}}},
+                             .level_count = 2};
+    catalogue.count = 7;
+    vehicle::Params tractor = kTractor;
+    tractor.engine.full_boost_pressure_pa = units::bar_to_pa(3.0);
+    tractor.engine.turbo_torque_gain_per_bar = 0.05;
+    Career career = new_career(catalogue);
+    const std::optional<vehicle::Params> stock = equipped(tractor, catalogue, career);
+    career.levels[6] = 1;
+    const std::optional<vehicle::Params> bigger = equipped(tractor, catalogue, career);
+    ASSERT_TRUE(stock.has_value() && bigger.has_value());
+    EXPECT_EQ(stock.value_or(tractor).engine.full_boost_pressure_pa, units::bar_to_pa(3.0));
+    EXPECT_EQ(bigger.value_or(tractor).engine.full_boost_pressure_pa, units::bar_to_pa(4.0));
+    EXPECT_GT(engine::max_net_power_w(bigger.value_or(tractor).engine),
+              engine::max_net_power_w(stock.value_or(tractor).engine));
+}
+
 TEST(Garage, PaysByPlace) {
     const std::array<std::int64_t, 3> prizes = {700, 500, 400};
     EXPECT_EQ(prize_eur(prizes, {.puller = 0, .place = 1}), 700);

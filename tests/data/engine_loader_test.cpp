@@ -72,6 +72,23 @@ TEST(EngineLoader, TheFullBoostPressureIsOptional) {
     EXPECT_EQ(result.value().full_boost_pressure_pa, 0.0);
 }
 
+// A bigger turbo's effect is optional (the engine takes no other turbo),
+// read in its units: rpm per bar into rad/s per bar.
+TEST(EngineLoader, ReadsWhatABiggerTurboDoes) {
+    const auto none = parse_engine(kValidEngine, "test.toml");
+    ASSERT_TRUE(none.ok()) << none.error().message;
+    EXPECT_EQ(none.value().turbo_torque_gain_per_bar, 0.0);
+    const auto bigger = parse_engine(
+        with("full_boost_rpm = 1600",
+             "full_boost_rpm = 1600\nfull_boost_bar = 3.0\n\n[engine.turbo.bigger]\n"
+             "torque_gain_per_bar = 0.1\nspool_rpm_per_bar = 100\nlag_s_per_bar = 0.12"),
+        "test.toml");
+    ASSERT_TRUE(bigger.ok()) << bigger.error().message;
+    EXPECT_DOUBLE_EQ(bigger.value().turbo_torque_gain_per_bar, 0.1);
+    EXPECT_DOUBLE_EQ(bigger.value().turbo_spool_omega_per_bar_rad_s, units::rpm_to_rad_s(100.0));
+    EXPECT_DOUBLE_EQ(bigger.value().turbo_lag_s_per_bar, 0.12);
+}
+
 // The cylinders are only for the engine's sound: an engine may leave them
 // out (0, not known).
 TEST(EngineLoader, TheCylindersAreOptional) {
@@ -135,7 +152,7 @@ TEST(EngineLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 17> cases = {{
+    const std::array<Case, 18> cases = {{
         {"rated_rpm = 2200", "rated_rpm = 2390",
          "engine.rated_rpm: must be at least 25 rpm below high_idle_rpm"},
         {"stall_rpm = 450", "stall_rpm = 450\nmax_high_idle_rpm = 2300",
@@ -149,6 +166,10 @@ TEST(EngineLoader, RejectsNonsenseValues) {
         {"inertia_kg_m2 = 1.5", "inertia_kg_m2 = -1.5", "engine.inertia_kg_m2: must be > 0"},
         {"full_boost_rpm = 1600", "full_boost_rpm = 1600\nfull_boost_bar = -1.0",
          "engine.turbo.full_boost_bar: must not be negative"},
+        {"full_boost_rpm = 1600",
+         "full_boost_rpm = 1600\n\n[engine.turbo.bigger]\ntorque_gain_per_bar = -0.1",
+         "engine.turbo.bigger: torque_gain_per_bar, spool_rpm_per_bar and lag_s_per_bar must not "
+         "be negative"},
         {"idle_rpm = 800", "idle_rpm = 2300", "engine.idle_rpm: must be below rated_rpm"},
         {"stall_rpm = 450", "stall_rpm = 900", "engine.stall_rpm: must be below idle_rpm"},
         {"constant_nm = 15.0", "constant_nm = -1.0", "engine.friction: must not be negative"},
