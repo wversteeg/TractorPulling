@@ -485,7 +485,9 @@ package "GDScript (app/godot/scripts)" {
     +next_frame(delta) : Dictionary
     +frames_left() : Array[Dictionary]
     +length_s() : float
-    +{static} shot(snapshot, full_pull_m, lane_m) : Dictionary
+    +stop_m() : float, where the pull stopped
+    +{static} shot(snapshot, full_pull_m, lane_m, stop_m) : Dictionary,\n  where from, at what, how zoomed
+    +{static} fov_framing(frame_m, distance_m) : float
   }
   class ReplayOverlay {
     +back_button : TouchButton
