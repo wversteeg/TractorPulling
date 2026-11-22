@@ -50,7 +50,7 @@ const FINISH_FRAME_M := 7.0
 const MIN_FOV_DEG := 8.0
 const MAX_FOV_DEG := 60.0
 # The finish: over the last this many metres before the tractor stopped,
-# from this far past its stopping place, just outside the right chalk line,
+# from this far past its stopping place, just outside the left chalk line,
 # low [m].
 const FINISH_WITHIN_M := 6.0
 const FINISH_AHEAD_M := 5.0
@@ -191,7 +191,7 @@ static func shot(s: Dictionary, full_pull_m: float, lane_m: float,
 	var at := Vector3(tractor_m, float(s.get("tractor_y_m", 0.0)), LOOK_AT_UP_M)
 	var shot := {}
 	var stage: String = s.get("stage", "pulling")
-	if stage in ["pulling", "waiting_for_the_flag"] and tractor_m < LAUNCH_UNTIL_M \
+	if stage in RECORDED_STAGES and tractor_m < LAUNCH_UNTIL_M \
 			and tractor_m < stop_m - FINISH_WITHIN_M:
 		var from := launch_from(lane_m)
 		# Tight on the wheels as they bite, wider as the tractor comes on.
@@ -199,9 +199,12 @@ static func shot(s: Dictionary, full_pull_m: float, lane_m: float,
 				clampf(tractor_m / LAUNCH_UNTIL_M, 0.0, 1.0))
 		shot = {"name": "launch", "from": from, "frame_m": frame_m}
 	elif is_finite(stop_m) and tractor_m >= stop_m - FINISH_WITHIN_M:
+		# On the left, as alongside and head-on are: the cut keeps the
+		# tractor going the same way across the screen.
 		shot = {"name": "finish", "from": Vector3(stop_m + FINISH_AHEAD_M,
-				-(lane_m / 2.0 + FINISH_OUT_M), FINISH_UP_M), "frame_m": FINISH_FRAME_M}
-	elif stage not in ["pulling", "waiting_for_the_flag"]:
+				lane_m / 2.0 + FINISH_OUT_M, FINISH_UP_M), "frame_m": FINISH_FRAME_M}
+	elif stage not in RECORDED_STAGES:
+		# The stop not known (a replay with no pull): from behind the sled.
 		var sled_m := float(s.get("sled_x_m", 0.0))
 		shot = {"name": "end", "from": Vector3(sled_m - END_BEHIND_SLED_M, 0.0, END_UP_M),
 				"frame_m": FINISH_FRAME_M}
