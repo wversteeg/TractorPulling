@@ -324,6 +324,16 @@ TEST(TractorLoader, ReadsTheDifferential) {
                             "coupling_nm_s_per_rad = -1.0"))
                   .find("tractor.differential.coupling_nm_s_per_rad: must be a finite number"),
               std::string::npos);
+    // The Supersport's coupling gives way to its steering brakes.
+    const auto supersport = load_tractor(kDataDir / "tractors" / "supersport_3600.toml");
+    ASSERT_TRUE(supersport.ok()) << supersport.error().message;
+    EXPECT_EQ(supersport.value().differential.coupling_limit_nm, 4400.0);
+    EXPECT_EQ(open.value().differential.coupling_limit_nm, 0.0);
+    EXPECT_NE(error_of(with("max_torque_nm = 8000.0",
+                            "max_torque_nm = 8000.0\n\n[tractor.differential]\n"
+                            "coupling_limit_nm = -1.0"))
+                  .find("tractor.differential.coupling_limit_nm: must be a finite number"),
+              std::string::npos);
 }
 
 TEST(TractorLoader, ReadsTheHitchsHoles) {

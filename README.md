@@ -52,7 +52,10 @@ turns. The pulling tractors' differentials are coupled (limited-slip,
 `[tractor.differential] coupling_nm_s_per_rad`): they also pass torque
 from a spinning side to the one that grips, so a weak spot under one side
 turns the tractor a little towards it (`HardSpotRuns.AWeakSpotUnderOneSideTurnsTheTractor`);
-a coupling of 0 is an open differential. Full pedal holds a side's wheels still where the brake can; in a
+a coupling of 0 is an open differential. A coupling may give way past a
+torque (`coupling_limit_nm`, the Supersport's), so a steering brake pressed
+hard still turns the tractor with the nose up
+(`BrakeSteeringRuns.TheSupersportTurnsToTheBrakedSide`). Full pedal holds a side's wheels still where the brake can; in a
 high gear it takes more torque than the engine gives and stalls it:
 
 ```bash
