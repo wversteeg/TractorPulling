@@ -20,14 +20,6 @@
 # buttons are drawn as a shifter's keys (ShiftButton) and the camera button
 # as a camera. All of them are multi-touch, so both thumbs drive at once.
 #
-# On a pulling tractor (the Sport classes up) a HOLD button holds both
-# brakes for the start ("optoeren"): a tap holds them, so the thumbs work
-# only the throttle (and in the pro layout the clutch) while the load
-# against the brakes spools the turbo; another tap lets them go, or the
-# game does at the boost the settings name (release_hold()). It shows
-# only while the pull is still to start (set_hold_available), in one of
-# HOLD_PLACES (hold_place).
-#
 # "-" steps down to neutral and, where the gearbox has it, reverse (R),
 # standing; under way it stops at the lowest gear the gearbox may go to
 # (set_gear), so a thumb cannot knock it out of gear mid-pull: once the
@@ -62,16 +54,6 @@ const STEER_COLOUR := Color(0.92, 0.92, 0.92, 0.9)
 const GAS_COLOUR := Color(0.3, 0.85, 0.35, 0.9)
 const CLUTCH_COLOUR := Color(0.3, 0.6, 1.0, 0.9)
 const BRAKE_COLOUR := Color(0.95, 0.3, 0.25, 0.9)
-# The brake hold's button and where it may go (hold_place): above the gas,
-# above the right brake (in the pro layout, between the gear buttons and the
-# gas; in the easy layout, which has no brakes, above the gear buttons), or
-# on the left (above the steering in the easy layout, above the left brake
-# in the pro layout). Over the right brake it is the pedal's width, its top
-# level with the gas slider's, its text smaller.
-const HOLD_SIZE := Vector2(170.0, 84.0)
-const HOLD_FONT_SIZE := 28
-const HOLD_OVER_BRAKE_FONT_SIZE := 21
-const HOLD_PLACES: Array[String] = ["above the gas", "above the right brake", "left"]
 const BUTTON_SIZE := 130.0
 const SMALL_BUTTON := Vector2(120.0, 80.0)
 # The keyboard's steering: about half lock (past the core's dead zone, and
@@ -106,13 +88,6 @@ var camera_button := CameraButton.new()
 var restart_button := TouchButton.new()
 var menu_button := TouchButton.new()
 # The brake hold for the start: held while `hold` (a tap toggles it).
-var hold_button := TouchButton.new()
-var hold := false
-# Which of HOLD_PLACES the button sits in.
-var hold_place := 1
-var _hold_available := false
-# The brake pedals were shown pressed for the hold (latch_brakes).
-var _hold_shown_on_pedals := false
 
 
 func _ready() -> void:
@@ -176,14 +151,6 @@ func _ready() -> void:
 	menu_button.fires_on_release = true
 	_place(menu_button, Vector2(1.0, 0.0), _top_row(2))
 
-	hold_button.text = "HOLD"
-	hold_button.rounded = true
-	hold_button.font_size = HOLD_FONT_SIZE
-	hold_button.visible = false
-	add_child(hold_button)
-	hold_button.tapped.connect(func() -> void:
-		hold = not hold
-		_show_hold())
 
 	gear_up.tapped.connect(func() -> void: set_gear(gear + 1))
 	gear_down.tapped.connect(func() -> void: set_gear(gear - 1))
@@ -223,63 +190,6 @@ func set_layout(is_pro: bool) -> void:
 			_right_column(column, BUTTON_SIZE, BUTTON_SIZE, BUTTON_SIZE + GAP))
 	_anchor(gear_readout, Vector2(1.0, 1.0),
 			_right_column(column, BUTTON_SIZE, BUTTON_SIZE, 2.0 * (BUTTON_SIZE + GAP)))
-	set_hold_place(hold_place)
-
-
-# Puts the brake hold's button in HOLD_PLACES[`place`], for the layout.
-func set_hold_place(place: int) -> void:
-	hold_place = clampi(place, 0, HOLD_PLACES.size() - 1)
-	hold_button.font_size = HOLD_OVER_BRAKE_FONT_SIZE if pro and hold_place == 1 \
-			else HOLD_FONT_SIZE
-	hold_button.queue_redraw()
-	var column := 2 if pro else 1
-	var rect: Rect2
-	match hold_place:
-		0:
-			rect = _right_column(0, HOLD_SIZE.x, HOLD_SIZE.y, THROTTLE_LENGTH + GAP)
-			_anchor(hold_button, Vector2(1.0, 1.0), rect)
-		1:
-			if pro:
-				# From the gas slider's top down to a gap above the brake.
-				rect = _right_column(1, BRAKE_SIZE.x, THROTTLE_LENGTH - BRAKE_SIZE.y - GAP,
-						BRAKE_SIZE.y + GAP)
-			else:
-				rect = _right_column(column, HOLD_SIZE.x, HOLD_SIZE.y, 3.0 * (BUTTON_SIZE + GAP))
-			_anchor(hold_button, Vector2(1.0, 1.0), rect)
-		_:
-			# Pro: above the left brake, clear of the HUD's gauges over the
-			# clutch; easy: above the steering.
-			if pro:
-				_anchor(hold_button, Vector2(0.0, 1.0), _left_column(1, HOLD_SIZE.x, HOLD_SIZE.y,
-						BRAKE_SIZE.y + GAP))
-			else:
-				_anchor(hold_button, Vector2(0.0, 1.0), _left_column(0, HOLD_SIZE.x, HOLD_SIZE.y,
-						SLIDER_THICKNESS + GAP))
-
-
-# Whether the brake hold may be used now: on a pulling tractor, before the
-# pull starts. Not available lets the brakes go.
-func set_hold_available(available: bool) -> void:
-	if available == _hold_available:
-		return
-	_hold_available = available
-	if not available:
-		hold = false
-	_show_hold()
-
-
-# Lets the brakes go (the settings' boost reached, or the pull under way).
-func release_hold() -> void:
-	if hold:
-		hold = false
-		_show_hold()
-
-
-func _show_hold() -> void:
-	hold_button.visible = _hold_available
-	hold_button.selected = hold
-	hold_button.text = "HOLDING" if hold else "HOLD"
-	hold_button.queue_redraw()
 
 
 # Steering by tilting (`by_tilt`, if the phone can) or by the slider.
@@ -329,8 +239,6 @@ func reset() -> void:
 	lowest_gear = 1
 	throttle_slider.value = 0.0
 	clutch_slider.value = clutch_slider.rest_value
-	hold = false
-	_show_hold()
 	reset_fingers()
 
 
@@ -341,7 +249,7 @@ func reset_fingers() -> void:
 			brake_left_slider, brake_right_slider]:
 		slider.release()
 	for button: TouchButton in [gear_up, gear_down, gear_readout, camera_button, restart_button,
-			menu_button, hold_button]:
+			menu_button]:
 		button.release()
 
 
@@ -374,22 +282,10 @@ func brake_right() -> float:
 # Outside the pull the pedals are latched together, as on a road tractor
 # (the run brakes both with either): `latched`, the slider a thumb holds
 # moves the other along, and both spring back together. Called every
-# frame; in the pull each brake is its own. While the brake hold holds,
-# both pedals show fully pressed.
+# frame; in the pull each brake is its own.
 func latch_brakes(latched: bool) -> void:
 	var left := brake_left_slider
 	var right := brake_right_slider
-	# The brake hold: both pedals shown fully pressed while it holds, back
-	# to rest when it lets go.
-	if hold or _hold_shown_on_pedals:
-		_hold_shown_on_pedals = hold
-		for slider: TouchSlider in [left, right]:
-			var at := 1.0 if hold else slider.rest_value
-			if not slider.is_held() and slider.value != at:
-				slider.value = at
-				slider.queue_redraw()
-		if hold:
-			return
 	if not latched:
 		return
 	var both := left.rest_value

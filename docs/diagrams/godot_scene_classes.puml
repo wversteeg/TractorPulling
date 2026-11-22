@@ -206,10 +206,6 @@ package "GDScript (app/godot/scripts)" {
     +clutch() : float
     +brake_left(), brake_right() : float
     +latch_brakes(latched)
-    +hold_button : TouchButton, hold : bool
-    +hold_place : int, of HOLD_PLACES
-    +set_hold_place(place), set_hold_available(available)
-    +release_hold()
     +steering() : float
     +set_layout(pro)
     +set_steering(by_tilt)
@@ -232,16 +228,6 @@ package "GDScript (app/godot/scripts)" {
     --
     Kind: clutch bite, wheelspin, lugging, gear,
     chain, landing, full pull, chalk line
-  }
-  class BrakeHoldScreen {
-    the start's brake hold: let go by hand or
-    at a share of full boost; where HOLD sits
-    +auto_button, hand_button, back_button : TouchButton
-    +boost_slider : TouchSlider
-    +place_buttons : Array[TouchButton]
-    +show_hold(auto_release, release_boost, place)
-    ..signals..
-    changed(auto_release, release_boost, place), done
   }
   class HapticsScreen {
     +kind_buttons : Dictionary
@@ -333,7 +319,6 @@ package "GDScript (app/godot/scripts)" {
     +slider_button, tilt_button : TouchButton
     +new_career_button, start_button, done_button : TouchButton
     +sound_on_button, sound_off_button, haptics_button : TouchButton
-    +brake_hold_button : TouchButton
     +keep_money_button : TouchButton, for testing
     +keeps_money() : bool
     +money_button : TouchButton, for testing
@@ -344,7 +329,7 @@ package "GDScript (app/godot/scripts)" {
     +release_buttons()
     ..signals..
     changed(pro, tilt, guidance), sound_changed(on), haptics_requested,
-    brake_hold_requested, done, new_career_requested(rung, keep_money),
+    done, new_career_requested(rung, keep_money),
     money_requested(amount_eur)
   }
   class MenuBackdrop {
@@ -410,8 +395,6 @@ package "GDScript (app/godot/scripts)" {
   class GameSettings {
     +pro, tilt, guidance, sound : bool
     +haptics : Dictionary
-    +hold_auto_release : bool, hold_release_boost : float
-    +hold_place : int
     +{static} read(path) : GameSettings
     +write(path) : Error
   }
@@ -604,8 +587,6 @@ Pull *-- EngineSound : the engine heard on the track,\nmade from the snapshot
 AudioStreamPlayer <|-- EngineSound
 Pull *-- Haptics : the phone vibrates in the pull
 Pull *-- HapticsScreen : from the settings
-Pull *-- BrakeHoldScreen : from the settings
-MenuPanel <|-- BrakeHoldScreen
 MenuPanel <|-- HapticsScreen
 HapticsScreen ..> Haptics : its kinds
 Pull *-- StartScreen
