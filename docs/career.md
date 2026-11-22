@@ -336,7 +336,9 @@ own governor cuts at 2700), no PTO power limit. The class comes after
 Sport 4.5 t in the career (Supersport 3.4 t is not in the game yet), at
 all three levels. Fully built on the stock 3 bar turbo, both engines
 give about **1000 hp**; on the garage's biggest, 6 bar, the 6.06 l gives
-about **1300 hp** (the top tractors') and the 7.0 l about 1150 hp. The
+about **1300 hp**, as the top tractors make, and the 7.0 l about 1190 hp.
+The rivals keep the stock turbo for now (their field has no boost
+dimension yet). The
 NTTO's top tractors pull about 105 to 115 m with much wheelspin, the front
 low (videos of 2026 pull-offs; "the distance to beat 114.89 m").
 
@@ -380,12 +382,12 @@ side by side, each fitted between events (K-6), each best somewhere:
   of the 6.06 l's own a bar, 8 % of the 7.0 l's, as
   `[engine.turbo.bigger]` in each engine's file), the torque without
   boost the same, and the boost later (120 and 100 rpm a bar) and slower
-  (0.12 s a bar). The garage's dyno shows the new curve. The power counts
-  on the puller tires, which bite harder the faster they spin
-  (`slow_spin_grip` 0.65, full grip over about 3 m/s): the 6.06 l on 6 bar
-  spins them faster in a taller gear and wins on firm tracks where 3 bar
-  does not; the 7.0 l, held to 2700 rpm, gains little, so the engine
-  choice matters at the top.
+  (0.12 s a bar). The garage's dyno shows the new curve. On today's
+  gearing the extra power gains little on the track: in the pulling
+  gears the tires spin at the governor, about 50 km/h at the wheel,
+  where real Supersports spin them at 70 to 100 km/h and are held by
+  their power. Taller gearing, the rivals' turbos and the tires to go
+  with them are in `docs/future_improvements.md`.
 - **A pulling gearbox**: two gears to manoeuvre and four close pulling
   gears (3rd to 6th, about 13 % apart); no powershift, one gear the whole
   pull.

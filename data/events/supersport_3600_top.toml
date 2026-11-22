@@ -42,7 +42,7 @@ launch_hold_max_s = 8.0
 [event.field]
 torque_scale = [0.96, 1.0]
 mass_kg = [3560.0, 3598.0]
-traction_limit = [1.45, 1.48]
+traction_limit = [1.48, 1.50]
 hitch_height_m = [0.48, 0.5]
 rated_rpm = [2600.0, 2650.0]           # from a governor turned up part way to a pulling one
 gears = [4, 6]

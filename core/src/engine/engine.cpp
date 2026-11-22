@@ -42,6 +42,13 @@ std::optional<Params> with_boost_pressure(const Params& params, double pressure_
         return std::nullopt;
     }
     const double more_bar = units::pa_to_bar(pressure_pa - params.full_boost_pressure_pa);
+    const bool takes_another = params.turbo_torque_gain_per_bar > 0.0 ||
+                               params.turbo_spool_omega_per_bar_rad_s > 0.0 ||
+                               params.turbo_lag_s_per_bar > 0.0;
+    if (more_bar != 0.0 && !takes_another) {
+        // A turbo that would change nothing but the gauge.
+        return std::nullopt;
+    }
     const double gain = 1.0 + (params.turbo_torque_gain_per_bar * more_bar);
     if (gain <= 0.0) {
         return std::nullopt;

@@ -22,12 +22,10 @@ slip_rate = 8.0                    # grip builds with slip: a puller tire bites 
 # Its many low, sharp bars bite harder the faster they sweep through the
 # soil: turning slowly it has slow_spin_grip of its grip, and full grip
 # over a tread slip speed of about spin_speed_m_s (tp::tire::TractionCurve),
-# the side grip with it: turning slowly it grips much less, so the power
-# to spin it fast in a tall gear pays (the garage's bigger turbo, the
-# 6.06 l that revs to 3200 rpm). The shallow bars need firm ground: on soft soil
+# the side grip with it. The shallow bars need firm ground: on soft soil
 # its grip falls further (mobility_rate below a farm tire's).
-slow_spin_grip = 0.65
-spin_speed_m_s = 3.0
+slow_spin_grip = 0.75
+spin_speed_m_s = 4.0
 # Pressed harder than its share of the tractor at rest (the chain pulling
 # down at the hitch, the weights back), the tire grips less per unit of
 # load (tp::tire::TractionCurve::load_sensitivity).

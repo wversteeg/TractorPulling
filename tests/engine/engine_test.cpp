@@ -110,8 +110,6 @@ TEST(EngineParams, RejectsNegativeTorque) {
     EXPECT_EQ(validate(p), ParamError::kTorqueCurveNegative);
 }
 
-// Full fuel starts a droop below the governor's target: at rated speed at
-// full throttle, rising with the throttle.
 // An engine with a 3 bar turbo that takes a bigger one.
 Params turbo_engine() {
     Params p = reference_params();
@@ -149,13 +147,16 @@ TEST(EngineBoost, MoreBoostMoreTopTorqueLaterAndSlower) {
     EXPECT_NEAR(big.full_boost_omega_rad_s - p.full_boost_omega_rad_s, rpm_to_rad_s(300.0), 1e-9);
     EXPECT_NEAR(big.turbo_time_constant_s - p.turbo_time_constant_s, 0.3, 1e-12);
     EXPECT_GT(max_net_power_w(big), max_net_power_w(p));
-    // Measured from the turbo fitted: 6 bar from 4.5 bar is 6 bar from 3.
+    // Measured from the turbo fitted: through 4.5 bar the spool comes as
+    // late as straight from 3 bar, but the torque gain compounds.
     const std::optional<Params> half = with_boost_pressure(p, units::bar_to_pa(4.5));
     ASSERT_TRUE(half.has_value());
     const std::optional<Params> again =
         with_boost_pressure(half.value_or(p), units::bar_to_pa(6.0));
     ASSERT_TRUE(again.has_value());
     EXPECT_NEAR(again.value_or(p).boost_onset_omega_rad_s, big.boost_onset_omega_rad_s, 1e-9);
+    EXPECT_NEAR(again.value_or(p).full_load_torque_nm.evaluate(omega_rad_s),
+                1.15 * 1.15 * p.full_load_torque_nm.evaluate(omega_rad_s), 1e-9);
 }
 
 TEST(EngineBoost, RefusesWhatItCannotBe) {
@@ -163,11 +164,20 @@ TEST(EngineBoost, RefusesWhatItCannotBe) {
     EXPECT_FALSE(with_boost_pressure(p, std::nan("")).has_value());
     // So much less boost that no torque is left.
     EXPECT_FALSE(with_boost_pressure(p, units::bar_to_pa(-8.0)).has_value());
+    // A turbo that changes nothing but the gauge.
+    Params plain = p;
+    plain.turbo_torque_gain_per_bar = 0.0;
+    plain.turbo_spool_omega_per_bar_rad_s = 0.0;
+    plain.turbo_lag_s_per_bar = 0.0;
+    EXPECT_FALSE(with_boost_pressure(plain, units::bar_to_pa(4.0)).has_value());
+    EXPECT_TRUE(with_boost_pressure(plain, p.full_boost_pressure_pa).has_value());
     // No boost pressure of its own to measure from.
     p.full_boost_pressure_pa = 0.0;
     EXPECT_FALSE(with_boost_pressure(p, units::bar_to_pa(4.0)).has_value());
 }
 
+// Full fuel starts a droop below the governor's target: at rated speed at
+// full throttle, rising with the throttle.
 TEST(Engine, FullFuelSpeedFollowsTheThrottle) {
     const Params params = reference_params();
     const double droop_rad_s = params.high_idle_omega_rad_s - params.rated_omega_rad_s;

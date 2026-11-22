@@ -31,7 +31,7 @@
 #   water injection, the head and cam.
 # - boost_bar: the turbo, for either engine: 3 bar as it comes, up to 6 bar.
 #   Each bar more gives the 6.06 l more top power than the 7.0 l (about
-#   1300 hp against 1150 hp at 6 bar: engines/supersport_3600_*.toml), and
+#   1300 hp against 1190 hp at 6 bar: engines/supersport_3600_*.toml), and
 #   boosts later and slower. The dearest part of the class: about three
 #   seasons at the top to buy it all.
 # - rated_rpm: the governor, full fuel up to it and cut off at the

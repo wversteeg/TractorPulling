@@ -136,10 +136,11 @@ inline constexpr double kMinDroop_rad_s = units::rpm_to_rad_s(25.0);
 /// full-load curve scaled by 1 + turbo_torque_gain_per_bar per bar more,
 /// the torque without boost kept (the same engine breathing on its own),
 /// the boost coming later and slower by the turbo_spool and turbo_lag
-/// rates. Nothing if the engine has no boost pressure of its own or the
-/// result is not a valid engine. Its own pressure gives `params`
-/// unchanged; applied to an engine with another turbo, it measures from
-/// that one.
+/// rates. Nothing if the engine has no boost pressure of its own, takes no
+/// other turbo (all three rates 0) or the result is not a valid engine.
+/// Its own pressure gives `params` unchanged; applied to an engine with
+/// another turbo, it measures from that one (the spool and lag add up, the
+/// torque gain compounds).
 [[nodiscard]] std::optional<Params> with_boost_pressure(const Params& params,
                                                         double pressure_pa) noexcept;
 
