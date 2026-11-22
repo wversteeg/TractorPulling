@@ -29,7 +29,8 @@ constexpr int kSixLitre = 1;
 constexpr int kFarmTires = 0;
 constexpr int kPullerTires = 1;
 constexpr int kShort = 0;
-constexpr int kTall = 1;
+constexpr int kMiddle = 1;
+constexpr int kTall = 2;
 // The gearbox's pulling gears (drivelines/supersport_3600_*.toml): the
 // player picks the best of them for the track.
 constexpr int kLowestPullingGear = 3;

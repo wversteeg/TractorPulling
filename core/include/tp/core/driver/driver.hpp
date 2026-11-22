@@ -21,7 +21,8 @@ namespace tp::driver {
 /// in at the same rate but eases it back at that rate while the engine is
 /// below that share of its rated speed, so the revs and the turbo's boost
 /// do not collapse in a tall gear; they hold it at most launch_hold_max_s in
-/// all, and then let it come in whatever the engine does. Once the clutch
+/// all, and then let it come in whatever the engine does; one who feathers
+/// it (launch_feather_share) works the clutch smoothly about that speed. Once the clutch
 /// is fully in the launch is over: a later drop of the revs is the sled's,
 /// for a shift down, not the clutch.
 struct Plan {
@@ -39,10 +40,19 @@ struct Plan {
     double launch_hold_share = 0.0;
     /// The longest the launch is held, in all [s].
     double launch_hold_max_s = 0.0;
+    /// A driver who feathers the held launch: within this share of the
+    /// rated speed of the hold, the clutch comes up (above it) or eases
+    /// back (below it) the slower the nearer the revs are to it, where it
+    /// would otherwise go at its full rate either way and rock the tractor
+    /// against the chain's spring. 0 does not feather; below 1.
+    double launch_feather_share = 0.0;
     /// Where the team puts the sled across the lane, the tractor in line
     /// with it, to the left of the centre line (pull::Params::start_y_m)
     /// [m]. The driver steers straight from there.
     double start_y_m = 0.0;
+    /// The hand throttle the driver pulls at, in (0, 1]: full, or eased
+    /// where a lower governed speed spins the tires less (a soft track).
+    double throttle = 1.0;
 };
 
 /// What the driver remembers during a pull; a new pull starts from {}.
@@ -66,6 +76,8 @@ enum class ParamError : std::uint8_t {
     kTimesOutOfOrder,
     kDownshiftShareOutOfRange,
     kLaunchHoldOutOfRange,
+    /// The hand throttle not in (0, 1].
+    kThrottleOutOfRange,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept;

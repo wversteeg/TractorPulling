@@ -22,7 +22,9 @@ package "tp::driver" {
     +downshift_share : double
     +launch_hold_share : double
     +launch_hold_max_s : double
+    +launch_feather_share : double (the held clutch worked smoothly)
     +start_y_m : double (where the team puts the sled across the lane)
+    +throttle : double (full, or eased on a soft track)
   }
   class "State" as DriverState <<struct>> {
     +watching : bool
@@ -89,6 +91,7 @@ package "tp::field" {
     +hitch_height_m : Range
     +fewest_load_downshift_gears, most_load_downshift_gears : int
     +rated_omega_rad_s : Range
+    +boost_pressure_pa : Range (a bigger turbo, engine::with_boost_pressure)
   }
   class Field <<struct>> {
     +pullers : array<Puller, 32>

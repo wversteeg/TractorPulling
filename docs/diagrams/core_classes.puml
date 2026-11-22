@@ -106,6 +106,7 @@ skinparam classAttributeIconSize 0
       +initial_state(const Params&) : State
       +max_net_power_w(const Params&) : double
       +full_throttle_net_torque_nm(const Params&, omega_rad_s) : double
+      +settled_net_torque_nm(const Params&, omega_rad_s) : double (the dyno, boost settled)
       +full_fuel_omega_rad_s(const Params&, throttle) : double
       +predict(const State&, const Params&, throttle, dt_s) : Prediction
       +shaft_prediction(const Prediction&) : ShaftPrediction

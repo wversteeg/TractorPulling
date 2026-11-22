@@ -414,5 +414,26 @@ TEST(LogHash, IsTheExactBitsOfEveryEntry) {
     EXPECT_NE(log_hash(std::span{log}.first(1)), base);
 }
 
+// The trial tries each gear at each of kTrialThrottles and keeps the one
+// that went furthest, its throttle with it.
+TEST(Field, TheTrialTriesAnEasedThrottle) {
+    const Puller puller = reference();
+    const sled::Params sled = sled::testing::reference_params();
+    const track::Params track = track::testing::reference_params();
+    const std::optional<GearTrial> trial = best_gear_trial(puller, sled, track, 4, 6, kRules);
+    ASSERT_TRUE(trial.has_value());
+    EXPECT_TRUE(std::ranges::find(kTrialThrottles, trial->throttle) != kTrialThrottles.end());
+    for (int gear = 4; gear <= 6; ++gear) {
+        for (const double throttle : kTrialThrottles) {
+            Puller other = puller;
+            other.driver.gear = gear;
+            other.driver.throttle = throttle;
+            EXPECT_LE(run_pull(other, sled, track, kRules).value_or(run::Result{}).distance_m,
+                      trial->distance_m)
+                << "gear " << gear << " at " << throttle;
+        }
+    }
+}
+
 }  // namespace
 }  // namespace tp::field

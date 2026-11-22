@@ -80,9 +80,10 @@ int place(const data::SeasonDefinition& d, const garage::Career& career, std::ui
                 const track::Params& track = event.venue().track;
                 const int lowest = gears.lowest > 0 ? gears.lowest : e.variation.lowest_gear;
                 const int highest = gears.lowest > 0 ? gears.highest : e.variation.highest_gear;
-                player.driver.gear =
-                    best_gear(player, event.sled(), track, lowest, highest, event.pull_rules())
-                        .value_or(e.reference.driver.gear);
+                const std::optional<GearTrial> trial = best_gear_trial(
+                    player, event.sled(), track, lowest, highest, event.pull_rules());
+                player.driver.gear = trial ? trial->gear : e.reference.driver.gear;
+                player.driver.throttle = trial ? trial->throttle : 1.0;
                 event.record_player(run_pull(player, event.sled(), track, event.pull_rules())
                                         .value_or(run::Result{}),
                                     player.driver.gear);

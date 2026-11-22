@@ -167,5 +167,44 @@ TEST(Driver, HoldsTheLaunchWhileTheEngineIsLow) {
     EXPECT_DOUBLE_EQ(input(kPlan, timed, 4.0, tractor, params).clutch_pedal, 0.5);
 }
 
+// A feathered launch: the clutch comes up the slower the nearer the revs
+// are to the hold, and eases back the same way below it, with no jump at
+// the hold.
+TEST(Driver, FeathersTheHeldLaunch) {
+    const vehicle::Params params = vehicle::testing::reference_params();
+    Plan plan = kPlan;
+    plan.launch_hold_share = 0.8;
+    plan.launch_hold_max_s = 5.0;
+    plan.launch_feather_share = 0.1;
+    const double rated_rad_s = params.engine.rated_omega_rad_s;
+    vehicle::State tractor;
+    tractor.engine.running = true;
+    tractor.driveline.gear = plan.gear;
+    State state;
+    const auto pedal_at = [&](double t_s, double share_of_rated) {
+        tractor.engine.omega_rad_s = share_of_rated * rated_rad_s;
+        return input(plan, state, t_s, tractor, params).clutch_pedal;
+    };
+    EXPECT_EQ(pedal_at(3.0, 1.0), 1.0) << "the launch";
+    EXPECT_NEAR(pedal_at(3.5, 1.0), 0.75, 1e-12) << "well above the band: the full rate";
+    EXPECT_NEAR(pedal_at(4.0, 0.85), 0.625, 1e-12) << "half way up the band: half the rate";
+    EXPECT_NEAR(pedal_at(4.5, 0.8), 0.625, 1e-12) << "at the hold: still";
+    EXPECT_NEAR(pedal_at(5.0, 0.75), 0.75, 1e-12) << "below: eased back at half the rate";
+    plan.launch_feather_share = 1.0;
+    EXPECT_EQ(validate(plan, 8), ParamError::kLaunchHoldOutOfRange);
+}
+
+// The driver pulls at the plan's hand throttle: full, or eased.
+TEST(Driver, PullsAtThePlansThrottle) {
+    Plan plan = kPlan;
+    EXPECT_EQ(input(plan, 5.0).throttle, 1.0);
+    plan.throttle = 0.85;
+    EXPECT_EQ(input(plan, 5.0).throttle, 0.85);
+    plan.throttle = 0.0;
+    EXPECT_EQ(validate(plan, 8), ParamError::kThrottleOutOfRange);
+    plan.throttle = 1.5;
+    EXPECT_EQ(validate(plan, 8), ParamError::kThrottleOutOfRange);
+}
+
 }  // namespace
 }  // namespace tp::driver

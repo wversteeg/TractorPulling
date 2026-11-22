@@ -280,19 +280,23 @@ std::optional<GearTrial> best_gear_trial(const Puller& puller, const sled::Param
     GearTrial lowest_trial{.gear = lowest};
     double best_m = -1.0;
     for (int gear = lowest; gear <= highest; ++gear) {
-        Puller trying = puller;
-        trying.driver.gear = gear;
-        const std::optional<run::Result> result = run_pull(trying, sled, track, rules);
-        if (!result) {
-            return std::nullopt;
-        }
-        if (gear == lowest) {
-            lowest_trial.distance_m = result->distance_m;
-        }
-        // On a tie the higher gear: it gets there quicker.
-        if (result->distance_m >= best_m) {
-            best_m = result->distance_m;
-            best = GearTrial{.gear = gear, .distance_m = best_m};
+        for (const double throttle : kTrialThrottles) {
+            Puller trying = puller;
+            trying.driver.gear = gear;
+            trying.driver.throttle = throttle;
+            const std::optional<run::Result> result = run_pull(trying, sled, track, rules);
+            if (!result) {
+                return std::nullopt;
+            }
+            if (gear == lowest && throttle == kTrialThrottles.back()) {
+                lowest_trial.distance_m = result->distance_m;
+            }
+            // On a tie the higher gear and the fuller throttle: it gets
+            // there quicker.
+            if (result->distance_m >= best_m) {
+                best_m = result->distance_m;
+                best = GearTrial{.gear = gear, .distance_m = best_m, .throttle = throttle};
+            }
         }
     }
     if (best) {

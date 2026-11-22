@@ -219,6 +219,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         // Optional: a driver who holds the launch while the revs are low.
         .launch_hold_share = reader.optional_number("event.driver.launch_hold_share").value_or(0.0),
         .launch_hold_max_s = reader.optional_number("event.driver.launch_hold_max_s").value_or(0.0),
+        // Optional: a driver who works the held clutch smoothly.
+        .launch_feather_share =
+            reader.optional_number("event.driver.launch_feather_share").value_or(0.0),
     };
     field::Variation variation{
         .torque_scale = range(reader, "event.field.torque_scale"),

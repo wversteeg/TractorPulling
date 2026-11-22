@@ -718,16 +718,10 @@ for the big features; they are repeated at the end for completeness.
 - The replay shows no full pull's flames or fireworks, and after it the track keeps only the pull's own marks (not those of backing off and driving back).
 - It keeps one snapshot per drawn frame; if that weighs on a phone, record at 30 Hz and blend between frames on playback.
 
-## Supersport 3.6 t: power that counts
+## Supersport 3.6 t: the first track and the garage
 
-The garage's turbo (3 to 6 bar, up to about 1300 hp) gains little on the
-track today: in the pulling gears the tires spin at the governor, about
-50 km/h at the wheel, so the extra power is not used. Real Supersports
-spin their tires at 70 to 100 km/h and more while driving 35 to 55 km/h,
-held by their power at the end of the pull. To do: taller final drives
-for the pulling gears (a 15:1 tall drive already lets the 6.06 l on 6 bar
-full pull the firm loam where 3 bar stops at 98 m), puller tires tuned to
-them, the rivals' turbos (a boost range in the field, through
-`engine::with_boost_pressure`), the torque peaks moved up (7.0 l about
-2300 to 2400 rpm, 6.06 l about 2700 rpm), the turbo possibly to 7 bar,
-and the class's levels rebalanced.
+On the season's first track (the watered start) grip decides more than
+power, so between half and three quarters of the Supersport garage a
+build gains little there and the places depend much on the draw. Ideas:
+upgrades that pay on a soft start (tire grip, the launch), or a first
+track that suits the class's progression.

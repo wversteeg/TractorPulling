@@ -25,6 +25,7 @@ downshift_share = 0.9
 # the boost hold, for up to 8 s in all.
 launch_hold_share = 0.8
 launch_hold_max_s = 8.0
+launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 
 # The field: well-built Sport tractors, from about half the class's garage
 # to nearly all of it, driven by pullers who read a track well. Promo's

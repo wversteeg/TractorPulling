@@ -64,7 +64,7 @@ FieldError describe(sled::ParamError error) {
         case ParamError::kPanHeldShareOutOfRange:
             return {"sled.pushdown.pan_held_share", "must be at least 0 and below 1"};
         case ParamError::kBreakawayOutOfRange:
-            return {"sled.breakaway_factor", "must be at least 1"};
+            return {"sled.breakaway_share", "must be at least 0 and below 1"};
         case ParamError::kPushdownShareOutOfRange:
             return {"sled.pushdown.most_pan_share", "must be > 0 and at most 1"};
         case ParamError::kPanFrictionOutOfRange:
@@ -142,7 +142,7 @@ Result<sled::Params> read_sled(const toml::table& root, std::string_view source)
         // Optional: a pan held up at its back until the push-down.
         .pan_held_share = reader.optional_number("sled.pushdown.pan_held_share").value_or(0.0),
         // Optional: a sled that breaks away no harder than it rolls.
-        .breakaway_factor = reader.optional_number("sled.breakaway_factor").value_or(1.0),
+        .breakaway_share = reader.optional_number("sled.breakaway_share").value_or(0.0),
         .pan_friction_coefficient = reader.number("sled.pan_friction_coefficient"),
         .pan_area_m2 = reader.number("sled.pan_area_m2"),
         .pan_plough_coefficient = reader.number("sled.pan_plough_coefficient"),

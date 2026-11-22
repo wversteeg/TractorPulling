@@ -135,13 +135,21 @@ struct Field {
 struct GearTrial {
     int gear = 0;
     double distance_m = 0.0;
+    /// The hand throttle it went furthest at (driver::Plan::throttle).
+    double throttle = 1.0;
 };
+
+/// The hand throttles a driver tries each gear at: eased, where a lower
+/// governed speed spins the tires less on a soft track, and full. On a tie
+/// the full one.
+inline constexpr std::array<double, 2> kTrialThrottles = {0.85, 1.0};
 
 /// A gear trial that takes the sled no further than this has not got it
 /// going [m]: on a heavy, wet track the start is all the gears show.
 inline constexpr double kGetsTheSledGoing_m = 2.0;
 
-/// The gear among `lowest` to `highest` that takes `puller` furthest on this
+/// The gear among `lowest` to `highest`, each at the kTrialThrottles, that
+/// takes `puller` furthest on this
 /// sled and track: what a driver who reads the track right picks. When no
 /// gear gets the sled going (kGetsTheSledGoing_m), the lowest: it pulls
 /// hardest, where a tie would otherwise go to the gear that merely jolts the
