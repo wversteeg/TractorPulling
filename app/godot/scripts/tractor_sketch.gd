@@ -69,6 +69,7 @@ const ANCHORS_M := {
 	"load_downshift_gears": Vector2(0.55, -0.1),
 	"driveline": Vector2(0.55, -0.1),
 	"rated_rpm": Vector2(2.55, -0.08),
+	"boost_bar": Vector2(1.6, 0.4),
 }
 
 

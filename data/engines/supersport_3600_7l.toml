@@ -32,6 +32,13 @@ boost_onset_rpm = 1100
 full_boost_rpm = 1900
 full_boost_bar = 3.0          # above the atmosphere, for the boost gauge
 
+# A bigger turbo (the garage's boost_bar): per bar more boost, this share
+# more torque at full boost, the boost coming this much later and slower.
+[engine.turbo.bigger]
+torque_gain_per_bar = 0.065
+spool_rpm_per_bar = 100
+lag_s_per_bar = 0.12
+
 # Full-load torque at full boost: peak 3200 N·m at 2000 rpm, about 750 kW
 # (1000 hp) from 2400 to 2600 rpm; past the rated speed the engine's own
 # fall-off.

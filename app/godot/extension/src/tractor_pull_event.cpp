@@ -90,6 +90,8 @@ const char* part_name(garage::Part part) {
             return "load_downshift_gears";
         case garage::Part::kRatedSpeed:
             return "rated_rpm";
+        case garage::Part::kBoostPressure:
+            return "boost_bar";
     }
     return "";
 }

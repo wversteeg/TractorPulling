@@ -57,6 +57,17 @@ struct Params {
     /// gauge: the model works from the boost's share (State::boost), so
     /// this only scales what a boost gauge shows. 0 when not known.
     double full_boost_pressure_pa = 0.0;
+    /// A bigger turbo (with_boost_pressure): the full-boost torque gained
+    /// per bar more boost than full_boost_pressure_pa, as a share of the
+    /// engine's own (more air, the fuel matched to it, short of the head's
+    /// and pistons' limits) [1/bar]. 0: the engine takes no other turbo.
+    double turbo_torque_gain_per_bar = 0.0;
+    /// How much later a bigger turbo spools per bar more boost: the boost's
+    /// onset and full boost move up by this [rad/s per bar] ...
+    double turbo_spool_omega_per_bar_rad_s = 0.0;
+    /// ... and its time constant grows by this [s per bar]: a bigger
+    /// turbine is heavier and needs more exhaust to get going.
+    double turbo_lag_s_per_bar = 0.0;
     /// For the engine's sound only: a four-stroke fires cylinders / 2 times
     /// a turn. 0 when not known.
     int cylinders = 0;
@@ -81,6 +92,7 @@ enum class ParamError : std::uint8_t {
     kTurboTimeConstantNotPositive,
     kBoostRangeInvalid,
     kBoostPressureNegative,
+    kTurboUpgradeNegative,
     kCylindersOutOfRange,
     kTorqueCurveNegative,
     kTorqueCurveDoesNotCoverRange,
@@ -118,6 +130,19 @@ inline constexpr double kMinDroop_rad_s = units::rpm_to_rad_s(25.0);
 /// cut-off would not come back to where it was).
 [[nodiscard]] std::optional<Params> with_rated_speed(const Params& params,
                                                      double rated_omega_rad_s) noexcept;
+
+/// The engine with a turbo that boosts `pressure_pa` above the atmosphere
+/// at full boost, in place of its own (full_boost_pressure_pa): the
+/// full-load curve scaled by 1 + turbo_torque_gain_per_bar per bar more,
+/// the torque without boost kept (the same engine breathing on its own),
+/// the boost coming later and slower by the turbo_spool and turbo_lag
+/// rates. Nothing if the engine has no boost pressure of its own, takes no
+/// other turbo (all three rates 0) or the result is not a valid engine.
+/// Its own pressure gives `params` unchanged; applied to an engine with
+/// another turbo, it measures from that one (the spool and lag add up, the
+/// torque gain compounds).
+[[nodiscard]] std::optional<Params> with_boost_pressure(const Params& params,
+                                                        double pressure_pa) noexcept;
 
 struct State {
     double omega_rad_s = 0.0;

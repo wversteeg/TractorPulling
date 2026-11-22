@@ -37,6 +37,39 @@ std::optional<Params> with_rated_speed(const Params& params, double rated_omega_
     return out;
 }
 
+std::optional<Params> with_boost_pressure(const Params& params, double pressure_pa) noexcept {
+    if (params.full_boost_pressure_pa <= 0.0 || !std::isfinite(pressure_pa)) {
+        return std::nullopt;
+    }
+    const double more_bar = units::pa_to_bar(pressure_pa - params.full_boost_pressure_pa);
+    const bool takes_another = params.turbo_torque_gain_per_bar > 0.0 ||
+                               params.turbo_spool_omega_per_bar_rad_s > 0.0 ||
+                               params.turbo_lag_s_per_bar > 0.0;
+    if (more_bar != 0.0 && !takes_another) {
+        // A turbo that would change nothing but the gauge.
+        return std::nullopt;
+    }
+    const double gain = 1.0 + (params.turbo_torque_gain_per_bar * more_bar);
+    if (gain <= 0.0) {
+        return std::nullopt;
+    }
+    std::optional<Params> out = with_torque_scale(params, gain);
+    if (!out) {
+        return std::nullopt;
+    }
+    // The torque without boost stays: its share of the bigger curve shrinks.
+    out->na_torque_fraction = params.na_torque_fraction / gain;
+    const double later_rad_s = params.turbo_spool_omega_per_bar_rad_s * more_bar;
+    out->boost_onset_omega_rad_s += later_rad_s;
+    out->full_boost_omega_rad_s += later_rad_s;
+    out->turbo_time_constant_s += params.turbo_lag_s_per_bar * more_bar;
+    out->full_boost_pressure_pa = pressure_pa;
+    if (validate(*out)) {
+        return std::nullopt;
+    }
+    return out;
+}
+
 std::optional<ParamError> validate(const Params& params) noexcept {
     const std::array scalars = {
         params.inertia_kg_m2,
@@ -52,6 +85,9 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         params.boost_onset_omega_rad_s,
         params.full_boost_omega_rad_s,
         params.full_boost_pressure_pa,
+        params.turbo_torque_gain_per_bar,
+        params.turbo_spool_omega_per_bar_rad_s,
+        params.turbo_lag_s_per_bar,
     };
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
@@ -93,6 +129,10 @@ std::optional<ParamError> validate(const Params& params) noexcept {
     }
     if (params.full_boost_pressure_pa < 0.0) {
         return ParamError::kBoostPressureNegative;
+    }
+    if (params.turbo_torque_gain_per_bar < 0.0 || params.turbo_spool_omega_per_bar_rad_s < 0.0 ||
+        params.turbo_lag_s_per_bar < 0.0) {
+        return ParamError::kTurboUpgradeNegative;
     }
     if (params.cylinders < 0 || params.cylinders > kMaxCylinders) {
         return ParamError::kCylindersOutOfRange;

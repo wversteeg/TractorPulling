@@ -32,7 +32,7 @@ static func draw_icon(ci: CanvasItem, part: String, centre: Vector2, size: float
 	match part:
 		"engine_torque":
 			_engine(ci, centre, s, w, colour)
-		"engine":
+		"engine", "boost_bar":
 			_turbo(ci, centre, s, w, colour)
 		"rear_traction", "rear_tire":
 			_tire(ci, centre, s, w, colour)

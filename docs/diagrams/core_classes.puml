@@ -71,6 +71,9 @@ skinparam classAttributeIconSize 0
       +turbo_time_constant_s
       +boost_onset / full_boost_omega_rad_s
       +full_boost_pressure_pa : for a gauge
+      +turbo_torque_gain_per_bar
+      +turbo_spool_omega_per_bar_rad_s
+      +turbo_lag_s_per_bar
       +cylinders : int, for the sound
     }
     class State <<struct>> {
@@ -99,6 +102,7 @@ skinparam classAttributeIconSize 0
       +validate(const Params&) : optional<ParamError>
       +with_torque_scale(const Params&, scale) : optional<Params>
       +with_rated_speed(const Params&, rated_omega_rad_s) : optional<Params>
+      +with_boost_pressure(const Params&, pressure_pa) : optional<Params>
       +initial_state(const Params&) : State
       +max_net_power_w(const Params&) : double
       +full_throttle_net_torque_nm(const Params&, omega_rad_s) : double
