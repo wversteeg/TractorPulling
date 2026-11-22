@@ -163,8 +163,7 @@ godot::String TractorPullRun::setup_practice(const godot::Ref<TractorPullEvent>&
         }
         track = std::move(loaded).value();
     }
-    const std::optional<session::Setup> setup =
-        event->practice_setup(track ? &*track : nullptr);
+    const std::optional<session::Setup> setup = event->practice_setup(track ? &*track : nullptr);
     if (!setup) {
         return "no event to practise at";
     }
