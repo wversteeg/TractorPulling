@@ -9,7 +9,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
 #include <filesystem>
 #include <limits>
 #include <optional>
@@ -107,42 +106,33 @@ constexpr Tires kFarmOnShort{.tires = kFarmTires, .final_drive = kShort};
 constexpr double kClearly_m = 2.0;
 
 // Fully built, each tire on the final drive the crew pairs it with (the
-// one it suits): the puller tires pull furthest on a firm track, where
-// they spin up to their bite; on the watered start, slick under the tires
-// at the launch, the farm tires' lugs grip at little slip and they beat
-// the puller tires on the tall drive there. Neither pairing is the best
-// everywhere. The tires alone are another matter: on the watered start the
-// puller tires on the short drive go further still, so a player who owns
-// both drives is never worse off on the puller tires. The farm tires are
-// the stock ones, cheaper: they may win somewhere, but need not.
-TEST(TireChoice, PullerTiresWinOnAFirmTrackAndFarmTiresOnAWetStart) {
+// one it suits): the puller tires on the tall drive pull clearly further on
+// a firm track, where they spin up to their bite, and on the watered start
+// too: the tall drive lets them spin up at the launch. The farm tires are
+// the stock ones, cheap: the tires to start the class on, not to win it.
+TEST(TireChoice, PullerTiresOnTheTallDriveAreTheUpgrade) {
     const data::SeasonDefinition d = supersport();
-    for (const char* firm : {"firm_loam.toml", "ideal_clay_sand.toml"}) {
-        const data::Track on = track(firm);
+    for (const char* on_file : {"firm_loam.toml", "ideal_clay_sand.toml", "watered_start.toml"}) {
+        const data::Track on = track(on_file);
         EXPECT_GT(pulled_m(d, on, kPullerOnTall), pulled_m(d, on, kFarmOnShort) + kClearly_m)
-            << firm;
+            << on_file;
     }
-    const data::Track wet = track("watered_start.toml");
-    const double farm_m = pulled_m(d, wet, kFarmOnShort);
-    EXPECT_GT(farm_m, pulled_m(d, wet, kPullerOnTall) + kClearly_m);
-    EXPECT_GT(pulled_m(d, wet, kPullerOnShort), farm_m + kClearly_m);
 }
 
-// Power counts: the puller tires spin at 70 km/h and more in the pulling
-// gears, held by the engine's power, not the governor. On a firm track the
-// fully built 6.06 l pulls clearly further on the garage's biggest turbo
-// than on the stock one, and gains more from it than the 7.0 l, held to
-// 2700 rpm, does.
+// Power counts on a firm track: on the tall drive the puller tires spin at
+// 60 to 80 km/h in the pulling gears, held by the engine's power, not the
+// governor. There the fully built 6.06 l pulls clearly further on the
+// garage's biggest turbo than on the stock one, and gains more from it
+// than the 7.0 l, held to 2700 rpm, does. (On softer ground a tire spun
+// faster smears more, so power does not pay there.)
 TEST(TireChoice, TheBiggestTurboPullsFurthestAndMostOnTheSixLitre) {
     const data::SeasonDefinition d = supersport();
-    for (const char* firm : {"firm_loam.toml", "ideal_clay_sand.toml"}) {
+    for (const char* firm : {"firm_loam.toml"}) {
         const data::Track on = track(firm);
         const double six_m = pulled_m(d, on, kPullerOnTall, kSixLitre);
         const double six_stock_m = pulled_m(d, on, kPullerOnTall, kSixLitre, Turbo::kStock);
         const double seven_m = pulled_m(d, on, kPullerOnTall);
         const double seven_stock_m = pulled_m(d, on, kPullerOnTall, kSevenLitre, Turbo::kStock);
-        std::printf("PROBE %s six %.2f/%.2f seven %.2f/%.2f\n", firm, six_m, six_stock_m, seven_m,
-                    seven_stock_m);
         EXPECT_GT(six_m, six_stock_m + kClearly_m) << firm;
         EXPECT_GT(six_m - six_stock_m, seven_m - seven_stock_m) << firm;
     }

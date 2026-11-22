@@ -36,9 +36,10 @@ launch_hold_max_s = 8.0
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.64, 0.88]
+torque_scale = [0.70, 0.92]
+boost_bar = [3.5, 5.0]                 # some on a bigger turbo already
 mass_kg = [3400.0, 3536.0]
-traction_limit = [1.409, 1.463]
+traction_limit = [1.42, 1.47]
 hitch_height_m = [0.44, 0.48]
 rated_rpm = [2310.0, 2520.0]
 gears = [3, 6]

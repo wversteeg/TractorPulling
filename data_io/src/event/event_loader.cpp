@@ -70,7 +70,7 @@ FieldError describe(field::ParamError error) {
             return {
                 "event.field",
                 "every range is [low, high] with low <= high, low > 0, track_reading within "
-                "[0, 1], downshift_share within [0, 1); hitch_height_m, rated_rpm and boost_bar "
+                "[0, 1], downshift_share within [0, 1); hitch_height_m, boost_bar and rated_rpm "
                 "above 0"};
         case ParamError::kGearsOutOfRange:
             return {"event.field.gears", "must be [lowest, highest] within the gearbox"};
