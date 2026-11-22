@@ -53,6 +53,10 @@ enum class Part : std::uint8_t {
     /// pulling governor, so that under load the engine runs up against the
     /// limit.
     kRatedSpeed,
+    /// The turbo's boost pressure at full boost [Pa] above the atmosphere
+    /// (engine::with_boost_pressure): a bigger turbo, more torque at the
+    /// top, coming later and slower.
+    kBoostPressure,
 };
 
 struct Level {

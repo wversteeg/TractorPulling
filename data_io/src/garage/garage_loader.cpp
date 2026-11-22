@@ -29,13 +29,14 @@ struct PartName {
     double to_si = 1.0;
 };
 
-constexpr std::array<PartName, 6> kParts = {{
+constexpr std::array<PartName, 7> kParts = {{
     {.key = "engine_torque", .part = garage::Part::kEngineTorque, .to_si = 1.0},
     {.key = "rear_traction", .part = garage::Part::kRearTraction, .to_si = 1.0},
     {.key = "ballast_kg", .part = garage::Part::kBallastMass, .to_si = 1.0},
     {.key = "hitch_height_m", .part = garage::Part::kHitchHeight, .to_si = 1.0},
     {.key = "load_downshift_gears", .part = garage::Part::kLoadDownshift, .to_si = 1.0},
     {.key = "rated_rpm", .part = garage::Part::kRatedSpeed, .to_si = units::rpm_to_rad_s(1.0)},
+    {.key = "boost_bar", .part = garage::Part::kBoostPressure, .to_si = units::bar_to_pa(1.0)},
 }};
 
 std::optional<PartName> part_named(std::string_view name) {
@@ -358,7 +359,7 @@ std::optional<LoadError> read_upgrade(const toml::node& node, std::string_view s
         return detail::make_error(source, "garage.upgrades.part",
                                   "unknown part '" + *part_name +
                                       "' (engine_torque, rear_traction, ballast_kg, "
-                                      "hitch_height_m, load_downshift_gears or rated_rpm)");
+                                      "hitch_height_m, load_downshift_gears, rated_rpm or boost_bar)");
     }
     const toml::array* levels = table->at_path("levels").as_array();
     if (levels == nullptr) {

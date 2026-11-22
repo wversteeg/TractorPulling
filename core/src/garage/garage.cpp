@@ -58,6 +58,15 @@ std::optional<vehicle::Params> with_part(const vehicle::Params& tractor, Part pa
             out.engine = *engine;
             break;
         }
+        case Part::kBoostPressure: {
+            const std::optional<engine::Params> engine =
+                engine::with_boost_pressure(tractor.engine, value);
+            if (!engine) {
+                return std::nullopt;
+            }
+            out.engine = *engine;
+            break;
+        }
     }
     return out;
 }

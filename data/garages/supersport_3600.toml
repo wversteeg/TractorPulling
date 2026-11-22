@@ -26,9 +26,14 @@
 # No powershift: Supersport pulls in one gear.
 #
 # - engine_torque: the engine's full-load torque as a share of its fully
-#   built curve (about 1000 hp either way): from a stock farm engine
-#   through the pump, injectors, a bigger turbo, the intercooler, water
-#   injection, the head and cam.
+#   built curve on its stock turbo's 3 bar (about 1000 hp either way):
+#   from a stock farm engine through the pump, injectors, the intercooler,
+#   water injection, the head and cam.
+# - boost_bar: the turbo, for either engine: 3 bar as it comes, up to 6 bar.
+#   Each bar more gives the 6.06 l more top power than the 7.0 l (about
+#   1300 hp against 1150 hp at 6 bar: engines/supersport_3600_*.toml), and
+#   boosts later and slower. The dearest part of the class: about three
+#   seasons at the top to buy it all.
 # - rated_rpm: the governor, full fuel up to it and cut off at the
 #   engine's stop (7.0 l: 2700 rpm; 6.06 l: 3200 rpm), the droop shortening
 #   as it is turned up.
@@ -75,14 +80,14 @@ levels = [
     { value = 0.40, cost_eur = 0, label = "Stock 7 l" },
     { value = 0.42, cost_eur = 1300, label = "Pump turned up" },
     { value = 0.49, cost_eur = 1600, label = "Bigger injectors" },
-    { value = 0.56, cost_eur = 1900, label = "Bigger turbo" },
+    { value = 0.56, cost_eur = 1900, label = "Pump timed" },
     { value = 0.63, cost_eur = 2200, label = "Intercooler" },
     { value = 0.70, cost_eur = 2500, label = "Water injection" },
     { value = 0.77, cost_eur = 2800, label = "Pulling manifold" },
     { value = 0.84, cost_eur = 3100, label = "Four-valve head, ported" },
     { value = 0.91, cost_eur = 3400, label = "Pulling cam" },
     { value = 0.96, cost_eur = 3700, label = "Pump on maximum" },
-    { value = 1.0, cost_eur = 4000, label = "Fully built, 1000 hp" },
+    { value = 1.0, cost_eur = 4000, label = "Fully built on 3 bar" },
 ]
 
 [[garage.upgrades]]
@@ -93,12 +98,22 @@ alternative = "6.06 l six, 3200 rpm"
 levels = [
     { value = 0.45, cost_eur = 0, label = "As bought, built for revs" },
     { value = 0.53, cost_eur = 1600, label = "Bigger injectors" },
-    { value = 0.61, cost_eur = 2000, label = "Bigger turbo" },
+    { value = 0.61, cost_eur = 2000, label = "Pump timed" },
     { value = 0.69, cost_eur = 2400, label = "Intercooler" },
     { value = 0.77, cost_eur = 2800, label = "Water injection" },
     { value = 0.85, cost_eur = 3200, label = "Ported head" },
     { value = 0.93, cost_eur = 3600, label = "Pulling cam" },
-    { value = 1.0, cost_eur = 4000, label = "Fully built, 1000 hp" },
+    { value = 1.0, cost_eur = 4000, label = "Fully built on 3 bar" },
+]
+
+[[garage.upgrades]]
+part = "boost_bar"
+name = "Turbo"
+levels = [
+    { value = 3.0, cost_eur = 0, label = "Stock turbo, 3 bar" },
+    { value = 4.0, cost_eur = 6000, label = "Bigger turbo, 4 bar" },
+    { value = 5.0, cost_eur = 11000, label = "Pulling turbo, 5 bar" },
+    { value = 6.0, cost_eur = 18000, label = "Big pulling turbo, 6 bar" },
 ]
 
 [[garage.upgrades]]

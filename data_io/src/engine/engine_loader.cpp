@@ -55,6 +55,10 @@ FieldError describe(engine::ParamError error) {
             return {"engine.turbo", "need 0 <= boost_onset_rpm < full_boost_rpm"};
         case ParamError::kBoostPressureNegative:
             return {"engine.turbo.full_boost_bar", "must not be negative"};
+        case ParamError::kTurboUpgradeNegative:
+            return {"engine.turbo.bigger",
+                    "torque_gain_per_bar, spool_rpm_per_bar and lag_s_per_bar must not be "
+                    "negative"};
         case ParamError::kCylindersOutOfRange:
             return {"engine.cylinders", "must be a whole number from 0 to 16"};
         case ParamError::kTorqueCurveNegative:
@@ -88,6 +92,13 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
     // Optional, for the boost gauge only.
     const double full_boost_bar =
         reader.optional_number("engine.turbo.full_boost_bar").value_or(0.0);
+    // Optional: how a bigger turbo changes the engine (the garage's).
+    const double torque_gain_per_bar =
+        reader.optional_number("engine.turbo.bigger.torque_gain_per_bar").value_or(0.0);
+    const double spool_rpm_per_bar =
+        reader.optional_number("engine.turbo.bigger.spool_rpm_per_bar").value_or(0.0);
+    const double lag_s_per_bar =
+        reader.optional_number("engine.turbo.bigger.lag_s_per_bar").value_or(0.0);
     // Optional, for the engine's sound only.
     const double cylinders = reader.optional_number("engine.cylinders").value_or(0.0);
     if (const std::optional<LoadError>& error = reader.error()) {
@@ -119,6 +130,9 @@ Result<engine::Params> read_engine(const toml::table& root, std::string_view sou
         .boost_onset_omega_rad_s = rpm_to_rad_s(boost_onset_rpm),
         .full_boost_omega_rad_s = rpm_to_rad_s(full_boost_rpm),
         .full_boost_pressure_pa = units::bar_to_pa(full_boost_bar),
+        .turbo_torque_gain_per_bar = torque_gain_per_bar,
+        .turbo_spool_omega_per_bar_rad_s = rpm_to_rad_s(spool_rpm_per_bar),
+        .turbo_lag_s_per_bar = lag_s_per_bar,
         .cylinders = whole_cylinders,
     };
     if (const auto error = engine::validate(params)) {
