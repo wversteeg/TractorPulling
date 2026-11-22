@@ -35,6 +35,8 @@ package "GDScript (app/godot/scripts)" {
     -_save_season()
     -_change_settings(pro, tilt)
     -_show_setup(for_practice)
+    +{static} practice_tracks() : PackedStringArray
+    +{static} track_name_of(path) : String
     -_start_practice()
     -_start_event_pull()
     -_place_parking()
@@ -429,6 +431,7 @@ package "GDScript (app/godot/scripts)" {
     +lane_button : TouchButton, invisible, over the lane
     +track_screen : TrackScreen
     +show_setup(title, tuning, pro, tilt, track, track_name, crew)
+    +show_track_choice(track, track_name, crew) : a practice's track, ‹ ›
     +open_track()
     +close_track()
     +show_values(tuning)

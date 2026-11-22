@@ -90,6 +90,8 @@ const DROP_CLUTCH_S := 1.0
 const NS_PER_S := 1_000_000_000.0
 # How long the stopped sled stays in view before the result screen.
 const RESULT_DELAY_S := 2.0
+# Where the tracks a practice pull may be on lie.
+const PRACTICE_TRACKS_DIR := "res://data/tracks"
 # The replay's camera sees the whole venue [m].
 const REPLAY_CAMERA_FAR_M := 600.0
 # The rivals' work each frame: slices of steps until this much time is
@@ -187,6 +189,9 @@ var _time_s := 0.0
 # Where the officials stand: the full-pull line, and in from the left
 # chalk line [m].
 var _full_pull_m := 100.0
+# A practice pull's track: 0 the event's own, else one of practice_tracks()
+# (1 the first).
+var _practice_track := 0
 var _lane_m := 9.0
 # The pull recorded for its replay, the replay's camera and what it shows
 # over it.
@@ -327,6 +332,9 @@ func _ready() -> void:
 			_start_practice()
 		else:
 			_start_event_pull())
+	setup_screen.track_requested.connect(func(step: int) -> void:
+		_practice_track = posmod(_practice_track + step, practice_tracks().size() + 1)
+		_show_practice_track())
 	setup_screen.back_requested.connect(func() -> void:
 		if practice:
 			show_start()
@@ -571,7 +579,47 @@ func _show_setup(for_practice: bool) -> void:
 	setup_screen.show_setup("%s  ·  %s" % [which, info.get("name", "")], event.get_tuning(), pro,
 			tilt and controls.tilt_steering.available(), info.get("track", {}),
 			String(info.get("name", "")), event.get_crew_report())
+	if practice:
+		_show_practice_track()
 	_set_screen(Screen.SETUP)
+
+
+# The tracks a practice pull may be on besides the event's: every track
+# file, by name.
+static func practice_tracks() -> PackedStringArray:
+	var files := DirAccess.get_files_at(PRACTICE_TRACKS_DIR)
+	var tracks := PackedStringArray()
+	for file in files:
+		# An exported game lists its files with .remap: the same track.
+		var name := file.trim_suffix(".remap")
+		if name.ends_with(".toml"):
+			tracks.append(PRACTICE_TRACKS_DIR + "/" + name)
+	tracks.sort()
+	return tracks
+
+
+# A track file's name in words: "dry_hard_clay.toml" reads "Dry hard clay".
+static func track_name_of(path: String) -> String:
+	return path.get_file().trim_suffix(".toml").replace("_", " ").capitalize()
+
+
+# The practice pull's track on the setup screen: the event's own (choice
+# 0, with the crew's report), or one of practice_tracks().
+func _show_practice_track() -> void:
+	var path := _practice_track_path()
+	if path.is_empty():
+		var info := event.get_event()
+		setup_screen.show_track_choice(info.get("track", {}),
+				"The event's: " + String(info.get("name", "")), event.get_crew_report())
+	else:
+		setup_screen.show_track_choice(event.get_track_info(path), track_name_of(path), {})
+
+
+func _practice_track_path() -> String:
+	var tracks := practice_tracks()
+	if _practice_track <= 0 or _practice_track > tracks.size():
+		return ""
+	return tracks[_practice_track - 1]
 
 
 # The next run is the whole turn from the player's bay, or the pull alone.
@@ -587,9 +635,11 @@ func _place_parking() -> void:
 
 func _start_practice() -> void:
 	practice = true
-	_title = "Practice  ·  %s" % event.get_event().get("name", "")
+	var path := _practice_track_path()
+	_title = "Practice  ·  %s" % (event.get_event().get("name", "") if path.is_empty()
+			else track_name_of(path))
 	_place_parking()
-	if _build(run.setup_practice(event, _controls_path())):
+	if _build(run.setup_practice(event, _controls_path(), path)):
 		_set_screen(Screen.PULLING)
 
 

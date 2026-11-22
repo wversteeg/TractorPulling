@@ -29,6 +29,8 @@ signal tuning_changed(ballast_position: float, pressure_bar: float, hitch_m: flo
 signal start_changed(y_m: float)
 signal pull_requested
 signal back_requested
+# A practice pull's track: the previous (-1) or next (1) of the choices.
+signal track_requested(step: int)
 
 const STAGE := Vector2(1280.0, 720.0)
 const BACKGROUND := Color(0.06, 0.07, 0.09, 0.985)
@@ -65,6 +67,10 @@ var track_screen := TrackScreen.new()
 var _stage := Control.new()
 var _title: Label
 var _track_name: Label
+var _track_heading: Label
+# For a practice pull: the track to pull on, one of a few.
+var track_back: TouchButton
+var track_on: TouchButton
 var _grip: Label
 var _lane := LaneMap.new()
 # What the track screen shows: the event's track, its name and the crew's
@@ -121,9 +127,16 @@ func _ready() -> void:
 	back_button.tapped.connect(func() -> void: back_requested.emit())
 
 	var card := make_panel(_stage, Rect2(28, 84, 330, 560), GarageArt.PANEL, 14)
-	make_label(card, Rect2(16, 10, 300, 20), 13, GarageArt.DIM).text = "TODAY'S TRACK"
+	_track_heading = make_label(card, Rect2(16, 10, 300, 20), 13, GarageArt.DIM)
+	_track_heading.text = "TODAY'S TRACK"
 	_track_name = make_label(card, Rect2(16, 28, 300, 28), 19, GarageArt.TEXT)
 	_track_name.clip_text = true
+	track_back = make_button(card, "‹", Rect2(226, 8, 44, 44), 26)
+	track_on = make_button(card, "›", Rect2(274, 8, 44, 44), 26)
+	track_back.tapped.connect(func() -> void: track_requested.emit(-1))
+	track_on.tapped.connect(func() -> void: track_requested.emit(1))
+	for button: TouchButton in [track_back, track_on]:
+		button.visible = false
 	_grip = _scale_row(card, 60, "Grip", _grip_bar, GarageArt.GREEN)
 	_firm = _scale_row(card, 98, "Firmness", _firm_bar, Color(0.79, 0.75, 0.42))
 	var tip_box := make_panel(card, Rect2(16, 140, 298, 86), Color(0.16, 0.13, 0.08), 10)
@@ -203,6 +216,10 @@ func close_track() -> void:
 func show_setup(title: String, tuning: Dictionary, pro: bool, tilt: bool,
 		track: Dictionary = {}, track_name: String = "", crew: Dictionary = {}) -> void:
 	close_track()
+	_track_heading.text = "TODAY'S TRACK"
+	_track_name.size.x = 300.0
+	for button: TouchButton in [track_back, track_on]:
+		button.visible = false
 	_title.text = title
 	_track = track
 	_track_label = track_name
@@ -313,6 +330,22 @@ func release_buttons() -> void:
 	back_button.release()
 	lane_button.release()
 	track_screen.release_buttons()
+
+
+# For a practice pull, the track picked (`track` and `track_name` as
+# show_setup() takes them) with "‹" and "›" to pick another; the crew's
+# report only for the event's own (`crew`, else {}).
+func show_track_choice(track: Dictionary, track_name: String, crew: Dictionary) -> void:
+	_track = track
+	_track_label = track_name
+	_crew = crew
+	_track_heading.text = "TRACK"
+	_track_name.size.x = 204.0
+	for button: TouchButton in [track_back, track_on]:
+		button.visible = true
+		button.queue_redraw()
+	_show_track(track, track_name)
+	_show_crew(crew)
 
 
 func _show_track(track: Dictionary, track_name: String) -> void:

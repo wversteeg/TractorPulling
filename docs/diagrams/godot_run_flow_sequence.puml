@@ -56,7 +56,7 @@ end
 opt Practice
   Player -> Screens : Practice
   Pull -> Screens : the setup screen (as below), Pull
-  Pull -> Run : setup_practice(event, controls)
+  Pull -> Run : setup_practice(event, controls, track_path)
   note right of Pull : a free pull; again and menu work
 end
 Player -> Screens : Event
