@@ -43,9 +43,12 @@ public:
     godot::String setup_event_pull(const godot::Ref<TractorPullEvent>& event,
                                    const godot::String& controls_path);
     /// A practice pull at `event`'s event, as setup_event_pull() but at any
-    /// time and not for the event: the sled as the event has it now.
+    /// time and not for the event: the sled as the event has it now. With
+    /// `track_path` (a track file) on that track instead, the class's sled
+    /// as its operator first sets it there.
     godot::String setup_practice(const godot::Ref<TractorPullEvent>& event,
-                                 const godot::String& controls_path);
+                                 const godot::String& controls_path,
+                                 const godot::String& track_path = godot::String());
 
     /// From the next setup on, each run is the player's whole turn from a
     /// parking beside the track (turn::Parking): x_m down the track from

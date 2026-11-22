@@ -149,12 +149,21 @@ godot::String TractorPullRun::setup_event_pull(const godot::Ref<TractorPullEvent
 }
 
 godot::String TractorPullRun::setup_practice(const godot::Ref<TractorPullEvent>& event,
-                                             const godot::String& controls_path) {
+                                             const godot::String& controls_path,
+                                             const godot::String& track_path) {
     reset();
     if (event.is_null()) {
         return "no event";
     }
-    const std::optional<session::Setup> setup = event->practice_setup();
+    std::optional<data::Track> track;
+    if (!track_path.is_empty()) {
+        auto loaded = data::load_track(to_std(track_path), read_godot_file);
+        if (!loaded) {
+            return to_godot(loaded.error().message);
+        }
+        track = std::move(loaded).value();
+    }
+    const std::optional<session::Setup> setup = event->practice_setup(track ? &*track : nullptr);
     if (!setup) {
         return "no event to practise at";
     }
@@ -449,8 +458,8 @@ void TractorPullRun::_bind_methods() {
         &TractorPullRun::setup);
     ClassDB::bind_method(D_METHOD("setup_event_pull", "event", "controls_path"),
                          &TractorPullRun::setup_event_pull);
-    ClassDB::bind_method(D_METHOD("setup_practice", "event", "controls_path"),
-                         &TractorPullRun::setup_practice);
+    ClassDB::bind_method(D_METHOD("setup_practice", "event", "controls_path", "track_path"),
+                         &TractorPullRun::setup_practice, DEFVAL(godot::String()));
     ClassDB::bind_method(D_METHOD("set_parking", "x_m", "right_of_lane_m", "heading_rad"),
                          &TractorPullRun::set_parking, DEFVAL(0.0));
     ClassDB::bind_method(D_METHOD("clear_parking"), &TractorPullRun::clear_parking);

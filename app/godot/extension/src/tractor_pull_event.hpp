@@ -277,6 +277,9 @@ public:
     /// differently on the pit board, it may pull best in another. {}
     /// before an event.
     [[nodiscard]] godot::Dictionary get_crew_report() const;
+    /// The track in `track_path` as get_event()["track"] shows the event's,
+    /// for a practice pull on it; {} if it cannot be loaded.
+    [[nodiscard]] godot::Dictionary get_track_info(const godot::String& track_path) const;
     /// Where the player puts the sled across the lane for their next pulls
     /// and practice pulls, to the left of the middle [m]; held to the
     /// lane's limits for the tractor (run::max_start_offset_m) when a pull
@@ -288,7 +291,10 @@ public:
     [[nodiscard]] std::optional<session::Setup> player_setup() const;
     /// A practice pull at the event: the player's tractor on the event's
     /// sled as it is now; nothing before an event.
-    [[nodiscard]] std::optional<session::Setup> practice_setup() const;
+    /// A practice pull at the event, or with `track` on that track instead
+    /// (the class's sled as its operator first sets it there).
+    [[nodiscard]] std::optional<session::Setup> practice_setup(
+        const data::Track* track = nullptr) const;
     /// The player's pull due now, for setup_event_pull() to remember.
     [[nodiscard]] PullKey pull_key() const;
 
