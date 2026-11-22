@@ -193,6 +193,15 @@ double full_throttle_net_torque_nm(const Params& params, double omega_rad_s) noe
            params.friction_torque_nm - params.viscous_friction_nm_s_rad * omega_rad_s;
 }
 
+double settled_net_torque_nm(const Params& params, double omega_rad_s) noexcept {
+    const double fuel = governor_fuel(params, 1.0, omega_rad_s);
+    const double boost = fuel * exhaust_energy(params, omega_rad_s);
+    const double boost_factor =
+        params.na_torque_fraction + ((1.0 - params.na_torque_fraction) * boost);
+    return (fuel * params.full_load_torque_nm.evaluate(omega_rad_s) * boost_factor) -
+           params.friction_torque_nm - (params.viscous_friction_nm_s_rad * omega_rad_s);
+}
+
 double max_net_power_w(const Params& params) noexcept {
     const double span_rad_s = params.high_idle_omega_rad_s - params.idle_omega_rad_s;
     double best_w = 0.0;

@@ -123,7 +123,7 @@ godot::PackedVector2Array dyno_curve(const engine::Params& engine) {
     for (int i = 0; i < kDynoPoints; ++i) {
         const double omega_rad_s = from_rad_s + (to_rad_s - from_rad_s) * i / (kDynoPoints - 1);
         const double power_w =
-            std::max(engine::full_throttle_net_torque_nm(engine, omega_rad_s) * omega_rad_s, 0.0);
+            std::max(engine::settled_net_torque_nm(engine, omega_rad_s) * omega_rad_s, 0.0);
         out.push_back(godot::Vector2(static_cast<float>(units::rad_s_to_rpm(omega_rad_s)),
                                      static_cast<float>(power_w / kWattsPerKw)));
     }

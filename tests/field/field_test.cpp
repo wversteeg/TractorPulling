@@ -38,7 +38,8 @@ constexpr Variation kVariation{.torque_scale = {.low = 0.95, .high = 1.03},
                                .hitch_height_m = {},
                                .fewest_load_downshift_gears = -1,
                                .most_load_downshift_gears = -1,
-                               .rated_omega_rad_s = {}};
+                               .rated_omega_rad_s = {},
+                               .boost_pressure_pa = {}};
 
 Field field_of(int count, std::uint64_t seed, const Variation& variation = kVariation) {
     const auto field = generate(reference(), variation, ntto_standard_3500(), count, seed);
@@ -277,6 +278,33 @@ TEST(Field, GovernorsVary) {
     }
     EXPECT_TRUE(raised);
     EXPECT_TRUE(at_the_limit) << "a draw near the class's engine speed cuts off at it";
+}
+
+// A boost range gives each rival its own turbo (engine::with_boost_pressure),
+// within the range; without one every rival keeps the reference's.
+TEST(Field, TurbosVary) {
+    Puller turbo = reference();
+    turbo.tractor.engine.full_boost_pressure_pa = units::bar_to_pa(1.5);
+    turbo.tractor.engine.turbo_torque_gain_per_bar = 0.1;
+    Variation v = kVariation;
+    v.boost_pressure_pa = {.low = units::bar_to_pa(1.5), .high = units::bar_to_pa(2.0)};
+    const std::optional<Field> field =
+        generate(turbo, v, ntto_standard_3500(), event::kMaxPullers, 5);
+    ASSERT_TRUE(field.has_value());
+    bool bigger = false;
+    for (int i = 0; i < field->count; ++i) {
+        const double pa =
+            field->pullers.at(static_cast<std::size_t>(i)).tractor.engine.full_boost_pressure_pa;
+        EXPECT_GE(pa, v.boost_pressure_pa.low) << i;
+        EXPECT_LE(pa, v.boost_pressure_pa.high) << i;
+        bigger = bigger || pa > v.boost_pressure_pa.low;
+    }
+    EXPECT_TRUE(bigger);
+    v.boost_pressure_pa = {.low = 0.0, .high = units::bar_to_pa(2.0)};
+    EXPECT_EQ(validate(turbo, v, ntto_standard_3500(), 15), ParamError::kRangeOutOfOrder);
+    v.boost_pressure_pa = {.low = units::bar_to_pa(1.5), .high = units::bar_to_pa(2.0)};
+    EXPECT_EQ(validate(reference(), v, ntto_standard_3500(), 15), ParamError::kBoostOutOfRange)
+        << "an engine that takes no other turbo";
 }
 
 // A heavier tractor keeps its balance: the pitch inertia scales with the

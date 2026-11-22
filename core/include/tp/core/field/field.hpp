@@ -62,6 +62,11 @@ struct Variation {
     /// limit: a rated speed there is refused, not clamped. {0, 0} keeps the
     /// reference's.
     Range rated_omega_rad_s;
+    /// The turbo's boost pressure at full boost [Pa] above the atmosphere
+    /// (engine::with_boost_pressure): a bigger turbo than the reference's.
+    /// {0, 0} keeps the reference's; drawn only when set, so a field
+    /// without it draws as before.
+    Range boost_pressure_pa;
 };
 
 /// How one pull differs from the next for the same puller: the spot on the
@@ -91,6 +96,9 @@ enum class ParamError : std::uint8_t {
     /// below the cut-off's stop (held to the class's unloaded engine
     /// speed), or a cut-off past its torque curve.
     kGovernorOutOfRange,
+    /// A boost pressure the reference engine cannot take
+    /// (engine::with_boost_pressure).
+    kBoostOutOfRange,
 };
 
 /// The first `count` pullers are the field; the rest are unused copies of

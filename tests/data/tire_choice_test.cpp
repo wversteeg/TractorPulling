@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <limits>
 #include <optional>
@@ -25,6 +26,7 @@ constexpr std::size_t kEngine = 0;
 constexpr std::size_t kRearTires = 1;
 constexpr std::size_t kFinalDrive = 2;
 constexpr int kSevenLitre = 0;
+constexpr int kSixLitre = 1;
 constexpr int kFarmTires = 0;
 constexpr int kPullerTires = 1;
 constexpr int kShort = 0;
@@ -60,10 +62,15 @@ data::Track track(const std::string& file) {
     return std::move(loaded).value();
 }
 
-// How far the fully built tractor of `d`'s class, its 7 l engine on
-// `tires`, pulls the class's sled made kHeavier steps heavier on `on`, in
-// its best pulling gear, driven as the class's reference driver.
-double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires tires) {
+// The turbo fitted: the garage's biggest, or the stock one.
+enum class Turbo : std::uint8_t { kBiggest, kStock };
+
+// How far the fully built tractor of `d`'s class, its `engine` (the 7 l)
+// on `tires` with `turbo`, pulls the class's sled made kHeavier steps
+// heavier on `on`, in its best pulling gear, driven as the class's
+// reference driver.
+double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires tires,
+                int engine = kSevenLitre, Turbo turbo = Turbo::kBiggest) {
     const data::EventDefinition& e = d.event;
     const garage::Catalogue& catalogue = d.garage.catalogue;
     garage::Career full = garage::new_career(catalogue);
@@ -71,7 +78,13 @@ double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires ti
         full.levels.at(i) = static_cast<int>(catalogue.upgrades.at(i).level_count) - 1;
     }
     full.owned.fill(std::numeric_limits<std::uint8_t>::max());
-    full.fitted.at(kEngine) = kSevenLitre;
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        if (turbo == Turbo::kStock &&
+            catalogue.upgrades.at(i).part == garage::Part::kBoostPressure) {
+            full.levels.at(i) = 0;
+        }
+    }
+    full.fitted.at(kEngine) = engine;
     full.fitted.at(kRearTires) = tires.tires;
     full.fitted.at(kFinalDrive) = tires.final_drive;
     const std::optional<vehicle::Params> tractor =
@@ -113,6 +126,26 @@ TEST(TireChoice, PullerTiresWinOnAFirmTrackAndFarmTiresOnAWetStart) {
     const double farm_m = pulled_m(d, wet, kFarmOnShort);
     EXPECT_GT(farm_m, pulled_m(d, wet, kPullerOnTall) + kClearly_m);
     EXPECT_GT(pulled_m(d, wet, kPullerOnShort), farm_m + kClearly_m);
+}
+
+// Power counts: the puller tires spin at 70 km/h and more in the pulling
+// gears, held by the engine's power, not the governor. On a firm track the
+// fully built 6.06 l pulls clearly further on the garage's biggest turbo
+// than on the stock one, and gains more from it than the 7.0 l, held to
+// 2700 rpm, does.
+TEST(TireChoice, TheBiggestTurboPullsFurthestAndMostOnTheSixLitre) {
+    const data::SeasonDefinition d = supersport();
+    for (const char* firm : {"firm_loam.toml", "ideal_clay_sand.toml"}) {
+        const data::Track on = track(firm);
+        const double six_m = pulled_m(d, on, kPullerOnTall, kSixLitre);
+        const double six_stock_m = pulled_m(d, on, kPullerOnTall, kSixLitre, Turbo::kStock);
+        const double seven_m = pulled_m(d, on, kPullerOnTall);
+        const double seven_stock_m = pulled_m(d, on, kPullerOnTall, kSevenLitre, Turbo::kStock);
+        std::printf("PROBE %s six %.2f/%.2f seven %.2f/%.2f\n", firm, six_m, six_stock_m, seven_m,
+                    seven_stock_m);
+        EXPECT_GT(six_m, six_stock_m + kClearly_m) << firm;
+        EXPECT_GT(six_m - six_stock_m, seven_m - seven_stock_m) << firm;
+    }
 }
 
 }  // namespace

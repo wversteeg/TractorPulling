@@ -111,9 +111,10 @@ part = "boost_bar"
 name = "Turbo"
 levels = [
     { value = 3.0, cost_eur = 0, label = "Stock turbo, 3 bar" },
-    { value = 4.0, cost_eur = 6000, label = "Bigger turbo, 4 bar" },
-    { value = 5.0, cost_eur = 11000, label = "Pulling turbo, 5 bar" },
-    { value = 6.0, cost_eur = 18000, label = "Big pulling turbo, 6 bar" },
+    { value = 4.0, cost_eur = 5000, label = "Bigger turbo, 4 bar" },
+    { value = 5.0, cost_eur = 9000, label = "Pulling turbo, 5 bar" },
+    { value = 6.0, cost_eur = 14000, label = "Big pulling turbo, 6 bar" },
+    { value = 7.0, cost_eur = 20000, label = "Top turbo, 7 bar" },
 ]
 
 [[garage.upgrades]]
