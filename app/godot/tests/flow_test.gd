@@ -211,6 +211,16 @@ func _check_replay_recording() -> void:
 		names.append(PullReplay.shot({"stage": "pulling", "tractor_x_m": x_m}, 100.0, 9.0)["name"])
 	names.append(PullReplay.shot({"stage": "parked", "sled_x_m": 60.0}, 100.0, 9.0)["name"])
 	_expect(names == ["launch", "alongside", "head_on", "end"], "the replay's shots: %s" % [names])
+	# The last metres before the stop, and the stop, from beside it; the
+	# launch zoomed in tight on the wheels, wider as the tractor comes on.
+	var finish := PullReplay.shot({"stage": "pulling", "tractor_x_m": 60.0}, 100.0, 9.0, 63.0)
+	var stopped := PullReplay.shot({"stage": "parked", "tractor_x_m": 63.0}, 100.0, 9.0, 63.0)
+	_expect(finish["name"] == "finish" and stopped["name"] == "finish",
+			"the finish shot over the last metres: %s, %s" % [finish["name"], stopped["name"]])
+	var start := PullReplay.shot({"stage": "pulling", "tractor_x_m": 0.0}, 100.0, 9.0, 90.0)
+	var later := PullReplay.shot({"stage": "pulling", "tractor_x_m": 15.0}, 100.0, 9.0, 90.0)
+	_expect(float(start["fov"]) < 25.0 and float(start["fov"]) < float(later["fov"]),
+			"the launch zoomed in on the wheels: %.0f°, then %.0f°" % [start["fov"], later["fov"]])
 
 
 # The result's Replay: the pull again from beside the track, over by

@@ -1283,9 +1283,10 @@ func _show_replay_frame(s: Dictionary, pulled_m: float, delta: float) -> void:
 func _show_replay_shot() -> void:
 	if _snapshot.is_empty():
 		return
-	var shot := PullReplay.shot(_snapshot, _full_pull_m, _lane_m)
+	var shot := PullReplay.shot(_snapshot, _full_pull_m, _lane_m, replay.stop_m())
 	var from: Vector3 = shot["from"]
 	var at: Vector3 = shot["at"]
+	_replay_camera.fov = float(shot["fov"])
 	_replay_camera.position = TrackSpace.point(from.x, from.y, from.z)
 	_replay_camera.look_at(TrackSpace.point(at.x, at.y, at.z), Vector3.UP)
 
