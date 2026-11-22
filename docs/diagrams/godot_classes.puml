@@ -22,7 +22,7 @@ package "tp::godot_binding" {
     -dropped_ns_ : int64
     +setup(tractor_path, sled_path, track_path, controls_path) : String
     +setup_event_pull(event : TractorPullEvent, controls_path) : String
-    +setup_practice(event : TractorPullEvent, controls_path) : String
+    +setup_practice(event : TractorPullEvent, controls_path, track_path = "") : String
     +set_parking(x_m, right_of_lane_m)
     +clear_parking()
     +set_controls(throttle, clutch_pedal, gear, steering, brake_left, brake_right,\n      hold_brakes = false, hold_until_boost = 0)
@@ -91,6 +91,7 @@ package "tp::godot_binding" {
     +get_tuning() : Dictionary
     +set_tuning(ballast_position, pressure_bar, hitch_m = 0)
     +get_crew_report() : Dictionary
+    +get_track_info(track_path) : Dictionary
     +set_start(y_m)
     ..C++ only..
     +player_setup() : optional<session::Setup>

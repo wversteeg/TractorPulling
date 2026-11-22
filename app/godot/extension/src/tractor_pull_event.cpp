@@ -2,6 +2,7 @@
 
 #include "tp/core/crew/crew.hpp"
 #include "tp/core/engine/engine.hpp"
+#include "tp/core/field/play.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/soil/soil.hpp"
 #include "tp/core/track/track.hpp"
@@ -584,6 +585,43 @@ godot::String TractorPullEvent::start_event() {
     return {};
 }
 
+// A track as the pit board and its track screen show it: the ground as
+// prepared at the start line and along it to the full-pull line
+// (`full_pull_m`), not the hard and weak spots, which only the crew's report
+// tells.
+godot::Dictionary track_info(const data::Track& track, double full_pull_m) {
+    godot::Dictionary ground;
+    if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
+        const soil::Surface start = model->surface_without_spots(0.0);
+        ground["grip"] = start.grip_factor;
+        ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
+        godot::Array profile;
+        // Every step, and the full-pull line itself (a 110 m line, or one
+        // between two steps).
+        const double until_m = full_pull_m;
+        const int steps = static_cast<int>(std::ceil(until_m / kProfileStep_m));
+        for (int i = 0; i <= steps; ++i) {
+            const double at_m = std::min(static_cast<double>(i) * kProfileStep_m, until_m);
+            // A step a rounding past the line would repeat it.
+            if (i > 0 && at_m <= static_cast<double>(i - 1) * kProfileStep_m) {
+                break;
+            }
+            const soil::Surface here = model->surface_without_spots(at_m);
+            godot::Dictionary point;
+            point["at_m"] = at_m;
+            point["grip"] = here.grip_factor;
+            point["cone_index_kpa"] = units::pa_to_kpa(here.cone_index_pa);
+            point["moisture"] = track::composition_at(track.ground, at_m).moisture;
+            profile.push_back(point);
+        }
+        ground["profile"] = profile;
+    }
+    ground["clay_fraction"] = track.ground.soil.clay_fraction;
+    ground["moisture"] = track::composition_at(track.ground, 0.0).moisture;
+    ground["tip"] = to_godot(track.setup_tip);
+    return ground;
+}
+
 godot::Dictionary TractorPullEvent::get_event() const {
     godot::Dictionary out;
     if (!season_ || !definition_ || season_->event() == nullptr) {
@@ -613,37 +651,7 @@ godot::Dictionary TractorPullEvent::get_event() const {
     // The track at the start line, and along it to the full-pull line, for
     // the pit board and its track screen: the ground as prepared, not the
     // hard and weak spots, which only the crew's report tells.
-    const data::Track& track = round.track;
-    godot::Dictionary ground;
-    if (const std::optional<track::Model> model = track::Model::create(track.ground)) {
-        const soil::Surface start = model->surface_without_spots(0.0);
-        ground["grip"] = start.grip_factor;
-        ground["cone_index_kpa"] = units::pa_to_kpa(start.cone_index_pa);
-        godot::Array profile;
-        // Every step, and the full-pull line itself (a 110 m line, or one
-        // between two steps).
-        const double until_m = event.full_pull_m();
-        const int steps = static_cast<int>(std::ceil(until_m / kProfileStep_m));
-        for (int i = 0; i <= steps; ++i) {
-            const double at_m = std::min(static_cast<double>(i) * kProfileStep_m, until_m);
-            // A step a rounding past the line would repeat it.
-            if (i > 0 && at_m <= static_cast<double>(i - 1) * kProfileStep_m) {
-                break;
-            }
-            const soil::Surface here = model->surface_without_spots(at_m);
-            godot::Dictionary point;
-            point["at_m"] = at_m;
-            point["grip"] = here.grip_factor;
-            point["cone_index_kpa"] = units::pa_to_kpa(here.cone_index_pa);
-            point["moisture"] = track::composition_at(track.ground, at_m).moisture;
-            profile.push_back(point);
-        }
-        ground["profile"] = profile;
-    }
-    ground["clay_fraction"] = track.ground.soil.clay_fraction;
-    ground["moisture"] = track::composition_at(track.ground, 0.0).moisture;
-    ground["tip"] = to_godot(track.setup_tip);
-    out["track"] = ground;
+    out["track"] = track_info(round.track, event.full_pull_m());
     return out;
 }
 
@@ -829,11 +837,33 @@ std::optional<session::Setup> TractorPullEvent::player_setup() const {
     return started(data::run_setup(vehicle::tuned(player_tractor(), tuning_), *season_->event()));
 }
 
-std::optional<session::Setup> TractorPullEvent::practice_setup() const {
-    if (!season_ || season_->event() == nullptr) {
+std::optional<session::Setup> TractorPullEvent::practice_setup(const data::Track* track) const {
+    if (!season_ || !definition_ || season_->event() == nullptr) {
         return std::nullopt;
     }
-    return started(data::run_setup(vehicle::tuned(player_tractor(), tuning_), *season_->event()));
+    const vehicle::Params tractor = vehicle::tuned(player_tractor(), tuning_);
+    if (track != nullptr) {
+        // The class's sled on the chosen track, as its operator first sets
+        // it, and the class's rules there: a competition pull to its
+        // full-pull line, as a practice pull at the event is.
+        session::Setup setup = data::run_setup(tractor, definition_->event.sled, *track, 0);
+        const event::Rules& rules = definition_->event.rules;
+        setup.rules = field::pull_rules(rules, data::venue(definition_->event.sled, *track),
+                                        rules.full_pull_m, event::PullKind::kCompetition);
+        return started(setup);
+    }
+    return started(data::run_setup(tractor, *season_->event()));
+}
+
+godot::Dictionary TractorPullEvent::get_track_info(const godot::String& track_path) const {
+    const auto track = data::load_track(to_std(track_path), read_godot_file);
+    if (!track) {
+        return {};
+    }
+    // To the class's full-pull line, as the pull there will have it.
+    const double line_m =
+        definition_ ? definition_->event.rules.full_pull_m : track.value().rules.full_pull_line_m;
+    return track_info(track.value(), line_m);
 }
 
 godot::Dictionary TractorPullEvent::get_crew_report() const {
@@ -1353,6 +1383,8 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
     ClassDB::bind_method(D_METHOD("get_crew_report"), &TractorPullEvent::get_crew_report);
+    ClassDB::bind_method(D_METHOD("get_track_info", "track_path"),
+                         &TractorPullEvent::get_track_info);
     ClassDB::bind_method(D_METHOD("set_start", "y_m"), &TractorPullEvent::set_start);
     ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar", "hitch_m"),
                          &TractorPullEvent::set_tuning, DEFVAL(0.0));

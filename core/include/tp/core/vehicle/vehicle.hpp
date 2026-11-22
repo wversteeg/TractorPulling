@@ -64,7 +64,23 @@ struct Differential {
     /// Torque passed between the sides per rad/s of their speeds'
     /// difference; 0 for an open differential [N·m·s/rad].
     double coupling_nm_s_per_rad = 0.0;
+    /// The most torque the coupling passes to one side: a limited-slip
+    /// differential, or a lock, gives way beyond it, so a steering brake
+    /// pressed hard slows its side instead of the coupling driving it on;
+    /// 0: no limit [N·m].
+    double coupling_limit_nm = 0.0;
 };
+
+/// Which of the differential's values is invalid.
+enum class DifferentialError : std::uint8_t {
+    /// coupling_nm_s_per_rad: not a finite number, or negative.
+    kCoupling,
+    /// coupling_limit_nm: not a finite number, or negative.
+    kCouplingLimit,
+};
+
+/// What is wrong with `differential`, if anything.
+[[nodiscard]] std::optional<DifferentialError> validate(const Differential& differential) noexcept;
 
 /// A whole tractor: the components and how many rear tires share the drive.
 /// The rear tires are split evenly between the left and right side, which

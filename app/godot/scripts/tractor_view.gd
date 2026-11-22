@@ -113,6 +113,9 @@ const CAB_NEAR_M := 0.05
 # The eyes look a little down, at the road ahead over the dashboard, so the
 # wheel and the gauges sit in the bottom of the view [rad].
 const EYES_DOWN_RAD := 0.2
+# A flat fender's inner wall reaches down to this share of its height over
+# the axle: the axle housing's top.
+const FLAT_FENDER_WALL_FROM := 0.25
 # The steering wheel: its hub ahead of and above the rear axle, tilted back
 # towards the driver [m, rad]; turned this many times the front wheels'
 # angle (the steering box's ratio).
@@ -1033,6 +1036,15 @@ func _add_fenders(rear_track_m: float, rear_width_m: float, panels: int) -> void
 				# Falling away from the flat top at each end.
 				slope.rotation.x = -end * 0.75
 				_body.add_child(slope)
+			# The inner wall down from the top's inner edge to the axle
+			# housing: the fender stands on the tractor, not in the air (from
+			# the seat its top would float).
+			var wall_m := radius_m * (1.0 - FLAT_FENDER_WALL_FROM)
+			var wall := Art.box(Vector3(0.03, wall_m, radius_m * 1.3), look.paint, 0.35)
+			wall.material_override = Art.paint(look.paint)
+			wall.position = TrackSpace.point(-0.05, y_m - side * width_m / 2.0,
+					radius_m - wall_m / 2.0)
+			_body.add_child(wall)
 			var lamp := Art.instance(_box_mesh(WORK_LAMP_M), _lamp(LAMP, 1.0))
 			lamp.position = TrackSpace.point(radius_m * 0.75, y_m, radius_m + 0.06)
 			_body.add_child(lamp)

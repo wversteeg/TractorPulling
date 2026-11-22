@@ -35,12 +35,17 @@ package "tp::vehicle" {
     +max_torque_nm : double, at full pedal
     +hold_torque_nm : double, the start's hold (0: as the pedals; else at least max)
   }
+  enum DifferentialError {
+    kCoupling
+    kCouplingLimit
+  }
   enum BrakesError {
     kPedalTorque
     kHoldTorque
   }
   class Differential <<struct>> {
     +coupling_nm_s_per_rad : double (0 open, more passes torque to the side that grips)
+    +coupling_limit_nm : double, gives way past it to a hard brake (0: no limit)
   }
   class Model {
     -params_ : Params
@@ -116,6 +121,7 @@ package "tp::vehicle" {
   class "vehicle functions" as VehicleFns <<free functions>> {
     +validate(const Params&) : optional<ParamError>
     +validate(const Brakes&) : optional<BrakesError>
+    +validate(const Differential&) : optional<DifferentialError>
     +initial_state(const Model&) : State
     +travel_direction(const State&, bool drive_out, double drawbar_pull_n) : double
     +step(State&, const Model&, const Input&, const Ground&,\n      const chassis::Drawbar&, dt_s) : Output
@@ -131,6 +137,7 @@ package "tp::vehicle" {
   Output *-- RearWheels
   VehicleFns ..> Model
   VehicleFns ..> BrakesError
+  VehicleFns ..> DifferentialError
   VehicleFns ..> State
   VehicleFns ..> Input
   VehicleFns ..> Ground

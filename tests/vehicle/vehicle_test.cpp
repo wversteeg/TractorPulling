@@ -875,9 +875,10 @@ TEST(VehicleDifferential, OuterWheelsTurnFasterInATurn) {
 }
 
 // The reference tractor with its differential coupled [N·m·s/rad].
-Pull coupled(double coupling_nm_s_per_rad) {
+Pull coupled(double coupling_nm_s_per_rad, double limit_nm = 0.0) {
     Params params = reference_params();
     params.differential.coupling_nm_s_per_rad = coupling_nm_s_per_rad;
+    params.differential.coupling_limit_nm = limit_nm;
     Pull pull;
     pull.model = Model::create(params).value_or(reference_model());
     pull.state = initial_state(pull.model);
@@ -930,6 +931,31 @@ TEST(VehicleDifferential, ACoupledDifferentialStillTurnsAndBrakeSteers) {
     EXPECT_LT(braked.right_rad_s(), braked.left_rad_s());
 }
 
+// A coupling with a limit gives way to a hard brake: past the limit the
+// braked side slows, and the tractor turns harder than through the coupling
+// that holds the sides together. Below it (a weak spot under one side) the
+// limit changes nothing.
+TEST(VehicleDifferential, ALimitedCouplingGivesWayToAHardBrake) {
+    constexpr double kLimit_nm = 150.0;
+    Pull held = coupled(kCoupling_nm_s_per_rad);
+    held.brake_right = 0.3;
+    held.run(4, 5000.0, false, 12.0);
+    Pull giving = coupled(kCoupling_nm_s_per_rad, kLimit_nm);
+    giving.brake_right = 0.3;
+    giving.run(4, 5000.0, false, 12.0);
+    EXPECT_LT(giving.state.chassis.heading_rad, held.state.chassis.heading_rad - 0.005)
+        << giving.state.chassis.heading_rad << " vs " << held.state.chassis.heading_rad;
+    EXPECT_LT(giving.right_rad_s() - giving.left_rad_s(), held.right_rad_s() - held.left_rad_s());
+    // A weak spot's small difference stays within the limit: as before.
+    Pull weak = coupled(kCoupling_nm_s_per_rad);
+    weak.ground.rear_left.grip_factor *= 0.95;
+    weak.run(3, 14000.0, false, 2.0);
+    Pull weak_limited = coupled(kCoupling_nm_s_per_rad, 20.0 * kLimit_nm);
+    weak_limited.ground.rear_left.grip_factor *= 0.95;
+    weak_limited.run(3, 14000.0, false, 2.0);
+    EXPECT_EQ(weak_limited.state.chassis.heading_rad, weak.state.chassis.heading_rad);
+}
+
 TEST(VehicleBrakes, OneBrakeTurnsTheTractorToItsSide) {
     Pull right;
     right.brake_right = 0.3;
@@ -944,6 +970,16 @@ TEST(VehicleBrakes, OneBrakeTurnsTheTractorToItsSide) {
     left.run(4, 5000.0, false, 12.0);
     EXPECT_EQ(left.state.chassis.heading_rad, -right.state.chassis.heading_rad);
     EXPECT_EQ(left.state.chassis.lateral_position_m, -right.state.chassis.lateral_position_m);
+}
+
+TEST(VehicleDifferential, ValidateNamesTheBadValue) {
+    EXPECT_FALSE(validate(Differential{}));
+    EXPECT_FALSE(
+        validate(Differential{.coupling_nm_s_per_rad = 3000.0, .coupling_limit_nm = 4400.0}));
+    EXPECT_EQ(validate(Differential{.coupling_nm_s_per_rad = -1.0}), DifferentialError::kCoupling);
+    EXPECT_EQ(validate(Differential{.coupling_limit_nm = std::nan("")}),
+              DifferentialError::kCouplingLimit);
+    EXPECT_EQ(validate(Differential{.coupling_limit_nm = -1.0}), DifferentialError::kCouplingLimit);
 }
 
 // The pedals brake with a finite torque, never negative; the hold clamps

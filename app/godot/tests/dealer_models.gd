@@ -1,7 +1,7 @@
 # Pictures of every tractor model the dealers sell (TractorModels), for
 # reviewing them: each class's tractor (its real sizes, from the data)
 # in each of its models, painted in one of the dealer's colours, from the
-# front quarter and from the side, standing at the start line in the day;
+# front quarter, from the side and from the driver's seat, standing at the start line in the day;
 # the Supersport also on its modified farm tires.
 # Then each class's dealer screen (DealerScreen), as a career entering the
 # class sees it, on each of its models in turn. Each shot is a PNG in the
@@ -86,6 +86,7 @@ func _play() -> void:
 			var name := "%s_%d_%s" % [entry[0], entry[3].find(style) + 1, style]
 			await _shoot(name + "_front", Vector3(t + 4.6, -3.6, 1.8), Vector3(t + 1.0, 0.0, 1.0))
 			await _shoot(name + "_side", Vector3(t + 1.0, -6.4, 1.3), Vector3(t + 1.0, 0.0, 1.0))
+			await _shoot_cab(view, name + "_cab")
 			shot += 1
 		# Supersport on either rear tire: the first model again on the
 		# modified farm tires (the tractor file has the puller tires).
@@ -133,6 +134,16 @@ func _dealers() -> void:
 			var path := "%s/dealer_%s_%d.png" % [_directory, entry[0], model + 1]
 			root.get_texture().get_image().save_png(path)
 			print("saved ", path)
+
+
+# From the driver's seat, as the cab camera sees it.
+func _shoot_cab(view: TractorView, name: String) -> void:
+	view.cab_camera().make_current()
+	await _frames(3)
+	var path := "%s/%s.png" % [_directory, name]
+	root.get_texture().get_image().save_png(path)
+	print("saved ", path)
+	_camera.make_current()
 
 
 func _shoot(name: String, from: Vector3, at: Vector3) -> void:
