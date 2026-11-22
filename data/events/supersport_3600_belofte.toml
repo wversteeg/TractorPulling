@@ -39,7 +39,7 @@ launch_hold_max_s = 8.0
 [event.field]
 torque_scale = [0.42, 0.58]
 mass_kg = [3320.0, 3520.0]
-traction_limit = [1.360, 1.410]
+traction_limit = [1.36, 1.41]
 hitch_height_m = [0.41, 0.46]
 rated_rpm = [2230.0, 2455.0]
 gears = [2, 5]                         # 2nd for a weak tractor on a soft track
