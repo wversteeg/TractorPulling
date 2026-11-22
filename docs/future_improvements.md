@@ -162,11 +162,13 @@ for the big features; they are repeated at the end for completeness.
   between the left and right rear tires; both sides carry half the rear load.
 - **The differential's coupling is viscous.** The pulling tractors'
   differentials pass torque in proportion to the sides' speed difference
-  (a viscous limited-slip one). A lock that holds until a set torque and
-  then slips (a clutch-type limited-slip, or a dog lock the driver
-  engages) would hold the sides together better at a weak spot and give
-  way only to a hard brake; the scripted rivals do not steer back (see
-  "Later" in CLAUDE.md), so their drift stays within the lane.
+  (a viscous limited-slip one), up to a cap where the tractor sets one
+  (`coupling_limit_nm`, the Supersport's: it gives way to a hard brake).
+  A lock that holds the sides together until a set torque and then slips
+  (a clutch-type limited-slip, or a dog lock the driver engages), static
+  below the cap rather than viscous, is not built; the scripted rivals do
+  not steer back (see "Later" in CLAUDE.md), so their drift stays within
+  the lane.
 - **Brakes hold by Newton steps.** A brake that would carry its side
   through rest holds it with the torque found by up to eight steps: Newton
   steps (one more solve per held side), then, once a single held side is

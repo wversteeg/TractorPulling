@@ -210,7 +210,11 @@ RearSolution solve_rear(const State& state, const Model& model, const RearProble
     double a0 = (driven - coupling * state.differential_rad_s) / denominator;
     // A coupling that would pass more than its limit gives way: it then
     // passes its limit, against the sides' difference as the step ends
-    // with the common slip held (a0), and no longer stiffens the step.
+    // with the common slip held (a0), and no longer stiffens the step. The
+    // switch is decided on that difference, not on the one the common
+    // slip's change (a1) then adds: a linearisation, continuous at the
+    // limit, so the torque that acts may end a step a little either side
+    // of it.
     const double limit_nm = kSidesPerDifference * params.differential.coupling_limit_nm;
     const double coupled_nm = coupling * (state.differential_rad_s + a0);
     if (limit_nm > 0.0 && std::abs(coupled_nm) > limit_nm) {
