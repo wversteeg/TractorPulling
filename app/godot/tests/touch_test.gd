@@ -104,6 +104,9 @@ func _play() -> void:
 	var tracks: PackedStringArray = _pull.practice_tracks()
 	_tap(setup.track_on)
 	await _frames(1)
+	_expect(tracks.size() == _pull.track_files().size() - 1,
+			"the event's own track offered once, as choice 0: %d of %d"
+			% [tracks.size(), _pull.track_files().size()])
 	_expect(tracks.size() >= 4 and _pull.get("_practice_track") == 1,
 			"the first other track picked: %d of %d" % [_pull.get("_practice_track"), tracks.size()])
 	_tap(setup.pull_button)

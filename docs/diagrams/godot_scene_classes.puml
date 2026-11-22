@@ -35,7 +35,8 @@ package "GDScript (app/godot/scripts)" {
     -_save_season()
     -_change_settings(pro, tilt)
     -_show_setup(for_practice)
-    +{static} practice_tracks() : PackedStringArray
+    +practice_tracks() : PackedStringArray, but the event's own
+    +{static} track_files() : PackedStringArray
     +{static} track_name_of(path) : String
     -_start_practice()
     -_start_event_pull()

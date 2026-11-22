@@ -192,6 +192,8 @@ var _full_pull_m := 100.0
 # A practice pull's track: 0 the event's own, else one of practice_tracks()
 # (1 the first).
 var _practice_track := 0
+var _practice_tracks := PackedStringArray()
+var _practice_tracks_for := ""
 var _lane_m := 9.0
 # The pull recorded for its replay, the replay's camera and what it shows
 # over it.
@@ -585,8 +587,24 @@ func _show_setup(for_practice: bool) -> void:
 
 
 # The tracks a practice pull may be on besides the event's: every track
-# file, by name.
-static func practice_tracks() -> PackedStringArray:
+# file, by name, but the event's own (choice 0), read once for each event
+# (a new event starts the choice on its own track again).
+func practice_tracks() -> PackedStringArray:
+	var info := event.get_event()
+	var key := "%s %s" % [info.get("index", -1), info.get("name", "")]
+	if key != _practice_tracks_for:
+		_practice_tracks_for = key
+		_practice_tracks.clear()
+		_practice_track = 0
+		var event_track: Dictionary = info.get("track", {})
+		for path in track_files():
+			if event.get_track_info(path) != event_track:
+				_practice_tracks.append(path)
+	return _practice_tracks
+
+
+# Every track file, by name.
+static func track_files() -> PackedStringArray:
 	var files := DirAccess.get_files_at(PRACTICE_TRACKS_DIR)
 	var tracks := PackedStringArray()
 	for file in files:

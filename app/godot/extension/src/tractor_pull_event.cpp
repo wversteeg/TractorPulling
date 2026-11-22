@@ -2,6 +2,7 @@
 
 #include "tp/core/crew/crew.hpp"
 #include "tp/core/engine/engine.hpp"
+#include "tp/core/field/play.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/soil/soil.hpp"
 #include "tp/core/track/track.hpp"
@@ -842,18 +843,27 @@ std::optional<session::Setup> TractorPullEvent::practice_setup(const data::Track
     }
     const vehicle::Params tractor = vehicle::tuned(player_tractor(), tuning_);
     if (track != nullptr) {
-        // The class's sled on the chosen track, as its operator first sets it.
-        return started(data::run_setup(tractor, definition_->event.sled, *track, 0));
+        // The class's sled on the chosen track, as its operator first sets
+        // it, and the class's rules there: a competition pull to its
+        // full-pull line, as a practice pull at the event is.
+        session::Setup setup = data::run_setup(tractor, definition_->event.sled, *track, 0);
+        const event::Rules& rules = definition_->event.rules;
+        setup.rules = field::pull_rules(rules, data::venue(definition_->event.sled, *track),
+                                        rules.full_pull_m, event::PullKind::kCompetition);
+        return started(setup);
     }
     return started(data::run_setup(tractor, *season_->event()));
 }
 
-godot::Dictionary TractorPullEvent::get_track_info(const godot::String& track_path) {
+godot::Dictionary TractorPullEvent::get_track_info(const godot::String& track_path) const {
     const auto track = data::load_track(to_std(track_path), read_godot_file);
     if (!track) {
         return {};
     }
-    return track_info(track.value(), track.value().rules.full_pull_line_m);
+    // To the class's full-pull line, as the pull there will have it.
+    const double line_m =
+        definition_ ? definition_->event.rules.full_pull_m : track.value().rules.full_pull_line_m;
+    return track_info(track.value(), line_m);
 }
 
 godot::Dictionary TractorPullEvent::get_crew_report() const {
@@ -1373,8 +1383,8 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("add_money", "amount_eur"), &TractorPullEvent::add_money);
     ClassDB::bind_method(D_METHOD("get_tuning"), &TractorPullEvent::get_tuning);
     ClassDB::bind_method(D_METHOD("get_crew_report"), &TractorPullEvent::get_crew_report);
-    ClassDB::bind_static_method("TractorPullEvent", D_METHOD("get_track_info", "track_path"),
-                                &TractorPullEvent::get_track_info);
+    ClassDB::bind_method(D_METHOD("get_track_info", "track_path"),
+                         &TractorPullEvent::get_track_info);
     ClassDB::bind_method(D_METHOD("set_start", "y_m"), &TractorPullEvent::set_start);
     ClassDB::bind_method(D_METHOD("set_tuning", "ballast_position", "pressure_bar", "hitch_m"),
                          &TractorPullEvent::set_tuning, DEFVAL(0.0));

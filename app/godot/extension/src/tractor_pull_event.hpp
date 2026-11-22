@@ -279,7 +279,7 @@ public:
     [[nodiscard]] godot::Dictionary get_crew_report() const;
     /// The track in `track_path` as get_event()["track"] shows the event's,
     /// for a practice pull on it; {} if it cannot be loaded.
-    [[nodiscard]] static godot::Dictionary get_track_info(const godot::String& track_path);
+    [[nodiscard]] godot::Dictionary get_track_info(const godot::String& track_path) const;
     /// Where the player puts the sled across the lane for their next pulls
     /// and practice pulls, to the left of the middle [m]; held to the
     /// lane's limits for the tractor (run::max_start_offset_m) when a pull
