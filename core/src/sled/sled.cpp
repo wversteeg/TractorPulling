@@ -131,6 +131,9 @@ std::optional<ParamError> pushdown_error(const Params& params) noexcept {
     if (params.pan_held_share < 0.0 || params.pan_held_share >= 1.0) {
         return ParamError::kPanHeldShareOutOfRange;
     }
+    if (params.breakaway_factor < 1.0) {
+        return ParamError::kBreakawayOutOfRange;
+    }
     return std::nullopt;
 }
 
@@ -156,6 +159,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pushdown_ramp_m,
                                 params.pushdown_most_pan_share,
                                 params.pan_held_share,
+                                params.breakaway_factor,
                                 params.pan_friction_coefficient,
                                 params.pan_area_m2,
                                 params.pan_plough_coefficient,
@@ -406,7 +410,8 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
         .pan_friction = friction,
         .knives_n = cutting_n,
         .berm_n = berm_n,
-        .resistance_n = friction * shared.pan_n + cutting_n + berm_n + rolling * shared.wheels_n};
+        .resistance_n = (friction * shared.pan_n + cutting_n + berm_n + rolling * shared.wheels_n) *
+                        (state.velocity_m_s > 0.0 ? 1.0 : params.breakaway_factor)};
 }
 
 Prediction predict(const State& state, const Params& params, double resistance_n,

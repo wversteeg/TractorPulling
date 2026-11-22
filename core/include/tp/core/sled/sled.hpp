@@ -189,6 +189,12 @@ struct Params {
     /// push-down engages the pan drops onto the track ("de sleepvoet
     /// valt"). 0 holds nothing.
     double pan_held_share = 0.0;
+    /// At rest the sled holds against this many times its resistance
+    /// moving (Loads::resistance_n): its wheels sunk in and its pan settled
+    /// in the soil, the chain must pull harder to break it away than to
+    /// keep it rolling. Meanwhile the tractor's slipping clutch loads the
+    /// engine and the turbo spools. 1: no more than moving.
+    double breakaway_factor = 1.0;
     /// Sliding friction of the steel pan on a firm track.
     double pan_friction_coefficient = 0.0;
     /// The pan's contact with the track [m²].
@@ -246,6 +252,8 @@ enum class ParamError : std::uint8_t {
     /// The share of the pan's load held up until the push-down is not in
     /// [0, 1).
     kPanHeldShareOutOfRange,
+    /// The breakaway factor below 1.
+    kBreakawayOutOfRange,
     kPanFrictionOutOfRange,
     kPanAreaNotPositive,
     kPanPloughNegative,
@@ -349,8 +357,9 @@ struct Loads {
     double knives_n = 0.0;
     /// Pushing the berm [N].
     double berm_n = 0.0;
-    /// Pan friction, knives, the berm and wheel rolling resistance; it holds
-    /// the sled at rest but never pushes it back [N].
+    /// Pan friction, knives, the berm and wheel rolling resistance, times
+    /// Params::breakaway_factor at rest; it holds the sled at rest but
+    /// never pushes it back [N].
     double resistance_n = 0.0;
 };
 
