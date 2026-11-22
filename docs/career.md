@@ -392,24 +392,15 @@ side by side, each fitted between events (K-6), each best somewhere:
 
 #### How a Supersport pulls (game)
 
-- **"Optoeren"**, building boost before the launch, as real pullers do
-  it: on the brakes. Boost needs the engine loaded, not just revved, so
-  the driver holds both brakes, opens the throttle and lets the clutch
-  bite; the load against the brakes spools the turbo, and with the boost
-  up the brakes come off. In the game the HOLD button does it, from the
-  Sport classes up (a thumb cannot work two brakes, the throttle and the
-  clutch): a tap holds both brakes; in the easy layout the clutch assist
-  then lets the clutch bite, keeping the engine at 90 % of its rated
-  speed. The brakes let go at the boost the settings name (50 to 80 % of
-  full boost) or at another tap. The hold clamps the brakes harder than a
-  foot (`hold_torque_nm`: 12, 20 and 25 kN·m a side on the Sport and
-  Supersport tractors, the pedals' torque as before), so the tractor
-  stands while its boost builds to three quarters within a few seconds
-  (`BrakeHoldRuns.TheTractorStandsWhileTheBoostBuilds`). Without it the
-  tractor moves off at about 10 % boost. The scripted rivals still launch
-  with a slipping clutch (eased back while the engine is below 80 % of its
-  rated speed, for up to 8 s): in a tall gear without that the engine
-  stalls.
+- **"Optoeren"**, building boost before the launch: real pullers hold
+  the brakes and let the clutch bite so the load spools the turbo. A
+  Supersport's clutch (60 to 100 kg on the pedal) leaves no foot for the
+  brakes, so the game has no brake hold: the driver brings the clutch in
+  against the sled and the boost builds as it bites. The core still has
+  the hold (`session::Controls::hold_brakes`, `tp_pull run --hold-boost`),
+  unused by the game. The scripted rivals launch with a slipping clutch
+  (eased back while the engine is below 80 % of its rated speed, for up
+  to 8 s): in a tall gear without that the engine stalls.
 - **The nose** (videos of good pulls): up once on the launch, touching
   down softly now and then, light through the middle and down at the
   end. With the weights forward and the hitch in its top hole the
