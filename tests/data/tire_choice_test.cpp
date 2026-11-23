@@ -329,9 +329,9 @@ TEST(TmpLaunch, Print) {
 TEST(TmpGears, Print) {
     const data::SeasonDefinition d = supersport();
     const data::EventDefinition& e = d.event;
-    for (const char* f : {"dry_hard_clay.toml"}) {
+    for (const char* f : {"dry_hard_clay.toml", "firm_loam.toml"}) {
         const data::Track on = track(f);
-        for (const Tires t : {Tires{.tires = kPullerTires, .final_drive = kMiddle}}) {
+        for (const Tires t : {kPullerOnTall, Tires{.tires = kPullerTires, .final_drive = kMiddle}}) {
             for (int gear = 3; gear <= 6; ++gear) {
                 Puller puller = built_puller(d, t, kSixLitre, Turbo::kBiggest);
                 puller.driver.gear = gear;
@@ -349,7 +349,7 @@ TEST(TmpGears, Print) {
                     const pull::Output o = run::step(state, *model, rules, driver::input(puller.driver, drv, ts, state.pull.tractor, model->tractor().params()), 0.001);
                     const double x = state.pull.sled.position_m - model->sled_start_m();
                     if (x >= next) {
-                        std::printf(" @%.0f t%.1f %.0f/%.0f %.0fkN", next, ts - puller.driver.launch_s, state.pull.tractor.chassis.velocity_m_s * 3.6, state.pull.tractor.driveline.output_omega_rad_s * r * 3.6, o.sled.resistance_n / 1000.0);
+                        std::printf(" @%.0f t%.1f %.0f/%.0f %.0fkN %.0frpm", next, ts - puller.driver.launch_s, state.pull.tractor.chassis.velocity_m_s * 3.6, state.pull.tractor.driveline.output_omega_rad_s * r * 3.6, o.sled.resistance_n / 1000.0, state.pull.tractor.engine.omega_rad_s * 9.549);
                         next += next < 1.0 ? 4.5 : 20.0;
                     }
                 }
