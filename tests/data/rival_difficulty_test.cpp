@@ -345,9 +345,8 @@ TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercent
 }
 
 // At promo the season opens on the watered start, where grip decides more
-// than the garage: three quarters is in the top five there (and wins the
-// rest of the season and the championship).
-TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersWinsIt) {
+// than the garage: three quarters is in the top five there.
+TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAtTheOpener) {
     expect_level("supersport_3600_promo.toml",
                  {{.share = 0.5, .places = {.best = 3, .worst = 12}},
                   {.share = 0.75, .places = {.best = 1, .worst = 5}}},
