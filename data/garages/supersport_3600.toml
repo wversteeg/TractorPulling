@@ -163,11 +163,11 @@ name = "Puller tire grip"
 choice = "Rear tires"
 alternative = "Puller tires"
 levels = [
-    { value = 0.864, cost_eur = 0, label = "Used puller tires" },
-    { value = 0.890, cost_eur = 1300, label = "Puller tires, good bars" },
-    { value = 0.915, cost_eur = 1700, label = "New 30.5L-32 puller tires" },
-    { value = 0.933, cost_eur = 2100, label = "Bars sharpened" },
-    { value = 0.950, cost_eur = 2500, label = "Bars hand cut by a specialist" },
+    { value = 0.909, cost_eur = 0, label = "Used puller tires" },
+    { value = 0.936, cost_eur = 1300, label = "Puller tires, good bars" },
+    { value = 0.964, cost_eur = 1700, label = "New 30.5L-32 puller tires" },
+    { value = 0.982, cost_eur = 2100, label = "Bars sharpened" },
+    { value = 1.000, cost_eur = 2500, label = "Bars hand cut by a specialist" },
 ]
 
 [[garage.upgrades]]
