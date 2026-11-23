@@ -124,10 +124,12 @@ struct Speeds {
 
 // The fully built 6.06 l on `tires` pulling the class's sled on `on` in its
 // best pulling gear and hand throttle, as the reference driver drives it.
-Speeds middle_speeds(const data::SeasonDefinition& d, const data::Track& on, Tires tires) {
+Speeds middle_speeds(const data::SeasonDefinition& d, const data::Track& on, Tires tires,
+                     const sled::Adjustment& lighter = {}) {
     const data::EventDefinition& e = d.event;
     Puller puller = built_puller(d, tires, kSixLitre, Turbo::kBiggest);
-    const Venue venue = data::venue(e.sled, on);
+    Venue venue = data::venue(e.sled, on);
+    venue.sled = sled::adjusted(venue.sled, lighter);
     const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
     const std::optional<GearTrial> trial = best_gear_trial(
         puller, venue.sled, venue.track, kLowestPullingGear, kHighestPullingGear, rules);
@@ -301,9 +303,23 @@ TEST(TmpSpeeds, Print) {
     const data::SeasonDefinition d = supersport();
     for (const char* f : {"watered_start.toml", "ideal_clay_sand.toml", "covered_heavy_clay.toml", "firm_loam.toml", "dry_hard_clay.toml"}) {
         const data::Track on = track(f);
-        for (const Tires t : {kPullerOnTall, Tires{.tires = kPullerTires, .final_drive = kMiddle}, kFarmOnShort}) {
-            const Speeds sp = middle_speeds(d, on, t);
-            std::printf("SPEED %-24s tires %d drive %d wheel %5.1f ground %5.1f | heavy %5.1f\n", f, t.tires, t.final_drive, sp.wheel_kmh, sp.ground_kmh, pulled_m(d, on, t, kSixLitre));
+        for (const Tires t : {kPullerOnTall, Tires{.tires = kPullerTires, .final_drive = kMiddle}}) {
+            // The operator's sled: the heaviest of the steps on which this tractor still pulls 90 m.
+            const sled::Params cls = data::venue(d.event.sled, on).sled;
+            int chosen = -99;
+            for (int k = 8; k >= -12; --k) {
+                const sled::Adjustment a = k >= 0 ? sled::Adjustment{.box_mass_kg = 500.0 * k, .knives = k}
+                                                  : sled::Adjustment{.box_mass_kg = 300.0 * k, .knives = k};
+                const Puller pl = built_puller(d, t, kSixLitre, Turbo::kBiggest);
+                const Venue v = data::venue(d.event.sled, on);
+                const auto tr = best_gear_trial(pl, sled::adjusted(v.sled, a), v.track, kLowestPullingGear, kHighestPullingGear, trial_pull_rules(d.event.rules, v, d.event.rules.full_pull_m));
+                if (tr && tr->distance_m >= 90.0) { chosen = k; break; }
+            }
+            const sled::Adjustment a = chosen >= 0 ? sled::Adjustment{.box_mass_kg = 500.0 * chosen, .knives = chosen}
+                                                   : sled::Adjustment{.box_mass_kg = 300.0 * chosen, .knives = chosen};
+            const Speeds sp = middle_speeds(d, on, t, a);
+            std::printf("SPEED %-24s drive %d sled step %3d wheel %5.1f ground %5.1f\n", f, t.final_drive, chosen, sp.wheel_kmh, sp.ground_kmh);
+            (void)cls;
         }
     }
 }

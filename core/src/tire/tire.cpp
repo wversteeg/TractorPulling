@@ -25,6 +25,23 @@ double reference_speed(const Params& params, double wheel_m_s, double ground_m_s
     return std::max({std::abs(wheel_m_s), std::abs(ground_m_s), params.min_reference_speed_m_s});
 }
 
+// k(v) and dk/dv for a tread that rises over spin_speed_m_s and falls over
+// fall_speed_m_s (TractionCurve::fall_speed_m_s).
+struct SpinShare {
+    double share = 1.0;
+    double per_slip_speed = 0.0;  // [per m/s]
+};
+
+SpinShare rise_and_fall(const TractionCurve& curve, double slip_speed_m_s) noexcept {
+    const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
+    const double unfallen = math::exp(-slip_speed_m_s / curve.fall_speed_m_s);
+    const double rise = 1.0 - (1.0 - curve.slow_spin_grip) * unspun;
+    const double fall = curve.fast_spin_grip + (1.0 - curve.fast_spin_grip) * unfallen;
+    const double rise_slope = (1.0 - curve.slow_spin_grip) * unspun / curve.spin_speed_m_s;
+    const double fall_slope = -(1.0 - curve.fast_spin_grip) * unfallen / curve.fall_speed_m_s;
+    return {.share = rise * fall, .per_slip_speed = rise_slope * fall + rise * fall_slope};
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const Size& size) noexcept {
@@ -135,7 +152,8 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         return ParamError::kDiggingOutOfRange;
     }
     if (curve.slow_spin_grip <= 0.0 || curve.slow_spin_grip > 1.0 || curve.fast_spin_grip <= 0.0 ||
-        curve.fast_spin_grip > 1.0 || curve.spin_speed_m_s <= 0.0) {
+        curve.fast_spin_grip > 1.0 || curve.spin_speed_m_s <= 0.0 ||
+        !std::isfinite(curve.fall_speed_m_s) || curve.fall_speed_m_s < 0.0) {
         return ParamError::kSpinGripOutOfRange;
     }
     if (params.wheel_inertia_kg_m2 <= 0.0) {
@@ -232,17 +250,24 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
     // one: F = F_s k(v), dF/dv = (dF_s/dv) k + F_s (fast - slow) e^(-v/v0) / v0.
     if (curve.slow_spin_grip != 1.0 || curve.fast_spin_grip != 1.0) {
         const double slip_speed_m_s = std::abs(wheel_surface_speed_m_s - ground_speed_m_s);
-        const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
-        const double change = curve.fast_spin_grip - curve.slow_spin_grip;
-        const double share = curve.slow_spin_grip + change * (1.0 - unspun);
         const double unscaled_n = out.force_n;
+        double share = 0.0;
+        double change_n_per_m_s = 0.0;
+        if (curve.fall_speed_m_s > 0.0) {
+            const SpinShare spin = rise_and_fall(curve, slip_speed_m_s);
+            share = spin.share;
+            change_n_per_m_s = std::abs(unscaled_n) * spin.per_slip_speed;
+        } else {
+            const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
+            const double change = curve.fast_spin_grip - curve.slow_spin_grip;
+            share = curve.slow_spin_grip + change * (1.0 - unspun);
+            change_n_per_m_s = std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s;
+        }
         out.force_n = unscaled_n * share;
         out.full_bite = bite * share;
         out.grip_share = share;
         out.force_per_slip_speed =
-            std::max(load_n * dmu_ds / reference_m_s * share +
-                         std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s,
-                     0.0);
+            std::max(load_n * dmu_ds / reference_m_s * share + change_n_per_m_s, 0.0);
     }
     return out;
 }

@@ -20,14 +20,14 @@ wheel_inertia_kg_m2 = 70.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-limit = 0.6                        # μ on very strong ground at full bite: a regrooved farm tire, a little under the puller tire's
+limit = 0.9                        # μ on very strong ground at full bite: a regrooved farm tire, a little under the puller tire's
 mobility_rate = 0.1                # how fast grip reaches the limit with Bn
 slip_rate = 8.0                    # cut lugs: grip builds with more slip than an uncut farm tire's
 # Spun fast, the tall lugs dig in and smear: grip falls towards
 # fast_spin_grip of itself over a tread slip speed of about spin_speed_m_s
 # (tp::tire::TractionCurve), along with the side grip it shares.
-fast_spin_grip = 0.85
-spin_speed_m_s = 3.0
+fast_spin_grip = 0.5
+spin_speed_m_s = 3
 # Pressed harder than its share of the tractor at rest (the chain pulling
 # down at the hitch, the weights back), the tire grips less per unit of
 # load (tp::tire::TractionCurve::load_sensitivity).

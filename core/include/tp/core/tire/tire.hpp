@@ -59,6 +59,16 @@ struct TractionCurve {
     double fast_spin_grip = 1.0;
     /// The slip speed over which the share moves 63 % of its way [m/s].
     double spin_speed_m_s = 1.0;
+    /// A tread that needs to spin to bite and then loses grip spun very
+    /// fast, as a puller tire's bars do (they cut the soil, and spun very
+    /// fast throw it before it holds): with fall_speed_m_s set, the share
+    /// rises from slow_spin_grip to full over spin_speed_m_s and falls from
+    /// there to fast_spin_grip over fall_speed_m_s,
+    ///
+    ///   k(v) = (1 - (1 - slow) e^(-|v| / spin_speed)) (fast + (1 - fast) e^(-|v| / fall_speed))
+    ///
+    /// 0 (the default): the one-speed curve above [m/s].
+    double fall_speed_m_s = 0.0;
     /// Lugs need to sink into the ground to grip: on ground stronger than
     /// they press into it, they ride on their tips and grip less. Up to
     /// lug_bearing_pa of cone index the lugs sink in fully; above it they
@@ -204,8 +214,8 @@ enum class ParamError : std::uint8_t {
     /// The load sensitivity negative, or set without a positive reference
     /// load.
     kLoadSensitivityInvalid,
-    /// slow_spin_grip or fast_spin_grip outside (0, 1], or spin_speed_m_s
-    /// not above 0.
+    /// slow_spin_grip or fast_spin_grip outside (0, 1], spin_speed_m_s
+    /// not above 0, or fall_speed_m_s negative.
     kSpinGripOutOfRange,
     /// The lug bearing negative or the unsunk grip outside (0, 1].
     kLugGripOutOfRange,

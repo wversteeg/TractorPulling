@@ -40,7 +40,8 @@ TireFieldError describe(tire::ParamError error) {
                     "must be >= 0 and below 1, with reference_load_n > 0 when set"};
         case ParamError::kSpinGripOutOfRange:
             return {"traction",
-                    "slow_spin_grip and fast_spin_grip must be in (0, 1], spin_speed_m_s > 0"};
+                    "slow_spin_grip and fast_spin_grip must be in (0, 1], spin_speed_m_s > 0, "
+                    "fall_speed_m_s >= 0"};
         case ParamError::kLugGripOutOfRange:
             return {"traction", "lug_bearing_mpa must be >= 0 and unsunk_lug_grip in (0, 1]"};
         case ParamError::kDiggingOutOfRange:
