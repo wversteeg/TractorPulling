@@ -69,10 +69,10 @@ func _check() -> void:
 
 	_check_engine_sound()
 	# The box holds a slab for every 500 kg of its mass for the pull, the
-	# last a part-slab, as many as fit (11 t); this pull's box shows its own.
+	# last a part-slab, as many as fit (14 t); this pull's box shows its own.
 	_expect(SledView.weight_count(6000.0) == 12 and SledView.weight_count(1500.0) == 3
-			and SledView.weight_count(0.0) == 0 and SledView.weight_count(1.0e5) == 22
-			and SledView.weight_count(11000.0) == 22,
+			and SledView.weight_count(0.0) == 0 and SledView.weight_count(1.0e5) == 28
+			and SledView.weight_count(14000.0) == 28,
 			"the weights follow the box's mass")
 	var sled_view: SledView = _pull.get("sled_view")
 	_expect(sled_view.weights_shown() == SledView.weight_count(float(dimensions["box_mass_kg"])),
