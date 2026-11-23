@@ -216,6 +216,12 @@ struct Prediction {
 /// Under more load the engine lugs down its torque curve [rad/s].
 [[nodiscard]] double full_fuel_omega_rad_s(const Params& params, double throttle) noexcept;
 
+/// The hand throttle at which the governor gives `fuel` (0 to 1) at
+/// `omega_rad_s`, within [0, 1]: a driver who backs off a little against
+/// wheelspin trims the fuel this way, never shutting it off.
+[[nodiscard]] double throttle_for_fuel(const Params& params, double omega_rad_s,
+                                       double fuel) noexcept;
+
 /// Computes fuel, boost and torques for a step of `dt_s` seconds. Pure.
 [[nodiscard]] Prediction predict(const State& state, const Params& params, double throttle,
                                  double dt_s) noexcept;

@@ -301,9 +301,9 @@ double thrown_soil_m3_s(const Size& size, const Footing& footing, double load_n,
     return size.section_width_m * sinkage_m * std::abs(wheel_surface_speed_m_s);
 }
 
-double throw_drag_n(double thrown_soil_m3_s, double slip_speed_m_s) noexcept {
+double throw_force_n(double thrown_soil_m3_s, double slip_speed_m_s) noexcept {
     return kThrownShare * soil::kLooseDensity_kg_m3 * std::max(thrown_soil_m3_s, 0.0) *
-           std::abs(slip_speed_m_s);
+           slip_speed_m_s;
 }
 
 double towed_rolling_resistance(const Size& size, double load_n,

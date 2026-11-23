@@ -25,7 +25,8 @@ package "tp::driver" {
     +launch_feather_share : double (the held clutch worked smoothly)
     +start_y_m : double (where the team puts the sled across the lane)
     +throttle : double (full, or eased on a soft track)
-    +spin_ease_slip : double (eases to kSpinThrottle against wheelspin; 0 never)
+    +spin_ease_slip : double (fuel trimmed against wheelspin; 0 never)
+    +spin_fuel : double (fuel kept at full spin; kSpinFuel)
   }
   class "State" as DriverState <<struct>> {
     +watching : bool

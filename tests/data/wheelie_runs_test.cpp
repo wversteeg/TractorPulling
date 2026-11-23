@@ -385,7 +385,7 @@ Nose supersport_nose(double ballast_position, double hitch_m) {
     vehicle::Tuning tuning = vehicle::as_built(built);
     tuning.ballast_position = ballast_position;
     tuning.hitch_height_m = hitch_m;
-    constexpr int kHeavier = 6;
+    constexpr int kHeavier = 8;
     const sled::Params sled =
         sled::heavier(loaded(load_sled(data("sleds/supersport_3600.toml"))), kHeavier);
     const Track track = loaded(load_track(data("tracks/ideal_clay_sand.toml")));

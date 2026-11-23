@@ -62,12 +62,15 @@ struct TractionCurve {
     /// A tread that needs to spin to bite and then loses grip spun very
     /// fast, as a puller tire's bars do (they cut the soil, and spun very
     /// fast throw it before it holds): with fall_speed_m_s set, the share
-    /// rises from slow_spin_grip to full over spin_speed_m_s and falls from
-    /// there to fast_spin_grip over fall_speed_m_s,
+    /// rises from slow_spin_grip over spin_speed_m_s and falls towards
+    /// fast_spin_grip over fall_speed_m_s,
     ///
     ///   k(v) = (1 - (1 - slow) e^(-|v| / spin_speed)) (fast + (1 - fast) e^(-|v| / fall_speed))
     ///
-    /// 0 (the default): the one-speed curve above [m/s].
+    /// The product reaches full grip only with fall_speed far above
+    /// spin_speed: with the puller tire's 6 and 20 m/s it peaks at about
+    /// 0.87 near 15 m/s of slip. 0 (the default): the one-speed curve above
+    /// [m/s].
     double fall_speed_m_s = 0.0;
     /// Lugs need to sink into the ground to grip: on ground stronger than
     /// they press into it, they ride on their tips and grip less. Up to
@@ -316,17 +319,21 @@ struct Footing {
 
 /// The share of the soil a spinning tire loosens (thrown_soil_m3_s) that
 /// its tread speeds up to its slip speed and throws: the rest crumbles in
-/// the rut. A calibration of the soil-throwing cost (throw_drag_n).
+/// the rut. A calibration of the soil's reaction (throw_force_n).
 inline constexpr double kThrownShare = 0.1;
 
-/// What throwing its soil costs a driven tire, a force at its tread [N]:
+/// The soil's reaction on a driven tire's tread as it throws it [N], signed
+/// as the slip speed `slip_speed_m_s` (wheel surface less ground speed):
 /// the soil it throws, `thrown_soil_m3_s` of loose soil, gains the tread's
-/// slip speed `slip_speed_m_s` relative to the ground, so the tread pushes
-/// it with mass flow times that speed. It grows with the soil a tire
-/// loosens (more on soft ground, where it sinks in) and with how fast it
-/// spins: on a soft track spinning costs the engine much more than on a
-/// firm one.
-[[nodiscard]] double throw_drag_n(double thrown_soil_m3_s, double slip_speed_m_s) noexcept;
+/// slip speed relative to the ground, so the tread pushes it with mass flow
+/// times that speed, and the soil pushes back. Like traction, that reaction
+/// holds the wheel back and pushes the tractor on: the engine pays mass
+/// flow · slip speed · wheel speed, the tractor gets mass flow · slip speed
+/// · ground speed, and mass flow · slip speed² is lost in the thrown soil.
+/// It grows with the soil a tire loosens (more on soft ground, where it
+/// sinks in) and with how fast it spins: on a soft track spinning costs the
+/// engine much more than on a firm one.
+[[nodiscard]] double throw_force_n(double thrown_soil_m3_s, double slip_speed_m_s) noexcept;
 
 /// Motion resistance of a towed (unpowered) tire per unit of load: 1/Bn
 /// plus the tire's own losses, 0.04.

@@ -242,6 +242,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
             reader.optional_number("event.driver.launch_feather_share").value_or(0.0),
         // Optional: a driver who plays the throttle against wheelspin.
         .spin_ease_slip = reader.optional_number("event.driver.spin_ease_slip").value_or(0.0),
+        .spin_fuel = reader.optional_number("event.driver.spin_fuel").value_or(driver::kSpinFuel),
     };
     field::Variation variation{
         .torque_scale = range(reader, "event.field.torque_scale"),

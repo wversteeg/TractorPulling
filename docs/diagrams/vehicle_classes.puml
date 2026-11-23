@@ -91,6 +91,7 @@ package "tp::vehicle" {
     +rear_left, rear_right : RearWheels
     +rear_rolling_resistance, front_rolling_resistance
     +thrown_soil_m3_s
+    +throw_force_n, in tire_force_n
     +axle_loads : AxleLoads
     +front_side_force_n, rear_side_force_n
     +shift_refused : bool

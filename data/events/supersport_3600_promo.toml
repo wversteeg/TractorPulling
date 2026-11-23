@@ -6,7 +6,7 @@
 [event]
 class = "../classes/ntto_supersport_3600.toml"
 tractor = "../tractors/supersport_3600.toml"   # the reference the field varies
-sled = "../sleds/supersport_3600.toml"
+sled = "../sleds/supersport_3600_promo.toml"
 track = "../tracks/ideal_clay_sand.toml"
 pullers = 15
 seed = 2026

@@ -220,10 +220,8 @@ TEST(TireChoice, ATopPullSpinsTheWheelsFastAndTakesThirteenSeconds) {
 // the puller tire's grip and the turbo's power carry it.
 TEST(TireChoice, FarmTiresLoseToPullerTiresOnEveryTrack) {
     const data::SeasonDefinition d = supersport();
-    // (No Supersport event is on the loose sandy clay: neither tire gets
-    // the class's sled going there.)
     for (const char* name : {"watered_start.toml", "firm_loam.toml", "covered_heavy_clay.toml",
-                             "dry_hard_clay.toml", "ideal_clay_sand.toml"}) {
+                             "dry_hard_clay.toml", "ideal_clay_sand.toml", "sandy_clay.toml"}) {
         const data::Track on = track(name);
         const double puller_m =
             std::max(pulled_m(d, on, kPullerOnTall, kSixLitre),

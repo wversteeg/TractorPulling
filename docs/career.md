@@ -401,7 +401,7 @@ side by side, each fitted between events (K-6), each best somewhere:
   gears (3rd to 6th, about 13 % apart); no powershift, one gear the whole
   pull.
 - **The start** (every class): the sled breaks away harder than it rolls
-  (9 % of its weight at rest, `sled::Params::breakaway_share`), so the
+  (half as much again as it drags moving, `sled::Params::breakaway_ratio`), so the
   chain holds the tractor a moment while the clutch slips and the turbo
   spools; the scripted pullers feather the held clutch
   (`launch_feather_share`), fully in within the hold's longest time (about
@@ -420,8 +420,12 @@ side by side, each fitted between events (K-6), each best somewhere:
   (eased back while the engine is below 90 % of its rated speed, for up
   to 12 s), so the engine stays up where its big turbo gives full boost
   while the tires spin up: in a tall gear without that the engine stalls.
-  Spinning past their bite, they ease the throttle so the tires catch
-  again (`spin_ease_slip`).
+  Spinning past their bite, they catch the tires with the clutch while it
+  still slips, and later trim the fuel (`spin_ease_slip`, `spin_fuel`).
+- **Sleds per level**: the belofte's sled carries half the top events'
+  box (1500 kg) and further back, the promotion's 2500 kg, the top's
+  3000 kg: on farm tires a new tractor gets about 40 m on the loose sandy
+  clay and about 100 m on the reference clay-sand.
 - **The nose** (videos of good pulls): up once on the launch, touching
   down softly now and then, light through the middle and down at the
   end. With the weights halfway and the hitch in its top hole the
@@ -605,7 +609,7 @@ tractor:
   small stages, since each 75 rpm is worth a metre or more there.
 - Supersport 3.6 t has all three. A new tractor is at the back of
   belofte and about 70 % of its garage wins it; half the garage is mid
-  promo and three quarters is in the top five at its damp opener; at top 60 % is at the back and a
+  promo and three quarters is in the top five at its damp opener; at top 60 % is in the back half, three quarters about the front half, and a
   nearly or fully built tractor wins. Its garage costs about € 151,200
   for both engines, both tires, the three final drives and the turbo, so
   its prize money is a fifth (belofte) to two fifths (top) higher than

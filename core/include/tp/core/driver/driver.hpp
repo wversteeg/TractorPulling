@@ -7,6 +7,18 @@
 
 namespace tp::driver {
 
+/// The share of full fuel a driver who plays the throttle against
+/// wheelspin keeps at full spin unless the plan says otherwise
+/// (Plan::spin_fuel).
+inline constexpr double kSpinFuel = 0.4;
+
+/// How fast a driver feathering the launch (Plan::launch_feather_share)
+/// eases the clutch back when the wheels flare past the spin ease point
+/// (Plan::spin_ease_slip), at full spin: this many times the slip-in rate.
+/// The clutch catches the wheels while the engine stays up; the fuel is
+/// trimmed only once the clutch is in.
+inline constexpr double kSpinClutchRate = 4.0;
+
 /// How a scripted driver pulls: idle in neutral, select the gear, rev up
 /// with the clutch pressed, then let the clutch in over `clutch_slip_in_s`
 /// (0 dumps it) and pull at full throttle until the run ends. A driver
@@ -38,7 +50,9 @@ struct Plan {
     /// The engine speed, as a share of its rated speed, below which the
     /// clutch stops coming up during the launch: 0 never holds, below 1.
     double launch_hold_share = 0.0;
-    /// The longest the launch is held, in all [s].
+    /// The longest the launch is held, in all [s]: a driver who feathers it
+    /// (launch_feather_share) counts the whole feathered launch, one who
+    /// does not only the time the engine is below the hold.
     double launch_hold_max_s = 0.0;
     /// A driver who feathers the held launch: within this share of the
     /// rated speed of the hold, the clutch comes up (above it) or eases
@@ -54,15 +68,17 @@ struct Plan {
     /// where a lower governed speed spins the tires less (a soft track).
     double throttle = 1.0;
     /// A driver who plays the throttle against wheelspin: with the rear
-    /// tires slipping more than this ratio, they ease it, down to
-    /// kSpinThrottle of the hand throttle at full spin, so that a tire spun
-    /// past its bite can catch again. 0 never eases; below 1.
+    /// tires slipping more than this ratio, they back off, the fuel trimmed
+    /// in proportion to the slip past it, down to spin_fuel at full spin
+    /// (engine::throttle_for_fuel), so that a tire spun past its bite can
+    /// catch again. The fuel is trimmed at the engine's speed, so the engine
+    /// keeps its revs and its boost. 0 never eases; below 1.
     double spin_ease_slip = 0.0;
+    /// The share of full fuel kept at full spin, 0 to 1: a puller tire
+    /// needs to spin, so its driver keeps much of it (kSpinFuel); a farm
+    /// tire smears spun past its bite, so its driver backs right off.
+    double spin_fuel = kSpinFuel;
 };
-
-/// The share of the hand throttle a driver who plays it against wheelspin
-/// (Plan::spin_ease_slip) keeps at full spin.
-inline constexpr double kSpinThrottle = 0.4;
 
 /// What the driver remembers during a pull; a new pull starts from {}.
 struct State {
@@ -85,9 +101,10 @@ enum class ParamError : std::uint8_t {
     kTimesOutOfOrder,
     kDownshiftShareOutOfRange,
     kLaunchHoldOutOfRange,
-    /// The hand throttle not in (0, 1], or the spin ease slip not in
-    /// [0, 1).
+    /// The hand throttle not in (0, 1].
     kThrottleOutOfRange,
+    /// The spin ease slip not in [0, 1), or the spin fuel not in [0, 1].
+    kSpinEaseOutOfRange,
 };
 
 [[nodiscard]] std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept;

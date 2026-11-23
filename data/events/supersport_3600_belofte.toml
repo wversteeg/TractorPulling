@@ -6,7 +6,7 @@
 [event]
 class = "../classes/ntto_supersport_3600.toml"
 tractor = "../tractors/supersport_3600_farm.toml"   # the reference the field varies
-sled = "../sleds/supersport_3600.toml"
+sled = "../sleds/supersport_3600_belofte.toml"
 track = "../tracks/ideal_clay_sand.toml"
 pullers = 15
 seed = 2026
@@ -28,6 +28,7 @@ launch_hold_share = 0.9
 launch_hold_max_s = 12.0
 launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 spin_ease_slip = 0.6                # the throttle played against wheelspin past this slip
+spin_fuel = 0.0                     # farm tires smear spun: right off the fuel at full spin
 
 # The field: Supersport 3.6 t tractors from barely built to a little over half
 # the class's garage (garages/supersport_3600.toml), driven by pullers new to

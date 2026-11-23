@@ -516,17 +516,18 @@ TEST(TireSpin, ARisingAndFallingTreadBitesThenEases) {
     EXPECT_EQ(validate(bars), ParamError::kSpinGripOutOfRange);
 }
 
-// Throwing its soil costs a spinning tire in proportion to the soil and to
-// its slip speed; with nothing thrown, or not spinning, nothing.
+// The soil's reaction as a tire throws it grows with the soil and with the
+// slip speed, and follows the slip's sign: a spinning tread is pushed on, a
+// skidding one back; with nothing thrown, or no slip, nothing.
 TEST(ThrownSoil, ThrowingItCostsTheTire) {
     constexpr double kSoil_m3_s = 0.02;
     constexpr double kSlip_m_s = 10.0;
-    const double drag_n = throw_drag_n(kSoil_m3_s, kSlip_m_s);
-    EXPECT_DOUBLE_EQ(drag_n, kThrownShare * soil::kLooseDensity_kg_m3 * kSoil_m3_s * kSlip_m_s);
-    EXPECT_DOUBLE_EQ(throw_drag_n(2.0 * kSoil_m3_s, kSlip_m_s), 2.0 * drag_n);
-    EXPECT_DOUBLE_EQ(throw_drag_n(kSoil_m3_s, -2.0 * kSlip_m_s), 2.0 * drag_n);
-    EXPECT_EQ(throw_drag_n(0.0, kSlip_m_s), 0.0);
-    EXPECT_EQ(throw_drag_n(kSoil_m3_s, 0.0), 0.0);
+    const double force_n = throw_force_n(kSoil_m3_s, kSlip_m_s);
+    EXPECT_DOUBLE_EQ(force_n, kThrownShare * soil::kLooseDensity_kg_m3 * kSoil_m3_s * kSlip_m_s);
+    EXPECT_DOUBLE_EQ(throw_force_n(2.0 * kSoil_m3_s, kSlip_m_s), 2.0 * force_n);
+    EXPECT_DOUBLE_EQ(throw_force_n(kSoil_m3_s, -2.0 * kSlip_m_s), -2.0 * force_n);
+    EXPECT_EQ(throw_force_n(0.0, kSlip_m_s), 0.0);
+    EXPECT_EQ(throw_force_n(kSoil_m3_s, 0.0), 0.0);
 }
 
 // ---- Side grip

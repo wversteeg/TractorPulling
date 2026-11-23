@@ -743,7 +743,7 @@ track that suits the class's progression.
 
 ## The sled's breakaway
 
-The breakaway (`sled::Params::breakaway_share`) is a share of the sled's
-whole weight; the chain's upward pull at the hook unloads the sled's front
-a little, which a fuller model would take off. It drops to the rolling
-resistance in one step once the sled moves (stick-slip).
+The breakaway (`sled::Params::breakaway_ratio`) is a fixed ratio of the
+sled's drag moving; real static friction differs between the pan, the
+knives and the sunk wheels. It drops to the rolling resistance in one step
+once the sled moves (stick-slip).
