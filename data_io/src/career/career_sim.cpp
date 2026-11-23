@@ -161,11 +161,11 @@ std::optional<int> play_event(const SeasonDefinition& d, garage::Career& career,
                 event.advance(kSlice);
                 break;
             case field::LiveEvent::Turn::kPlayerPull: {
+                // The gear and hand throttle chosen before the event, as the
+                // rivals choose theirs: no trial on the sled of each pull.
                 const track::Params& track = event.venue().track;
-                const auto trial = field::best_gear_trial(player, event.sled(), track, lowest,
-                                                          highest, event.pull_rules());
-                player.driver.gear = trial ? trial->gear : fitting->trial.gear;
-                player.driver.throttle = trial ? trial->throttle : 1.0;
+                player.driver.gear = fitting->trial.gear;
+                player.driver.throttle = fitting->trial.throttle;
                 event.record_player(field::run_pull(player, event.sled(), track, event.pull_rules())
                                         .value_or(run::Result{}),
                                     player.driver.gear);

@@ -32,7 +32,7 @@
 # share this garage.
 
 [garage]
-start_money_eur = 1000
+start_money_eur = 9000
 
 [[garage.upgrades]]
 part = "engine_torque"

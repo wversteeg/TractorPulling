@@ -14,7 +14,7 @@
 //                          [--hitch M]
 //   tp_pull event <event.toml> [--seed N] [--hash]
 //   tp_pull season <season.toml> [--seed N]
-//   tp_pull career <career.toml> [--seed N]
+//   tp_pull career <career.toml> [--seed N] [--class NAME]
 //   tp_pull check <tractor.toml> <class.toml>
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
@@ -120,11 +120,11 @@
 #include <fstream>
 #include <functional>
 #include <iomanip>
-#include <sstream>
 #include <ios>
 #include <iostream>
 #include <optional>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -942,6 +942,8 @@ struct Options {
     std::vector<std::string_view> positional;
     std::optional<std::string_view> output_path;
     std::optional<std::uint64_t> seed;
+    /// career --class: only that class's levels, from a new career.
+    std::optional<std::string_view> class_name;
     std::optional<std::string_view> easy_path;
     std::optional<std::string_view> pro_path;
     bool stick_given = false;
@@ -1080,6 +1082,10 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
         options.seed = parse_number<std::uint64_t>(value);
         return options.seed ? Parsed::kOk : Parsed::kInvalid;
     }
+    if (arg == "--class") {
+        options.class_name = value;
+        return Parsed::kOk;
+    }
     options.stick_given = options.stick_given || arg == "--stick";
     options.steer_deg_given = options.steer_deg_given || arg == "--steer-deg";
     if (const Parsed tuning = parse_tuning_option(arg, value, options.pull);
@@ -1140,7 +1146,7 @@ int usage() {
                  "                              [--pressure BAR] [--hitch M]\n"
                  "       tp_pull event <event.toml> [--seed N] [--hash]\n"
                  "       tp_pull season <season.toml> [--seed N]\n"
-                 "       tp_pull career <career.toml> [--seed N]\n"
+                 "       tp_pull career <career.toml> [--seed N] [--class NAME]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
 }
@@ -1295,6 +1301,9 @@ int career_command(const Options& options) {
                  "money\n";
     for (std::size_t r = 0; r < career->rungs.size(); ++r) {
         const tp::data::CareerRung& rung = career->rungs[r];
+        if (options.class_name && rung.class_name != *options.class_name) {
+            continue;
+        }
         const auto season = load_or_report(tp::data::load_season(rung.season));
         if (!season) {
             return EXIT_FAILURE;

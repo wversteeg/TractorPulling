@@ -46,7 +46,7 @@
 # seasons/supersport_3600_*.toml) share this garage.
 
 [garage]
-start_money_eur = 1500
+start_money_eur = 24000
 
 [[garage.choices]]
 slot = "engine"
