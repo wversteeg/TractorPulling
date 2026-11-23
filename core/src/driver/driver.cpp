@@ -31,9 +31,7 @@ std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept {
     if (!std::isfinite(plan.launch_hold_share) || plan.launch_hold_share < 0.0 ||
         plan.launch_hold_share >= 1.0 || !std::isfinite(plan.launch_hold_max_s) ||
         plan.launch_hold_max_s < 0.0 || !std::isfinite(plan.launch_feather_share) ||
-        plan.launch_feather_share < 0.0 || plan.launch_feather_share >= 1.0 ||
-        !std::isfinite(plan.launch_boost_share) || plan.launch_boost_share < 0.0 ||
-        plan.launch_boost_share > 1.0) {
+        plan.launch_feather_share < 0.0 || plan.launch_feather_share >= 1.0) {
         return ParamError::kLaunchHoldOutOfRange;
     }
     return std::nullopt;
@@ -60,13 +58,6 @@ double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehic
         return 0.0;
     }
     const double hold_rad_s = plan.launch_hold_share * params.engine.rated_omega_rad_s;
-    state.boosted = state.boosted || (plan.launch_boost_share > 0.0 &&
-                                      tractor.engine.boost >= plan.launch_boost_share);
-    if (state.boosted) {
-        state.clutch_in = std::min(state.clutch_in + dt_s / plan.clutch_slip_in_s, 1.0);
-        state.launched = state.clutch_in >= 1.0;
-        return 1.0 - state.clutch_in;
-    }
     if (plan.launch_feather_share > 0.0 && state.held_s < plan.launch_hold_max_s) {
         // Up or back at a share of the full rate, by how far the revs are
         // from the hold: smooth about it.
@@ -115,9 +106,8 @@ vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::
     if (t_s < plan.select_gear_s) {
         return {.throttle = 0.0, .clutch_pedal = 1.0, .gear = driveline::kNeutral};
     }
-    vehicle::Input in{.throttle = eased_throttle(plan, tractor, params),
-                      .clutch_pedal = 1.0,
-                      .gear = plan.gear};
+    vehicle::Input in{
+        .throttle = eased_throttle(plan, tractor, params), .clutch_pedal = 1.0, .gear = plan.gear};
     if (t_s >= plan.launch_s) {
         in.clutch_pedal = plan.launch_hold_share > 0.0 && plan.clutch_slip_in_s > 0.0
                               ? held_clutch_pedal(plan, state, t_s, tractor, params)

@@ -160,13 +160,12 @@ the dry clay; `TrackSetup.*`).
 ### The push-down puts part of the sled on the pan
 
 Every class pulls the same sled (`data/sleds/pulling_sled.toml`), as in
-the Netherlands: 12.5 m long and 15 t empty, on eight wide tires (dual
-tandems), its weight box holding up to 11 t. Each class's sled file names
+the Netherlands: 12.5 m long and 12 t empty, on eight wide tires (dual
+tandems), its weight box holding up to 14 t. Each class's sled file names
 it as its base and sets the box's weight, where the push-down starts and
-how much of the sled it puts on the pan (the light class 1.8 t in the box
-with one knife, the push-down from 70 m taking the pan to 40 % of the
-sled; Sport 2.5 t 2.2 t, from 65 m to 45 %; Sport 4.5 t 9 t and
-Supersport 3.6 t 10 t, from 70 m to half). Its own rolling is most of what a tractor pulls at the start; the
+how much of the sled it puts on the pan (the light class 5.6 t in the box,
+Sport 2.5 t 6 t, Sport 4.5 t 14 t and Supersport 3.6 t 3 t, for about
+15 t in all). Its own rolling is most of what a tractor pulls at the start; the
 box starts behind the wheels (4 m on the light class's sled, at the
 frame's tail), which takes weight off the pan, so a new tractor on its
 farm drawbar and worn tires gets it going. The weight box rides forward

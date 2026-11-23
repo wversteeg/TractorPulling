@@ -215,6 +215,30 @@ TEST(Driver, AFeatheredLaunchAtTheHoldTimesOut) {
     EXPECT_TRUE(state.launched);
 }
 
+// A driver who plays the throttle against wheelspin eases it once the rear
+// tires slip more than the plan's ease point, to kSpinThrottle of the hand
+// throttle at full spin; below the ease point it stays as set.
+TEST(Driver, EasesTheThrottleAgainstWheelspin) {
+    const vehicle::Params params = vehicle::testing::reference_params();
+    Plan plan = kPlan;
+    plan.spin_ease_slip = 0.6;
+    const double radius_m = params.rear_tire.size.radius_m;
+    vehicle::State tractor;
+    tractor.engine.running = true;
+    const auto throttle_at = [&](double wheel_m_s, double ground_m_s) {
+        tractor.driveline.output_omega_rad_s = wheel_m_s / radius_m;
+        tractor.chassis.velocity_m_s = ground_m_s;
+        State state;
+        return input(plan, state, 5.0, tractor, params).throttle;
+    };
+    EXPECT_EQ(throttle_at(10.0, 8.0), 1.0) << "a fifth slip: as set";
+    EXPECT_DOUBLE_EQ(throttle_at(10.0, 0.0), kSpinThrottle) << "full spin";
+    EXPECT_DOUBLE_EQ(throttle_at(10.0, 2.0), 1.0 - (1.0 - kSpinThrottle) * 0.5)
+        << "half way from the ease point to full spin";
+    plan.spin_ease_slip = 1.0;
+    EXPECT_EQ(validate(plan, 8), ParamError::kThrottleOutOfRange);
+}
+
 // The driver pulls at the plan's hand throttle: full, or eased.
 TEST(Driver, PullsAtThePlansThrottle) {
     Plan plan = kPlan;

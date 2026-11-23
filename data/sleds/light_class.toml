@@ -4,7 +4,7 @@ base = "pulling_sled.toml"
 
 # The box starts just behind the wheels and the pan's back half is held up
 # off the track until the push-down starts: a new farm tractor on its farm
-# drawbar (0.40 m) and worn tires gets the 15 t sled going, on a wet start
+# drawbar (0.40 m) and worn tires gets the sled going, on a wet start
 # too.
 [sled.weight_box]
 mass_kg = 5600.0

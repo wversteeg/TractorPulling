@@ -168,11 +168,11 @@ const PAN_LIFT_M := 0.15
 const TRANSPORT_RATE_PER_S := 0.5
 # A weight in the box [kg]: a steel slab across the box, this thick
 # [m], stood in from the box's back with this gap between slabs [m]. The
-# box holds as many as fill its length: 11 t, the most it takes.
+# box holds as many as fill its length: 14 t, the most it takes.
 const BLOCK_KG := 500.0
-const SLAB_THICK_M := 0.075
-const SLAB_GAP_M := 0.005
-const BOX_SLABS := 22
+const SLAB_THICK_M := 0.06
+const SLAB_GAP_M := 0.004
+const BOX_SLABS := 28
 
 var _box := Node3D.new()
 # Where the rails end behind the wheels [m, negative: behind].

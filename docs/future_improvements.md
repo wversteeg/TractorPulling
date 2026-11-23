@@ -50,7 +50,8 @@ for the big features; they are repeated at the end for completeness.
   (one rate per tire on every track). The farm tire's grip past its peak
   falls with the track's fall-off and its own smear at speed; a steeper,
   tire-own fall-off (Gemini: about half the peak at 75 % slip) made every
-  farm-tire launch spin out without a driver who plays the throttle, which
+  farm-tire launch spin out without a driver who plays the throttle (only
+  the Supersport's scripted drivers do, `driver::Plan::spin_ease_slip`), which
   the scripted pullers do not.
 - **Tire deflection that follows the load.** Brixius' mobility number uses
   the tire's working deflection as a fixed size; a deflection that follows
@@ -329,12 +330,21 @@ for the big features; they are repeated at the end for completeness.
   the brakes as the player can (HOLD): they move off with little boost.
   A rival's brake hold, with its field retuned for it, would launch as
   real pullers do.
-- **Rivals keep one set of tires.** The Supersport 3.6 t rivals all pull
-  the 7 l engine on puller tires and the middle final drive; only the
-  player chooses (on a loose opener the tall drive gives the player an
-  edge the rivals' crews do not take). Real teams mostly own one set too, but a field with some
-  tractors on farm tires (the short final drive), or crews fitting what
-  suits the day's track, would show the choice among the rivals as well.
+- **Rivals keep one set of tires.** The Supersport 3.6 t rivals at promo
+  and top all pull the 7 l engine on puller tires and the middle final
+  drive, at belofte on farm tires and the short drive; only the player
+  chooses. Real teams mostly own one set too, but crews fitting what suits
+  the day's track would show the choice among the rivals as well.
+- **A low gear still pulls a little further.** Teams gear the Supersport
+  for wheel speed (85 to 100 km/h at the wheel), and the rivals pull in
+  5th and 6th on the middle drive to match; but in the simulation a lower
+  gear, which multiplies the engine's torque more, often pulls a few
+  metres further on a heavy sled, with the wheels at 55 to 60 km/h. A
+  puller tire that bites weakly turning slowly favours the tall gears but
+  slows the launch. The heavier classes still to come (the 4.5 t
+  Supersport at 1500 hp and more, Pro Stock at 2500 to 3000 hp, Super
+  Stock at 4000 hp and more) should show more plainly where the balance
+  of power, grip, gearing and the sled's mass lies.
 - **Pull distances run short of real ones.** The NTTO's pull-offs reach
   about 105 to 122 m (Supersport 4.5 t; the Supersport 3.6 t videos
   about 115 m), the game's about 10 to 20 m less in every class from
@@ -691,7 +701,7 @@ for the big features; they are repeated at the end for completeness.
 - Track changes: left and right differences, a lane that wears; pullers that
   keep the lane.
 
-## The 15 t sled
+## The sled
 
 - **The operator only makes the sled lighter.** The class's sled is set
   heavy enough for the field, and the test pulls only take steps off; a
@@ -700,7 +710,7 @@ for the big features; they are repeated at the end for completeness.
   who also adds a step after a full pull too easy would even those days
   out.
 - **The spots barely show on the heavy sled.** A hard spot bites the pan,
-  which carries a small share of the 15 t until the box comes forward,
+  which carries a small share of the sled until the box comes forward,
   and a weak spot costs grip the push-down then takes anyway: the crew's
   line gains tenths of a metre. A weak spot under one side now turns the
   heavier tractors a little (the coupled differential).

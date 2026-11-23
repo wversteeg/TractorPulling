@@ -229,6 +229,18 @@ TEST(EventLoader, TheLaunchHoldIsOptional) {
     EXPECT_EQ(plain.value().reference.driver.launch_hold_share, 0.0);
 }
 
+// The Supersport's drivers play the throttle against wheelspin; optional,
+// off by default.
+TEST(EventLoader, ReadsTheDriversSpinEase) {
+    const auto supersport =
+        load_event(std::filesystem::path{TP_DATA_DIR} / "events" / "supersport_3600_top.toml");
+    ASSERT_TRUE(supersport.ok()) << supersport.error().message;
+    EXPECT_GT(supersport.value().reference.driver.spin_ease_slip, 0.0);
+    const auto club = load_event(kEvent);
+    ASSERT_TRUE(club.ok()) << club.error().message;
+    EXPECT_EQ(club.value().reference.driver.spin_ease_slip, 0.0);
+}
+
 // The shipped club event looks like a real one: a couple of full pulls at
 // most, the pull-off for four, and a winner from it.
 TEST(ShippedEvent, PlaysOutLikeAClubEvent) {

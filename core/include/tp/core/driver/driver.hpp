@@ -58,11 +58,6 @@ struct Plan {
     /// kSpinThrottle of the hand throttle at full spin, so that a tire spun
     /// past its bite can catch again. 0 never eases; below 1.
     double spin_ease_slip = 0.0;
-    /// A held launch that ends on the turbo ("optoeren"): once the boost
-    /// reaches this share of full boost the driver stops holding the revs
-    /// and lets the clutch fully in at its rate, the tires spinning up and
-    /// the engine with them. 0: the hold ends only by launch_hold_max_s.
-    double launch_boost_share = 0.0;
 };
 
 /// The share of the hand throttle a driver who plays it against wheelspin
@@ -81,8 +76,6 @@ struct State {
     double last_t_s = 0.0;
     /// The held launch is over: the clutch has been fully in.
     bool launched = false;
-    /// The boost has reached Plan::launch_boost_share: the clutch comes in.
-    bool boosted = false;
 };
 
 enum class ParamError : std::uint8_t {

@@ -4,8 +4,7 @@
 # V-bars across its full width, each cutting a thin slice of fresh track
 # and throwing it out: grip builds slowly with slip, and it bites harder
 # the faster it spins, so it wants a tall final drive
-# (drivelines/supersport_3600_tall.toml on a loose track, _medium.toml on
-# a firm one). At full bite it grips about its own load, as real pulling
+# (drivelines/supersport_3600_medium.toml or _tall.toml). At full bite it grips about its own load, as real pulling
 # tires do: a 1300 hp engine then has power to spare and spins it at 70
 # km/h and more, the tread taking about 25 to 35 kN halfway down the track.
 # The limit is the fully built tire's; the garage sets it.

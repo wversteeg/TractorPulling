@@ -12,8 +12,8 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <limits>
 #include <optional>
@@ -137,8 +137,8 @@ GearRun gear_run(const data::SeasonDefinition& d, const data::Track& on, Tires t
     Venue venue = data::venue(e.sled, on);
     venue.sled = sled::heavier(venue.sled, heavier);
     const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
-    const auto model = pull::Model::create(
-        {.tractor = puller.tractor, .sled = venue.sled, .track = venue.track});
+    const auto model =
+        pull::Model::create({.tractor = puller.tractor, .sled = venue.sled, .track = venue.track});
     EXPECT_TRUE(model.has_value());
     if (!model) {
         return {};
@@ -252,6 +252,5 @@ TEST(TireChoice, TheBiggestTurboPullsFurthestAndMostOnTheSixLitre) {
 }  // namespace
 }  // namespace tp::field
 namespace tp::field {
-namespace {
-}  // namespace
+namespace {}  // namespace
 }  // namespace tp::field

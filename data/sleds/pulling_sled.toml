@@ -1,5 +1,5 @@
-# The transfer sled every class pulls: 12.5 m long, 15 t empty, its weight
-# box holding up to 11 t. Each class's file (light_class.toml,
+# The transfer sled every class pulls: 12.5 m long, 12 t empty, its weight
+# box holding up to 14 t. Each class's file (light_class.toml,
 # sport_2500.toml, sport_4500.toml) names this one as its base and sets the
 # class's weight in the box and where the push-down starts; the sled
 # operator adjusts those, the knives and the box on the day.
@@ -16,7 +16,7 @@
 # At rest, its wheels sunk in and its pan settled, the sled holds against
 # 9 % of its weight (static friction): a heavier weight box breaks away
 # harder. The chain holds the tractor a moment while the clutch slips and
-# the turbo spools (Supersport: about 22 kN with its box).
+# the turbo spools (Supersport: about 13 kN with its box).
 breakaway_share = 0.09
 frame_mass_kg = 12000.0
 frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
@@ -109,7 +109,8 @@ depth_m = 0.04
 width_m = 0.05
 
 # Soil the tractor's tires throw back piles up in front of the pan and has
-# to be pushed along; it spills off to the sides as the sled moves.
+# to be pushed along; the pan rides over most of it, so it spills off
+# within a few metres of the sled's travel.
 [sled.berm]
 collected_share = 0.15               # of what the rear tires throw back
 spill_distance_m = 6.0               # the berm spills its own size over this travel
