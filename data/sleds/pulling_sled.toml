@@ -18,7 +18,7 @@
 # harder. The chain holds the tractor a moment while the clutch slips and
 # the turbo spools (Supersport: about 22 kN with its box).
 breakaway_share = 0.09
-frame_mass_kg = 15000.0
+frame_mass_kg = 12000.0
 frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
 frame_yaw_inertia_kg_m2 = 195000.0   # about the frame's own centre of gravity; m L² / 12, L = 12.5 m
 pan_ahead_of_wheels_m = 5.5          # centre of the pan's contact, the pivot over it
@@ -73,7 +73,7 @@ depth_m = 1.0
 # travel by which it reaches its end: 75 to 100 m in 5 m steps, chosen per event
 # (a track may set it: track.weight_box.travel_distance_m).
 [sled.weight_box]
-max_mass_kg = 11000.0
+max_mass_kg = 14000.0
 start_ahead_of_wheels_m = -0.65
 end_ahead_of_wheels_m = 5.5
 travel_distance_m = 90.0             # at its stop while the push-down comes on

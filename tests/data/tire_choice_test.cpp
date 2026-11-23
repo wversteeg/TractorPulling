@@ -268,7 +268,7 @@ TEST(TireChoice, TheBiggestTurboPullsFurthestAndMostOnTheSixLitre) {
 }  // namespace tp::field
 namespace tp::field {
 namespace {
-TEST(TmpClutch, Print) {
+TEST(TmpClutch, DISABLED_Print) {
     for (const char* sf : {"club_season.toml", "sport_2500_promo.toml", "sport_2500_top.toml", "sport_4500_belofte.toml", "sport_4500_top.toml", "supersport_3600_belofte.toml", "supersport_3600_top.toml"}) {
         auto loaded = data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" / sf);
         if (!loaded.ok()) { std::printf("ERR %s %s\n", sf, loaded.error().message.c_str()); continue; }
@@ -299,7 +299,7 @@ TEST(TmpClutch, Print) {
 }  // namespace tp::field
 namespace tp::field {
 namespace {
-TEST(TmpLaunch, Print) {
+TEST(TmpLaunch, DISABLED_Print) {
     const data::SeasonDefinition d = supersport();
     const data::EventDefinition& e = d.event;
     const data::Track on = track("dry_hard_clay.toml");
@@ -326,7 +326,7 @@ TEST(TmpLaunch, Print) {
     }
 }
 
-TEST(TmpGears, Print) {
+TEST(TmpGears, DISABLED_Print) {
     const data::SeasonDefinition d = supersport();
     const data::EventDefinition& e = d.event;
     for (const char* f : {"dry_hard_clay.toml", "firm_loam.toml"}) {
@@ -359,7 +359,7 @@ TEST(TmpGears, Print) {
     }
 }
 
-TEST(TmpSpeeds, Print) {
+TEST(TmpSpeeds, DISABLED_Print) {
     const data::SeasonDefinition d = supersport();
     for (const char* f : {"watered_start.toml", "ideal_clay_sand.toml", "covered_heavy_clay.toml", "firm_loam.toml", "dry_hard_clay.toml"}) {
         const data::Track on = track(f);
