@@ -59,5 +59,5 @@ relaxation_length_m = 0.88         # about the tire's radius
 # Spinning on the spot, the lugs dig the tire a hole within a few metres
 # of slip, and it has to climb out of it (tp::tire::Digging).
 [tire.digging]
-rate = 0.005                      # m of depth per m of slip, standing
+rate = 0.005                       # m of depth per m of slip, standing
 escape_speed_m_s = 0.5             # moving faster than about this, it hardly digs

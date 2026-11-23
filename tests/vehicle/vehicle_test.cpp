@@ -403,6 +403,38 @@ TEST(Vehicle, SpinningOnTheSpotDigsTheTiresIn) {
     EXPECT_LT(rolling.state.rear_right_dig_m, kHardlyAHole_m);
 }
 
+// The hole holds the body back: from a hole 5 cm deep the tractor gets
+// less far in the same time than from level ground, and once it rolls it
+// climbs out.
+TEST(Vehicle, AHoleHoldsTheTractorBack) {
+    constexpr double kHole_m = 0.05;
+    Pull level;
+    level.run(3, 5000.0, false, 8.0);
+    Pull dug;
+    dug.state.rear_left_dig_m = kHole_m;
+    dug.state.rear_right_dig_m = kHole_m;
+    dug.run(3, 5000.0, false, 8.0);
+    ASSERT_GT(level.state.chassis.position_m, 1.0);
+    EXPECT_LT(dug.state.chassis.position_m, level.state.chassis.position_m - 0.1);
+    EXPECT_LT(dug.state.rear_left_dig_m, 0.1 * kHole_m) << "rolling, it climbs out";
+}
+
+// A tractor standing in its hole with no drive, nothing pulling it, is
+// held there: the hole never pushes it backwards.
+TEST(Vehicle, AHoleOnlyHoldsAStandingTractor) {
+    const Model model = reference_model();
+    State state = initial_state(model);
+    state.rear_left_dig_m = 0.1;
+    state.rear_right_dig_m = 0.1;
+    const Input idle{.throttle = 0.0, .clutch_pedal = 1.0, .gear = driveline::kNeutral};
+    for (int i = 0; i < 2000; ++i) {
+        (void)step(state, model, idle, kGround, {.pull_n = 0.0}, kDt_s);
+        EXPECT_GE(state.chassis.velocity_m_s, 0.0);
+    }
+    EXPECT_EQ(state.chassis.position_m, 0.0);
+    EXPECT_EQ(state.chassis.velocity_m_s, 0.0);
+}
+
 // In top gear the tires grip better than the engine can turn them: the
 // load stalls the engine.
 TEST(Vehicle, TooHeavyALoadStallsTheEngineInTopGear) {

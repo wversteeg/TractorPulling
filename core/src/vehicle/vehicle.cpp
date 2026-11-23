@@ -622,13 +622,13 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const double side_load_n = out.axle_loads.rear_n / kSides;
     const double rear_rolling_nm = direction * (left.rolling_resistance * side_load_n * radius_m +
                                                 right.rolling_resistance * side_load_n * radius_m);
-    // The steered front tires' side force has a component along the body
-    // that holds the tractor back.
     // A rear tire in the hole it dug has to climb out of it: that holds the
     // body back, not the wheel, which spins on in the hole.
     const double dig_drag_n =
         side_load_n * (tire::dig_resistance(tire_params.size, state.rear_left_dig_m) +
                        tire::dig_resistance(tire_params.size, state.rear_right_dig_m));
+    // The steered front tires' side force has a component along the body
+    // that holds the tractor back.
     const double front_drag_n =
         direction * (out.front_rolling_resistance * out.axle_loads.front_n + dig_drag_n +
                      params.chassis.wheelie_bar.rolling_resistance_coefficient *
