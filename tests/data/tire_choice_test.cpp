@@ -103,6 +103,8 @@ constexpr Tires kPullerOnTall{.tires = kPullerTires, .final_drive = kTall};
 constexpr Tires kFarmOnShort{.tires = kFarmTires, .final_drive = kShort};
 // A clear win: more than the spot on the track decides [m].
 constexpr double kClearly_m = 2.0;
+// Less than a clear win, more than none [m].
+constexpr double kSomewhat_m = 1.0;
 
 // Fully built, each tire on the final drive the crew pairs it with (the
 // one it suits): the puller tires on the tall drive pull clearly further on
@@ -119,8 +121,6 @@ TEST(TireChoice, PullerTiresOnTheTallDriveAreTheUpgrade) {
             << firm;
     }
     const data::Track wet = track("watered_start.toml");
-    // Less than a clear win, more than none [m].
-    constexpr double kSomewhat_m = 1.0;
     EXPECT_GT(pulled_m(d, wet, kPullerOnTall), pulled_m(d, wet, kFarmOnShort) + kSomewhat_m);
 }
 
