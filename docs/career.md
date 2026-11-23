@@ -586,7 +586,8 @@ tractor:
   small stages, since each 75 rpm is worth a metre or more there.
 - Supersport 3.6 t has all three. A new tractor is at the back of
   belofte and about 70 % of its garage wins it; half the garage is mid
-  promo and three quarters wins it; at top 60 % is at the back and a
+  promo and three quarters is in the top five at its damp opener and
+  wins the season; at top 60 % is at the back and a
   nearly or fully built tractor wins. Its garage costs about € 151,200
   for both engines, both tires, the three final drives and the turbo, so
   its prize money is a fifth (belofte) to two fifths (top) higher than
