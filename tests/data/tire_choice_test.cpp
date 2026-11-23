@@ -299,6 +299,39 @@ TEST(TmpClutch, Print) {
 }  // namespace tp::field
 namespace tp::field {
 namespace {
+TEST(TmpGears, Print) {
+    const data::SeasonDefinition d = supersport();
+    const data::EventDefinition& e = d.event;
+    for (const char* f : {"dry_hard_clay.toml"}) {
+        const data::Track on = track(f);
+        for (const Tires t : {Tires{.tires = kPullerTires, .final_drive = kMiddle}}) {
+            for (int gear = 3; gear <= 6; ++gear) {
+                Puller puller = built_puller(d, t, kSixLitre, Turbo::kBiggest);
+                puller.driver.gear = gear;
+                Venue venue = data::venue(e.sled, on);
+                venue.sled = sled::adjusted(venue.sled, {.box_mass_kg = 3000.0, .knives = 6});
+                const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
+                const auto model = pull::Model::create({.tractor = puller.tractor, .sled = venue.sled, .track = venue.track});
+                run::State state = run::start(*model);
+                driver::State drv;
+                const double r = puller.tractor.rear_tire.size.radius_m;
+                std::printf("GEAR %-18s drive %d g%d:", f, t.final_drive, gear);
+                double next = 0.5;
+                while (!state.result) {
+                    const double ts = static_cast<double>(state.steps) * 0.001;
+                    const pull::Output o = run::step(state, *model, rules, driver::input(puller.driver, drv, ts, state.pull.tractor, model->tractor().params()), 0.001);
+                    const double x = state.pull.sled.position_m - model->sled_start_m();
+                    if (x >= next) {
+                        std::printf(" @%.0f t%.1f %.0f/%.0f %.0fkN", next, ts - puller.driver.launch_s, state.pull.tractor.chassis.velocity_m_s * 3.6, state.pull.tractor.driveline.output_omega_rad_s * r * 3.6, o.sled.resistance_n / 1000.0);
+                        next += next < 1.0 ? 4.5 : 20.0;
+                    }
+                }
+                std::printf(" -> %.1f m in %.1f s\n", state.result->distance_m, state.result->time_s - puller.driver.launch_s);
+            }
+        }
+    }
+}
+
 TEST(TmpSpeeds, Print) {
     const data::SeasonDefinition d = supersport();
     for (const char* f : {"watered_start.toml", "ideal_clay_sand.toml", "covered_heavy_clay.toml", "firm_loam.toml", "dry_hard_clay.toml"}) {

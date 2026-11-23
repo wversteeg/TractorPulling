@@ -24,8 +24,8 @@ downshift_share = 0.0                  # no powershift in Supersport: one gear t
 # slipping clutch at high revs and the turbo builds its boost before the
 # clutch is fully in; up to 8 s in all. Without it a tall pulling gear
 # stalls the engine (the big turbo gives little at first).
-launch_hold_share = 0.8
-launch_hold_max_s = 8.0
+launch_hold_share = 0.9
+launch_hold_max_s = 12.0
 launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 spin_ease_slip = 0.6                # the throttle played against wheelspin past this slip
 
