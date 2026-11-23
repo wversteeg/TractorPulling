@@ -37,7 +37,7 @@ std::filesystem::path data(const std::string& file) {
 
 // The Supersport on `tire_file` and the final drive `driveline_file` that
 // suits it, in the easy layout, in 3rd at full throttle
-// on the clay-sand with its sled. Once it is past `from_m_s`, the right
+// on the clay-sand with a light sled. Once it is past `from_m_s`, the right
 // brake is pressed fully for kBrake_s with the nose up; returns the
 // heading kAfter_s after it is let go [rad, positive turned left]. With
 // `limit` false the differential's coupling holds as if it had no limit.
@@ -53,7 +53,11 @@ double heading_after_a_brake(const std::string& tire_file, const std::string& dr
     if (!limit) {
         tractor.differential.coupling_limit_nm = 0.0;
     }
-    const sled::Params sled = loaded(load_sled(data("sleds/supersport_3600.toml")));
+    // Lighter than the class's, as the sled operator sets it for a field on
+    // farm tires: the brake is what counts here, not the distance.
+    constexpr int kLighter = -4;
+    const sled::Params sled =
+        sled::heavier(loaded(load_sled(data("sleds/supersport_3600.toml"))), kLighter);
     const Track track = loaded(load_track(data("tracks/ideal_clay_sand.toml")));
     const controls::EasyParams easy = loaded(load_easy_controls(data("controls/easy.toml")));
     const session::Setup setup = run_setup(tractor, sled, track, 0);
@@ -93,7 +97,7 @@ double heading_after_a_brake(const std::string& tire_file, const std::string& dr
 // less.
 TEST(BrakeSteeringRuns, TheSupersportTurnsToTheBrakedSide) {
     for (const auto& [tire, drive] :
-         {std::pair{"supersport_puller_rear.toml", "supersport_3600_tall.toml"},
+         {std::pair{"supersport_puller_rear.toml", "supersport_3600_medium.toml"},
           std::pair{"supersport_farm_rear.toml", "supersport_3600_short.toml"}}) {
         for (const double kmh : {12.0, 18.0}) {
             const double heading_deg =
@@ -103,7 +107,7 @@ TEST(BrakeSteeringRuns, TheSupersportTurnsToTheBrakedSide) {
         }
     }
     const double limited_deg = units::rad_to_deg(heading_after_a_brake(
-        "supersport_puller_rear.toml", "supersport_3600_tall.toml", 18.0 / kKmhPerM_s));
+        "supersport_puller_rear.toml", "supersport_3600_medium.toml", 18.0 / kKmhPerM_s));
     const double held_deg = units::rad_to_deg(heading_after_a_brake(
         "supersport_puller_rear.toml", "supersport_3600_tall.toml", 18.0 / kKmhPerM_s, false));
     EXPECT_GT(held_deg, limited_deg + 0.5) << "without the limit the brake turns it less";

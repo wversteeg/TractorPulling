@@ -8,7 +8,7 @@ base = "pulling_sled.toml"
 # base's: the box at the front by 85 m, so only a nearly built tractor
 # wins at the top level.
 [sled.weight_box]
-mass_kg = 4800.0
+mass_kg = 6000.0
 start_ahead_of_wheels_m = -0.65
 travel_distance_m = 85.0
 

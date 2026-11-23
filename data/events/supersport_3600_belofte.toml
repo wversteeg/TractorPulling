@@ -5,7 +5,7 @@
 
 [event]
 class = "../classes/ntto_supersport_3600.toml"
-tractor = "../tractors/supersport_3600.toml"   # the reference the field varies
+tractor = "../tractors/supersport_3600_farm.toml"   # the reference the field varies
 sled = "../sleds/supersport_3600.toml"
 track = "../tracks/ideal_clay_sand.toml"
 pullers = 15
@@ -40,12 +40,12 @@ launch_boost_share = 0.0           # optoeren: the clutch comes fully in once th
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.66, 0.80]
+torque_scale = [0.80, 0.92]
 mass_kg = [3320.0, 3520.0]
-traction_limit = [1.060, 1.100]
+traction_limit = [0.771, 0.800]
 hitch_height_m = [0.41, 0.46]
 rated_rpm = [2230.0, 2455.0]
-gears = [2, 5]                         # 2nd for a weak tractor on a soft track
+gears = [3, 6]                         # on farm tires and the short final drive
 clutch_slip_in_s = [2.0, 4.0]
 track_reading = [0.4, 0.8]
 downshift_share = [0.0, 0.0]           # no powershift
@@ -97,4 +97,4 @@ guest_names = ["Evert", "Hilde", "Martijn", "Truus", "Sjaak", "Wendy"]
 # or finish last.
 [event.guests]
 torque_scale = [0.42, 0.72]
-traction_limit = [1.006, 1.057]
+traction_limit = [0.732, 0.769]

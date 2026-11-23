@@ -26,8 +26,8 @@ slip_rate = 8.0                    # cut lugs: grip builds with more slip than a
 # Spun fast, the tall lugs dig in and smear: grip falls towards
 # fast_spin_grip of itself over a tread slip speed of about spin_speed_m_s
 # (tp::tire::TractionCurve), along with the side grip it shares.
-fast_spin_grip = 0.5
-spin_speed_m_s = 3
+fast_spin_grip = 0.65
+spin_speed_m_s = 4
 # Pressed harder than its share of the tractor at rest (the chain pulling
 # down at the hitch, the weights back), the tire grips less per unit of
 # load (tp::tire::TractionCurve::load_sensitivity).
