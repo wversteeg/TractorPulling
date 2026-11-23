@@ -17,15 +17,11 @@ package "tp::controls" {
     +gear : int
     +steering : double, -1 right .. 1 left
     +brake_left, brake_right : double
-    +hold_brakes : bool, the start's brake hold
-    +hold_until_boost : double, let go at this boost (0: while asked)
   }
   class EasyInput <<struct>> {
     +throttle : double
     +gear : int
     +steering : double, -1 right .. 1 left
-    +hold_brakes : bool, the clutch biting against the hold
-    +hold_until_boost : double
   }
   class ClutchAssist <<struct>> {
     +engage_time_s : double
@@ -33,7 +29,6 @@ package "tp::controls" {
     +guard_speed_share : double
     +guard_band_share : double
     +min_throttle : double
-    +hold_guard_speed_share : double, on the brake hold
   }
   class EasyParams <<struct>> {
     +steer_share : double
@@ -49,7 +44,6 @@ package "tp::controls" {
   class AssistState <<struct>> {
     +engagement : double, share of capacity
     +steering : double, -1 right .. 1 left
-    +hold_released : bool, the hold let go at its boost
   }
   enum ParamError
   class "controls functions" as ControlsFns <<free functions>> {

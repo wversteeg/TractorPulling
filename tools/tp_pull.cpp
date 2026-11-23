@@ -41,10 +41,6 @@
 // --feather F (with --launch-hold) works the held clutch smoothly within F
 // of the rated speed about the hold, as the Supersport's drivers do.
 //
-// --hold-boost B (with --easy) starts on the brake hold ("optoeren"): both
-// brakes held, the clutch assist letting the clutch bite, until the turbo's
-// boost reaches B of full boost; then the brakes come off.
-//
 // --start-y puts the sled (and the tractor in line with it) M metres to the
 // left of the lane's middle at the start (negative to the right), as far as
 // the lane allows (run::max_start_offset_m).
@@ -246,10 +242,6 @@ struct PullOptions {
     /// --feather: with --launch-hold, the held clutch worked smoothly within
     /// this share of the rated speed about the hold (driver::Plan).
     std::optional<double> launch_feather_share;
-    /// --hold-boost (with --easy): the brake hold for the start
-    /// ("optoeren"), both brakes held until the turbo's boost reaches this
-    /// share of full boost.
-    std::optional<double> hold_boost;
     /// run: where the sled starts across the lane, to the left of the
     /// middle [m].
     double start_y_m = 0.0;
@@ -474,15 +466,6 @@ tp::session::Setup driven_setup(const tp::vehicle::Params& tractor,
     return setup;
 }
 
-// --hold-boost: says so when the boost never reached the target, so the
-// brakes held to the end and the tractor never pulled.
-void warn_if_still_held(const tp::session::Session& session, const PullOptions& options) {
-    if (options.hold_boost && tp::session::Inspector::last_input(session).hold_brakes) {
-        std::cerr << "--hold-boost: the boost never reached " << *options.hold_boost
-                  << " of full boost; held to the end\n";
-    }
-}
-
 // How a run ended, and the session's state hash at its end.
 struct RunOutcome {
     tp::run::Result result;
@@ -541,9 +524,6 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
         if (downshifted) {
             controls.gear = gear;
         }
-        // --hold-boost: on the brake hold from the start; the assist lets it go.
-        controls.hold_brakes = options.hold_boost.has_value();
-        controls.hold_until_boost = options.hold_boost.value_or(0.0);
         session->advance(controls, tp::kSimulationStepNs);
         const tp::pull::Output& out = tp::session::Inspector::last_output(*session);
         const tp::pull::State& after = tp::session::Inspector::run_state(*session).pull;
@@ -594,7 +574,6 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                 << pull.tractor.chassis.velocity_m_s * kMetersPerSecondToKmh << '\n';
         }
     }
-    warn_if_still_held(*session, options);
     const std::optional<tp::run::Result>& result = session->result();
     if (!result) {
         return std::nullopt;
@@ -1042,20 +1021,6 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
     return Parsed::kUnknown;
 }
 
-// --hold-boost: the brake hold for the start, until this share of full
-// boost.
-Parsed parse_hold_option(std::string_view arg, std::string_view value, PullOptions& pull) {
-    if (arg != "--hold-boost") {
-        return Parsed::kUnknown;
-    }
-    const auto share = parse_number<double>(value);
-    if (!share || *share <= 0.0 || *share > 1.0) {
-        return Parsed::kInvalid;
-    }
-    pull.hold_boost = share;
-    return Parsed::kOk;
-}
-
 // An option that takes a value: `-o`, `--seed`, `--easy`, `--pro`, or a
 // driving or tuning one.
 Parsed parse_valued_option(std::string_view arg, std::string_view value, Options& options) {
@@ -1080,9 +1045,6 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
     if (const Parsed tuning = parse_tuning_option(arg, value, options.pull);
         tuning != Parsed::kUnknown) {
         return tuning;
-    }
-    if (const Parsed hold = parse_hold_option(arg, value, options.pull); hold != Parsed::kUnknown) {
-        return hold;
     }
     return parse_driving_option(arg, value, options.pull);
 }
@@ -1128,7 +1090,6 @@ int usage() {
                  "                   [--easy <easy.toml> | --pro <pro.toml>] [--stick S]\n"
                  "                   [--hash] [--ballast B] [--pressure BAR] [--hitch M]\n"
                  "                   [--downshift S] [--launch-hold S] [--start-y M]\n"
-                 "                   [--hold-boost B]\n"
                  "                   [-o <out.csv>]\n"
                  "       tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...\n"
                  "                              [--gear N] [--dump] [--ballast B]\n"
@@ -1203,10 +1164,6 @@ int run_command(const Options& options) {
     }
     if (options.easy_path && options.pro_path) {
         std::cerr << "--easy and --pro are two layouts: pick one\n";
-        return EXIT_FAILURE;
-    }
-    if (options.pull.hold_boost && !options.easy_path) {
-        std::cerr << "--hold-boost is the easy layout's brake hold: it needs --easy\n";
         return EXIT_FAILURE;
     }
     if (options.pull.launch_hold_share && (options.pull.dump || options.easy_path)) {
