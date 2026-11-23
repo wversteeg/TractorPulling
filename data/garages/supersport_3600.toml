@@ -149,12 +149,12 @@ name = "Farm tire grip"
 choice = "Rear tires"
 alternative = "Modified farm tires"
 levels = [
-    { value = 1.27, cost_eur = 0, label = "Worn farm tires" },
-    { value = 1.30, cost_eur = 1100, label = "Farm tires, good tread" },
-    { value = 1.33, cost_eur = 1400, label = "New 710/70R42 tires" },
-    { value = 1.35, cost_eur = 1700, label = "Regrooved" },
-    { value = 1.38, cost_eur = 2000, label = "Regrooved, lugs sharpened" },
-    { value = 1.40, cost_eur = 2300, label = "Hand regrooved by a specialist" },
+    { value = 0.546, cost_eur = 0, label = "Worn farm tires" },
+    { value = 0.558, cost_eur = 1100, label = "Farm tires, good tread" },
+    { value = 0.570, cost_eur = 1400, label = "New 710/70R42 tires" },
+    { value = 0.576, cost_eur = 1700, label = "Regrooved" },
+    { value = 0.594, cost_eur = 2000, label = "Regrooved, lugs sharpened" },
+    { value = 0.600, cost_eur = 2300, label = "Hand regrooved by a specialist" },
 ]
 
 [[garage.upgrades]]
@@ -163,11 +163,11 @@ name = "Puller tire grip"
 choice = "Rear tires"
 alternative = "Puller tires"
 levels = [
-    { value = 1.36, cost_eur = 0, label = "Used puller tires" },
-    { value = 1.40, cost_eur = 1300, label = "Puller tires, good bars" },
-    { value = 1.44, cost_eur = 1700, label = "New 30.5L-32 puller tires" },
-    { value = 1.47, cost_eur = 2100, label = "Bars sharpened" },
-    { value = 1.50, cost_eur = 2500, label = "Bars hand cut by a specialist" },
+    { value = 0.682, cost_eur = 0, label = "Used puller tires" },
+    { value = 0.702, cost_eur = 1300, label = "Puller tires, good bars" },
+    { value = 0.723, cost_eur = 1700, label = "New 30.5L-32 puller tires" },
+    { value = 0.736, cost_eur = 2100, label = "Bars sharpened" },
+    { value = 0.750, cost_eur = 2500, label = "Bars hand cut by a specialist" },
 ]
 
 [[garage.upgrades]]

@@ -1,20 +1,22 @@
 # The Supersport 3.6 t tractor's driveline with the middle final drive, for
-# puller tires on a tractor not yet built for the tall one
-# (garages/supersport_3600.toml, the final drive choice; the tall one is
-# supersport_3600_tall.toml): the puller tires spin up on it without the
-# power the tall drive asks. The
+# puller tires on a firm or heavy track, where they grip hard
+# (garages/supersport_3600.toml, the final drive choice; the tall one,
+# supersport_3600_tall.toml, pulls further on a loose or wet track). The
+# rivals' tractors pull on it (tractors/supersport_3600.toml). The
 # gearbox is the tractor's own case (ETPC FS 2026 1.3.3: the OEM
 # transmission and final drive housings stay; their gears may be
 # machined), set up as pullers do: 1st and 2nd to manoeuvre, 3rd to 6th
 # close pulling gears about 13 % apart, the driver picking one for the
 # day's track and pulling it through without a shift (no powershift from
 # Supersport on). The final drive puts that pulling range where the rear
-# tires want it: a puller tire bites harder the faster it spins, so it
-# wants the wheels turning fast, about 41 to 62 km/h in the pulling gears
-# at 3200 rpm on the 0.88 m tires (35 to 52 km/h at 2700 rpm).
+# tires want it: a puller tire bites harder the faster it spins, but on a
+# firm track it grips hard, so the engine's power holds it slower: about
+# 54 to 81 km/h in the pulling gears at 3200 rpm on the 0.88 m tires (46
+# to 69 km/h at 2700 rpm), and in a pull through the middle of a firm
+# track at 50 to 65 km/h.
 
 [driveline]
-final_drive_ratio = 19.0       # bevel gear and planetaries together
+final_drive_ratio = 14.5       # bevel gear and planetaries together
 efficiency = 0.90              # all meshes, applied in the direction power flows
 input_inertia_kg_m2 = 0.08     # clutch disc, input shaft, countershaft
 output_inertia_kg_m2 = 3.5     # final drive and axle; wheels belong to the tires

@@ -581,11 +581,18 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     out.rear_left.slip_ratio = left.traction.slip_ratio;
     out.rear_right.slip_ratio = right.traction.slip_ratio;
     out.rear_rolling_resistance = (left.rolling_resistance + right.rolling_resistance) / kSides;
-    out.thrown_soil_m3_s =
-        tires_per_side * (tire::thrown_soil_m3_s(tire_params.size, left_footing, load_per_tire_n,
-                                                 left.traction.slip_ratio, left.wheel_m_s) +
-                          tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
-                                                 right.traction.slip_ratio, right.wheel_m_s));
+    const double left_soil_m3_s = tire::thrown_soil_m3_s(
+        tire_params.size, left_footing, load_per_tire_n, left.traction.slip_ratio, left.wheel_m_s);
+    const double right_soil_m3_s =
+        tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
+                               right.traction.slip_ratio, right.wheel_m_s);
+    out.thrown_soil_m3_s = tires_per_side * (left_soil_m3_s + right_soil_m3_s);
+    // Throwing that soil holds each side's wheels back, as rolling
+    // resistance does (tire::throw_drag_n).
+    const double throw_drag_n =
+        tires_per_side *
+        (tire::throw_drag_n(left_soil_m3_s, left.wheel_m_s - left.ground_m_s) +
+         tire::throw_drag_n(right_soil_m3_s, right.wheel_m_s - right.ground_m_s));
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
             ? tire::towed_rolling_resistance(params.front_tire,
@@ -620,8 +627,9 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const engine::Prediction engine_prediction =
         engine::predict(state.engine, params.engine, input.throttle, dt_s);
     const double side_load_n = out.axle_loads.rear_n / kSides;
-    const double rear_rolling_nm = direction * (left.rolling_resistance * side_load_n * radius_m +
-                                                right.rolling_resistance * side_load_n * radius_m);
+    const double rear_rolling_nm =
+        direction * (left.rolling_resistance * side_load_n * radius_m +
+                     right.rolling_resistance * side_load_n * radius_m + throw_drag_n * radius_m);
     // A rear tire in the hole it dug has to climb out of it: that holds the
     // body back, not the wheel, which spins on in the hole.
     const double dig_drag_n =

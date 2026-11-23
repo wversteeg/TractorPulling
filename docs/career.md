@@ -357,21 +357,27 @@ side by side, each fitted between events (K-6), each best somewhere:
   tall lugs regrooved: grip at little slip, smearing when spun fast) or
   **puller tires** (30.5L-32, € 5,000: many low bars that bite harder the
   faster they spin, and a higher limit). Each has its own grip upgrade.
-  Fully built, the puller tires on the tall drive pull clearly further
-  than the farm tires on the short one on a firm track and somewhat
-  further on the watered start (`TireChoice.PullerTiresOnTheTallDriveAreTheUpgrade`): the farm
-  tires are the cheap ones to start the class on.
+  Fully built, the puller tires on the final drive that suits the track
+  pull further than the farm tires on the short one on every Supersport
+  track (`TireChoice.FarmTiresLoseToPullerTiresOnEveryTrack`): the farm
+  tires are the cheap ones to start the class on. Both grip about as real
+  tires do (the puller tire about its load at full bite, the farm tire a
+  little less), so the engine has power to spare and spins the puller
+  tires fast: through the middle of a pull at 70 km/h and more on a loose
+  track, at 50 to 65 km/h on a firm one where they grip harder, the farm
+  tires at 25 to 40 km/h (`TireChoice.PullerTiresSpinFastThroughTheMiddleOfThePull`).
   A tire of another size moves the axle and the tractor's centre of
   gravity with it (`vehicle::with_rear_tire`).
 - **The final drive**: the stock **short** one
   (`drivelines/supersport_3600_short.toml`, 30:1), the **middle** one
-  (`_medium.toml`, 19:1, € 3,000) or the **tall** one (`_tall.toml`,
-  15:1, € 5,000). Each says which tires it suits (`suits` in the garage
+  (`_medium.toml`, 14.5:1, € 3,000) or the **tall** one (`_tall.toml`,
+  10.5:1, € 5,000). Each says which tires it suits (`suits` in the garage
   file): the short one keeps the farm tire turning slowly, gripping
-  without smearing; the middle one lets the puller tire spin up to its
-  bite on a tractor not yet built for the tall one; the tall one spins it
-  at 60 to 80 km/h in the pulling gears, as real Supersports do, where
-  only a powerful engine holds it. The crew chief says which final drive
+  without smearing; with the puller tires the track decides: the tall one
+  keeps them spinning on a loose or wet track and pulls further there,
+  the middle one pulls clearly further on a firm or heavy track, where
+  they grip harder
+  (`TireChoice.TheTallDriveSuitsLooseTracksAndTheMiddleOneFirmOnes`). The crew chief says which final drive
   the fitted tires want, and to buy it first if it is not owned yet
   (`garage::advice`, on the garage screen); the player still chooses.
 - **The turbo** (an upgrade for either engine, `boost_bar`): the stock
@@ -410,15 +416,17 @@ side by side, each fitted between events (K-6), each best somewhere:
   to 8 s): in a tall gear without that the engine stalls.
 - **The nose** (videos of good pulls): up once on the launch, touching
   down softly now and then, light through the middle and down at the
-  end. With the weights forward and the hitch in its top hole the
-  tractor does that, and pulls furthest; the weights back keep it on the
+  end. With the weights three-quarters forward and the hitch in its top
+  hole the tractor does that, and pulls furthest; the weights back keep it on the
   wheelie bar all the way, and the hitch in its lowest hole holds the
   front down hard: neither gives the rear tires their most grip, and
   both pull clearly shorter
   (`WheelieRuns.ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown`).
 
-The sled's box is 10,000 kg. The rivals keep one build each: the 7 l
-engine on puller tires and the tall final drive.
+The sled's box is 6,000 kg. The rivals keep one build each: the 7 l
+engine on puller tires and the middle final drive. The class is not
+pulled on the loose sandy clay: at realistic grip neither tire gets its
+sled going there, so its seasons pull a second clay-sand instead.
 
 ### 6. Supersport 4.5 t
 

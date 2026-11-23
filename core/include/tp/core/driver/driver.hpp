@@ -53,7 +53,16 @@ struct Plan {
     /// The hand throttle the driver pulls at, in (0, 1]: full, or eased
     /// where a lower governed speed spins the tires less (a soft track).
     double throttle = 1.0;
+    /// A driver who plays the throttle against wheelspin: with the rear
+    /// tires slipping more than this ratio, they ease it, down to
+    /// kSpinThrottle of the hand throttle at full spin, so that a tire spun
+    /// past its bite can catch again. 0 never eases; below 1.
+    double spin_ease_slip = 0.0;
 };
+
+/// The share of the hand throttle a driver who plays it against wheelspin
+/// (Plan::spin_ease_slip) keeps at full spin.
+inline constexpr double kSpinThrottle = 0.4;
 
 /// What the driver remembers during a pull; a new pull starts from {}.
 struct State {
@@ -76,7 +85,8 @@ enum class ParamError : std::uint8_t {
     kTimesOutOfOrder,
     kDownshiftShareOutOfRange,
     kLaunchHoldOutOfRange,
-    /// The hand throttle not in (0, 1].
+    /// The hand throttle not in (0, 1], or the spin ease slip not in
+    /// [0, 1).
     kThrottleOutOfRange,
 };
 

@@ -19,7 +19,9 @@ std::optional<ParamError> validate(const Plan& plan, int gear_count) noexcept {
         plan.clutch_slip_in_s < 0.0) {
         return ParamError::kTimesOutOfOrder;
     }
-    if (!std::isfinite(plan.throttle) || plan.throttle <= 0.0 || plan.throttle > 1.0) {
+    if (!std::isfinite(plan.throttle) || plan.throttle <= 0.0 || plan.throttle > 1.0 ||
+        !std::isfinite(plan.spin_ease_slip) || plan.spin_ease_slip < 0.0 ||
+        plan.spin_ease_slip >= 1.0) {
         return ParamError::kThrottleOutOfRange;
     }
     if (!std::isfinite(plan.downshift_share) || plan.downshift_share < 0.0 ||
@@ -62,9 +64,9 @@ double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehic
         const double band_rad_s = plan.launch_feather_share * params.engine.rated_omega_rad_s;
         const double rate =
             std::clamp((tractor.engine.omega_rad_s - hold_rad_s) / band_rad_s, -1.0, 1.0);
-        // Held whenever it is not coming up at the full rate: a launch that
-        // settles at the hold still runs out of hold time.
-        state.held_s += (1.0 - std::max(rate, 0.0)) * dt_s;
+        // Every moment of the feathered launch counts towards its longest:
+        // a clutch creeping up near the hold still comes fully in in time.
+        state.held_s += dt_s;
         state.clutch_in =
             std::clamp(state.clutch_in + (rate * dt_s / plan.clutch_slip_in_s), 0.0, 1.0);
         state.launched = state.clutch_in >= 1.0;
@@ -82,6 +84,21 @@ double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehic
     return 1.0 - state.clutch_in;
 }
 
+// The hand throttle eased against wheelspin (Plan::spin_ease_slip): in
+// proportion to the slip past the ease point, to kSpinThrottle of it at
+// full spin.
+double eased_throttle(const Plan& plan, const vehicle::State& tractor,
+                      const vehicle::Params& params) noexcept {
+    if (plan.spin_ease_slip <= 0.0) {
+        return plan.throttle;
+    }
+    const double wheel_m_s = tractor.driveline.output_omega_rad_s * params.rear_tire.size.radius_m;
+    const double slip =
+        std::abs(tire::slip_ratio(params.rear_tire, wheel_m_s, tractor.chassis.velocity_m_s));
+    const double past = std::max(slip - plan.spin_ease_slip, 0.0) / (1.0 - plan.spin_ease_slip);
+    return plan.throttle * (1.0 - (1.0 - kSpinThrottle) * past);
+}
+
 }  // namespace
 
 vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::State& tractor,
@@ -89,7 +106,9 @@ vehicle::Input input(const Plan& plan, State& state, double t_s, const vehicle::
     if (t_s < plan.select_gear_s) {
         return {.throttle = 0.0, .clutch_pedal = 1.0, .gear = driveline::kNeutral};
     }
-    vehicle::Input in{.throttle = plan.throttle, .clutch_pedal = 1.0, .gear = plan.gear};
+    vehicle::Input in{.throttle = eased_throttle(plan, tractor, params),
+                      .clutch_pedal = 1.0,
+                      .gear = plan.gear};
     if (t_s >= plan.launch_s) {
         in.clutch_pedal = plan.launch_hold_share > 0.0 && plan.clutch_slip_in_s > 0.0
                               ? held_clutch_pedal(plan, state, t_s, tractor, params)

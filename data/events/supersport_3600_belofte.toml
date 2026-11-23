@@ -27,6 +27,7 @@ downshift_share = 0.0                  # no powershift in Supersport: one gear t
 launch_hold_share = 0.8
 launch_hold_max_s = 8.0
 launch_feather_share = 0.05       # the clutch worked smoothly about the hold
+spin_ease_slip = 0.6                # the throttle played against wheelspin past this slip
 
 # The field: Supersport 3.6 t tractors from barely built to a little over half
 # the class's garage (garages/supersport_3600.toml), driven by pullers new to
@@ -38,9 +39,9 @@ launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.58, 0.72]
+torque_scale = [0.66, 0.80]
 mass_kg = [3320.0, 3520.0]
-traction_limit = [1.39, 1.44]
+traction_limit = [1.060, 1.100]
 hitch_height_m = [0.41, 0.46]
 rated_rpm = [2230.0, 2455.0]
 gears = [2, 5]                         # 2nd for a weak tractor on a soft track
@@ -95,4 +96,4 @@ guest_names = ["Evert", "Hilde", "Martijn", "Truus", "Sjaak", "Wendy"]
 # or finish last.
 [event.guests]
 torque_scale = [0.42, 0.72]
-traction_limit = [1.372, 1.441]
+traction_limit = [1.006, 1.057]

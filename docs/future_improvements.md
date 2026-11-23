@@ -52,12 +52,6 @@ for the big features; they are repeated at the end for completeness.
   tire-own fall-off (Gemini: about half the peak at 75 % slip) made every
   farm-tire launch spin out without a driver who plays the throttle, which
   the scripted pullers do not.
-- **Wheel speeds of the Supersport puller tires.** Real top tractors spin
-  their puller tires at about 70 km/h on loose tracks and up to 100 km/h on
-  firm ones; here they turn at about 45 to 60 km/h: the engine's power over
-  the sled's pull holds them there (about 900 kW at the wheels against
-  50 kN and more). Faster wheels would need a sled that pulls less through
-  the middle of the track, or more power.
 - **Tire deflection that follows the load.** Brixius' mobility number uses
   the tire's working deflection as a fixed size; a deflection that follows
   the load (and tire pressure as a tuning setting) would make light and
@@ -336,8 +330,9 @@ for the big features; they are repeated at the end for completeness.
   A rival's brake hold, with its field retuned for it, would launch as
   real pullers do.
 - **Rivals keep one set of tires.** The Supersport 3.6 t rivals all pull
-  the 7 l engine on puller tires and the tall final drive; only the player
-  chooses. Real teams mostly own one set too, but a field with some
+  the 7 l engine on puller tires and the middle final drive; only the
+  player chooses (on a loose opener the tall drive gives the player an
+  edge the rivals' crews do not take). Real teams mostly own one set too, but a field with some
   tractors on farm tires (the short final drive), or crews fitting what
   suits the day's track, would show the choice among the rivals as well.
 - **Pull distances run short of real ones.** The NTTO's pull-offs reach

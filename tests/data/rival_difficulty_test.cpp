@@ -327,13 +327,15 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
 // The Supersport 3.6 t class's three levels, its own tractor and garage,
 // the player fitting the engine, tires and final drive that pull furthest
 // on the season's first track (once they own the alternatives, from half
-// the garage; on the watered start that is the farm tires on the short
-// final drive, which beat the rivals' puller tires there by a few metres):
-// a new tractor is at the back of belofte, half the garage in the front
-// half and 70 % wins it; at promo half the garage is in the middle and
-// three quarters wins; at top 60 % is at the back, three quarters in the
-// front half, and a nearly or fully built tractor wins. A weak tractor may
-// pull in 2nd at belofte (drivelines/supersport_3600_*.toml).
+// the garage; on the watered start that is the puller tires on the tall
+// final drive, while the rivals' crews keep their middle one: an edge on
+// this loose opener, "Rivals keep one set of tires" in
+// docs/future_improvements.md): a new tractor is at the back of
+// belofte, half the garage in the front half and 70 % wins it; at promo
+// half the garage may already win the opener and three quarters wins; at
+// top 60 % is at the back, three quarters in the front two thirds, and a
+// nearly or fully built tractor wins. A weak tractor may pull in 2nd at
+// belofte (drivelines/supersport_3600_*.toml).
 constexpr Gears kSupersportGears{.lowest = 3, .highest = 6};
 
 TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercentWinsIt) {
@@ -344,11 +346,12 @@ TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercent
                  Gears{.lowest = 2, .highest = 6});
 }
 
-// At promo the season opens on the watered start, where grip decides more
-// than the garage: three quarters is in the top five there.
+// At promo the season opens on the watered start, where grip and the
+// final drive decide more than the garage: three quarters is in the top
+// five there.
 TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAtTheOpener) {
     expect_level("supersport_3600_promo.toml",
-                 {{.share = 0.5, .places = {.best = 3, .worst = 12}},
+                 {{.share = 0.5, .places = {.best = 1, .worst = 12}},
                   {.share = 0.75, .places = {.best = 1, .worst = 5}}},
                  kSupersportGears);
 }
@@ -356,7 +359,7 @@ TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAt
 TEST(RivalDifficulty, OnlyANearlyFullyBuiltSupersportTractorWinsAtTop) {
     expect_level("supersport_3600_top.toml",
                  {{.share = 0.6, .places = {.best = 9, .worst = 15}},
-                  {.share = 0.75, .places = {.best = 1, .worst = 8}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 10}},
                   {.share = 0.9, .places = {.best = 1, .worst = 2}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSupersportGears);

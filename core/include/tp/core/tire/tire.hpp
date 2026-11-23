@@ -304,6 +304,20 @@ struct Footing {
                                       double wheel_surface_speed_m_s,
                                       const soil::Surface& surface) noexcept;
 
+/// The share of the soil a spinning tire loosens (thrown_soil_m3_s) that
+/// its tread speeds up to its slip speed and throws: the rest crumbles in
+/// the rut. A calibration of the soil-throwing cost (throw_drag_n).
+inline constexpr double kThrownShare = 0.1;
+
+/// What throwing its soil costs a driven tire, a force at its tread [N]:
+/// the soil it throws, `thrown_soil_m3_s` of loose soil, gains the tread's
+/// slip speed `slip_speed_m_s` relative to the ground, so the tread pushes
+/// it with mass flow times that speed. It grows with the soil a tire
+/// loosens (more on soft ground, where it sinks in) and with how fast it
+/// spins: on a soft track spinning costs the engine much more than on a
+/// firm one.
+[[nodiscard]] double throw_drag_n(double thrown_soil_m3_s, double slip_speed_m_s) noexcept;
+
 /// Motion resistance of a towed (unpowered) tire per unit of load: 1/Bn
 /// plus the tire's own losses, 0.04.
 [[nodiscard]] double towed_rolling_resistance(const Size& size, double load_n,
