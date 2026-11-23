@@ -698,5 +698,23 @@ TEST(SledPlane, RejectsNonsense) {
     EXPECT_EQ(validate(params), ParamError::kWheelCornering);
 }
 
+// At rest the sled holds against at least its breakaway share of its
+// weight, more than it drags rolling; a heavier box breaks away harder.
+TEST(Sled, BreaksAwayHarderThanItRolls) {
+    Params params = reference_params();
+    params.breakaway_share = 0.3;
+    const double rolling_n =
+        loads(params, State{.velocity_m_s = 1.0}, {}, reference_ground()).resistance_n;
+    const double rest_n = loads(params, State{}, {}, reference_ground()).resistance_n;
+    EXPECT_GT(rest_n, rolling_n);
+    EXPECT_NEAR(rest_n, 0.3 * weight_n(params), 1e-6);
+    Params heavier = params;
+    heavier.box_mass_kg += 2000.0;
+    EXPECT_GT(loads(heavier, State{}, {}, reference_ground()).resistance_n, rest_n);
+    params.breakaway_share = 0.0;
+    EXPECT_DOUBLE_EQ(loads(params, State{}, {}, reference_ground()).resistance_n, rolling_n)
+        << "without it, no more than rolling";
+}
+
 }  // namespace
 }  // namespace tp::sled

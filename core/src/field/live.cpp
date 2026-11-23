@@ -128,6 +128,7 @@ void LiveEvent::start_next() noexcept {
     if (choosing_) {
         Puller trying = field_.pullers[static_cast<std::size_t>(trial_puller_)];
         trying.driver.gear = trial_gear_;
+        trying.driver.throttle = kTrialThrottles.at(trial_throttle_);
         start_job(trying, venue_.sled, field::trial_pull_rules(rules_, venue_, rules_.full_pull_m));
         return;
     }
@@ -190,17 +191,24 @@ std::int64_t LiveEvent::step_job(Job& job, std::int64_t max_steps) noexcept {
 
 // As best_gear: on a tie the higher gear.
 void LiveEvent::finish_trial(double reached_m) noexcept {
-    if (trial_gear_ == variation_.lowest_gear) {
+    const double throttle = kTrialThrottles.at(trial_throttle_);
+    if (trial_gear_ == variation_.lowest_gear && throttle == kTrialThrottles.back()) {
         lowest_m_ = reached_m;
     }
     if (reached_m >= best_m_) {
         best_m_ = reached_m;
         best_gear_ = trial_gear_;
+        best_throttle_ = throttle;
     }
+    if (++trial_throttle_ < kTrialThrottles.size()) {
+        return;
+    }
+    trial_throttle_ = 0;
     ++trial_gear_;
     if (trial_gear_ > variation_.highest_gear) {
-        choose(gear_for_the_day({.gear = best_gear_, .distance_m = best_m_},
-                                {.gear = variation_.lowest_gear, .distance_m = lowest_m_}));
+        choose(gear_for_the_day(
+            {.gear = best_gear_, .distance_m = best_m_, .throttle = best_throttle_},
+            {.gear = variation_.lowest_gear, .distance_m = lowest_m_}));
     }
 }
 
@@ -214,11 +222,13 @@ void LiveEvent::choose(const GearTrial& day) noexcept {
     const int guess = guess_gear(field_.pullers[at], day.gear, variation_.lowest_gear,
                                  variation_.highest_gear, guesses_);
     field_.pullers[at].driver.gear = guess;
+    field_.pullers[at].driver.throttle = day.throttle;
     gears_[at] = guess;
     ++trial_puller_;
     trial_gear_ = variation_.lowest_gear;
     best_m_ = -1.0;
     best_gear_ = 0;
+    best_throttle_ = 1.0;
     lowest_m_ = 0.0;
     if (trial_puller_ >= field_.count) {
         choosing_ = false;

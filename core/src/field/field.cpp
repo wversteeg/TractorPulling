@@ -98,6 +98,10 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
         static_cast<int>(random.below(static_cast<std::uint64_t>(load_downshift_choices)));
     const double rated_omega_rad_s =
         random.uniform(variation.rated_omega_rad_s.low, variation.rated_omega_rad_s.high);
+    const bool boosted = variation.boost_pressure_pa.high > 0.0;
+    const double boost_pressure_pa =
+        boosted ? random.uniform(variation.boost_pressure_pa.low, variation.boost_pressure_pa.high)
+                : 0.0;
 
     // The governor within the class's engine speed, then an engine within
     // its PTO power at that speed, and a tractor within its weight. The
@@ -105,6 +109,13 @@ std::optional<Puller> draw(const Puller& reference, const Variation& variation,
     vehicle::Params governed = base;
     if (variation.rated_omega_rad_s.high > 0.0) {
         const auto engine = with_governor(base.engine, rated_omega_rad_s, class_rules);
+        if (!engine) {
+            return std::nullopt;
+        }
+        governed.engine = *engine;
+    }
+    if (boosted) {
+        const auto engine = engine::with_boost_pressure(governed.engine, boost_pressure_pa);
         if (!engine) {
             return std::nullopt;
         }
@@ -151,10 +162,10 @@ std::array<Puller, sizeof...(I)> copies(const Puller& puller,
 
 std::optional<ParamError> validate(const Puller& reference, const Variation& variation,
                                    const rules::ClassRules& class_rules, int count) noexcept {
-    const std::array ranges = {variation.torque_scale,   variation.mass_kg,
-                               variation.traction_limit, variation.clutch_slip_in_s,
-                               variation.track_reading,  variation.downshift_share,
-                               variation.hitch_height_m, variation.rated_omega_rad_s};
+    const std::array ranges = {
+        variation.torque_scale,     variation.mass_kg,           variation.traction_limit,
+        variation.clutch_slip_in_s, variation.track_reading,     variation.downshift_share,
+        variation.hitch_height_m,   variation.rated_omega_rad_s, variation.boost_pressure_pa};
     if (!std::ranges::all_of(
             ranges, [](const Range& r) { return std::isfinite(r.low) && std::isfinite(r.high); })) {
         return ParamError::kNotFinite;
@@ -166,7 +177,9 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
         variation.hitch_height_m.low < 0.0 ||
         (variation.hitch_height_m.high > 0.0 && variation.hitch_height_m.low <= 0.0) ||
         variation.rated_omega_rad_s.low < 0.0 ||
-        (variation.rated_omega_rad_s.high > 0.0 && variation.rated_omega_rad_s.low <= 0.0)) {
+        (variation.rated_omega_rad_s.high > 0.0 && variation.rated_omega_rad_s.low <= 0.0) ||
+        variation.boost_pressure_pa.low < 0.0 ||
+        (variation.boost_pressure_pa.high > 0.0 && variation.boost_pressure_pa.low <= 0.0)) {
         return ParamError::kRangeOutOfOrder;
     }
     const auto gear_count = static_cast<int>(reference.tractor.driveline.gear_count);
@@ -192,6 +205,11 @@ std::optional<ParamError> validate(const Puller& reference, const Variation& var
     if (rated.high > 0.0 && (!with_governor(reference.tractor.engine, rated.low, class_rules) ||
                              !with_governor(reference.tractor.engine, rated.high, class_rules))) {
         return ParamError::kGovernorOutOfRange;
+    }
+    const Range& boost = variation.boost_pressure_pa;
+    if (boost.high > 0.0 && (!engine::with_boost_pressure(reference.tractor.engine, boost.low) ||
+                             !engine::with_boost_pressure(reference.tractor.engine, boost.high))) {
+        return ParamError::kBoostOutOfRange;
     }
     return std::nullopt;
 }
@@ -262,19 +280,23 @@ std::optional<GearTrial> best_gear_trial(const Puller& puller, const sled::Param
     GearTrial lowest_trial{.gear = lowest};
     double best_m = -1.0;
     for (int gear = lowest; gear <= highest; ++gear) {
-        Puller trying = puller;
-        trying.driver.gear = gear;
-        const std::optional<run::Result> result = run_pull(trying, sled, track, rules);
-        if (!result) {
-            return std::nullopt;
-        }
-        if (gear == lowest) {
-            lowest_trial.distance_m = result->distance_m;
-        }
-        // On a tie the higher gear: it gets there quicker.
-        if (result->distance_m >= best_m) {
-            best_m = result->distance_m;
-            best = GearTrial{.gear = gear, .distance_m = best_m};
+        for (const double throttle : kTrialThrottles) {
+            Puller trying = puller;
+            trying.driver.gear = gear;
+            trying.driver.throttle = throttle;
+            const std::optional<run::Result> result = run_pull(trying, sled, track, rules);
+            if (!result) {
+                return std::nullopt;
+            }
+            if (gear == lowest && throttle == kTrialThrottles.back()) {
+                lowest_trial.distance_m = result->distance_m;
+            }
+            // On a tie the higher gear and the fuller throttle: it gets
+            // there quicker.
+            if (result->distance_m >= best_m) {
+                best_m = result->distance_m;
+                best = GearTrial{.gear = gear, .distance_m = best_m, .throttle = throttle};
+            }
         }
     }
     if (best) {

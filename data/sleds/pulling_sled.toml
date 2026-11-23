@@ -13,6 +13,11 @@
 # 4 m behind them.
 
 [sled]
+# At rest, its wheels sunk in and its pan settled, the sled holds against
+# 9 % of its weight (static friction): a heavier weight box breaks away
+# harder. The chain holds the tractor a moment while the clutch slips and
+# the turbo spools (Supersport: about 22 kN with its box).
+breakaway_share = 0.09
 frame_mass_kg = 15000.0
 frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
 frame_yaw_inertia_kg_m2 = 195000.0   # about the frame's own centre of gravity; m L² / 12, L = 12.5 m

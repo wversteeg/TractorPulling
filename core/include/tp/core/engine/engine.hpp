@@ -205,6 +205,12 @@ struct Prediction {
 /// data and the garage's charts, not for the simulation step.
 [[nodiscard]] double full_throttle_net_torque_nm(const Params& params, double omega_rad_s) noexcept;
 
+/// As full_throttle_net_torque_nm(), with the boost the turbo holds at
+/// `omega_rad_s` once settled instead of full boost [N·m]: an engine
+/// dynamometer's curve, where a big turbo makes little torque low down.
+/// For the garage's charts, not for the simulation step.
+[[nodiscard]] double settled_net_torque_nm(const Params& params, double omega_rad_s) noexcept;
+
 /// The speed below which the governor gives full fuel at `throttle`
 /// (clamped to [0, 1], as in predict()): its target less the droop.
 /// Under more load the engine lugs down its torque curve [rad/s].

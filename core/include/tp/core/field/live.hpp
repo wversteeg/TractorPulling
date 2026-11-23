@@ -175,6 +175,9 @@ private:
     bool choosing_ = true;
     int trial_puller_ = 0;
     int trial_gear_ = 0;
+    /// The trial's hand throttle (kTrialThrottles), and the best one's.
+    std::size_t trial_throttle_ = 0;
+    double best_throttle_ = 1.0;
     int best_gear_ = 0;
     int player_best_gear_ = 0;
     double best_m_ = -1.0;

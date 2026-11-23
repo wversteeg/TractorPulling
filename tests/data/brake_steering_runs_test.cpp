@@ -33,7 +33,7 @@ std::filesystem::path data(const std::string& file) {
     return std::filesystem::path{TP_DATA_DIR} / file;
 }
 
-// The Supersport on `tire_file` in the easy layout, in 6th at full throttle
+// The Supersport on `tire_file` in the easy layout, in 3rd at full throttle
 // on the clay-sand with its sled. Once it is past `from_m_s`, the right
 // brake is pressed fully for kBrake_s with the nose up; returns the
 // heading kAfter_s after it is let go [rad, positive turned left]. With
@@ -62,7 +62,7 @@ double heading_after_a_brake(const std::string& tire_file, double from_m_s, bool
     double braked_at_s = -1.0;
     for (int i = 0; !state.result; ++i) {
         const double t_s = i * kDt_s;
-        const controls::EasyInput in{.throttle = 1.0, .gear = 6};
+        const controls::EasyInput in{.throttle = 1.0, .gear = 3};
         vehicle::Input input =
             controls::easy(in, easy, assist, setup.tractor, state.pull.tractor, kDt_s);
         if (braked_at_s < 0.0 && state.pull.tractor.chassis.velocity_m_s >= from_m_s) {

@@ -60,6 +60,7 @@ app/godot/   Godot 4.7 project: GDScript scenes, input and UI.
 ### Data-driven design
 
 - Tractor, engine, tires, sled, tracks and class rules are TOML files in `data/`. Progression and upgrades only change parameters; the core does not know about "levels".
+- Physics is shared, never special-cased: a change to the sled, a track, a tire, the driver or any other model applies to every class, track and tractor that uses it. No per-class or per-track hacks; a class differs only through its own data. After such a change, rebalance every affected class and re-pin the hashes.
 - Validate data on load with clear error messages. Reject nonsense (negative mass, non-monotonic curves).
 - Physical validation rules live in `core/` (e.g. `engine::validate`) so every front end shares them; `data_io/` parses TOML (toml++), converts units and turns validation errors into messages naming the file and field.
 
@@ -149,12 +150,14 @@ cmake --preset release && cmake --build --preset release
 # --downshift S shifts a gear down under load (the powershift step) once the
 # engine falls below S of its rated speed, as the scripted pullers do;
 # --launch-hold S holds the clutch back while the engine is below S of its
-# rated speed, as they launch (a tall gear needs it on the 15 t sled);
+# rated speed, as they launch (a tall gear needs it on the 15 t sled), and
+# --feather F works that held clutch smoothly within F of the rated speed;
 # --start-y M puts the sled M metres left of the lane's middle (negative
 # right), as the team may before a pull
 ./build/release/tools/tp_pull run data/tractors/farm_stock_light.toml \
     data/sleds/light_class.toml data/tracks/ideal_clay_sand.toml [--gear 5] [--dump] \
-    [--steer-deg 1] [--downshift 0.9] [--launch-hold 0.8] [--start-y -2] [--hash] -o run.csv
+    [--steer-deg 1] [--downshift 0.9] [--launch-hold 0.8] [--feather 0.05] [--start-y -2] \
+    [--hash] -o run.csv
 
 # The same run with the easy control layout: the clutch assist works the
 # clutch; --stick holds the steering control (-1 right to 1 left). Or with

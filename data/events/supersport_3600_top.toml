@@ -29,6 +29,7 @@ downshift_share = 0.0                  # no powershift in Supersport: one gear t
 # stalls the engine (the big turbo gives little at first).
 launch_hold_share = 0.8
 launch_hold_max_s = 8.0
+launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 
 # The field: well-built Supersport 3.6 t tractors, from most of the class's
 # garage (garages/supersport_3600.toml) to nearly all of it, driven by pullers
@@ -40,11 +41,12 @@ launch_hold_max_s = 8.0
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.96, 1.0]
+torque_scale = [0.90, 0.96]
 mass_kg = [3560.0, 3598.0]
-traction_limit = [1.48, 1.50]
+traction_limit = [1.44, 1.48]
 hitch_height_m = [0.48, 0.5]
 rated_rpm = [2600.0, 2650.0]           # from a governor turned up part way to a pulling one
+boost_bar = [3.0, 4.5]                 # the top tractors' bigger turbos (engines/supersport_3600_7l.toml)
 gears = [4, 6]
 clutch_slip_in_s = [2.0, 4.0]
 track_reading = [0.85, 1.0]

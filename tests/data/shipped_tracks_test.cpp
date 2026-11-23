@@ -110,8 +110,10 @@ double sled_drag_n(const std::string& track_file, double metre) {
     }
     const soil::Surface surface = ground->surface_at(metre);
     constexpr double kChainPull_n = 20000.0;
-    return sled::loads(sled.value(), {.distance_m = metre}, {.forward_n = kChainPull_n},
-                       {.pan = surface, .wheels = surface})
+    // Rolling: at rest the breakaway holds it the same on every track.
+    constexpr double kRolling_m_s = 2.0;
+    return sled::loads(sled.value(), {.velocity_m_s = kRolling_m_s, .distance_m = metre},
+                       {.forward_n = kChainPull_n}, {.pan = surface, .wheels = surface})
         .resistance_n;
 }
 

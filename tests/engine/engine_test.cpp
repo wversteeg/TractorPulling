@@ -159,6 +159,20 @@ TEST(EngineBoost, MoreBoostMoreTopTorqueLaterAndSlower) {
                 1.15 * 1.15 * p.full_load_torque_nm.evaluate(omega_rad_s), 1e-9);
 }
 
+// On the dyno, a bigger turbo makes more torque at the top and less low
+// down, where it has not spooled yet.
+TEST(EngineBoost, TheDynoShowsABigTurboWeakLowDown) {
+    const Params p = turbo_engine();
+    const Params big = with_boost_pressure(p, units::bar_to_pa(6.0)).value_or(p);
+    const double low_rad_s = p.boost_onset_omega_rad_s + rpm_to_rad_s(100.0);
+    EXPECT_LT(settled_net_torque_nm(big, low_rad_s), settled_net_torque_nm(p, low_rad_s));
+    EXPECT_GT(settled_net_torque_nm(big, p.rated_omega_rad_s),
+              settled_net_torque_nm(p, p.rated_omega_rad_s));
+    // Fully spooled, it is the full-boost curve.
+    EXPECT_DOUBLE_EQ(settled_net_torque_nm(p, p.rated_omega_rad_s),
+                     full_throttle_net_torque_nm(p, p.rated_omega_rad_s));
+}
+
 TEST(EngineBoost, RefusesWhatItCannotBe) {
     Params p = turbo_engine();
     EXPECT_FALSE(with_boost_pressure(p, std::nan("")).has_value());

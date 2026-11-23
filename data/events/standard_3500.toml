@@ -26,6 +26,7 @@ downshift_share = 0.9
 # worst on a wet start.
 launch_hold_share = 0.8
 launch_hold_max_s = 8.0
+launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 
 # The field: tractors from barely improved to nearly all of the class's
 # garage (garages/standard_3500.toml), a few with a powershift. A new

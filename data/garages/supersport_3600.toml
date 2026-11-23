@@ -19,8 +19,9 @@
 #   little slip and smear spun fast; better on a soft, wet track) or puller
 #   tires (many low bars that bite harder the faster they spin; better on
 #   a firm track). Each tire has its own grip stages.
-# - Final drive: the short one the farm tires want, or the tall one for
-#   puller tires, which must spin fast to bite (drivelines/
+# - Final drive: the short one the farm tires want, the middle one for
+#   puller tires, which must spin fast to bite, or the tall one that spins
+#   them faster still on a powerful tractor (drivelines/
 #   supersport_3600_*.toml). Each final drive says which tires it suits
 #   (`suits`), and the crew chief says so when it does not.
 # No powershift: Supersport pulls in one gear.
@@ -29,9 +30,9 @@
 #   built curve on its stock turbo's 3 bar (about 1000 hp either way):
 #   from a stock farm engine through the pump, injectors, the intercooler,
 #   water injection, the head and cam.
-# - boost_bar: the turbo, for either engine: 3 bar as it comes, up to 6 bar.
+# - boost_bar: the turbo, for either engine: 3 bar as it comes, up to 7 bar.
 #   Each bar more gives the 6.06 l more top power than the 7.0 l (about
-#   1300 hp against 1190 hp at 6 bar: engines/supersport_3600_*.toml), and
+#   1320 hp against 1200 hp at 7 bar: engines/supersport_3600_*.toml), and
 #   boosts later and slower. The dearest part of the class: about three
 #   seasons at the top to buy it all.
 # - rated_rpm: the governor, full fuel up to it and cut off at the
@@ -68,7 +69,8 @@ slot = "driveline"
 name = "Final drive"
 alternatives = [
     { file = "../drivelines/supersport_3600_short.toml", cost_eur = 0, label = "Short final drive", suits = { "Rear tires" = "Modified farm tires" } },
-    { file = "../drivelines/supersport_3600_tall.toml", cost_eur = 3000, label = "Tall final drive", suits = { "Rear tires" = "Puller tires" } },
+    { file = "../drivelines/supersport_3600_medium.toml", cost_eur = 3000, label = "Middle final drive", suits = { "Rear tires" = "Puller tires" } },
+    { file = "../drivelines/supersport_3600_tall.toml", cost_eur = 5000, label = "Tall final drive", suits = { "Rear tires" = "Puller tires" } },
 ]
 
 [[garage.upgrades]]
@@ -111,9 +113,10 @@ part = "boost_bar"
 name = "Turbo"
 levels = [
     { value = 3.0, cost_eur = 0, label = "Stock turbo, 3 bar" },
-    { value = 4.0, cost_eur = 6000, label = "Bigger turbo, 4 bar" },
-    { value = 5.0, cost_eur = 11000, label = "Pulling turbo, 5 bar" },
-    { value = 6.0, cost_eur = 18000, label = "Big pulling turbo, 6 bar" },
+    { value = 4.0, cost_eur = 5000, label = "Bigger turbo, 4 bar" },
+    { value = 5.0, cost_eur = 9000, label = "Pulling turbo, 5 bar" },
+    { value = 6.0, cost_eur = 14000, label = "Big pulling turbo, 6 bar" },
+    { value = 7.0, cost_eur = 20000, label = "Top turbo, 7 bar" },
 ]
 
 [[garage.upgrades]]

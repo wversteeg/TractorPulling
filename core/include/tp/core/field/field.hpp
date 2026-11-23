@@ -62,6 +62,11 @@ struct Variation {
     /// limit: a rated speed there is refused, not clamped. {0, 0} keeps the
     /// reference's.
     Range rated_omega_rad_s;
+    /// The turbo's boost pressure at full boost [Pa] above the atmosphere
+    /// (engine::with_boost_pressure): a bigger turbo than the reference's.
+    /// {0, 0} keeps the reference's; drawn only when set, so a field
+    /// without it draws as before.
+    Range boost_pressure_pa;
 };
 
 /// How one pull differs from the next for the same puller: the spot on the
@@ -91,6 +96,9 @@ enum class ParamError : std::uint8_t {
     /// below the cut-off's stop (held to the class's unloaded engine
     /// speed), or a cut-off past its torque curve.
     kGovernorOutOfRange,
+    /// A boost pressure the reference engine cannot take
+    /// (engine::with_boost_pressure).
+    kBoostOutOfRange,
 };
 
 /// The first `count` pullers are the field; the rest are unused copies of
@@ -127,13 +135,21 @@ struct Field {
 struct GearTrial {
     int gear = 0;
     double distance_m = 0.0;
+    /// The hand throttle it went furthest at (driver::Plan::throttle).
+    double throttle = 1.0;
 };
+
+/// The hand throttles a driver tries each gear at: eased, where a lower
+/// governed speed spins the tires less on a soft track, and full. On a tie
+/// the full one.
+inline constexpr std::array<double, 2> kTrialThrottles = {0.85, 1.0};
 
 /// A gear trial that takes the sled no further than this has not got it
 /// going [m]: on a heavy, wet track the start is all the gears show.
 inline constexpr double kGetsTheSledGoing_m = 2.0;
 
-/// The gear among `lowest` to `highest` that takes `puller` furthest on this
+/// The gear among `lowest` to `highest`, each at the kTrialThrottles, that
+/// takes `puller` furthest on this
 /// sled and track: what a driver who reads the track right picks. When no
 /// gear gets the sled going (kGetsTheSledGoing_m), the lowest: it pulls
 /// hardest, where a tie would otherwise go to the gear that merely jolts the

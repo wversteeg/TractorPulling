@@ -7,11 +7,12 @@
 # day's track and pulling it through without a shift (no powershift from
 # Supersport on). The final drive puts that pulling range where the rear
 # tires want it: a puller tire bites harder the faster it spins, so it
-# wants the wheels turning fast at the governor, about 29 to 43 km/h in
-# the pulling gears at 2700 rpm on the 0.88 m tires.
+# wants the wheels turning fast, about 52 to 79 km/h in the pulling gears
+# at 3200 rpm on the 0.88 m tires (44 to 66 km/h at 2700 rpm), as real
+# Supersports spin them: only a powerful engine holds them there.
 
 [driveline]
-final_drive_ratio = 23.0       # bevel gear and planetaries together
+final_drive_ratio = 15.0       # bevel gear and planetaries together
 efficiency = 0.90              # all meshes, applied in the direction power flows
 input_inertia_kg_m2 = 0.08     # clutch disc, input shaft, countershaft
 output_inertia_kg_m2 = 3.5     # final drive and axle; wheels belong to the tires

@@ -90,6 +90,7 @@ std::optional<PlayedEvent> play_event(const event::Rules& rules, const Venue& tr
         played.event.expect(i, best->distance_m);
         puller.driver.gear =
             guess_gear(puller, best->gear, variation.lowest_gear, variation.highest_gear, guesses);
+        puller.driver.throttle = best->throttle;
         played.gears[static_cast<std::size_t>(i)] = puller.driver.gear;
     }
 

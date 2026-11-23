@@ -335,10 +335,10 @@ In the game (`data/classes/ntto_supersport_3600.toml`,
 own governor cuts at 2700), no PTO power limit. The class comes after
 Sport 4.5 t in the career (Supersport 3.4 t is not in the game yet), at
 all three levels. Fully built on the stock 3 bar turbo, both engines
-give about **1000 hp**; on the garage's biggest, 6 bar, the 6.06 l gives
-about **1300 hp**, as the top tractors make, and the 7.0 l about 1190 hp.
-The rivals keep the stock turbo for now (their field has no boost
-dimension yet). The
+give about **1000 hp**; on the garage's biggest, 7 bar, the 6.06 l gives
+about **1320 hp**, as the top tractors make, and the 7.0 l about 1200 hp.
+The rivals run bigger turbos too at promo (3 to 3.5 bar) and top (3 to
+4.5 bar; `boost_bar` in the event's field). The
 NTTO's top tractors pull about 105 to 115 m with much wheelspin, the front
 low (videos of 2026 pull-offs; "the distance to beat 114.89 m").
 
@@ -357,40 +357,45 @@ side by side, each fitted between events (K-6), each best somewhere:
   tall lugs regrooved: grip at little slip, smearing when spun fast) or
   **puller tires** (30.5L-32, € 5,000: many low bars that bite harder the
   faster they spin, and a higher limit). Each has its own grip upgrade.
-  Fully built, each on the final drive the crew pairs it with, the
-  puller tires pull clearly further on a firm track (the firm loam, the
-  clay-sand) and the farm tires on the watered start, slick at the
-  launch, where their lugs grip at little slip
-  (`TireChoice.PullerTiresWinOnAFirmTrackAndFarmTiresOnAWetStart`). The
-  tires alone are another matter: there the puller tires on the short
-  final drive go further still, so the crew's pairing is a rule of thumb,
-  and the puller tires are the upgrade; the farm tires may win, not must.
+  Fully built, the puller tires on the tall drive pull clearly further
+  than the farm tires on the short one on a firm track and somewhat
+  further on the watered start (`TireChoice.PullerTiresOnTheTallDriveAreTheUpgrade`): the farm
+  tires are the cheap ones to start the class on.
   A tire of another size moves the axle and the tractor's centre of
   gravity with it (`vehicle::with_rear_tire`).
 - **The final drive**: the stock **short** one
-  (`drivelines/supersport_3600_short.toml`, 30:1) or the **tall** one
-  (`_tall.toml`, 23:1, € 3,000). Each says which tires it suits
-  (`suits` in the garage file): the short one keeps the farm tire
-  turning slowly, gripping without smearing; the tall one lets the
-  puller tire spin up to its bite. The crew chief says which final drive
+  (`drivelines/supersport_3600_short.toml`, 30:1), the **middle** one
+  (`_medium.toml`, 19:1, € 3,000) or the **tall** one (`_tall.toml`,
+  15:1, € 5,000). Each says which tires it suits (`suits` in the garage
+  file): the short one keeps the farm tire turning slowly, gripping
+  without smearing; the middle one lets the puller tire spin up to its
+  bite on a tractor not yet built for the tall one; the tall one spins it
+  at 60 to 80 km/h in the pulling gears, as real Supersports do, where
+  only a powerful engine holds it. The crew chief says which final drive
   the fitted tires want, and to buy it first if it is not owned yet
   (`garage::advice`, on the garage screen); the player still chooses.
 - **The turbo** (an upgrade for either engine, `boost_bar`): the stock
-  3 bar turbo, then 4, 5 and 6 bar (€ 6,000, 11,000 and 18,000: the
-  dearest part, about three seasons at the top to buy). Each bar more
-  gives more torque at full boost (`engine::with_boost_pressure`; 9.5 %
-  of the 6.06 l's own a bar, 6.5 % of the 7.0 l's, as
+  3 bar turbo, then 4, 5, 6 and 7 bar (€ 5,000, 9,000, 14,000 and
+  20,000: the dearest part, about three seasons at the top to buy). Each
+  bar more gives more torque at full boost (`engine::with_boost_pressure`;
+  7.5 % of the 6.06 l's own a bar, 4.5 % of the 7.0 l's, as
   `[engine.turbo.bigger]` in each engine's file), the torque without
-  boost the same, and the boost later (120 and 100 rpm a bar) and slower
-  (0.12 s a bar). The garage's dyno shows the new curve. On today's
-  gearing the extra power gains little on the track: in the pulling
-  gears the tires spin at the governor, about 50 km/h at the wheel,
-  where real Supersports spin them at 70 to 100 km/h and are held by
-  their power. Taller gearing, the rivals' turbos and the tires to go
-  with them are in `docs/future_improvements.md`.
+  boost the same, and the boost later (125 rpm a bar) and slower (0.12 s
+  a bar). The garage's dyno shows the curve with the boost settled
+  (`engine::settled_net_torque_nm`): a big turbo is weak low down. The
+  power counts on a firm track, on the tall drive: the 6.06 l on 7 bar
+  full-pulls the firm loam where it stops short on 3 bar
+  (`TireChoice.TheBiggestTurboPullsFurthestAndMostOnTheSixLitre`); on
+  softer ground a tire spun faster smears more, and power does not pay.
 - **A pulling gearbox**: two gears to manoeuvre and four close pulling
   gears (3rd to 6th, about 13 % apart); no powershift, one gear the whole
   pull.
+- **The start** (every class): the sled breaks away harder than it rolls
+  (9 % of its weight at rest, `sled::Params::breakaway_share`), so the
+  chain holds the tractor a moment while the clutch slips and the turbo
+  spools; the scripted pullers feather the held clutch
+  (`launch_feather_share`) and pull each gear at full or eased (85 %)
+  hand throttle, whichever went further at their gear trial.
 
 #### How a Supersport pulls (game)
 
@@ -581,11 +586,11 @@ tractor:
   small stages, since each 75 rpm is worth a metre or more there.
 - Supersport 3.6 t has all three. A new tractor is at the back of
   belofte and about 70 % of its garage wins it; half the garage is mid
-  promo and three quarters wins it; at top 60 % is at the back and a
-  nearly or fully built tractor wins. Its garage costs about € 133,200
-  for both engines and both tires and the turbo, so its prize money is a
-  fifth (belofte) to two fifths (top) higher again than it was before
-  the turbo: € 3,110, 3,890 and 5,430 for a win.
+  promo and three quarters is in the top five at its damp opener; at top 60 % is at the back and a
+  nearly or fully built tractor wins. Its garage costs about € 151,200
+  for both engines, both tires, the three final drives and the turbo, so
+  its prize money is a fifth (belofte) to two fifths (top) higher than
+  it was before the turbo: € 3,110, 3,890 and 5,430 for a win.
 
 ## Upgrades (game choice)
 

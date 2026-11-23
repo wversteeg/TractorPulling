@@ -67,9 +67,11 @@ FieldError describe(field::ParamError error) {
         case ParamError::kNotFinite:
             return {"event.field", "all values must be finite"};
         case ParamError::kRangeOutOfOrder:
-            return {"event.field",
-                    "every range is [low, high] with low <= high, low > 0, track_reading within "
-                    "[0, 1], downshift_share within [0, 1); hitch_height_m and rated_rpm above 0"};
+            return {
+                "event.field",
+                "every range is [low, high] with low <= high, low > 0, track_reading within "
+                "[0, 1], downshift_share within [0, 1); hitch_height_m, boost_bar and rated_rpm "
+                "above 0"};
         case ParamError::kGearsOutOfRange:
             return {"event.field.gears", "must be [lowest, highest] within the gearbox"};
         case ParamError::kLoadDownshiftsOutOfRange:
@@ -83,6 +85,10 @@ FieldError describe(field::ParamError error) {
             return {"event.field.rated_rpm",
                     "the reference engine cannot take it: above idle, and its unloaded speed "
                     "within the torque curve"};
+        case ParamError::kBoostOutOfRange:
+            return {"event.field.boost_bar",
+                    "the reference engine cannot take it: it must have a boost pressure and "
+                    "take a bigger turbo ([engine.turbo.bigger])"};
     }
     return {"event.field", "invalid"};
 }
@@ -124,6 +130,11 @@ field::Variation guests_variation(detail::Reader& reader, const field::Variation
         const field::Range rpm = range(reader, "event.guests.rated_rpm");
         out.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
                                  .high = units::rpm_to_rad_s(rpm.high)};
+    }
+    if (reader.has("event.guests.boost_bar")) {
+        const field::Range bar = range(reader, "event.guests.boost_bar");
+        out.boost_pressure_pa = {.low = units::bar_to_pa(bar.low),
+                                 .high = units::bar_to_pa(bar.high)};
     }
     return out;
 }
@@ -169,6 +180,24 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
     return result.value();
 }
 
+// The field's optional ranges: without them every puller has the
+// reference's drawbar, governor and turbo.
+void read_field_options(detail::Reader& reader, field::Variation& variation) {
+    if (reader.has("event.field.hitch_height_m")) {
+        variation.hitch_height_m = range(reader, "event.field.hitch_height_m");
+    }
+    if (reader.has("event.field.rated_rpm")) {
+        const field::Range rpm = range(reader, "event.field.rated_rpm");
+        variation.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
+                                       .high = units::rpm_to_rad_s(rpm.high)};
+    }
+    if (reader.has("event.field.boost_bar")) {
+        const field::Range bar = range(reader, "event.field.boost_bar");
+        variation.boost_pressure_pa = {.low = units::bar_to_pa(bar.low),
+                                       .high = units::bar_to_pa(bar.high)};
+    }
+}
+
 Result<EventDefinition> read_event(const toml::table& root, std::string_view source,
                                    std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
@@ -208,6 +237,9 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         // Optional: a driver who holds the launch while the revs are low.
         .launch_hold_share = reader.optional_number("event.driver.launch_hold_share").value_or(0.0),
         .launch_hold_max_s = reader.optional_number("event.driver.launch_hold_max_s").value_or(0.0),
+        // Optional: a driver who works the held clutch smoothly.
+        .launch_feather_share =
+            reader.optional_number("event.driver.launch_feather_share").value_or(0.0),
     };
     field::Variation variation{
         .torque_scale = range(reader, "event.field.torque_scale"),
@@ -222,6 +254,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
         .fewest_load_downshift_gears = -1,
         .most_load_downshift_gears = -1,
         .rated_omega_rad_s = {},
+        .boost_pressure_pa = {},
     };
     const field::PullToPull pull_to_pull{
         .grip_share = reader.number("event.field.pull_to_pull_grip_share"),
@@ -238,16 +271,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
     variation.lowest_gear = static_cast<int>(gears[0]);
     variation.highest_gear = static_cast<int>(gears[1]);
-    // Optional: without them every puller has the reference's drawbar,
-    // powershift and governor.
-    if (reader.has("event.field.hitch_height_m")) {
-        variation.hitch_height_m = range(reader, "event.field.hitch_height_m");
-    }
-    if (reader.has("event.field.rated_rpm")) {
-        const field::Range rpm = range(reader, "event.field.rated_rpm");
-        variation.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
-                                       .high = units::rpm_to_rad_s(rpm.high)};
-    }
+    read_field_options(reader, variation);
     if (reader.has("event.field.load_downshift_gears")) {
         const std::vector<double> counts = reader.numbers("event.field.load_downshift_gears");
         const bool whole = std::ranges::all_of(counts, [](double c) {

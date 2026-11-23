@@ -255,7 +255,21 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 19);
-    EXPECT_EQ(first.hash, 0xc23cc768d72abe6cULL);
+    EXPECT_EQ(first.hash, 0x8242e3cf5cb4bf8fULL);
+}
+
+// An event's field may run bigger turbos than the reference engine's:
+// boost_bar in bar on file, Pa in the core; the club event has none.
+TEST(EventLoader, ReadsTheFieldsTurbos) {
+    const auto top =
+        load_event(std::filesystem::path{TP_DATA_DIR} / "events" / "supersport_3600_top.toml");
+    ASSERT_TRUE(top.ok()) << top.error().message;
+    const field::Range& boost = top.value().variation.boost_pressure_pa;
+    EXPECT_EQ(boost.low, units::bar_to_pa(3.0));
+    EXPECT_GT(boost.high, boost.low);
+    const auto club = load_event(kEvent);
+    ASSERT_TRUE(club.ok()) << club.error().message;
+    EXPECT_EQ(club.value().variation.boost_pressure_pa.high, 0.0);
 }
 
 }  // namespace

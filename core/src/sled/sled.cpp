@@ -131,6 +131,9 @@ std::optional<ParamError> pushdown_error(const Params& params) noexcept {
     if (params.pan_held_share < 0.0 || params.pan_held_share >= 1.0) {
         return ParamError::kPanHeldShareOutOfRange;
     }
+    if (params.breakaway_share < 0.0 || params.breakaway_share >= 1.0) {
+        return ParamError::kBreakawayOutOfRange;
+    }
     return std::nullopt;
 }
 
@@ -156,6 +159,7 @@ std::optional<ParamError> validate(const Params& params) noexcept {
                                 params.pushdown_ramp_m,
                                 params.pushdown_most_pan_share,
                                 params.pan_held_share,
+                                params.breakaway_share,
                                 params.pan_friction_coefficient,
                                 params.pan_area_m2,
                                 params.pan_plough_coefficient,
@@ -396,17 +400,20 @@ Loads loads(const Params& params, const State& state, const HookForce& hook,
     const double cutting_n =
         shared.pan_n > 0.0 ? knives_n(params.knives, ground.pan) * ground.pan.drag_scale : 0.0;
     const double berm_n = params.berm.friction_coefficient * state.berm_kg * kStandardGravity_m_s2;
-    return {
-        .pan_n = shared.pan_n,
-        .wheels_n = shared.wheels_n,
-        .pivot_n = shared.pivot_n,
-        .cylinders_n = shared.cylinders_n,
-        .box_ahead_of_wheels_m = box_m,
-        .pushdown = pushdown,
-        .pan_friction = friction,
-        .knives_n = cutting_n,
-        .berm_n = berm_n,
-        .resistance_n = friction * shared.pan_n + cutting_n + berm_n + rolling * shared.wheels_n};
+    const double moving_n =
+        (friction * shared.pan_n) + cutting_n + berm_n + (rolling * shared.wheels_n);
+    const double breakaway_n =
+        params.breakaway_share * total_mass_kg(params) * kStandardGravity_m_s2;
+    return {.pan_n = shared.pan_n,
+            .wheels_n = shared.wheels_n,
+            .pivot_n = shared.pivot_n,
+            .cylinders_n = shared.cylinders_n,
+            .box_ahead_of_wheels_m = box_m,
+            .pushdown = pushdown,
+            .pan_friction = friction,
+            .knives_n = cutting_n,
+            .berm_n = berm_n,
+            .resistance_n = state.velocity_m_s > 0.0 ? moving_n : std::max(moving_n, breakaway_n)};
 }
 
 Prediction predict(const State& state, const Params& params, double resistance_n,

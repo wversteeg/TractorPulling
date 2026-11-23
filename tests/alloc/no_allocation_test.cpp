@@ -253,7 +253,8 @@ TEST(NoAllocation, AnEventWithAPlayer) {
                                      .hitch_height_m = {},
                                      .fewest_load_downshift_gears = -1,
                                      .most_load_downshift_gears = -1,
-                                     .rated_omega_rad_s = {}};
+                                     .rated_omega_rad_s = {},
+                                     .boost_pressure_pa = {}};
     const std::optional<field::Field> field =
         field::generate(reference, variation, rules::testing::ntto_standard_3500(), kPullers, 1);
     const event::Rules rules{.full_pull_m = 100.0,

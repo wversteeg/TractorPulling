@@ -8,7 +8,7 @@
 //               [--steer-deg A] [--brake-left P] [--brake-right P]
 //               [--easy <easy.toml> | --pro <pro.toml>] [--stick S] [--hash]
 //               [--ballast B] [--pressure BAR] [--hitch M] [--downshift S]
-//               [--launch-hold S] [--start-y M] [-o <out.csv>]
+//               [--launch-hold S] [--feather F] [--start-y M] [-o <out.csv>]
 //   tp_pull compare-tracks <tractor.toml> <sled.toml> <track.toml>...
 //                          [--gear N] [--dump] [--ballast B] [--pressure BAR]
 //                          [--hitch M]
@@ -38,6 +38,8 @@
 // steers straight), and --stick holds the control itself instead.
 // --launch-hold S lets the clutch in as the events' drivers do: eased back
 // while the engine is below S of its rated speed, for up to 8 s.
+// --feather F (with --launch-hold) works the held clutch smoothly within F
+// of the rated speed about the hold, as the Supersport's drivers do.
 //
 // --hold-boost B (with --easy) starts on the brake hold ("optoeren"): both
 // brakes held, the clutch assist letting the clutch bite, until the turbo's
@@ -241,6 +243,9 @@ struct PullOptions {
     /// --launch-hold: the clutch eased back while the engine is below this
     /// share of its rated speed, as the events' drivers launch.
     std::optional<double> launch_hold_share;
+    /// --feather: with --launch-hold, the held clutch worked smoothly within
+    /// this share of the rated speed about the hold (driver::Plan).
+    std::optional<double> launch_feather_share;
     /// --hold-boost (with --easy): the brake hold for the start
     /// ("optoeren"), both brakes held until the turbo's boost reaches this
     /// share of full boost.
@@ -512,7 +517,8 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                                 .launch_s = kPullRevUpEnd_s,
                                 .clutch_slip_in_s = kPullSlipIn_s,
                                 .launch_hold_share = options.launch_hold_share.value_or(0.0),
-                                .launch_hold_max_s = kPullLaunchHoldMax_s};
+                                .launch_hold_max_s = kPullLaunchHoldMax_s,
+                                .launch_feather_share = options.launch_feather_share.value_or(0.0)};
     tp::driver::State driver;
     for (int i = 0; !session->result(); ++i) {
         const double t_s = i * kDt_s;
@@ -984,6 +990,16 @@ Parsed parse_driving_option(std::string_view arg, std::string_view value, PullOp
 // A tuning option: `--ballast` (0 to 1), `--pressure` [bar] or `--hitch`
 // [m]; the tire's and hitch's own ranges are checked once the tractor is
 // loaded.
+// A share strictly between 0 and 1 into `share`.
+Parsed parse_share(std::string_view value, std::optional<double>& share) {
+    const auto parsed = parse_number<double>(value);
+    if (!parsed || *parsed <= 0.0 || *parsed >= 1.0) {
+        return Parsed::kInvalid;
+    }
+    share = parsed;
+    return Parsed::kOk;
+}
+
 Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOptions& pull) {
     if (arg == "--ballast") {
         const auto position = parse_number<double>(value);
@@ -1010,12 +1026,10 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         return Parsed::kOk;
     }
     if (arg == "--launch-hold") {
-        const auto share = parse_number<double>(value);
-        if (!share || *share <= 0.0 || *share >= 1.0) {
-            return Parsed::kInvalid;
-        }
-        pull.launch_hold_share = share;
-        return Parsed::kOk;
+        return parse_share(value, pull.launch_hold_share);
+    }
+    if (arg == "--feather") {
+        return parse_share(value, pull.launch_feather_share);
     }
     if (arg == "--start-y") {
         const auto y_m = parse_number<double>(value);
@@ -1023,12 +1037,7 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         return y_m ? Parsed::kOk : Parsed::kInvalid;
     }
     if (arg == "--downshift") {
-        const auto share = parse_number<double>(value);
-        if (!share || *share <= 0.0 || *share >= 1.0) {
-            return Parsed::kInvalid;
-        }
-        pull.downshift_share = share;
-        return Parsed::kOk;
+        return parse_share(value, pull.downshift_share);
     }
     return Parsed::kUnknown;
 }

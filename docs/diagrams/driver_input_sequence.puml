@@ -7,9 +7,12 @@ participant "driveline::shifts_under_load" as Load
 
 Caller -> Driver : input(plan, driver state, t_s, tractor state, tractor params)
 Driver -> Driver : before select_gear_s: neutral, clutch pressed, idle
-Driver -> Driver : then plan.gear at full throttle; from launch_s the clutch\ncomes up over clutch_slip_in_s
+Driver -> Driver : then plan.gear at plan.throttle; from launch_s the clutch\ncomes up over clutch_slip_in_s
 opt plan.launch_hold_share > 0 (a held launch)
-  alt engine < launch_hold_share x rated speed and held_s < launch_hold_max_s
+  alt plan.launch_feather_share > 0 and held_s < launch_hold_max_s (feathered)
+    Driver -> Driver : rate = clamp((engine - hold) / (feather_share x rated), -1, 1)
+    Driver -> Driver : clutch up (or back) at rate x the plan's rate; held_s += step while backing
+  else engine < launch_hold_share x rated speed and held_s < launch_hold_max_s
     Driver -> Driver : ease the clutch back at the same rate; held_s += step
   else
     Driver -> Driver : let it come up at the plan's rate
