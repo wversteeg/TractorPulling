@@ -571,7 +571,9 @@ std::optional<RunOutcome> one_run(const tp::session::Setup& setup, const PullOpt
                 << rad_to_deg(pull.tractor.chassis.heading_rad) << ','
                 << pull.sled.lateral_position_m << ',' << rad_to_deg(pull.sled.heading_rad) << ','
                 << pull.sled.distance_m << ',' << pull.tractor.engine.boost << ','
-                << pull.tractor.chassis.velocity_m_s * kMetersPerSecondToKmh << '\n';
+                << pull.tractor.chassis.velocity_m_s * kMetersPerSecondToKmh << ','
+                << out.tractor.tire_force_n / kNewtonsPerKilonewton << ','
+                << out.tractor.throw_force_n / kNewtonsPerKilonewton << '\n';
         }
     }
     const std::optional<tp::run::Result>& result = session->result();
@@ -587,7 +589,8 @@ int run(const tp::vehicle::Params& tractor, const tp::sled::Params& class_sled,
     csv << "round,time_s,pedal,gear,engine_rpm,speed_kmh,sled_distance_m,slip_ratio,rear_load_kn,"
            "front_load_kn,pitch_deg,chain_tension_kn,chain_angle_deg,box_m,pushdown,"
            "sled_pan_load_kn,sled_resistance_kn,berm_kg,berm_kn,tractor_lateral_m,heading_deg,"
-           "sled_lateral_m,sled_heading_deg,sled_travel_m,boost,tractor_speed_kmh\n";
+           "sled_lateral_m,sled_heading_deg,sled_travel_m,boost,tractor_speed_kmh,tread_kn,"
+           "throw_kn\n";
     for (int round = 0; round <= kMaxPullOffs; ++round) {
         const auto outcome =
             one_run(driven_setup(tractor, class_sled, track, options, round), options, round, csv);

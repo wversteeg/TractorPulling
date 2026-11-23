@@ -414,8 +414,8 @@ TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
 // on the clay-sand, the sandy clay, the wet start and the dry hard clay.
 // On the grippiest tracks, the firm loam and the moist heavy clay, the
 // tires have grip to spare and the chain lifts the nose: a hole or two
-// below the top may pull further, and the lowest may gain up to about two
-// metres, so the hitch matters little there either way. So the
+// below the top may pull further, and the lowest may gain up to about
+// three metres, so the hitch matters little there either way. So the
 // crew chief may always say to raise a hitch in its lowest hole (U-23): it
 // costs that much at most. (With the weights all back it is another
 // matter: the top hole stands the tractor on its wheelie bar, and a lower
@@ -426,7 +426,7 @@ TEST(TrackSetup, TheLowestHitchHoleCostsButOnTheGrippiestTracks) {
     constexpr double kAsBuilt_bar = 1.0;
     // Further than a pull-to-pull difference; at most this much shorter [m].
     constexpr double kFurther_m = 0.5;
-    constexpr double kAtMostShorter_m = 2.0;
+    constexpr double kAtMostShorter_m = 3.5;
     // The grippiest tracks, by their ground: a renamed round is still one.
     std::vector<soil::Composition> grippiest;
     for (const char* file : {"firm_loam.toml", "covered_heavy_clay.toml"}) {

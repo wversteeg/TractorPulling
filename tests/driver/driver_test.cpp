@@ -194,6 +194,39 @@ TEST(Driver, FeathersTheHeldLaunch) {
     EXPECT_EQ(validate(plan, 8), ParamError::kLaunchHoldOutOfRange);
 }
 
+// Wheels flaring past the spin ease point in a feathered launch: the clutch
+// eases back, at up to kSpinClutchRate times the slip-in rate at full spin,
+// whatever the revs, and the throttle stays full while the clutch works.
+// Once the clutch is in, the fuel is trimmed instead.
+TEST(Driver, CatchesFlaringWheelsWithTheClutch) {
+    const vehicle::Params params = vehicle::testing::reference_params();
+    Plan plan = kPlan;
+    plan.launch_hold_share = 0.8;
+    plan.launch_hold_max_s = 5.0;
+    plan.launch_feather_share = 0.1;
+    plan.spin_ease_slip = 0.6;
+    const double radius_m = params.rear_tire.size.radius_m;
+    vehicle::State tractor;
+    tractor.engine.running = true;
+    tractor.engine.omega_rad_s = params.engine.rated_omega_rad_s;
+    tractor.driveline.gear = plan.gear;
+    State state;
+    EXPECT_EQ(input(plan, state, 3.0, tractor, params).clutch_pedal, 1.0) << "the launch";
+    EXPECT_NEAR(input(plan, state, 4.0, tractor, params).clutch_pedal, 0.5, 1e-12)
+        << "gripping, revs up: the full rate";
+    tractor.driveline.output_omega_rad_s = 10.0 / radius_m;
+    tractor.chassis.velocity_m_s = 0.0;
+    const vehicle::Input flaring = input(plan, state, 4.1, tractor, params);
+    EXPECT_NEAR(flaring.clutch_pedal, 0.5 + (kSpinClutchRate * 0.1 / plan.clutch_slip_in_s), 1e-12)
+        << "full spin: back at the spin rate, the revs high as they are";
+    EXPECT_EQ(flaring.throttle, plan.throttle) << "the clutch catches them, not the fuel";
+    State in;
+    in.launched = true;
+    in.last_t_s = 9.0;
+    EXPECT_LT(input(plan, in, 9.001, tractor, params).throttle, plan.throttle)
+        << "clutch in: the fuel is trimmed";
+}
+
 // A feathered launch that settles at the hold still runs out of hold time:
 // then the clutch comes in at the plan's rate whatever the revs.
 TEST(Driver, AFeatheredLaunchAtTheHoldTimesOut) {
@@ -213,6 +246,41 @@ TEST(Driver, AFeatheredLaunchAtTheHoldTimesOut) {
     }
     EXPECT_EQ(pedal, 0.0) << "held a second at most, then in over two";
     EXPECT_TRUE(state.launched);
+}
+
+// A driver who plays the throttle against wheelspin trims the fuel once the
+// rear tires slip more than the plan's ease point, to the plan's spin fuel
+// (kSpinFuel unless set) at full spin, at whatever speed the engine runs: never shut off, so the
+// engine keeps its revs and its boost. Below the ease point the throttle
+// stays as set.
+TEST(Driver, EasesTheThrottleAgainstWheelspin) {
+    const vehicle::Params params = vehicle::testing::reference_params();
+    Plan plan = kPlan;
+    plan.spin_ease_slip = 0.6;
+    const double radius_m = params.rear_tire.size.radius_m;
+    vehicle::State tractor;
+    tractor.engine.running = true;
+    const auto fuel_at = [&](double wheel_m_s, double ground_m_s, double engine_share) {
+        tractor.driveline.output_omega_rad_s = wheel_m_s / radius_m;
+        tractor.chassis.velocity_m_s = ground_m_s;
+        tractor.engine.omega_rad_s = engine_share * params.engine.rated_omega_rad_s;
+        State state;
+        const double throttle = input(plan, state, 5.0, tractor, params).throttle;
+        return engine::predict(tractor.engine, params.engine, throttle, 0.001).output.fuel;
+    };
+    EXPECT_EQ(fuel_at(10.0, 8.0, 0.9), 1.0) << "a fifth slip: as set";
+    for (const double engine_share : {0.7, 0.9, 1.0}) {
+        EXPECT_NEAR(fuel_at(10.0, 0.0, engine_share), kSpinFuel, 1e-9) << "full spin";
+        EXPECT_NEAR(fuel_at(10.0, 2.0, engine_share), 1.0 - (1.0 - kSpinFuel) * 0.5, 1e-9)
+            << "half way from the ease point to full spin";
+    }
+    plan.spin_fuel = 0.0;
+    EXPECT_NEAR(fuel_at(10.0, 0.0, 0.9), 0.0, 1e-9) << "a farm tire's driver backs right off";
+    plan.spin_fuel = 1.1;
+    EXPECT_EQ(validate(plan, 8), ParamError::kSpinEaseOutOfRange);
+    plan.spin_fuel = kSpinFuel;
+    plan.spin_ease_slip = 1.0;
+    EXPECT_EQ(validate(plan, 8), ParamError::kSpinEaseOutOfRange);
 }
 
 // The driver pulls at the plan's hand throttle: full, or eased.

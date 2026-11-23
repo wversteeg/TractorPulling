@@ -460,7 +460,7 @@ TEST(SledLoader, ReportsABadBase) {
     EXPECT_NE(parsed.error().message.find("sled.base"), std::string::npos);
 }
 
-// Every class pulls the same sled, 15 t empty with a box for up to 11 t
+// Every class pulls the same sled, 12 t empty with a box for up to 14 t
 // (pulling_sled.toml); the classes differ in the box's weight and where
 // the push-down starts, the Sport 4.5 t's box the heaviest.
 TEST(SledLoader, EveryClassPullsTheSameSled) {
@@ -472,8 +472,8 @@ TEST(SledLoader, EveryClassPullsTheSameSled) {
     ASSERT_TRUE(sport_25.ok()) << sport_25.error().message;
     ASSERT_TRUE(sport_45.ok()) << sport_45.error().message;
     for (const sled::Params* sled : {&light.value(), &sport_25.value(), &sport_45.value()}) {
-        EXPECT_EQ(sled->frame_mass_kg, 15000.0);
-        EXPECT_EQ(sled->box_max_mass_kg, 11000.0);
+        EXPECT_EQ(sled->frame_mass_kg, 12000.0);
+        EXPECT_EQ(sled->box_max_mass_kg, 14000.0);
         EXPECT_EQ(sled->pan_ahead_of_wheels_m, light.value().pan_ahead_of_wheels_m);
         EXPECT_EQ(sled->hook_ahead_of_wheels_m, light.value().hook_ahead_of_wheels_m);
         EXPECT_EQ(sled->wheel_count, light.value().wheel_count);

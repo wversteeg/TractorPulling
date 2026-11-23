@@ -241,6 +241,9 @@ struct Output {
     double front_rolling_resistance = 0.0;
     /// Soil all rear tires throw back behind the tractor [m³/s].
     double thrown_soil_m3_s = 0.0;
+    /// The soil's reaction on all rear tires' treads as they throw it
+    /// (tire::throw_force_n), included in tire_force_n [N].
+    double throw_force_n = 0.0;
     chassis::AxleLoads axle_loads;
     /// Side force of both front tires, across the wheels, and of all rear
     /// tires; positive to the left [N].

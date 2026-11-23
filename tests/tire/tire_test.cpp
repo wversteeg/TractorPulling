@@ -482,6 +482,54 @@ TEST(TireSpin, LinearizationIncludesTheSpinResponse) {
     }
 }
 
+// A puller tire's bars need some spin to bite and lose some of it spun
+// very fast (TractionCurve::fall_speed_m_s): at the same slip ratio its
+// grip rises from slow_spin_grip with the slip speed, then eases towards
+// fast_spin_grip of the unspun tire's; the slope the solve uses follows
+// both sides.
+TEST(TireSpin, ARisingAndFallingTreadBitesThenEases) {
+    const soil::Surface surface = reference_surface();
+    Params bars = unspun();
+    bars.traction.slow_spin_grip = 0.6;
+    bars.traction.spin_speed_m_s = 3.0;
+    bars.traction.fast_spin_grip = 0.7;
+    bars.traction.fall_speed_m_s = 20.0;
+    const auto share = [&](double ground_m_s) {
+        return traction(bars, wheel_speed_for(0.5, ground_m_s), ground_m_s, kLoad_n, surface)
+            .grip_share;
+    };
+    // Slip speeds of 0.1, 10 and 1000 m/s at half slip.
+    EXPECT_NEAR(share(0.1), 0.6, 0.02) << "turning slowly";
+    EXPECT_GT(share(10.0), share(0.1));
+    EXPECT_GT(share(10.0), share(1000.0)) << "eased spun very fast";
+    EXPECT_NEAR(share(1000.0), 0.7, 1e-6);
+    constexpr double kDelta_m_s = 1e-6;
+    for (const double ground_m_s : {1.0, 30.0}) {
+        const double wheel_m_s = wheel_speed_for(0.1, ground_m_s);
+        const Traction t = traction(bars, wheel_m_s, ground_m_s, kLoad_n, surface);
+        const Traction nudged =
+            traction(bars, wheel_m_s, ground_m_s - kDelta_m_s, kLoad_n, surface);
+        const double slope = (nudged.force_n - t.force_n) / kDelta_m_s;
+        EXPECT_NEAR(t.force_per_slip_speed, std::max(slope, 0.0), 1e-4 * std::abs(slope) + 1e-6);
+    }
+    bars.traction.fall_speed_m_s = -1.0;
+    EXPECT_EQ(validate(bars), ParamError::kSpinGripOutOfRange);
+}
+
+// The soil's reaction as a tire throws it grows with the soil and with the
+// slip speed, and follows the slip's sign: a spinning tread is pushed on, a
+// skidding one back; with nothing thrown, or no slip, nothing.
+TEST(ThrownSoil, ThrowingItCostsTheTire) {
+    constexpr double kSoil_m3_s = 0.02;
+    constexpr double kSlip_m_s = 10.0;
+    const double force_n = throw_force_n(kSoil_m3_s, kSlip_m_s);
+    EXPECT_DOUBLE_EQ(force_n, kThrownShare * soil::kLooseDensity_kg_m3 * kSoil_m3_s * kSlip_m_s);
+    EXPECT_DOUBLE_EQ(throw_force_n(2.0 * kSoil_m3_s, kSlip_m_s), 2.0 * force_n);
+    EXPECT_DOUBLE_EQ(throw_force_n(kSoil_m3_s, -2.0 * kSlip_m_s), -2.0 * force_n);
+    EXPECT_EQ(throw_force_n(0.0, kSlip_m_s), 0.0);
+    EXPECT_EQ(throw_force_n(kSoil_m3_s, 0.0), 0.0);
+}
+
 // ---- Side grip
 
 double strong_ground_grip_n(const Cornering& cornering, double load_n,

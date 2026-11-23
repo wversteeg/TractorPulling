@@ -40,10 +40,10 @@ time = "day"
 track = "../tracks/covered_heavy_clay.toml"
 
 [[season.events]]
-name = "Sandy clay"
+name = "Early summer, clay-sand"
 size = "club"
 time = "sunset"
-track = "../tracks/sandy_clay.toml"
+track = "../tracks/ideal_clay_sand.toml"
 
 [[season.events]]
 name = "Summer, dry hard clay"

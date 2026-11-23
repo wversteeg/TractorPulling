@@ -68,6 +68,8 @@ Result<tire::Params> read_tire(const toml::table& root, std::string_view source)
                     reader.optional_number("tire.traction.fast_spin_grip").value_or(1.0),
                 .spin_speed_m_s =
                     reader.optional_number("tire.traction.spin_speed_m_s").value_or(1.0),
+                .fall_speed_m_s =
+                    reader.optional_number("tire.traction.fall_speed_m_s").value_or(0.0),
                 // Optional: without them the tire's lugs always sink in.
                 .lug_bearing_pa =
                     reader.optional_number("tire.traction.lug_bearing_mpa").value_or(0.0) *

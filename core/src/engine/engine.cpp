@@ -216,6 +216,15 @@ double full_fuel_omega_rad_s(const Params& params, double throttle) noexcept {
     return governor_target_rad_s(params, std::clamp(throttle, 0.0, 1.0)) - droop_rad_s(params);
 }
 
+double throttle_for_fuel(const Params& params, double omega_rad_s, double fuel) noexcept {
+    // The governor's fuel falls linearly across the droop below its target
+    // (governor_fuel); its target rises linearly with the throttle.
+    const double target_rad_s = omega_rad_s + std::clamp(fuel, 0.0, 1.0) * droop_rad_s(params);
+    return std::clamp((target_rad_s - params.idle_omega_rad_s) /
+                          (params.high_idle_omega_rad_s - params.idle_omega_rad_s),
+                      0.0, 1.0);
+}
+
 Prediction predict(const State& state, const Params& params, double throttle,
                    double dt_s) noexcept {
     throttle = std::clamp(throttle, 0.0, 1.0);

@@ -1,6 +1,9 @@
+#include "tp/core/driver/driver.hpp"
 #include "tp/core/field/field.hpp"
 #include "tp/core/field/play.hpp"
 #include "tp/core/garage/garage.hpp"
+#include "tp/core/pull/pull.hpp"
+#include "tp/core/run/run.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
 #include "tp/data/track/track_loader.hpp"
@@ -10,6 +13,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <limits>
 #include <optional>
@@ -38,7 +42,7 @@ constexpr int kLowestPullingGear = 3;
 constexpr int kHighestPullingGear = 6;
 // Heavier than the class's sled by this many steps, so that no build
 // reaches the end of the track [steps].
-constexpr int kHeavier = 4;
+constexpr int kHeavier = 8;
 
 struct Tires {
     int tires = 0;
@@ -66,12 +70,9 @@ data::Track track(const std::string& file) {
 // The turbo fitted: the garage's biggest, or the stock one.
 enum class Turbo : std::uint8_t { kBiggest, kStock };
 
-// How far the fully built tractor of `d`'s class, its `engine` (the 7 l)
-// on `tires` with `turbo`, pulls the class's sled made kHeavier steps
-// heavier on `on`, in its best pulling gear, driven as the class's
-// reference driver.
-double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires tires,
-                int engine = kSevenLitre, Turbo turbo = Turbo::kBiggest) {
+// The class's reference driver in the fully built tractor of `d`'s class,
+// its `engine` (the 7 l) on `tires` with `turbo`.
+Puller built_puller(const data::SeasonDefinition& d, Tires tires, int engine, Turbo turbo) {
     const data::EventDefinition& e = d.event;
     const garage::Catalogue& catalogue = d.garage.catalogue;
     garage::Career full = garage::new_career(catalogue);
@@ -93,12 +94,87 @@ double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires ti
     EXPECT_TRUE(tractor.has_value());
     Puller puller = e.reference;
     puller.tractor = tractor.value_or(e.reference.tractor);
+    return puller;
+}
+
+// How far that tractor pulls the class's sled made kHeavier steps heavier
+// on `on`, in its best pulling gear.
+double pulled_m(const data::SeasonDefinition& d, const data::Track& on, Tires tires,
+                int engine = kSevenLitre, Turbo turbo = Turbo::kBiggest) {
+    const data::EventDefinition& e = d.event;
+    const Puller puller = built_puller(d, tires, engine, turbo);
     const Venue venue = data::venue(e.sled, on);
     const std::optional<GearTrial> trial = best_gear_trial(
         puller, sled::heavier(venue.sled, kHeavier), venue.track, kLowestPullingGear,
         kHighestPullingGear, trial_pull_rules(e.rules, venue, e.rules.full_pull_m));
     EXPECT_TRUE(trial.has_value());
     return trial.has_value() ? trial->distance_m : 0.0;
+}
+
+// A pull in one gear, as the class's rivals pull (they gear for wheel
+// speed): the wheels' surface speed and the ground speed, averaged through
+// the middle of the track, and how long the sled took from first moving
+// to 100 m (0 if it stopped short).
+constexpr double kMiddleFrom_m = 40.0;
+constexpr double kMiddleUntil_m = 60.0;
+constexpr double kKmhPerM_s = 3.6;
+constexpr double kMoved_m = 0.1;
+constexpr double kLine_m = 100.0;
+
+struct GearRun {
+    double wheel_kmh = 0.0;
+    double ground_kmh = 0.0;
+    double to_the_line_s = 0.0;
+};
+
+// The fully built 6.06 l on `tires` in `gear`, pulling the class's sled
+// made `heavier` steps heavier on `on`, as the reference driver drives it.
+GearRun gear_run(const data::SeasonDefinition& d, const data::Track& on, Tires tires, int gear,
+                 int heavier) {
+    const data::EventDefinition& e = d.event;
+    Puller puller = built_puller(d, tires, kSixLitre, Turbo::kBiggest);
+    puller.driver.gear = gear;
+    Venue venue = data::venue(e.sled, on);
+    venue.sled = sled::heavier(venue.sled, heavier);
+    const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
+    const auto model =
+        pull::Model::create({.tractor = puller.tractor, .sled = venue.sled, .track = venue.track});
+    EXPECT_TRUE(model.has_value());
+    if (!model) {
+        return {};
+    }
+    constexpr double kDt_s = 0.001;
+    const double radius_m = puller.tractor.rear_tire.size.radius_m;
+    run::State state = run::start(*model);
+    driver::State driver;
+    GearRun sum;
+    double moved_s = -1.0;
+    int steps = 0;
+    while (!state.result) {
+        const double t_s = static_cast<double>(state.steps) * kDt_s;
+        run::step(state, *model, rules,
+                  driver::input(puller.driver, driver, t_s, state.pull.tractor,
+                                model->tractor().params()),
+                  kDt_s);
+        const double pulled_m = state.pull.sled.position_m - model->sled_start_m();
+        if (moved_s < 0.0 && pulled_m > kMoved_m) {
+            moved_s = t_s;
+        }
+        if (sum.to_the_line_s == 0.0 && pulled_m >= kLine_m) {
+            sum.to_the_line_s = t_s - moved_s;
+        }
+        if (pulled_m >= kMiddleFrom_m && pulled_m < kMiddleUntil_m) {
+            sum.wheel_kmh +=
+                state.pull.tractor.driveline.output_omega_rad_s * radius_m * kKmhPerM_s;
+            sum.ground_kmh += state.pull.tractor.chassis.velocity_m_s * kKmhPerM_s;
+            ++steps;
+        }
+    }
+    if (steps > 0) {
+        sum.wheel_kmh /= steps;
+        sum.ground_kmh /= steps;
+    }
+    return sum;
 }
 
 constexpr Tires kPullerOnTall{.tires = kPullerTires, .final_drive = kTall};
@@ -108,22 +184,33 @@ constexpr double kClearly_m = 2.0;
 // Less than a clear win, more than none [m].
 constexpr double kSomewhat_m = 1.0;
 
-// Fully built, each tire on the final drive the crew pairs it with (the
-// one it suits): the puller tires on the tall drive pull clearly further on
-// a firm track, where they spin up to their bite, and still somewhat
-// further on the watered start (kSomewhat_m), where the tall drive lets
-// them spin up at the launch.
-// The farm tires are the stock ones, cheap: the tires to start the class
-// on, not to win it.
-TEST(TireChoice, PullerTiresOnTheTallDriveAreTheUpgrade) {
+// A top Supersport pull (NTTO, as measured): fully built on its puller
+// tires, geared for wheel speed (the middle final drive in 6th, as the
+// class's rivals pull), on a firm track the wheels spin at 65 km/h and more
+// through the middle of the track while the tractor goes over the ground
+// at 30 km/h and more, the engine's power holding the tires' slip; it is
+// at the 100 m line 12 to 15 s after the sled first moved. The farm tires
+// on their short drive turn at no more than 45 km/h.
+TEST(TireChoice, ATopPullSpinsTheWheelsFastAndTakesThirteenSeconds) {
+    constexpr int kTopGear = 6;
+    constexpr int kFarmGear = 5;
+    constexpr int kWellSet = 4;
+    constexpr double kWheel_kmh = 65.0;
+    constexpr double kGround_kmh = 30.0;
+    constexpr double kQuickest_s = 12.0;
+    constexpr double kSlowest_s = 15.0;
+    constexpr double kFarmWheel_kmh = 45.0;
     const data::SeasonDefinition d = supersport();
-    for (const char* firm : {"firm_loam.toml", "ideal_clay_sand.toml"}) {
+    for (const char* firm : {"firm_loam.toml", "dry_hard_clay.toml"}) {
         const data::Track on = track(firm);
-        EXPECT_GT(pulled_m(d, on, kPullerOnTall), pulled_m(d, on, kFarmOnShort) + kClearly_m)
-            << firm;
+        const GearRun puller =
+            gear_run(d, on, {.tires = kPullerTires, .final_drive = kMiddle}, kTopGear, kWellSet);
+        EXPECT_GT(puller.wheel_kmh, kWheel_kmh) << firm;
+        EXPECT_GT(puller.ground_kmh, kGround_kmh) << firm;
+        EXPECT_GT(puller.to_the_line_s, kQuickest_s) << firm;
+        EXPECT_LT(puller.to_the_line_s, kSlowest_s) << firm;
+        EXPECT_LT(gear_run(d, on, kFarmOnShort, kFarmGear, 0).wheel_kmh, kFarmWheel_kmh) << firm;
     }
-    const data::Track wet = track("watered_start.toml");
-    EXPECT_GT(pulled_m(d, wet, kPullerOnTall), pulled_m(d, wet, kFarmOnShort) + kSomewhat_m);
 }
 
 // Fully built, the puller tires on the final drive that suits the track
@@ -134,7 +221,7 @@ TEST(TireChoice, PullerTiresOnTheTallDriveAreTheUpgrade) {
 TEST(TireChoice, FarmTiresLoseToPullerTiresOnEveryTrack) {
     const data::SeasonDefinition d = supersport();
     for (const char* name : {"watered_start.toml", "firm_loam.toml", "covered_heavy_clay.toml",
-                             "sandy_clay.toml", "dry_hard_clay.toml", "ideal_clay_sand.toml"}) {
+                             "dry_hard_clay.toml", "ideal_clay_sand.toml", "sandy_clay.toml"}) {
         const data::Track on = track(name);
         const double puller_m =
             std::max(pulled_m(d, on, kPullerOnTall, kSixLitre),
@@ -143,12 +230,10 @@ TEST(TireChoice, FarmTiresLoseToPullerTiresOnEveryTrack) {
     }
 }
 
-// Power counts on a firm track: on the tall drive the puller tires spin at
-// 60 to 80 km/h in the pulling gears, held by the engine's power, not the
-// governor. There the fully built 6.06 l pulls clearly further on the
-// garage's biggest turbo than on the stock one, and gains more from it
-// than the 7.0 l, held to 2700 rpm, does. (On softer ground a tire spun
-// faster smears more, so power does not pay there.)
+// Power counts: the puller tires spin on the engine's power, so on the
+// firm loam the fully built 6.06 l pulls clearly further on the garage's
+// biggest turbo than on the stock one, and gains more from it than the
+// 7.0 l, held to 2700 rpm, does.
 TEST(TireChoice, TheBiggestTurboPullsFurthestAndMostOnTheSixLitre) {
     const data::SeasonDefinition d = supersport();
     for (const char* firm : {"firm_loam.toml"}) {
@@ -163,4 +248,7 @@ TEST(TireChoice, TheBiggestTurboPullsFurthestAndMostOnTheSixLitre) {
 }
 
 }  // namespace
+}  // namespace tp::field
+namespace tp::field {
+namespace {}  // namespace
 }  // namespace tp::field

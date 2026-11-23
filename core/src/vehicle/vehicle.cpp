@@ -577,11 +577,21 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     out.rear_left.slip_ratio = left.traction.slip_ratio;
     out.rear_right.slip_ratio = right.traction.slip_ratio;
     out.rear_rolling_resistance = (left.rolling_resistance + right.rolling_resistance) / kSides;
-    out.thrown_soil_m3_s =
-        tires_per_side * (tire::thrown_soil_m3_s(tire_params.size, left_footing, load_per_tire_n,
-                                                 left.traction.slip_ratio, left.wheel_m_s) +
-                          tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
-                                                 right.traction.slip_ratio, right.wheel_m_s));
+    const double left_soil_m3_s = tire::thrown_soil_m3_s(
+        tire_params.size, left_footing, load_per_tire_n, left.traction.slip_ratio, left.wheel_m_s);
+    const double right_soil_m3_s =
+        tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
+                               right.traction.slip_ratio, right.wheel_m_s);
+    out.thrown_soil_m3_s = tires_per_side * (left_soil_m3_s + right_soil_m3_s);
+    // The soil's reaction as the tread throws it acts at the tread, as
+    // traction does: it holds each side's wheels back and pushes the
+    // tractor on (tire::throw_force_n). Explicit within the step: it is a
+    // small share of the tread's force.
+    const double left_throw_n =
+        tires_per_side * tire::throw_force_n(left_soil_m3_s, left.wheel_m_s - left.ground_m_s);
+    const double right_throw_n =
+        tires_per_side * tire::throw_force_n(right_soil_m3_s, right.wheel_m_s - right.ground_m_s);
+    out.throw_force_n = left_throw_n + right_throw_n;
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
             ? tire::towed_rolling_resistance(params.front_tire,
@@ -639,8 +649,8 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         .rolling_nm = rear_rolling_nm,
         .clutch_capacity_nm = clutch_capacity_nm,
         .side_inertia_kg_m2 = tires_per_side * tire_params.wheel_inertia_kg_m2,
-        .force_left_n = tires_per_side * left.traction.force_n,
-        .force_right_n = tires_per_side * right.traction.force_n,
+        .force_left_n = tires_per_side * left.traction.force_n + left_throw_n,
+        .force_right_n = tires_per_side * right.traction.force_n + right_throw_n,
         .slope_left = tires_per_side * left.traction.force_per_slip_speed,
         .slope_right = tires_per_side * right.traction.force_per_slip_speed,
         .common_slip_m_s = axle_rad_s * radius_m - ground_m_s,
