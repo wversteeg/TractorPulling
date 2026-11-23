@@ -299,6 +299,33 @@ TEST(TmpClutch, Print) {
 }  // namespace tp::field
 namespace tp::field {
 namespace {
+TEST(TmpLaunch, Print) {
+    const data::SeasonDefinition d = supersport();
+    const data::EventDefinition& e = d.event;
+    const data::Track on = track("dry_hard_clay.toml");
+    Puller puller = built_puller(d, {.tires = kPullerTires, .final_drive = kMiddle}, kSixLitre, Turbo::kBiggest);
+    puller.driver.gear = 6;
+    Venue venue = data::venue(e.sled, on);
+    venue.sled = sled::adjusted(venue.sled, {.box_mass_kg = 3000.0, .knives = 6});
+    const run::Rules rules = trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
+    const auto model = pull::Model::create({.tractor = puller.tractor, .sled = venue.sled, .track = venue.track});
+    run::State state = run::start(*model);
+    driver::State drv;
+    const double r = puller.tractor.rear_tire.size.radius_m;
+    double next = 0.0;
+    while (!state.result) {
+        const double ts = static_cast<double>(state.steps) * 0.001;
+        const vehicle::Input in = driver::input(puller.driver, drv, ts, state.pull.tractor, model->tractor().params());
+        const pull::Output o = run::step(state, *model, rules, in, 0.001);
+        const double x = state.pull.sled.position_m - model->sled_start_m();
+        if (ts >= next && ts > 2.5) {
+            std::printf("LAUNCH t%.2f x%5.1f pedal %.2f rpm %4.0f boost %.2f ground %4.1f wheel %4.1f tire %5.1fkN clutch %5.0fNm chain %5.1f sled %5.1f rear %5.1f\n", ts - puller.driver.launch_s, x, in.clutch_pedal, state.pull.tractor.engine.omega_rad_s * 9.549, state.pull.tractor.engine.boost, state.pull.tractor.chassis.velocity_m_s * 3.6, state.pull.tractor.driveline.output_omega_rad_s * r * 3.6, o.tractor.tire_force_n / 1000.0, o.tractor.clutch_torque_nm, o.chain.tension_n / 1000.0, o.sled.resistance_n / 1000.0, o.tractor.axle_loads.rear_n / 1000.0);
+            next = ts + 0.5;
+        }
+        if (x > 40.0) break;
+    }
+}
+
 TEST(TmpGears, Print) {
     const data::SeasonDefinition d = supersport();
     const data::EventDefinition& e = d.event;
