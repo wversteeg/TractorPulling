@@ -387,6 +387,54 @@ TEST(Vehicle, TooHeavyALoadSpinsTheWheelsInALowGear) {
     EXPECT_DOUBLE_EQ(pull.last.slip_ratio, 1.0);
 }
 
+// Spinning on the spot under that load, the rear tires dig themselves in
+// (tire::Digging), both sides alike; pulling a load they hold, they roll
+// over the ground and leave hardly a hole.
+TEST(Vehicle, SpinningOnTheSpotDigsTheTiresIn) {
+    constexpr double kDugIn_m = 0.02;
+    constexpr double kHardlyAHole_m = 0.002;
+    Pull stuck;
+    stuck.run(1, 26000.0, false, 15.0);
+    EXPECT_GT(stuck.state.rear_left_dig_m, kDugIn_m);
+    EXPECT_DOUBLE_EQ(stuck.state.rear_left_dig_m, stuck.state.rear_right_dig_m);
+    Pull rolling;
+    rolling.run(3, 5000.0, false, 15.0);
+    EXPECT_LT(rolling.state.rear_left_dig_m, kHardlyAHole_m);
+    EXPECT_LT(rolling.state.rear_right_dig_m, kHardlyAHole_m);
+}
+
+// The hole holds the body back: from a hole 5 cm deep the tractor gets
+// less far in the same time than from level ground, and once it rolls it
+// climbs out.
+TEST(Vehicle, AHoleHoldsTheTractorBack) {
+    constexpr double kHole_m = 0.05;
+    Pull level;
+    level.run(3, 5000.0, false, 8.0);
+    Pull dug;
+    dug.state.rear_left_dig_m = kHole_m;
+    dug.state.rear_right_dig_m = kHole_m;
+    dug.run(3, 5000.0, false, 8.0);
+    ASSERT_GT(level.state.chassis.position_m, 1.0);
+    EXPECT_LT(dug.state.chassis.position_m, level.state.chassis.position_m - 0.1);
+    EXPECT_LT(dug.state.rear_left_dig_m, 0.1 * kHole_m) << "rolling, it climbs out";
+}
+
+// A tractor standing in its hole with no drive, nothing pulling it, is
+// held there: the hole never pushes it backwards.
+TEST(Vehicle, AHoleOnlyHoldsAStandingTractor) {
+    const Model model = reference_model();
+    State state = initial_state(model);
+    state.rear_left_dig_m = 0.1;
+    state.rear_right_dig_m = 0.1;
+    const Input idle{.throttle = 0.0, .clutch_pedal = 1.0, .gear = driveline::kNeutral};
+    for (int i = 0; i < 2000; ++i) {
+        (void)step(state, model, idle, kGround, {.pull_n = 0.0}, kDt_s);
+        EXPECT_GE(state.chassis.velocity_m_s, 0.0);
+    }
+    EXPECT_EQ(state.chassis.position_m, 0.0);
+    EXPECT_EQ(state.chassis.velocity_m_s, 0.0);
+}
+
 // In top gear the tires grip better than the engine can turn them: the
 // load stalls the engine.
 TEST(Vehicle, TooHeavyALoadStallsTheEngineInTopGear) {
@@ -1221,7 +1269,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x25cd850a07defeb0ULL);
+    EXPECT_EQ(pull_hash(), 0x4ef8d35996536d29ULL);
 }
 
 }  // namespace

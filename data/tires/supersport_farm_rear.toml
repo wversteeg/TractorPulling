@@ -5,10 +5,11 @@
 # 30.5L-32). Its lugs push into the track: grip builds quickly with slip,
 # and spun fast they dig in and smear, so it pulls best spinning little,
 # on the short final drive (drivelines/supersport_3600_short.toml). Fully
-# built it pulls short of the puller tire on a firm track, and further
-# than the puller tire on the tall final drive on the watered start
-# (tests/data/tire_choice_test.cpp). The limit is the fully built tire's;
-# the garage sets it.
+# built it pulls short of the puller tire on a firm track, and on the
+# watered start further than the puller tire on the tall final drive but
+# short of it on the middle one: on no track does it beat the puller tire
+# on the drive that suits the track (tests/data/tire_choice_test.cpp).
+# The limit is the fully built tire's; the garage sets it.
 [tire]
 tread = "farm"                     # the pattern drawn (the grip is in [tire.traction])
 radius_m = 0.98                    # rolling radius
@@ -32,6 +33,11 @@ spin_speed_m_s = 3.0
 # load (tp::tire::TractionCurve::load_sensitivity).
 load_sensitivity = 0.3
 reference_load_n = 12700.0          # where the sensitivity starts: about one tire's share at rest as built
+# On ground stronger than the lugs press into it, they ride on their tips
+# and grip less (tp::tire::lug_grip). Cut sharper than an uncut farm
+# tire's, they sink into all but the dry hard clay.
+lug_bearing_mpa = 2.5
+unsunk_lug_grip = 0.5
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
@@ -53,3 +59,9 @@ stiffness_per_rad = 4.0            # side force per unit of load per rad of slip
 limit = 0.8                        # side force per unit of load at most
 mobility_rate = 0.1                # as for traction: soft ground grips less
 relaxation_length_m = 0.98         # about the tire's radius
+
+# Spinning on the spot, the lugs dig the tire a hole within a few metres
+# of slip, and it has to climb out of it (tp::tire::Digging).
+[tire.digging]
+rate = 0.005                       # m of depth per m of slip, standing
+escape_speed_m_s = 0.5             # moving faster than about this, it hardly digs

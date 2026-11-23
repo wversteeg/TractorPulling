@@ -44,10 +44,20 @@ for the big features; they are repeated at the end for completeness.
 - **Automatic test pull.** The sled operator sets the push-down from a test
   pull on the day's track. A reference tractor could run that test pull and
   choose the push-down for a target distance.
-- **Tires digging in.** Under sustained wheelspin a tire digs down and its
-  grip changes over time. Modelled without memory: the soil's fall-off past
-  the grip peak, and a motion resistance that grows with slip (Brixius). A
-  rut that deepens while the tire keeps spinning would need a state.
+- **Tires digging in.** A tire spinning on the spot digs a hole that holds
+  the tractor back (`tire::Digging`), but its grip in the hole is the
+  ground's as before, and the hole's depth does not depend on the soil
+  (one rate per tire on every track). The farm tire's grip past its peak
+  falls with the track's fall-off and its own smear at speed; a steeper,
+  tire-own fall-off (Gemini: about half the peak at 75 % slip) made every
+  farm-tire launch spin out without a driver who plays the throttle, which
+  the scripted pullers do not.
+- **Wheel speeds of the Supersport puller tires.** Real top tractors spin
+  their puller tires at about 70 km/h on loose tracks and up to 100 km/h on
+  firm ones; here they turn at about 45 to 60 km/h: the engine's power over
+  the sled's pull holds them there (about 900 kW at the wheels against
+  50 kN and more). Faster wheels would need a sled that pulls less through
+  the middle of the track, or more power.
 - **Tire deflection that follows the load.** Brixius' mobility number uses
   the tire's working deflection as a fixed size; a deflection that follows
   the load (and tire pressure as a tuning setting) would make light and

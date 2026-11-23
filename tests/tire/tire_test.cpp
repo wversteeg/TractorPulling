@@ -685,3 +685,111 @@ TEST(Pressure, RejectsNonsense) {
 
 }  // namespace
 }  // namespace tp::tire
+
+namespace tp::tire {
+namespace {
+
+// The reference tire's lugs sink fully into its own track; on ground twice
+// as strong as they press they sink in half way, and the tire grips the
+// unsunk share plus half the rest; ever harder ground costs more, down to
+// the unsunk share.
+TEST(LugGrip, LugsRideOnGroundTooHardForThem) {
+    const TractionCurve curve = reference_params().traction;
+    EXPECT_EQ(lug_grip(curve, reference_surface().cone_index_pa), 1.0);
+    EXPECT_EQ(lug_grip(curve, curve.lug_bearing_pa), 1.0);
+    EXPECT_DOUBLE_EQ(lug_grip(curve, 2.0 * curve.lug_bearing_pa),
+                     curve.unsunk_lug_grip + 0.5 * (1.0 - curve.unsunk_lug_grip));
+    double last = 1.0;
+    constexpr int kSteps = 20;
+    for (int i = 0; i < kSteps; ++i) {
+        const double now = lug_grip(curve, curve.lug_bearing_pa * std::pow(1.5, i));
+        EXPECT_LE(now, last);
+        EXPECT_GT(now, curve.unsunk_lug_grip);
+        last = now;
+    }
+    TractionCurve sharp = curve;
+    sharp.lug_bearing_pa = 0.0;
+    EXPECT_EQ(lug_grip(sharp, 1.0e8), 1.0) << "without a bearing the lugs always sink in";
+}
+
+// On ground too hard for the lugs, the tire's grip falls by its lug share,
+// at every slip.
+TEST(LugGrip, ScalesTheTraction) {
+    const Params params = reference_params();
+    soil::Surface hard = reference_surface();
+    hard.cone_index_pa = 4.0 * params.traction.lug_bearing_pa;
+    Params sharp = params;
+    sharp.traction.lug_bearing_pa = 0.0;
+    const double share = lug_grip(params.traction, hard.cone_index_pa);
+    for (const double s : {0.05, 0.2, 0.6}) {
+        EXPECT_NEAR(mu_at(params, s, hard), share * mu_at(sharp, s, hard), 1e-12) << s;
+    }
+}
+
+// A tire spinning on the spot digs itself in, the more the faster it spins;
+// one rolling over the ground hardly digs and climbs out of its hole; the
+// hole is never deeper than the tire's section; a tire without digging
+// stays on top.
+TEST(Digging, ATireSpinningOnTheSpotDigsItselfIn) {
+    const Params params = reference_params();
+    constexpr double kDt_s = 0.001;
+    constexpr int kSecond = 1000;
+    const auto dug_m = [&](double slip_m_s, double ground_m_s, double from_m, int steps) {
+        double depth_m = from_m;
+        for (int i = 0; i < steps; ++i) {
+            depth_m = dig_depth_m(params, depth_m, slip_m_s, ground_m_s, kDt_s);
+        }
+        return depth_m;
+    };
+    const double slow_m = dug_m(2.0, 0.0, 0.0, kSecond);
+    EXPECT_NEAR(slow_m, params.digging.rate * 2.0, 1e-9) << "rate times the slip, standing";
+    EXPECT_GT(dug_m(4.0, 0.0, 0.0, kSecond), 1.9 * slow_m);
+    EXPECT_LT(dug_m(2.0, 3.0, 0.0, kSecond), 0.01 * slow_m) << "moving, it hardly digs";
+    EXPECT_LT(dug_m(0.0, 1.0, slow_m, 3 * kSecond), 0.1 * slow_m) << "rolling, it climbs out";
+    EXPECT_EQ(dug_m(30.0, 0.0, 0.0, 100 * kSecond), params.size.section_height_m);
+    Params none = params;
+    none.digging = {};
+    EXPECT_EQ(dig_depth_m(none, 0.0, 10.0, 0.0, kDt_s), 0.0);
+}
+
+// The deeper the hole the more it holds the tractor back, never more than
+// the steepest edge; a deflected tire climbs a shallow hole more gently
+// than a rigid wheel would.
+TEST(Digging, TheHoleHoldsTheTractorBack) {
+    const Size size = reference_params().size;
+    EXPECT_EQ(dig_resistance(size, 0.0), 0.0);
+    double last = 0.0;
+    constexpr double kStep_m = 0.005;
+    for (int i = 1; i * kStep_m < size.section_height_m; ++i) {
+        const double depth_m = i * kStep_m;
+        const double now = dig_resistance(size, depth_m);
+        EXPECT_GT(now, last) << depth_m;
+        EXPECT_LE(now, kMaxDigSlope);
+        EXPECT_LE(now, std::sqrt(2.0 * depth_m / size.radius_m)) << depth_m;
+        last = now;
+    }
+    Size rigid = size;
+    rigid.deflection_m = 0.0;
+    EXPECT_DOUBLE_EQ(dig_resistance(rigid, 0.02), std::sqrt(2.0 * 0.02 / size.radius_m));
+}
+
+TEST(Digging, RejectsNonsense) {
+    Params params = reference_params();
+    params.digging.rate = -0.1;
+    EXPECT_EQ(validate(params), ParamError::kDiggingOutOfRange);
+    params = reference_params();
+    params.digging.escape_speed_m_s = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kDiggingOutOfRange);
+    params = reference_params();
+    params.traction.unsunk_lug_grip = 0.0;
+    EXPECT_EQ(validate(params), ParamError::kLugGripOutOfRange);
+    params = reference_params();
+    params.traction.lug_bearing_pa = -1.0;
+    EXPECT_EQ(validate(params), ParamError::kLugGripOutOfRange);
+    params = reference_params();
+    params.digging.rate = std::numeric_limits<double>::quiet_NaN();
+    EXPECT_EQ(validate(params), ParamError::kNotFinite);
+}
+
+}  // namespace
+}  // namespace tp::tire

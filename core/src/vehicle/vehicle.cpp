@@ -622,10 +622,15 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const double side_load_n = out.axle_loads.rear_n / kSides;
     const double rear_rolling_nm = direction * (left.rolling_resistance * side_load_n * radius_m +
                                                 right.rolling_resistance * side_load_n * radius_m);
+    // A rear tire in the hole it dug has to climb out of it: that holds the
+    // body back, not the wheel, which spins on in the hole.
+    const double dig_drag_n =
+        side_load_n * (tire::dig_resistance(tire_params.size, state.rear_left_dig_m) +
+                       tire::dig_resistance(tire_params.size, state.rear_right_dig_m));
     // The steered front tires' side force has a component along the body
     // that holds the tractor back.
     const double front_drag_n =
-        direction * (out.front_rolling_resistance * out.axle_loads.front_n +
+        direction * (out.front_rolling_resistance * out.axle_loads.front_n + dig_drag_n +
                      params.chassis.wheelie_bar.rolling_resistance_coefficient *
                          out.axle_loads.wheelie_bar_n) +
         out.front_side_force_n * steer.sin;
@@ -682,6 +687,12 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         dt_s);
     chassis::advance(state.chassis, body_prediction, chain.tire_force_n, dt_s);
     relax_side_deflections(state, params, front_grip, rear_left_grip, rear_right_grip, steer, dt_s);
+    state.rear_left_dig_m =
+        tire::dig_depth_m(tire_params, state.rear_left_dig_m, left.wheel_m_s - left.ground_m_s,
+                          left.ground_m_s, dt_s);
+    state.rear_right_dig_m =
+        tire::dig_depth_m(tire_params, state.rear_right_dig_m, right.wheel_m_s - right.ground_m_s,
+                          right.ground_m_s, dt_s);
 
     // The torque the gearbox and the brakes put on the rear wheels, from
     // their own balance: it spins them up and overcomes the tires' traction

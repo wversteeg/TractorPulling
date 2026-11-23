@@ -132,7 +132,7 @@ struct Places {
     int worst = 0;
 };
 
-constexpr Places kNew{.best = 10, .worst = 14};
+constexpr Places kNew{.best = 9, .worst = 14};
 // One level up: the middle of the field, the top four on a good day, even
 // second on the best.
 constexpr Places kOneLevelUp{.best = 2, .worst = 13};
@@ -253,12 +253,12 @@ void expect_level(const char* file, std::initializer_list<Expectation> expectati
 
 // The standard class, the career's warming-up at one level: a new tractor
 // finishes near the back, and about two thirds of the garage fights for
-// the win (the top four). The sled set for the field's average, not its
+// the win (the top five). The sled set for the field's average, not its
 // strongest, lets the weakest gain a place now and then.
 TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWins) {
     expect_level("standard_3500.toml", {{.share = 0.0, .places = {.best = 11, .worst = 15}},
-                                        {.share = 0.45, .places = {.best = 2, .worst = 7}},
-                                        {.share = 0.66, .places = {.best = 1, .worst = 4}}});
+                                        {.share = 0.45, .places = {.best = 1, .worst = 7}},
+                                        {.share = 0.66, .places = {.best = 1, .worst = 5}}});
 }
 
 // The Sport classes pull in tall, close gears (3rd to 8th), launching with

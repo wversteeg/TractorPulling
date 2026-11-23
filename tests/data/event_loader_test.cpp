@@ -255,7 +255,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 19);
-    EXPECT_EQ(first.hash, 0x8242e3cf5cb4bf8fULL);
+    EXPECT_EQ(first.hash, 0x3f75a6f53d555d9eULL);
 }
 
 // An event's field may run bigger turbos than the reference engine's:

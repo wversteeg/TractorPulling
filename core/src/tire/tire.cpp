@@ -123,6 +123,17 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         return ParamError::kLoadSensitivityInvalid;
     }
     const TractionCurve& curve = params.traction;
+    const std::array more = {curve.lug_bearing_pa, curve.unsunk_lug_grip, params.digging.rate,
+                             params.digging.escape_speed_m_s};
+    if (!std::ranges::all_of(more, [](double v) { return std::isfinite(v); })) {
+        return ParamError::kNotFinite;
+    }
+    if (curve.lug_bearing_pa < 0.0 || curve.unsunk_lug_grip <= 0.0 || curve.unsunk_lug_grip > 1.0) {
+        return ParamError::kLugGripOutOfRange;
+    }
+    if (params.digging.rate < 0.0 || params.digging.escape_speed_m_s <= 0.0) {
+        return ParamError::kDiggingOutOfRange;
+    }
     if (curve.slow_spin_grip <= 0.0 || curve.slow_spin_grip > 1.0 || curve.fast_spin_grip <= 0.0 ||
         curve.fast_spin_grip > 1.0 || curve.spin_speed_m_s <= 0.0) {
         return ParamError::kSpinGripOutOfRange;
@@ -282,9 +293,46 @@ double load_factor(const TractionCurve& curve, double load_n) noexcept {
     return 1.0 / (1.0 + curve.load_sensitivity * (load_n / curve.reference_load_n - 1.0));
 }
 
+double lug_grip(const TractionCurve& curve, double cone_index_pa) noexcept {
+    if (curve.lug_bearing_pa <= 0.0 || cone_index_pa <= curve.lug_bearing_pa) {
+        return 1.0;
+    }
+    return curve.unsunk_lug_grip +
+           (1.0 - curve.unsunk_lug_grip) * curve.lug_bearing_pa / cone_index_pa;
+}
+
+double dig_depth_m(const Params& params, double depth_m, double slip_speed_m_s,
+                   double ground_speed_m_s, double dt_s) noexcept {
+    const Digging& digging = params.digging;
+    if (digging.rate <= 0.0 && depth_m == 0.0) {
+        return 0.0;
+    }
+    const double ground_m_s = std::abs(ground_speed_m_s);
+    const double scooped_m_s =
+        digging.rate * std::abs(slip_speed_m_s) * math::exp(-ground_m_s / digging.escape_speed_m_s);
+    const double next_m =
+        (depth_m + dt_s * scooped_m_s) / (1.0 + dt_s * ground_m_s / params.size.radius_m);
+    return std::min(next_m, params.size.section_height_m);
+}
+
+double dig_resistance(const Size& size, double depth_m) noexcept {
+    if (depth_m <= 0.0) {
+        return 0.0;
+    }
+    // The deflected tire rests on a patch about sqrt(2 r δ) long either side
+    // of the axle: it climbs the hole's edge over that length, a slope of
+    // depth over it. A rigid wheel (δ = 0) would take the circle's own
+    // slope, sqrt(2 h / r); the patch never makes it steeper than that.
+    const double half_patch_m = std::sqrt(2.0 * size.radius_m * size.deflection_m);
+    const double rigid = std::sqrt(2.0 * depth_m / size.radius_m);
+    const double slope = half_patch_m > 0.0 ? std::min(depth_m / half_patch_m, rigid) : rigid;
+    return std::min(slope, kMaxDigSlope);
+}
+
 double full_bite(const Params& params, double load_n, const soil::Surface& surface) noexcept {
     const TractionCurve& curve = params.traction;
     return surface.grip_factor * curve.limit * load_factor(curve, load_n) *
+           lug_grip(curve, surface.cone_index_pa) *
            (1.0 - math::exp(-curve.mobility_rate * mobility_number(params.size, load_n, surface)));
 }
 
