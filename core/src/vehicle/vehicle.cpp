@@ -590,9 +590,8 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     // Throwing that soil holds each side's wheels back, as rolling
     // resistance does (tire::throw_drag_n).
     const double throw_drag_n =
-        tires_per_side *
-        (tire::throw_drag_n(left_soil_m3_s, left.wheel_m_s - left.ground_m_s) +
-         tire::throw_drag_n(right_soil_m3_s, right.wheel_m_s - right.ground_m_s));
+        tires_per_side * (tire::throw_drag_n(left_soil_m3_s, left.wheel_m_s - left.ground_m_s) +
+                          tire::throw_drag_n(right_soil_m3_s, right.wheel_m_s - right.ground_m_s));
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
             ? tire::towed_rolling_resistance(params.front_tire,
