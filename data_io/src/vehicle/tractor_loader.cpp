@@ -122,9 +122,6 @@ std::optional<LoadError> check_brakes(const vehicle::Brakes& brakes, std::string
         case vehicle::BrakesError::kPedalTorque:
             return detail::make_error(source, "tractor.brakes.max_torque_nm",
                                       "must be a finite number, not negative");
-        case vehicle::BrakesError::kHoldTorque:
-            return detail::make_error(source, "tractor.brakes.hold_torque_nm",
-                                      "must be 0 (the pedals' torque) or at least max_torque_nm");
     }
     return std::nullopt;
 }
@@ -165,10 +162,7 @@ Result<vehicle::Params> read_tractor(const toml::table& root, std::string_view s
         .max_angle_rad = units::deg_to_rad(reader.number("tractor.steering.max_angle_deg")),
         .front_tires = detail::read_cornering(reader, "tractor.steering.cornering"),
     };
-    const vehicle::Brakes brakes{
-        .max_torque_nm = reader.number("tractor.brakes.max_torque_nm"),
-        // Optional: without it the hold brakes as the pedals do.
-        .hold_torque_nm = reader.optional_number("tractor.brakes.hold_torque_nm").value_or(0.0)};
+    const vehicle::Brakes brakes{.max_torque_nm = reader.number("tractor.brakes.max_torque_nm")};
     // Optional: an open differential without it.
     const vehicle::Differential differential{
         .coupling_nm_s_per_rad =

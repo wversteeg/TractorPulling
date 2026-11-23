@@ -30,8 +30,7 @@ FieldError describe(controls::ParamError error) {
         case ParamError::kGuardOutOfRange:
             return {"easy.clutch_assist",
                     "guard_speed_share must be in (0, 1] and guard_band_share in (0, "
-                    "guard_speed_share); hold_guard_speed_share 0 or above guard_band_share, "
-                    "at most 1"};
+                    "guard_speed_share)"};
         case ParamError::kMinThrottleOutOfRange:
             return {"easy.clutch_assist.min_throttle", "must be in [0, 1)"};
         case ParamError::kBrakeOffTheGasOutOfRange:
@@ -76,11 +75,6 @@ Result<controls::EasyParams> read_easy(const toml::table& root, std::string_view
                 .guard_speed_share = reader.number("easy.clutch_assist.guard_speed_share"),
                 .guard_band_share = reader.number("easy.clutch_assist.guard_band_share"),
                 .min_throttle = reader.number("easy.clutch_assist.min_throttle"),
-                // Optional: without it the guard while holding the brakes is
-                // the guard's.
-                .hold_guard_speed_share =
-                    reader.optional_number("easy.clutch_assist.hold_guard_speed_share")
-                        .value_or(0.0),
             },
         .steer_side_accel_m_s2 = reader.optional_number("easy.steer_side_accel_m_s2"),
     };

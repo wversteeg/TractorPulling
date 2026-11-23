@@ -403,9 +403,8 @@ side by side, each fitted between events (K-6), each best somewhere:
   the brakes and let the clutch bite so the load spools the turbo. A
   Supersport's clutch (60 to 100 kg on the pedal) leaves no foot for the
   brakes, so the game has no brake hold: the driver brings the clutch in
-  against the sled and the boost builds as it bites. The core still has
-  the hold (`session::Controls::hold_brakes`, `tp_pull run --hold-boost`),
-  unused by the game. The scripted rivals launch with a slipping clutch
+  against the sled and the boost builds as it bites. The scripted rivals
+  launch the same way, with a slipping clutch
   (eased back while the engine is below 80 % of its rated speed, for up
   to 8 s): in a tall gear without that the engine stalls.
 - **The nose** (videos of good pulls): up once on the launch, touching

@@ -31,7 +31,3 @@ release_time_s = 0.3      # fully in to fully out at the fastest
 guard_speed_share = 0.7   # slip the clutch below 70 % of rated speed: holds a tall gear's revs and boost
 guard_band_share = 0.1    # out at the fastest 10 % of rated speed below that
 min_throttle = 0.05       # below this the driver has lifted off: clutch out
-# On the brake hold for the start ("optoeren"): the clutch slips to keep the
-# engine at 90 % of rated speed, where the load against the brakes spools
-# the turbo.
-hold_guard_speed_share = 0.9
