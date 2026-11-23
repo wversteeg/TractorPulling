@@ -180,6 +180,24 @@ std::optional<T> component(const Result<T>& result, std::optional<LoadError>& er
     return result.value();
 }
 
+// The field's optional ranges: without them every puller has the
+// reference's drawbar, governor and turbo.
+void read_field_options(detail::Reader& reader, field::Variation& variation) {
+    if (reader.has("event.field.hitch_height_m")) {
+        variation.hitch_height_m = range(reader, "event.field.hitch_height_m");
+    }
+    if (reader.has("event.field.rated_rpm")) {
+        const field::Range rpm = range(reader, "event.field.rated_rpm");
+        variation.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
+                                       .high = units::rpm_to_rad_s(rpm.high)};
+    }
+    if (reader.has("event.field.boost_bar")) {
+        const field::Range bar = range(reader, "event.field.boost_bar");
+        variation.boost_pressure_pa = {.low = units::bar_to_pa(bar.low),
+                                       .high = units::bar_to_pa(bar.high)};
+    }
+}
+
 Result<EventDefinition> read_event(const toml::table& root, std::string_view source,
                                    std::string_view base, const ReadFile& read) {
     detail::Reader reader{root, source};
@@ -253,21 +271,7 @@ Result<EventDefinition> read_event(const toml::table& root, std::string_view sou
     }
     variation.lowest_gear = static_cast<int>(gears[0]);
     variation.highest_gear = static_cast<int>(gears[1]);
-    // Optional: without them every puller has the reference's drawbar,
-    // powershift and governor.
-    if (reader.has("event.field.hitch_height_m")) {
-        variation.hitch_height_m = range(reader, "event.field.hitch_height_m");
-    }
-    if (reader.has("event.field.rated_rpm")) {
-        const field::Range rpm = range(reader, "event.field.rated_rpm");
-        variation.rated_omega_rad_s = {.low = units::rpm_to_rad_s(rpm.low),
-                                       .high = units::rpm_to_rad_s(rpm.high)};
-    }
-    if (reader.has("event.field.boost_bar")) {
-        const field::Range bar = range(reader, "event.field.boost_bar");
-        variation.boost_pressure_pa = {.low = units::bar_to_pa(bar.low),
-                                       .high = units::bar_to_pa(bar.high)};
-    }
+    read_field_options(reader, variation);
     if (reader.has("event.field.load_downshift_gears")) {
         const std::vector<double> counts = reader.numbers("event.field.load_downshift_gears");
         const bool whole = std::ranges::all_of(counts, [](double c) {

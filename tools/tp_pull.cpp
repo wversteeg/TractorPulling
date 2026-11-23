@@ -990,6 +990,16 @@ Parsed parse_driving_option(std::string_view arg, std::string_view value, PullOp
 // A tuning option: `--ballast` (0 to 1), `--pressure` [bar] or `--hitch`
 // [m]; the tire's and hitch's own ranges are checked once the tractor is
 // loaded.
+// A share strictly between 0 and 1 into `share`.
+Parsed parse_share(std::string_view value, std::optional<double>& share) {
+    const auto parsed = parse_number<double>(value);
+    if (!parsed || *parsed <= 0.0 || *parsed >= 1.0) {
+        return Parsed::kInvalid;
+    }
+    share = parsed;
+    return Parsed::kOk;
+}
+
 Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOptions& pull) {
     if (arg == "--ballast") {
         const auto position = parse_number<double>(value);
@@ -1016,20 +1026,10 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         return Parsed::kOk;
     }
     if (arg == "--launch-hold") {
-        const auto share = parse_number<double>(value);
-        if (!share || *share <= 0.0 || *share >= 1.0) {
-            return Parsed::kInvalid;
-        }
-        pull.launch_hold_share = share;
-        return Parsed::kOk;
+        return parse_share(value, pull.launch_hold_share);
     }
     if (arg == "--feather") {
-        const auto share = parse_number<double>(value);
-        if (!share || *share <= 0.0 || *share >= 1.0) {
-            return Parsed::kInvalid;
-        }
-        pull.launch_feather_share = share;
-        return Parsed::kOk;
+        return parse_share(value, pull.launch_feather_share);
     }
     if (arg == "--start-y") {
         const auto y_m = parse_number<double>(value);
@@ -1037,12 +1037,7 @@ Parsed parse_tuning_option(std::string_view arg, std::string_view value, PullOpt
         return y_m ? Parsed::kOk : Parsed::kInvalid;
     }
     if (arg == "--downshift") {
-        const auto share = parse_number<double>(value);
-        if (!share || *share <= 0.0 || *share >= 1.0) {
-            return Parsed::kInvalid;
-        }
-        pull.downshift_share = share;
-        return Parsed::kOk;
+        return parse_share(value, pull.downshift_share);
     }
     return Parsed::kUnknown;
 }

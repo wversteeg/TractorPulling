@@ -290,7 +290,10 @@ TEST(Field, TurbosVary) {
     v.boost_pressure_pa = {.low = units::bar_to_pa(1.5), .high = units::bar_to_pa(2.0)};
     const std::optional<Field> field =
         generate(turbo, v, ntto_standard_3500(), event::kMaxPullers, 5);
-    ASSERT_TRUE(field.has_value());
+    if (!field) {
+        FAIL() << "the field was refused";
+        return;
+    }
     bool bigger = false;
     for (int i = 0; i < field->count; ++i) {
         const double pa =
@@ -421,7 +424,10 @@ TEST(Field, TheTrialTriesAnEasedThrottle) {
     const sled::Params sled = sled::testing::reference_params();
     const track::Params track = track::testing::reference_params();
     const std::optional<GearTrial> trial = best_gear_trial(puller, sled, track, 4, 6, kRules);
-    ASSERT_TRUE(trial.has_value());
+    if (!trial) {
+        FAIL() << "the trial was refused";
+        return;
+    }
     EXPECT_TRUE(std::ranges::find(kTrialThrottles, trial->throttle) != kTrialThrottles.end());
     for (int gear = 4; gear <= 6; ++gear) {
         for (const double throttle : kTrialThrottles) {
