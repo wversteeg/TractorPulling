@@ -725,3 +725,10 @@ power, so between half and three quarters of the Supersport garage a
 build gains little there and the places depend much on the draw. Ideas:
 upgrades that pay on a soft start (tire grip, the launch), or a first
 track that suits the class's progression.
+
+## The sled's breakaway
+
+The breakaway (`sled::Params::breakaway_share`) is a share of the sled's
+whole weight; the chain's upward pull at the hook unloads the sled's front
+a little, which a fuller model would take off. It drops to the rolling
+resistance in one step once the sled moves (stick-slip).

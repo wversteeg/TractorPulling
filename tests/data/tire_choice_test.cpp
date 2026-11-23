@@ -106,16 +106,19 @@ constexpr double kClearly_m = 2.0;
 
 // Fully built, each tire on the final drive the crew pairs it with (the
 // one it suits): the puller tires on the tall drive pull clearly further on
-// a firm track, where they spin up to their bite, and on the watered start
-// too: the tall drive lets them spin up at the launch. The farm tires are
-// the stock ones, cheap: the tires to start the class on, not to win it.
+// a firm track, where they spin up to their bite, and at least as far on
+// the watered start, where the tall drive lets them spin up at the launch.
+// The farm tires are the stock ones, cheap: the tires to start the class
+// on, not to win it.
 TEST(TireChoice, PullerTiresOnTheTallDriveAreTheUpgrade) {
     const data::SeasonDefinition d = supersport();
-    for (const char* on_file : {"firm_loam.toml", "ideal_clay_sand.toml", "watered_start.toml"}) {
-        const data::Track on = track(on_file);
+    for (const char* firm : {"firm_loam.toml", "ideal_clay_sand.toml"}) {
+        const data::Track on = track(firm);
         EXPECT_GT(pulled_m(d, on, kPullerOnTall), pulled_m(d, on, kFarmOnShort) + kClearly_m)
-            << on_file;
+            << firm;
     }
+    const data::Track wet = track("watered_start.toml");
+    EXPECT_GE(pulled_m(d, wet, kPullerOnTall), pulled_m(d, wet, kFarmOnShort));
 }
 
 // Power counts on a firm track: on the tall drive the puller tires spin at

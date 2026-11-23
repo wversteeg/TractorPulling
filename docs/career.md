@@ -358,8 +358,8 @@ side by side, each fitted between events (K-6), each best somewhere:
   **puller tires** (30.5L-32, € 5,000: many low bars that bite harder the
   faster they spin, and a higher limit). Each has its own grip upgrade.
   Fully built, the puller tires on the tall drive pull clearly further
-  than the farm tires on the short one on every track, the watered start
-  too (`TireChoice.PullerTiresOnTheTallDriveAreTheUpgrade`): the farm
+  than the farm tires on the short one on a firm track and at least as
+  far on the watered start (`TireChoice.PullerTiresOnTheTallDriveAreTheUpgrade`): the farm
   tires are the cheap ones to start the class on.
   A tire of another size moves the axle and the tractor's centre of
   gravity with it (`vehicle::with_rear_tire`).

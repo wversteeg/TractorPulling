@@ -194,6 +194,27 @@ TEST(Driver, FeathersTheHeldLaunch) {
     EXPECT_EQ(validate(plan, 8), ParamError::kLaunchHoldOutOfRange);
 }
 
+// A feathered launch that settles at the hold still runs out of hold time:
+// then the clutch comes in at the plan's rate whatever the revs.
+TEST(Driver, AFeatheredLaunchAtTheHoldTimesOut) {
+    const vehicle::Params params = vehicle::testing::reference_params();
+    Plan plan = kPlan;
+    plan.launch_hold_share = 0.8;
+    plan.launch_hold_max_s = 1.0;
+    plan.launch_feather_share = 0.1;
+    vehicle::State tractor;
+    tractor.engine.running = true;
+    tractor.driveline.gear = plan.gear;
+    tractor.engine.omega_rad_s = 0.8 * params.engine.rated_omega_rad_s;
+    State state;
+    double pedal = 1.0;
+    for (int ms = 3000; ms <= 6000; ++ms) {
+        pedal = input(plan, state, ms / 1000.0, tractor, params).clutch_pedal;
+    }
+    EXPECT_EQ(pedal, 0.0) << "held a second at most, then in over two";
+    EXPECT_TRUE(state.launched);
+}
+
 // The driver pulls at the plan's hand throttle: full, or eased.
 TEST(Driver, PullsAtThePlansThrottle) {
     Plan plan = kPlan;

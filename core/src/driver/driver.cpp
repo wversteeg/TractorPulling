@@ -62,9 +62,9 @@ double held_clutch_pedal(const Plan& plan, State& state, double t_s, const vehic
         const double band_rad_s = plan.launch_feather_share * params.engine.rated_omega_rad_s;
         const double rate =
             std::clamp((tractor.engine.omega_rad_s - hold_rad_s) / band_rad_s, -1.0, 1.0);
-        if (rate < 0.0) {
-            state.held_s += dt_s;
-        }
+        // Held whenever it is not coming up at the full rate: a launch that
+        // settles at the hold still runs out of hold time.
+        state.held_s += (1.0 - std::max(rate, 0.0)) * dt_s;
         state.clutch_in =
             std::clamp(state.clutch_in + (rate * dt_s / plan.clutch_slip_in_s), 0.0, 1.0);
         state.launched = state.clutch_in >= 1.0;
