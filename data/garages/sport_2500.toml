@@ -32,7 +32,7 @@
 # share this garage.
 
 [garage]
-start_money_eur = 9000
+start_money_eur = 11000
 
 [[garage.upgrades]]
 part = "engine_torque"
@@ -111,40 +111,41 @@ levels = [
 
 # The dealer: a new class is a new tractor, bought when the class opens, as
 # one of these models (the game draws each its own way; all pull alike).
-# Priced at about a fifth of a winning season's prize money; the cheapest is
-# never dearer than the money there is. Painting it later costs
-# paint_cost_eur.
+# Every model costs the same (they differ only in looks): about what a
+# career carries out of the class below, less a tenth of this garage to
+# start building with; the dealer never asks more than the money there is.
+# Painting it later costs paint_cost_eur.
 [garage.dealer]
 paint_cost_eur = 500
 
 [[garage.dealer.models]]
 name = "Sprint Classic"
 style = "pull_classic"
-cost_eur = 4000
+cost_eur = 6000
 about = "The pulling tractor as it should be: a round bonnet, chrome and a roll bar."
 
 [[garage.dealer.models]]
 name = "Sprint Low"
 style = "pull_low"
-cost_eur = 4600
+cost_eur = 6000
 about = "Built low: a low bonnet, a short roll bar and one tall stack."
 
 [[garage.dealer.models]]
 name = "Sprint High"
 style = "pull_high"
-cost_eur = 5200
+cost_eur = 6000
 about = "A tall square bonnet, twin stacks and wide fenders."
 
 [[garage.dealer.models]]
 name = "Sprint Cage"
 style = "pull_cage"
-cost_eur = 5800
+cost_eur = 6000
 about = "A safety cage with a roof and lamps over a round bonnet."
 
 [[garage.dealer.models]]
 name = "Sprint Farm"
 style = "pull_farm"
-cost_eur = 6500
+cost_eur = 6000
 about = "A farm tractor's square hood on a pulling frame: the farmer's choice."
 
 # The colours, the same at every dealer: the first comes with the tractor.

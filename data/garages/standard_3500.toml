@@ -92,8 +92,8 @@ levels = [
 
 # The dealer: the tractor a career starts with, bought before the first
 # season, as one of these models (the game draws each its own way; all pull
-# alike). The cheapest leaves the € 1,000 a career starts the garage with;
-# a dearer one, less. Painting it another colour later costs paint_cost_eur.
+# alike, and all cost the same). It leaves the € 1,000 a career starts the
+# garage with. Painting it another colour later costs paint_cost_eur.
 [garage.dealer]
 paint_cost_eur = 300
 
@@ -106,25 +106,25 @@ about = "The all-rounder: a square hood, a closed cab and a beacon on the roof."
 [[garage.dealer.models]]
 name = "Oldtimer 55"
 style = "farm_vintage"
-cost_eur = 1750
+cost_eur = 1500
 about = "A rounded hood, chrome and a tall stack, no cab: a restored classic."
 
 [[garage.dealer.models]]
 name = "Laagland 70"
 style = "farm_low"
-cost_eur = 2000
+cost_eur = 1500
 about = "Low and lean: a flat hood, a low cab and the exhaust up its corner."
 
 [[garage.dealer.models]]
 name = "Hoogland 75"
 style = "farm_high"
-cost_eur = 2250
+cost_eur = 1500
 about = "Tall and proud: a high hood, a big cab, twin stacks and wide fenders."
 
 [[garage.dealer.models]]
 name = "Akkerman 80 S"
 style = "farm_modern"
-cost_eur = 2500
+cost_eur = 1500
 about = "The new one: a sloping nose with lamp strips and a rounded cab."
 
 # The colours, the same at every dealer: the first comes with the tractor.

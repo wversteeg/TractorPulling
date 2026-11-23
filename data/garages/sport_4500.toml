@@ -132,40 +132,41 @@ levels = [
 
 # The dealer: a new class is a new tractor, bought when the class opens, as
 # one of these models (the game draws each its own way; all pull alike).
-# Priced at about a quarter of a winning season's prize money; the cheapest
-# is never dearer than the money there is. Painting it later costs
-# paint_cost_eur.
+# Every model costs the same (they differ only in looks): about what a
+# career carries out of the class below, less a tenth of this garage to
+# start building with; the dealer never asks more than the money there is.
+# Painting it later costs paint_cost_eur.
 [garage.dealer]
 paint_cost_eur = 700
 
 [[garage.dealer.models]]
 name = "Titan Classic"
 style = "pull_classic"
-cost_eur = 6500
+cost_eur = 6000
 about = "The pulling tractor as it should be: a round bonnet, chrome and a roll bar."
 
 [[garage.dealer.models]]
 name = "Titan Low"
 style = "pull_low"
-cost_eur = 7300
+cost_eur = 6000
 about = "Built low: a low bonnet, a short roll bar and one tall stack."
 
 [[garage.dealer.models]]
 name = "Titan High"
 style = "pull_high"
-cost_eur = 8100
+cost_eur = 6000
 about = "A tall square bonnet, twin stacks and wide fenders."
 
 [[garage.dealer.models]]
 name = "Titan Farm"
 style = "pull_farm"
-cost_eur = 8900
+cost_eur = 6000
 about = "A farm tractor's square hood on a pulling frame: the farmer's choice."
 
 [[garage.dealer.models]]
 name = "Titan Cab"
 style = "pull_cab"
-cost_eur = 9800
+cost_eur = 6000
 about = "A closed cab on a pulling frame, lamps all round: pulling in comfort."
 
 # The colours, the same at every dealer: the first comes with the tractor.

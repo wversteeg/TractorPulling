@@ -193,9 +193,10 @@ levels = [
 
 # The dealer: a new class is a new tractor, bought when the class opens, as
 # one of these models (the game draws each its own way; all pull alike).
-# Priced at about a quarter of a winning season's prize money; the cheapest
-# is never dearer than the money there is. Painting it later costs
-# paint_cost_eur.
+# Every model costs the same (they differ only in looks): about what a
+# career carries out of the class below, less a tenth of this garage to
+# start building with; the dealer never asks more than the money there is.
+# Painting it later costs paint_cost_eur.
 [garage.dealer]
 paint_cost_eur = 900
 
@@ -207,31 +208,31 @@ paint_cost_eur = 900
 [[garage.dealer.models]]
 name = "Thunder Eighties"
 style = "ss_square"
-cost_eur = 8500
+cost_eur = 10000
 about = "An eighties tractor's square hood, a black roll cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Oldtimer"
 style = "ss_round"
-cost_eur = 9400
+cost_eur = 10000
 about = "An older tractor's round hood in a chrome roll cage, a tall chrome stack and a weight box."
 
 [[garage.dealer.models]]
 name = "Thunder Low"
 style = "ss_low"
-cost_eur = 10300
+cost_eur = 10000
 about = "Built low: a low square hood, a low black cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Modern"
 style = "ss_sloped"
-cost_eur = 11200
+cost_eur = 10000
 about = "A modern tractor's sloping hood and lamp strips, a cage in its colour and a weight box."
 
 [[garage.dealer.models]]
 name = "Thunder High"
 style = "ss_high"
-cost_eur = 12300
+cost_eur = 10000
 about = "A tall square hood in a tall chrome roll cage, wide fenders and a weight box."
 
 # The colours, the same at every dealer: the first comes with the tractor.
