@@ -387,6 +387,22 @@ TEST(Vehicle, TooHeavyALoadSpinsTheWheelsInALowGear) {
     EXPECT_DOUBLE_EQ(pull.last.slip_ratio, 1.0);
 }
 
+// Spinning on the spot under that load, the rear tires dig themselves in
+// (tire::Digging), both sides alike; pulling a load they hold, they roll
+// over the ground and leave hardly a hole.
+TEST(Vehicle, SpinningOnTheSpotDigsTheTiresIn) {
+    constexpr double kDugIn_m = 0.02;
+    constexpr double kHardlyAHole_m = 0.002;
+    Pull stuck;
+    stuck.run(1, 26000.0, false, 15.0);
+    EXPECT_GT(stuck.state.rear_left_dig_m, kDugIn_m);
+    EXPECT_DOUBLE_EQ(stuck.state.rear_left_dig_m, stuck.state.rear_right_dig_m);
+    Pull rolling;
+    rolling.run(3, 5000.0, false, 15.0);
+    EXPECT_LT(rolling.state.rear_left_dig_m, kHardlyAHole_m);
+    EXPECT_LT(rolling.state.rear_right_dig_m, kHardlyAHole_m);
+}
+
 // In top gear the tires grip better than the engine can turn them: the
 // load stalls the engine.
 TEST(Vehicle, TooHeavyALoadStallsTheEngineInTopGear) {
@@ -1221,7 +1237,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x25cd850a07defeb0ULL);
+    EXPECT_EQ(pull_hash(), 0x4ef8d35996536d29ULL);
 }
 
 }  // namespace

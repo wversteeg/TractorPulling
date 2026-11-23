@@ -63,6 +63,8 @@ package "tp::vehicle" {
     +front_side_deflection_m : double
     +rear_left_side_deflection_m : double
     +rear_right_side_deflection_m : double
+    +rear_left_dig_m : double
+    +rear_right_dig_m : double
   }
   class Input <<struct>> {
     +throttle : double

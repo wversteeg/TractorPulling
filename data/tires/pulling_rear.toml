@@ -25,6 +25,11 @@ slip_rate = 18.0                   # how fast grip builds with slip
 # (tp::tire::TractionCurve), along with the side grip it shares.
 fast_spin_grip = 0.95
 spin_speed_m_s = 4.0
+# On ground stronger than the lugs press into it (hard, dry clay), they
+# ride on their tips and grip less (tp::tire::lug_grip): a little on the
+# firm loam and the sandy clay, about a third on the dry hard clay.
+lug_bearing_mpa = 1.5
+unsunk_lug_grip = 0.5
 
 # The inflation pressure the puller sets before a pull (see
 # tp::tire::Pressure): lower deflects the tire more, for a bigger footprint
@@ -46,3 +51,9 @@ stiffness_per_rad = 4.0            # side force per unit of load per rad of slip
 limit = 0.8                        # side force per unit of load at most
 mobility_rate = 0.1                # as for traction: soft ground grips less
 relaxation_length_m = 0.8          # about the tire's radius
+
+# Spinning on the spot, the lugs dig the tire a hole within a few metres
+# of slip, and it has to climb out of it (tp::tire::Digging).
+[tire.digging]
+rate = 0.005                      # m of depth per m of slip, standing
+escape_speed_m_s = 0.5             # moving faster than about this, it hardly digs

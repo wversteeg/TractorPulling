@@ -452,7 +452,9 @@ TEST(WheelieRuns, ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown) {
     EXPECT_TRUE(good.down_at_the_end);
 
     const Nose back = supersport_nose(0.0, kTopHole_m);
-    EXPECT_GT(back.up_m, 0.9 * back.distance_m) << "up all the way, on the bar";
+    // All but the launch: the nose is up within a few tenths of a metre.
+    constexpr double kLaunch_m = 0.3;
+    EXPECT_GT(back.up_m, back.distance_m - kLaunch_m) << "up all the way, on the bar";
     const Nose held_down = supersport_nose(1.0, kLowestHole_m);
     EXPECT_LT(held_down.up_m, 1.0) << "the front held down";
     EXPECT_GT(held_down.middle_mean_n, 2.0 * good.middle_mean_n);

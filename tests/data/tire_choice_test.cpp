@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -29,6 +30,7 @@ constexpr int kSixLitre = 1;
 constexpr int kFarmTires = 0;
 constexpr int kPullerTires = 1;
 constexpr int kShort = 0;
+constexpr int kMiddle = 1;
 constexpr int kTall = 2;
 // The gearbox's pulling gears (drivelines/supersport_3600_*.toml): the
 // player picks the best of them for the track.
@@ -122,6 +124,23 @@ TEST(TireChoice, PullerTiresOnTheTallDriveAreTheUpgrade) {
     }
     const data::Track wet = track("watered_start.toml");
     EXPECT_GT(pulled_m(d, wet, kPullerOnTall), pulled_m(d, wet, kFarmOnShort) + kSomewhat_m);
+}
+
+// Fully built, the puller tires on the final drive that suits the track
+// (the tall or the middle one) pull further than the farm tires on theirs
+// on every track: no top team pulls on farm tires. On the dry hard clay the
+// farm tire's lugs ride on its crust (tire::lug_grip); on the softer tracks
+// the puller tire's grip and the turbo's power carry it.
+TEST(TireChoice, FarmTiresLoseToPullerTiresOnEveryTrack) {
+    const data::SeasonDefinition d = supersport();
+    for (const char* name : {"watered_start.toml", "firm_loam.toml", "covered_heavy_clay.toml",
+                             "sandy_clay.toml", "dry_hard_clay.toml", "ideal_clay_sand.toml"}) {
+        const data::Track on = track(name);
+        const double puller_m =
+            std::max(pulled_m(d, on, kPullerOnTall, kSixLitre),
+                     pulled_m(d, on, {.tires = kPullerTires, .final_drive = kMiddle}, kSixLitre));
+        EXPECT_GT(puller_m, pulled_m(d, on, kFarmOnShort, kSixLitre) + kSomewhat_m) << name;
+    }
 }
 
 // Power counts on a firm track: on the tall drive the puller tires spin at

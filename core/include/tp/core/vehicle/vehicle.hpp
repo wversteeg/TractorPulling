@@ -164,6 +164,10 @@ struct State {
     double front_side_deflection_m = 0.0;
     double rear_left_side_deflection_m = 0.0;
     double rear_right_side_deflection_m = 0.0;
+    /// How deep the rear tires on the left and the right have dug
+    /// themselves in (tire::Digging) [m].
+    double rear_left_dig_m = 0.0;
+    double rear_right_dig_m = 0.0;
 };
 
 /// One side's rear wheels this step.
@@ -285,6 +289,8 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.front_side_deflection_m);
     hash.add(state.rear_left_side_deflection_m);
     hash.add(state.rear_right_side_deflection_m);
+    hash.add(state.rear_left_dig_m);
+    hash.add(state.rear_right_dig_m);
 }
 
 }  // namespace tp::vehicle

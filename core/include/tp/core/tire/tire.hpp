@@ -59,6 +59,37 @@ struct TractionCurve {
     double fast_spin_grip = 1.0;
     /// The slip speed over which the share moves 63 % of its way [m/s].
     double spin_speed_m_s = 1.0;
+    /// Lugs need to sink into the ground to grip: on ground stronger than
+    /// they press into it, they ride on their tips and grip less. Up to
+    /// lug_bearing_pa of cone index the lugs sink in fully; above it they
+    /// sink in a share lug_bearing_pa / CI of their height, and the tire
+    /// grips unsunk_lug_grip of itself plus the sunk share of the rest:
+    ///
+    ///   h(CI) = unsunk + (1 - unsunk) min(1, lug_bearing_pa / CI)
+    ///
+    /// A farm tire's tall, blunt lugs ride on hard, dry clay; a puller
+    /// tire's sharp bars cut into it. 0 (the default): the lugs always sink
+    /// in [Pa].
+    double lug_bearing_pa = 0.0;
+    double unsunk_lug_grip = 1.0;
+};
+
+/// A tire spinning on the spot digs itself a hole, and then has to climb
+/// out of it: while it hardly moves over the ground, its tread scoops out
+/// `rate` metres of depth per metre of slip, less the faster the tractor
+/// moves (a share e^(-v / escape_speed_m_s) at ground speed v), and rolling
+/// forward it climbs out of the hole over about its radius:
+///
+///   depth' = rate |v_slip| e^(-|v| / escape_speed) - depth |v| / r
+///
+/// A tire in a hole of depth h has to lift itself over its edge: the hole
+/// holds the tractor back with the slope it climbs times the tire's load,
+/// h over the half length of its contact patch, sqrt(2 r δ) (no steeper
+/// than a rigid wheel's sqrt(2 h / r), and at most kMaxDigSlope). 0 (the
+/// default): the tire does not dig.
+struct Digging {
+    double rate = 0.0;
+    double escape_speed_m_s = 1.0;
 };
 
 /// The share of a tire's traction coefficient it keeps under `load_n`
@@ -137,11 +168,13 @@ enum class Tread : std::uint8_t {
 /// reference is the larger of the two and a small minimum, clamped to
 /// [-1, 1]. The traction coefficient is
 ///
-///   μ(s) = g · limit (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²) k(v)
+///   μ(s) = g · limit h(CI) (1 - e^(-mobility_rate Bn)) (1 - e^(-slip_rate |s|)) (1 - f s²) k(v)
 ///
 /// with g the surface's grip factor and f its spin fall-off, which Brixius
 /// leaves out: past the peak, a spinning tire smears or digs and loses
-/// grip, which makes wheelspin run away once it starts. k(v) is the tread's
+/// grip, which makes wheelspin run away once it starts. h(CI) is the share
+/// its lugs give on ground that strong (lug_grip()), also left out by
+/// Brixius. k(v) is the tread's
 /// own response to how fast it spins (TractionCurve), which Brixius leaves
 /// out too. Load sensitivity follows from Bn, and above the tire's
 /// reference load from its load_sensitivity (TractionCurve). Braking
@@ -156,6 +189,7 @@ struct Params {
     /// Smallest reference speed for the slip ratio [m/s].
     double min_reference_speed_m_s = 0.0;
     Pressure pressure;
+    Digging digging;
     /// Only for drawing the tire (Tread).
     Tread tread = Tread::kFarm;
 };
@@ -173,6 +207,10 @@ enum class ParamError : std::uint8_t {
     /// slow_spin_grip or fast_spin_grip outside (0, 1], or spin_speed_m_s
     /// not above 0.
     kSpinGripOutOfRange,
+    /// The lug bearing negative or the unsunk grip outside (0, 1].
+    kLugGripOutOfRange,
+    /// The digging rate negative or its escape speed not above 0.
+    kDiggingOutOfRange,
     kInertiaNotPositive,
     kMinReferenceSpeedNotPositive,
     kCorneringNotPositive,
@@ -281,6 +319,23 @@ struct Footing {
 /// pull per unit of load at the best slip, before spin fall-off [-].
 [[nodiscard]] double full_bite(const Params& params, double load_n,
                                const soil::Surface& surface) noexcept;
+
+/// The share of its grip a tire's lugs give on ground of `cone_index_pa`
+/// (TractionCurve::lug_bearing_pa): 1 where they sink in fully.
+[[nodiscard]] double lug_grip(const TractionCurve& curve, double cone_index_pa) noexcept;
+
+/// The steepest edge of a hole a tire climbs out of: about 45° [-].
+inline constexpr double kMaxDigSlope = 1.0;
+
+/// The depth of a tire's hole after a step (Digging), with the climb out
+/// taken implicitly so it is stable at any speed, and at most the tire's
+/// section height [m].
+[[nodiscard]] double dig_depth_m(const Params& params, double depth_m, double slip_speed_m_s,
+                                 double ground_speed_m_s, double dt_s) noexcept;
+
+/// What a hole `depth_m` deep holds the tractor back with per unit of the
+/// tire's load (Digging) [-].
+[[nodiscard]] double dig_resistance(const Size& size, double depth_m) noexcept;
 
 /// A tire's side grip under its load on this ground, for the step.
 struct SideGrip {

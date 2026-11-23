@@ -78,6 +78,31 @@ TEST(TireLoader, ShippedFileMatchesTestReference) {
     EXPECT_EQ(loaded.pressure.min_bar, reference.pressure.min_bar);
     EXPECT_EQ(loaded.pressure.max_bar, reference.pressure.max_bar);
     EXPECT_EQ(loaded.pressure.lug_squirm, reference.pressure.lug_squirm);
+    EXPECT_EQ(loaded.traction.lug_bearing_pa, reference.traction.lug_bearing_pa);
+    EXPECT_EQ(loaded.traction.unsunk_lug_grip, reference.traction.unsunk_lug_grip);
+    EXPECT_EQ(loaded.digging.rate, reference.digging.rate);
+    EXPECT_EQ(loaded.digging.escape_speed_m_s, reference.digging.escape_speed_m_s);
+}
+
+// The lugs' bearing is read in MPa, as cone index readings are given; the
+// lugs and the digging are optional: without them the lugs always sink in
+// and the tire does not dig.
+TEST(TireLoader, ReadsTheLugsAndTheDigging) {
+    const auto plain = parse_tire(kValidTire, "test.toml");
+    ASSERT_TRUE(plain.ok()) << plain.error().message;
+    EXPECT_EQ(plain.value().traction.lug_bearing_pa, 0.0);
+    EXPECT_EQ(plain.value().traction.unsunk_lug_grip, 1.0);
+    EXPECT_EQ(plain.value().digging.rate, 0.0);
+    const auto set =
+        parse_tire(with("slip_rate = 12.0\n",
+                        "slip_rate = 12.0\nlug_bearing_mpa = 1.5\nunsunk_lug_grip = 0.6\n") +
+                       "\n[tire.digging]\nrate = 0.01\nescape_speed_m_s = 0.4\n",
+                   "test.toml");
+    ASSERT_TRUE(set.ok()) << set.error().message;
+    EXPECT_DOUBLE_EQ(set.value().traction.lug_bearing_pa, 1.5e6);
+    EXPECT_DOUBLE_EQ(set.value().traction.unsunk_lug_grip, 0.6);
+    EXPECT_DOUBLE_EQ(set.value().digging.rate, 0.01);
+    EXPECT_DOUBLE_EQ(set.value().digging.escape_speed_m_s, 0.4);
 }
 
 TEST(TireLoader, ParsesValues) {
@@ -149,7 +174,7 @@ TEST(TireLoader, RejectsNonsenseValues) {
         std::string_view to;
         std::string_view expected;
     };
-    const std::array<Case, 16> cases = {{
+    const std::array<Case, 18> cases = {{
         {"radius_m = 0.7", "", "tire.radius_m: missing or not a number"},
         {"radius_m = 0.7", "radius_m = 0.0", "tire.radius_m: must be > 0"},
         {"section_width_m = 0.42", "section_width_m = 0.0", "tire.section_width_m: section width"},
@@ -173,6 +198,10 @@ TEST(TireLoader, RejectsNonsenseValues) {
         {"lug_squirm = 0.4", "", "tire.pressure.lug_squirm: missing or not a number"},
         {"[tire]\n", "[tire]\ntread = \"slick\"\n",
          R"(tire.tread: must be "farm", "cut" or "puller")"},
+        {"slip_rate = 12.0\n", "slip_rate = 12.0\nunsunk_lug_grip = 0.0\n",
+         "tire.traction: lug_bearing_mpa must be >= 0 and unsunk_lug_grip in (0, 1]"},
+        {"[tire.cornering]", "[tire.digging]\nrate = -1.0\n\n[tire.cornering]",
+         "tire.digging: rate must be >= 0 and escape_speed_m_s > 0"},
     }};
     for (const Case& c : cases) {
         const std::string message = error_of(with(c.from, c.to));

@@ -12,6 +12,8 @@ namespace tp::data {
 namespace {
 
 constexpr std::string_view kTable = "tire";
+// Data files give the lug bearing in MPa, as cone index readings are.
+constexpr double kPaPerMpa = 1.0e6;
 
 // The optional [tire.pressure] table: without it the pressure is not set.
 tire::Pressure read_pressure(detail::Reader& reader) {
@@ -66,11 +68,24 @@ Result<tire::Params> read_tire(const toml::table& root, std::string_view source)
                     reader.optional_number("tire.traction.fast_spin_grip").value_or(1.0),
                 .spin_speed_m_s =
                     reader.optional_number("tire.traction.spin_speed_m_s").value_or(1.0),
+                // Optional: without them the tire's lugs always sink in.
+                .lug_bearing_pa =
+                    reader.optional_number("tire.traction.lug_bearing_mpa").value_or(0.0) *
+                    kPaPerMpa,
+                .unsunk_lug_grip =
+                    reader.optional_number("tire.traction.unsunk_lug_grip").value_or(1.0),
             },
         .cornering = detail::read_cornering(reader, "tire.cornering"),
         .wheel_inertia_kg_m2 = reader.number("tire.wheel_inertia_kg_m2"),
         .min_reference_speed_m_s = reader.number("tire.min_reference_speed_m_s"),
         .pressure = read_pressure(reader),
+        // Optional: without it the tire does not dig itself in.
+        .digging =
+            {
+                .rate = reader.optional_number("tire.digging.rate").value_or(0.0),
+                .escape_speed_m_s =
+                    reader.optional_number("tire.digging.escape_speed_m_s").value_or(1.0),
+            },
         .tread = read_tread(reader),
     };
     if (const std::optional<LoadError>& error = reader.error()) {

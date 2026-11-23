@@ -18,7 +18,9 @@ inline Params reference_params() {
                      .slip_rate = 18.0,
                      .slow_spin_grip = 1.0,
                      .fast_spin_grip = 0.95,
-                     .spin_speed_m_s = 4.0},
+                     .spin_speed_m_s = 4.0,
+                     .lug_bearing_pa = 1.5e6,
+                     .unsunk_lug_grip = 0.5},
         .cornering = {.stiffness_per_rad = 4.0,
                       .limit = 0.8,
                       .mobility_rate = 0.1,
@@ -26,6 +28,7 @@ inline Params reference_params() {
         .wheel_inertia_kg_m2 = 30.0,
         .min_reference_speed_m_s = 0.5,
         .pressure = {.reference_bar = 1.0, .min_bar = 0.5, .max_bar = 1.6, .lug_squirm = 0.5},
+        .digging = {.rate = 0.005, .escape_speed_m_s = 0.5},
     };
 }
 
