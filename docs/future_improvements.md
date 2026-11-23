@@ -325,11 +325,6 @@ for the big features; they are repeated at the end for completeness.
 - **Rivals don't tune.** The scripted pullers pull as built; a driver who
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
-- **Rivals launch without the brake hold.** The scripted pullers build
-  their boost on a slipping clutch (driver::Plan's launch hold), not on
-  the brakes as the player can (HOLD): they move off with little boost.
-  A rival's brake hold, with its field retuned for it, would launch as
-  real pullers do.
 - **Rivals keep one set of tires.** The Supersport 3.6 t rivals at promo
   and top all pull the 7 l engine on puller tires and the middle final
   drive, at belofte on farm tires and the short drive; only the player

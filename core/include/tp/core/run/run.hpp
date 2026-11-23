@@ -72,8 +72,8 @@ struct Result {
 /// not end the run: the tractor may pull on [m].
 inline constexpr double kStopCountsFrom_m = 0.5;
 
-/// An engine that stalls before the sled has pulled this far (against the
-/// start's brake hold, or the clutch let in too hard) does not end the run:
+/// An engine that stalls before the sled has pulled this far (the clutch
+/// let in too hard) does not end the run:
 /// the pull has not begun, and the driver starts the engine again
 /// (turn::step) [m].
 inline constexpr double kStallRestartsWithin_m = 0.1;

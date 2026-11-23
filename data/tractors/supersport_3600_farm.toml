@@ -29,9 +29,6 @@ relaxation_length_m = 0.5         # about the tire's radius
 
 [tractor.brakes]
 max_torque_nm = 10000.0            # per side, at the wheels, at full pedal
-# The start's brake hold ("optoeren") clamps them harder, to hold the
-# loaded engine in a pulling gear while the turbo spools.
-hold_torque_nm = 25000.0
 
 # The differential: a pulling tractor's is coupled (a limited-slip one, or
 # a lock that gives way), passing torque to the side that grips: a weak

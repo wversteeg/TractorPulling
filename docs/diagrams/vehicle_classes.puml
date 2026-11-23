@@ -33,7 +33,6 @@ package "tp::vehicle" {
   }
   class Brakes <<struct>> {
     +max_torque_nm : double, at full pedal
-    +hold_torque_nm : double, the start's hold (0: as the pedals; else at least max)
   }
   enum DifferentialError {
     kCoupling
@@ -72,7 +71,6 @@ package "tp::vehicle" {
     +gear : int, -1 = reverse
     +steering_rad : double
     +brake_left, brake_right : double
-    +hold_brakes : bool, the start's brake hold
     +pull_on : bool = true
   }
   class RearWheels <<struct>> {

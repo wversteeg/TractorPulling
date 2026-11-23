@@ -33,31 +33,12 @@ constexpr double kBrakeRest = 0.0;
 // The guard speed at `throttle`: near peak torque at full throttle, and at
 // part throttle where the governor reaches full fuel (below it the engine
 // lugs), but never so low that the clutch would still be in at the stall.
-double guard_rad_s(const ClutchAssist& assist, const engine::Params& engine, double throttle,
-                   bool holding) noexcept {
+double guard_rad_s(const ClutchAssist& assist, const engine::Params& engine,
+                   double throttle) noexcept {
     const double band_rad_s = assist.guard_band_share * engine.rated_omega_rad_s;
-    const double share = holding && assist.hold_guard_speed_share > 0.0
-                             ? assist.hold_guard_speed_share
-                             : assist.guard_speed_share;
-    const double lugging_rad_s =
-        std::min(share * engine.rated_omega_rad_s, engine::full_fuel_omega_rad_s(engine, throttle));
+    const double lugging_rad_s = std::min(assist.guard_speed_share * engine.rated_omega_rad_s,
+                                          engine::full_fuel_omega_rad_s(engine, throttle));
     return std::max(lugging_rad_s, engine.stall_omega_rad_s + band_rad_s);
-}
-
-// Whether the start's brake hold holds this step: asked for, and not yet
-// let go at its boost (a release stands until the hold is let go).
-// `until_boost` is a share of full boost, held to 0 to 1 (unit); 0, or not a
-// number, holds while asked.
-bool holding(bool asked, double until_boost, double boost, AssistState& state) noexcept {
-    if (!asked) {
-        state.hold_released = false;
-        return false;
-    }
-    const double release_boost = unit(until_boost, 0.0);
-    if (release_boost > 0.0 && boost >= release_boost) {
-        state.hold_released = true;
-    }
-    return !state.hold_released;
 }
 
 // How far the assist lets the clutch in after this step: in while the
@@ -65,12 +46,12 @@ bool holding(bool asked, double until_boost, double boost, AssistState& state) n
 // rate when the driver lifts off, when neutral is in, or before a shift.
 double engagement_after(const ClutchAssist& assist, double engagement, bool clutch_wanted_out,
                         const engine::Params& engine, double throttle, double omega_rad_s,
-                        bool holding, double dt_s) noexcept {
+                        double dt_s) noexcept {
     const double out_rate_per_s = 1.0 / assist.release_time_s;
     if (clutch_wanted_out) {
         return std::max(engagement - out_rate_per_s * dt_s, 0.0);
     }
-    const double below_rad_s = guard_rad_s(assist, engine, throttle, holding) - omega_rad_s;
+    const double below_rad_s = guard_rad_s(assist, engine, throttle) - omega_rad_s;
     if (below_rad_s <= 0.0) {
         return std::min(engagement + dt_s / assist.engage_time_s, 1.0);
     }
@@ -112,11 +93,10 @@ std::optional<ParamError> validate_side_accel(std::optional<double> side_accel_m
 
 std::optional<ParamError> validate(const EasyParams& params) noexcept {
     const ClutchAssist& assist = params.clutch_assist;
-    const std::array values = {params.steer_share,       params.steer_dead_zone,
-                               params.steer_rate_per_s,  params.brake_off_the_gas,
-                               assist.engage_time_s,     assist.release_time_s,
-                               assist.guard_speed_share, assist.guard_band_share,
-                               assist.min_throttle,      assist.hold_guard_speed_share};
+    const std::array values = {
+        params.steer_share,       params.steer_dead_zone,  params.steer_rate_per_s,
+        params.brake_off_the_gas, assist.engage_time_s,    assist.release_time_s,
+        assist.guard_speed_share, assist.guard_band_share, assist.min_throttle};
     if (!std::ranges::all_of(values, [](double v) { return std::isfinite(v); })) {
         return ParamError::kNotFinite;
     }
@@ -134,12 +114,6 @@ std::optional<ParamError> validate(const EasyParams& params) noexcept {
     }
     if (assist.guard_speed_share <= 0.0 || assist.guard_speed_share > 1.0 ||
         assist.guard_band_share <= 0.0 || assist.guard_band_share >= assist.guard_speed_share) {
-        return ParamError::kGuardOutOfRange;
-    }
-    // 0 is none; else, as the guard, within (0, 1] and above its band.
-    if (assist.hold_guard_speed_share < 0.0 || assist.hold_guard_speed_share > 1.0 ||
-        (assist.hold_guard_speed_share > 0.0 &&
-         assist.guard_band_share >= assist.hold_guard_speed_share)) {
         return ParamError::kGuardOutOfRange;
     }
     if (assist.min_throttle < 0.0 || assist.min_throttle >= 1.0) {
@@ -186,8 +160,6 @@ vehicle::Input pro(const ProInput& input, const ProParams& params, AssistState& 
     state.steering = steering_after(params.steer_dead_zone, params.steer_rate_per_s, state.steering,
                                     signed_unit(input.steering), dt_s);
     ProInput shaped = input;
-    shaped.hold_brakes =
-        holding(input.hold_brakes, input.hold_until_boost, vehicle.engine.boost, state);
     shaped.steering =
         state.steering * steering_share_at_speed(tractor, vehicle.chassis.velocity_m_s,
                                                  params.steer_side_accel_m_s2);
@@ -200,8 +172,7 @@ vehicle::Input pro(const ProInput& input, const vehicle::Params& tractor) noexce
             .gear = input.gear,
             .steering_rad = signed_unit(input.steering) * tractor.steering.max_angle_rad,
             .brake_left = unit(input.brake_left, kBrakeRest),
-            .brake_right = unit(input.brake_right, kBrakeRest),
-            .hold_brakes = input.hold_brakes};
+            .brake_right = unit(input.brake_right, kBrakeRest)};
 }
 
 vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistState& assist,
@@ -209,8 +180,6 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
                     double dt_s) noexcept {
     const double throttle = unit(input.throttle, kThrottleRest);
     const int gear_in = state.driveline.gear;
-    const bool held =
-        holding(input.hold_brakes, input.hold_until_boost, state.engine.boost, assist);
     // A gear the gearbox does not have is held to its range: otherwise the
     // assist would keep the clutch out for a shift that never comes.
     // Reverse, where the gearbox has it, waits with the clutch out until the
@@ -230,9 +199,8 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
     const bool shifting = wanted_gear != gear_in && !load_shift && allowed;
     const bool clutch_wanted_out =
         throttle < params.clutch_assist.min_throttle || shifting || gear_in == driveline::kNeutral;
-    assist.engagement =
-        engagement_after(params.clutch_assist, assist.engagement, clutch_wanted_out, tractor.engine,
-                         throttle, state.engine.omega_rad_s, held, dt_s);
+    assist.engagement = engagement_after(params.clutch_assist, assist.engagement, clutch_wanted_out,
+                                         tractor.engine, throttle, state.engine.omega_rad_s, dt_s);
 
     // The first stretch of travel turns the wheels; the rest brakes the
     // rear wheels on the inside of the turn.
@@ -261,9 +229,7 @@ vehicle::Input easy(const EasyInput& input, const EasyParams& params, AssistStat
             .gear = load_shift || (shifting && assist.engagement == 0.0) ? wanted_gear : gear_in,
             .steering_rad = std::copysign(wheels, steering) * tractor.steering.max_angle_rad,
             .brake_left = std::max(left ? brake : 0.0, hold),
-            .brake_right = std::max(left ? 0.0 : brake, hold),
-            // The start's brake hold clamps both (vehicle::Brakes).
-            .hold_brakes = held};
+            .brake_right = std::max(left ? 0.0 : brake, hold)};
 }
 
 }  // namespace tp::controls

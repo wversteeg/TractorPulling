@@ -184,30 +184,6 @@ TEST(TractorLoader, ReadsTheSteering) {
               vehicle::testing::reference_params().chassis.yaw_inertia_kg_m2);
 }
 
-// The start's brake hold clamps at its own torque where the file gives one;
-// without it, at the pedals' full torque (vehicle::Brakes::hold_torque_nm 0).
-TEST(TractorLoader, ReadsTheBrakeHoldsTorque) {
-    const auto plain = parse_tractor(kTractor, "tractor.toml", kDataDir);
-    ASSERT_TRUE(plain.ok()) << plain.error().message;
-    EXPECT_EQ(plain.value().brakes.hold_torque_nm, 0.0);
-    const auto held = parse_tractor(
-        with("max_torque_nm = 8000.0", "max_torque_nm = 8000.0\nhold_torque_nm = 20000.0"),
-        "tractor.toml", kDataDir);
-    ASSERT_TRUE(held.ok()) << held.error().message;
-    EXPECT_EQ(held.value().brakes.max_torque_nm, 8000.0);
-    EXPECT_EQ(held.value().brakes.hold_torque_nm, 20000.0);
-    EXPECT_NE(
-        error_of(with("max_torque_nm = 8000.0", "max_torque_nm = 8000.0\nhold_torque_nm = -1.0"))
-            .find("tractor.brakes.hold_torque_nm: must be 0 (the pedals' torque) or at least "
-                  "max_torque_nm"),
-        std::string::npos);
-    EXPECT_NE(
-        error_of(with("max_torque_nm = 8000.0", "max_torque_nm = 8000.0\nhold_torque_nm = 4000.0"))
-            .find("tractor.brakes.hold_torque_nm: must be 0 (the pedals' torque) or at least "
-                  "max_torque_nm"),
-        std::string::npos);
-}
-
 TEST(TractorLoader, RejectsNonsenseBrakesAndTrack) {
     for (const char* torque : {"-1.0", "inf", "nan"}) {
         EXPECT_NE(error_of(with("max_torque_nm = 8000.0", std::string{"max_torque_nm = "} + torque))

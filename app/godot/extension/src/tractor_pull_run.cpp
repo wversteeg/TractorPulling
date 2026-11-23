@@ -216,16 +216,13 @@ void TractorPullRun::clear_parking() {
 }
 
 void TractorPullRun::set_controls(double throttle, double clutch_pedal, std::int64_t gear,
-                                  double steering, double brake_left, double brake_right,
-                                  bool hold_brakes, double hold_until_boost) {
+                                  double steering, double brake_left, double brake_right) {
     controls_ = {.throttle = throttle,
                  .clutch_pedal = clutch_pedal,
                  .gear = static_cast<int>(std::clamp<std::int64_t>(gear, kMinGear, kMaxGear)),
                  .steering = steering,
                  .brake_left = brake_left,
-                 .brake_right = brake_right,
-                 .hold_brakes = hold_brakes,
-                 .hold_until_boost = hold_until_boost};
+                 .brake_right = brake_right};
 }
 
 std::int64_t TractorPullRun::advance(std::int64_t elapsed_ns) {
@@ -262,8 +259,6 @@ godot::Dictionary TractorPullRun::get_snapshot() const {
     out["engine_omega_rad_s"] = s.engine_omega_rad_s;
     out["engine_running"] = s.engine_running;
     out["boost"] = s.boost;
-    out["brakes_held"] = s.brakes_held;
-    out["hold_released"] = s.hold_released;
     out["gear"] = s.gear;
     out["lowest_gear"] = s.lowest_gear;
     out["throttle"] = s.throttle;
@@ -464,8 +459,8 @@ void TractorPullRun::_bind_methods() {
                          &TractorPullRun::set_parking, DEFVAL(0.0));
     ClassDB::bind_method(D_METHOD("clear_parking"), &TractorPullRun::clear_parking);
     ClassDB::bind_method(D_METHOD("set_controls", "throttle", "clutch_pedal", "gear", "steering",
-                                  "brake_left", "brake_right", "hold_brakes", "hold_until_boost"),
-                         &TractorPullRun::set_controls, DEFVAL(false), DEFVAL(0.0));
+                                  "brake_left", "brake_right"),
+                         &TractorPullRun::set_controls);
     ClassDB::bind_method(D_METHOD("advance", "elapsed_ns"), &TractorPullRun::advance);
     ClassDB::bind_method(D_METHOD("get_dropped_ns"), &TractorPullRun::get_dropped_ns);
     ClassDB::bind_method(D_METHOD("get_snapshot"), &TractorPullRun::get_snapshot);
