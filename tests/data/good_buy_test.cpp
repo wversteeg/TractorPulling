@@ -107,3 +107,40 @@ TEST(GoodBuy, ABuyThatCannotBeMadeChangesNothing) {
 
 }  // namespace
 }  // namespace tp::field
+
+namespace tp::garage {
+namespace {
+
+// How far the tractor as fitted is built: the route fitted only. The
+// Supersport's 6.06 l fully built, on its puller tires and middle drive,
+// is fully built though the 7.0 l's build and the farm tires are not
+// bought; fitted back on the 7.0 l, the share is of that engine's route.
+TEST(BuildShare, CountsTheRouteFittedOnly) {
+    auto loaded = data::load_season(std::filesystem::path{TP_DATA_DIR} / "seasons" /
+                                    "supersport_3600_top.toml");
+    ASSERT_TRUE(loaded.ok()) << loaded.error().message;
+    const Catalogue& catalogue = loaded.value().garage.catalogue;
+    Career career = new_career(catalogue);
+    EXPECT_DOUBLE_EQ(build_share(catalogue, career), 0.0) << "nothing bought, the stock route";
+    constexpr int kSixLitre = 1;
+    constexpr int kPullerTires = 1;
+    constexpr int kMiddleDrive = 1;
+    career.owned.fill(std::numeric_limits<std::uint8_t>::max());
+    career.fitted.at(0) = kSixLitre;
+    career.fitted.at(1) = kPullerTires;
+    career.fitted.at(2) = kMiddleDrive;
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        const Upgrade& upgrade = catalogue.upgrades.at(i);
+        const bool seven_litre = upgrade.choice == 0 && upgrade.alternative == 0;
+        if (!seven_litre) {
+            career.levels.at(i) = static_cast<int>(upgrade.level_count) - 1;
+        }
+    }
+    EXPECT_DOUBLE_EQ(build_share(catalogue, career), 1.0) << "the 6.06 l route, fully built";
+    career.fitted.at(0) = 0;
+    EXPECT_LT(build_share(catalogue, career), 1.0) << "back on the 7.0 l, its build not bought";
+    EXPECT_GT(build_share(catalogue, career), 0.0);
+}
+
+}  // namespace
+}  // namespace tp::garage

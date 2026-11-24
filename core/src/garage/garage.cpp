@@ -436,6 +436,28 @@ std::optional<Advice> advice(const Catalogue& catalogue, const Career& career) n
     return std::nullopt;
 }
 
+double build_share(const Catalogue& catalogue, const Career& career) noexcept {
+    std::int64_t total_eur = 0;
+    std::int64_t spent_eur = 0;
+    const std::span<const Upgrade> offer = catalogue.offer();
+    for (std::size_t i = 0; i < offer.size(); ++i) {
+        if (!counts(catalogue, career, i)) {
+            continue;
+        }
+        for (std::size_t l = 1; l < offer[i].level_count && l < kMaxLevels; ++l) {
+            total_eur += offer[i].levels[l].cost_eur;
+            spent_eur += static_cast<int>(l) <= career.levels[i] ? offer[i].levels[l].cost_eur : 0;
+        }
+    }
+    for (std::size_t c = 0; c < catalogue.choice_count && c < kMaxChoices; ++c) {
+        const std::size_t a = fitted(catalogue, career, c);
+        // The fitted alternative is owned (fitted() says the first when not).
+        total_eur += catalogue.choices[c].alternatives[a].cost_eur;
+        spent_eur += catalogue.choices[c].alternatives[a].cost_eur;
+    }
+    return total_eur > 0 ? static_cast<double>(spent_eur) / static_cast<double>(total_eur) : 1.0;
+}
+
 bool fully_upgraded(const Catalogue& catalogue, const Career& career) noexcept {
     const std::span<const Upgrade> offer = catalogue.offer();
     for (std::size_t i = 0; i < offer.size(); ++i) {

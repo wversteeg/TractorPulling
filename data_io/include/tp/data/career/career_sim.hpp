@@ -19,9 +19,11 @@ struct SimSeason {
     int wins = 0;
     /// The player's place in the championship at the season's end.
     int championship_place = 0;
-    /// The money left, and the share of the class garage's money spent on
-    /// it (upgrades and alternatives) at the season's end.
+    /// The money left at the season's end.
     std::int64_t money_eur = 0;
+    /// How far the tractor as fitted is built at the season's end
+    /// (garage::build_share): of its own route, not of every part the
+    /// garage sells.
     double garage_share = 0.0;
 };
 

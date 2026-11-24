@@ -305,7 +305,7 @@ std::optional<std::vector<SimSeason>> simulate_level(const SeasonDefinition& d,
             }
         }
         result.money_eur = career.money_eur;
-        result.garage_share = garage_share(catalogue, career);
+        result.garage_share = garage::build_share(catalogue, career);
         out.push_back(result);
     }
     return out;
