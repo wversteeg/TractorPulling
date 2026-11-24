@@ -25,7 +25,11 @@
 # repeats the officials' signal: green GO while the pull is good,
 # red STOP to wait or to stop (the pull is over: close the throttle). Once
 # the pull is over, a large line under it says why it ended (show_ending):
-# what to change for the next pull. It only shows the run's snapshot.
+# what to change for the next pull. With `debug` on (the settings, for
+# testing) a line under the bars shows the rear wheels' surface speed, each
+# side's and their mean, against the ground speed, and the tires' slip: a
+# tractor that bogs with its wheels no faster than the ground is geared
+# too tall for the grip. It only shows the run's snapshot.
 class_name Hud
 extends Control
 
@@ -57,6 +61,9 @@ const TURN_FONT_SIZE := 22
 const TURN_COLOUR := Color(1.0, 0.95, 0.6)
 # Why the pull ended, large, in the middle under the top.
 const ENDING_TOP := 230.0
+# The debug line, under the front bar.
+const DEBUG_TOP := FRONT_TOP + BAR_HEIGHT + 12.0
+const DEBUG_COLOUR := Color(0.6, 0.9, 1.0)
 const ENDING_FONT_SIZE := 40
 # How long it stays, and how long it takes to fade out at the end [s].
 const ENDING_SHOWN_S := 4.0
@@ -152,6 +159,11 @@ var _ending_left_s := 0.0
 var _lamp := Label.new()
 # The turn's line is shown (the settings' guidance).
 var guidance := true
+# The debug line is shown (the settings' debug).
+var debug := false
+var _debug := Label.new()
+# The rear tires' rolling radius, for their surface speed [m].
+var _rear_radius_m := 0.0
 # The officials' signal: "green", "red" or "off".
 var _signal := "off"
 var _chain_m := 1.0
@@ -172,7 +184,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for label: Label in [_pull, _numbers, _pushdown_label, _front, _turn, _ending, _lamp,
-			_gauge]:
+			_gauge, _debug]:
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
 		label.add_theme_constant_override("outline_size", OUTLINE)
 		add_child(label)
@@ -203,6 +215,9 @@ func _ready() -> void:
 	_lamp.size.x = LAMP_LABEL_WIDTH
 	_lamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_lamp.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
+	_debug.position = Vector2(MARGIN, DEBUG_TOP)
+	_debug.add_theme_font_size_override("font_size", SMALL_FONT_SIZE)
+	_debug.add_theme_color_override("font_color", DEBUG_COLOUR)
 	_gauge.position = GAUGE_CENTRE + Vector2(-GAUGE_RADIUS, GAUGE_RADIUS * 0.25)
 	_gauge.size.x = 2.0 * GAUGE_RADIUS
 	_gauge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -224,6 +239,7 @@ func build(dimensions: Dictionary) -> void:
 	_steer_hint_m = STEER_HINT_SHARE * float(dimensions["hook_off_line_m"])
 	_taut_within_m = dimensions["ready_taut_within_m"]
 	_full_boost_bar = dimensions.get("full_boost_bar", 0.0)
+	_rear_radius_m = dimensions.get("rear_tire_radius_m", 0.0)
 
 
 # The officials' signal (pull.gd's signal_for()): "green", "red" or "off".
@@ -291,7 +307,20 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	_turn.text = turn_text(s) if guidance else ""
 	_slack_m = s.get("chain_slack_m", 0.0)
 	_guide = guidance and s.get("stage", "pulling") in ["taking_up_slack", "waiting_for_the_flag"]
+	_debug.text = debug_text(s) if debug else ""
 	queue_redraw()
+
+
+# The debug line for snapshot `s`: the rear wheels' surface speed (their
+# mean, then the left and right side's), the ground speed and the tires'
+# slip (the more slipping side's).
+func debug_text(s: Dictionary) -> String:
+	var left_kmh := float(s.get("rear_left_omega_rad_s", 0.0)) * _rear_radius_m * KMH_PER_M_S
+	var right_kmh := float(s.get("rear_right_omega_rad_s", 0.0)) * _rear_radius_m * KMH_PER_M_S
+	return "wheels %5.1f km/h (L %5.1f  R %5.1f)   ground %5.1f km/h   slip %3.0f %%" % [
+			(left_kmh + right_kmh) / 2.0, left_kmh, right_kmh,
+			float(s.get("tractor_speed_m_s", 0.0)) * KMH_PER_M_S,
+			float(s.get("slip_ratio", 0.0)) * 100.0]
 
 
 # Why the pull ended (ResultScreen.ending_text()), "" while it is on;

@@ -447,6 +447,29 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	old_file.save("user://touch_test_old_settings.cfg")
 	_expect(GameSettings.read("user://touch_test_old_settings.cfg").guidance,
 			"a settings file without the guidance reads it on")
+	# Debug on: the HUD's debug line, kept in the file, the wheels' surface
+	# speed against the ground's; off again. A file without it reads off.
+	var hud: Hud = _pull.get("hud")
+	_expect(settings.debug_off_button.selected and not hud.debug
+			and not GameSettings.read("user://touch_test_old_settings.cfg").debug,
+			"debug off at first and in a file without it")
+	_expect(root.get_visible_rect().encloses(settings.debug_on_button.get_global_rect())
+			and not settings.debug_on_button.get_global_rect().intersects(
+				(settings.get("_hint") as Label).get_global_rect()),
+			"the debug row on the panel, clear of the hint")
+	_tap(settings.debug_on_button)
+	_expect(settings.debug_on_button.selected and hud.debug
+			and GameSettings.read(SETTINGS_PATH).debug
+			and GameSettings.read(SETTINGS_PATH).guidance, "debug on, kept in the settings file")
+	# Tires of 0.5 m, both sides' wheels at 10 m/s on the surface, the
+	# tractor at 7.5 m/s.
+	hud.set("_rear_radius_m", 0.5)
+	var line := hud.debug_text({"rear_left_omega_rad_s": 20.0, "rear_right_omega_rad_s": 20.0,
+			"tractor_speed_m_s": 7.5, "slip_ratio": 0.25})
+	_expect(line.begins_with("wheels  36.0 km/h") and line.contains("ground  27.0 km/h")
+			and line.contains("slip  25 %"), "the debug line: %s" % line)
+	_tap(settings.debug_off_button)
+	_expect(not hud.debug and not GameSettings.read(SETTINGS_PATH).debug, "debug off again")
 	# Sound off: the engine falls silent, kept in the file; on again. A
 	# file without it reads on.
 	var sound: EngineSound = _pull.get("engine_sound")

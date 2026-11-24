@@ -247,11 +247,14 @@ func _ready() -> void:
 	start_screen.settings_requested.connect(func() -> void:
 		settings_screen.show_settings(pro, tilt, controls.tilt_steering.available(),
 				hud.guidance, event.get_career().get("rungs", PackedStringArray()),
-				engine_sound.enabled)
+				engine_sound.enabled, hud.debug)
 		_set_screen(Screen.SETTINGS))
 	settings_screen.changed.connect(_change_settings)
 	settings_screen.sound_changed.connect(func(on: bool) -> void:
 		engine_sound.enabled = on
+		_keep_settings())
+	settings_screen.debug_changed.connect(func(on: bool) -> void:
+		hud.debug = on
 		_keep_settings())
 	settings_screen.haptics_requested.connect(func() -> void:
 		haptics_screen.show_haptics(haptics.enabled_by_key())
@@ -355,6 +358,7 @@ func _ready() -> void:
 		pro = settings.pro
 		tilt = settings.tilt
 		hud.guidance = settings.guidance
+		hud.debug = settings.debug
 		engine_sound.enabled = settings.sound
 		haptics.set_enabled_by_key(settings.haptics)
 		var error := event.load_career(career_path)
@@ -390,6 +394,7 @@ func _keep_settings() -> void:
 	settings.tilt = tilt
 	settings.guidance = hud.guidance
 	settings.sound = engine_sound.enabled
+	settings.debug = hud.debug
 	settings.haptics = haptics.enabled_by_key()
 	var error := settings.write(settings_path)
 	if error != OK:
