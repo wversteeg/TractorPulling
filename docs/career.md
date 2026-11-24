@@ -379,11 +379,11 @@ side by side, each fitted between events (K-6), each best somewhere:
   14.5:1, € 5,000). Each says which tires it suits (`suits` in the garage
   file): the short one keeps the farm tire turning slowly, gripping
   without smearing; the middle and tall ones spin the puller tires up.
-  A stock or half-built engine spins them up best on the middle one
+  A stock engine spins them up best on the middle one
   (about 35 to 52 km/h at the wheel in the pulling gears at 3200 rpm); a
   fully built one runs out of gears there and pulls further on the tall
   one (54 to 81 km/h), the wheel speeds a top pull spins at
-  (`FinalDrive.*`). Taller still would only burn power in slip: at the
+  (`FinalDrive.*`); half built, the two pull about alike. Taller still would only burn power in slip: at the
   same power the tires pull less the faster they turn. The rivals pull in
   5th and 6th on the tall drive; a lower gear may still pull a few metres
   further (docs/future_improvements.md).

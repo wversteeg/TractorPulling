@@ -20,9 +20,10 @@
 #   tires (many low bars that bite harder the faster they spin; better on
 #   a firm track). Each tire has its own grip stages.
 # - Final drive: the short one the farm tires want, or for puller tires,
-#   which must spin fast to bite, the middle one a stock or half-built
-#   engine spins them up best on, or the tall one for a built engine,
-#   which runs out of gears on the middle one (drivelines/
+#   which must spin fast to bite, the middle one a stock engine spins
+#   them up best on, or the tall one for a fully built engine, which runs
+#   out of gears on the middle one; half built, the two pull about alike
+#   (drivelines/
 #   supersport_3600_*.toml; tests/data/tire_choice_test.cpp, FinalDrive).
 #   Each final drive says which tires it suits (`suits`), and the crew
 #   chief says so when it does not.

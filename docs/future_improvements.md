@@ -325,6 +325,13 @@ for the big features; they are repeated at the end for completeness.
 - **Rivals don't tune.** The scripted pullers pull as built; a driver who
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
+- **Saved parts follow their labels.** A save keeps the garage's choices
+  by label, and an alternative has no `formerly` as an upgrade does: when
+  the Supersport 3.6 t's final drives changed (the 10.5:1 tall one gone,
+  a 22.5:1 middle one added), a saved middle drive became the 22.5:1 one
+  (a built tractor that pulled on the former 14.5:1 middle drive buys the
+  tall one to keep its gearing) and a saved tall drive the 14.5:1 one.
+  Former labels for alternatives would carry a part over by what it was.
 - **Rivals keep one set of tires.** The Supersport 3.6 t rivals at promo
   and top all pull the 7 l engine on puller tires and the tall final
   drive, at belofte on farm tires and the short drive; only the player

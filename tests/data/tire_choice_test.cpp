@@ -78,7 +78,9 @@ enum class Turbo : std::uint8_t { kBiggest, kStock };
 enum class Build : std::uint8_t { kFull, kStock };
 
 // The class's reference driver in the tractor of `d`'s class built as
-// `build`, its `engine` (the 7 l) on `tires` with `turbo`.
+// `build`, its `engine` (the 7 l) on `tires` with `turbo`. Every
+// alternative is owned, so that any may be fitted; only the fitted ones
+// count.
 Puller built_puller(const data::SeasonDefinition& d, Tires tires, int engine, Turbo turbo,
                     Build build = Build::kFull) {
     const data::EventDefinition& e = d.event;

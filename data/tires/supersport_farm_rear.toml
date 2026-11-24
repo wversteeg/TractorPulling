@@ -5,8 +5,9 @@
 # 30.5L-32). Its lugs push into the track: grip builds quickly with slip,
 # and spun fast they dig in and smear, so it pulls best spinning little,
 # on the short final drive (drivelines/supersport_3600_short.toml). Fully
-# built it pulls short of the puller tire on every track, on the drive
-# that suits the track (tests/data/tire_choice_test.cpp).
+# built it pulls short of the puller tire, on the drive that suits the
+# track, on every track but the loose sandy clay, where neither gets its
+# sled going (tests/data/tire_choice_test.cpp).
 # The limit is the fully built tire's; the garage sets it.
 [tire]
 tread = "farm"                     # the pattern drawn (the grip is in [tire.traction])
