@@ -3,7 +3,8 @@
 # steering (the on-screen slider, or tilting the phone) and the guidance
 # (the HUD's line on what to do next in a turn, on or off) and the sound
 # (the engine heard, or not); "haptics" opens the Haptics menu
-# (HapticsScreen). Each tap applies
+# (HapticsScreen); "debug" (for testing) shows a line on the HUD with the
+# rear wheels' speed against the ground's and their slip. Each tap applies
 # at once; the game keeps them on the device (GameSettings). "New career"
 # starts over, the garage's start money and nothing bought, on a second
 # tap: the first asks to be sure. "Start" (for testing a class) picks the
@@ -18,6 +19,7 @@ extends MenuPanel
 
 signal changed(pro: bool, tilt: bool, guidance: bool)
 signal sound_changed(on: bool)
+signal debug_changed(on: bool)
 signal haptics_requested
 signal done
 signal new_career_requested(rung: int, keep_money: bool)
@@ -59,6 +61,8 @@ var guidance_off_button: TouchButton
 var sound_on_button: TouchButton
 var sound_off_button: TouchButton
 var haptics_button: TouchButton
+var debug_on_button: TouchButton
+var debug_off_button: TouchButton
 var new_career_button: TouchButton
 var start_button: TouchButton
 var money_button: TouchButton
@@ -71,6 +75,7 @@ var _pro := false
 var _tilt := false
 var _guidance := true
 var _sound := true
+var _debug := false
 var _tilt_available := true
 # The first tap on "New career" made: the next one starts it.
 var _career_asked := false
@@ -123,6 +128,9 @@ func _ready() -> void:
 	haptics_button = _button(feel, "Choose  ›", Rect2(
 			Vector2(CARD_PADDING + inner - 2.0 * PAIR_BUTTON.x - PAIR_GAP, _row_y(1)),
 			Vector2(2.0 * PAIR_BUTTON.x + PAIR_GAP, PAIR_BUTTON.y)))
+	pair = _row(feel, 2, "Debug", "Wheel speed and slip on screen", "On", "Off")
+	debug_on_button = pair[0]
+	debug_off_button = pair[1]
 	_hint = _text(layout, "", HINT_RECT, HINT_SIZE, GarageArt.DIM)
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -150,6 +158,8 @@ func _ready() -> void:
 	sound_on_button.tapped.connect(func() -> void: _pick_sound(true))
 	sound_off_button.tapped.connect(func() -> void: _pick_sound(false))
 	haptics_button.tapped.connect(func() -> void: haptics_requested.emit())
+	debug_on_button.tapped.connect(func() -> void: _pick_debug(true))
+	debug_off_button.tapped.connect(func() -> void: _pick_debug(false))
 	done_button.tapped.connect(func() -> void: done.emit())
 	new_career_button.tapped.connect(_ask_new_career)
 	start_button.tapped.connect(_next_start)
@@ -173,8 +183,8 @@ func _ready() -> void:
 func release_buttons() -> void:
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
 			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
-			haptics_button, new_career_button, start_button, money_button, keep_money_button,
-			done_button]:
+			haptics_button, debug_on_button, debug_off_button, new_career_button, start_button,
+			money_button, keep_money_button, done_button]:
 		button.release()
 
 
@@ -250,8 +260,9 @@ func _button(parent: Control, text: String, rect: Rect2, icon: String = "") -> T
 # Shows the settings as they are; `tilt_available` whether the device can
 # steer by tilting; `rungs` the career's rungs, lowest first.
 func show_settings(pro: bool, tilt: bool, tilt_available: bool, guidance: bool = true,
-		rungs := PackedStringArray(), sound: bool = true) -> void:
+		rungs := PackedStringArray(), sound: bool = true, debug: bool = false) -> void:
 	_sound = sound
+	_debug = debug
 	_pro = pro
 	_tilt = tilt
 	_guidance = guidance
@@ -325,6 +336,16 @@ func _pick_sound(on: bool) -> void:
 	sound_changed.emit(on)
 
 
+func _pick_debug(on: bool) -> void:
+	_debug = on
+	_career_asked = false
+	_start_shown = false
+	_money_shown_eur = -1
+	_keep_shown = false
+	_show()
+	debug_changed.emit(on)
+
+
 func _show() -> void:
 	easy_button.selected = not _pro
 	pro_button.selected = _pro
@@ -334,6 +355,8 @@ func _show() -> void:
 	guidance_off_button.selected = not _guidance
 	sound_on_button.selected = _sound
 	sound_off_button.selected = not _sound
+	debug_on_button.selected = _debug
+	debug_off_button.selected = not _debug
 	new_career_button.text = "Sure? Tap again" if _career_asked else "New career"
 	start_button.text = "Start: %d" % (_start_rung + 1)
 	keep_money_button.text = "Money: keep" if _keep_money else "Money: start"
