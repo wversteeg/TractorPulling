@@ -95,6 +95,9 @@ struct TractionCurve {
 };
 
 /// The most of its grip a squirming carcass loses (TractionCurve::squirm).
+/// Only a squirm over half of it reaches it, and there the loss stops
+/// growing with the slip speed (a kink the solve's slope follows); the
+/// shipped tires' lug_squirm keeps it out of their pressure range.
 inline constexpr double kMostSquirm = 0.9;
 
 /// A tire spinning on the spot digs itself a hole, and then has to climb

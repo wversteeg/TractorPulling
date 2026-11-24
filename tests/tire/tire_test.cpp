@@ -482,6 +482,26 @@ TEST(TireSpin, LinearizationIncludesTheSpinResponse) {
     }
 }
 
+// The slope includes the lugs folding on a soft carcass: a small drop in
+// ground speed reproduces it, slow (where the folding changes fastest) and
+// spun faster.
+TEST(TireSpin, LinearizationIncludesTheSquirm) {
+    const soil::Surface surface = reference_surface();
+    constexpr double kDelta_m_s = 1e-6;
+    Params p = puller();
+    p.traction.squirm = 0.2;
+    p.traction.squirm_speed_m_s = 5.0;
+    for (const double ground_m_s : {0.5, 3.0}) {
+        const double wheel_m_s = wheel_speed_for(0.1, ground_m_s);
+        const Traction t = traction(p, wheel_m_s, ground_m_s, kLoad_n, surface);
+        const Traction nudged = traction(p, wheel_m_s, ground_m_s - kDelta_m_s, kLoad_n, surface);
+        EXPECT_GT(t.force_per_slip_speed, 0.0) << ground_m_s;
+        EXPECT_NEAR(t.force_per_slip_speed, (nudged.force_n - t.force_n) / kDelta_m_s,
+                    1e-4 * t.force_per_slip_speed)
+            << ground_m_s;
+    }
+}
+
 // A puller tire's bars need some spin to bite and lose some of it spun
 // very fast (TractionCurve::fall_speed_m_s): at the same slip ratio its
 // grip rises from slow_spin_grip with the slip speed, then eases towards

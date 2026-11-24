@@ -281,13 +281,21 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
     }
     if (curve.squirm > 0.0 && curve.squirm_speed_m_s > 0.0) {
         // A soft carcass's lugs fold the more the faster they are spun.
+        // The slope the solve uses is the product's: the unfolded force's
+        // slope less the force times how fast the lugs fold (none once they
+        // fold no further, at kMostSquirm).
         const double slip_speed_m_s = std::abs(wheel_surface_speed_m_s - ground_speed_m_s);
-        const double unfolded = 1.0 - std::min(2.0 * curve.squirm * slip_speed_m_s /
-                                                   (slip_speed_m_s + curve.squirm_speed_m_s),
-                                               kMostSquirm);
+        const double speeds_m_s = slip_speed_m_s + curve.squirm_speed_m_s;
+        const double folded = 2.0 * curve.squirm * slip_speed_m_s / speeds_m_s;
+        const double unfolded = 1.0 - std::min(folded, kMostSquirm);
+        const double folding_per_m_s =
+            folded < kMostSquirm
+                ? 2.0 * curve.squirm * curve.squirm_speed_m_s / (speeds_m_s * speeds_m_s)
+                : 0.0;
+        out.force_per_slip_speed = std::max(
+            out.force_per_slip_speed * unfolded - std::abs(out.force_n) * folding_per_m_s, 0.0);
         out.force_n *= unfolded;
         out.full_bite *= unfolded;
-        out.force_per_slip_speed *= unfolded;
     }
     return out;
 }
