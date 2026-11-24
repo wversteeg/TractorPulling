@@ -412,17 +412,17 @@ func _check_tuning(event: TractorPullEvent) -> void:
 	_expect(tuning.get("ballast", false) and tuning.get("pressure", false)
 			and not tuning.get("hitch", true)
 			and is_equal_approx(float(tuning["ballast_position"]), 0.5)
-			and is_equal_approx(float(tuning["pressure_bar"]), 1.0)
-			and is_equal_approx(float(tuning["min_bar"]), 0.5)
-			and is_equal_approx(float(tuning["max_bar"]), 1.6)
+			and is_equal_approx(float(tuning["pressure_bar"]), 0.8)
+			and is_equal_approx(float(tuning["min_bar"]), 0.4)
+			and is_equal_approx(float(tuning["max_bar"]), 1.3)
 			and absf(float(tuning["rear_share"]) - REAR_SHARE) < 0.005, "as built: %s" % tuning)
 	var built_hash := _practice_hash(event)
 	event.set_tuning(-1.0, 9.0)
 	tuning = event.get_tuning()
-	_expect(float(tuning["ballast_position"]) == 0.0 and float(tuning["pressure_bar"]) == 1.6
+	_expect(float(tuning["ballast_position"]) == 0.0 and float(tuning["pressure_bar"]) == 1.3
 			and float(tuning["rear_share"]) > 0.6, "held to the ranges: %s" % tuning)
 	_expect(_practice_hash(event) != built_hash, "the run is on the tuned tractor")
-	event.set_tuning(0.5, 1.0)
+	event.set_tuning(0.5, 0.8)
 	_expect(_practice_hash(event) == built_hash, "as built again: the same run")
 
 

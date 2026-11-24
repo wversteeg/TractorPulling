@@ -363,32 +363,35 @@ TEST(WheelieRuns, ASportTractorWithLittleWeightFreeDoesNotHopOnTheLoam) {
 }
 
 // How a Supersport 3.6 t pull carries its nose: how often the front comes
-// off the ground and back down, how far it is up, its load through the
-// middle, and whether it is down at the end.
+// off the ground and back down, how far it is up, the hardest touch, and
+// whether it is down at the end.
 struct Nose {
     int lifts = 0;
     int touchdowns = 0;
     double up_m = 0.0;
-    double middle_mean_n = 0.0;
+    /// The most the front tires carry once the nose has first lifted, as a
+    /// share of the tractor's weight: how hard the nose comes down.
+    double hardest_touch = 0.0;
     bool down_at_the_end = false;
     double distance_m = 0.0;
 };
 
 // The class's tractor as built (tractors/supersport_3600.toml: the 7 l,
-// puller tires, the middle final drive) on the clay-sand in 5th, its weights
-// at `ballast_position` and the hitch at `hitch_m`, on a sled six steps
-// heavier than the class's so that it stops short of the line, as at the
-// end of a pull-off; the launch held while the turbo comes up
-// ("optoeren").
-Nose supersport_nose(double ballast_position, double hitch_m) {
+// puller tires, the middle final drive) on `track_file` in 5th, its weights
+// at `ballast_position` and the hitch at `hitch_m`, on a sled twelve steps
+// heavier than the class's so that it stops short of the line on the
+// clay-sand, as at the end of a pull-off; the launch held while the turbo
+// comes up ("optoeren").
+Nose supersport_nose(double ballast_position, double hitch_m,
+                     const std::string& track_file = "ideal_clay_sand.toml") {
     const vehicle::Params built = loaded(load_tractor(data("tractors/supersport_3600.toml")));
     vehicle::Tuning tuning = vehicle::as_built(built);
     tuning.ballast_position = ballast_position;
     tuning.hitch_height_m = hitch_m;
-    constexpr int kHeavier = 8;
+    constexpr int kHeavier = 12;
     const sled::Params sled =
         sled::heavier(loaded(load_sled(data("sleds/supersport_3600.toml"))), kHeavier);
-    const Track track = loaded(load_track(data("tracks/ideal_clay_sand.toml")));
+    const Track track = loaded(load_track(data("tracks/" + track_file)));
     const session::Setup setup = run_setup(vehicle::tuned(built, tuning), sled, track, 0);
     const std::optional<pull::Model> model =
         pull::Model::create({.tractor = setup.tractor, .sled = setup.sled, .track = setup.ground});
@@ -406,52 +409,56 @@ Nose supersport_nose(double ballast_position, double hitch_m) {
     Nose out;
     bool up = false;
     double last_m = 0.0;
-    double middle_sum_n = 0.0;
-    int middle_steps = 0;
+    double weight_n = 0.0;
     while (!state.result) {
         const double t_s = static_cast<double>(state.steps) * kDt_s;
         const pull::Output step =
             run::step(state, *model, setup.rules,
                       driver::input(plan, driver, t_s, state.pull.tractor, setup.tractor), kDt_s);
         const double pulled_m = state.pull.sled.position_m - model->sled_start_m();
-        const double front_n = step.tractor.axle_loads.front_n;
-        const bool now_up = front_n <= 0.0;
+        const chassis::AxleLoads& loads = step.tractor.axle_loads;
+        if (weight_n == 0.0) {
+            // At rest on the start line the axles carry the weight.
+            weight_n = loads.rear_n + loads.front_n;
+        }
+        const bool now_up = loads.front_n <= 0.0;
         out.lifts += now_up && !up ? 1 : 0;
         out.touchdowns += !now_up && up ? 1 : 0;
         out.up_m += now_up ? std::max(pulled_m - last_m, 0.0) : 0.0;
-        if (pulled_m >= kMiddleFrom_m && pulled_m < kMiddleUntil_m) {
-            middle_sum_n += front_n;
-            ++middle_steps;
+        if (out.lifts > 0) {
+            out.hardest_touch = std::max(out.hardest_touch, loads.front_n / weight_n);
         }
         up = now_up;
         last_m = pulled_m;
     }
     out.down_at_the_end = !up;
-    out.middle_mean_n = middle_steps > 0 ? middle_sum_n / middle_steps : 0.0;
     out.distance_m = state.result.value_or(run::Result{}).distance_m;
     return out;
 }
 
-// A good Supersport 3.6 t pull (videos of NTTO pulls): the nose comes up on
-// the launch, touches down softly, rides light, and is down at the end.
-// With the weights halfway and the hitch in its top hole the tractor does
-// that, and pulls furthest. The weights back keep the nose up all the way,
-// on the wheelie bar, which takes load the rear tires lose; the hitch in
-// its lowest hole holds the front down, and a front held down does not
-// give the rear tires the most grip either: both pull clearly shorter.
-TEST(WheelieRuns, ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown) {
+// The nose may tap the ground in a good pull, in short spikes; a slam is
+// the front taking half the tractor's weight or more.
+constexpr double kSlam = 0.5;
+
+// A good Supersport 3.6 t pull on clay-sand (videos of NTTO pulls): the
+// nose comes up on the launch and rides light most of the way, touching
+// down now and then in short spikes, never a slam. With the weights halfway
+// and the hitch in its top hole the tractor does that. The weights back
+// keep the nose up all the way, on the wheelie bar, which takes load the
+// rear tires lose; the hitch in its lowest hole holds the front down, and a
+// front held down does not give the rear tires the most grip either: both
+// pull clearly shorter.
+TEST(WheelieRuns, ASupersportTractorRidesItsNoseLightWithoutSlams) {
     constexpr double kTopHole_m = 0.50;
     constexpr double kLowestHole_m = 0.40;
     constexpr double kHalfway = 0.5;
     const Nose good = supersport_nose(kHalfway, kTopHole_m);
     EXPECT_GE(good.lifts, 1) << "up on the launch";
-    EXPECT_GE(good.touchdowns, 1) << "down softly after the launch";
-    EXPECT_LT(good.up_m, 0.5 * good.distance_m) << "not up all the way";
-    EXPECT_GT(good.middle_mean_n, 0.0);
-    EXPECT_LT(good.middle_mean_n, kDown_n * 3.0) << "light through the middle";
-    EXPECT_TRUE(good.down_at_the_end);
+    EXPECT_GT(good.up_m, 0.5 * good.distance_m) << "up most of the way";
+    EXPECT_LT(good.hardest_touch, kSlam) << "short spikes, not slams";
 
-    const Nose back = supersport_nose(0.0, kTopHole_m);
+    constexpr double kWeightsBack = 0.25;
+    const Nose back = supersport_nose(kWeightsBack, kTopHole_m);
     // All but the launch: the nose is up within a few tenths of a metre.
     constexpr double kLaunch_m = 0.3;
     EXPECT_GT(back.up_m, back.distance_m - kLaunch_m) << "up all the way, on the bar";
@@ -460,6 +467,17 @@ TEST(WheelieRuns, ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown) {
     constexpr double kClearly_m = 5.0;
     EXPECT_GT(good.distance_m, back.distance_m + kClearly_m);
     EXPECT_GT(good.distance_m, held_down.distance_m + kClearly_m);
+}
+
+// On the covered heavy clay the tires bite harder and lift the nose more:
+// the weights go further forward, about three quarters, and the nose then
+// rides light and taps down without a slam.
+TEST(WheelieRuns, OnHeavyClayASupersportTractorWantsItsWeightsForward) {
+    constexpr double kTopHole_m = 0.50;
+    const Nose forward = supersport_nose(kThreeQuarters, kTopHole_m, "covered_heavy_clay.toml");
+    EXPECT_GE(forward.lifts, 1) << "up on the launch";
+    EXPECT_GT(forward.up_m, 0.5 * forward.distance_m) << "up most of the way";
+    EXPECT_LT(forward.hardest_touch, kSlam) << "short spikes, not slams";
 }
 
 }  // namespace

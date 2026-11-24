@@ -19,11 +19,14 @@
 #   little slip and smear spun fast; better on a soft, wet track) or puller
 #   tires (many low bars that bite harder the faster they spin; better on
 #   a firm track). Each tire has its own grip stages.
-# - Final drive: the short one the farm tires want, the middle one for
-#   puller tires, which must spin fast to bite, or the tall one that spins
-#   them faster still on a powerful tractor (drivelines/
-#   supersport_3600_*.toml). Each final drive says which tires it suits
-#   (`suits`), and the crew chief says so when it does not.
+# - Final drive: the short one the farm tires want, or for puller tires,
+#   which must spin fast to bite, the middle one a stock engine spins
+#   them up best on, or the tall one for a fully built engine, which runs
+#   out of gears on the middle one; half built, the two pull about alike
+#   (drivelines/
+#   supersport_3600_*.toml; tests/data/tire_choice_test.cpp, FinalDrive).
+#   Each final drive says which tires it suits (`suits`), and the crew
+#   chief says so when it does not.
 # No powershift: Supersport pulls in one gear.
 #
 # - engine_torque: the engine's full-load torque as a share of its fully
@@ -163,11 +166,11 @@ name = "Puller tire grip"
 choice = "Rear tires"
 alternative = "Puller tires"
 levels = [
-    { value = 0.80, cost_eur = 0, label = "Used puller tires" },
-    { value = 0.85, cost_eur = 2000, label = "Puller tires, good bars" },
-    { value = 0.90, cost_eur = 2700, label = "New 30.5L-32 puller tires" },
-    { value = 0.95, cost_eur = 3300, label = "Bars sharpened" },
-    { value = 1.00, cost_eur = 4000, label = "Bars hand cut by a specialist" },
+    { value = 1.00, cost_eur = 0, label = "Used puller tires" },
+    { value = 1.06, cost_eur = 2000, label = "Puller tires, good bars" },
+    { value = 1.13, cost_eur = 2700, label = "New 30.5L-32 puller tires" },
+    { value = 1.19, cost_eur = 3300, label = "Bars sharpened" },
+    { value = 1.25, cost_eur = 4000, label = "Bars hand cut by a specialist" },
 ]
 
 [[garage.upgrades]]

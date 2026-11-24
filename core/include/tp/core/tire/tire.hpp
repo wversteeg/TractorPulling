@@ -85,7 +85,20 @@ struct TractionCurve {
     /// in [Pa].
     double lug_bearing_pa = 0.0;
     double unsunk_lug_grip = 1.0;
+    /// The grip a carcass softer than its reference loses to its lugs
+    /// folding and squirming, set by at_pressure() (0 at or above the
+    /// reference): with squirm_speed_m_s set, a share that grows with the
+    /// tread's slip speed v, 2 squirm v / (v + squirm_speed), at most
+    /// kMostSquirm; without, the limit is lowered once (at_pressure()).
+    double squirm = 0.0;
+    double squirm_speed_m_s = 0.0;
 };
+
+/// The most of its grip a squirming carcass loses (TractionCurve::squirm).
+/// Only a squirm over half of it reaches it, and there the loss stops
+/// growing with the slip speed (a kink the solve's slope follows); the
+/// shipped tires' lug_squirm keeps it out of their pressure range.
+inline constexpr double kMostSquirm = 0.9;
 
 /// A tire spinning on the spot digs itself a hole, and then has to climb
 /// out of it: while it hardly moves over the ground, its tread scoops out
@@ -146,9 +159,11 @@ struct Cornering {
 ///
 ///   limit = limit_ref (1 - lug_squirm max(δ - δ_ref, 0) / h)
 ///
-/// so the best pressure depends on the track. Harder than the reference,
-/// the lugs gain nothing and the smaller footprint costs grip: the
-/// reference is what suits firm ground. Left out: the rolling radius
+/// or, with squirm_speed_m_s set, a loss that grows with the slip speed
+/// (TractionCurve::squirm): a soft tire spun fast squirms most. Its carcass
+/// also flexes more and rolls harder (carcass_loss), a harder one easier:
+/// on firm, fast tracks a hard tire wins, on soft, slow ones the soft
+/// tire's footprint. At the reference nothing changes. Left out: the rolling radius
 /// shrinking with the deflection (it would move the axle and the gearing).
 struct Pressure {
     /// The pressure the tire's deflection and traction limit are given at;
@@ -160,6 +175,17 @@ struct Pressure {
     /// Traction limit lost per unit of extra deflection over the section
     /// height.
     double lug_squirm = 0.0;
+    /// The slip speed at which a soft carcass's squirm costs lug_squirm's
+    /// share: below it the lugs fold less, above it more, so a soft tire
+    /// loses most spun fast (TractionCurve::squirm). 0: the squirm costs its
+    /// share at any speed, the limit lowered once [m/s].
+    double squirm_speed_m_s = 0.0;
+    /// The carcass's own rolling losses per unit of relative deflection
+    /// δ / h, against the reference's: a softer tire flexes more and rolls
+    /// harder, a harder one rolls easier (Params::carcass_resistance). It
+    /// counts most on firm ground, where the soil's own resistance is
+    /// small. 0: none.
+    double carcass_loss = 0.0;
 };
 
 /// The tread's pattern, for drawing the tire; the physics reads the
@@ -202,6 +228,11 @@ struct Params {
     /// Smallest reference speed for the slip ratio [m/s].
     double min_reference_speed_m_s = 0.0;
     Pressure pressure;
+    /// The carcass's rolling losses at the pressure set, per unit of load,
+    /// against the reference's (at_pressure(): carcass_loss (δ - δ_ref) /
+    /// h): added to the driven tire's motion resistance, negative for a
+    /// tire harder than the reference.
+    double carcass_resistance = 0.0;
     Digging digging;
     /// Only for drawing the tire (Tread).
     Tread tread = Tread::kFarm;

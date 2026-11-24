@@ -218,7 +218,7 @@ scripts/android_bench.sh build/android-arm64
 cmake --preset godot && cmake --build --preset godot
 scripts/godot_test.sh /path/to/Godot_v4.7.2-stable_linux.x86_64
 # Screenshots of the pull scene, one per camera, without a display (add `pro`
-# after the directory for the pro layout)
+# after the directory for the pro layout, `debug` for the HUD's debug line)
 xvfb-run -a -s "-screen 0 1280x720x24" /path/to/godot --fixed-fps 60 \
     --rendering-method gl_compatibility --resolution 1280x720 --path app/godot \
     --script res://tests/screenshots.gd -- /tmp/shots

@@ -291,7 +291,7 @@ with three things:
   enough to spin it up; the side grip follows the same share. The
   standard class's farm tire smears a little (5 %); the Sport classes'
   cut ones do not; the puller tire comes in Supersport 3.6 t, and with it
-  the tall final drive it wants.
+  the taller final drives it wants.
 - **Tall, close pulling gears**, 5th to 8th about 15 % apart, the wheels
   turning at about 27 to 42 km/h at 2600 rpm: speed and momentum count.
   1st to 5th are about 40 % apart (4th about 20 km/h), so 3rd and 4th
@@ -375,13 +375,18 @@ side by side, each fitted between events (K-6), each best somewhere:
   gravity with it (`vehicle::with_rear_tire`).
 - **The final drive**: the stock **short** one
   (`drivelines/supersport_3600_short.toml`, 30:1), the **middle** one
-  (`_medium.toml`, 14.5:1, € 3,000) or the **tall** one (`_tall.toml`,
-  10.5:1, € 5,000). Each says which tires it suits (`suits` in the garage
+  (`_medium.toml`, 22.5:1, € 3,000) or the **tall** one (`_tall.toml`,
+  14.5:1, € 5,000). Each says which tires it suits (`suits` in the garage
   file): the short one keeps the farm tire turning slowly, gripping
-  without smearing; the middle and tall ones spin the puller tires up,
-  the tall one fastest. Teams gear for wheel speed (85 to 100 km/h at the
-  wheel), and the rivals pull in 5th and 6th on the middle drive; a lower
-  gear may still pull a few metres further (docs/future_improvements.md).
+  without smearing; the middle and tall ones spin the puller tires up.
+  A stock engine spins them up best on the middle one
+  (about 35 to 52 km/h at the wheel in the pulling gears at 3200 rpm); a
+  fully built one runs out of gears there and pulls further on the tall
+  one (54 to 81 km/h), the wheel speeds a top pull spins at
+  (`FinalDrive.*`); half built, the two pull about alike. Taller still would only burn power in slip: at the
+  same power the tires pull less the faster they turn. The rivals pull in
+  5th and 6th on the tall drive; a lower gear may still pull a few metres
+  further (docs/future_improvements.md).
   The crew chief says which final drive
   the fitted tires want, and to buy it first if it is not owned yet
   (`garage::advice`, on the garage screen); the player still chooses.
@@ -425,14 +430,16 @@ side by side, each fitted between events (K-6), each best somewhere:
   box (1500 kg) and further back, the promotion's 2500 kg, the top's
   3000 kg: on farm tires a new tractor gets about 40 m on the loose sandy
   clay and about 100 m on the reference clay-sand.
-- **The nose** (videos of good pulls): up once on the launch, touching
-  down softly now and then, light through the middle and down at the
-  end. With the weights halfway and the hitch in its top hole the
-  tractor does that, and pulls furthest; the weights back keep it on the
-  wheelie bar all the way, and the hitch in its lowest hole holds the
-  front down hard: neither gives the rear tires their most grip, and
-  both pull clearly shorter
-  (`WheelieRuns.ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown`).
+- **The nose** (videos of good pulls): up on the launch and light most
+  of the way, touching down now and then in short spikes (a tenth of a
+  second, a fraction of the weight), never a slam. On the clay-sand the
+  weights halfway and the hitch in its top hole do that; on the covered
+  heavy clay, where the tires bite harder, the weights go about three
+  quarters forward. The weights back keep it on the wheelie bar all the
+  way, and the hitch in its lowest hole holds the front down: neither
+  gives the rear tires their most grip, and both pull clearly shorter
+  (`WheelieRuns.ASupersportTractorRidesItsNoseLightWithoutSlams`,
+  `WheelieRuns.OnHeavyClayASupersportTractorWantsItsWeightsForward`).
 
 The sled's box is 3,000 kg, on the 12 t sled about 15 t in all. The
 rivals keep one build each: at belofte the 7 l engine on the farm tires

@@ -20,10 +20,15 @@ tire::Pressure read_pressure(detail::Reader& reader) {
     if (!reader.has("tire.pressure")) {
         return {};
     }
-    return {.reference_bar = reader.number("tire.pressure.reference_bar"),
-            .min_bar = reader.number("tire.pressure.min_bar"),
-            .max_bar = reader.number("tire.pressure.max_bar"),
-            .lug_squirm = reader.number("tire.pressure.lug_squirm")};
+    return {
+        .reference_bar = reader.number("tire.pressure.reference_bar"),
+        .min_bar = reader.number("tire.pressure.min_bar"),
+        .max_bar = reader.number("tire.pressure.max_bar"),
+        .lug_squirm = reader.number("tire.pressure.lug_squirm"),
+        // Optional: without them the squirm costs its share at any
+        // speed, and the carcass rolls alike at any pressure.
+        .squirm_speed_m_s = reader.optional_number("tire.pressure.squirm_speed_m_s").value_or(0.0),
+        .carcass_loss = reader.optional_number("tire.pressure.carcass_loss").value_or(0.0)};
 }
 
 // The optional tread, by name: a farm tire's unless the file says

@@ -430,7 +430,7 @@ func _play() -> void:
 	_expect(setup.visible and setup.ballast_slider.visible and setup.pressure_slider.visible
 			and setup.hitch_slider.visible and is_equal_approx(float(built["hitch_m"]), 0.5)
 			and is_equal_approx(float(built["ballast_position"]), 0.5)
-			and is_equal_approx(float(built["pressure_bar"]), 1.0), "set up as built: %s" % built)
+			and is_equal_approx(float(built["pressure_bar"]), 0.8), "set up as built: %s" % built)
 	_slide_to_start(setup.ballast_slider)
 	_slide_to_start(setup.pressure_slider)
 	await _frames(2)
@@ -723,14 +723,14 @@ func _check_garage_choice(event: TractorPullEvent, garage: GarageScreen) -> void
 	# its line, and to buy it first when it is not owned.
 	_expect(event.get_garage().get("advice", {}).is_empty()
 			and GarageScreen.crew_advice(event.get_garage()) == "", "no advice for the pumps")
-	var advice := {"choice": 2, "alternative": 1, "label": "Tall final drive",
+	var advice := {"choice": 2, "alternative": 1, "label": "Middle final drive",
 			"for": "Puller tires", "owned": false}
 	_expect(GarageScreen.crew_advice({"advice": advice})
-			== "Crew chief: with the puller tires, fit the tall final drive (buy it first).",
+			== "Crew chief: with the puller tires, fit the middle final drive (buy it first).",
 			"the crew chief's advice: %s" % GarageScreen.crew_advice({"advice": advice}))
 	advice["owned"] = true
 	_expect(GarageScreen.crew_advice({"advice": advice})
-			== "Crew chief: with the puller tires, fit the tall final drive.", "advice, owned")
+			== "Crew chief: with the puller tires, fit the middle final drive.", "advice, owned")
 
 
 # A title opened the level above (a save that says so: a season won, and

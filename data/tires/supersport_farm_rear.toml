@@ -5,10 +5,9 @@
 # 30.5L-32). Its lugs push into the track: grip builds quickly with slip,
 # and spun fast they dig in and smear, so it pulls best spinning little,
 # on the short final drive (drivelines/supersport_3600_short.toml). Fully
-# built it pulls short of the puller tire on a firm track, and on the
-# watered start further than the puller tire on the tall final drive but
-# short of it on the middle one: on no track does it beat the puller tire
-# on the drive that suits the track (tests/data/tire_choice_test.cpp).
+# built it pulls short of the puller tire, on the drive that suits the
+# track, on every track but the loose sandy clay, where neither gets its
+# sled going (tests/data/tire_choice_test.cpp).
 # The limit is the fully built tire's; the garage sets it.
 [tire]
 tread = "farm"                     # the pattern drawn (the grip is in [tire.traction])
@@ -45,10 +44,18 @@ unsunk_lug_grip = 0.5
 # grip on firm ground; harder than the reference only shrinks the
 # footprint. deflection_m above is at the reference pressure.
 [tire.pressure]
-reference_bar = 1.0
-min_bar = 0.5
-max_bar = 1.6
+reference_bar = 0.6                # a modified farm tire pulled soft
+min_bar = 0.3
+max_bar = 1.0
 lug_squirm = 0.5                   # traction limit lost per unit of extra deflection / section height
+# A soft carcass's lugs fold the more the faster they are spun: the squirm
+# costs lug_squirm's share at this slip speed, less turning slowly and more
+# spun fast [m/s].
+squirm_speed_m_s = 5.0
+# The carcass's rolling losses per unit of deflection over the section
+# height, against the reference's: soft it flexes and rolls harder, hard it
+# rolls easier, which counts on firm ground.
+carcass_loss = 0.12
 
 # Side grip (see tp::tire::Cornering). Starting values to tune: a big lugged
 # tire builds side force a little more slowly than the front tires and
