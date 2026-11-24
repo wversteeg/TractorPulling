@@ -29,7 +29,7 @@
 # testing) a line under the bars shows the rear wheels' surface speed, each
 # side's and their mean, against the ground speed, and the tires' slip: a
 # tractor that bogs with its wheels no faster than the ground is geared
-# too tall for the grip. It only shows the run's snapshot.
+# too tall for the grip; it gives way to the ending's line. It only shows the run's snapshot.
 class_name Hud
 extends Control
 
@@ -307,7 +307,8 @@ func show_snapshot(s: Dictionary, title: String, pro: bool) -> void:
 	_turn.text = turn_text(s) if guidance else ""
 	_slack_m = s.get("chain_slack_m", 0.0)
 	_guide = guidance and s.get("stage", "pulling") in ["taking_up_slack", "waiting_for_the_flag"]
-	_debug.text = debug_text(s) if debug else ""
+	# Not under the ending's line, which shows in the same place.
+	_debug.text = debug_text(s) if debug and _ending.text.is_empty() else ""
 	queue_redraw()
 
 

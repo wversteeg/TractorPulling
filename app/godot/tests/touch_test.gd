@@ -461,11 +461,13 @@ func _play_pro(controls: DriveControls, run: TractorPullRun) -> void:
 	_expect(settings.debug_on_button.selected and hud.debug
 			and GameSettings.read(SETTINGS_PATH).debug
 			and GameSettings.read(SETTINGS_PATH).guidance, "debug on, kept in the settings file")
-	# Tires of 0.5 m, both sides' wheels at 10 m/s on the surface, the
-	# tractor at 7.5 m/s.
-	hud.set("_rear_radius_m", 0.5)
-	var line := hud.debug_text({"rear_left_omega_rad_s": 20.0, "rear_right_omega_rad_s": 20.0,
-			"tractor_speed_m_s": 7.5, "slip_ratio": 0.25})
+	# The practice pull's tractor, both sides' wheels at 10 m/s on the
+	# surface, the tractor at 7.5 m/s.
+	var dimensions := (_pull.get("run") as TractorPullRun).get_dimensions()
+	hud.build(dimensions)
+	var wheel_rad_s := 10.0 / float(dimensions["rear_tire_radius_m"])
+	var line := hud.debug_text({"rear_left_omega_rad_s": wheel_rad_s,
+			"rear_right_omega_rad_s": wheel_rad_s, "tractor_speed_m_s": 7.5, "slip_ratio": 0.25})
 	_expect(line.begins_with("wheels  36.0 km/h") and line.contains("ground  27.0 km/h")
 			and line.contains("slip  25 %"), "the debug line: %s" % line)
 	_tap(settings.debug_off_button)

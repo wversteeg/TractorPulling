@@ -183,8 +183,8 @@ func _ready() -> void:
 func release_buttons() -> void:
 	for button: TouchButton in [easy_button, pro_button, slider_button, tilt_button,
 			guidance_on_button, guidance_off_button, sound_on_button, sound_off_button,
-			haptics_button, debug_on_button, debug_off_button, new_career_button, start_button, money_button, keep_money_button,
-			done_button]:
+			haptics_button, debug_on_button, debug_off_button, new_career_button, start_button,
+			money_button, keep_money_button, done_button]:
 		button.release()
 
 
