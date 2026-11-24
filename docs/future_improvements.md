@@ -326,13 +326,13 @@ for the big features; they are repeated at the end for completeness.
   reads the track could set the pressure and the weights for it, as they
   pick a gear.
 - **Rivals keep one set of tires.** The Supersport 3.6 t rivals at promo
-  and top all pull the 7 l engine on puller tires and the middle final
+  and top all pull the 7 l engine on puller tires and the tall final
   drive, at belofte on farm tires and the short drive; only the player
   chooses. Real teams mostly own one set too, but crews fitting what suits
   the day's track would show the choice among the rivals as well.
 - **A low gear still pulls a little further.** Teams gear the Supersport
   for wheel speed (85 to 100 km/h at the wheel), and the rivals pull in
-  5th and 6th on the middle drive to match; but in the simulation a lower
+  5th and 6th on the tall drive to match; but in the simulation a lower
   gear, which multiplies the engine's torque more, often pulls a few
   metres further on a heavy sled, with the wheels at 55 to 60 km/h. A
   puller tire that bites weakly turning slowly favours the tall gears but

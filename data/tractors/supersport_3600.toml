@@ -8,14 +8,14 @@
 # final drive.
 #
 # The parts here are the rivals' and tp_pull's: the 7 l engine, puller
-# tires and the middle final drive, which suits them on most tracks (the
-# rivals' crews do not change it for a loose one). The player's stock tractor
+# tires and the tall final drive, which suits them, built as they are, on
+# most tracks (the rivals' crews do not change it for a loose one). The player's stock tractor
 # comes with the farm tires and their final drive instead.
 
 [tractor]
 engine = "../engines/supersport_3600_7l.toml"
 clutch = "../clutches/supersport_3600.toml"
-driveline = "../drivelines/supersport_3600_medium.toml"
+driveline = "../drivelines/supersport_3600_tall.toml"
 rear_tire = "../tires/supersport_puller_rear.toml"
 rear_tire_count = 2
 pto_efficiency = 0.9              # crankshaft to PTO

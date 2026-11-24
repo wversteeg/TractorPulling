@@ -3,8 +3,10 @@
 # allowed from Supersport on (NTTO; the ETPC from Sport). Many low, sharp
 # V-bars across its full width, each cutting a thin slice of fresh track
 # and throwing it out: grip builds slowly with slip, and it bites harder
-# the faster it spins, so it wants a tall final drive
-# (drivelines/supersport_3600_medium.toml or _tall.toml). At full bite it grips about its own load, as real pulling
+# the faster it spins, so it wants a taller final drive than the farm
+# tire: the middle one on a stock engine, the tall one on a built engine
+# (drivelines/supersport_3600_medium.toml, _tall.toml). At full bite it
+# grips about its own load, as real pulling
 # tires do: a 1300 hp engine then has power to spare and spins it at 70
 # km/h and more, the tread taking about 25 to 35 kN halfway down the track.
 # The limit is the fully built tire's; the garage sets it.
