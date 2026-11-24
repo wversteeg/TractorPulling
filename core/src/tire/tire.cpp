@@ -84,8 +84,9 @@ namespace {
 // keeps some sidewall and a valid limit across the range.
 bool pressure_valid(const Params& params) noexcept {
     const Pressure& pressure = params.pressure;
-    const std::array scalars = {pressure.reference_bar, pressure.min_bar, pressure.max_bar,
-                                pressure.lug_squirm};
+    const std::array scalars = {pressure.reference_bar,    pressure.min_bar,
+                                pressure.max_bar,          pressure.lug_squirm,
+                                pressure.squirm_speed_m_s, pressure.carcass_loss};
     if (!std::ranges::all_of(scalars, [](double v) { return std::isfinite(v); })) {
         return false;
     }
@@ -94,7 +95,8 @@ bool pressure_valid(const Params& params) noexcept {
     }
     if (pressure.min_bar <= 0.0 || pressure.min_bar > pressure.reference_bar ||
         pressure.reference_bar > pressure.max_bar || pressure.lug_squirm < 0.0 ||
-        pressure.lug_squirm >= 1.0) {
+        pressure.lug_squirm >= 1.0 || pressure.squirm_speed_m_s < 0.0 ||
+        pressure.carcass_loss < 0.0) {
         return false;
     }
     return std::ranges::all_of(
@@ -184,8 +186,16 @@ Params at_pressure(const Params& params, double pressure_bar) noexcept {
     // gain nothing, and the smaller footprint (a smaller mobility number)
     // costs grip.
     const double extra_m = std::max(deflection_m - params.size.deflection_m, 0.0);
-    out.traction.limit = params.traction.limit *
-                         (1.0 - pressure.lug_squirm * extra_m / params.size.section_height_m);
+    const double squirm = pressure.lug_squirm * extra_m / params.size.section_height_m;
+    if (pressure.squirm_speed_m_s > 0.0) {
+        out.traction.squirm = squirm;
+        out.traction.squirm_speed_m_s = pressure.squirm_speed_m_s;
+    } else {
+        out.traction.limit = params.traction.limit * (1.0 - squirm);
+    }
+    // The carcass flexes more, or less, than at the reference.
+    out.carcass_resistance = pressure.carcass_loss * (deflection_m - params.size.deflection_m) /
+                             params.size.section_height_m;
     return out;
 }
 
@@ -268,6 +278,24 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
         out.grip_share = share;
         out.force_per_slip_speed =
             std::max(load_n * dmu_ds / reference_m_s * share + change_n_per_m_s, 0.0);
+    }
+    if (curve.squirm > 0.0 && curve.squirm_speed_m_s > 0.0) {
+        // A soft carcass's lugs fold the more the faster they are spun.
+        // The slope the solve uses is the product's: the unfolded force's
+        // slope less the force times how fast the lugs fold (none once they
+        // fold no further, at kMostSquirm).
+        const double slip_speed_m_s = std::abs(wheel_surface_speed_m_s - ground_speed_m_s);
+        const double speeds_m_s = slip_speed_m_s + curve.squirm_speed_m_s;
+        const double folded = 2.0 * curve.squirm * slip_speed_m_s / speeds_m_s;
+        const double unfolded = 1.0 - std::min(folded, kMostSquirm);
+        const double folding_per_m_s =
+            folded < kMostSquirm
+                ? 2.0 * curve.squirm * curve.squirm_speed_m_s / (speeds_m_s * speeds_m_s)
+                : 0.0;
+        out.force_per_slip_speed = std::max(
+            out.force_per_slip_speed * unfolded - std::abs(out.force_n) * folding_per_m_s, 0.0);
+        out.force_n *= unfolded;
+        out.full_bite *= unfolded;
     }
     return out;
 }

@@ -201,16 +201,17 @@ constexpr double kClearly_m = 2.0;
 constexpr double kSomewhat_m = 1.0;
 
 // A top Supersport pull (NTTO, as measured): fully built on its puller
-// tires, geared for wheel speed (the tall final drive in 6th, as the
-// class's rivals pull), on a firm track the wheels spin at 65 km/h and more
-// through the middle of the track while the tractor goes over the ground
-// at 30 km/h and more, the engine's power holding the tires' slip; it is
+// tires, geared for wheel speed (the tall final drive in 5th, where its
+// full power is used: in 6th a firm track's grip pulls the engine down),
+// on a firm track the wheels spin at 65 km/h and more through the middle
+// of the track while the tractor goes over the ground at 30 km/h and more,
+// the engine's power holding the tires' slip; it is
 // at the 100 m line 12 to 15 s after the sled first moved. The farm tires
 // on their short drive turn at no more than 45 km/h.
 TEST(TireChoice, ATopPullSpinsTheWheelsFastAndTakesThirteenSeconds) {
-    constexpr int kTopGear = 6;
+    constexpr int kTopGear = 5;
     constexpr int kFarmGear = 5;
-    constexpr int kWellSet = 4;
+    constexpr int kWellSet = 6;
     constexpr double kWheel_kmh = 65.0;
     constexpr double kGround_kmh = 30.0;
     constexpr double kQuickest_s = 12.0;

@@ -123,9 +123,14 @@ Side rear_side(const tire::Params& tire, const tire::Footing& footing, double om
     side.ground_m_s = ground_m_s;
     side.traction =
         tire::traction(tire, footing, side.wheel_m_s, ground_m_s, load_per_tire_n, surface);
+    // The carcass's own losses at the pressure set, against the
+    // reference's (tire::Params::carcass_resistance).
     side.rolling_resistance =
-        load_per_tire_n > 0.0 ? tire::driven_rolling_resistance(footing, side.traction.slip_ratio)
-                              : 0.0;
+        load_per_tire_n > 0.0
+            ? std::max(tire::driven_rolling_resistance(footing, side.traction.slip_ratio) +
+                           tire.carcass_resistance,
+                       0.0)
+            : 0.0;
     return side;
 }
 

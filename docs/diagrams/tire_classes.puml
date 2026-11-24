@@ -31,6 +31,10 @@ package "tp::tire" {
     +fall_speed_m_s : double (0 one-speed curve)
     +lug_bearing_pa : double (0 always sunk)
     +unsunk_lug_grip : double = 1
+    +squirm : double (0 none)
+    +squirm_speed_m_s : double
+    --
+    kMostSquirm: loss = min(2 squirm v / (v + v_sq), 0.9)
   }
   class Digging <<struct>> {
     +rate : double (0 none)
@@ -58,6 +62,7 @@ package "tp::tire" {
     +wheel_inertia_kg_m2 : double
     +min_reference_speed_m_s : double
     +pressure : Pressure
+    +carcass_resistance : double
     +digging : Digging
     +tread : Tread
   }
@@ -73,9 +78,13 @@ package "tp::tire" {
     +reference_bar : double
     +min_bar, max_bar : double
     +lug_squirm : double
+    +squirm_speed_m_s : double (0 limit loses)
+    +carcass_loss : double
     --
-    δ = δ_ref p_ref / p; limit loses
-    lug_squirm max(δ - δ_ref, 0) / h
+    δ = δ_ref p_ref / p; squirm =
+    lug_squirm max(δ - δ_ref, 0) / h;
+    carcass_resistance =
+    carcass_loss (δ - δ_ref) / h
   }
   class Traction <<struct>> {
     +force_n : double
