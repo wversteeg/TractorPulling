@@ -632,6 +632,16 @@ head and valves, the fuel pump and water injection, and the Grand
 National classes the most (the turbo stages in Super Stock). The garage's
 limits (`garage::kMaxUpgrades`, `garage::kMaxLevels`) grow to fit.
 
+**The crew chief's good buy.** In the garage the crew chief names what
+to buy next, worked out again after every purchase (`field::good_buy`):
+every next upgrade level and every part not owned is tried on the next
+event's track, on its sled four pull-off steps heavier so a full pull
+does not hide the difference, and the one that gains the most metres per
+euro the player can afford is named, with about how far it pulls
+further. When a part the player cannot afford yet gains twice as much
+per euro (puller tires, say), the crew chief says to save for it. The
+career simulation (`tp_pull career`) buys the same way.
+
 ## Real distances (ntto.nl)
 
 For tuning the classes' sleds and rivals, from the 2026 results:

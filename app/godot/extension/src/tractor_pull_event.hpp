@@ -199,6 +199,14 @@ public:
     /// and the peak in metric hp; `next` with the upgrade's next level
     /// bought, left out at its top. {} for no such upgrade.
     [[nodiscard]] godot::Dictionary get_upgrade_dyno(std::int64_t index) const;
+    /// The crew chief's good buy for the garage as it is now
+    /// (field::good_buy), weighed on the next event's track: {label,
+    /// cost_eur, gain_m, save_for, short_eur, upgrade, choice, alternative}
+    /// (`upgrade` -1 for an alternative, `choice` -1 for an upgrade;
+    /// `short_eur` what is still missing when saving). {} when nothing
+    /// gains, everything is bought, or outside a season. Runs trial pulls
+    /// for every candidate: ask once each time the garage changes.
+    [[nodiscard]] godot::Dictionary get_good_buy() const;
     /// Each alternative of choice `choice` as if fitted, with the career's
     /// builds: its dyno curve {points, hp} (an engine slot's; the others'
     /// engine is the tractor's).

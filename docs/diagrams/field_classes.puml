@@ -99,6 +99,18 @@ package "tp::field" {
     +pullers : array<Puller, 32>
     +count : int
   }
+  class Buy <<struct>> {
+    +kind : BuyKind (kUpgrade, kAlternative)
+    +index : size_t (upgrade or choice)
+    +alternative : size_t
+    +cost_eur : int64
+  }
+  class GoodBuy <<struct>> {
+    +buy : Buy
+    +gain_m : double
+    +save_for : bool
+  }
+  GoodBuy *-- Buy
   class "field functions" as FieldFns <<free functions>> {
     +validate(reference, variation, rules, count) : optional<ParamError>
     +generate(reference, variation, rules, count, seed) : optional<Field>
@@ -121,7 +133,10 @@ package "tp::field" {
     +guests_at(season_seed, number, const Guests&) : array<int, 8>
     +with_guests(const Field& competitors, const Field& pool, span<const int> chosen) : Field
     +log_hash(span<const LogEntry>) : uint64
+    +good_buy(reference, const garage::Catalogue&, const garage::Career&, sled, track,\n      lowest, highest, const run::Rules&) : optional<GoodBuy> (metres per euro, kGoodBuySteps heavier)
+    +with_buy(const garage::Catalogue&, const garage::Career&, const Buy&) : garage::Career
   }
+  FieldFns ..> GoodBuy
   enum "LiveEvent::Turn" as Turn {
     kRivals
     kPlayerPull

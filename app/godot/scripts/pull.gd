@@ -290,7 +290,7 @@ func _ready() -> void:
 		if error.is_empty():
 			_save_season()
 		garage_screen.show_garage(event.get_garage(),
-				"" if error.is_empty() else "Cannot buy it: %s." % error))
+				"" if error.is_empty() else "Cannot buy it: %s." % error, event.get_good_buy()))
 	garage_screen.choice_requested.connect(func(choice: int, alternative: int) -> void:
 		var owned: bool = event.get_garage()["choices"][choice]["alternatives"][alternative]["owned"]
 		var error := event.fit_alternative(choice, alternative) if owned \
@@ -298,7 +298,8 @@ func _ready() -> void:
 		if error.is_empty():
 			_save_season()
 		garage_screen.show_garage(event.get_garage(),
-				"" if error.is_empty() else "Cannot %s it: %s." % ["fit" if owned else "buy", error]))
+				"" if error.is_empty() else "Cannot %s it: %s." % ["fit" if owned else "buy", error],
+				event.get_good_buy()))
 	garage_screen.done.connect(show_start)
 	setup_screen.tuning_changed.connect(func(ballast_position: float, bar: float,
 			hitch_m: float) -> void:
@@ -529,7 +530,7 @@ func show_start(error: String = "") -> void:
 # dealer paints; `message` what the last purchase said, if anything.
 func _show_garage(message: String = "") -> void:
 	garage_screen.has_paint_shop = not (event.get_dealer().get("models", []) as Array).is_empty()
-	garage_screen.show_garage(event.get_garage(), message)
+	garage_screen.show_garage(event.get_garage(), message, event.get_good_buy())
 	_set_screen(Screen.GARAGE)
 
 

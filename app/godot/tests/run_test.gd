@@ -254,6 +254,14 @@ func _check_career_outlives_a_save() -> void:
 	var garage := later.get_garage()
 	_expect(garage["money_eur"] == bought["money_eur"] and garage["upgrades"] == bought["upgrades"],
 			"the career carried into it: %s" % garage)
+	# The crew chief's good buy for the garage as it is: a part named with
+	# its price and how far it pulls further, or what to save for.
+	var good := later.get_good_buy()
+	_expect(good.is_empty() or (not String(good.get("label", "")).is_empty()
+			and int(good.get("cost_eur", 0)) > 0 and float(good.get("gain_m", 0.0)) > 0.0
+			and (good.get("save_for", false) or int(good["cost_eur"]) <= int(garage["money_eur"]))),
+			"the crew chief's good buy: %s" % good)
+	_expect(TractorPullEvent.new().get_good_buy().is_empty(), "no good buy before a season")
 
 
 # The career (TractorPullEvent.load_career): its rungs (a class at a

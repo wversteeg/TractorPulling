@@ -1,6 +1,7 @@
 #include "tp/data/career/career_sim.hpp"
 
 #include "tp/core/field/field.hpp"
+#include "tp/core/field/good_buy.hpp"
 #include "tp/core/field/live.hpp"
 #include "tp/core/field/live_season.hpp"
 #include "tp/data/session/run_setup.hpp"
@@ -135,6 +136,35 @@ void shop(const garage::Catalogue& catalogue, garage::Career& career) {
     }
 }
 
+// Spends the money as the crew chief advises for `round` (field::good_buy):
+// each good buy while it can be afforded, saving when the advice is to save;
+// when nothing gains on that track any more, the cheapest next purchase.
+void shop_for(const SeasonDefinition& d, garage::Career& career, const SeasonRound& round) {
+    const EventDefinition& e = d.event;
+    const garage::Catalogue& catalogue = d.garage.catalogue;
+    const field::Venue venue = data::venue(e.sled, round.track);
+    const run::Rules rules = field::trial_pull_rules(e.rules, venue, e.rules.full_pull_m);
+    const int gears = static_cast<int>(e.reference.tractor.driveline.gear_count);
+    const int lowest = e.variation.lowest_gear;
+    const int highest = std::min(e.variation.highest_gear + 1, gears);
+    for (;;) {
+        const auto advice = field::good_buy(e.reference, catalogue, career, venue.sled, venue.track,
+                                            lowest, highest, rules);
+        if (!advice) {
+            shop(catalogue, career);
+            return;
+        }
+        if (advice->save_for) {
+            return;
+        }
+        const garage::Career bought = field::with_buy(catalogue, career, advice->buy);
+        if (bought.money_eur == career.money_eur && advice->buy.cost_eur > 0) {
+            return;  // could not be made
+        }
+        career = bought;
+    }
+}
+
 // The player's place in `event`'s standings, 0 if not there.
 int player_place(field::LiveEvent& event) {
     for (const event::Standing& s : event.standings()) {
@@ -258,14 +288,16 @@ std::optional<std::vector<SimSeason>> simulate_level(const SeasonDefinition& d,
         // A season is large: on the heap, as the game holds it.
         const auto season = std::make_unique<field::LiveSeason>(*created);
         SimSeason result;
-        for (const SeasonRound& round : d.rounds) {
+        for (std::size_t r = 0; r < d.rounds.size(); ++r) {
+            const SeasonRound& round = d.rounds[r];
             const auto place = play_event(d, career, *season, round);
             if (!place || result.events >= season::kMaxEvents) {
                 return std::nullopt;
             }
             result.places.at(static_cast<std::size_t>(result.events++)) = *place;
             result.wins += *place == 1 ? 1 : 0;
-            shop(catalogue, career);
+            // Bought for the next event's track, as the crew chief advises.
+            shop_for(d, career, d.rounds[(r + 1) % d.rounds.size()]);
         }
         for (const season::Standing& st : season->standings()) {
             if (st.puller == field::LiveSeason::kPlayer) {
