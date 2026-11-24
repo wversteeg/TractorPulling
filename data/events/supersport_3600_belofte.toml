@@ -6,7 +6,7 @@
 [event]
 class = "../classes/ntto_supersport_3600.toml"
 tractor = "../tractors/supersport_3600_farm.toml"   # the reference the field varies
-sled = "../sleds/supersport_3600_belofte.toml"
+sled = "../sleds/supersport_3600.toml"
 track = "../tracks/ideal_clay_sand.toml"
 pullers = 15
 seed = 2026
@@ -40,14 +40,14 @@ spin_fuel = 0.0                     # farm tires smear spun: right off the fuel 
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.80, 0.92]
-mass_kg = [3320.0, 3520.0]
-traction_limit = [0.771, 0.800]
-hitch_height_m = [0.41, 0.46]
-rated_rpm = [2230.0, 2455.0]
+torque_scale = [0.85, 0.98]
+mass_kg = [3450.0, 3600.0]
+traction_limit = [0.760, 0.800]
+hitch_height_m = [0.44, 0.50]
+rated_rpm = [2300.0, 2550.0]
 gears = [3, 6]                         # on farm tires and the short final drive
 clutch_slip_in_s = [2.0, 4.0]
-track_reading = [0.4, 0.8]
+track_reading = [0.6, 0.95]
 downshift_share = [0.0, 0.0]           # no powershift
 pull_to_pull_grip_share = 0.01         # +- 1 % grip
 pull_to_pull_clutch_slip_in_s = 0.3    # +- 0.3 s

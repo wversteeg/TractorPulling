@@ -26,6 +26,11 @@ struct Fitting {
     field::GearTrial trial;
 };
 
+// Combinations that full-pull the day's sled are told apart, and their gear
+// chosen, on one this many pull-off steps heavier: the sled the event's
+// operator soon sets for a strong field.
+constexpr int kTieBreakSteps = 4;
+
 // Of the alternatives `career` owns, the combination that takes the tractor
 // furthest on `sled` and `track` in its best gear and hand throttle among
 // `lowest` to `highest`: what the player fits for the day.
@@ -47,8 +52,16 @@ std::optional<Fitting> fit_for_the_day(const SeasonDefinition& d, const garage::
             if (const auto tractor =
                     garage::equipped(d.event.reference.tractor, catalogue, trying)) {
                 puller.tractor = *tractor;
-                const auto trial =
-                    field::best_gear_trial(puller, sled, track, lowest, highest, rules);
+                auto trial = field::best_gear_trial(puller, sled, track, lowest, highest, rules);
+                if (trial && trial->distance_m >= rules.full_pull_line_m) {
+                    if (const auto heavier =
+                            field::best_gear_trial(puller, sled::heavier(sled, kTieBreakSteps),
+                                                   track, lowest, highest, rules)) {
+                        const double full_m = trial->distance_m;
+                        trial = heavier;
+                        trial->distance_m += full_m;
+                    }
+                }
                 if (trial && (!best || trial->distance_m > best->trial.distance_m)) {
                     best = Fitting{.career = trying, .trial = *trial};
                 }
