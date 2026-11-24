@@ -458,8 +458,8 @@ six-cylinder of about 780 hp fully built, pulled at belofte, promo and top
 (`data/garages/sport_4500.toml`, € 73,000). Supersport 3.6 t's
 (`data/tractors/supersport_3600.toml`) is the class of choices: a 7.0 l
 engine at 2700 rpm or a 6.06 l one at 3200 rpm, modified farm tires or
-puller tires, and a short or tall final drive to suit them (either engine about
-1000 hp fully built), pulled at all three levels after building boost on
+puller tires, and a short, middle or tall final drive to suit them and
+the engine's build (either engine about 1000 hp fully built), pulled at all three levels after building boost on
 the launch ("optoeren"; `data/garages/supersport_3600.toml`, € 98,200).
 Supersport 3.4 and 4.5 t, Pro Stock, Limited Super Stock and Super Stock
 follow, a class at a time, each with its NTTO and ETPC rules.
