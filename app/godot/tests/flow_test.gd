@@ -430,7 +430,7 @@ func _play() -> void:
 	_expect(setup.visible and setup.ballast_slider.visible and setup.pressure_slider.visible
 			and setup.hitch_slider.visible and is_equal_approx(float(built["hitch_m"]), 0.5)
 			and is_equal_approx(float(built["ballast_position"]), 0.5)
-			and is_equal_approx(float(built["pressure_bar"]), 1.0), "set up as built: %s" % built)
+			and is_equal_approx(float(built["pressure_bar"]), 0.8), "set up as built: %s" % built)
 	_slide_to_start(setup.ballast_slider)
 	_slide_to_start(setup.pressure_slider)
 	await _frames(2)
