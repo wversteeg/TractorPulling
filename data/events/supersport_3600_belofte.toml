@@ -5,8 +5,8 @@
 
 [event]
 class = "../classes/ntto_supersport_3600.toml"
-tractor = "../tractors/supersport_3600.toml"   # the reference the field varies
-sled = "../sleds/supersport_3600.toml"
+tractor = "../tractors/supersport_3600_farm.toml"   # the reference the field varies
+sled = "../sleds/supersport_3600_belofte.toml"
 track = "../tracks/ideal_clay_sand.toml"
 pullers = 15
 seed = 2026
@@ -17,16 +17,18 @@ seed = 2026
 gear = 4
 select_gear_s = 0.5
 launch_s = 3.0
-clutch_slip_in_s = 3.0
+clutch_slip_in_s = 2.0
 downshift_share = 0.0                  # no powershift in Supersport: one gear the whole pull
 # "Optoeren": the clutch comes up over clutch_slip_in_s, eased back while
 # the engine is below 80 % of its rated speed, so the engine works on a
 # slipping clutch at high revs and the turbo builds its boost before the
 # clutch is fully in; up to 8 s in all. Without it a tall pulling gear
 # stalls the engine (the big turbo gives little at first).
-launch_hold_share = 0.8
-launch_hold_max_s = 8.0
+launch_hold_share = 0.9
+launch_hold_max_s = 12.0
 launch_feather_share = 0.05       # the clutch worked smoothly about the hold
+spin_ease_slip = 0.6                # the throttle played against wheelspin past this slip
+spin_fuel = 0.0                     # farm tires smear spun: right off the fuel at full spin
 
 # The field: Supersport 3.6 t tractors from barely built to a little over half
 # the class's garage (garages/supersport_3600.toml), driven by pullers new to
@@ -38,12 +40,12 @@ launch_feather_share = 0.05       # the clutch worked smoothly about the hold
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.84, 0.98]
+torque_scale = [0.80, 0.92]
 mass_kg = [3320.0, 3520.0]
-traction_limit = [1.595, 1.650]
+traction_limit = [0.771, 0.800]
 hitch_height_m = [0.41, 0.46]
 rated_rpm = [2230.0, 2455.0]
-gears = [2, 5]                         # 2nd for a weak tractor on a soft track
+gears = [3, 6]                         # on farm tires and the short final drive
 clutch_slip_in_s = [2.0, 4.0]
 track_reading = [0.4, 0.8]
 downshift_share = [0.0, 0.0]           # no powershift
@@ -95,4 +97,4 @@ guest_names = ["Evert", "Hilde", "Martijn", "Truus", "Sjaak", "Wendy"]
 # or finish last.
 [event.guests]
 torque_scale = [0.42, 0.72]
-traction_limit = [1.509, 1.585]
+traction_limit = [0.732, 0.769]

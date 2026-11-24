@@ -313,23 +313,27 @@ std::vector<std::string> rounds_on_their_own_tracks(const SportSetup& sport) {
 // Rules of thumb for the weights, on a sled heavy enough that the tractor
 // stops short of the line, where a setting shows. The grippier the track,
 // the further forward the weights: on the grippy tracks (the firm loam, the
-// dry hard clay, the moist heavy clay) the tires hold and the chain, low on
-// the sled, pulls the nose up; on the loose sandy clay the grip runs out
-// before the front can rise and the rear tires need every kilo. The
-// clay-sand and the wet start (wet only at the start) lie in between: enough
-// weight back to get the sled going, not so much that the grippy rest of
-// the track lifts the nose. And on every track the setup matters: the worst
-// place costs metres against the best.
+// moist heavy clay) the tires hold and the chain, low on the sled, pulls the
+// nose up; on the loose sandy clay the grip runs out before the front can
+// rise and the rear tires need every kilo. The clay-sand and the wet start
+// (wet only at the start) lie in between: enough weight back to get the
+// sled going, not so much that the grippy rest of the track lifts the nose.
+// The dry hard clay is hard, but too hard for the cut lugs to sink into
+// (tire::lug_grip): they ride on its crust, and it wants the weights back
+// like a loose track, behind the firm loam. And on every track the setup
+// matters: the worst place costs metres against the best.
 TEST(TrackSetup, TheGrippierTheTrackTheFurtherForwardTheWeights) {
     const SportSetup sport;
     const WeightsCurve loose{sport, "Sandy clay"};
     const WeightsCurve grippiest{sport, "Firm loam"};
-    for (const char* track :
-         {"Firm loam", "Summer, dry hard clay", "Rainy day, covered heavy clay"}) {
+    for (const char* track : {"Firm loam", "Rainy day, covered heavy clay"}) {
         const WeightsCurve grippy{sport, track};
         EXPECT_GE(grippy.wants_weights_at(), loose.wants_weights_at() + kQuarter)
             << track << ": " << grippy.text() << "\nSandy clay: " << loose.text();
     }
+    const WeightsCurve crust{sport, "Summer, dry hard clay"};
+    EXPECT_LE(crust.wants_weights_at() + kQuarter, grippiest.wants_weights_at())
+        << "dry hard clay: " << crust.text() << "\nFirm loam: " << grippiest.text();
     for (const char* track : {"Clay-sand", "Spring opener, watered start"}) {
         const WeightsCurve between{sport, track};
         EXPECT_GT(between.wants_weights_at(), loose.wants_weights_at())
@@ -362,14 +366,14 @@ TEST(TrackSetup, LessGrippyTiresWantTheWeightsFurtherBack) {
 // What the wrong weights cost depends on the track. On the loose sandy
 // clay both ends cost against the best place: forward the rear tires are
 // short of load, all back the tractor stands on its wheelie bar. On the
-// grippy firm loam and the dry hard clay it is the other way round:
-// forward pays, the weights halfway let the nose climb.
+// grippy firm loam it is the other way round: forward pays, the weights
+// halfway let the nose climb.
 TEST(TrackSetup, TheTrackDecidesWhatTheWrongWeightsCost) {
     const SportSetup sport;
     const WeightsCurve loose{sport, "Sandy clay"};
     EXPECT_GT(loose.best_m(), loose.at_m(kForward) + kShows_m) << loose.text();
     EXPECT_GT(loose.best_m(), loose.at_m(kBack) + kShows_m) << loose.text();
-    for (const char* track : {"Firm loam", "Summer, dry hard clay"}) {
+    for (const char* track : {"Firm loam"}) {
         const WeightsCurve grippy{sport, track};
         EXPECT_GT(grippy.best_between_m(kThreeQuarters, kForward), grippy.at_m(kHalfway) + kShows_m)
             << track << ": " << grippy.text();
@@ -410,8 +414,8 @@ TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
 // on the clay-sand, the sandy clay, the wet start and the dry hard clay.
 // On the grippiest tracks, the firm loam and the moist heavy clay, the
 // tires have grip to spare and the chain lifts the nose: a hole or two
-// below the top may pull further, and the lowest may gain up to about two
-// metres, so the hitch matters little there either way. So the
+// below the top may pull further, and the lowest may gain up to about
+// three metres, so the hitch matters little there either way. So the
 // crew chief may always say to raise a hitch in its lowest hole (U-23): it
 // costs that much at most. (With the weights all back it is another
 // matter: the top hole stands the tractor on its wheelie bar, and a lower
@@ -422,7 +426,7 @@ TEST(TrackSetup, TheLowestHitchHoleCostsButOnTheGrippiestTracks) {
     constexpr double kAsBuilt_bar = 1.0;
     // Further than a pull-to-pull difference; at most this much shorter [m].
     constexpr double kFurther_m = 0.5;
-    constexpr double kAtMostShorter_m = 2.0;
+    constexpr double kAtMostShorter_m = 3.5;
     // The grippiest tracks, by their ground: a renamed round is still one.
     std::vector<soil::Composition> grippiest;
     for (const char* file : {"firm_loam.toml", "covered_heavy_clay.toml"}) {

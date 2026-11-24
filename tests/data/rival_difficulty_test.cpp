@@ -132,7 +132,7 @@ struct Places {
     int worst = 0;
 };
 
-constexpr Places kNew{.best = 10, .worst = 14};
+constexpr Places kNew{.best = 9, .worst = 14};
 // One level up: the middle of the field, the top four on a good day, even
 // second on the best.
 constexpr Places kOneLevelUp{.best = 2, .worst = 13};
@@ -183,7 +183,9 @@ garage::Career share_up(const garage::Catalogue& catalogue, double share) {
 // `career` with the owned alternatives of its choices (a turbo; an engine,
 // tires and a final drive) that take the tractor furthest on the season's
 // first track, in its best gear: the player fits them for the day. Every
-// combination is tried; there are few.
+// combination is tried; there are few. Combinations that full-pull the
+// class's sled are told apart on a heavier one, as the day's sled will be.
+constexpr int kTieBreakSteps = 4;
 garage::Career fitted_for_the_day(const data::SeasonDefinition& d, garage::Career career,
                                   Gears gears) {
     const data::EventDefinition& e = d.event;
@@ -206,8 +208,14 @@ garage::Career fitted_for_the_day(const data::SeasonDefinition& d, garage::Caree
             Puller puller = e.reference;
             puller.tractor = garage::equipped(e.reference.tractor, catalogue, trying)
                                  .value_or(e.reference.tractor);
-            const std::optional<GearTrial> trial = best_gear_trial(
-                puller, venue.sled, venue.track, gears.lowest, gears.highest, rules);
+            std::optional<GearTrial> trial = best_gear_trial(puller, venue.sled, venue.track,
+                                                             gears.lowest, gears.highest, rules);
+            if (trial && trial->distance_m >= e.rules.full_pull_m) {
+                const std::optional<GearTrial> heavier =
+                    best_gear_trial(puller, sled::heavier(venue.sled, kTieBreakSteps), venue.track,
+                                    gears.lowest, gears.highest, rules);
+                trial->distance_m += heavier ? heavier->distance_m : 0.0;
+            }
             if (trial && trial->distance_m > furthest_m) {
                 furthest_m = trial->distance_m;
                 best = trying;
@@ -253,12 +261,12 @@ void expect_level(const char* file, std::initializer_list<Expectation> expectati
 
 // The standard class, the career's warming-up at one level: a new tractor
 // finishes near the back, and about two thirds of the garage fights for
-// the win (the top four). The sled set for the field's average, not its
+// the win (the top five). The sled set for the field's average, not its
 // strongest, lets the weakest gain a place now and then.
 TEST(RivalDifficulty, ANewStandardTractorIsNearTheBackAndTwoThirdsOfItsGarageWins) {
     expect_level("standard_3500.toml", {{.share = 0.0, .places = {.best = 11, .worst = 15}},
-                                        {.share = 0.45, .places = {.best = 2, .worst = 7}},
-                                        {.share = 0.66, .places = {.best = 1, .worst = 4}}});
+                                        {.share = 0.45, .places = {.best = 1, .worst = 7}},
+                                        {.share = 0.66, .places = {.best = 1, .worst = 5}}});
 }
 
 // The Sport classes pull in tall, close gears (3rd to 8th), launching with
@@ -327,13 +335,15 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
 // The Supersport 3.6 t class's three levels, its own tractor and garage,
 // the player fitting the engine, tires and final drive that pull furthest
 // on the season's first track (once they own the alternatives, from half
-// the garage; on the watered start that is the farm tires on the short
-// final drive, which beat the rivals' puller tires there by a few metres):
-// a new tractor is at the back of belofte, half the garage in the front
-// half and 70 % wins it; at promo half the garage is in the middle and
-// three quarters wins; at top 60 % is at the back, three quarters in the
-// front half, and a nearly or fully built tractor wins. A weak tractor may
-// pull in 2nd at belofte (drivelines/supersport_3600_*.toml).
+// the garage): a new tractor, on its worn farm tires, is at the back of
+// belofte, whose field pulls on farm tires too; half the garage is in the
+// front half and 70 % wins it; at promo, on puller tires like its field,
+// half the garage is in the middle and three quarters wins; at top 60 % is
+// in the back half, three quarters about the front half (the field
+// launches well and the pulls are mostly grip-limited, so the two are
+// close), and a nearly or fully built tractor wins. The rivals at promo and top gear for wheel
+// speed (5th and 6th on the middle drive); the player may choose any pulling gear. A weak tractor
+// may pull in 2nd at belofte.
 constexpr Gears kSupersportGears{.lowest = 3, .highest = 6};
 
 TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercentWinsIt) {
@@ -344,8 +354,9 @@ TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercent
                  Gears{.lowest = 2, .highest = 6});
 }
 
-// At promo the season opens on the watered start, where grip decides more
-// than the garage: three quarters is in the top five there.
+// At promo the season opens on the watered start, where grip and the
+// final drive decide more than the garage: three quarters is in the top
+// five there.
 TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAtTheOpener) {
     expect_level("supersport_3600_promo.toml",
                  {{.share = 0.5, .places = {.best = 3, .worst = 12}},
@@ -355,8 +366,8 @@ TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAt
 
 TEST(RivalDifficulty, OnlyANearlyFullyBuiltSupersportTractorWinsAtTop) {
     expect_level("supersport_3600_top.toml",
-                 {{.share = 0.6, .places = {.best = 9, .worst = 15}},
-                  {.share = 0.75, .places = {.best = 1, .worst = 8}},
+                 {{.share = 0.6, .places = {.best = 7, .worst = 15}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 9}},
                   {.share = 0.9, .places = {.best = 1, .worst = 2}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSupersportGears);

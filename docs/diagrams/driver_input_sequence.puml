@@ -11,12 +11,16 @@ Driver -> Driver : then plan.gear at plan.throttle; from launch_s the clutch\nco
 opt plan.launch_hold_share > 0 (a held launch)
   alt plan.launch_feather_share > 0 and held_s < launch_hold_max_s (feathered)
     Driver -> Driver : rate = clamp((engine - hold) / (feather_share x rated), -1, 1)
-    Driver -> Driver : clutch up (or back) at rate x the plan's rate; held_s += step while backing
+    Driver -> Driver : wheels past plan.spin_ease_slip: rate = min(rate, -kSpinClutchRate x how far past)
+    Driver -> Driver : clutch up (or back) at rate x the plan's rate; held_s += step
   else engine < launch_hold_share x rated speed and held_s < launch_hold_max_s
     Driver -> Driver : ease the clutch back at the same rate; held_s += step
   else
     Driver -> Driver : let it come up at the plan's rate
   end
+end
+opt plan.spin_ease_slip > 0, rear slip ratio > spin_ease_slip, not feathering the launch
+  Driver -> Driver : fuel trimmed towards plan.spin_fuel as the slip grows\n(engine::throttle_for_fuel at the engine's speed: never shut off)
 end
 opt clutch fully in and plan.downshift_share > 0
   Driver -> Driver : below = engine < downshift_share x rated speed

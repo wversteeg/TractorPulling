@@ -1,5 +1,5 @@
-# The transfer sled every class pulls: 12.5 m long, 15 t empty, its weight
-# box holding up to 11 t. Each class's file (light_class.toml,
+# The transfer sled every class pulls: 12.5 m long, 12 t empty, its weight
+# box holding up to 14 t. Each class's file (light_class.toml,
 # sport_2500.toml, sport_4500.toml) names this one as its base and sets the
 # class's weight in the box and where the push-down starts; the sled
 # operator adjusts those, the knives and the box on the day.
@@ -14,11 +14,13 @@
 
 [sled]
 # At rest, its wheels sunk in and its pan settled, the sled holds against
-# 9 % of its weight (static friction): a heavier weight box breaks away
-# harder. The chain holds the tractor a moment while the clutch slips and
-# the turbo spools (Supersport: about 22 kN with its box).
-breakaway_share = 0.09
-frame_mass_kg = 15000.0
+# half as much again as it drags moving (static friction), with the chain
+# pulling as it pulls: its upward pull at the hook unloads the pan at rest
+# too, and on soft ground, where the pan ploughs and the wheels sink, it
+# holds harder. The chain holds the tractor a moment while the clutch slips
+# and the turbo spools.
+breakaway_ratio = 1.5
+frame_mass_kg = 12000.0
 frame_cg_ahead_of_wheels_m = 0.5     # cab, engine and hydraulics over the wheels: most of it on them
 frame_yaw_inertia_kg_m2 = 195000.0   # about the frame's own centre of gravity; m L² / 12, L = 12.5 m
 pan_ahead_of_wheels_m = 5.5          # centre of the pan's contact, the pivot over it
@@ -73,7 +75,7 @@ depth_m = 1.0
 # travel by which it reaches its end: 75 to 100 m in 5 m steps, chosen per event
 # (a track may set it: track.weight_box.travel_distance_m).
 [sled.weight_box]
-max_mass_kg = 11000.0
+max_mass_kg = 14000.0
 start_ahead_of_wheels_m = -0.65
 end_ahead_of_wheels_m = 5.5
 travel_distance_m = 90.0             # at its stop while the push-down comes on
@@ -109,10 +111,11 @@ depth_m = 0.04
 width_m = 0.05
 
 # Soil the tractor's tires throw back piles up in front of the pan and has
-# to be pushed along; it spills off to the sides as the sled moves.
+# to be pushed along; the pan rides over most of it, so it spills off
+# within a few metres of the sled's travel.
 [sled.berm]
 collected_share = 0.15               # of what the rear tires throw back
-spill_distance_m = 40.0              # the berm spills its own size over this travel
+spill_distance_m = 6.0               # the berm spills its own size over this travel
 friction_coefficient = 0.6           # soil sliding on soil
 
 # After the full pulls, the qualifiers pull off on a heavier sled: as many

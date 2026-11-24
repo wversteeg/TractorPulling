@@ -32,21 +32,12 @@ struct Steering {
 struct Brakes {
     /// Braking torque on one side's wheels at full pedal [N·m].
     double max_torque_nm = 0.0;
-    /// Braking torque on one side's wheels while the start's brake hold
-    /// holds them (Input::hold_brakes): clamped harder than a foot presses,
-    /// to hold a loaded engine while the turbo spools ("optoeren") [N·m].
-    /// 0: max_torque_nm; otherwise at least max_torque_nm. The pedals, and
-    /// the easy layout's steering brake, brake at max_torque_nm as ever.
-    double hold_torque_nm = 0.0;
 };
 
 /// Which of the brakes' torques is invalid.
 enum class BrakesError : std::uint8_t {
     /// max_torque_nm: not a finite number, or negative.
     kPedalTorque,
-    /// hold_torque_nm: not a finite number, negative, or softer than the
-    /// pedals (and not 0).
-    kHoldTorque,
 };
 
 /// What is wrong with `brakes`, if anything.
@@ -164,6 +155,10 @@ struct State {
     double front_side_deflection_m = 0.0;
     double rear_left_side_deflection_m = 0.0;
     double rear_right_side_deflection_m = 0.0;
+    /// How deep the rear tires on the left and the right have dug
+    /// themselves in (tire::Digging) [m].
+    double rear_left_dig_m = 0.0;
+    double rear_right_dig_m = 0.0;
 };
 
 /// One side's rear wheels this step.
@@ -190,9 +185,6 @@ struct Input {
     /// Brake pedals for the left and right rear wheels, 0 to 1.
     double brake_left = 0.0;
     double brake_right = 0.0;
-    /// The start's brake hold: both sides held at Brakes::hold_torque_nm
-    /// (at least), whatever the pedals.
-    bool hold_brakes = false;
     /// The pull is on: moving off past kUnderWay_m_s arms the gearbox's
     /// floor (driveline::start_pull). Off (driving to the sled or away from
     /// it) any gear may be chosen, and the floor is cleared.
@@ -249,6 +241,9 @@ struct Output {
     double front_rolling_resistance = 0.0;
     /// Soil all rear tires throw back behind the tractor [m³/s].
     double thrown_soil_m3_s = 0.0;
+    /// The soil's reaction on all rear tires' treads as they throw it
+    /// (tire::throw_force_n), included in tire_force_n [N].
+    double throw_force_n = 0.0;
     chassis::AxleLoads axle_loads;
     /// Side force of both front tires, across the wheels, and of all rear
     /// tires; positive to the left [N].
@@ -285,6 +280,8 @@ constexpr void hash_append(hash::Fnv1a& hash, const State& state) noexcept {
     hash.add(state.front_side_deflection_m);
     hash.add(state.rear_left_side_deflection_m);
     hash.add(state.rear_right_side_deflection_m);
+    hash.add(state.rear_left_dig_m);
+    hash.add(state.rear_right_dig_m);
 }
 
 }  // namespace tp::vehicle

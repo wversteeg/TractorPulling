@@ -2,10 +2,12 @@
 # 30.5L-32 (775 mm on a 32" rim, the class's widest; docs/career.md),
 # allowed from Supersport on (NTTO; the ETPC from Sport). Many low, sharp
 # V-bars across its full width, each cutting a thin slice of fresh track
-# and throwing it out: grip builds slowly with slip to a high limit, and it
-# bites harder the faster it spins, so it wants the tall final drive
-# (drivelines/supersport_3600_tall.toml). The limit is the fully built
-# tire's; the garage sets it.
+# and throwing it out: grip builds slowly with slip, and it bites harder
+# the faster it spins, so it wants a tall final drive
+# (drivelines/supersport_3600_medium.toml or _tall.toml). At full bite it grips about its own load, as real pulling
+# tires do: a 1300 hp engine then has power to spare and spins it at 70
+# km/h and more, the tread taking about 25 to 35 kN halfway down the track.
+# The limit is the fully built tire's; the garage sets it.
 [tire]
 tread = "puller"                   # the pattern drawn (the grip is in [tire.traction])
 radius_m = 0.88                    # rolling radius
@@ -16,16 +18,18 @@ wheel_inertia_kg_m2 = 60.0         # wheel, rim and tire about the axle
 min_reference_speed_m_s = 0.5      # keeps the slip ratio defined at rest
 
 [tire.traction]
-limit = 1.65                        # μ on very strong ground at full bite: a cut puller tire
-mobility_rate = 0.08               # how fast grip reaches the limit with Bn
-slip_rate = 3                    # grip builds with slip: a puller tire bites spinning
+limit = 1.0                        # μ on very strong ground at full bite: a hand cut puller tire
+mobility_rate = 0.10               # how fast grip reaches the limit with Bn
+slip_rate = 8.0                    # grip builds with slip: a puller tire bites spinning
 # Its many low, sharp bars bite harder the faster they sweep through the
 # soil: turning slowly it has slow_spin_grip of its grip, and full grip
 # over a tread slip speed of about spin_speed_m_s (tp::tire::TractionCurve),
-# the side grip with it. The shallow bars need firm ground: on soft soil
-# its grip falls further (mobility_rate below a farm tire's).
-slow_spin_grip = 0.5
-spin_speed_m_s = 8
+# the side grip with it. Its sharp bars cut into any track, however hard
+# (no lug bearing, tp::tire::lug_grip).
+slow_spin_grip = 0.65
+fast_spin_grip = 0.8
+fall_speed_m_s = 20
+spin_speed_m_s = 6
 # Pressed harder than its share of the tractor at rest (the chain pulling
 # down at the hitch, the weights back), the tire grips less per unit of
 # load (tp::tire::TractionCurve::load_sensitivity).
@@ -52,3 +56,10 @@ stiffness_per_rad = 4.0            # side force per unit of load per rad of slip
 limit = 0.8                        # side force per unit of load at most
 mobility_rate = 0.1                # as for traction: soft ground grips less
 relaxation_length_m = 0.88         # about the tire's radius
+
+# The bars throw the soil back rather than scoop it down: spinning on the
+# spot it digs in more slowly than a farm tire, but at its wheel speed a
+# stalled tractor still digs a hole in moments (tp::tire::Digging).
+[tire.digging]
+rate = 0.002                       # m of depth per m of slip, standing
+escape_speed_m_s = 1.0             # moving faster than about this, it hardly digs

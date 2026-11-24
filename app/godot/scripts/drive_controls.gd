@@ -87,7 +87,6 @@ var gear_readout := TouchButton.new()
 var camera_button := CameraButton.new()
 var restart_button := TouchButton.new()
 var menu_button := TouchButton.new()
-# The brake hold for the start: held while `hold` (a tap toggles it).
 
 
 func _ready() -> void:

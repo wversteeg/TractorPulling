@@ -229,6 +229,23 @@ TEST(EventLoader, TheLaunchHoldIsOptional) {
     EXPECT_EQ(plain.value().reference.driver.launch_hold_share, 0.0);
 }
 
+// The Supersport's drivers play the throttle against wheelspin, the
+// belofte's on farm tires backing right off; optional, off by default.
+TEST(EventLoader, ReadsTheDriversSpinEase) {
+    const auto supersport =
+        load_event(std::filesystem::path{TP_DATA_DIR} / "events" / "supersport_3600_top.toml");
+    ASSERT_TRUE(supersport.ok()) << supersport.error().message;
+    EXPECT_GT(supersport.value().reference.driver.spin_ease_slip, 0.0);
+    EXPECT_EQ(supersport.value().reference.driver.spin_fuel, driver::kSpinFuel);
+    const auto belofte =
+        load_event(std::filesystem::path{TP_DATA_DIR} / "events" / "supersport_3600_belofte.toml");
+    ASSERT_TRUE(belofte.ok()) << belofte.error().message;
+    EXPECT_EQ(belofte.value().reference.driver.spin_fuel, 0.0) << "farm tires: right off";
+    const auto club = load_event(kEvent);
+    ASSERT_TRUE(club.ok()) << club.error().message;
+    EXPECT_EQ(club.value().reference.driver.spin_ease_slip, 0.0);
+}
+
 // The shipped club event looks like a real one: a couple of full pulls at
 // most, the pull-off for four, and a winner from it.
 TEST(ShippedEvent, PlaysOutLikeAClubEvent) {
@@ -255,7 +272,7 @@ TEST(ShippedEvent, ReplayMatchesRegression) {
     const EventLog again = run(definition.value());
     EXPECT_EQ(again.hash, first.hash);
     EXPECT_EQ(first.pulls, 19);
-    EXPECT_EQ(first.hash, 0x8242e3cf5cb4bf8fULL);
+    EXPECT_EQ(first.hash, 0x6543208bbcb08fdULL);
 }
 
 // An event's field may run bigger turbos than the reference engine's:

@@ -53,8 +53,6 @@ struct Pull {
     double steering_rad = 0.0;
     double brake_left = 0.0;
     double brake_right = 0.0;
-    // The start's brake hold, from when the brakes come on.
-    bool hold_brakes = false;
     bool steered_in_the_air = false;
     // A brake that broke Coulomb friction (see brakes_right).
     bool brake_misbehaved = false;
@@ -76,8 +74,7 @@ struct Pull {
                         .gear = t_s < 0.5 ? driveline::kNeutral : gear,
                         .steering_rad = steering_rad,
                         .brake_left = t_s >= 6.0 ? brake_left : 0.0,
-                        .brake_right = t_s >= 6.0 ? brake_right : 0.0,
-                        .hold_brakes = t_s >= 6.0 && hold_brakes};
+                        .brake_right = t_s >= 6.0 ? brake_right : 0.0};
             if (t_s >= 3.0) {
                 input.clutch_pedal = dump ? 0.0 : std::max(0.0, 1.0 - (t_s - 3.0) / 3.0);
             }
@@ -125,9 +122,6 @@ TEST(VehicleParams, NamesTheInvalidPart) {
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 0; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.rear_tire_count = 3; }), ParamError::kRearTireCount);
     EXPECT_EQ(with([](Params& p) { p.brakes.max_torque_nm = -1.0; }), ParamError::kBrakes);
-    EXPECT_EQ(with([](Params& p) { p.brakes.hold_torque_nm = 0.5 * p.brakes.max_torque_nm; }),
-              ParamError::kBrakes)
-        << "the hold holds harder than a foot";
     EXPECT_EQ(with([](Params& p) { p.differential.coupling_nm_s_per_rad = -1.0; }),
               ParamError::kDifferential);
     EXPECT_EQ(with([](Params& p) { p.front_tire.section_width_m = 0.0; }), ParamError::kFrontTire);
@@ -385,6 +379,54 @@ TEST(Vehicle, TooHeavyALoadSpinsTheWheelsInALowGear) {
     EXPECT_TRUE(pull.state.engine.running);
     EXPECT_LT(pull.state.chassis.position_m, 0.1);
     EXPECT_DOUBLE_EQ(pull.last.slip_ratio, 1.0);
+}
+
+// Spinning on the spot under that load, the rear tires dig themselves in
+// (tire::Digging), both sides alike; pulling a load they hold, they roll
+// over the ground and leave hardly a hole.
+TEST(Vehicle, SpinningOnTheSpotDigsTheTiresIn) {
+    constexpr double kDugIn_m = 0.02;
+    constexpr double kHardlyAHole_m = 0.002;
+    Pull stuck;
+    stuck.run(1, 26000.0, false, 15.0);
+    EXPECT_GT(stuck.state.rear_left_dig_m, kDugIn_m);
+    EXPECT_DOUBLE_EQ(stuck.state.rear_left_dig_m, stuck.state.rear_right_dig_m);
+    Pull rolling;
+    rolling.run(3, 5000.0, false, 15.0);
+    EXPECT_LT(rolling.state.rear_left_dig_m, kHardlyAHole_m);
+    EXPECT_LT(rolling.state.rear_right_dig_m, kHardlyAHole_m);
+}
+
+// The hole holds the body back: from a hole 5 cm deep the tractor gets
+// less far in the same time than from level ground, and once it rolls it
+// climbs out.
+TEST(Vehicle, AHoleHoldsTheTractorBack) {
+    constexpr double kHole_m = 0.05;
+    Pull level;
+    level.run(3, 5000.0, false, 8.0);
+    Pull dug;
+    dug.state.rear_left_dig_m = kHole_m;
+    dug.state.rear_right_dig_m = kHole_m;
+    dug.run(3, 5000.0, false, 8.0);
+    ASSERT_GT(level.state.chassis.position_m, 1.0);
+    EXPECT_LT(dug.state.chassis.position_m, level.state.chassis.position_m - 0.1);
+    EXPECT_LT(dug.state.rear_left_dig_m, 0.1 * kHole_m) << "rolling, it climbs out";
+}
+
+// A tractor standing in its hole with no drive, nothing pulling it, is
+// held there: the hole never pushes it backwards.
+TEST(Vehicle, AHoleOnlyHoldsAStandingTractor) {
+    const Model model = reference_model();
+    State state = initial_state(model);
+    state.rear_left_dig_m = 0.1;
+    state.rear_right_dig_m = 0.1;
+    const Input idle{.throttle = 0.0, .clutch_pedal = 1.0, .gear = driveline::kNeutral};
+    for (int i = 0; i < 2000; ++i) {
+        (void)step(state, model, idle, kGround, {.pull_n = 0.0}, kDt_s);
+        EXPECT_GE(state.chassis.velocity_m_s, 0.0);
+    }
+    EXPECT_EQ(state.chassis.position_m, 0.0);
+    EXPECT_EQ(state.chassis.velocity_m_s, 0.0);
 }
 
 // In top gear the tires grip better than the engine can turn them: the
@@ -982,47 +1024,13 @@ TEST(VehicleDifferential, ValidateNamesTheBadValue) {
     EXPECT_EQ(validate(Differential{.coupling_limit_nm = -1.0}), DifferentialError::kCouplingLimit);
 }
 
-// The pedals brake with a finite torque, never negative; the hold clamps
-// at least as hard (or 0: as the pedals).
+// The pedals brake with a finite torque, never negative.
 TEST(VehicleBrakes, ValidateNamesTheBadTorque) {
     EXPECT_FALSE(validate(Brakes{.max_torque_nm = 8000.0}));
-    EXPECT_FALSE(validate(Brakes{.max_torque_nm = 8000.0, .hold_torque_nm = 8000.0}));
     EXPECT_EQ(validate(Brakes{.max_torque_nm = std::nan("")}), BrakesError::kPedalTorque);
     EXPECT_EQ(validate(Brakes{.max_torque_nm = -1.0}), BrakesError::kPedalTorque);
-    EXPECT_EQ(validate(Brakes{.max_torque_nm = 8000.0, .hold_torque_nm = -1.0}),
-              BrakesError::kHoldTorque);
-    EXPECT_EQ(validate(Brakes{.max_torque_nm = 8000.0, .hold_torque_nm = 4000.0}),
-              BrakesError::kHoldTorque);
-    EXPECT_EQ(validate(Brakes{.max_torque_nm = 8000.0,
-                              .hold_torque_nm = std::numeric_limits<double>::infinity()}),
-              BrakesError::kHoldTorque);
-}
-
-// The start's brake hold clamps both sides at the brakes' hold torque,
-// harder than full pedal, whatever the pedals say; without a hold torque it
-// brakes as full pedal does.
-TEST(VehicleBrakes, TheHoldClampsAtItsOwnTorque) {
-    Pull pedals;
-    pedals.brake_left = 1.0;
-    pedals.brake_right = 1.0;
-    pedals.run(4, 5000.0, false, 12.0);
-    Pull as_pedals;
-    as_pedals.hold_brakes = true;
-    as_pedals.run(4, 5000.0, false, 12.0);
-    EXPECT_EQ(as_pedals.state.chassis.position_m, pedals.state.chassis.position_m);
-    Params harder = testing::reference_params();
-    harder.brakes.hold_torque_nm = 3.0 * harder.brakes.max_torque_nm;
-    const std::optional<Model> harder_model = Model::create(harder);
-    if (!harder_model) {
-        FAIL() << "a hold torque refused";
-    }
-    Pull held;
-    held.model = *harder_model;
-    held.state = initial_state(held.model);
-    held.hold_brakes = true;
-    held.run(4, 5000.0, false, 12.0);
-    EXPECT_LT(held.state.chassis.position_m, pedals.state.chassis.position_m);
-    EXPECT_EQ(held.state.chassis.heading_rad, 0.0);
+    EXPECT_EQ(validate(Brakes{.max_torque_nm = std::numeric_limits<double>::infinity()}),
+              BrakesError::kPedalTorque);
 }
 
 TEST(VehicleBrakes, BothBrakesSlowItDownWithoutTurning) {
@@ -1221,7 +1229,7 @@ TEST(Vehicle, PullIsDeterministic) {
 // Regression hash; must match on every compiler, build type and platform.
 // Update deliberately, with a note in the commit, when the model changes.
 TEST(Vehicle, PullMatchesRegressionHash) {
-    EXPECT_EQ(pull_hash(), 0x25cd850a07defeb0ULL);
+    EXPECT_EQ(pull_hash(), 0xf47b63b5fed2333ULL);
 }
 
 }  // namespace

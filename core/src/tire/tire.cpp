@@ -25,6 +25,23 @@ double reference_speed(const Params& params, double wheel_m_s, double ground_m_s
     return std::max({std::abs(wheel_m_s), std::abs(ground_m_s), params.min_reference_speed_m_s});
 }
 
+// k(v) and dk/dv for a tread that rises over spin_speed_m_s and falls over
+// fall_speed_m_s (TractionCurve::fall_speed_m_s).
+struct SpinShare {
+    double share = 1.0;
+    double per_slip_speed = 0.0;  // [per m/s]
+};
+
+SpinShare rise_and_fall(const TractionCurve& curve, double slip_speed_m_s) noexcept {
+    const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
+    const double unfallen = math::exp(-slip_speed_m_s / curve.fall_speed_m_s);
+    const double rise = 1.0 - (1.0 - curve.slow_spin_grip) * unspun;
+    const double fall = curve.fast_spin_grip + (1.0 - curve.fast_spin_grip) * unfallen;
+    const double rise_slope = (1.0 - curve.slow_spin_grip) * unspun / curve.spin_speed_m_s;
+    const double fall_slope = -(1.0 - curve.fast_spin_grip) * unfallen / curve.fall_speed_m_s;
+    return {.share = rise * fall, .per_slip_speed = rise_slope * fall + rise * fall_slope};
+}
+
 }  // namespace
 
 std::optional<ParamError> validate(const Size& size) noexcept {
@@ -123,8 +140,20 @@ std::optional<ParamError> validate(const Params& params) noexcept {
         return ParamError::kLoadSensitivityInvalid;
     }
     const TractionCurve& curve = params.traction;
+    const std::array more = {curve.lug_bearing_pa, curve.unsunk_lug_grip, params.digging.rate,
+                             params.digging.escape_speed_m_s};
+    if (!std::ranges::all_of(more, [](double v) { return std::isfinite(v); })) {
+        return ParamError::kNotFinite;
+    }
+    if (curve.lug_bearing_pa < 0.0 || curve.unsunk_lug_grip <= 0.0 || curve.unsunk_lug_grip > 1.0) {
+        return ParamError::kLugGripOutOfRange;
+    }
+    if (params.digging.rate < 0.0 || params.digging.escape_speed_m_s <= 0.0) {
+        return ParamError::kDiggingOutOfRange;
+    }
     if (curve.slow_spin_grip <= 0.0 || curve.slow_spin_grip > 1.0 || curve.fast_spin_grip <= 0.0 ||
-        curve.fast_spin_grip > 1.0 || curve.spin_speed_m_s <= 0.0) {
+        curve.fast_spin_grip > 1.0 || curve.spin_speed_m_s <= 0.0 ||
+        !std::isfinite(curve.fall_speed_m_s) || curve.fall_speed_m_s < 0.0) {
         return ParamError::kSpinGripOutOfRange;
     }
     if (params.wheel_inertia_kg_m2 <= 0.0) {
@@ -221,17 +250,24 @@ Traction traction(const Params& params, const Footing& footing, double wheel_sur
     // one: F = F_s k(v), dF/dv = (dF_s/dv) k + F_s (fast - slow) e^(-v/v0) / v0.
     if (curve.slow_spin_grip != 1.0 || curve.fast_spin_grip != 1.0) {
         const double slip_speed_m_s = std::abs(wheel_surface_speed_m_s - ground_speed_m_s);
-        const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
-        const double change = curve.fast_spin_grip - curve.slow_spin_grip;
-        const double share = curve.slow_spin_grip + change * (1.0 - unspun);
         const double unscaled_n = out.force_n;
+        double share = 0.0;
+        double change_n_per_m_s = 0.0;
+        if (curve.fall_speed_m_s > 0.0) {
+            const SpinShare spin = rise_and_fall(curve, slip_speed_m_s);
+            share = spin.share;
+            change_n_per_m_s = std::abs(unscaled_n) * spin.per_slip_speed;
+        } else {
+            const double unspun = math::exp(-slip_speed_m_s / curve.spin_speed_m_s);
+            const double change = curve.fast_spin_grip - curve.slow_spin_grip;
+            share = curve.slow_spin_grip + change * (1.0 - unspun);
+            change_n_per_m_s = std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s;
+        }
         out.force_n = unscaled_n * share;
         out.full_bite = bite * share;
         out.grip_share = share;
         out.force_per_slip_speed =
-            std::max(load_n * dmu_ds / reference_m_s * share +
-                         std::abs(unscaled_n) * change * unspun / curve.spin_speed_m_s,
-                     0.0);
+            std::max(load_n * dmu_ds / reference_m_s * share + change_n_per_m_s, 0.0);
     }
     return out;
 }
@@ -265,6 +301,11 @@ double thrown_soil_m3_s(const Size& size, const Footing& footing, double load_n,
     return size.section_width_m * sinkage_m * std::abs(wheel_surface_speed_m_s);
 }
 
+double throw_force_n(double thrown_soil_m3_s, double slip_speed_m_s) noexcept {
+    return kThrownShare * soil::kLooseDensity_kg_m3 * std::max(thrown_soil_m3_s, 0.0) *
+           slip_speed_m_s;
+}
+
 double towed_rolling_resistance(const Size& size, double load_n,
                                 const soil::Surface& surface) noexcept {
     return towed_rolling_resistance(size, load_n, surface, kTireLosses);
@@ -282,9 +323,46 @@ double load_factor(const TractionCurve& curve, double load_n) noexcept {
     return 1.0 / (1.0 + curve.load_sensitivity * (load_n / curve.reference_load_n - 1.0));
 }
 
+double lug_grip(const TractionCurve& curve, double cone_index_pa) noexcept {
+    if (curve.lug_bearing_pa <= 0.0 || cone_index_pa <= curve.lug_bearing_pa) {
+        return 1.0;
+    }
+    return curve.unsunk_lug_grip +
+           (1.0 - curve.unsunk_lug_grip) * curve.lug_bearing_pa / cone_index_pa;
+}
+
+double dig_depth_m(const Params& params, double depth_m, double slip_speed_m_s,
+                   double ground_speed_m_s, double dt_s) noexcept {
+    const Digging& digging = params.digging;
+    if (digging.rate <= 0.0 && depth_m == 0.0) {
+        return 0.0;
+    }
+    const double ground_m_s = std::abs(ground_speed_m_s);
+    const double scooped_m_s =
+        digging.rate * std::abs(slip_speed_m_s) * math::exp(-ground_m_s / digging.escape_speed_m_s);
+    const double next_m =
+        (depth_m + dt_s * scooped_m_s) / (1.0 + dt_s * ground_m_s / params.size.radius_m);
+    return std::min(next_m, params.size.section_height_m);
+}
+
+double dig_resistance(const Size& size, double depth_m) noexcept {
+    if (depth_m <= 0.0) {
+        return 0.0;
+    }
+    // The deflected tire rests on a patch about sqrt(2 r δ) long either side
+    // of the axle: it climbs the hole's edge over that length, a slope of
+    // depth over it. A rigid wheel (δ = 0) would take the circle's own
+    // slope, sqrt(2 h / r); the patch never makes it steeper than that.
+    const double half_patch_m = std::sqrt(2.0 * size.radius_m * size.deflection_m);
+    const double rigid = std::sqrt(2.0 * depth_m / size.radius_m);
+    const double slope = half_patch_m > 0.0 ? std::min(depth_m / half_patch_m, rigid) : rigid;
+    return std::min(slope, kMaxDigSlope);
+}
+
 double full_bite(const Params& params, double load_n, const soil::Surface& surface) noexcept {
     const TractionCurve& curve = params.traction;
     return surface.grip_factor * curve.limit * load_factor(curve, load_n) *
+           lug_grip(curve, surface.cone_index_pa) *
            (1.0 - math::exp(-curve.mobility_rate * mobility_number(params.size, load_n, surface)));
 }
 

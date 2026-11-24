@@ -698,22 +698,36 @@ TEST(SledPlane, RejectsNonsense) {
     EXPECT_EQ(validate(params), ParamError::kWheelCornering);
 }
 
-// At rest the sled holds against at least its breakaway share of its
-// weight, more than it drags rolling; a heavier box breaks away harder.
+// At rest the sled holds against its breakaway ratio times what it drags
+// rolling, with the chain pulling as it pulls, every time it starts from a
+// standstill: the chain's upward pull at the hook unloads the pan at rest
+// as moving, and a heavier box breaks away harder. A ratio below 1 is
+// refused.
 TEST(Sled, BreaksAwayHarderThanItRolls) {
     Params params = reference_params();
-    params.breakaway_share = 0.3;
+    params.breakaway_ratio = 1.5;
+    const HookForce level{.forward_n = 10000.0};
     const double rolling_n =
-        loads(params, State{.velocity_m_s = 1.0}, {}, reference_ground()).resistance_n;
-    const double rest_n = loads(params, State{}, {}, reference_ground()).resistance_n;
-    EXPECT_GT(rest_n, rolling_n);
-    EXPECT_NEAR(rest_n, 0.3 * weight_n(params), 1e-6);
+        loads(params, State{.velocity_m_s = 1.0}, level, reference_ground()).resistance_n;
+    const double rest_n = loads(params, State{}, level, reference_ground()).resistance_n;
+    EXPECT_DOUBLE_EQ(rest_n, 1.5 * rolling_n);
+    EXPECT_DOUBLE_EQ(
+        loads(params, State{.distance_m = 50.0}, level, reference_ground()).resistance_n,
+        1.5 *
+            loads(params, State{.velocity_m_s = 1.0, .distance_m = 50.0}, level, reference_ground())
+                .resistance_n)
+        << "stopped in the pull: it breaks away again";
+    const HookForce lifting{.forward_n = 10000.0, .up_n = 4000.0};
+    EXPECT_LT(loads(params, State{}, lifting, reference_ground()).resistance_n, rest_n)
+        << "the chain's lift unloads the pan at rest too";
     Params heavier = params;
     heavier.box_mass_kg += 2000.0;
-    EXPECT_GT(loads(heavier, State{}, {}, reference_ground()).resistance_n, rest_n);
-    params.breakaway_share = 0.0;
-    EXPECT_DOUBLE_EQ(loads(params, State{}, {}, reference_ground()).resistance_n, rolling_n)
-        << "without it, no more than rolling";
+    EXPECT_GT(loads(heavier, State{}, level, reference_ground()).resistance_n, rest_n);
+    params.breakaway_ratio = 1.0;
+    EXPECT_DOUBLE_EQ(loads(params, State{}, level, reference_ground()).resistance_n, rolling_n)
+        << "at 1, no more than rolling";
+    params.breakaway_ratio = 0.9;
+    EXPECT_EQ(validate(params), ParamError::kBreakawayOutOfRange);
 }
 
 }  // namespace

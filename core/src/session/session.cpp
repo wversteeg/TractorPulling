@@ -180,17 +180,9 @@ void Session::step(const Controls& controls) noexcept {
     }
     const vehicle::Params& tractor = model_.tractor().params();
     const double dt_s = clock_.step_s();
-    // The brake hold is for the start: asked for earlier (taking up the
-    // slack, waiting for the flag) it is armed and clamps at the green flag.
-    // Before it, it would stop the tractor creeping up to the sled, and in
-    // the easy layout the clutch biting against it would keep the flag down.
-    const bool hold_brakes = controls.hold_brakes && turn_.stage == turn::Stage::kPulling;
     if (layout_ == Layout::kEasy) {
-        const controls::EasyInput easy{.throttle = controls.throttle,
-                                       .gear = controls.gear,
-                                       .steering = controls.steering,
-                                       .hold_brakes = hold_brakes,
-                                       .hold_until_boost = controls.hold_until_boost};
+        const controls::EasyInput easy{
+            .throttle = controls.throttle, .gear = controls.gear, .steering = controls.steering};
         input_ = controls::easy(easy, easy_, assist_, tractor, turn_.run.pull.tractor, dt_s);
     } else {
         const controls::ProInput pro{.throttle = controls.throttle,
@@ -198,9 +190,7 @@ void Session::step(const Controls& controls) noexcept {
                                      .gear = controls.gear,
                                      .steering = controls.steering,
                                      .brake_left = controls.brake_left,
-                                     .brake_right = controls.brake_right,
-                                     .hold_brakes = hold_brakes,
-                                     .hold_until_boost = controls.hold_until_boost};
+                                     .brake_right = controls.brake_right};
         input_ = controls::pro(pro, pro_, assist_, tractor, turn_.run.pull.tractor, dt_s);
         // Outside the pull the pedals are latched together, as on a road
         // tractor: either brakes both. In the pull, until the sled stops,
@@ -244,8 +234,6 @@ Snapshot Session::snapshot() const noexcept {
             .front_axle_load_n = output_.tractor.axle_loads.front_n,
             .engine_omega_rad_s = tractor.engine.omega_rad_s,
             .engine_running = tractor.engine.running,
-            .brakes_held = input_.hold_brakes,
-            .hold_released = assist_.hold_released,
             .boost = tractor.engine.boost,
             .gear = tractor.driveline.gear,
             .lowest_gear = driveline::lowest_gear(tractor.driveline, model_.tractor().driveline()),

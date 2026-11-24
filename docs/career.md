@@ -355,23 +355,34 @@ side by side, each fitted between events (K-6), each best somewhere:
   only while its engine is fitted.
 - **The rear tires**: the stock **modified farm tires** (710/70R42, its
   tall lugs regrooved: grip at little slip, smearing when spun fast) or
-  **puller tires** (30.5L-32, € 5,000: many low bars that bite harder the
-  faster they spin, and a higher limit). Each has its own grip upgrade.
-  Fully built, the puller tires on the tall drive pull clearly further
-  than the farm tires on the short one on a firm track and somewhat
-  further on the watered start (`TireChoice.PullerTiresOnTheTallDriveAreTheUpgrade`): the farm
-  tires are the cheap ones to start the class on.
+  **puller tires** (30.5L-32, € 5,000: many low bars that bite weakly
+  turning slowly, fully at moderate spin and keep most of it spun fast,
+  and a higher limit). Each has its own grip upgrade, from worn to hand
+  cut (farm 0.68 to 0.80, puller 0.80 to 1.00 of the load at full bite).
+  Fully built, the puller tires on the final drive that suits the track
+  pull further than the farm tires on the short one on every Supersport
+  track (`TireChoice.FarmTiresLoseToPullerTiresOnEveryTrack`): the farm
+  tires are the cheap ones to start the class on. Both grip about as real
+  tires do (the puller tire about its load at full bite, the farm tire a
+  little less), so the engine has power to spare and spins the puller
+  tires fast. A top pull, checked against NTTO figures and F = ma: geared
+  for wheel speed (6th on the middle drive), on a firm track the wheels
+  spin at 65 to 80 km/h through the middle of the track while the tractor
+  goes at 30 to 37 km/h over the ground, and it is at the 100 m line about
+  13 s after the sled first moved; the farm tires turn at 25 to 45 km/h
+  (`TireChoice.ATopPullSpinsTheWheelsFastAndTakesThirteenSeconds`).
   A tire of another size moves the axle and the tractor's centre of
   gravity with it (`vehicle::with_rear_tire`).
 - **The final drive**: the stock **short** one
   (`drivelines/supersport_3600_short.toml`, 30:1), the **middle** one
-  (`_medium.toml`, 19:1, € 3,000) or the **tall** one (`_tall.toml`,
-  15:1, € 5,000). Each says which tires it suits (`suits` in the garage
+  (`_medium.toml`, 14.5:1, € 3,000) or the **tall** one (`_tall.toml`,
+  10.5:1, € 5,000). Each says which tires it suits (`suits` in the garage
   file): the short one keeps the farm tire turning slowly, gripping
-  without smearing; the middle one lets the puller tire spin up to its
-  bite on a tractor not yet built for the tall one; the tall one spins it
-  at 60 to 80 km/h in the pulling gears, as real Supersports do, where
-  only a powerful engine holds it. The crew chief says which final drive
+  without smearing; the middle and tall ones spin the puller tires up,
+  the tall one fastest. Teams gear for wheel speed (85 to 100 km/h at the
+  wheel), and the rivals pull in 5th and 6th on the middle drive; a lower
+  gear may still pull a few metres further (docs/future_improvements.md).
+  The crew chief says which final drive
   the fitted tires want, and to buy it first if it is not owned yet
   (`garage::advice`, on the garage screen); the player still chooses.
 - **The turbo** (an upgrade for either engine, `boost_bar`): the stock
@@ -383,19 +394,19 @@ side by side, each fitted between events (K-6), each best somewhere:
   boost the same, and the boost later (125 rpm a bar) and slower (0.12 s
   a bar). The garage's dyno shows the curve with the boost settled
   (`engine::settled_net_torque_nm`): a big turbo is weak low down. The
-  power counts on a firm track, on the tall drive: the 6.06 l on 7 bar
-  full-pulls the firm loam where it stops short on 3 bar
-  (`TireChoice.TheBiggestTurboPullsFurthestAndMostOnTheSixLitre`); on
-  softer ground a tire spun faster smears more, and power does not pay.
+  power counts: on the firm loam the 6.06 l pulls clearly further on 7 bar
+  than on 3 bar
+  (`TireChoice.TheBiggestTurboPullsFurthestAndMostOnTheSixLitre`).
 - **A pulling gearbox**: two gears to manoeuvre and four close pulling
   gears (3rd to 6th, about 13 % apart); no powershift, one gear the whole
   pull.
 - **The start** (every class): the sled breaks away harder than it rolls
-  (9 % of its weight at rest, `sled::Params::breakaway_share`), so the
+  (half as much again as it drags moving, `sled::Params::breakaway_ratio`), so the
   chain holds the tractor a moment while the clutch slips and the turbo
   spools; the scripted pullers feather the held clutch
-  (`launch_feather_share`) and pull each gear at full or eased (85 %)
-  hand throttle, whichever went further at their gear trial.
+  (`launch_feather_share`), fully in within the hold's longest time (about
+  30 m at the latest), and pull each gear at full or eased (85 %) hand
+  throttle, whichever went further at their gear trial.
 
 #### How a Supersport pulls (game)
 
@@ -403,22 +414,33 @@ side by side, each fitted between events (K-6), each best somewhere:
   the brakes and let the clutch bite so the load spools the turbo. A
   Supersport's clutch (60 to 100 kg on the pedal) leaves no foot for the
   brakes, so the game has no brake hold: the driver brings the clutch in
-  against the sled and the boost builds as it bites. The core still has
-  the hold (`session::Controls::hold_brakes`, `tp_pull run --hold-boost`),
-  unused by the game. The scripted rivals launch with a slipping clutch
-  (eased back while the engine is below 80 % of its rated speed, for up
-  to 8 s): in a tall gear without that the engine stalls.
+  against the sled and the boost builds as it bites. The scripted rivals
+  launch the same way, with a slipping clutch
+  (eased back while the engine is below 90 % of its rated speed, for up
+  to 12 s), so the engine stays up where its big turbo gives full boost
+  while the tires spin up: in a tall gear without that the engine stalls.
+  Spinning past their bite, they catch the tires with the clutch while it
+  still slips, and later trim the fuel (`spin_ease_slip`, `spin_fuel`).
+- **Sleds per level**: the belofte's sled carries half the top events'
+  box (1500 kg) and further back, the promotion's 2500 kg, the top's
+  3000 kg: on farm tires a new tractor gets about 40 m on the loose sandy
+  clay and about 100 m on the reference clay-sand.
 - **The nose** (videos of good pulls): up once on the launch, touching
   down softly now and then, light through the middle and down at the
-  end. With the weights forward and the hitch in its top hole the
+  end. With the weights halfway and the hitch in its top hole the
   tractor does that, and pulls furthest; the weights back keep it on the
   wheelie bar all the way, and the hitch in its lowest hole holds the
   front down hard: neither gives the rear tires their most grip, and
   both pull clearly shorter
   (`WheelieRuns.ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown`).
 
-The sled's box is 10,000 kg. The rivals keep one build each: the 7 l
-engine on puller tires and the tall final drive.
+The sled's box is 3,000 kg, on the 12 t sled about 15 t in all. The
+rivals keep one build each: at belofte the 7 l engine on the farm tires
+and the short drive (`tractors/supersport_3600_farm.toml`; puller tires
+pay only with a well built engine behind them), at promo and top on the
+puller tires and the middle drive. The class is not
+pulled on the loose sandy clay: at realistic grip neither tire gets its
+sled going there, so its seasons pull a second clay-sand instead.
 
 ### 6. Supersport 4.5 t
 
@@ -586,7 +608,7 @@ tractor:
   small stages, since each 75 rpm is worth a metre or more there.
 - Supersport 3.6 t has all three. A new tractor is at the back of
   belofte and about 70 % of its garage wins it; half the garage is mid
-  promo and three quarters is in the top five at its damp opener; at top 60 % is at the back and a
+  promo and three quarters is in the top five at its damp opener; at top 60 % is in the back half, three quarters about the front half, and a
   nearly or fully built tractor wins. Its garage costs about € 151,200
   for both engines, both tires, the three final drives and the turbo, so
   its prize money is a fifth (belofte) to two fifths (top) higher than

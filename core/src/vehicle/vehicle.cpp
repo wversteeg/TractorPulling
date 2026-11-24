@@ -23,10 +23,6 @@ std::optional<BrakesError> validate(const Brakes& brakes) noexcept {
     if (!std::isfinite(brakes.max_torque_nm) || brakes.max_torque_nm < 0.0) {
         return BrakesError::kPedalTorque;
     }
-    if (!std::isfinite(brakes.hold_torque_nm) || brakes.hold_torque_nm < 0.0 ||
-        (brakes.hold_torque_nm > 0.0 && brakes.hold_torque_nm < brakes.max_torque_nm)) {
-        return BrakesError::kHoldTorque;
-    }
     return std::nullopt;
 }
 
@@ -581,11 +577,21 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     out.rear_left.slip_ratio = left.traction.slip_ratio;
     out.rear_right.slip_ratio = right.traction.slip_ratio;
     out.rear_rolling_resistance = (left.rolling_resistance + right.rolling_resistance) / kSides;
-    out.thrown_soil_m3_s =
-        tires_per_side * (tire::thrown_soil_m3_s(tire_params.size, left_footing, load_per_tire_n,
-                                                 left.traction.slip_ratio, left.wheel_m_s) +
-                          tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
-                                                 right.traction.slip_ratio, right.wheel_m_s));
+    const double left_soil_m3_s = tire::thrown_soil_m3_s(
+        tire_params.size, left_footing, load_per_tire_n, left.traction.slip_ratio, left.wheel_m_s);
+    const double right_soil_m3_s =
+        tire::thrown_soil_m3_s(tire_params.size, right_footing, load_per_tire_n,
+                               right.traction.slip_ratio, right.wheel_m_s);
+    out.thrown_soil_m3_s = tires_per_side * (left_soil_m3_s + right_soil_m3_s);
+    // The soil's reaction as the tread throws it acts at the tread, as
+    // traction does: it holds each side's wheels back and pushes the
+    // tractor on (tire::throw_force_n). Explicit within the step: it is a
+    // small share of the tread's force.
+    const double left_throw_n =
+        tires_per_side * tire::throw_force_n(left_soil_m3_s, left.wheel_m_s - left.ground_m_s);
+    const double right_throw_n =
+        tires_per_side * tire::throw_force_n(right_soil_m3_s, right.wheel_m_s - right.ground_m_s);
+    out.throw_force_n = left_throw_n + right_throw_n;
     out.front_rolling_resistance =
         out.axle_loads.front_n > 0.0
             ? tire::towed_rolling_resistance(params.front_tire,
@@ -622,10 +628,15 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
     const double side_load_n = out.axle_loads.rear_n / kSides;
     const double rear_rolling_nm = direction * (left.rolling_resistance * side_load_n * radius_m +
                                                 right.rolling_resistance * side_load_n * radius_m);
+    // A rear tire in the hole it dug has to climb out of it: that holds the
+    // body back, not the wheel, which spins on in the hole.
+    const double dig_drag_n =
+        side_load_n * (tire::dig_resistance(tire_params.size, state.rear_left_dig_m) +
+                       tire::dig_resistance(tire_params.size, state.rear_right_dig_m));
     // The steered front tires' side force has a component along the body
     // that holds the tractor back.
     const double front_drag_n =
-        direction * (out.front_rolling_resistance * out.axle_loads.front_n +
+        direction * (out.front_rolling_resistance * out.axle_loads.front_n + dig_drag_n +
                      params.chassis.wheelie_bar.rolling_resistance_coefficient *
                          out.axle_loads.wheelie_bar_n) +
         out.front_side_force_n * steer.sin;
@@ -638,23 +649,16 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         .rolling_nm = rear_rolling_nm,
         .clutch_capacity_nm = clutch_capacity_nm,
         .side_inertia_kg_m2 = tires_per_side * tire_params.wheel_inertia_kg_m2,
-        .force_left_n = tires_per_side * left.traction.force_n,
-        .force_right_n = tires_per_side * right.traction.force_n,
+        .force_left_n = tires_per_side * left.traction.force_n + left_throw_n,
+        .force_right_n = tires_per_side * right.traction.force_n + right_throw_n,
         .slope_left = tires_per_side * left.traction.force_per_slip_speed,
         .slope_right = tires_per_side * right.traction.force_per_slip_speed,
         .common_slip_m_s = axle_rad_s * radius_m - ground_m_s,
         .dt_s = dt_s,
         .direction = direction};
-    // The start's brake hold clamps both sides at its own torque.
-    double hold_nm = 0.0;
-    if (input.hold_brakes) {
-        hold_nm = params.brakes.hold_torque_nm > 0.0 ? params.brakes.hold_torque_nm
-                                                     : params.brakes.max_torque_nm;
-    }
     const RearSolution solution = solve_rear_with_brakes(
-        state, model, problem,
-        std::max(std::clamp(input.brake_left, 0.0, 1.0) * params.brakes.max_torque_nm, hold_nm),
-        std::max(std::clamp(input.brake_right, 0.0, 1.0) * params.brakes.max_torque_nm, hold_nm));
+        state, model, problem, std::clamp(input.brake_left, 0.0, 1.0) * params.brakes.max_torque_nm,
+        std::clamp(input.brake_right, 0.0, 1.0) * params.brakes.max_torque_nm);
     const ChainSolution& chain = solution.chain;
 
     // Each side's traction at the solved speeds.
@@ -682,6 +686,12 @@ Output step(State& state, const Model& model, const Input& input, const Ground& 
         dt_s);
     chassis::advance(state.chassis, body_prediction, chain.tire_force_n, dt_s);
     relax_side_deflections(state, params, front_grip, rear_left_grip, rear_right_grip, steer, dt_s);
+    state.rear_left_dig_m =
+        tire::dig_depth_m(tire_params, state.rear_left_dig_m, left.wheel_m_s - left.ground_m_s,
+                          left.ground_m_s, dt_s);
+    state.rear_right_dig_m =
+        tire::dig_depth_m(tire_params, state.rear_right_dig_m, right.wheel_m_s - right.ground_m_s,
+                          right.ground_m_s, dt_s);
 
     // The torque the gearbox and the brakes put on the rear wheels, from
     // their own balance: it spins them up and overcomes the tires' traction

@@ -1,13 +1,13 @@
-# The Supersport 3.6 t class's tractor as the top level's rivals build it
-# (events/supersport_3600_top.toml): the class's tractor
-# (supersport_3600.toml) on the 6.06 l six that revs to 3200 rpm, as the
-# top teams run. All else as there.
+# The Supersport 3.6 t class's tractor on its first tires (docs/career.md):
+# as tractors/supersport_3600.toml, the 7 l engine, but on the farm tires
+# and the short final drive that suits them, as the belofte level's field
+# pulls: puller tires pay only with a well built engine behind them.
 
 [tractor]
-engine = "../engines/supersport_3600_6l.toml"
+engine = "../engines/supersport_3600_7l.toml"
 clutch = "../clutches/supersport_3600.toml"
-driveline = "../drivelines/supersport_3600_tall.toml"
-rear_tire = "../tires/supersport_puller_rear.toml"
+driveline = "../drivelines/supersport_3600_short.toml"
+rear_tire = "../tires/supersport_farm_rear.toml"
 rear_tire_count = 2
 pto_efficiency = 0.9              # crankshaft to PTO
 
@@ -29,9 +29,6 @@ relaxation_length_m = 0.5         # about the tire's radius
 
 [tractor.brakes]
 max_torque_nm = 10000.0            # per side, at the wheels, at full pedal
-# The start's brake hold ("optoeren") clamps them harder, to hold the
-# loaded engine in a pulling gear while the turbo spools.
-hold_torque_nm = 25000.0
 
 # The differential: a pulling tractor's is coupled (a limited-slip one, or
 # a lock that gives way), passing torque to the side that grips: a weak
