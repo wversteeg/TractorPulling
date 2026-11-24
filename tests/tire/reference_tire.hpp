@@ -27,7 +27,12 @@ inline Params reference_params() {
                       .relaxation_length_m = 0.8},
         .wheel_inertia_kg_m2 = 30.0,
         .min_reference_speed_m_s = 0.5,
-        .pressure = {.reference_bar = 1.0, .min_bar = 0.5, .max_bar = 1.6, .lug_squirm = 0.5},
+        .pressure = {.reference_bar = 0.8,
+                     .min_bar = 0.4,
+                     .max_bar = 1.3,
+                     .lug_squirm = 0.5,
+                     .squirm_speed_m_s = 5.0,
+                     .carcass_loss = 0.12},
         .digging = {.rate = 0.005, .escape_speed_m_s = 0.5},
     };
 }

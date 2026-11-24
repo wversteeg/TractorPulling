@@ -30,6 +30,10 @@
 namespace tp::field {
 namespace {
 
+// The Sport 4.5 t's cut farm tires as built (tires/sport_4500_rear.toml's
+// reference_bar) [bar].
+constexpr double kAsBuilt_bar = 0.6;
+
 // The Sport 4.5 t class at top, its tractor fully built (the 68 mm turbo
 // fitted), set up before a pull on one of the season's tracks: how far it
 // gets in its best gear on the sled the operator has set when the player
@@ -48,8 +52,9 @@ public:
 
     // A pull already run is looked up: the tests ask for many of them more
     // than once, and each takes a pull of up to two minutes' simulated time.
-    double reach_m(const std::string& round, double ballast_position, double pressure_bar = 1.0,
-                   int heavier_steps = 0, std::optional<double> hitch_m = std::nullopt) const {
+    double reach_m(const std::string& round, double ballast_position,
+                   double pressure_bar = kAsBuilt_bar, int heavier_steps = 0,
+                   std::optional<double> hitch_m = std::nullopt) const {
         const PullKey key{round, ballast_position, pressure_bar, heavier_steps, hitch_m};
         const auto known = reached_.find(key);
         if (known != reached_.end()) {
@@ -211,7 +216,8 @@ class WeightsCurve {
 public:
     static constexpr int kPlaces = 9;
 
-    WeightsCurve(const SportSetup& sport, const std::string& track, double pressure_bar = 1.0) {
+    WeightsCurve(const SportSetup& sport, const std::string& track,
+                 double pressure_bar = kAsBuilt_bar) {
         const int steps = sport.steps_short_of_line(track);
         for (int i = 0; i < kPlaces; ++i) {
             reach_m_.at(static_cast<std::size_t>(i)) =
@@ -382,13 +388,15 @@ TEST(TrackSetup, TheTrackDecidesWhatTheWrongWeightsCost) {
 
 // Rules of thumb for the tire pressure, with the weights where the track
 // wants them: soft pays on the heavy clay, where the tires dig in, and
-// pays more there than on the firm loam or the dry hard clay; too hard
-// costs on all three, the footprint shrunk.
+// pays more there than on the firm loam or the dry hard clay, where a soft
+// carcass rolls harder and squirms spun fast. On the dry hard clay a hard
+// tire pays, rolling easier; on the heavy clay it costs, the footprint
+// shrunk.
 TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
     const SportSetup sport;
-    constexpr double kSoft_bar = 0.5;
-    constexpr double kReference_bar = 1.0;
-    constexpr double kHard_bar = 1.6;
+    constexpr double kSoft_bar = 0.3;
+    constexpr double kReference_bar = kAsBuilt_bar;
+    constexpr double kHard_bar = 1.0;
     const auto reach = [&](const char* track, double bar) {
         const double weights_at = WeightsCurve{sport, track}.wanted_place();
         return sport.reach_m(track, weights_at, bar, sport.steps_short_of_line(track));
@@ -401,11 +409,9 @@ TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
     for (const char* firm : {"Firm loam", "Summer, dry hard clay"}) {
         EXPECT_GT(soft_gains_m(heavy), soft_gains_m(firm)) << firm;
     }
-    for (const char* track : {heavy, "Firm loam", "Summer, dry hard clay"}) {
-        EXPECT_GT(std::max(reach(track, kSoft_bar), reach(track, kReference_bar)),
-                  reach(track, kHard_bar) + kAsGood_m)
-            << track;
-    }
+    const char* dry = "Summer, dry hard clay";
+    EXPECT_GT(reach(dry, kHard_bar), reach(dry, kReference_bar)) << "hard pays on the dry clay";
+    EXPECT_GT(reach(heavy, kReference_bar), reach(heavy, kHard_bar)) << "and costs on the heavy";
 }
 
 // The lowest hitch hole takes most of the sled's pull off the rear tires:
@@ -423,7 +429,6 @@ TEST(TrackSetup, SoftTiresPayOnTheHeavyClay) {
 // with the weights at least halfway.) On a sled heavy enough that the
 // tractor stops short of the line, where a setting shows.
 TEST(TrackSetup, TheLowestHitchHoleCostsButOnTheGrippiestTracks) {
-    constexpr double kAsBuilt_bar = 1.0;
     // Further than a pull-to-pull difference; at most this much shorter [m].
     constexpr double kFurther_m = 0.5;
     constexpr double kAtMostShorter_m = 3.5;

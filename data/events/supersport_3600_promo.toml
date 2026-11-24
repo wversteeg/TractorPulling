@@ -41,7 +41,7 @@ spin_ease_slip = 0.6                # the throttle played against wheelspin past
 torque_scale = [0.68, 0.90]
 boost_bar = [3.0, 3.5]                 # some on a bigger turbo already
 mass_kg = [3400.0, 3536.0]
-traction_limit = [0.950, 0.990]
+traction_limit = [1.188, 1.238]
 hitch_height_m = [0.44, 0.48]
 rated_rpm = [2310.0, 2520.0]
 gears = [5, 6]                         # geared for wheel speed: 70 to 80 km/h at the wheel
@@ -96,4 +96,4 @@ guest_names = ["Evert", "Hilde", "Martijn", "Truus", "Sjaak", "Wendy"]
 # or finish last.
 [event.guests]
 torque_scale = [0.6, 0.9]
-traction_limit = [0.939, 0.981]
+traction_limit = [1.174, 1.226]

@@ -664,12 +664,12 @@ TEST(Pressure, TheReferenceIsTheTire) {
 }
 
 // Lower pressure: more deflection, a bigger mobility number (footprint) and
-// a lower traction limit (squirming lugs). Higher pressure: less of both
-// deflection and footprint, and lugs that bite no better.
+// squirming lugs. Higher pressure: less of both deflection and footprint,
+// and lugs that bite no better.
 TEST(Pressure, SoftensTheTire) {
     const Params params = reference_params();
-    const Params soft = at_pressure(params, 0.5);
-    const Params hard = at_pressure(params, 1.6);
+    const Params soft = at_pressure(params, params.pressure.min_bar);
+    const Params hard = at_pressure(params, params.pressure.max_bar);
     EXPECT_DOUBLE_EQ(soft.size.deflection_m, 2.0 * params.size.deflection_m);
     EXPECT_GT(soft.size.deflection_m, params.size.deflection_m);
     EXPECT_LT(hard.size.deflection_m, params.size.deflection_m);
@@ -678,15 +678,70 @@ TEST(Pressure, SoftensTheTire) {
               mobility_number(params.size, kLoad_n, surface));
     EXPECT_LT(mobility_number(hard.size, kLoad_n, surface),
               mobility_number(params.size, kLoad_n, surface));
-    EXPECT_LT(soft.traction.limit, params.traction.limit);
+    EXPECT_GT(soft.traction.squirm, 0.0);
+    EXPECT_EQ(hard.traction.squirm, 0.0);
     EXPECT_EQ(hard.traction.limit, params.traction.limit);
+    // Without a squirm speed the soft tire's limit is lowered once.
+    Params static_squirm = params;
+    static_squirm.pressure.squirm_speed_m_s = 0.0;
+    EXPECT_LT(at_pressure(static_squirm, params.pressure.min_bar).traction.limit,
+              params.traction.limit);
     // Held to the tire's range; not finite leaves it at the reference.
-    EXPECT_EQ(at_pressure(params, 0.1).size.deflection_m, soft.size.deflection_m);
+    EXPECT_EQ(at_pressure(params, 0.01).size.deflection_m, soft.size.deflection_m);
     EXPECT_EQ(at_pressure(params, 9.0).size.deflection_m, hard.size.deflection_m);
     EXPECT_EQ(at_pressure(params, std::numeric_limits<double>::quiet_NaN()).size.deflection_m,
               params.size.deflection_m);
     EXPECT_EQ(at_pressure(params, -std::numeric_limits<double>::infinity()).size.deflection_m,
               params.size.deflection_m);
+}
+
+// A carcass softer than its reference flexes more and rolls harder, a
+// harder one easier, in proportion to the deflection over the section
+// height; at the reference, nothing.
+TEST(Pressure, ASoftCarcassRollsHarder) {
+    Params params = reference_params();
+    EXPECT_EQ(at_pressure(params, params.pressure.reference_bar).carcass_resistance, 0.0);
+    // At half the reference pressure the deflection doubles.
+    const Params soft = at_pressure(params, params.pressure.reference_bar / 2.0);
+    const Params hard = at_pressure(params, params.pressure.max_bar);
+    EXPECT_DOUBLE_EQ(
+        soft.carcass_resistance,
+        params.pressure.carcass_loss * params.size.deflection_m / params.size.section_height_m);
+    EXPECT_GT(soft.carcass_resistance, 0.0);
+    EXPECT_LT(hard.carcass_resistance, 0.0);
+    params.pressure.carcass_loss = -0.1;
+    EXPECT_EQ(validate(params), ParamError::kPressureOutOfRange);
+}
+
+// With a squirm speed, a soft carcass keeps its traction limit but loses
+// grip the faster its tread slips: nothing standing, its lug_squirm share
+// at the squirm speed, more spun faster. At the reference it loses none.
+TEST(Pressure, ASoftCarcassSquirmsMoreSpunFast) {
+    Params params = reference_params();
+    const Params soft = at_pressure(params, params.pressure.min_bar);
+    EXPECT_EQ(soft.traction.limit, params.traction.limit);
+    EXPECT_GT(soft.traction.squirm, 0.0);
+    const soil::Surface surface = reference_surface();
+    const auto lost = [&](double slip_m_s) {
+        const double ground_m_s = kGround_m_s;
+        const Traction plain = traction(at_pressure(params, params.pressure.reference_bar),
+                                        ground_m_s + slip_m_s, ground_m_s, kLoad_n, surface);
+        Params unsquirmed = soft;
+        unsquirmed.traction.squirm = 0.0;
+        const double without_n =
+            traction(unsquirmed, ground_m_s + slip_m_s, ground_m_s, kLoad_n, surface).force_n;
+        const double with_n =
+            traction(soft, ground_m_s + slip_m_s, ground_m_s, kLoad_n, surface).force_n;
+        EXPECT_EQ(plain.force_n,
+                  traction(params, ground_m_s + slip_m_s, ground_m_s, kLoad_n, surface).force_n);
+        return 1.0 - with_n / without_n;
+    };
+    EXPECT_NEAR(lost(params.pressure.squirm_speed_m_s), soft.traction.squirm, 1e-12)
+        << "its share at the squirm speed";
+    EXPECT_LT(lost(1.0), lost(params.pressure.squirm_speed_m_s));
+    EXPECT_GT(lost(15.0), lost(params.pressure.squirm_speed_m_s));
+    params.pressure.squirm_speed_m_s = -1.0;
+    EXPECT_EQ(validate(params), ParamError::kPressureOutOfRange);
 }
 
 // A rear tire's load in a pull: the tractor's weight shifted back and the
@@ -695,16 +750,27 @@ constexpr double kPullingLoad_n = 25000.0;
 
 // What a tire has left to pull with at full bite under that load: its grip
 // less its motion resistance, both per unit of load.
+// A pulling tire's tread slip speed, at which a soft carcass squirms [m/s].
+constexpr double kPullingSlip_m_s = 10.0;
+
 double net_traction(const Params& params, const soil::Surface& surface) {
     const double mobility = mobility_number(params.size, kPullingLoad_n, surface);
-    return full_bite(params, kPullingLoad_n, surface) -
+    const TractionCurve& curve = params.traction;
+    const double unfolded = curve.squirm_speed_m_s > 0.0
+                                ? 1.0 - std::min(2.0 * curve.squirm * kPullingSlip_m_s /
+                                                     (kPullingSlip_m_s + curve.squirm_speed_m_s),
+                                                 kMostSquirm)
+                                : 1.0;
+    return full_bite(params, kPullingLoad_n, surface) * unfolded -
            driven_rolling_resistance(
-               Footing{.mobility_number = mobility, .root_mobility = std::sqrt(mobility)}, 0.0);
+               Footing{.mobility_number = mobility, .root_mobility = std::sqrt(mobility)}, 0.0) -
+           params.carcass_resistance;
 }
 
 // The trade-off that makes the setting matter: on soft ground the bigger
 // footprint sinks less at low pressure and pulls better for it; on firm
-// ground, where it barely sinks anyway, the squirming lugs cost more.
+// ground, where it barely sinks anyway, the squirming lugs (spun at a
+// pulling slip speed) and the flexing carcass cost more.
 TEST(Pressure, TheBestPressureDependsOnTheGround) {
     const Params params = reference_params();
     const Params soft = at_pressure(params, params.pressure.min_bar);
@@ -723,7 +789,7 @@ TEST(Pressure, RejectsNonsense) {
     EXPECT_EQ(with([](Pressure&) {}), std::nullopt);
     EXPECT_EQ(with([](Pressure& p) { p = {}; }), std::nullopt) << "pressure not set";
     EXPECT_EQ(with([](Pressure& p) { p.min_bar = 1.2; }), ParamError::kPressureOutOfRange);
-    EXPECT_EQ(with([](Pressure& p) { p.max_bar = 0.9; }), ParamError::kPressureOutOfRange);
+    EXPECT_EQ(with([](Pressure& p) { p.max_bar = 0.7; }), ParamError::kPressureOutOfRange);
     EXPECT_EQ(with([](Pressure& p) { p.lug_squirm = 1.0; }), ParamError::kPressureOutOfRange);
     // So soft the tire would deflect past its section height.
     EXPECT_EQ(with([](Pressure& p) { p.min_bar = 0.1; }), ParamError::kPressureOutOfRange);

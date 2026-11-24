@@ -430,14 +430,16 @@ side by side, each fitted between events (K-6), each best somewhere:
   box (1500 kg) and further back, the promotion's 2500 kg, the top's
   3000 kg: on farm tires a new tractor gets about 40 m on the loose sandy
   clay and about 100 m on the reference clay-sand.
-- **The nose** (videos of good pulls): up once on the launch, touching
-  down softly now and then, light through the middle and down at the
-  end. With the weights halfway and the hitch in its top hole the
-  tractor does that, and pulls furthest; the weights back keep it on the
-  wheelie bar all the way, and the hitch in its lowest hole holds the
-  front down hard: neither gives the rear tires their most grip, and
-  both pull clearly shorter
-  (`WheelieRuns.ASupersportTractorLiftsOnceTouchesDownSoftlyAndEndsDown`).
+- **The nose** (videos of good pulls): up on the launch and light most
+  of the way, touching down now and then in short spikes (a tenth of a
+  second, a fraction of the weight), never a slam. On the clay-sand the
+  weights halfway and the hitch in its top hole do that; on the covered
+  heavy clay, where the tires bite harder, the weights go about three
+  quarters forward. The weights back keep it on the wheelie bar all the
+  way, and the hitch in its lowest hole holds the front down: neither
+  gives the rear tires their most grip, and both pull clearly shorter
+  (`WheelieRuns.ASupersportTractorRidesItsNoseLightWithoutSlams`,
+  `WheelieRuns.OnHeavyClayASupersportTractorWantsItsWeightsForward`).
 
 The sled's box is 3,000 kg, on the 12 t sled about 15 t in all. The
 rivals keep one build each: at belofte the 7 l engine on the farm tires

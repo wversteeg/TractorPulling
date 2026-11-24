@@ -58,6 +58,7 @@ TireFieldError describe(tire::ParamError error) {
         case ParamError::kPressureOutOfRange:
             return {"pressure",
                     "need 0 < min_bar <= reference_bar <= max_bar, lug_squirm in [0, 1), "
+                    "squirm_speed_m_s and carcass_loss >= 0, "
                     "and the deflection at min_bar under the section height"};
     }
     return {"", "invalid"};
