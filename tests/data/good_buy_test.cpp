@@ -61,7 +61,10 @@ TEST(GoodBuy, ANewTractorsGoodBuyPullsFurther) {
     garage::Career career = garage::new_career(d.garage.catalogue);
     career.money_eur = 5000;
     const std::optional<GoodBuy> advice = advice_for(d, career);
-    ASSERT_TRUE(advice.has_value());
+    if (!advice) {
+        ADD_FAILURE() << "no advice";
+        return;
+    }
     EXPECT_FALSE(advice->save_for);
     EXPECT_LE(advice->buy.cost_eur, career.money_eur);
     EXPECT_GE(advice->gain_m, kLeastGain_m);
@@ -79,7 +82,10 @@ TEST(GoodBuy, WithoutMoneyItSaysWhatToSaveFor) {
     garage::Career career = garage::new_career(d.garage.catalogue);
     career.money_eur = 0;
     const std::optional<GoodBuy> advice = advice_for(d, career);
-    ASSERT_TRUE(advice.has_value());
+    if (!advice) {
+        ADD_FAILURE() << "no advice";
+        return;
+    }
     EXPECT_TRUE(advice->save_for);
     EXPECT_GT(advice->buy.cost_eur, 0);
     EXPECT_GE(advice->gain_m, kLeastGain_m);

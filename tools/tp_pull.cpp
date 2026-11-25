@@ -1275,8 +1275,9 @@ int career_command(const Options& options) {
         if (!player) {
             player = tp::garage::new_career(season->garage.catalogue);
         } else if (rung.class_name != class_name) {
-            tp::data::ClassTractors moved = tp::data::switch_class(
-                *player, *garage, class_name, std::move(parked), season->garage, rung.class_name);
+            tp::data::ClassTractors moved =
+                tp::data::switch_class(player.value(), garage.value_or(season->garage), class_name,
+                                       std::move(parked), season->garage, rung.class_name);
             player = moved.career;
             parked = std::move(moved.parked);
         }
@@ -1284,15 +1285,17 @@ int career_command(const Options& options) {
         class_name = rung.class_name;
         const bool top =
             r + 1 == career->rungs.size() || career->rungs[r + 1].class_name != rung.class_name;
-        const auto seasons =
-            tp::data::simulate_level(*season, *player, top ? kSeasonsAtTheTop : kSeasonsPerLevel,
-                                     seed + (100 * r), plan_ahead);
+        const auto seasons = tp::data::simulate_level(*season, player.value(),
+                                                      top ? kSeasonsAtTheTop : kSeasonsPerLevel,
+                                                      seed + (100 * r), plan_ahead);
         if (!seasons) {
             std::cerr << rung.class_name << " " << rung.level_name << ": refused\n";
             return EXIT_FAILURE;
         }
-        for (std::size_t s = 0; s < seasons->size(); ++s) {
-            const tp::data::SimSeason& got = (*seasons)[s];
+        const std::vector<tp::data::SimSeason> played =
+            seasons.value_or(std::vector<tp::data::SimSeason>{});
+        for (std::size_t s = 0; s < played.size(); ++s) {
+            const tp::data::SimSeason& got = played[s];
             std::ostringstream first;
             for (int e = 0; e < std::min(got.events, 4); ++e) {
                 first << got.places.at(static_cast<std::size_t>(e)) << ' ';

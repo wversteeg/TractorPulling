@@ -239,6 +239,22 @@ std::optional<GoodBuy> switch_ahead(const Puller& reference, const garage::Catal
     return best;
 }
 
+// The advice: the best of all to save for when nothing affordable gains or
+// it gains `far_better` per euro and cannot be afforded; else the best the
+// career can afford.
+std::optional<GoodBuy> chosen(const std::optional<GoodBuy>& affordable, bool far_better,
+                              std::optional<GoodBuy> of_all, std::int64_t money_eur) noexcept {
+    if (!of_all) {
+        return std::nullopt;
+    }
+    GoodBuy best = *of_all;
+    if ((!affordable || far_better) && best.buy.cost_eur > money_eur) {
+        best.save_for = true;
+        return best;
+    }
+    return affordable ? affordable : best;
+}
+
 }  // namespace
 
 garage::Career with_buy(const garage::Catalogue& catalogue, const garage::Career& career,
@@ -335,16 +351,8 @@ std::optional<GoodBuy> good_buy(const Puller& reference, const garage::Catalogue
             return std::nullopt;
         }
     }
-    if (!best_of_all) {
-        return std::nullopt;
-    }
-    if (!best_affordable || all_per_eur >= kSaveForGainRatio * affordable_per_eur) {
-        if (best_of_all->buy.cost_eur > career.money_eur) {
-            best_of_all->save_for = true;
-            return best_of_all;
-        }
-    }
-    return best_affordable ? best_affordable : best_of_all;
+    return chosen(best_affordable, all_per_eur >= kSaveForGainRatio * affordable_per_eur,
+                  best_of_all, career.money_eur);
 }
 
 }  // namespace tp::field

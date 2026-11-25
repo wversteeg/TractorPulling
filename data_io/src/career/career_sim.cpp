@@ -35,6 +35,32 @@ constexpr int kTieBreakSteps = 4;
 // Of the alternatives `career` owns, the combination that takes the tractor
 // furthest on `sled` and `track` in its best gear and hand throttle among
 // `lowest` to `highest`: what the player fits for the day.
+// How far `trying`'s tractor pulls `sled` in its best gear; a full pull
+// also counts what it pulls on the sled kTieBreakSteps heavier, so full
+// pulls are told apart. Nothing if refused.
+std::optional<field::GearTrial> day_trial(const SeasonDefinition& d, const garage::Career& trying,
+                                          const field::Puller& player, const sled::Params& sled,
+                                          const track::Params& track, const run::Rules& rules,
+                                          int lowest, int highest) {
+    field::Puller puller = player;
+    const auto tractor = garage::equipped(d.event.reference.tractor, d.garage.catalogue, trying);
+    if (!tractor) {
+        return std::nullopt;
+    }
+    puller.tractor = *tractor;
+    auto trial = field::best_gear_trial(puller, sled, track, lowest, highest, rules);
+    if (!trial || trial->distance_m < rules.full_pull_line_m) {
+        return trial;
+    }
+    auto heavier = field::best_gear_trial(puller, sled::heavier(sled, kTieBreakSteps), track,
+                                          lowest, highest, rules);
+    if (!heavier) {
+        return trial;
+    }
+    heavier->distance_m += trial->distance_m;
+    return heavier;
+}
+
 std::optional<Fitting> fit_for_the_day(const SeasonDefinition& d, const garage::Career& career,
                                        const field::Puller& player, const sled::Params& sled,
                                        const track::Params& track, const run::Rules& rules,
@@ -48,25 +74,10 @@ std::optional<Fitting> fit_for_the_day(const SeasonDefinition& d, const garage::
         for (std::size_t c = 0; c < catalogue.choice_count; ++c) {
             owned = owned && garage::owns(career, c, static_cast<std::size_t>(trying.fitted.at(c)));
         }
-        if (owned) {
-            field::Puller puller = player;
-            if (const auto tractor =
-                    garage::equipped(d.event.reference.tractor, catalogue, trying)) {
-                puller.tractor = *tractor;
-                auto trial = field::best_gear_trial(puller, sled, track, lowest, highest, rules);
-                if (trial && trial->distance_m >= rules.full_pull_line_m) {
-                    if (const auto heavier =
-                            field::best_gear_trial(puller, sled::heavier(sled, kTieBreakSteps),
-                                                   track, lowest, highest, rules)) {
-                        const double full_m = trial->distance_m;
-                        trial = heavier;
-                        trial->distance_m += full_m;
-                    }
-                }
-                if (trial && (!best || trial->distance_m > best->trial.distance_m)) {
-                    best = Fitting{.career = trying, .trial = *trial};
-                }
-            }
+        const auto trial = owned ? day_trial(d, trying, player, sled, track, rules, lowest, highest)
+                                 : std::nullopt;
+        if (trial && (!best || trial->distance_m > best->trial.distance_m)) {
+            best = Fitting{.career = trying, .trial = *trial};
         }
         // The next combination, the first choice counting fastest.
         more = false;
