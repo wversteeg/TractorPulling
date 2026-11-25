@@ -1292,8 +1292,8 @@ int career_command(const Options& options) {
             std::cerr << rung.class_name << " " << rung.level_name << ": refused\n";
             return EXIT_FAILURE;
         }
-        const std::vector<tp::data::SimSeason> played =
-            seasons.value_or(std::vector<tp::data::SimSeason>{});
+        const std::vector<tp::data::SimSeason>& played =
+            *seasons;  // NOLINT(bugprone-unchecked-optional-access): checked above
         for (std::size_t s = 0; s < played.size(); ++s) {
             const tp::data::SimSeason& got = played[s];
             std::ostringstream first;

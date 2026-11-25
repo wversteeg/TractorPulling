@@ -33,18 +33,14 @@ struct SimSeason {
 /// if they have no tractor yet. Before each event they fit, of the
 /// alternatives they own, those that take the tractor furthest on the day's
 /// sled and track, and choose their gear and hand throttle there, as the
-/// rivals do, for every pull of the event; after it they
-/// spend the prize money on the cheapest next upgrade or alternative while
-/// they can afford one. Season `s` draws its field from `seed` + `s`.
+/// rivals do, for every pull of the event; after it they buy as the crew
+/// chief advises (field::good_buy) for the next event's track, saving
+/// where it says so; with `plan_ahead`, planning ahead before each
+/// season's first event. Season `s` draws its field from `seed` + `s`.
 /// Nothing if a season, an event or the tractor is refused. Runs whole
 /// seasons of pulls: for tools and tests, not a frame.
 [[nodiscard]] std::optional<std::vector<SimSeason>> simulate_level(
     const SeasonDefinition& definition, garage::Career& career, int seasons, std::uint64_t seed,
     bool plan_ahead = false);
-
-/// The share of the class garage's money (`catalogue`: every level of every
-/// upgrade and every alternative) that `career` has spent, 0 to 1.
-[[nodiscard]] double garage_share(const garage::Catalogue& catalogue,
-                                  const garage::Career& career) noexcept;
 
 }  // namespace tp::data

@@ -32,9 +32,6 @@ struct Fitting {
 // operator soon sets for a strong field.
 constexpr int kTieBreakSteps = 4;
 
-// Of the alternatives `career` owns, the combination that takes the tractor
-// furthest on `sled` and `track` in its best gear and hand throttle among
-// `lowest` to `highest`: what the player fits for the day.
 // How far `trying`'s tractor pulls `sled` in its best gear; a full pull
 // also counts what it pulls on the sled kTieBreakSteps heavier, so full
 // pulls are told apart. Nothing if refused.
@@ -61,6 +58,9 @@ std::optional<field::GearTrial> day_trial(const SeasonDefinition& d, const garag
     return heavier;
 }
 
+// Of the alternatives `career` owns, the combination that takes the tractor
+// furthest on `sled` and `track` in its best gear and hand throttle among
+// `lowest` to `highest`: what the player fits for the day.
 std::optional<Fitting> fit_for_the_day(const SeasonDefinition& d, const garage::Career& career,
                                        const field::Puller& player, const sled::Params& sled,
                                        const track::Params& track, const run::Rules& rules,
@@ -260,26 +260,6 @@ bool buy_tractor(const garage::Catalogue& catalogue, garage::Career& career) {
 
 }  // namespace
 
-double garage_share(const garage::Catalogue& catalogue, const garage::Career& career) noexcept {
-    std::int64_t total_eur = 0;
-    std::int64_t spent_eur = 0;
-    for (std::size_t i = 0; i < catalogue.count; ++i) {
-        const garage::Upgrade& u = catalogue.upgrades.at(i);
-        for (std::size_t l = 1; l < u.level_count; ++l) {
-            total_eur += u.levels.at(l).cost_eur;
-            spent_eur += static_cast<int>(l) <= career.levels.at(i) ? u.levels.at(l).cost_eur : 0;
-        }
-    }
-    for (std::size_t c = 0; c < catalogue.choice_count; ++c) {
-        const garage::Choice& choice = catalogue.choices.at(c);
-        for (std::size_t a = 1; a < choice.alternative_count; ++a) {
-            total_eur += choice.alternatives.at(a).cost_eur;
-            spent_eur += garage::owns(career, c, a) ? choice.alternatives.at(a).cost_eur : 0;
-        }
-    }
-    return total_eur > 0 ? static_cast<double>(spent_eur) / static_cast<double>(total_eur) : 1.0;
-}
-
 std::optional<std::vector<SimSeason>> simulate_level(const SeasonDefinition& d,
                                                      garage::Career& career, int seasons,
                                                      std::uint64_t seed, bool plan_ahead) {
@@ -309,7 +289,9 @@ std::optional<std::vector<SimSeason>> simulate_level(const SeasonDefinition& d,
             result.places.at(static_cast<std::size_t>(result.events++)) = *place;
             result.wins += *place == 1 ? 1 : 0;
             // Bought for the next event's track, as the crew chief advises.
-            shop_for(d, career, d.rounds[(r + 1) % d.rounds.size()], plan_ahead);
+            // Planning ahead at a season's start, as the game's crew chief does.
+            shop_for(d, career, d.rounds[(r + 1) % d.rounds.size()],
+                     plan_ahead && r + 1 == d.rounds.size());
         }
         for (const season::Standing& st : season->standings()) {
             if (st.puller == field::LiveSeason::kPlayer) {
