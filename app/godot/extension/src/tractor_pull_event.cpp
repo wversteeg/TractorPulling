@@ -1120,7 +1120,7 @@ godot::Dictionary TractorPullEvent::get_good_buy() const {
     const field::Buy& buy = advice->buy;
     if (buy.kind == field::BuyKind::kUpgrade) {
         const data::UpgradeText& text = garage.texts.at(buy.index);
-        const auto next = static_cast<std::size_t>(career_->levels.at(buy.index) + 1);
+        const auto next = static_cast<std::size_t>(career_->levels.at(buy.index)) + 1;
         out["label"] = to_godot(text.level_labels.at(next));
         out["upgrade"] = static_cast<std::int64_t>(buy.index);
         out["choice"] = std::int64_t{-1};
