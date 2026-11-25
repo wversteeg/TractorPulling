@@ -2,6 +2,7 @@
 
 #include "tp/core/crew/crew.hpp"
 #include "tp/core/engine/engine.hpp"
+#include "tp/core/field/good_buy.hpp"
 #include "tp/core/field/play.hpp"
 #include "tp/core/run/run.hpp"
 #include "tp/core/soil/soil.hpp"
@@ -1096,6 +1097,55 @@ godot::Dictionary TractorPullEvent::get_garage() const {
     return out;
 }
 
+godot::Dictionary TractorPullEvent::get_good_buy() const {
+    godot::Dictionary out;
+    if (!season_ || !definition_ || !career_ || definition_->rounds.empty()) {
+        return out;
+    }
+    const data::GarageDefinition& garage = definition_->garage;
+    const data::EventDefinition& e = definition_->event;
+    const int next_round =
+        std::min(season_->events_scored(), static_cast<int>(definition_->rounds.size()) - 1);
+    const field::Venue venue =
+        data::venue(e.sled, definition_->rounds.at(static_cast<std::size_t>(next_round)).track);
+    const int gears = static_cast<int>(e.reference.tractor.driveline.gear_count);
+    const std::optional<field::GoodBuy> advice =
+        field::good_buy(season_->player(), garage.catalogue, *career_, venue.sled, venue.track,
+                        e.variation.lowest_gear, std::min(e.variation.highest_gear + 1, gears),
+                        field::trial_pull_rules(e.rules, venue, e.rules.full_pull_m),
+                        season_->events_scored() == 0);
+    if (!advice) {
+        return out;
+    }
+    const field::Buy& buy = advice->buy;
+    if (buy.kind == field::BuyKind::kUpgrade) {
+        const data::UpgradeText& text = garage.texts.at(buy.index);
+        const auto next = static_cast<std::size_t>(career_->levels.at(buy.index)) + 1;
+        out["label"] = to_godot(text.level_labels.at(next));
+        out["upgrade"] = static_cast<std::int64_t>(buy.index);
+        out["choice"] = std::int64_t{-1};
+        out["alternative"] = std::int64_t{-1};
+    } else {
+        out["label"] =
+            to_godot(garage.choice_texts.at(buy.index).alternative_labels.at(buy.alternative));
+        out["upgrade"] = std::int64_t{-1};
+        out["choice"] = static_cast<std::int64_t>(buy.index);
+        out["alternative"] = static_cast<std::int64_t>(buy.alternative);
+    }
+    out["cost_eur"] = buy.cost_eur;
+    out["gain_m"] = advice->gain_m;
+    out["save_for"] = advice->save_for;
+    out["short_eur"] = std::max<std::int64_t>(buy.cost_eur - career_->money_eur, 0);
+    out["route"] = advice->route_choice != garage::kNoChoice;
+    if (advice->route_choice != garage::kNoChoice) {
+        const auto choice = static_cast<std::size_t>(advice->route_choice);
+        const auto alternative = static_cast<std::size_t>(advice->route_alternative);
+        out["route_label"] =
+            to_godot(garage.choice_texts.at(choice).alternative_labels.at(alternative));
+    }
+    return out;
+}
+
 godot::Dictionary TractorPullEvent::get_upgrade_dyno(std::int64_t index) const {
     godot::Dictionary out;
     if (!season_ || !definition_ || !career_ || index < 0 ||
@@ -1368,6 +1418,7 @@ void TractorPullEvent::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_season_standings"), &TractorPullEvent::get_season_standings);
     ClassDB::bind_method(D_METHOD("get_event_prize"), &TractorPullEvent::get_event_prize);
     ClassDB::bind_method(D_METHOD("get_garage"), &TractorPullEvent::get_garage);
+    ClassDB::bind_method(D_METHOD("get_good_buy"), &TractorPullEvent::get_good_buy);
     ClassDB::bind_method(D_METHOD("buy_upgrade", "index"), &TractorPullEvent::buy_upgrade);
     ClassDB::bind_method(D_METHOD("get_upgrade_dyno", "index"),
                          &TractorPullEvent::get_upgrade_dyno);

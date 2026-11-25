@@ -14,6 +14,7 @@
 //                          [--hitch M]
 //   tp_pull event <event.toml> [--seed N] [--hash]
 //   tp_pull season <season.toml> [--seed N]
+//   tp_pull career <career.toml> [--seed N] [--class NAME]
 //   tp_pull check <tractor.toml> <class.toml>
 //
 // engine-dyno runs the engine alone on a virtual dynamometer: idle, rev up,
@@ -92,9 +93,12 @@
 #include "tp/core/units/conversions.hpp"
 #include "tp/core/vehicle/tuning.hpp"
 #include "tp/core/vehicle/vehicle.hpp"
+#include "tp/data/career/career_loader.hpp"
+#include "tp/data/career/career_sim.hpp"
 #include "tp/data/controls/controls_loader.hpp"
 #include "tp/data/engine/engine_loader.hpp"
 #include "tp/data/event/event_loader.hpp"
+#include "tp/data/garage/career_names.hpp"
 #include "tp/data/rules/class_rules_loader.hpp"
 #include "tp/data/season/season_loader.hpp"
 #include "tp/data/session/run_setup.hpp"
@@ -116,6 +120,7 @@
 #include <iostream>
 #include <optional>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -919,6 +924,8 @@ struct Options {
     std::vector<std::string_view> positional;
     std::optional<std::string_view> output_path;
     std::optional<std::uint64_t> seed;
+    /// career --class: only that class's levels, from a new career.
+    std::optional<std::string_view> class_name;
     std::optional<std::string_view> easy_path;
     std::optional<std::string_view> pro_path;
     bool stick_given = false;
@@ -1043,6 +1050,10 @@ Parsed parse_valued_option(std::string_view arg, std::string_view value, Options
         options.seed = parse_number<std::uint64_t>(value);
         return options.seed ? Parsed::kOk : Parsed::kInvalid;
     }
+    if (arg == "--class") {
+        options.class_name = value;
+        return Parsed::kOk;
+    }
     options.stick_given = options.stick_given || arg == "--stick";
     options.steer_deg_given = options.steer_deg_given || arg == "--steer-deg";
     if (const Parsed tuning = parse_tuning_option(arg, value, options.pull);
@@ -1099,6 +1110,7 @@ int usage() {
                  "                              [--pressure BAR] [--hitch M]\n"
                  "       tp_pull event <event.toml> [--seed N] [--hash]\n"
                  "       tp_pull season <season.toml> [--seed N]\n"
+                 "       tp_pull career <career.toml> [--seed N] [--class NAME]\n"
                  "       tp_pull check <tractor.toml> <class.toml>\n";
     return EXIT_FAILURE;
 }
@@ -1225,6 +1237,79 @@ int season_command(const Options& options) {
     return run_season(*definition, options.seed.value_or(definition->seed));
 }
 
+// --- career -----------------------------------------------------------------
+
+// Seasons a sensible player pulls at a level before moving up: two, and
+// three at a class's last level (its top), as the career is meant to go.
+constexpr int kSeasonsPerLevel = 2;
+constexpr int kSeasonsAtTheTop = 3;
+
+// The career simulated rung by rung (data::simulate_level): each class's
+// levels in turn, the money carried on and each class its own tractor; a
+// line per season.
+int career_command(const Options& options) {
+    const auto career = load_or_report(tp::data::load_career(options.positional[0]));
+    if (!career) {
+        return EXIT_FAILURE;
+    }
+    const std::uint64_t seed = options.seed.value_or(1);
+    std::optional<tp::garage::Career> player;
+    std::optional<tp::data::GarageDefinition> garage;
+    std::string class_name;
+    std::vector<tp::data::SavedTractor> parked;
+    std::cout << "class            level    season  first events        champ  wins  garage  "
+                 "money\n";
+    for (std::size_t r = 0; r < career->rungs.size(); ++r) {
+        const tp::data::CareerRung& rung = career->rungs[r];
+        if (options.class_name && rung.class_name != *options.class_name) {
+            continue;
+        }
+        const auto season = load_or_report(tp::data::load_season(rung.season));
+        if (!season) {
+            return EXIT_FAILURE;
+        }
+        // From a class's second level on, the crew plans ahead: an engine
+        // that pulls further fully built is switched to, though weaker at
+        // first (field::good_buy).
+        const bool plan_ahead = player && rung.class_name == class_name;
+        if (!player) {
+            player = tp::garage::new_career(season->garage.catalogue);
+        } else if (rung.class_name != class_name) {
+            tp::data::ClassTractors moved =
+                tp::data::switch_class(player.value(), garage.value_or(season->garage), class_name,
+                                       std::move(parked), season->garage, rung.class_name);
+            player = moved.career;
+            parked = std::move(moved.parked);
+        }
+        garage = season->garage;
+        class_name = rung.class_name;
+        const bool top =
+            r + 1 == career->rungs.size() || career->rungs[r + 1].class_name != rung.class_name;
+        const auto seasons = tp::data::simulate_level(*season, player.value(),
+                                                      top ? kSeasonsAtTheTop : kSeasonsPerLevel,
+                                                      seed + (100 * r), plan_ahead);
+        if (!seasons) {
+            std::cerr << rung.class_name << " " << rung.level_name << ": refused\n";
+            return EXIT_FAILURE;
+        }
+        const std::vector<tp::data::SimSeason>& played =
+            *seasons;  // NOLINT(bugprone-unchecked-optional-access): checked above
+        for (std::size_t s = 0; s < played.size(); ++s) {
+            const tp::data::SimSeason& got = played[s];
+            std::ostringstream first;
+            for (int e = 0; e < std::min(got.events, 4); ++e) {
+                first << got.places.at(static_cast<std::size_t>(e)) << ' ';
+            }
+            std::cout << std::left << std::setw(17) << rung.class_name << std::setw(9)
+                      << rung.level_name << std::setw(8) << (s + 1) << std::setw(20) << first.str()
+                      << std::setw(7) << got.championship_place << std::setw(6) << got.wins
+                      << std::setw(8) << std::fixed << std::setprecision(2) << got.garage_share
+                      << got.money_eur << '\n';
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
 int check_command(const Options& options) {
     const auto tractor = load_or_report(tp::data::load_tractor(options.positional[0]));
     const auto rules = load_or_report(tp::data::load_class_rules(options.positional[1]));
@@ -1250,6 +1335,7 @@ constexpr std::array kCommands = {
     Command{"compare-tracks", 3, kAnyNumber, &compare_tracks_command},
     Command{"event", 1, 1, &event_command},
     Command{"season", 1, 1, &season_command},
+    Command{"career", 1, 1, &career_command},
     Command{"check", 2, 2, &check_command},
 };
 

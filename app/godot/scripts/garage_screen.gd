@@ -80,6 +80,8 @@ var alternative_buttons: Array[TouchButton] = []
 
 var _garage: Dictionary = {}
 var _message := ""
+# The crew chief's good buy (TractorPullEvent.get_good_buy()), {} for none.
+var _good_buy: Dictionary = {}
 var _stage := Control.new()
 var _workshop := Control.new()
 var _part := Control.new()
@@ -131,10 +133,13 @@ func _ready() -> void:
 
 
 # `garage` is TractorPullEvent.get_garage(); `message` what the last
-# purchase said, if anything. The view stays where it is.
-func show_garage(garage: Dictionary, message: String = "") -> void:
+# purchase said, if anything; `good_buy` TractorPullEvent.get_good_buy(),
+# the crew chief's good buy for the garage as it is now. The view stays
+# where it is.
+func show_garage(garage: Dictionary, message: String = "", good_buy: Dictionary = {}) -> void:
 	_garage = garage
 	_message = message
+	_good_buy = good_buy
 	_money.text = euros(int(garage.get("money_eur", 0)))
 	_show_view()
 
@@ -297,6 +302,8 @@ func _build_part() -> void:
 func _show_workshop() -> void:
 	_title.text = "WORKSHOP"
 	_subtitle.text = crew_advice(_garage)
+	if _subtitle.text.is_empty():
+		_subtitle.text = good_buy_text(_good_buy)
 	_icon_part = ""
 	for pin: PartPin in upgrade_pins + choice_pins:
 		pin.queue_free()
@@ -515,6 +522,29 @@ static func crew_advice(garage: Dictionary) -> String:
 	return "Crew chief: with the %s, fit the %s%s." % [String(advice["for"]).to_lower(),
 			String(advice["label"]).to_lower(),
 			"" if advice.get("owned", false) else " (buy it first)"]
+
+
+# The crew chief's good buy (TractorPullEvent.get_good_buy()): what to buy
+# now, or what to save for, and about how far it pulls the tractor further;
+# "" for none.
+static func good_buy_text(good_buy: Dictionary) -> String:
+	if good_buy.is_empty():
+		return ""
+	var gain := "about +%.1f m on the next track" % float(good_buy.get("gain_m", 0.0))
+	if good_buy.get("route", false):
+		var towards := ("Crew chief: switch to the %s and build it up: weaker at first, about"
+				+ " +%.1f m once built") % [String(good_buy["route_label"]).to_lower(),
+				float(good_buy.get("gain_m", 0.0))]
+		if good_buy.get("save_for", false):
+			return "%s: save for the %s first (%s more)." % [towards,
+					String(good_buy["label"]).to_lower(), euros(int(good_buy.get("short_eur", 0)))]
+		return "%s: first the %s (%s)." % [towards, String(good_buy["label"]).to_lower(),
+				euros(int(good_buy.get("cost_eur", 0)))]
+	if good_buy.get("save_for", false):
+		return "Crew chief: save for the %s (%s more), %s." % [
+				String(good_buy["label"]).to_lower(), euros(int(good_buy.get("short_eur", 0))), gain]
+	return "Crew chief: a good buy now: the %s (%s), %s." % [
+			String(good_buy["label"]).to_lower(), euros(int(good_buy.get("cost_eur", 0))), gain]
 
 
 # A pin for `part` at its place round the tractor, beside one already

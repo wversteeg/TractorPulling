@@ -234,6 +234,13 @@ struct Advice {
 [[nodiscard]] std::optional<Advice> advice(const Catalogue& catalogue,
                                            const Career& career) noexcept;
 
+/// How far the tractor as fitted is built, 0 to 1: what the career has
+/// spent on the alternatives fitted and on the upgrades that count with them
+/// (counts()), over what all of that costs fully built. A part not fitted
+/// (the other engine, its build) does not count either way: switched to it,
+/// the share is of its own route. 1 when there is nothing to buy.
+[[nodiscard]] double build_share(const Catalogue& catalogue, const Career& career) noexcept;
+
 /// Whether every upgrade is at its highest level and every alternative is
 /// owned.
 [[nodiscard]] bool fully_upgraded(const Catalogue& catalogue, const Career& career) noexcept;

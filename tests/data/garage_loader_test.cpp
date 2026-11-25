@@ -405,7 +405,7 @@ TEST(GarageLoader, RefusesNonsenseAtTheDealer) {
 
 // Each class's dealer: five models, the cheapest within the money a career
 // starts the class with (all of it at the start, none after: the wallet
-// carries over), each dearer than the one before, and a paint job a small
+// carries over), all the same price (they differ only in looks), and a paint job a small
 // part of the cheapest.
 TEST(GarageLoader, ShippedDealersSellFiveModels) {
     constexpr std::size_t kModels = 5;
@@ -417,8 +417,9 @@ TEST(GarageLoader, ShippedDealersSellFiveModels) {
         ASSERT_TRUE(result.ok()) << result.error().message;
         const garage::Dealer& dealer = result.value().catalogue.dealer;
         ASSERT_EQ(dealer.model_count, kModels) << name;
+        // Every model costs the same: they differ only in looks.
         for (std::size_t m = 1; m < kModels; ++m) {
-            EXPECT_GT(dealer.model_cost_eur[m], dealer.model_cost_eur[m - 1]) << name;
+            EXPECT_EQ(dealer.model_cost_eur[m], dealer.model_cost_eur[0]) << name;
         }
         EXPECT_GE(dealer.paint_count, 8U) << name;
         EXPECT_GT(dealer.paint_cost_eur, 0) << name;

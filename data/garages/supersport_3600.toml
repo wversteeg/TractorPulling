@@ -49,14 +49,14 @@
 # seasons/supersport_3600_*.toml) share this garage.
 
 [garage]
-start_money_eur = 1500
+start_money_eur = 34000
 
 [[garage.choices]]
 slot = "engine"
 name = "Engine"
 alternatives = [
     { file = "../engines/supersport_3600_7l.toml", cost_eur = 0, label = "7.0 l six, 2700 rpm" },
-    { file = "../engines/supersport_3600_6l.toml", cost_eur = 6000, label = "6.06 l six, 3200 rpm" },
+    { file = "../engines/supersport_3600_6l.toml", cost_eur = 9600, label = "6.06 l six, 3200 rpm" },
 ]
 
 [[garage.choices]]
@@ -64,7 +64,7 @@ slot = "rear_tire"
 name = "Rear tires"
 alternatives = [
     { file = "../tires/supersport_farm_rear.toml", cost_eur = 0, label = "Modified farm tires" },
-    { file = "../tires/supersport_puller_rear.toml", cost_eur = 5000, label = "Puller tires" },
+    { file = "../tires/supersport_puller_rear.toml", cost_eur = 7900, label = "Puller tires" },
 ]
 
 [[garage.choices]]
@@ -72,8 +72,8 @@ slot = "driveline"
 name = "Final drive"
 alternatives = [
     { file = "../drivelines/supersport_3600_short.toml", cost_eur = 0, label = "Short final drive", suits = { "Rear tires" = "Modified farm tires" } },
-    { file = "../drivelines/supersport_3600_medium.toml", cost_eur = 3000, label = "Middle final drive", suits = { "Rear tires" = "Puller tires" } },
-    { file = "../drivelines/supersport_3600_tall.toml", cost_eur = 5000, label = "Tall final drive", suits = { "Rear tires" = "Puller tires" } },
+    { file = "../drivelines/supersport_3600_medium.toml", cost_eur = 4900, label = "Middle final drive", suits = { "Rear tires" = "Puller tires" } },
+    { file = "../drivelines/supersport_3600_tall.toml", cost_eur = 7900, label = "Tall final drive", suits = { "Rear tires" = "Puller tires" } },
 ]
 
 [[garage.upgrades]]
@@ -83,16 +83,16 @@ choice = "Engine"
 alternative = "7.0 l six, 2700 rpm"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Stock 7 l" },
-    { value = 0.42, cost_eur = 1300, label = "Pump turned up" },
-    { value = 0.49, cost_eur = 1600, label = "Bigger injectors" },
-    { value = 0.56, cost_eur = 1900, label = "Pump timed" },
-    { value = 0.63, cost_eur = 2200, label = "Intercooler" },
-    { value = 0.70, cost_eur = 2500, label = "Water injection" },
-    { value = 0.77, cost_eur = 2800, label = "Pulling manifold" },
-    { value = 0.84, cost_eur = 3100, label = "Four-valve head, ported" },
-    { value = 0.91, cost_eur = 3400, label = "Pulling cam" },
-    { value = 0.96, cost_eur = 3700, label = "Pump on maximum" },
-    { value = 1.0, cost_eur = 4000, label = "Fully built on 3 bar" },
+    { value = 0.42, cost_eur = 2000, label = "Pump turned up" },
+    { value = 0.47, cost_eur = 2600, label = "Bigger injectors" },
+    { value = 0.52, cost_eur = 3100, label = "Pump timed" },
+    { value = 0.57, cost_eur = 3600, label = "Intercooler" },
+    { value = 0.62, cost_eur = 4000, label = "Water injection" },
+    { value = 0.68, cost_eur = 4500, label = "Pulling manifold" },
+    { value = 0.73, cost_eur = 5000, label = "Four-valve head, ported" },
+    { value = 0.78, cost_eur = 5400, label = "Pulling cam" },
+    { value = 0.82, cost_eur = 5900, label = "Pump on maximum" },
+    { value = 0.85, cost_eur = 6400, label = "Fully built on 3 bar: the 7 l tops out below the 6.06 l" },
 ]
 
 [[garage.upgrades]]
@@ -102,13 +102,13 @@ choice = "Engine"
 alternative = "6.06 l six, 3200 rpm"
 levels = [
     { value = 0.45, cost_eur = 0, label = "As bought, built for revs" },
-    { value = 0.53, cost_eur = 1600, label = "Bigger injectors" },
-    { value = 0.61, cost_eur = 2000, label = "Pump timed" },
-    { value = 0.69, cost_eur = 2400, label = "Intercooler" },
-    { value = 0.77, cost_eur = 2800, label = "Water injection" },
-    { value = 0.85, cost_eur = 3200, label = "Ported head" },
-    { value = 0.93, cost_eur = 3600, label = "Pulling cam" },
-    { value = 1.0, cost_eur = 4000, label = "Fully built on 3 bar" },
+    { value = 0.53, cost_eur = 2600, label = "Bigger injectors" },
+    { value = 0.61, cost_eur = 3200, label = "Pump timed" },
+    { value = 0.69, cost_eur = 3800, label = "Intercooler" },
+    { value = 0.77, cost_eur = 4500, label = "Water injection" },
+    { value = 0.85, cost_eur = 5100, label = "Ported head" },
+    { value = 0.93, cost_eur = 5800, label = "Pulling cam" },
+    { value = 1.0, cost_eur = 6400, label = "Fully built on 3 bar" },
 ]
 
 [[garage.upgrades]]
@@ -116,10 +116,10 @@ part = "boost_bar"
 name = "Turbo"
 levels = [
     { value = 3.0, cost_eur = 0, label = "Stock turbo, 3 bar" },
-    { value = 4.0, cost_eur = 5000, label = "Bigger turbo, 4 bar" },
-    { value = 5.0, cost_eur = 9000, label = "Pulling turbo, 5 bar" },
-    { value = 6.0, cost_eur = 14000, label = "Big pulling turbo, 6 bar" },
-    { value = 7.0, cost_eur = 20000, label = "Top turbo, 7 bar" },
+    { value = 4.0, cost_eur = 7900, label = "Bigger turbo, 4 bar" },
+    { value = 5.0, cost_eur = 14300, label = "Pulling turbo, 5 bar" },
+    { value = 6.0, cost_eur = 22400, label = "Big pulling turbo, 6 bar" },
+    { value = 7.0, cost_eur = 32000, label = "Top turbo, 7 bar" },
 ]
 
 [[garage.upgrades]]
@@ -129,9 +129,9 @@ choice = "Engine"
 alternative = "7.0 l six, 2700 rpm"
 levels = [
     { value = 2200.0, cost_eur = 0, label = "Stock, full fuel to 2200 rpm" },
-    { value = 2350.0, cost_eur = 1300, label = "Turned up, 2350 rpm" },
-    { value = 2500.0, cost_eur = 1800, label = "Turned up, 2500 rpm" },
-    { value = 2650.0, cost_eur = 2400, label = "Pulling governor, 2650 rpm, cut at 2700" },
+    { value = 2350.0, cost_eur = 2000, label = "Turned up, 2350 rpm" },
+    { value = 2500.0, cost_eur = 2800, label = "Turned up, 2500 rpm" },
+    { value = 2650.0, cost_eur = 3800, label = "Pulling governor, 2650 rpm, cut at 2700" },
 ]
 
 [[garage.upgrades]]
@@ -141,9 +141,9 @@ choice = "Engine"
 alternative = "6.06 l six, 3200 rpm"
 levels = [
     { value = 2600.0, cost_eur = 0, label = "As bought, full fuel to 2600 rpm" },
-    { value = 2800.0, cost_eur = 1300, label = "Turned up, 2800 rpm" },
-    { value = 3000.0, cost_eur = 1800, label = "Turned up, 3000 rpm" },
-    { value = 3150.0, cost_eur = 2400, label = "Pulling governor, 3150 rpm, cut at 3200" },
+    { value = 2800.0, cost_eur = 2000, label = "Turned up, 2800 rpm" },
+    { value = 3000.0, cost_eur = 2800, label = "Turned up, 3000 rpm" },
+    { value = 3150.0, cost_eur = 3800, label = "Pulling governor, 3150 rpm, cut at 3200" },
 ]
 
 [[garage.upgrades]]
@@ -153,11 +153,11 @@ choice = "Rear tires"
 alternative = "Modified farm tires"
 levels = [
     { value = 0.68, cost_eur = 0, label = "Worn farm tires" },
-    { value = 0.71, cost_eur = 1100, label = "Farm tires, good tread" },
-    { value = 0.74, cost_eur = 1400, label = "New 710/70R42 tires" },
-    { value = 0.76, cost_eur = 1700, label = "Regrooved" },
-    { value = 0.78, cost_eur = 2000, label = "Regrooved, lugs sharpened" },
-    { value = 0.80, cost_eur = 2300, label = "Hand regrooved by a specialist" },
+    { value = 0.71, cost_eur = 1800, label = "Farm tires, good tread" },
+    { value = 0.74, cost_eur = 2300, label = "New 710/70R42 tires" },
+    { value = 0.76, cost_eur = 2700, label = "Regrooved" },
+    { value = 0.78, cost_eur = 3200, label = "Regrooved, lugs sharpened" },
+    { value = 0.80, cost_eur = 3700, label = "Hand regrooved by a specialist" },
 ]
 
 [[garage.upgrades]]
@@ -167,10 +167,10 @@ choice = "Rear tires"
 alternative = "Puller tires"
 levels = [
     { value = 1.00, cost_eur = 0, label = "Used puller tires" },
-    { value = 1.06, cost_eur = 1300, label = "Puller tires, good bars" },
-    { value = 1.13, cost_eur = 1700, label = "New 30.5L-32 puller tires" },
-    { value = 1.19, cost_eur = 2100, label = "Bars sharpened" },
-    { value = 1.25, cost_eur = 2500, label = "Bars hand cut by a specialist" },
+    { value = 1.06, cost_eur = 2000, label = "Puller tires, good bars" },
+    { value = 1.13, cost_eur = 2700, label = "New 30.5L-32 puller tires" },
+    { value = 1.19, cost_eur = 3300, label = "Bars sharpened" },
+    { value = 1.25, cost_eur = 4000, label = "Bars hand cut by a specialist" },
 ]
 
 [[garage.upgrades]]
@@ -178,10 +178,10 @@ part = "ballast_kg"
 name = "Free weight"
 levels = [
     { value = 0.0, cost_eur = 0, label = "All weights fixed at the back" },
-    { value = 100.0, cost_eur = 1100, label = "100 kg free to move" },
-    { value = 200.0, cost_eur = 1400, label = "200 kg free to move" },
-    { value = 300.0, cost_eur = 1700, label = "300 kg free to move" },
-    { value = 400.0, cost_eur = 2000, label = "All 400 kg free to move" },
+    { value = 100.0, cost_eur = 1800, label = "100 kg free to move" },
+    { value = 200.0, cost_eur = 2300, label = "200 kg free to move" },
+    { value = 300.0, cost_eur = 2700, label = "300 kg free to move" },
+    { value = 400.0, cost_eur = 3200, label = "All 400 kg free to move" },
 ]
 
 [[garage.upgrades]]
@@ -189,16 +189,17 @@ part = "hitch_height_m"
 name = "Pulling hitch"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
-    { value = 0.44, cost_eur = 1200, label = "Drawbar raised, 0.44 m" },
-    { value = 0.48, cost_eur = 1600, label = "Pulling hitch, 0.48 m" },
-    { value = 0.50, cost_eur = 2000, label = "Pulling hitch, 0.50 m" },
+    { value = 0.44, cost_eur = 1900, label = "Drawbar raised, 0.44 m" },
+    { value = 0.48, cost_eur = 2600, label = "Pulling hitch, 0.48 m" },
+    { value = 0.50, cost_eur = 3200, label = "Pulling hitch, 0.50 m" },
 ]
 
 # The dealer: a new class is a new tractor, bought when the class opens, as
 # one of these models (the game draws each its own way; all pull alike).
-# Priced at about a quarter of a winning season's prize money; the cheapest
-# is never dearer than the money there is. Painting it later costs
-# paint_cost_eur.
+# Every model costs the same (they differ only in looks): about what a
+# career carries out of the class below, less a tenth of this garage to
+# start building with; the dealer never asks more than the money there is.
+# Painting it later costs paint_cost_eur.
 [garage.dealer]
 paint_cost_eur = 900
 
@@ -210,31 +211,31 @@ paint_cost_eur = 900
 [[garage.dealer.models]]
 name = "Thunder Eighties"
 style = "ss_square"
-cost_eur = 8500
+cost_eur = 10000
 about = "An eighties tractor's square hood, a black roll cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Oldtimer"
 style = "ss_round"
-cost_eur = 9400
+cost_eur = 10000
 about = "An older tractor's round hood in a chrome roll cage, a tall chrome stack and a weight box."
 
 [[garage.dealer.models]]
 name = "Thunder Low"
 style = "ss_low"
-cost_eur = 10300
+cost_eur = 10000
 about = "Built low: a low square hood, a low black cage, one big stack and a weight rack."
 
 [[garage.dealer.models]]
 name = "Thunder Modern"
 style = "ss_sloped"
-cost_eur = 11200
+cost_eur = 10000
 about = "A modern tractor's sloping hood and lamp strips, a cage in its colour and a weight box."
 
 [[garage.dealer.models]]
 name = "Thunder High"
 style = "ss_high"
-cost_eur = 12300
+cost_eur = 10000
 about = "A tall square hood in a tall chrome roll cage, wide fenders and a weight box."
 
 # The colours, the same at every dealer: the first comes with the tractor.

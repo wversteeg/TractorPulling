@@ -22,13 +22,13 @@ part = "engine_torque"
 name = "Injection pump"
 levels = [
     { value = 0.80, cost_eur = 0, label = "Worn pump and injectors" },
-    { value = 0.84, cost_eur = 250, label = "Injectors cleaned" },
-    { value = 0.87, cost_eur = 350, label = "New injectors" },
-    { value = 0.90, cost_eur = 400, label = "Pump timing set" },
-    { value = 0.92, cost_eur = 500, label = "Pump overhauled" },
-    { value = 0.95, cost_eur = 600, label = "Pump calibrated" },
-    { value = 0.98, cost_eur = 700, label = "Turbo overhauled" },
-    { value = 1.0, cost_eur = 800, label = "Maker's figures, 84 hp" },
+    { value = 0.84, cost_eur = 400, label = "Injectors cleaned" },
+    { value = 0.87, cost_eur = 500, label = "New injectors" },
+    { value = 0.90, cost_eur = 600, label = "Pump timing set" },
+    { value = 0.92, cost_eur = 800, label = "Pump overhauled" },
+    { value = 0.95, cost_eur = 1000, label = "Pump calibrated" },
+    { value = 0.98, cost_eur = 1200, label = "Turbo overhauled" },
+    { value = 1.0, cost_eur = 1300, label = "Maker's figures, 84 hp" },
 ]
 
 [[garage.upgrades]]
@@ -36,13 +36,13 @@ part = "rear_traction"
 name = "Rear tires"
 levels = [
     { value = 0.86, cost_eur = 0, label = "Worn tires" },
-    { value = 0.88, cost_eur = 250, label = "Used tires, good tread" },
-    { value = 0.90, cost_eur = 350, label = "New farm tires" },
-    { value = 0.91, cost_eur = 400, label = "Farm tires, wider" },
-    { value = 0.92, cost_eur = 500, label = "Deep-tread tires" },
-    { value = 0.93, cost_eur = 600, label = "Deep-tread, matched pair" },
-    { value = 0.94, cost_eur = 700, label = "Wider deep-tread tires" },
-    { value = 0.95, cost_eur = 800, label = "Widest deep-tread tires" },
+    { value = 0.88, cost_eur = 400, label = "Used tires, good tread" },
+    { value = 0.90, cost_eur = 500, label = "New farm tires" },
+    { value = 0.91, cost_eur = 600, label = "Farm tires, wider" },
+    { value = 0.92, cost_eur = 800, label = "Deep-tread tires" },
+    { value = 0.93, cost_eur = 1000, label = "Deep-tread, matched pair" },
+    { value = 0.94, cost_eur = 1200, label = "Wider deep-tread tires" },
+    { value = 0.95, cost_eur = 1300, label = "Widest deep-tread tires" },
 ]
 
 [[garage.upgrades]]
@@ -50,12 +50,12 @@ part = "ballast_kg"
 name = "Free weight"
 levels = [
     { value = 100.0, cost_eur = 0, label = "100 kg free to move" },
-    { value = 150.0, cost_eur = 300, label = "150 kg free to move" },
-    { value = 200.0, cost_eur = 400, label = "200 kg free to move" },
-    { value = 250.0, cost_eur = 500, label = "250 kg free to move" },
-    { value = 300.0, cost_eur = 600, label = "300 kg free to move" },
-    { value = 350.0, cost_eur = 700, label = "350 kg free to move" },
-    { value = 400.0, cost_eur = 800, label = "All 400 kg free to move" },
+    { value = 150.0, cost_eur = 500, label = "150 kg free to move" },
+    { value = 200.0, cost_eur = 600, label = "200 kg free to move" },
+    { value = 250.0, cost_eur = 800, label = "250 kg free to move" },
+    { value = 300.0, cost_eur = 1000, label = "300 kg free to move" },
+    { value = 350.0, cost_eur = 1200, label = "350 kg free to move" },
+    { value = 400.0, cost_eur = 1300, label = "All 400 kg free to move" },
 ]
 
 [[garage.upgrades]]
@@ -63,11 +63,11 @@ part = "hitch_height_m"
 name = "Drawbar"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Farm drawbar, 0.40 m" },
-    { value = 0.42, cost_eur = 300, label = "Drawbar raised, 0.42 m" },
-    { value = 0.44, cost_eur = 450, label = "Drawbar raised, 0.44 m" },
-    { value = 0.46, cost_eur = 600, label = "Pulling hitch, 0.46 m" },
-    { value = 0.48, cost_eur = 700, label = "Pulling hitch, 0.48 m" },
-    { value = 0.50, cost_eur = 800, label = "Pulling hitch, 0.50 m" },
+    { value = 0.42, cost_eur = 500, label = "Drawbar raised, 0.42 m" },
+    { value = 0.44, cost_eur = 800, label = "Drawbar raised, 0.44 m" },
+    { value = 0.46, cost_eur = 1000, label = "Pulling hitch, 0.46 m" },
+    { value = 0.48, cost_eur = 1200, label = "Pulling hitch, 0.48 m" },
+    { value = 0.50, cost_eur = 1300, label = "Pulling hitch, 0.50 m" },
 ]
 
 [[garage.upgrades]]
@@ -75,8 +75,8 @@ part = "load_downshift_gears"
 name = "Powershift"
 levels = [
     { value = 0.0, cost_eur = 0, label = "None: shift with the clutch" },
-    { value = 1.0, cost_eur = 2700, label = "One gear down under load" },
-    { value = 2.0, cost_eur = 1300, label = "Two gears down under load" },
+    { value = 1.0, cost_eur = 4400, label = "One gear down under load" },
+    { value = 2.0, cost_eur = 2000, label = "Two gears down under load" },
 ]
 
 [[garage.upgrades]]
@@ -84,16 +84,16 @@ part = "rated_rpm"
 name = "Governor"
 levels = [
     { value = 2200.0, cost_eur = 0, label = "Stock, full fuel to 2200 rpm" },
-    { value = 2310.0, cost_eur = 300, label = "Turned up, 2310 rpm" },
-    { value = 2420.0, cost_eur = 500, label = "Turned up, 2420 rpm" },
-    { value = 2530.0, cost_eur = 650, label = "Turned up, 2530 rpm" },
-    { value = 2650.0, cost_eur = 800, label = "Pulling governor, 2650 rpm, cut at 2700" },
+    { value = 2310.0, cost_eur = 500, label = "Turned up, 2310 rpm" },
+    { value = 2420.0, cost_eur = 800, label = "Turned up, 2420 rpm" },
+    { value = 2530.0, cost_eur = 1000, label = "Turned up, 2530 rpm" },
+    { value = 2650.0, cost_eur = 1300, label = "Pulling governor, 2650 rpm, cut at 2700" },
 ]
 
 # The dealer: the tractor a career starts with, bought before the first
 # season, as one of these models (the game draws each its own way; all pull
-# alike). The cheapest leaves the € 1,000 a career starts the garage with;
-# a dearer one, less. Painting it another colour later costs paint_cost_eur.
+# alike, and all cost the same). It leaves the € 1,000 a career starts the
+# garage with. Painting it another colour later costs paint_cost_eur.
 [garage.dealer]
 paint_cost_eur = 300
 
@@ -106,25 +106,25 @@ about = "The all-rounder: a square hood, a closed cab and a beacon on the roof."
 [[garage.dealer.models]]
 name = "Oldtimer 55"
 style = "farm_vintage"
-cost_eur = 1750
+cost_eur = 1500
 about = "A rounded hood, chrome and a tall stack, no cab: a restored classic."
 
 [[garage.dealer.models]]
 name = "Laagland 70"
 style = "farm_low"
-cost_eur = 2000
+cost_eur = 1500
 about = "Low and lean: a flat hood, a low cab and the exhaust up its corner."
 
 [[garage.dealer.models]]
 name = "Hoogland 75"
 style = "farm_high"
-cost_eur = 2250
+cost_eur = 1500
 about = "Tall and proud: a high hood, a big cab, twin stacks and wide fenders."
 
 [[garage.dealer.models]]
 name = "Akkerman 80 S"
 style = "farm_modern"
-cost_eur = 2500
+cost_eur = 1500
 about = "The new one: a sloping nose with lamp strips and a rounded cab."
 
 # The colours, the same at every dealer: the first comes with the tractor.

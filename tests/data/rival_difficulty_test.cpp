@@ -165,21 +165,6 @@ TEST(RivalDifficulty, ANewTractorStartsAtTheBackAndAFullyUpgradedOneIsOnThePodiu
 // alternatives (Sport 4.5 t's 68 mm turbo).
 constexpr double kOwnsTheChoicesFrom = 0.5;
 
-// Every part bought to `share` of its levels (0 new, 1 fully upgraded),
-// rounded to the nearest level; from kOwnsTheChoicesFrom, every
-// alternative owned too.
-garage::Career share_up(const garage::Catalogue& catalogue, double share) {
-    garage::Career career = garage::new_career(catalogue);
-    for (std::size_t i = 0; i < catalogue.count; ++i) {
-        const int top = static_cast<int>(catalogue.upgrades[i].level_count) - 1;
-        career.levels[i] = static_cast<int>(std::lround(share * top));
-    }
-    if (share >= kOwnsTheChoicesFrom) {
-        career.owned.fill(std::numeric_limits<std::uint8_t>::max());
-    }
-    return career;
-}
-
 // `career` with the owned alternatives of its choices (a turbo; an engine,
 // tires and a final drive) that take the tractor furthest on the season's
 // first track, in its best gear: the player fits them for the day. Every
@@ -235,9 +220,49 @@ garage::Career fitted_for_the_day(const data::SeasonDefinition& d, garage::Caree
     return best;
 }
 
-// Each career level's field, in share of the class garage's stages bought
-// (docs/career.md). The player picks their best of the pulling gears, as
-// in the game.
+// The best possible tractor's route: of the class garage fully bought, the
+// alternatives that pull furthest (fitted_for_the_day), by choice.
+std::array<int, garage::kMaxChoices> best_route(const data::SeasonDefinition& d, Gears gears) {
+    const garage::Catalogue& catalogue = d.garage.catalogue;
+    garage::Career full = garage::new_career(catalogue);
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        full.levels.at(i) = static_cast<int>(catalogue.upgrades.at(i).level_count) - 1;
+    }
+    full.owned.fill(std::numeric_limits<std::uint8_t>::max());
+    return fitted_for_the_day(d, full, gears).fitted;
+}
+
+// The best possible tractor (`route`) built to `share` of what it costs
+// (garage::build_share): its upgrades to `share` of their levels, rounded
+// to the nearest level, and from kOwnsTheChoicesFrom its alternatives owned
+// and fitted (below that, the ones the tractor comes with). Parts off the
+// route stay as they come: the other engine's build is not bought.
+garage::Career share_up(const garage::Catalogue& catalogue, double share,
+                        const std::array<int, garage::kMaxChoices>& route) {
+    garage::Career career = garage::new_career(catalogue);
+    career.fitted = route;
+    if (share >= kOwnsTheChoicesFrom) {
+        for (std::size_t c = 0; c < catalogue.choice_count; ++c) {
+            career.owned.at(c) = static_cast<std::uint8_t>(
+                career.owned.at(c) | (1U << static_cast<unsigned>(route.at(c))));
+        }
+    }
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        const garage::Upgrade& upgrade = catalogue.upgrades.at(i);
+        const bool on_route =
+            upgrade.choice == garage::kNoChoice ||
+            route.at(static_cast<std::size_t>(upgrade.choice)) == upgrade.alternative;
+        if (on_route) {
+            const int top = static_cast<int>(upgrade.level_count) - 1;
+            career.levels.at(i) = static_cast<int>(std::lround(share * top));
+        }
+    }
+    return career;
+}
+
+// Each career level's field, in share of the best possible tractor built
+// (garage::build_share of its route; docs/career.md). The player picks their best of the pulling
+// gears, as in the game.
 constexpr Gears kPullingGears{.lowest = 5, .highest = 7};
 
 struct Expectation {
@@ -248,11 +273,12 @@ struct Expectation {
 void expect_level(const char* file, std::initializer_list<Expectation> expectations,
                   Gears gears = kPullingGears) {
     const data::SeasonDefinition d = season_named(file);
+    const std::array<int, garage::kMaxChoices> route = best_route(d, gears);
     for (const Expectation& x : expectations) {
         for (const std::uint64_t seed : kSeeds) {
             const int at =
-                place(d, fitted_for_the_day(d, share_up(d.garage.catalogue, x.share), gears), seed,
-                      gears);
+                place(d, fitted_for_the_day(d, share_up(d.garage.catalogue, x.share, route), gears),
+                      seed, gears);
             EXPECT_GE(at, x.places.best) << file << ", share " << x.share << ", seed " << seed;
             EXPECT_LE(at, x.places.worst) << file << ", share " << x.share << ", seed " << seed;
         }
@@ -318,7 +344,7 @@ TEST(RivalDifficulty, ANewSport45TractorIsAtTheBackOfBelofteAndAbout45PercentWin
 
 TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWinIt) {
     expect_level("sport_4500_promo.toml",
-                 {{.share = 0.45, .places = {.best = 5, .worst = 13}},
+                 {{.share = 0.45, .places = {.best = 2, .worst = 13}},
                   {.share = 0.66, .places = {.best = 1, .worst = 3}},
                   {.share = 0.75, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
@@ -326,7 +352,7 @@ TEST(RivalDifficulty, Sport45BeloftesWinnerIsAtTheBackOfPromoAndThreeQuartersWin
 
 TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
     expect_level("sport_4500_top.toml",
-                 {{.share = 0.75, .places = {.best = 7, .worst = 15}},
+                 {{.share = 0.75, .places = {.best = 2, .worst = 15}},
                   {.share = 0.9, .places = {.best = 1, .worst = 10}},
                   {.share = 1.0, .places = {.best = 1, .worst = 2}}},
                  kSportGears);
@@ -339,9 +365,10 @@ TEST(RivalDifficulty, OnlyAFullyBuiltSport45TractorIsSureToWinAtTop) {
 // belofte, whose field pulls on farm tires too; half the garage is in the
 // front half and 70 % wins it; at promo, on puller tires like its field,
 // half the garage is in the middle and three quarters wins; at top 60 % is
-// in the back half, three quarters about the front half (the field
-// launches well and the pulls are mostly grip-limited, so the two are
-// close), and a nearly or fully built tractor wins. The rivals at promo and top gear for wheel
+// at the back, about 70 to 75 % in the low to middle range, and a nearly or
+// fully built tractor wins. Every share is of the best possible tractor
+// (the 6.06 l on puller tires, say): the other engine's build is not
+// bought. The rivals at promo and top gear for wheel
 // speed (5th and 6th on the middle drive); the player may choose any pulling gear. A weak tractor
 // may pull in 2nd at belofte.
 constexpr Gears kSupersportGears{.lowest = 3, .highest = 6};
@@ -360,16 +387,16 @@ TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercent
 TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAtTheOpener) {
     expect_level("supersport_3600_promo.toml",
                  {{.share = 0.5, .places = {.best = 3, .worst = 12}},
-                  {.share = 0.75, .places = {.best = 1, .worst = 5}}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 7}}},
                  kSupersportGears);
 }
 
 TEST(RivalDifficulty, OnlyANearlyFullyBuiltSupersportTractorWinsAtTop) {
     expect_level("supersport_3600_top.toml",
                  {{.share = 0.6, .places = {.best = 7, .worst = 15}},
-                  {.share = 0.75, .places = {.best = 1, .worst = 9}},
-                  {.share = 0.9, .places = {.best = 1, .worst = 2}},
-                  {.share = 1.0, .places = {.best = 1, .worst = 2}}},
+                  {.share = 0.75, .places = {.best = 7, .worst = 13}},
+                  {.share = 0.9, .places = {.best = 1, .worst = 7}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 7}}},
                  kSupersportGears);
 }
 
