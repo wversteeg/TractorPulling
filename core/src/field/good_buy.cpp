@@ -106,8 +106,8 @@ bool own_upgrade(const garage::Upgrade& upgrade, std::size_t choice,
 
 // Alternative `alternative` of choice `choice` fully built: bought if the
 // career does not own it, fitted, its own upgrades (its build) and those
-// every alternative shares at their top; and its first piece to buy (the alternative, or the cheapest next
-// level of its build), none when it is all bought.
+// every alternative shares at their top; and its first piece to buy (the alternative, or the
+// cheapest next level of its build), none when it is all bought.
 struct Route {
     garage::Career career;
     std::optional<Buy> first;

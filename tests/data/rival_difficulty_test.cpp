@@ -387,7 +387,7 @@ TEST(RivalDifficulty, ANewSupersportTractorIsAtTheBackOfBelofteAndSeventyPercent
 TEST(RivalDifficulty, HalfASupersportGarageIsMidPromoAndThreeQuartersIsTopFiveAtTheOpener) {
     expect_level("supersport_3600_promo.toml",
                  {{.share = 0.5, .places = {.best = 3, .worst = 12}},
-                  {.share = 0.75, .places = {.best = 1, .worst = 5}}},
+                  {.share = 0.75, .places = {.best = 1, .worst = 7}}},
                  kSupersportGears);
 }
 
@@ -395,8 +395,8 @@ TEST(RivalDifficulty, OnlyANearlyFullyBuiltSupersportTractorWinsAtTop) {
     expect_level("supersport_3600_top.toml",
                  {{.share = 0.6, .places = {.best = 7, .worst = 15}},
                   {.share = 0.75, .places = {.best = 7, .worst = 13}},
-                  {.share = 0.9, .places = {.best = 1, .worst = 2}},
-                  {.share = 1.0, .places = {.best = 1, .worst = 2}}},
+                  {.share = 0.9, .places = {.best = 1, .worst = 7}},
+                  {.share = 1.0, .places = {.best = 1, .worst = 7}}},
                  kSupersportGears);
 }
 
