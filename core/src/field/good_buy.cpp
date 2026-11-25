@@ -96,6 +96,149 @@ Candidates candidates(const garage::Catalogue& catalogue, const garage::Career& 
     return out;
 }
 
+// Whether upgrade `upgrade` is alternative `alternative` of choice
+// `choice`'s own (its build): it counts only while that is fitted.
+bool own_upgrade(const garage::Upgrade& upgrade, std::size_t choice,
+                 std::size_t alternative) noexcept {
+    return upgrade.choice == static_cast<int>(choice) &&
+           upgrade.alternative == static_cast<int>(alternative);
+}
+
+// Alternative `alternative` of choice `choice` fully built: bought if the
+// career does not own it, fitted, its own upgrades (its build) and those
+// every alternative shares at their top; and its first piece to buy (the alternative, or the cheapest next
+// level of its build), none when it is all bought.
+struct Route {
+    garage::Career career;
+    std::optional<Buy> first;
+};
+
+Route fully_built(const garage::Catalogue& catalogue, const garage::Career& career,
+                  std::size_t choice, std::size_t alternative) noexcept {
+    Route out;
+    out.career = career;
+    out.career.money_eur = std::numeric_limits<std::int64_t>::max() / 2;
+    if (!garage::owns(career, choice, alternative)) {
+        out.first =
+            Buy{.kind = BuyKind::kAlternative,
+                .index = choice,
+                .alternative = alternative,
+                .cost_eur = catalogue.choices.at(choice).alternatives.at(alternative).cost_eur};
+        (void)garage::buy_alternative(out.career, catalogue, choice, alternative);
+    }
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        const garage::Upgrade& upgrade = catalogue.upgrades.at(i);
+        const int top = static_cast<int>(upgrade.level_count) - 1;
+        if (upgrade.choice == garage::kNoChoice) {
+            // Shared by every engine (the turbo, the hitch): at its top for
+            // both, so that the engines' full potentials are compared.
+            out.career.levels.at(i) = std::max(top, 0);
+            continue;
+        }
+        if (!own_upgrade(upgrade, choice, alternative)) {
+            continue;
+        }
+        const int next = career.levels.at(i) + 1;
+        if (next <= top && out.first.value_or(Buy{}).kind != BuyKind::kAlternative) {
+            const std::int64_t cost_eur =
+                upgrade.levels.at(static_cast<std::size_t>(next)).cost_eur;
+            if (!out.first || cost_eur < out.first->cost_eur) {
+                out.first = Buy{.kind = BuyKind::kUpgrade, .index = i, .cost_eur = cost_eur};
+            }
+        }
+        out.career.levels.at(i) = std::max(top, 0);
+    }
+    (void)garage::fit(out.career, catalogue, choice, alternative);
+    fit_what_suits(catalogue, out.career, choice, alternative);
+    out.career.money_eur = career.money_eur;
+    return out;
+}
+
+// Whether alternative `alternative` of choice `choice` has upgrades of its
+// own: an engine and its build.
+bool has_own_upgrades(const garage::Catalogue& catalogue, std::size_t choice,
+                      std::size_t alternative) noexcept {
+    for (std::size_t i = 0; i < catalogue.count; ++i) {
+        if (own_upgrade(catalogue.upgrades.at(i), choice, alternative)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// How far `career`'s tractor pulls `sled` made heavier until `career`
+// stops short of the line, and that sled; in its best gear.
+std::optional<double> furthest_m(const Puller& reference, const garage::Catalogue& catalogue,
+                                 const garage::Career& career, const sled::Params& sled,
+                                 const track::Params& track, int lowest, int highest,
+                                 const run::Rules& rules) noexcept {
+    Puller puller = reference;
+    if (const auto tractor = garage::equipped(reference.tractor, catalogue, career)) {
+        puller.tractor = *tractor;
+    } else {
+        return std::nullopt;
+    }
+    const std::optional<GearTrial> trial =
+        best_gear_trial(puller, sled, track, lowest, highest, rules);
+    if (!trial) {
+        return std::nullopt;
+    }
+    return trial->distance_m;
+}
+
+// The switch a crew plans for a new level: an alternative with a build of
+// its own (an engine) that, fully built, pulls further than the fitted one
+// fully built, though it may be weaker as it comes. Its first piece, the
+// gain between the two fully built; nothing when there is no such switch.
+std::optional<GoodBuy> switch_ahead(const Puller& reference, const garage::Catalogue& catalogue,
+                                    const garage::Career& career, const sled::Params& sled,
+                                    const track::Params& track, int lowest, int highest,
+                                    const run::Rules& rules) noexcept {
+    std::optional<GoodBuy> best;
+    for (std::size_t c = 0; c < catalogue.choice_count; ++c) {
+        const std::size_t fitted = garage::fitted(catalogue, career, c);
+        const Route now = fully_built(catalogue, career, c, fitted);
+        // Weighed on a sled the fitted one fully built stops short on.
+        int steps = kGoodBuySteps;
+        sled::Params weighing = sled::heavier(sled, steps);
+        std::optional<double> now_m =
+            furthest_m(reference, catalogue, now.career, weighing, track, lowest, highest, rules);
+        while (now_m && *now_m >= rules.full_pull_line_m && steps < kMostGoodBuySteps) {
+            steps += kGoodBuySteps;
+            weighing = sled::heavier(sled, steps);
+            now_m = furthest_m(reference, catalogue, now.career, weighing, track, lowest, highest,
+                               rules);
+        }
+        if (!now_m) {
+            return std::nullopt;
+        }
+        for (std::size_t a = 0; a < catalogue.choices.at(c).alternative_count; ++a) {
+            if (a == fitted || !has_own_upgrades(catalogue, c, a)) {
+                continue;
+            }
+            const Route ahead = fully_built(catalogue, career, c, a);
+            if (!ahead.first) {
+                continue;  // all bought: fitted on the day when it pulls further
+            }
+            const std::optional<double> ahead_m = furthest_m(
+                reference, catalogue, ahead.career, weighing, track, lowest, highest, rules);
+            if (!ahead_m) {
+                return std::nullopt;
+            }
+            const double gain_m = *ahead_m - *now_m;
+            if (gain_m >= kLeastGain_m && (!best || gain_m > best->gain_m)) {
+                best = GoodBuy{.buy = *ahead.first,
+                               .gain_m = gain_m,
+                               .save_for = ahead.first->cost_eur > career.money_eur,
+                               .steps = steps,
+                               .route_choice = static_cast<int>(c),
+                               .route_alternative = static_cast<int>(a)};
+            }
+        }
+    }
+    return best;
+}
+
 }  // namespace
 
 garage::Career with_buy(const garage::Catalogue& catalogue, const garage::Career& career,
@@ -119,8 +262,7 @@ garage::Career with_buy(const garage::Catalogue& catalogue, const garage::Career
 std::optional<GoodBuy> good_buy(const Puller& reference, const garage::Catalogue& catalogue,
                                 const garage::Career& career, const sled::Params& sled,
                                 const track::Params& track, int lowest, int highest,
-                                const run::Rules& rules) noexcept {
-    const sled::Params weighing = sled::heavier(sled, kGoodBuySteps);
+                                const run::Rules& rules, bool plan_ahead) noexcept {
     // The tractor as it is in its best gear and throttle; each buy is tried
     // at that throttle in that gear and the ones either side of it: a part
     // moves the best gear by one at most, and the trial stays quick enough
@@ -131,8 +273,14 @@ std::optional<GoodBuy> good_buy(const Puller& reference, const garage::Catalogue
     } else {
         return std::nullopt;
     }
-    const std::optional<GearTrial> trial =
-        best_gear_trial(now, weighing, track, lowest, highest, rules);
+    int steps = kGoodBuySteps;
+    sled::Params weighing = sled::heavier(sled, steps);
+    std::optional<GearTrial> trial = best_gear_trial(now, weighing, track, lowest, highest, rules);
+    while (trial && trial->distance_m >= rules.full_pull_line_m && steps < kMostGoodBuySteps) {
+        steps += kGoodBuySteps;
+        weighing = sled::heavier(sled, steps);
+        trial = best_gear_trial(now, weighing, track, lowest, highest, rules);
+    }
     if (!trial) {
         return std::nullopt;
     }
@@ -143,34 +291,48 @@ std::optional<GoodBuy> good_buy(const Puller& reference, const garage::Catalogue
     if (!now_m) {
         return std::nullopt;
     }
+    if (plan_ahead) {
+        if (const std::optional<GoodBuy> ahead =
+                switch_ahead(reference, catalogue, career, sled, track, lowest, highest, rules)) {
+            return ahead;
+        }
+    }
     std::optional<GoodBuy> best_affordable;
     std::optional<GoodBuy> best_of_all;
     double affordable_per_eur = 0.0;
     double all_per_eur = 0.0;
-    const Candidates offer = candidates(catalogue, career);
-    for (std::size_t i = 0; i < offer.count; ++i) {
-        const Buy& buy = offer.buys.at(i);
+    // Weighs `candidate` (its buy made, the tractor as `with`) by the metres
+    // it gains per euro of `cost_eur`; false if a pull was refused.
+    const auto weigh = [&](GoodBuy candidate, const garage::Career& with,
+                           std::int64_t cost_eur) noexcept {
         const std::optional<double> with_m =
-            pulled_m(reference, catalogue, with_buy(catalogue, career, buy), weighing, track, from,
-                     to, trial->throttle, rules);
+            pulled_m(reference, catalogue, with, weighing, track, from, to, trial->throttle, rules);
         if (!with_m) {
-            return std::nullopt;
+            return false;
         }
-        const double gain_m = *with_m - *now_m;
-        if (gain_m < kLeastGain_m) {
-            continue;
+        candidate.gain_m = *with_m - *now_m;
+        if (candidate.gain_m < kLeastGain_m) {
+            return true;
         }
         // A free buy gains the most per euro.
         const double per_eur =
-            gain_m / static_cast<double>(std::max<std::int64_t>(buy.cost_eur, 1));
-        const GoodBuy candidate{.buy = buy, .gain_m = gain_m};
+            candidate.gain_m / static_cast<double>(std::max<std::int64_t>(cost_eur, 1));
         if (per_eur > all_per_eur) {
             all_per_eur = per_eur;
             best_of_all = candidate;
         }
-        if (buy.cost_eur <= career.money_eur && per_eur > affordable_per_eur) {
+        if (candidate.buy.cost_eur <= career.money_eur && per_eur > affordable_per_eur) {
             affordable_per_eur = per_eur;
             best_affordable = candidate;
+        }
+        return true;
+    };
+    const Candidates offer = candidates(catalogue, career);
+    for (std::size_t i = 0; i < offer.count; ++i) {
+        const Buy& buy = offer.buys.at(i);
+        if (!weigh(GoodBuy{.buy = buy, .steps = steps}, with_buy(catalogue, career, buy),
+                   buy.cost_eur)) {
+            return std::nullopt;
         }
     }
     if (!best_of_all) {

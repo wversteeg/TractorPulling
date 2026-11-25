@@ -139,7 +139,8 @@ void shop(const garage::Catalogue& catalogue, garage::Career& career) {
 // Spends the money as the crew chief advises for `round` (field::good_buy):
 // each good buy while it can be afforded, saving when the advice is to save;
 // when nothing gains on that track any more, the cheapest next purchase.
-void shop_for(const SeasonDefinition& d, garage::Career& career, const SeasonRound& round) {
+void shop_for(const SeasonDefinition& d, garage::Career& career, const SeasonRound& round,
+              bool plan_ahead) {
     const EventDefinition& e = d.event;
     const garage::Catalogue& catalogue = d.garage.catalogue;
     const field::Venue venue = data::venue(e.sled, round.track);
@@ -149,7 +150,7 @@ void shop_for(const SeasonDefinition& d, garage::Career& career, const SeasonRou
     const int highest = std::min(e.variation.highest_gear + 1, gears);
     for (;;) {
         const auto advice = field::good_buy(e.reference, catalogue, career, venue.sled, venue.track,
-                                            lowest, highest, rules);
+                                            lowest, highest, rules, plan_ahead);
         if (!advice) {
             shop(catalogue, career);
             return;
@@ -270,7 +271,7 @@ double garage_share(const garage::Catalogue& catalogue, const garage::Career& ca
 
 std::optional<std::vector<SimSeason>> simulate_level(const SeasonDefinition& d,
                                                      garage::Career& career, int seasons,
-                                                     std::uint64_t seed) {
+                                                     std::uint64_t seed, bool plan_ahead) {
     const EventDefinition& e = d.event;
     const garage::Catalogue& catalogue = d.garage.catalogue;
     if (!buy_tractor(catalogue, career)) {
@@ -297,7 +298,7 @@ std::optional<std::vector<SimSeason>> simulate_level(const SeasonDefinition& d,
             result.places.at(static_cast<std::size_t>(result.events++)) = *place;
             result.wins += *place == 1 ? 1 : 0;
             // Bought for the next event's track, as the crew chief advises.
-            shop_for(d, career, d.rounds[(r + 1) % d.rounds.size()]);
+            shop_for(d, career, d.rounds[(r + 1) % d.rounds.size()], plan_ahead);
         }
         for (const season::Standing& st : season->standings()) {
             if (st.puller == field::LiveSeason::kPlayer) {

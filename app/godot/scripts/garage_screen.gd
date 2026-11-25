@@ -531,6 +531,15 @@ static func good_buy_text(good_buy: Dictionary) -> String:
 	if good_buy.is_empty():
 		return ""
 	var gain := "about +%.1f m on the next track" % float(good_buy.get("gain_m", 0.0))
+	if good_buy.get("route", false):
+		var towards := ("Crew chief: switch to the %s and build it up: weaker at first, about"
+				+ " +%.1f m once built") % [String(good_buy["route_label"]).to_lower(),
+				float(good_buy.get("gain_m", 0.0))]
+		if good_buy.get("save_for", false):
+			return "%s: save for the %s first (%s more)." % [towards,
+					String(good_buy["label"]).to_lower(), euros(int(good_buy.get("short_eur", 0)))]
+		return "%s: first the %s (%s)." % [towards, String(good_buy["label"]).to_lower(),
+				euros(int(good_buy.get("cost_eur", 0)))]
 	if good_buy.get("save_for", false):
 		return "Crew chief: save for the %s (%s more), %s." % [
 				String(good_buy["label"]).to_lower(), euros(int(good_buy.get("short_eur", 0))), gain]

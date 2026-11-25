@@ -40,9 +40,9 @@ spin_fuel = 0.0                     # farm tires smear spun: right off the fuel 
 # Supersport pulls in the gearbox's pulling gears, 3rd to 6th
 # (drivelines/supersport_3600_*.toml), and has no powershift.
 [event.field]
-torque_scale = [0.85, 0.98]
+torque_scale = [0.80, 0.95]
 mass_kg = [3450.0, 3600.0]
-traction_limit = [0.760, 0.800]
+traction_limit = [0.750, 0.795]
 hitch_height_m = [0.44, 0.50]
 rated_rpm = [2300.0, 2550.0]
 gears = [3, 6]                         # on farm tires and the short final drive

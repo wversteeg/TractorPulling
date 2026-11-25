@@ -1268,6 +1268,10 @@ int career_command(const Options& options) {
         if (!season) {
             return EXIT_FAILURE;
         }
+        // From a class's second level on, the crew plans ahead: an engine
+        // that pulls further fully built is switched to, though weaker at
+        // first (field::good_buy).
+        const bool plan_ahead = player && rung.class_name == class_name;
         if (!player) {
             player = tp::garage::new_career(season->garage.catalogue);
         } else if (rung.class_name != class_name) {
@@ -1280,8 +1284,9 @@ int career_command(const Options& options) {
         class_name = rung.class_name;
         const bool top =
             r + 1 == career->rungs.size() || career->rungs[r + 1].class_name != rung.class_name;
-        const auto seasons = tp::data::simulate_level(
-            *season, *player, top ? kSeasonsAtTheTop : kSeasonsPerLevel, seed + (100 * r));
+        const auto seasons =
+            tp::data::simulate_level(*season, *player, top ? kSeasonsAtTheTop : kSeasonsPerLevel,
+                                     seed + (100 * r), plan_ahead);
         if (!seasons) {
             std::cerr << rung.class_name << " " << rung.level_name << ": refused\n";
             return EXIT_FAILURE;

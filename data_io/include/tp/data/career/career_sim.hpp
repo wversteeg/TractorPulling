@@ -39,7 +39,8 @@ struct SimSeason {
 /// Nothing if a season, an event or the tractor is refused. Runs whole
 /// seasons of pulls: for tools and tests, not a frame.
 [[nodiscard]] std::optional<std::vector<SimSeason>> simulate_level(
-    const SeasonDefinition& definition, garage::Career& career, int seasons, std::uint64_t seed);
+    const SeasonDefinition& definition, garage::Career& career, int seasons, std::uint64_t seed,
+    bool plan_ahead = false);
 
 /// The share of the class garage's money (`catalogue`: every level of every
 /// upgrade and every alternative) that `career` has spent, 0 to 1.

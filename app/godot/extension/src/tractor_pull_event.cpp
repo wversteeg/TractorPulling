@@ -1112,7 +1112,8 @@ godot::Dictionary TractorPullEvent::get_good_buy() const {
     const std::optional<field::GoodBuy> advice =
         field::good_buy(season_->player(), garage.catalogue, *career_, venue.sled, venue.track,
                         e.variation.lowest_gear, std::min(e.variation.highest_gear + 1, gears),
-                        field::trial_pull_rules(e.rules, venue, e.rules.full_pull_m));
+                        field::trial_pull_rules(e.rules, venue, e.rules.full_pull_m),
+                        season_->events_scored() == 0);
     if (!advice) {
         return out;
     }
@@ -1135,6 +1136,13 @@ godot::Dictionary TractorPullEvent::get_good_buy() const {
     out["gain_m"] = advice->gain_m;
     out["save_for"] = advice->save_for;
     out["short_eur"] = std::max<std::int64_t>(buy.cost_eur - career_->money_eur, 0);
+    out["route"] = advice->route_choice != garage::kNoChoice;
+    if (advice->route_choice != garage::kNoChoice) {
+        const auto choice = static_cast<std::size_t>(advice->route_choice);
+        const auto alternative = static_cast<std::size_t>(advice->route_alternative);
+        out["route_label"] =
+            to_godot(garage.choice_texts.at(choice).alternative_labels.at(alternative));
+    }
     return out;
 }
 

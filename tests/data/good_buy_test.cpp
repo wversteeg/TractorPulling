@@ -38,9 +38,9 @@ std::optional<GoodBuy> advice_for(const data::SeasonDefinition& d, const garage:
                     trial_pull_rules(e.rules, venue, e.rules.full_pull_m));
 }
 
-// How far `career`'s tractor pulls the good buy's weighing sled on the
-// season's first track, in its best gear [m].
-double weighed_m(const data::SeasonDefinition& d, const garage::Career& career) {
+// How far `career`'s tractor pulls the good buy's weighing sled (`steps`
+// heavier) on the season's first track, in its best gear [m].
+double weighed_m(const data::SeasonDefinition& d, const garage::Career& career, int steps) {
     const data::EventDefinition& e = d.event;
     const Venue venue = data::venue(e.sled, d.rounds.front().track);
     Puller puller = e.reference;
@@ -48,7 +48,7 @@ double weighed_m(const data::SeasonDefinition& d, const garage::Career& career) 
         garage::equipped(e.reference.tractor, d.garage.catalogue, career).value_or(puller.tractor);
     const int gears = static_cast<int>(e.reference.tractor.driveline.gear_count);
     const auto trial =
-        best_gear_trial(puller, sled::heavier(venue.sled, kGoodBuySteps), venue.track,
+        best_gear_trial(puller, sled::heavier(venue.sled, steps), venue.track,
                         e.variation.lowest_gear, std::min(e.variation.highest_gear + 1, gears),
                         trial_pull_rules(e.rules, venue, e.rules.full_pull_m));
     return trial ? trial->distance_m : 0.0;
@@ -67,7 +67,9 @@ TEST(GoodBuy, ANewTractorsGoodBuyPullsFurther) {
     EXPECT_GE(advice->gain_m, kLeastGain_m);
     const garage::Career bought = with_buy(d.garage.catalogue, career, advice->buy);
     EXPECT_EQ(bought.money_eur, career.money_eur - advice->buy.cost_eur);
-    EXPECT_NEAR(weighed_m(d, bought) - weighed_m(d, career), advice->gain_m, 1e-9);
+    EXPECT_GE(advice->steps, kGoodBuySteps);
+    EXPECT_NEAR(weighed_m(d, bought, advice->steps) - weighed_m(d, career, advice->steps),
+                advice->gain_m, 1e-9);
 }
 
 // With no money the crew chief says what to save for: a buy the career

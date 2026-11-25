@@ -203,7 +203,10 @@ public:
     /// (field::good_buy), weighed on the next event's track: {label,
     /// cost_eur, gain_m, save_for, short_eur, upgrade, choice, alternative}
     /// (`upgrade` -1 for an alternative, `choice` -1 for an upgrade;
-    /// `short_eur` what is still missing when saving). {} when nothing
+    /// `short_eur` what is still missing when saving; `route` true for the
+    /// first piece of a switch planned at a season's start, `route_label`
+    /// the engine switched to, `gain_m` then between the two fully built).
+    /// {} when nothing
     /// gains, everything is bought, or outside a season. Runs trial pulls
     /// for every candidate: ask once each time the garage changes.
     [[nodiscard]] godot::Dictionary get_good_buy() const;

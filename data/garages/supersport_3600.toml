@@ -84,15 +84,15 @@ alternative = "7.0 l six, 2700 rpm"
 levels = [
     { value = 0.40, cost_eur = 0, label = "Stock 7 l" },
     { value = 0.42, cost_eur = 2000, label = "Pump turned up" },
-    { value = 0.49, cost_eur = 2600, label = "Bigger injectors" },
-    { value = 0.56, cost_eur = 3100, label = "Pump timed" },
-    { value = 0.63, cost_eur = 3600, label = "Intercooler" },
-    { value = 0.70, cost_eur = 4000, label = "Water injection" },
-    { value = 0.77, cost_eur = 4500, label = "Pulling manifold" },
-    { value = 0.84, cost_eur = 5000, label = "Four-valve head, ported" },
-    { value = 0.91, cost_eur = 5400, label = "Pulling cam" },
-    { value = 0.96, cost_eur = 5900, label = "Pump on maximum" },
-    { value = 1.0, cost_eur = 6400, label = "Fully built on 3 bar" },
+    { value = 0.47, cost_eur = 2600, label = "Bigger injectors" },
+    { value = 0.52, cost_eur = 3100, label = "Pump timed" },
+    { value = 0.57, cost_eur = 3600, label = "Intercooler" },
+    { value = 0.62, cost_eur = 4000, label = "Water injection" },
+    { value = 0.68, cost_eur = 4500, label = "Pulling manifold" },
+    { value = 0.73, cost_eur = 5000, label = "Four-valve head, ported" },
+    { value = 0.78, cost_eur = 5400, label = "Pulling cam" },
+    { value = 0.82, cost_eur = 5900, label = "Pump on maximum" },
+    { value = 0.85, cost_eur = 6400, label = "Fully built on 3 bar: the 7 l tops out below the 6.06 l" },
 ]
 
 [[garage.upgrades]]
